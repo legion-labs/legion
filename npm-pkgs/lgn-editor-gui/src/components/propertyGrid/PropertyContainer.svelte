@@ -34,29 +34,27 @@
   export let index: number;
 </script>
 
-<div class="root">
-  {#if propertyIsBag(property)}
-    <PropertyBag
-      on:input={(event) => dispatch("input", event.detail)}
-      on:addVectorSubProperty={(event) =>
-        dispatch("addVectorSubProperty", event.detail)}
-      on:removeVectorSubProperty={(event) =>
-        dispatch("removeVectorSubProperty", event.detail)}
-      bind:parentProperty
-      {property}
-      {level}
-      {pathParts}
-    />
-  {:else}
-    <PropertyUnit
-      on:input={(event) => dispatch("input", event.detail)}
-      on:removeVectorSubProperty={(event) =>
-        dispatch("removeVectorSubProperty", event.detail)}
-      {property}
-      bind:parentProperty
-      {pathParts}
-      {level}
-      {index}
-    />
-  {/if}
-</div>
+{#if propertyIsBag(property)}
+  <PropertyBag
+    on:input={(event) => dispatch("input", event.detail)}
+    on:addVectorSubProperty={(event) =>
+      dispatch("addVectorSubProperty", event.detail)}
+    on:removeVectorSubProperty={(event) =>
+      dispatch("removeVectorSubProperty", event.detail)}
+    bind:parentProperty
+    {property}
+    {level}
+    {pathParts}
+  />
+{:else}
+  <PropertyUnit
+    on:input={(event) => dispatch("input", event.detail)}
+    on:removeVectorSubProperty={(event) =>
+      dispatch("removeVectorSubProperty", event.detail)}
+    {property}
+    bind:parentProperty
+    {pathParts}
+    {level}
+    {index}
+  />
+{/if}

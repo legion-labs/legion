@@ -5,6 +5,8 @@
   --color-background-800: rgba(24, 24, 24, 1);
   /* Charcoal 900 */
   --color-background-900: rgba(15, 15, 15, 1);
+  /* Black Opacity 100 */
+  --color-background-max: rgba(1, 1, 1, 1);
 
   /* Vector : X*/
   --color-vector-x: rgba(183, 113, 106, 1);

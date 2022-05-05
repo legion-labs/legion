@@ -8,28 +8,36 @@
   type VectorInputType = "X" | "Y" | "Z" | "W";
 
   export let value: number;
-  export let readonly = false;
   export let kind: VectorInputType;
+  export let readonly = false;
 </script>
 
-<div class="flex rounded-sm">
+<div class="vector-value">
   <div
-    class:bg-red-900={kind === "X"}
-    class:bg-green-900={kind === "Y"}
-    class:bg-blue-900={kind === "Z"}
-    class:bg-yellow-900={kind === "W"}
-    class="h-8 w-8 text-center"
+    class="vector-value-name"
+    class:bg-vector-x={kind === "X"}
+    class:bg-vector-y={kind === "Y"}
+    class:bg-vector-w={kind === "W"}
+    class:bg-vector-z={kind === "Z"}
   >
     {kind}
   </div>
-  <div class="bg-surface-900">
-    <NumberInput
-      on:input={(event) => dispatch("input", event.detail)}
-      bind:value
-      noArrow
-      fluid
-      autoSelect
-      {readonly}
-    />
-  </div>
+  <NumberInput
+    on:input={(event) => dispatch("input", event.detail)}
+    bind:value
+    noArrow={true}
+    fluid={true}
+    autoSelect
+    {readonly}
+  />
 </div>
+
+<style lang="postcss">
+  .vector-value {
+    @apply flex rounded-sm w-16;
+  }
+
+  .vector-value-name {
+    @apply text-center text-xs my-auto w-6 h-5 rounded-l-sm;
+  }
+</style>

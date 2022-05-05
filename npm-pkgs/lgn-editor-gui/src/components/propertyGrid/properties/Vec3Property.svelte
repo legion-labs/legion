@@ -3,7 +3,6 @@
 
   import type { Vec3 } from "@/lib/propertyGrid";
 
-  import NumberInput from "../../inputs/NumberInput.svelte";
   import VectorNumberInput from "./VectorNumberInput.svelte";
 
   const dispatch = createEventDispatcher<{ input: Vec3 }>();
@@ -17,50 +16,29 @@
   }
 </script>
 
-<div class="flex flex-row space-x-1">
+<div class="vector-root">
   <VectorNumberInput
     kind="X"
     bind:value={value[0]}
     on:input={(event) => updateVectorAt(0, event)}
+    {readonly}
   />
-  <div>
-    <NumberInput
-      on:input={(event) => updateVectorAt(0, event)}
-      bind:value={value[0]}
-      noArrow
-      fluid
-      autoSelect
-      {readonly}
-    />
-  </div>
   <VectorNumberInput
     kind="Y"
     bind:value={value[1]}
     on:input={(event) => updateVectorAt(1, event)}
+    {readonly}
   />
-  <div>
-    <NumberInput
-      on:input={(event) => updateVectorAt(1, event)}
-      bind:value={value[1]}
-      noArrow
-      fluid
-      autoSelect
-      {readonly}
-    />
-  </div>
   <VectorNumberInput
     kind="Z"
     bind:value={value[2]}
     on:input={(event) => updateVectorAt(2, event)}
+    {readonly}
   />
-  <div>
-    <NumberInput
-      on:input={(event) => updateVectorAt(2, event)}
-      bind:value={value[2]}
-      noArrow
-      fluid
-      autoSelect
-      {readonly}
-    />
-  </div>
 </div>
+
+<style lang="postcss">
+  .vector-root {
+    @apply flex gap-x-2 my-auto;
+  }
+</style>

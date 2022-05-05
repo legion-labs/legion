@@ -85,7 +85,8 @@
 
 <style lang="postcss">
   .input {
-    @apply bg-gray-800 border-gray-400 px-2 py-1 rounded-sm outline-none;
+    /* rounded-r-sm should be exposed as a feature */
+    @apply bg-surface-max outline-none pl-1 rounded-r-sm;
   }
 
   .disabled {
@@ -97,6 +98,6 @@
   }
 
   .default {
-    @apply h-8;
+    @apply h-6;
   }
 </style>
