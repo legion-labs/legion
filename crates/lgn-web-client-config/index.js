@@ -236,11 +236,9 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { get, getOr, getAbsolutePath, getAbsolutePathOr, getAll, loadAll } = nativeBinding
+const { get, getOr, getAll, loadAll } = nativeBinding
 
 module.exports.get = get
 module.exports.getOr = getOr
-module.exports.getAbsolutePath = getAbsolutePath
-module.exports.getAbsolutePathOr = getAbsolutePathOr
 module.exports.getAll = getAll
 module.exports.loadAll = loadAll

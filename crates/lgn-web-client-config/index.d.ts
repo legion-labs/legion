@@ -13,7 +13,7 @@
  * If any error occurs, including the specified key not existing in the
  * configuration, it is returned.
  */
-export function get(key: string): any | undefined | null
+export function get(key: string): any | null
 /**
  * Get the value specified by the key or a specified default value if it is
  * not found.
@@ -25,32 +25,6 @@ export function get(key: string): any | undefined | null
  * If any other error occurs, it is returned.
  */
 export function getOr(key: string, defaultValue: any): any
-/**
- * Get the absolute path at the specified key.
- *
- * If the specified path is relative, it will be resolved relative to its
- * containing configuration file, or the current working directory if the
- * value does not come from a file.
- *
- * # Errors
- *
- * If any error occurs, including the specified key not existing in the
- * configuration, it is returned.
- */
-export function getAbsolutePath(key: string): string | undefined | null
-/**
- * Get the absolute path at the specified key or the specified default.
- *
- * If the specified path is relative, it will be resolved relative to its
- * containing configuration file, or the current working directory if the
- * value does not come from a file.
- *
- * # Errors
- *
- * If any error occurs, including the specified key not existing in the
- * configuration, it is returned.
- */
-export function getAbsolutePathOr(key: string, defaultValue: string): string
 /**
  * Takes a [`HashMap`] which keys are environment variable names and values are
  * config keys and return another [`HashMap`] which values have been resolved.
