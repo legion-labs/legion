@@ -3740,6 +3740,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-gilrs"
+version = "0.1.0"
+dependencies = ["gilrs", "lgn-app", "lgn-ecs", "lgn-input", "lgn-tracing"]
+
+[[package]]
 name = "lgn-graphics-api"
 version = "0.1.0"
 dependencies = [
