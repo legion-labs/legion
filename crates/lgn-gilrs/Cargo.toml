@@ -16,4 +16,4 @@ lgn-input = { path = "../lgn-input", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 
 # other
-gilrs = { version = "0.8.0", features = ["wasm-bindgen"] }
+gilrs = { git = "https://github.com/legion-labs/gilrs", rev = "e9ec370f6235120336412c6224b44857e4f3f7b5" }
