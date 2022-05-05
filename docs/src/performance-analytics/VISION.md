@@ -262,8 +262,6 @@ May 2022
 - Cumulative call graph improvements (Tim)
 - Timeline report view (Tim)
 - Process List Hierarchy (Tim)
-  * ordered by last update
-- Auth flow polish (Kevin)
 
 ---
 # Roadmap
@@ -272,6 +270,7 @@ May 2022
 - Unreal telemetry module (MAD)
 - Review regulatory requirements (Liem)
 - Infra visibility & alterting UAT (ingestion + analytics)(Liem)
+- Auth flow polish (Kevin)
 - Logs (dual mode)  (Kevin)
   * Paging when not filtering
   * n-first results when there is a filter
