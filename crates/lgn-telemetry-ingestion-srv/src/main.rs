@@ -132,26 +132,28 @@ async fn serve_http(
     lake: DataLakeConnection,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let service = WebIngestionService::new(lake);
-    let web_ingestion_filter = warp::path("telemetryingestion").and(with_service(service));
+    let web_ingestion_filter =
+        warp::path!("v1" / "spaces" / "default" / "telemetry" / "ingestion" / ..)
+            .and(with_service(service));
 
     let insert_process_filter = web_ingestion_filter
         .clone()
-        .and(warp::path("insertprocess"))
+        .and(warp::path("process"))
         .and(warp::body::json())
         .and_then(insert_process_request);
 
     let insert_stream_filter = web_ingestion_filter
         .clone()
-        .and(warp::path("insertstream"))
+        .and(warp::path("stream"))
         .and(warp::body::json())
         .and_then(insert_stream_request);
 
     let insert_block_filter = web_ingestion_filter
-        .and(warp::path("insertblock"))
+        .and(warp::path("block"))
         .and(warp::body::bytes())
         .and_then(insert_block_request);
 
-    let routes = warp::post().and(
+    let routes = warp::put().and(
         insert_process_filter
             .or(insert_stream_filter)
             .or(insert_block_filter),
