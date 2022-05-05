@@ -27,7 +27,7 @@ module.exports = {
   ],
   theme: {
     fontFamily: {
-      default: "Source Sans Pro,Arial,sans-serif",
+      default: "Inter,Arial,sans-serif",
     },
     extend: {
       backgroundColor: {

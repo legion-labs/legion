@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use lgn_content_store::{Config, ContentReaderExt};
+use lgn_content_store::Config;
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
 use lgn_data_runtime::{
     AssetLoader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
@@ -80,10 +80,10 @@ async fn compile_atoi() {
             .expect("failed to read config"),
     );
 
-    assert!(volatile_content_provider.exists(content_id).await);
+    assert!(volatile_content_provider.exists(content_id).await.unwrap());
 
     let resource_content = volatile_content_provider
-        .read_content(content_id)
+        .read(content_id)
         .await
         .expect("asset content");
 
@@ -172,10 +172,10 @@ async fn compile_intermediate() {
             .expect("failed to read config"),
     );
 
-    assert!(volatile_content_provider.exists(content_id).await);
+    assert!(volatile_content_provider.exists(content_id).await.unwrap());
 
     let resource_content = volatile_content_provider
-        .read_content(content_id)
+        .read(content_id)
         .await
         .expect("asset content");
 
@@ -262,9 +262,12 @@ async fn compile_multi_resource() {
     );
 
     for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
-        assert!(volatile_content_provider.exists(&resource.content_id).await);
+        assert!(volatile_content_provider
+            .exists(&resource.content_id)
+            .await
+            .unwrap());
         let resource_content = volatile_content_provider
-            .read_content(&resource.content_id)
+            .read(&resource.content_id)
             .await
             .expect("asset content");
         let mut proc = text_resource::TextResourceProc {};
@@ -335,10 +338,10 @@ async fn compile_base64() {
             .expect("failed to read config"),
     );
 
-    assert!(volatile_content_provider.exists(content_id).await);
+    assert!(volatile_content_provider.exists(content_id).await.unwrap());
 
     let resource_content = volatile_content_provider
-        .read_content(content_id)
+        .read(content_id)
         .await
         .expect("asset content");
 

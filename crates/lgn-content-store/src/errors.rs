@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::Identifier;
+use crate::{Identifier, InvalidIdentifier, InvalidManifest};
 
 /// An error type for the content-store crate.
 #[derive(Error, Debug)]
@@ -12,51 +12,51 @@ pub enum Error {
     #[error("online error: {0}")]
     Online(#[from] lgn_online::Error),
     #[error("invalid identifier: {0}")]
-    InvalidIdentifier(#[source] anyhow::Error),
-    #[error("data mismatch: {reason}")]
-    DataMismatch { reason: String },
-    #[error("invalid hash algorithm")]
-    InvalidHashAlgorithm,
-    #[error("invalid chunk index")]
-    InvalidChunkIndex(#[source] anyhow::Error),
-    #[error("invalid data space: {0}")]
-    InvalidDataSpace(String),
-    #[error("the content was not found: {0}")]
-    IdentifierNotFound(Identifier),
-    #[error("the content is not referenced by the tracker: {0}")]
-    IdentifierNotReferenced(Identifier),
-    #[error("the content already exists: {0}")]
+    InvalidIdentifier(#[from] InvalidIdentifier),
+    #[error("invalid manifest: {0}")]
+    InvalidManifest(#[from] InvalidManifest),
+    #[error("identifier already exists: {0}")]
     IdentifierAlreadyExists(Identifier),
-    #[error("the alias was not found: {key_space}/{key}")]
-    AliasNotFound { key_space: String, key: String },
-    #[error("the alias already exists: {key_space}/{key}")]
-    AliasAlreadyExists { key_space: String, key: String },
-    #[error("the copy was interrupted for identifier {id} ({} identifiers remaining): {err}", identifiers.len())]
-    CopyInterrupted {
-        id: Identifier,
-        identifiers: Vec<Identifier>,
-        err: Box<Error>,
-    },
-    #[error("the content is corrupted: {0}")]
-    Corrupt(Identifier),
-    #[error("io error: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("serde decode: {0}")]
-    SerdeDecode(#[from] rmp_serde::decode::Error),
-    #[error("hex decode: {0}")]
-    HexDecode(#[from] hex::FromHexError),
-    #[error("unsupported index operation: {0}")]
-    UnsupportedIndexOperation(String),
-    #[error("invalid index key: {0}")]
-    InvalidIndexKey(String),
-    #[error("corrupted tree: {0}")]
-    CorruptedTree(String),
-    #[error("index tree leaf node was not found at `{0}`")]
-    IndexTreeLeafNodeNotFound(crate::indexing::IndexKey),
-    #[error("index tree leaf node already exists at `{0}`: {1:?}")]
-    IndexTreeLeafNodeAlreadyExists(crate::indexing::IndexKey, crate::indexing::TreeLeafNode),
+    #[error("identifier not found: {0}")]
+    IdentifierNotFound(Identifier),
+    #[error("content provider error: {0}")]
+    ContentProvider(crate::content_providers::Error),
+    #[error("alias provider error: {0}")]
+    AliasProvider(crate::alias_providers::Error),
+    #[error("indexing error: {0}")]
+    Indexing(#[from] crate::indexing::Error),
+    #[error("invalid data-space: {0}")]
+    InvalidDataSpace(String),
     #[error("unknown error: {0}")]
     Unknown(#[from] anyhow::Error),
+}
+
+impl From<crate::content_providers::Error> for Error {
+    fn from(err: crate::content_providers::Error) -> Self {
+        match err {
+            crate::content_providers::Error::HashRefAlreadyExists(id) => {
+                Self::IdentifierAlreadyExists(Identifier::new_hash_ref(id))
+            }
+            crate::content_providers::Error::HashRefNotFound(id) => {
+                Self::IdentifierNotFound(Identifier::new_hash_ref(id))
+            }
+            err => Self::ContentProvider(err),
+        }
+    }
+}
+
+impl From<crate::alias_providers::Error> for Error {
+    fn from(err: crate::alias_providers::Error) -> Self {
+        match err {
+            crate::alias_providers::Error::AliasAlreadyExists(id) => {
+                Self::IdentifierAlreadyExists(Identifier::new_alias(id))
+            }
+            crate::alias_providers::Error::AliasNotFound(id) => {
+                Self::IdentifierNotFound(Identifier::new_alias(id))
+            }
+            err => Self::AliasProvider(err),
+        }
+    }
 }
 
 /// A result type that can be used to indicate errors.

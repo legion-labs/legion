@@ -1,7 +1,7 @@
-use lgn_content_store::ChunkIdentifier;
+use lgn_content_store::Identifier;
 use lgn_data_runtime::ResourceTypeAndId;
 
 pub enum AssetRegistryRequest {
-    LoadManifest(ChunkIdentifier),
+    LoadManifest(Identifier),
     LoadAsset(ResourceTypeAndId),
 }

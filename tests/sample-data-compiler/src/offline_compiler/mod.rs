@@ -6,7 +6,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store::ContentProvider;
+use lgn_content_store::Provider;
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
@@ -44,8 +44,8 @@ pub async fn build(
     root_folder: impl AsRef<Path>,
     resource_name: &ResourcePathName,
     repository_index: impl RepositoryIndex,
-    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
-    data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Provider>,
+    data_content_provider: Arc<Provider>,
 ) {
     let root_folder = root_folder.as_ref();
 

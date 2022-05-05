@@ -200,7 +200,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{Parser, Subcommand};
-use lgn_content_store::{ContentProvider, Identifier};
+use lgn_content_store::{Identifier, Provider};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId};
@@ -663,8 +663,8 @@ fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
 async fn parse_asset_file(
     path: impl AsRef<Path>,
     config: &Option<Config>,
-    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
-    data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    source_control_content_provider: Arc<Provider>,
+    data_content_provider: Arc<Provider>,
 ) {
     let path = path.as_ref();
     let mut f = File::open(path).expect("unable to open asset file");

@@ -318,7 +318,7 @@ fn rebroadcast_commands(
     mut asset_registry_requests: EventWriter<'_, '_, AssetRegistryRequest>,
     mut scene_messsages: EventWriter<'_, '_, SceneMessage>,
 ) {
-    while let Ok(command) = command_receiver.try_recv() {
+    for command in command_receiver.try_iter() {
         match command {
             RuntimeServerCommand::LoadManifest(manifest_id) => {
                 asset_registry_requests.send(AssetRegistryRequest::LoadManifest(manifest_id));

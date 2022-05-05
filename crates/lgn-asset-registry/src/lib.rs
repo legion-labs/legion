@@ -14,7 +14,7 @@ use std::{path::Path, str::FromStr, sync::Arc};
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
-use lgn_content_store::{ChunkIdentifier, Chunker, Config, ContentProvider};
+use lgn_content_store::{Config, Identifier, Provider};
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
     AssetRegistryScheduling, ResourceLoadEvent,
@@ -63,7 +63,7 @@ impl Plugin for AssetRegistryPlugin {
 
 impl AssetRegistryPlugin {
     fn pre_setup(world: &mut World) {
-        let data_content_provider = Arc::new(
+        let data_provider = Arc::new(
             world
                 .resource::<TokioAsyncRuntime>()
                 .block_on(async { Config::load_and_instantiate_volatile_provider().await })
@@ -75,7 +75,7 @@ impl AssetRegistryPlugin {
             let manifest = {
                 let async_rt = world.resource::<TokioAsyncRuntime>();
                 let manifest = async_rt.block_on(async {
-                    Self::load_manifest_from_path(&game_manifest, &data_content_provider).await
+                    Self::load_manifest_from_path(&game_manifest, &data_provider).await
                 });
                 match manifest {
                     Ok(manifest) => manifest,
@@ -101,10 +101,9 @@ impl AssetRegistryPlugin {
 
         let mut registry_options = AssetRegistryOptions::new();
         if let Some(manifest) = manifest {
-            registry_options = registry_options.add_device_cas(data_content_provider, manifest);
+            registry_options = registry_options.add_device_cas(data_provider, manifest);
         } else {
-            registry_options =
-                registry_options.add_device_cas_with_delayed_manifest(data_content_provider);
+            registry_options = registry_options.add_device_cas_with_delayed_manifest(data_provider);
         }
 
         world.insert_non_send_resource(registry_options);
@@ -240,22 +239,19 @@ impl AssetRegistryPlugin {
 
     async fn load_manifest_from_path(
         manifest_path: impl AsRef<Path>,
-        content_provider: impl ContentProvider + Send + Sync + Copy,
+        provider: &Provider,
     ) -> Result<Manifest> {
         let manifest_id = std::fs::read_to_string(manifest_path).map_err(Error::IO)?;
-        let manifest_id = ChunkIdentifier::from_str(&manifest_id).map_err(Error::ContentStore)?;
-        Self::load_manifest_by_id(manifest_id, content_provider).await
+        let manifest_id = Identifier::from_str(&manifest_id)?;
+        Self::load_manifest_by_id(manifest_id, provider).await
     }
 
-    async fn load_manifest_by_id(
-        manifest_id: ChunkIdentifier,
-        content_provider: impl ContentProvider + Send + Sync + Copy,
-    ) -> Result<Manifest> {
-        let chunker = Chunker::default();
-        let content = chunker
-            .read_chunk(content_provider, &manifest_id)
+    async fn load_manifest_by_id(manifest_id: Identifier, provider: &Provider) -> Result<Manifest> {
+        let content = provider
+            .read(&manifest_id)
             .await
             .map_err(Error::ContentStore)?;
+
         serde_json::from_reader(content.as_slice()).map_err(Error::SerdeJSON)
     }
 }

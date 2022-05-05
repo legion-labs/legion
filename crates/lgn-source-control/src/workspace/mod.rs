@@ -1,9 +1,10 @@
 use itertools::Itertools;
-use lgn_content_store::{ChunkIdentifier, Chunker, ContentReader, ContentWriter};
+use lgn_content_store::{Identifier, Provider};
 use lgn_tracing::{debug, warn};
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use serde::{Deserialize, Serialize};
@@ -26,7 +27,7 @@ pub struct Workspace {
     index: Box<dyn Index>,
     backend: Box<dyn WorkspaceBackend>,
     registration: WorkspaceRegistration,
-    chunker: Chunker,
+    provider: Arc<Provider>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -71,7 +72,7 @@ impl Workspace {
         root: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
         config: WorkspaceConfig,
-        content_store_provider: impl ContentReader + Send + Sync,
+        provider: Arc<Provider>,
     ) -> Result<Self> {
         let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
         let lsc_directory = Self::get_lsc_directory(&root);
@@ -104,12 +105,10 @@ impl Workspace {
             .load_repository(config.repository_name.clone())
             .await?;
 
-        let workspace = Self::new(root, index, config, backend).await?;
+        let workspace = Self::new(root, index, config, backend, provider).await?;
 
         workspace.register().await?;
-        workspace
-            .initial_checkout(content_store_provider, "main")
-            .await?;
+        workspace.initial_checkout("main").await?;
 
         Ok(workspace)
     }
@@ -122,6 +121,7 @@ impl Workspace {
     pub async fn load(
         root: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
+        provider: Arc<Provider>,
     ) -> Result<Self> {
         let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
         let lsc_directory = Self::get_lsc_directory(&root);
@@ -153,7 +153,7 @@ impl Workspace {
             .load_repository(config.repository_name.clone())
             .await?;
 
-        Self::new(root, index, config, backend).await
+        Self::new(root, index, config, backend, provider).await
     }
 
     /// Find an existing workspace in the specified folder or one of its
@@ -167,6 +167,7 @@ impl Workspace {
     pub async fn find(
         path: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
+        provider: Arc<Provider>,
     ) -> Result<Self> {
         let initial_path: &Path =
             &make_path_absolute(path).map_other_err("failed to make path absolute")?;
@@ -198,7 +199,7 @@ impl Workspace {
         };
 
         loop {
-            match Self::load(path, &repository_index).await {
+            match Self::load(path, &repository_index, Arc::clone(&provider)).await {
                 Ok(workspace) => return Ok(workspace),
                 Err(err) => match err {
                     Error::NotAWorkspace { path: _ } => {
@@ -214,14 +215,14 @@ impl Workspace {
         }
     }
 
-    /// Return the `Chunker` used internally by the source control.
-    pub fn get_chunker(&self) -> &Chunker {
-        &self.chunker
-    }
-
     /// Return the repository name of the workspace.
     pub fn repository_name(&self) -> &RepositoryName {
         self.index.repository_name()
+    }
+
+    /// Return the provider of the workspace.
+    pub fn provider(&self) -> &Arc<Provider> {
+        &self.provider
     }
 
     async fn new(
@@ -229,13 +230,14 @@ impl Workspace {
         index: Box<dyn Index>,
         config: WorkspaceConfig,
         backend: Box<dyn WorkspaceBackend>,
+        provider: Arc<Provider>,
     ) -> Result<Self> {
         Ok(Self {
             root,
             index,
             backend,
             registration: config.registration,
-            chunker: Chunker::default(),
+            provider,
         })
     }
 
@@ -243,10 +245,14 @@ impl Workspace {
     ///
     /// This is a convenience method that calls `Workspace::find` with the
     /// current working directory.
-    pub async fn find_in_current_directory(repository_index: impl RepositoryIndex) -> Result<Self> {
+    pub async fn find_in_current_directory(
+        repository_index: impl RepositoryIndex,
+        provider: Arc<Provider>,
+    ) -> Result<Self> {
         Self::find(
             std::env::current_dir().map_other_err("failed to determine current directory")?,
             repository_index,
+            provider,
         )
         .await
     }
@@ -296,7 +302,7 @@ impl Workspace {
             exclusion_rules: [CanonicalPath::new(&format!("/{}", Self::LSC_DIR_NAME))?].into(),
         };
 
-        Tree::from_root(&self.chunker, &self.root, &tree_filter).await
+        Tree::from_root(&self.provider, &self.root, &tree_filter).await
     }
 
     /// Give the current relative path for a given canonical path.
@@ -363,7 +369,6 @@ impl Workspace {
     /// added, an empty list is returned and call still succeeds.
     pub async fn add_files(
         &self,
-        content_writer: impl ContentWriter + Send + Sync,
         paths: impl IntoIterator<Item = &Path> + Clone,
     ) -> Result<BTreeSet<CanonicalPath>> {
         let canonical_paths = self.to_canonical_paths(paths).await?;
@@ -379,55 +384,51 @@ impl Workspace {
         for (canonical_path, file) in fs_tree.files() {
             let change = if let Some(staged_change) = staged_changes.get(&canonical_path) {
                 match staged_change.change_type() {
-                    ChangeType::Add {
-                        new_chunk_id: new_info,
-                    } => {
-                        let info = file.chunk_id();
+                    ChangeType::Add { new_id: new_info } => {
+                        let info = file.cs_id();
 
                         if new_info == info {
                             // The file is already staged as add or edit with the correct hash, nothing to do.
                             continue;
                         }
 
-                        self.upload_file(&content_writer, &canonical_path).await?;
+                        self.upload_file(&canonical_path).await?;
 
                         Change::new(
                             canonical_path,
                             ChangeType::Add {
-                                new_chunk_id: info.clone(),
+                                new_id: info.clone(),
                             },
                         )
                     }
                     ChangeType::Edit {
-                        old_chunk_id: old_info,
-                        new_chunk_id: new_info,
+                        old_id: old_info,
+                        new_id: new_info,
                     } => {
-                        let info = file.chunk_id();
+                        let info = file.cs_id();
 
                         if new_info == info {
                             // The file is already staged as add or edit with the correct hash, nothing to do.
                             continue;
                         }
 
-                        self.upload_file(&content_writer, &canonical_path).await?;
+                        self.upload_file(&canonical_path).await?;
 
                         Change::new(
                             canonical_path,
                             ChangeType::Edit {
-                                old_chunk_id: old_info.clone(),
-                                new_chunk_id: info.clone(),
+                                old_id: old_info.clone(),
+                                new_id: info.clone(),
                             },
                         )
                     }
-                    ChangeType::Delete {
-                        old_chunk_id: old_info,
-                    } => {
+                    ChangeType::Delete { old_id: old_info } => {
                         // The file was staged for deletion: replace it with an edit.
                         Change::new(
                             canonical_path,
                             ChangeType::Edit {
-                                old_chunk_id: old_info.clone(),
-                                new_chunk_id: file.chunk_id().clone(),
+                                old_id: old_info.clone(),
+                                new_id: file.cs_id().clone(),
                             },
                         )
                     }
@@ -438,12 +439,12 @@ impl Workspace {
                     continue;
                 }
 
-                self.upload_file(&content_writer, &canonical_path).await?;
+                self.upload_file(&canonical_path).await?;
 
                 Change::new(
                     canonical_path,
                     ChangeType::Add {
-                        new_chunk_id: file.chunk_id().clone(),
+                        new_id: file.cs_id().clone(),
                     },
                 )
             };
@@ -489,11 +490,11 @@ impl Workspace {
                         // The file is a directory, it cannot be edited.
                         return Err(Error::cannot_edit_directory(canonical_path.clone()));
                     }
-                    Tree::File { chunk_id: info, .. } => Change::new(
+                    Tree::File { id: info, .. } => Change::new(
                         canonical_path,
                         ChangeType::Edit {
-                            old_chunk_id: info.clone(),
-                            new_chunk_id: file.chunk_id().clone(),
+                            old_id: info.clone(),
+                            new_id: file.cs_id().clone(),
                         },
                     ),
                 }
@@ -502,7 +503,7 @@ impl Workspace {
                 Change::new(
                     canonical_path,
                     ChangeType::Add {
-                        new_chunk_id: file.chunk_id().clone(),
+                        new_id: file.cs_id().clone(),
                     },
                 )
             };
@@ -562,15 +563,14 @@ impl Workspace {
                         changes_to_clear.push(staged_change.clone());
                     }
                     ChangeType::Edit {
-                        old_chunk_id: old_hash,
-                        ..
+                        old_id: old_hash, ..
                     } => {
                         // The file was staged for edit: staged a deletion instead.
 
                         changes_to_save.push(Change::new(
                             canonical_path,
                             ChangeType::Delete {
-                                old_chunk_id: old_hash.clone(),
+                                old_id: old_hash.clone(),
                             },
                         ));
                     }
@@ -585,7 +585,7 @@ impl Workspace {
                     changes_to_save.push(Change::new(
                         canonical_path,
                         ChangeType::Delete {
-                            old_chunk_id: file.chunk_id().clone(),
+                            old_id: file.cs_id().clone(),
                         },
                     ));
                 }
@@ -629,7 +629,6 @@ impl Workspace {
     /// - staged or not - an empty list is returned and call still succeeds.
     pub async fn revert_files(
         &self,
-        content_reader: impl ContentReader + Send + Sync,
         paths: impl IntoIterator<Item = &Path> + Clone,
         staging: Staging,
     ) -> Result<BTreeSet<CanonicalPath>> {
@@ -667,10 +666,7 @@ impl Workspace {
                 ChangeType::Add { .. } => {
                     changes_to_clear.push(staged_change.clone());
                 }
-                ChangeType::Edit {
-                    old_chunk_id,
-                    new_chunk_id,
-                } => {
+                ChangeType::Edit { old_id, new_id } => {
                     // Only remove local changes if we are not reverting staged changes only.
                     match staging {
                         Staging::UnstagedOnly => {
@@ -678,25 +674,20 @@ impl Workspace {
                             unreachable!();
                         }
                         Staging::StagedOnly => {
-                            if new_chunk_id != old_chunk_id {
+                            if new_id != old_id {
                                 changes_to_save.push(Change::new(
                                     canonical_path.clone(),
                                     ChangeType::Edit {
-                                        old_chunk_id: old_chunk_id.clone(),
-                                        new_chunk_id: old_chunk_id.clone(),
+                                        old_id: old_id.clone(),
+                                        new_id: old_id.clone(),
                                     },
                                 ));
                                 changes_to_clear.push(staged_change.clone());
                             }
                         }
                         Staging::StagedAndUnstaged => {
-                            self.download_file(
-                                &content_reader,
-                                old_chunk_id,
-                                canonical_path,
-                                Some(true),
-                            )
-                            .await?;
+                            self.download_file(old_id, canonical_path, Some(true))
+                                .await?;
                             changes_to_clear.push(staged_change.clone());
 
                             // Let's avoid reverting things twice.
@@ -704,8 +695,8 @@ impl Workspace {
                         }
                     }
                 }
-                ChangeType::Delete { old_chunk_id } => {
-                    self.download_file(&content_reader, old_chunk_id, canonical_path, Some(true))
+                ChangeType::Delete { old_id } => {
+                    self.download_file(old_id, canonical_path, Some(true))
                         .await?;
                     changes_to_clear.push(staged_change.clone());
                 }
@@ -718,14 +709,14 @@ impl Workspace {
         {
             match unstaged_change.change_type() {
                 ChangeType::Add { .. } => {}
-                ChangeType::Edit { old_chunk_id, .. } | ChangeType::Delete { old_chunk_id } => {
+                ChangeType::Edit { old_id, .. } | ChangeType::Delete { old_id } => {
                     let read_only = match staging {
                         Staging::StagedAndUnstaged => Some(true),
                         Staging::StagedOnly => unreachable!(),
                         Staging::UnstagedOnly => None,
                     };
 
-                    self.download_file(&content_reader, old_chunk_id, canonical_path, read_only)
+                    self.download_file(old_id, canonical_path, read_only)
                         .await?;
                 }
             }
@@ -839,15 +830,12 @@ impl Workspace {
         // disk.
         for change in &staged_changes {
             match change.change_type() {
-                ChangeType::Add {
-                    new_chunk_id: new_info,
-                }
+                ChangeType::Add { new_id: new_info }
                 | ChangeType::Edit {
-                    new_chunk_id: new_info,
-                    ..
+                    new_id: new_info, ..
                 } => {
                     if let Some(node) = fs_tree.find(change.canonical_path())? {
-                        if node.chunk_id() == new_info {
+                        if node.cs_id() == new_info {
                             if let Err(err) = self
                                 .make_file_read_only(
                                     change.canonical_path().to_path_buf(&self.root),
@@ -867,8 +855,8 @@ impl Workspace {
                             changes_to_save.push(Change::new(
                                 change.canonical_path().clone(),
                                 ChangeType::Edit {
-                                    old_chunk_id: new_info.clone(),
-                                    new_chunk_id: new_info.clone(),
+                                    old_id: new_info.clone(),
+                                    new_id: new_info.clone(),
                                 },
                             ));
                         }
@@ -917,7 +905,7 @@ impl Workspace {
                 let change = Change::new(
                     path.clone(),
                     ChangeType::Add {
-                        new_chunk_id: node.chunk_id().clone(),
+                        new_id: node.cs_id().clone(),
                     },
                 );
 
@@ -926,13 +914,13 @@ impl Workspace {
         }
 
         for (path, node) in tree.files() {
-            if let Some(Tree::File { chunk_id: info, .. }) = fs_tree.find(&path)? {
-                if info != node.chunk_id() {
+            if let Some(Tree::File { id: info, .. }) = fs_tree.find(&path)? {
+                if info != node.cs_id() {
                     let change = Change::new(
                         path.clone(),
                         ChangeType::Edit {
-                            old_chunk_id: node.chunk_id().clone(),
-                            new_chunk_id: info.clone(),
+                            old_id: node.cs_id().clone(),
+                            new_id: info.clone(),
                         },
                     );
 
@@ -942,7 +930,7 @@ impl Workspace {
                 let change = Change::new(
                     path.clone(),
                     ChangeType::Delete {
-                        old_chunk_id: node.chunk_id().clone(),
+                        old_id: node.cs_id().clone(),
                     },
                 );
 
@@ -1025,11 +1013,7 @@ impl Workspace {
     /// Switch to a different branch and updates the current files.
     ///
     /// Returns the commit id of the new branch as well as the changes.
-    pub async fn switch_branch(
-        &self,
-        content_reader: impl ContentReader + Send + Sync,
-        branch_name: &str,
-    ) -> Result<(Branch, BTreeSet<Change>)> {
+    pub async fn switch_branch(&self, branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
         let current_branch = self.backend.get_current_branch().await?;
 
         if branch_name == current_branch.name {
@@ -1042,7 +1026,7 @@ impl Workspace {
         let to_commit = self.index.get_commit(branch.head).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
-        let changes = self.sync_tree(content_reader, &from, &to).await?;
+        let changes = self.sync_tree(&from, &to).await?;
 
         self.backend.set_current_branch(&branch).await?;
 
@@ -1054,15 +1038,12 @@ impl Workspace {
     /// # Returns
     ///
     /// The commit id that the workspace was synced to as well as the changes.
-    pub async fn sync(
-        &self,
-        content_reader: impl ContentReader + Send + Sync,
-    ) -> Result<(Branch, BTreeSet<Change>)> {
+    pub async fn sync(&self) -> Result<(Branch, BTreeSet<Change>)> {
         let current_branch = self.backend.get_current_branch().await?;
 
         let branch = self.index.get_branch(&current_branch.name).await?;
 
-        let changes = self.sync_to(content_reader, branch.head).await?;
+        let changes = self.sync_to(branch.head).await?;
 
         Ok((branch, changes))
     }
@@ -1072,11 +1053,7 @@ impl Workspace {
     /// # Returns
     ///
     /// The changes.
-    pub async fn sync_to(
-        &self,
-        content_reader: impl ContentReader + Send + Sync,
-        commit_id: CommitId,
-    ) -> Result<BTreeSet<Change>> {
+    pub async fn sync_to(&self, commit_id: CommitId) -> Result<BTreeSet<Change>> {
         let mut current_branch = self.backend.get_current_branch().await?;
 
         if current_branch.head == commit_id {
@@ -1088,7 +1065,7 @@ impl Workspace {
         let to_commit = self.index.get_commit(commit_id).await?;
         let to = self.get_tree_for_commit(&to_commit, [].into()).await?;
 
-        let changes = self.sync_tree(content_reader, &from, &to).await?;
+        let changes = self.sync_tree(&from, &to).await?;
 
         current_branch.head = commit_id;
 
@@ -1122,33 +1099,28 @@ impl Workspace {
     /// # Returns
     ///
     /// The hash of the file.
-    async fn upload_file(
-        &self,
-        content_writer: impl ContentWriter + Send + Sync,
-        canonical_path: &CanonicalPath,
-    ) -> Result<ChunkIdentifier> {
+    async fn upload_file(&self, canonical_path: &CanonicalPath) -> Result<Identifier> {
         debug!("caching blob for: {}", canonical_path);
 
         let contents = tokio::fs::read(canonical_path.to_path_buf(&self.root))
             .await
             .map_other_err(format!("failed to read `{}`", &canonical_path))?;
 
-        self.chunker
-            .write_chunk(content_writer, &contents)
+        self.provider
+            .write(&contents)
             .await
             .map_other_err(format!("failed to cache file `{}`", canonical_path))
     }
 
     async fn download_file(
         &self,
-        content_reader: impl ContentReader + Send + Sync,
-        id: &ChunkIdentifier,
+        id: &Identifier,
         path: &CanonicalPath,
         read_only: Option<bool>,
     ) -> Result<()> {
         let abs_path = path.to_path_buf(&self.root);
 
-        match self.chunker.get_chunk_reader(content_reader, id).await {
+        match self.provider.get_reader(id).await {
             Ok(mut reader) => {
                 let mut f = tokio::fs::File::create(&abs_path)
                     .await
@@ -1174,11 +1146,7 @@ impl Workspace {
         self.index.register_workspace(&self.registration).await
     }
 
-    async fn initial_checkout(
-        &self,
-        content_reader: impl ContentReader + Send + Sync,
-        branch_name: &str,
-    ) -> Result<BTreeSet<Change>> {
+    async fn initial_checkout(&self, branch_name: &str) -> Result<BTreeSet<Change>> {
         // 1. Read the branch information.
         let branch = self.index.get_branch(branch_name).await?;
 
@@ -1192,15 +1160,10 @@ impl Workspace {
         let tree = self.index.get_tree(&commit.root_tree_id).await?;
 
         // 5. Write the files on disk.
-        self.sync_tree(content_reader, &Tree::empty(), &tree).await
+        self.sync_tree(&Tree::empty(), &tree).await
     }
 
-    async fn sync_tree(
-        &self,
-        content_reader: impl ContentReader + Send + Sync,
-        from: &Tree,
-        to: &Tree,
-    ) -> Result<BTreeSet<Change>> {
+    async fn sync_tree(&self, from: &Tree, to: &Tree) -> Result<BTreeSet<Change>> {
         let changes_to_apply = from.get_changes_to(to);
 
         // Little optimization: no point in computing all that if we know we are
@@ -1237,7 +1200,7 @@ impl Workspace {
         // Process additions and edits.
         for change in &changes_to_apply {
             match change.change_type() {
-                ChangeType::Add { new_chunk_id } | ChangeType::Edit { new_chunk_id, .. } => {
+                ChangeType::Add { new_id } | ChangeType::Edit { new_id, .. } => {
                     let abs_path = change.canonical_path().to_path_buf(&self.root);
 
                     if let Some(parent_abs_path) = abs_path.parent() {
@@ -1251,15 +1214,15 @@ impl Workspace {
 
                     // TODO: If the file is an empty directory, replace it.
 
-                    let mut reader = self
-                        .chunker
-                        .get_chunk_reader(&content_reader, new_chunk_id)
-                        .await
-                        .map_other_err(format!(
-                            "failed to download blob `{}` to {}",
-                            new_chunk_id,
-                            abs_path.display()
-                        ))?;
+                    let mut reader =
+                        self.provider
+                            .get_reader(new_id)
+                            .await
+                            .map_other_err(format!(
+                                "failed to download blob `{}` to {}",
+                                new_id,
+                                abs_path.display()
+                            ))?;
 
                     let mut writer =
                         tokio::fs::File::create(&abs_path)
@@ -1299,17 +1262,13 @@ impl Workspace {
 
     /// Download a blob from the index backend and write it to the local
     /// temporary folder.
-    pub async fn download_temporary_file(
-        &self,
-        content_reader: impl ContentReader + Send + Sync,
-        chunk_id: &ChunkIdentifier,
-    ) -> Result<tempfile::TempPath> {
+    pub async fn download_temporary_file(&self, id: &Identifier) -> Result<tempfile::TempPath> {
         let temp_file_path =
-            Self::get_tmp_path(Self::get_lsc_directory(&self.root)).join(chunk_id.to_string());
+            Self::get_tmp_path(Self::get_lsc_directory(&self.root)).join(id.to_string());
 
         let mut reader = self
-            .chunker
-            .get_chunk_reader(content_reader, chunk_id)
+            .provider
+            .get_reader(id)
             .await
             .map_other_err("failed to download blob")?;
         let mut f = tokio::fs::File::create(&temp_file_path)

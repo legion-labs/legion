@@ -4,14 +4,12 @@ use async_stream::stream;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    indexing::TreeWriter, traits::ContentTrackerExt, ContentProvider, ContentReader,
-    ContentTracker, Error, Result,
-};
+use crate::{indexing::TreeWriter, Provider};
 
 use super::{
     tree::{TreeIdentifier, TreeLeafNode},
-    IndexKey, IndexPath, IndexPathItem, IntoIndexKey, SearchResult, Tree, TreeNode, TreeReader,
+    Error, IndexKey, IndexPath, IndexPathItem, IntoIndexKey, Result, SearchResult, Tree, TreeNode,
+    TreeReader,
 };
 
 /// A `FilesystemIndexer` is an indexer that adds resources according to a
@@ -118,7 +116,7 @@ impl FilesystemIndexer {
 
     async fn search<'i>(
         &'i self,
-        content_reader: impl ContentReader + Send + Sync + 'i,
+        provider: &'i Provider,
         root: &Tree,
         index_key: &'i IndexKey,
     ) -> Result<SearchResult<'i>> {
@@ -161,7 +159,7 @@ impl FilesystemIndexer {
                                     break SearchResult::Branch(stack, branch);
                                 }
 
-                                current_node = content_reader.read_tree(&branch).await?;
+                                current_node = provider.read_tree(&branch).await?;
                             }
                         }
                     }
@@ -181,16 +179,13 @@ impl FilesystemIndexer {
     /// will be returned.
     pub async fn get(
         &self,
-        content_provider: impl ContentProvider + Send + Sync,
+        provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &IndexKey,
     ) -> Result<Option<TreeNode>> {
-        let root = content_provider.read_tree(root_id).await?;
+        let root = provider.read_tree(root_id).await?;
 
-        Ok(self
-            .search(content_provider, &root, index_key)
-            .await?
-            .into())
+        Ok(self.search(provider, &root, index_key).await?.into())
     }
 
     /// Add a non-existing leaf to the tree.
@@ -208,14 +203,14 @@ impl FilesystemIndexer {
     /// will be returned.
     pub async fn add_leaf<'call>(
         &self,
-        content_tracker: impl ContentTracker + Send + Sync,
+        provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &'call IndexKey,
         leaf_node: TreeLeafNode,
     ) -> Result<TreeIdentifier> {
-        let root = content_tracker.read_tree(root_id).await?;
+        let root = provider.read_tree(root_id).await?;
 
-        match self.search(&content_tracker, &root, index_key).await? {
+        match self.search(provider, &root, index_key).await? {
             SearchResult::Leaf(_, existing_leaf_node) => Err(
                 Error::IndexTreeLeafNodeAlreadyExists(index_key.clone(), existing_leaf_node),
             ),
@@ -224,7 +219,7 @@ impl FilesystemIndexer {
                 index_key
             ))),
             SearchResult::NotFound(mut stack) => {
-                let size_delta = leaf_node.data_size();
+                let size_delta = provider.read_size(leaf_node.as_identifier()).await?;
 
                 // This should always be true since `NotFound` is only returned
                 // with a non-empty stack.
@@ -245,7 +240,7 @@ impl FilesystemIndexer {
                         children: vec![(local_key.into_index_key(), node)],
                     };
 
-                    let tree_id = content_tracker.write_tree(&tree).await?;
+                    let tree_id = provider.write_tree(&tree).await?;
 
                     node = TreeNode::Branch(tree_id);
                 };
@@ -254,21 +249,17 @@ impl FilesystemIndexer {
                     item.tree.count += 1;
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        content_tracker
-                            .try_remove_content(old_node.as_identifier())
-                            .await?;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
 
                     item.tree.total_size += size_delta;
 
-                    node = TreeNode::Branch(content_tracker.write_tree(&item.tree).await?);
+                    node = TreeNode::Branch(provider.write_tree(&item.tree).await?);
 
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        content_tracker
-                            .try_remove_content(root_id.as_identifier())
-                            .await?;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         break Ok(node.into_branch().unwrap());
                     }
@@ -296,40 +287,38 @@ impl FilesystemIndexer {
     /// will be returned.
     pub async fn replace_leaf<'call>(
         &self,
-        content_tracker: impl ContentTracker + Send + Sync,
+        provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &'call IndexKey,
         leaf_node: TreeLeafNode,
     ) -> Result<(TreeIdentifier, TreeLeafNode)> {
-        let root = content_tracker.read_tree(root_id).await?;
+        let root = provider.read_tree(root_id).await?;
 
-        match self.search(&content_tracker, &root, index_key).await? {
+        match self.search(provider, &root, index_key).await? {
             SearchResult::Leaf(mut stack, existing_leaf_node) => {
                 if existing_leaf_node == leaf_node {
                     Ok((root_id.clone(), existing_leaf_node))
                 } else {
-                    let data_size = leaf_node.data_size();
+                    let data_size = provider.read_size(leaf_node.as_identifier()).await?;
                     let mut item = stack.pop().expect("stack is not empty");
                     let mut node = TreeNode::Leaf(leaf_node);
 
                     loop {
                         if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                            content_tracker
-                                .try_remove_content(old_node.as_identifier())
-                                .await?;
+                            provider.unwrite(old_node.as_identifier()).await?;
                         }
 
                         item.tree.total_size += data_size;
-                        item.tree.total_size -= existing_leaf_node.data_size();
+                        item.tree.total_size -= provider
+                            .read_size(existing_leaf_node.as_identifier())
+                            .await?;
 
-                        node = TreeNode::Branch(content_tracker.write_tree(&item.tree).await?);
+                        node = TreeNode::Branch(provider.write_tree(&item.tree).await?);
 
                         if let Some(next) = stack.pop() {
                             item = next;
                         } else {
-                            content_tracker
-                                .try_remove_content(root_id.as_identifier())
-                                .await?;
+                            provider.unwrite(root_id.as_identifier()).await?;
 
                             break Ok((node.into_branch().unwrap(), existing_leaf_node));
                         }
@@ -367,21 +356,19 @@ impl FilesystemIndexer {
     /// will be returned.
     pub async fn remove_leaf<'call>(
         &self,
-        content_tracker: impl ContentTracker + Send + Sync,
+        provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &'call IndexKey,
     ) -> Result<(TreeIdentifier, TreeLeafNode)> {
-        let root = content_tracker.read_tree(root_id).await?;
+        let root = provider.read_tree(root_id).await?;
 
-        match self.search(&content_tracker, &root, index_key).await? {
+        match self.search(provider, &root, index_key).await? {
             SearchResult::Leaf(mut stack, existing_leaf_node) => {
                 let mut item = stack.pop().expect("stack is not empty");
 
                 loop {
                     if let Some(old_node) = item.tree.remove_children(item.key) {
-                        content_tracker
-                            .try_remove_content(old_node.as_identifier())
-                            .await?;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
 
                     if !item.tree.is_empty() || self.keep_empty_branches {
@@ -396,12 +383,10 @@ impl FilesystemIndexer {
                         // to return.
                         //
                         // This should always return an empty tree.
-                        content_tracker
-                            .try_remove_content(root_id.as_identifier())
-                            .await?;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         return Ok((
-                            content_tracker.write_tree(&Tree::default()).await?,
+                            provider.write_tree(&Tree::default()).await?,
                             existing_leaf_node,
                         ));
                     }
@@ -409,24 +394,22 @@ impl FilesystemIndexer {
 
                 loop {
                     item.tree.count -= 1;
-                    item.tree.total_size -= existing_leaf_node.data_size();
+                    item.tree.total_size -= provider
+                        .read_size(existing_leaf_node.as_identifier())
+                        .await?;
 
-                    let node = TreeNode::Branch(content_tracker.write_tree(&item.tree).await?);
+                    let node = TreeNode::Branch(provider.write_tree(&item.tree).await?);
 
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        content_tracker
-                            .try_remove_content(root_id.as_identifier())
-                            .await?;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         break Ok((node.into_branch().unwrap(), existing_leaf_node));
                     }
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        content_tracker
-                            .try_remove_content(old_node.as_identifier())
-                            .await?;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
                 }
             }
@@ -446,7 +429,7 @@ impl FilesystemIndexer {
     /// tree it could actually take a very long time to end. Think twice before
     /// using it.
     pub fn all_leaves<'s>(
-        provider: impl ContentReader + Send + Sync + 's,
+        provider: &'s Provider,
         root_id: &'s TreeIdentifier,
     ) -> impl Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's {
         let mut trees = VecDeque::new();
@@ -487,29 +470,29 @@ mod tests {
     use crate::{indexing::ResourceIdentifier, Identifier};
 
     macro_rules! read_tree {
-        ($content_tracker:expr, $tree_id:expr) => {{
-            $content_tracker.read_tree(&$tree_id).await.unwrap()
+        ($provider:expr, $tree_id:expr) => {{
+            $provider.read_tree(&$tree_id).await.unwrap()
         }};
     }
 
     macro_rules! get {
-        ($indexer:expr, $content_reader:expr, $tree_id:expr, $path:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $path:expr) => {{
             $indexer
-                .get(&$content_reader, &$tree_id, &$path.into())
+                .get(&$provider, &$tree_id, &$path.into())
                 .await
                 .unwrap()
         }};
     }
 
     macro_rules! assert_node_does_not_exist {
-        ($indexer:expr, $content_reader:expr, $tree_id:expr, $path:expr) => {{
-            assert!(get!($indexer, $content_reader, $tree_id, $path).is_none());
+        ($indexer:expr, $provider:expr, $tree_id:expr, $path:expr) => {{
+            assert!(get!($indexer, $provider, $tree_id, $path).is_none());
         }};
     }
 
     macro_rules! assert_branch {
-        ($indexer:expr, $content_reader:expr, $tree_id:expr, $path:expr) => {{
-            match get!($indexer, $content_reader, $tree_id, $path) {
+        ($indexer:expr, $provider:expr, $tree_id:expr, $path:expr) => {{
+            match get!($indexer, $provider, $tree_id, $path) {
                 Some(TreeNode::Branch(branch)) => branch,
                 Some(TreeNode::Leaf(_)) => panic!("found leaf at `{}`", $path),
                 _ => panic!("no node found at `{}`", $path),
@@ -518,10 +501,10 @@ mod tests {
     }
 
     macro_rules! assert_leaf {
-        ($indexer:expr, $content_reader:expr, $tree_id:expr, $path:expr, $leaf:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $path:expr, $leaf:expr) => {{
             assert_eq!(
                 Some(TreeNode::Leaf($leaf.clone())),
-                get!($indexer, $content_reader, $tree_id, $path)
+                get!($indexer, $provider, $tree_id, $path)
             );
         }};
     }
@@ -529,17 +512,19 @@ mod tests {
     macro_rules! resource_leaf {
         ($content:expr) => {{
             #[allow(clippy::string_lit_as_bytes)]
-            TreeLeafNode::Resource(ResourceIdentifier(Identifier::new($content.as_bytes())))
+            TreeLeafNode::Resource(ResourceIdentifier(Identifier::new_data(
+                $content.as_bytes(),
+            )))
         }};
     }
 
     macro_rules! add_leaf {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $path:expr, $content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $path:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
 
             (
                 $indexer
-                    .add_leaf(&$content_tracker, &$tree_id, &$path.into(), leaf.clone())
+                    .add_leaf(&$provider, &$tree_id, &$path.into(), leaf.clone())
                     .await
                     .unwrap(),
                 leaf,
@@ -548,11 +533,11 @@ mod tests {
     }
 
     macro_rules! assert_replace_leaf {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $path:expr, $old_content:expr, $content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $path:expr, $old_content:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
 
             let (tree_id, old_leaf) = $indexer
-                .replace_leaf(&$content_tracker, &$tree_id, &$path.into(), leaf.clone())
+                .replace_leaf(&$provider, &$tree_id, &$path.into(), leaf.clone())
                 .await
                 .unwrap();
 
@@ -563,9 +548,9 @@ mod tests {
     }
 
     macro_rules! assert_remove_leaf {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $path:expr, $old_content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $path:expr, $old_content:expr) => {{
             let (tree_id, old_leaf) = $indexer
-                .remove_leaf(&$content_tracker, &$tree_id, &$path.into())
+                .remove_leaf(&$provider, &$tree_id, &$path.into())
                 .await
                 .unwrap();
 
@@ -623,75 +608,76 @@ mod tests {
 
     #[tokio::test]
     async fn test_filesystem_indexer() {
-        let ct = crate::SmallContentProvider::new(crate::MemoryProvider::new());
+        let provider = Provider::new_in_memory();
         let idx = FilesystemIndexer::default();
 
         // This is our starting point: we write an empty tree.
         //
         // In all likelyhood, the generated identifier will benefit from
         // small-content optimization and not actually be written anywhere.
-        let tree_id = ct.write_tree(&Tree::default()).await.unwrap();
+        let tree_id = provider.write_tree(&Tree::default()).await.unwrap();
 
-        assert_node_does_not_exist!(idx, ct, tree_id, "/fruits/pear.txt");
-        assert_node_does_not_exist!(idx, ct, tree_id, "fruits/pear.txt");
+        assert_node_does_not_exist!(idx, provider, tree_id, "/fruits/pear.txt");
+        assert_node_does_not_exist!(idx, provider, tree_id, "fruits/pear.txt");
 
-        let (tree_id, _) = add_leaf!(idx, ct, tree_id, "/fruits/apple.txt", "apple");
-        let (tree_id, pear_node) = add_leaf!(idx, ct, tree_id, "/fruits/pear.txt", "pear");
-        let (tree_id, _) = add_leaf!(idx, ct, tree_id, "/fruits/banana.txt", "banana");
-        let (tree_id, _) = add_leaf!(idx, ct, tree_id, "/vegetables/tomato.txt", "tomato");
+        let (tree_id, _) = add_leaf!(idx, provider, tree_id, "/fruits/apple.txt", "apple");
+        let (tree_id, pear_node) = add_leaf!(idx, provider, tree_id, "/fruits/pear.txt", "pear");
+        let (tree_id, _) = add_leaf!(idx, provider, tree_id, "/fruits/banana.txt", "banana");
+        let (tree_id, _) = add_leaf!(idx, provider, tree_id, "/vegetables/tomato.txt", "tomato");
 
         //let visitor = crate::indexing::GraphvizVisitor::create("tree.dot")
         //    .await
         //    .unwrap();
         //tree_id.visit(&ct, visitor).await.unwrap();
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 4);
         assert_eq!(tree.total_size(), 21);
 
         // Let's perform a search in the resulting tree. It should yield the leaf node.
-        assert_leaf!(idx, ct, tree_id, "/fruits/pear.txt", pear_node);
-        assert_leaf!(idx, ct, tree_id, "fruits/pear.txt", pear_node);
+        assert_leaf!(idx, provider, tree_id, "/fruits/pear.txt", pear_node);
+        assert_leaf!(idx, provider, tree_id, "fruits/pear.txt", pear_node);
 
         // Let's do the same for a branch.
-        assert_branch!(idx, ct, tree_id, "/vegetables/");
-        assert_branch!(idx, ct, tree_id, "/vegetables");
-        assert_branch!(idx, ct, tree_id, "vegetables/");
-        assert_branch!(idx, ct, tree_id, "vegetables");
+        assert_branch!(idx, provider, tree_id, "/vegetables/");
+        assert_branch!(idx, provider, tree_id, "/vegetables");
+        assert_branch!(idx, provider, tree_id, "vegetables/");
+        assert_branch!(idx, provider, tree_id, "vegetables");
 
         // Let's update a leaf node: a tomato is not a vegetable. It's a fruit.
         let (tree_id, _) = assert_replace_leaf!(
             idx,
-            ct,
+            provider,
             tree_id,
             "/vegetables/tomato.txt",
             "tomato",
             "ERROR"
         );
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 4);
         assert_eq!(tree.total_size(), 20);
 
         // Let's remove a leaf node.
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "/vegetables/tomato.txt", "ERROR");
+        let tree_id =
+            assert_remove_leaf!(idx, provider, tree_id, "/vegetables/tomato.txt", "ERROR");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 3);
         assert_eq!(tree.total_size(), 15);
 
         // Remove all the nodes.
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "/fruits/apple.txt", "apple");
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "/fruits/banana.txt", "banana");
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "/fruits/pear.txt", "pear");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "/fruits/apple.txt", "apple");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "/fruits/banana.txt", "banana");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "/fruits/pear.txt", "pear");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 0);
         assert_eq!(tree.total_size(), 0);
 
         // There should be no identifiers left to pop, as we went back to the
         // original tree.
-        let ids = ct.pop_referenced_identifiers().await.unwrap();
+        let ids = provider.pop_referenced_identifiers();
 
         assert_eq!(&ids, &[]);
     }

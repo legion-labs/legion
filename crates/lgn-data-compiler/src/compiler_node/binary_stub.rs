@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_content_store::ContentProvider;
+use lgn_content_store::Provider;
 use std::{
     io,
     path::{Path, PathBuf},
@@ -50,7 +50,7 @@ impl CompilerStub for BinCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
-        _data_content_store: &(dyn ContentProvider + Send + Sync),
+        _provider: &Provider,
         resource_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {

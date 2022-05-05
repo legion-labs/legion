@@ -429,10 +429,6 @@ mod tests {
                 in_resources[i].content_id,
                 out_resources[i].compiled_content_id
             );
-            assert_eq!(
-                in_resources[i].content_id.data_size(),
-                out_resources[i].compiled_content_id.data_size()
-            );
         }
     }
 }

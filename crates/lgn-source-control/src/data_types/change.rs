@@ -79,7 +79,7 @@ impl From<Change> for CanonicalPath {
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store::{ChunkIdentifier, Identifier};
+    use lgn_content_store::{Identifier, Provider};
 
     use super::*;
 
@@ -87,23 +87,18 @@ mod tests {
         Change::new(CanonicalPath::new(p).unwrap(), ct)
     }
 
-    fn id(data: &str) -> ChunkIdentifier {
-        ChunkIdentifier::new(
-            data.len().try_into().unwrap(),
-            Identifier::new(data.as_bytes()),
-        )
+    fn id(data: &str) -> Identifier {
+        Provider::new_in_memory().compute_id(data.as_bytes())
     }
 
     fn add() -> ChangeType {
-        ChangeType::Add {
-            new_chunk_id: id("new"),
-        }
+        ChangeType::Add { new_id: id("new") }
     }
 
     fn edit() -> ChangeType {
         ChangeType::Edit {
-            old_chunk_id: id("old"),
-            new_chunk_id: id("new"),
+            old_id: id("old"),
+            new_id: id("new"),
         }
     }
 

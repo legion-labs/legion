@@ -3,8 +3,9 @@ use std::{collections::HashSet, path::Path};
 use async_trait::async_trait;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-use super::{tree::TreeIdentifier, IndexKey, Tree, TreeLeafNode, TreeVisitor, TreeVisitorAction};
-use crate::Result;
+use super::{
+    tree::TreeIdentifier, IndexKey, Result, Tree, TreeLeafNode, TreeVisitor, TreeVisitorAction,
+};
 
 pub struct GraphvizVisitor<Output> {
     output: Output,

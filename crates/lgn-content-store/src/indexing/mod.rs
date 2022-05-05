@@ -1,6 +1,7 @@
 //! Indexing facilities backed by the content-store.
 
 mod composite_index_key;
+mod errors;
 mod filesystem_indexer;
 mod graphviz_visitor;
 mod index;
@@ -14,6 +15,7 @@ mod static_indexer;
 mod tree;
 
 pub use composite_index_key::CompositeIndexKey;
+pub use errors::{Error, Result};
 pub use filesystem_indexer::FilesystemIndexer;
 pub use graphviz_visitor::GraphvizVisitor;
 pub use index::{Index, IndexIdentifier, IndexReader, IndexWriter};

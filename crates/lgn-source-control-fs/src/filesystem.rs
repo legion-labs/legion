@@ -1,13 +1,13 @@
 use fuser::{
     FileAttr, FileType, Filesystem, ReplyAttr, ReplyData, ReplyDirectory, ReplyEntry, Request,
 };
-use lgn_content_store::{ChunkIdentifier, Chunker, Config, ContentProvider};
+use lgn_content_store::{Config, Identifier, Provider};
 use lgn_source_control::{Index, MapOtherError, Result, Tree};
 use lgn_tracing::{debug, error};
 use libc::{EISDIR, ENOENT, ENOTDIR};
 use std::{
     ffi::OsStr,
-    sync::Mutex,
+    sync::{Arc, Mutex},
     time::{Duration, UNIX_EPOCH},
 };
 
@@ -18,8 +18,7 @@ const TTL: Duration = Duration::from_secs(1); // 1 second
 pub struct SourceControlFilesystem {
     handle: tokio::runtime::Handle,
     index: Box<dyn Index>,
-    chunker: Chunker,
-    content_provider: Box<dyn ContentProvider + Send + Sync>,
+    provider: Arc<Provider>,
     branch_name: String,
     uid: u32,
     gid: u32,
@@ -30,17 +29,17 @@ impl SourceControlFilesystem {
     pub async fn new(index: Box<dyn Index>, branch_name: String) -> Result<Self> {
         let handle = tokio::runtime::Handle::current();
         let tree = Self::read_tree(&index, &branch_name).await?;
-        let chunker = Chunker::default();
 
-        let content_provider = Config::load_and_instantiate_persistent_provider()
-            .await
-            .map_other_err("failed to create blob storage")?;
+        let provider = Arc::new(
+            Config::load_and_instantiate_persistent_provider()
+                .await
+                .map_other_err("failed to create blob storage")?,
+        );
 
         Ok(Self {
             handle,
             index,
-            chunker,
-            content_provider,
+            provider,
             branch_name,
             uid: users::get_current_uid(),
             gid: users::get_current_gid(),
@@ -65,22 +64,25 @@ impl SourceControlFilesystem {
         index.get_tree(&commit.root_tree_id).await
     }
 
-    fn get_data(&self, chunk_id: &ChunkIdentifier) -> Result<Vec<u8>> {
+    fn get_data(&self, id: &Identifier) -> Result<Vec<u8>> {
         self.handle.block_on(async move {
-            self.chunker
-                .read_chunk(&self.content_provider, chunk_id)
+            self.provider
+                .read(id)
                 .await
-                .map_other_err(format!("failed to read data for `{}`", chunk_id))
+                .map_other_err(format!("failed to read data for `{}`", id))
         })
     }
 
     fn tree_to_attr(&self, ino: u64, tree: &Tree) -> FileAttr {
         let (kind, nlink, size, perm) = match tree {
             Tree::Directory { .. } => (FileType::Directory, 2, 0, 0o550),
-            Tree::File { chunk_id, .. } => (
+            Tree::File { id, .. } => (
                 FileType::RegularFile,
                 1,
-                chunk_id.data_size().try_into().unwrap_or(0),
+                self.handle
+                    .block_on(async move { self.provider.read_size(id).await.unwrap_or(0) })
+                    .try_into()
+                    .unwrap_or(0),
                 0o440,
             ),
         };
@@ -155,7 +157,7 @@ impl Filesystem for SourceControlFilesystem {
         if let Some((_, _, tree)) = self.inode_index.lock().unwrap().get_tree_node(ino) {
             match tree {
                 Tree::Directory { .. } => reply.error(EISDIR),
-                Tree::File { chunk_id, .. } => match self.get_data(chunk_id) {
+                Tree::File { id, .. } => match self.get_data(id) {
                     Ok(data) => {
                         reply.data(&data[offset as usize..]);
                     }

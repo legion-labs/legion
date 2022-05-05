@@ -5,7 +5,7 @@ import en from "@/assets/locales/en-US/example.ftl?raw";
 import fr from "@/assets/locales/fr-CA/example.ftl?raw";
 import { localeStorageKey } from "@/constants";
 
-const l10n = createL10nOrchestrator(
+const l10n = createL10nOrchestrator<Fluent>(
   [
     {
       names: ["en-US", "en"],

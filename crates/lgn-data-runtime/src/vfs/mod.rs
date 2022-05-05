@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_content_store::ChunkIdentifier;
+use lgn_content_store::Identifier;
 
 use crate::ResourceTypeAndId;
 
@@ -8,7 +8,7 @@ use crate::ResourceTypeAndId;
 pub(crate) trait Device: Send + Sync {
     async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;
     async fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>>;
-    async fn reload_manifest(&mut self, _manifest_id: &ChunkIdentifier) {}
+    async fn reload_manifest(&mut self, _manifest_id: &Identifier) {}
 }
 
 mod build_device;

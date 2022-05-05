@@ -3,7 +3,7 @@ module.exports = {
   content: ["index.html", "./src/**/*.{svelte,ts}"],
   theme: {
     fontFamily: {
-      default: "Source Sans Pro,Arial,sans-serif",
+      default: "Inter,Arial,sans-serif",
     },
     extend: {
       colors: {

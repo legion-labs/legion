@@ -3,9 +3,7 @@ use std::{fmt::Display, ops::Deref, str::FromStr};
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::{Error, Result};
-
-use super::IndexKey;
+use super::{Error, IndexKey, Result};
 
 /// An index key.
 ///

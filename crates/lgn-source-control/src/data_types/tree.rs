@@ -1,5 +1,5 @@
 use async_recursion::async_recursion;
-use lgn_content_store::{ChunkIdentifier, Chunker};
+use lgn_content_store::{Identifier, Provider};
 use std::{
     cmp::Ordering,
     collections::{btree_map::Entry, BTreeMap, BTreeSet},
@@ -18,7 +18,7 @@ pub enum Tree {
     },
     File {
         name: String,
-        chunk_id: ChunkIdentifier,
+        id: Identifier,
     },
 }
 
@@ -28,12 +28,12 @@ impl From<Tree> for lgn_source_control_proto::Tree {
             Tree::Directory { name, children } => Self {
                 name,
                 children: children.into_values().map(Into::into).collect(),
-                chunk_id: "".to_string(),
+                id: "".to_string(),
             },
-            Tree::File { name, chunk_id } => Self {
+            Tree::File { name, id } => Self {
                 name,
                 children: vec![],
-                chunk_id: chunk_id.to_string(),
+                id: id.to_string(),
             },
         }
     }
@@ -43,7 +43,7 @@ impl TryFrom<lgn_source_control_proto::Tree> for Tree {
     type Error = Error;
 
     fn try_from(tree: lgn_source_control_proto::Tree) -> Result<Self> {
-        Ok(if tree.chunk_id.is_empty() {
+        Ok(if tree.id.is_empty() {
             Self::Directory {
                 name: tree.name,
                 children: tree
@@ -58,8 +58,8 @@ impl TryFrom<lgn_source_control_proto::Tree> for Tree {
         } else {
             Self::File {
                 name: tree.name,
-                chunk_id: tree
-                    .chunk_id
+                id: tree
+                    .id
                     .parse()
                     .map_other_err("failed to parse chunk identifier")?,
             }
@@ -102,8 +102,8 @@ impl Tree {
         }
     }
 
-    pub fn file(name: String, chunk_id: ChunkIdentifier) -> Self {
-        Self::File { name, chunk_id }
+    pub fn file(name: String, id: Identifier) -> Self {
+        Self::File { name, id }
     }
 
     /// Creates a tree from an existing root directory.
@@ -126,7 +126,7 @@ impl Tree {
     ///
     /// A complete tree, with the root directory as the root.
     pub async fn from_root(
-        chunker: &Chunker,
+        provider: &Provider,
         root: impl AsRef<Path>,
         filter: &TreeFilter,
     ) -> Result<Self> {
@@ -134,13 +134,13 @@ impl Tree {
             .await
             .map_other_err("failed to make the root path canonical")?;
 
-        Self::from_path(chunker, &root, &root, filter).await
+        Self::from_path(provider, &root, &root, filter).await
     }
 
     /// Creates a tree from an existing absolute and canonicalized root directory.
     #[async_recursion]
     async fn from_path(
-        chunker: &Chunker,
+        provider: &Provider,
         root: &Path,
         path: &Path,
         filter: &TreeFilter,
@@ -152,7 +152,7 @@ impl Tree {
         let path = cpath.to_path_buf(root);
 
         if path.is_file() {
-            return Self::from_file_path(chunker, &path).await;
+            return Self::from_file_path(provider, &path).await;
         }
 
         let name = cpath.name().unwrap_or_default();
@@ -167,7 +167,7 @@ impl Tree {
             "failed to iterate over directory `{}`",
             path.display()
         ))? {
-            match Self::from_path(chunker, root, &sub_path.path(), filter).await {
+            match Self::from_path(provider, root, &sub_path.path(), filter).await {
                 Ok(child) => {
                     children.push(child);
                 }
@@ -181,7 +181,7 @@ impl Tree {
         Ok(Self::directory(name.to_string(), children))
     }
 
-    async fn from_file_path(chunker: &Chunker, path: &Path) -> Result<Self> {
+    async fn from_file_path(provider: &Provider, path: &Path) -> Result<Self> {
         let name = path
             .file_name()
             .ok_or_else(|| Error::Other {
@@ -194,9 +194,9 @@ impl Tree {
             .await
             .map_other_err(format!("failed to read `{}`", path.display()))?;
 
-        let chunk_id = chunker.get_chunk_identifier(&contents);
+        let id = provider.compute_id(&contents);
 
-        Ok(Self::file(name.to_string(), chunk_id))
+        Ok(Self::file(name.to_string(), id))
     }
 
     pub fn filter(&self, filter: &TreeFilter) -> Result<Self> {
@@ -231,9 +231,9 @@ impl Tree {
         }
     }
 
-    pub fn chunk_id(&self) -> &ChunkIdentifier {
+    pub fn cs_id(&self) -> &Identifier {
         match self {
-            Tree::File { chunk_id, .. } => chunk_id,
+            Tree::File { id, .. } => id,
             Tree::Directory { .. } => panic!("cannot get info from a directory"),
         }
     }
@@ -259,11 +259,11 @@ impl Tree {
         // before applying the hashing process, the input string should be 100%
         // decodable to its original form, without any ambiguity.
         match &self {
-            Self::File { name, chunk_id } => {
+            Self::File { name, id } => {
                 hasher.update(b"F(");
                 hasher.update(name.as_bytes());
                 hasher.update(b",");
-                hasher.update(chunk_id.as_vec());
+                hasher.update(id.as_vec());
                 hasher.update(b")");
             }
             &Self::Directory { name, ref children } => {
@@ -465,11 +465,7 @@ impl Tree {
     /// If a node is removed, it is returned.
     ///
     /// If no such node is found, or the node is not a file, or the info doesn't match an error is returned.
-    pub fn remove_file(
-        &mut self,
-        canonical_path: &CanonicalPath,
-        chunk_id: &ChunkIdentifier,
-    ) -> Result<Self> {
+    pub fn remove_file(&mut self, canonical_path: &CanonicalPath, id: &Identifier) -> Result<Self> {
         if let Some((name, child_path)) = canonical_path.split_left() {
             let parent_name = self.name().to_string();
             if let Some(child) = self
@@ -478,7 +474,7 @@ impl Tree {
             {
                 if let Some(child_path) = child_path {
                     let result = child
-                        .remove_file(&child_path, chunk_id)
+                        .remove_file(&child_path, id)
                         .with_parent_name(&parent_name)?;
 
                     // If we removed a node and the child is now empty, we need to remove it as well.
@@ -488,7 +484,7 @@ impl Tree {
 
                     Ok(result)
                 } else {
-                    self.remove_direct_file_by_name(name, chunk_id)
+                    self.remove_direct_file_by_name(name, id)
                         .with_parent_name(&parent_name)
                 }
             } else {
@@ -500,14 +496,14 @@ impl Tree {
         } else {
             // We were passed a root path: empty the tree and return the old
             // tree.
-            if let Self::File { chunk_id: i, .. } = self {
-                if i == chunk_id {
+            if let Self::File { id: i, .. } = self {
+                if i == id {
                     Ok(std::mem::replace(self, Self::empty()))
                 } else {
                     Err(Error::file_content_mismatch(
                         canonical_path.clone(),
                         i.clone(),
-                        chunk_id.clone(),
+                        id.clone(),
                     ))
                 }
             } else {
@@ -520,20 +516,20 @@ impl Tree {
     pub fn update_file(
         &mut self,
         canonical_path: &CanonicalPath,
-        old_chunk_id: &ChunkIdentifier,
-        new_chunk_id: &ChunkIdentifier,
+        old_id: &Identifier,
+        new_id: &Identifier,
     ) -> Result<&mut Self> {
         match self.find_mut(canonical_path)? {
             Some(child) => {
-                if let Self::File { chunk_id: i, .. } = child {
-                    if i == old_chunk_id {
-                        *i = new_chunk_id.clone();
+                if let Self::File { id: i, .. } = child {
+                    if i == old_id {
+                        *i = new_id.clone();
                         Ok(child)
                     } else {
                         Err(Error::file_content_mismatch(
                             canonical_path.clone(),
                             i.clone(),
-                            new_chunk_id.clone(),
+                            new_id.clone(),
                         ))
                     }
                 } else {
@@ -649,25 +645,18 @@ impl Tree {
     }
 
     /// Remove a direct file child of the tree by its name.
-    fn remove_direct_file_by_name(
-        &mut self,
-        name: &str,
-        chunk_id: &ChunkIdentifier,
-    ) -> Result<Self> {
+    fn remove_direct_file_by_name(&mut self, name: &str, id: &Identifier) -> Result<Self> {
         match self {
             Self::File { .. } => Err(Error::path_is_not_a_directory(CanonicalPath::root())),
             Self::Directory { children, .. } => match children.entry(name.to_string()) {
                 Entry::Occupied(entry) => match entry.get() {
-                    Self::File {
-                        chunk_id: entry_info,
-                        ..
-                    } => {
-                        if entry_info == chunk_id {
+                    Self::File { id: entry_info, .. } => {
+                        if entry_info == id {
                             Ok(entry.remove())
                         } else {
                             Err(Error::file_content_mismatch(
                                 CanonicalPath::new_from_name(name),
-                                chunk_id.clone(),
+                                id.clone(),
                                 entry_info.clone(),
                             ))
                         }
@@ -689,10 +678,7 @@ impl Tree {
     ) -> Result<Self> {
         // We need to iterate first over the deletions, because it could make some additions fail.
         for change in changes.clone() {
-            if let ChangeType::Delete {
-                old_chunk_id: old_info,
-            } = change.change_type()
-            {
+            if let ChangeType::Delete { old_id: old_info } = change.change_type() {
                 self.remove_file(change.canonical_path(), old_info)
                     .map_other_err("failed to apply file deletion")?;
             }
@@ -701,9 +687,7 @@ impl Tree {
         // Deletions were done, now we can add and edit files.
         for change in changes {
             match change.change_type() {
-                ChangeType::Add {
-                    new_chunk_id: new_hash,
-                } => {
+                ChangeType::Add { new_id: new_hash } => {
                     let (parent_path, name) = change.canonical_path().split();
                     let name = if let Some(name) = name {
                         name
@@ -716,8 +700,8 @@ impl Tree {
                         .map_other_err("failed to apply file addition")?;
                 }
                 ChangeType::Edit {
-                    old_chunk_id: old_info,
-                    new_chunk_id: new_info,
+                    old_id: old_info,
+                    new_id: new_info,
                 } => {
                     self.update_file(change.canonical_path(), old_info, new_info)
                         .map_other_err("failed to apply file edit")?;
@@ -734,14 +718,11 @@ impl Tree {
         let mut changes = BTreeSet::new();
 
         match self {
-            Self::File {
-                name,
-                chunk_id: info,
-            } => {
+            Self::File { name, id: info } => {
                 changes.insert(Change::new(
                     CanonicalPath::new_from_name(name),
                     ChangeType::Add {
-                        new_chunk_id: info.clone(),
+                        new_id: info.clone(),
                     },
                 ));
             }
@@ -773,13 +754,10 @@ impl Tree {
         let mut changes = BTreeSet::new();
 
         match self {
-            Self::File {
-                name,
-                chunk_id: info,
-            } => match tree {
+            Self::File { name, id: info } => match tree {
                 Self::File {
                     name: tree_name,
-                    chunk_id: tree_info,
+                    id: tree_info,
                 } => {
                     if name == tree_name {
                         if info == tree_info {
@@ -789,21 +767,21 @@ impl Tree {
                         changes.insert(Change::new(
                             CanonicalPath::new_from_name(name),
                             ChangeType::Edit {
-                                old_chunk_id: info.clone(),
-                                new_chunk_id: tree_info.clone(),
+                                old_id: info.clone(),
+                                new_id: tree_info.clone(),
                             },
                         ));
                     } else {
                         changes.insert(Change::new(
                             CanonicalPath::new_from_name(name),
                             ChangeType::Delete {
-                                old_chunk_id: info.clone(),
+                                old_id: info.clone(),
                             },
                         ));
                         changes.insert(Change::new(
                             CanonicalPath::new_from_name(tree_name),
                             ChangeType::Add {
-                                new_chunk_id: tree_info.clone(),
+                                new_id: tree_info.clone(),
                             },
                         ));
                     }
@@ -812,7 +790,7 @@ impl Tree {
                     changes.insert(Change::new(
                         CanonicalPath::new_from_name(name),
                         ChangeType::Delete {
-                            old_chunk_id: info.clone(),
+                            old_id: info.clone(),
                         },
                     ));
                     changes.extend(tree.as_forward_changes());
@@ -821,13 +799,13 @@ impl Tree {
             Self::Directory { name, children } => match tree {
                 Self::File {
                     name: tree_name,
-                    chunk_id: tree_info,
+                    id: tree_info,
                 } => {
                     changes.extend(self.as_backward_changes());
                     changes.insert(Change::new(
                         CanonicalPath::new_from_name(tree_name),
                         ChangeType::Add {
-                            new_chunk_id: tree_info.clone(),
+                            new_id: tree_info.clone(),
                         },
                     ));
                 }
@@ -1068,8 +1046,8 @@ mod tests {
         Tree::file(name.to_string(), id(data))
     }
 
-    fn id(data: &str) -> ChunkIdentifier {
-        Chunker::default().get_chunk_identifier(data.as_bytes())
+    fn id(data: &str) -> Identifier {
+        Provider::new_in_memory().compute_id(data.as_bytes())
     }
 
     fn cp(s: &str) -> CanonicalPath {
@@ -1080,7 +1058,7 @@ mod tests {
         Change::new(
             cp(s),
             ChangeType::Add {
-                new_chunk_id: id(new_data),
+                new_id: id(new_data),
             },
         )
     }
@@ -1089,8 +1067,8 @@ mod tests {
         Change::new(
             cp(s),
             ChangeType::Edit {
-                old_chunk_id: id(old_data),
-                new_chunk_id: id(new_data),
+                old_id: id(old_data),
+                new_id: id(new_data),
             },
         )
     }
@@ -1099,7 +1077,7 @@ mod tests {
         Change::new(
             cp(s),
             ChangeType::Delete {
-                old_chunk_id: id(old_data),
+                old_id: id(old_data),
             },
         )
     }
@@ -1107,9 +1085,10 @@ mod tests {
     #[tokio::test]
     async fn test_tree_from_root() {
         let root = &Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/canonical_path");
+        let provider = Provider::new_in_memory();
 
         // Let's resolve the root.
-        let tree = Tree::from_root(&Chunker::default(), root, &TreeFilter::default())
+        let tree = Tree::from_root(&provider, root, &TreeFilter::default())
             .await
             .unwrap();
 
@@ -1136,7 +1115,7 @@ mod tests {
             exclusion_rules: BTreeSet::new(),
         };
 
-        let tree = Tree::from_root(&Chunker::default(), root, &tree_filter)
+        let tree = Tree::from_root(&provider, root, &tree_filter)
             .await
             .unwrap();
 
@@ -1356,12 +1335,12 @@ mod tests {
         match tree.remove_file(&cp("/a/b/c/d/z"), &id("hz2")) {
             Err(Error::FileContentMistmatch {
                 canonical_path,
-                expected_chunk_id,
-                chunk_id,
+                expected_id,
+                id: cs_id,
             }) => {
                 assert_eq!(canonical_path, cp("/a/b/c/d/z"));
-                assert_eq!(expected_chunk_id, id("hz2"));
-                assert_eq!(chunk_id, id("hz"));
+                assert_eq!(expected_id, id("hz2"));
+                assert_eq!(cs_id, id("hz"));
             }
             _ => panic!("expected FileContentMistmatch"),
         }

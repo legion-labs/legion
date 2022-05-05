@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use generic_data::offline::TestEntity;
-use lgn_content_store::{ContentProvider, MemoryProvider};
+use lgn_content_store::{ContentProvider, MemoryContentProvider};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName};
@@ -141,9 +141,9 @@ async fn test_transaction_system() -> Result<(), Error> {
     std::fs::create_dir(&build_dir).unwrap();
 
     let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+        Arc::new(Box::new(MemoryContentProvider::new()));
     let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+        Arc::new(Box::new(MemoryContentProvider::new()));
 
     let project = Project::create_with_remote_mock(&project_dir, source_control_content_provider)
         .await

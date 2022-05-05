@@ -178,7 +178,7 @@ impl ResourceBrowserPlugin {
         scene_events_rx: ResMut<'_, crossbeam_channel::Receiver<SceneMessage>>,
         mut scene_event_writer: EventWriter<'_, '_, SceneMessage>,
     ) {
-        while let Ok(event) = scene_events_rx.try_recv() {
+        for event in scene_events_rx.try_iter() {
             scene_event_writer.send(event);
         }
     }

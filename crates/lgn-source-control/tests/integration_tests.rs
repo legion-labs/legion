@@ -4,8 +4,9 @@ mod common;
 use common::*;
 use itertools::Itertools;
 
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
+use lgn_content_store::Provider;
 use lgn_source_control::{
     Error, LocalRepositoryIndex, MapOtherError, RepositoryIndex, RepositoryName, Staging,
     Workspace, WorkspaceConfig, WorkspaceRegistration,
@@ -15,7 +16,7 @@ use lgn_telemetry_sink::TelemetryGuard;
 #[tokio::test]
 async fn test_add_and_commit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     // Add some files.
     create_file!(ws, "apple.txt", "I am an apple");
@@ -32,7 +33,7 @@ async fn test_add_and_commit() {
     );
     assert_staged_changes!(ws, []);
 
-    let new_added_files = workspace_add_files!(ws, &csp, ["."]);
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(
         new_added_files,
@@ -55,7 +56,7 @@ async fn test_add_and_commit() {
     );
 
     // Re-adding the same files should be a no-op.
-    let new_added_files = workspace_add_files!(ws, &csp, ["."]);
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(new_added_files, [].into());
 
@@ -102,11 +103,11 @@ async fn test_add_and_commit() {
 #[tokio::test]
 async fn lenient_commit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
     create_file!(ws, "vegetables/carrot.txt", "I am a carrot");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     // commit no changes.
@@ -144,12 +145,12 @@ async fn lenient_commit() {
 #[tokio::test]
 async fn test_edit_and_commit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
     create_file!(ws, "vegetables/carrot.txt", "I am a carrot");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     // Let's now edit one file.
@@ -191,7 +192,7 @@ async fn test_edit_and_commit() {
     };
 
     // Add or edit should work the same here: let's first try with add. We'll test with edit later.
-    let new_added_files = workspace_add_files!(ws, &csp, ["."]);
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(new_added_files, [cp("/vegetables/carrot.txt")].into());
 
@@ -218,12 +219,12 @@ async fn test_edit_and_commit() {
 #[tokio::test]
 async fn test_delete_and_commit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
     create_file!(ws, "vegetables/carrot.txt", "I am a new carrot");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     // Let's delete a file.
@@ -251,16 +252,16 @@ async fn test_delete_and_commit() {
 #[tokio::test]
 async fn test_add_empty_directory() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     create_dir!(ws, "vegetables");
 
     // Adding an empty directory but existing should yield no error and add no files.
-    let new_added_files = ws.add_files(&csp, [Path::new("vegetables")]).await.unwrap();
+    let new_added_files = ws.add_files([Path::new("vegetables")]).await.unwrap();
 
     assert_eq!(new_added_files, [].into(),);
 
@@ -270,14 +271,14 @@ async fn test_add_empty_directory() {
 #[tokio::test]
 async fn test_add_non_existing_path() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     // Adding an non-existing path should fail.
-    match ws.add_files(&csp, [Path::new("non/existing/path")]).await {
+    match ws.add_files([Path::new("non/existing/path")]).await {
         Err(Error::UnmatchedPath { .. }) => {}
         Err(err) => {
             panic!("unexpected error: {:?}", err);
@@ -293,16 +294,16 @@ async fn test_add_non_existing_path() {
 #[tokio::test]
 async fn test_add_then_delete() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     create_file!(ws, "banana.txt", "I am a banana");
 
-    let new_added_files = workspace_add_files!(ws, &csp, ["."]);
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(new_added_files, [cp("/banana.txt")].into());
 
@@ -321,11 +322,11 @@ async fn test_add_then_delete() {
 #[tokio::test]
 async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am an apple");
     create_file!(ws, "orange.txt", "I am an orange");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     let new_edited_files = workspace_checkout_files!(ws, ["apple.txt"]);
@@ -347,7 +348,7 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
         [edit("/apple.txt", id("I am an apple"), id("I am an apple"),)]
     );
 
-    let new_added_files = workspace_add_files!(ws, &csp, ["apple.txt"]);
+    let new_added_files = workspace_add_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_added_files, [cp("/apple.txt")].into());
 
@@ -390,8 +391,7 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
     );
 
     // Reverting the file with unstaged changes should work.
-    let new_reverted_files =
-        workspace_revert_files!(ws, &csp, ["apple.txt"], Staging::StagedAndUnstaged);
+    let new_reverted_files = workspace_revert_files!(ws, ["apple.txt"], Staging::StagedAndUnstaged);
 
     assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
 
@@ -407,11 +407,11 @@ async fn test_edit_and_commit_with_extra_unstaged_changes_then_revert() {
 #[tokio::test]
 async fn test_revert_after_add_and_edit() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     // Let's make a change but stage it this time.
@@ -422,7 +422,7 @@ async fn test_revert_after_add_and_edit() {
     update_file!(ws, "apple.txt", "I am an even newer apple");
     create_file!(ws, "strawberry.txt", "I am a strawberry");
 
-    let new_added_files = workspace_add_files!(ws, &csp, ["."]);
+    let new_added_files = workspace_add_files!(ws, ["."]);
 
     assert_eq!(
         new_added_files,
@@ -443,7 +443,7 @@ async fn test_revert_after_add_and_edit() {
     assert_unstaged_changes!(ws, []);
 
     // Reverting the file with staged changes should work too.
-    let new_reverted_files = workspace_revert_files!(ws, &csp, ["."], Staging::StagedAndUnstaged);
+    let new_reverted_files = workspace_revert_files!(ws, ["."], Staging::StagedAndUnstaged);
 
     assert_eq!(
         new_reverted_files,
@@ -471,11 +471,11 @@ async fn test_revert_after_add_and_edit() {
 #[tokio::test]
 async fn test_revert_staged_only_with_unstaged_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     // Let's mark a file for edition, change it but do not stage it. Then let's revert it in staging.
@@ -503,7 +503,7 @@ async fn test_revert_staged_only_with_unstaged_changes() {
 
     // The file has unstaged changes, so reverting in staged-only mode should
     // not affect it.
-    let new_reverted_files = workspace_revert_files!(ws, &csp, ["apple.txt"], Staging::StagedOnly);
+    let new_reverted_files = workspace_revert_files!(ws, ["apple.txt"], Staging::StagedOnly);
 
     assert_eq!(new_reverted_files, [].into());
 
@@ -513,11 +513,11 @@ async fn test_revert_staged_only_with_unstaged_changes() {
 #[tokio::test]
 async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     let new_edited_files = workspace_checkout_files!(ws, ["apple.txt"]);
@@ -525,7 +525,7 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
     assert_eq!(new_edited_files, [cp("/apple.txt")].into());
     update_file!(ws, "apple.txt", "I am an even newer apple");
 
-    let new_added_files = workspace_add_files!(ws, &csp, ["apple.txt"]);
+    let new_added_files = workspace_add_files!(ws, ["apple.txt"]);
 
     assert_eq!(new_added_files, [cp("/apple.txt"),].into());
 
@@ -541,7 +541,7 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
 
     update_file!(ws, "apple.txt", "Unstaged modification");
 
-    let new_reverted_files = workspace_revert_files!(ws, &csp, ["apple.txt"], Staging::StagedOnly);
+    let new_reverted_files = workspace_revert_files!(ws, ["apple.txt"], Staging::StagedOnly);
 
     assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
 
@@ -571,11 +571,11 @@ async fn test_revert_staged_only_with_staged_and_unstaged_changes() {
 #[tokio::test]
 async fn test_revert_unstaged_only_with_unstaged_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "I am a new apple");
     create_file!(ws, "orange.txt", "I am an orange");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "Added some fruits");
 
     let new_edited_files = workspace_checkout_files!(ws, ["apple.txt"]);
@@ -584,8 +584,7 @@ async fn test_revert_unstaged_only_with_unstaged_changes() {
     update_file!(ws, "apple.txt", "Unstaged modification");
 
     // This time let's only revert unstaged changes.
-    let new_reverted_files =
-        workspace_revert_files!(ws, &csp, ["apple.txt"], Staging::UnstagedOnly);
+    let new_reverted_files = workspace_revert_files!(ws, ["apple.txt"], Staging::UnstagedOnly);
 
     assert_eq!(new_reverted_files, [cp("/apple.txt")].into());
 
@@ -608,11 +607,11 @@ async fn test_revert_unstaged_only_with_unstaged_changes() {
 #[tokio::test]
 async fn test_sync_forward_and_backward() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     let commit_1 = workspace_commit!(ws, "version 1");
 
     // Update an existing file.
@@ -621,7 +620,7 @@ async fn test_sync_forward_and_backward() {
 
     // Create a new one.
     create_file!(ws, "pear.txt", "pear version 1");
-    workspace_add_files!(ws, &csp, ["apple.txt", "pear.txt"]);
+    workspace_add_files!(ws, ["apple.txt", "pear.txt"]);
 
     // And delete an old one.
     workspace_delete_files!(ws, ["orange.txt"]);
@@ -635,7 +634,7 @@ async fn test_sync_forward_and_backward() {
     assert_file_read_only!(ws, "pear.txt");
 
     // Try to sync back to the previous commit.
-    let changes = ws.sync_to(&csp, commit_1.id).await.unwrap();
+    let changes = ws.sync_to(commit_1.id).await.unwrap();
 
     assert_eq!(
         changes,
@@ -654,7 +653,7 @@ async fn test_sync_forward_and_backward() {
     assert_file_read_only!(ws, "orange.txt");
 
     // Sync back to the latest commit.
-    let (branch, changes) = ws.sync(&csp).await.unwrap();
+    let (branch, changes) = ws.sync().await.unwrap();
 
     assert_eq!(branch.head, commit_2.id);
     assert_eq!(
@@ -679,13 +678,13 @@ async fn test_sync_forward_and_backward() {
 #[tokio::test]
 async fn test_sync_forward_with_non_conflicting_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "tangerine.txt", "tangerine version 1");
     create_file!(ws, "cantaloupe.txt", "cantaloupe version 1");
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     let commit_1 = workspace_commit!(ws, "version 1");
 
     // Update an existing file.
@@ -694,7 +693,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
 
     // Create a new one.
     create_file!(ws, "pear.txt", "pear version 1");
-    workspace_add_files!(ws, &csp, ["apple.txt", "pear.txt"]);
+    workspace_add_files!(ws, ["apple.txt", "pear.txt"]);
 
     // And delete an old one.
     workspace_delete_files!(ws, ["orange.txt"]);
@@ -705,7 +704,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     workspace_checkout_files!(ws, ["tangerine.txt", "cantaloupe.txt"]);
     update_file!(ws, "tangerine.txt", "tangerine version 2");
     update_file!(ws, "cantaloupe.txt", "cantaloupe version 2");
-    workspace_add_files!(ws, &csp, ["tangerine.txt"]);
+    workspace_add_files!(ws, ["tangerine.txt"]);
 
     assert_staged_changes!(
         ws,
@@ -733,7 +732,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
 
     // Try to sync back to the previous commit: this should work even though we
     // have local changes as those do not conflict at all.
-    let changes = ws.sync_to(&csp, commit_1.id).await.unwrap();
+    let changes = ws.sync_to(commit_1.id).await.unwrap();
 
     assert_eq!(
         changes,
@@ -756,7 +755,7 @@ async fn test_sync_forward_with_non_conflicting_changes() {
     assert_file_read_write!(ws, "cantaloupe.txt");
 
     // Sync back to the latest commit: this should work too.
-    let (branch, changes) = ws.sync(&csp).await.unwrap();
+    let (branch, changes) = ws.sync().await.unwrap();
 
     assert_eq!(branch.head, commit_2.id);
     assert_eq!(
@@ -810,11 +809,11 @@ async fn test_sync_forward_with_non_conflicting_changes() {
 #[tokio::test]
 async fn test_sync_forward_with_conflicting_changes() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     let commit_id_1 = workspace_commit!(ws, "version 1").id;
 
     // Update an existing file.
@@ -823,7 +822,7 @@ async fn test_sync_forward_with_conflicting_changes() {
 
     // Create a new one.
     create_file!(ws, "pear.txt", "pear version 1");
-    workspace_add_files!(ws, &csp, ["apple.txt", "pear.txt"]);
+    workspace_add_files!(ws, ["apple.txt", "pear.txt"]);
 
     // And delete an old one.
     workspace_delete_files!(ws, ["orange.txt"]);
@@ -838,7 +837,7 @@ async fn test_sync_forward_with_conflicting_changes() {
 
     // Try to sync back to the previous commit: this should fail as we have
     // unstaged changes about a file that would be restored as part of the sync.
-    match ws.sync_to(&csp, commit_id_1).await {
+    match ws.sync_to(commit_id_1).await {
         Err(Error::ConflictingChanges {
             conflicting_changes,
         }) => {
@@ -857,7 +856,7 @@ async fn test_sync_forward_with_conflicting_changes() {
     // Now make some other conflicting change: staged.
     workspace_checkout_files!(ws, ["apple.txt"]);
     update_file!(ws, "apple.txt", "some change");
-    workspace_add_files!(ws, &csp, ["apple.txt"]);
+    workspace_add_files!(ws, ["apple.txt"]);
 
     assert_staged_changes!(
         ws,
@@ -867,7 +866,7 @@ async fn test_sync_forward_with_conflicting_changes() {
 
     // Try to sync back to the previous commit: this should fail as we have
     // staged changes about a file that would be restored as part of the sync.
-    match ws.sync_to(&csp, commit_id_1).await {
+    match ws.sync_to(commit_id_1).await {
         Err(Error::ConflictingChanges {
             conflicting_changes,
         }) => {
@@ -886,11 +885,11 @@ async fn test_sync_forward_with_conflicting_changes() {
 #[tokio::test]
 async fn test_create_branch_switch_detach_attach() {
     let _telemetry_guard = TelemetryGuard::default();
-    let (repository_index, ws, csp, _paths) = init_test_workspace_and_index!();
+    let (repository_index, ws, _, _paths) = init_test_workspace_and_index!();
 
     create_file!(ws, "apple.txt", "apple version 1");
     create_file!(ws, "orange.txt", "orange version 1");
-    workspace_add_files!(ws, &csp, ["."]);
+    workspace_add_files!(ws, ["."]);
     workspace_commit!(ws, "version 1");
 
     let main = workspace_get_current_branch!(ws);
@@ -904,12 +903,12 @@ async fn test_create_branch_switch_detach_attach() {
     // Make and edit and commit.
     workspace_checkout_files!(ws, ["apple.txt"]);
     update_file!(ws, "apple.txt", "apple version 2");
-    workspace_add_files!(ws, &csp, ["apple.txt"]);
+    workspace_add_files!(ws, ["apple.txt"]);
 
     branch1.head = workspace_commit!(ws, "version 2").id;
 
     // Go back to the main branch.
-    workspace_switch_branch!(ws, &csp, "main");
+    workspace_switch_branch!(ws, "main");
 
     // Make sure we really did switch back to the main branch.
     assert_workspace_current_branch!(ws, main);
@@ -918,7 +917,7 @@ async fn test_create_branch_switch_detach_attach() {
     assert_file_read_only!(ws, "apple.txt");
 
     // Go back to the branch1 branch.
-    workspace_switch_branch!(ws, &csp, "branch1");
+    workspace_switch_branch!(ws, "branch1");
 
     // Make sure we really did switch back to the main branch.
     assert_workspace_current_branch!(ws, branch1);
@@ -948,16 +947,21 @@ async fn test_multiple_repositories() {
         WorkspaceRegistration::new_with_current_user(),
     );
 
-    let ws2 = Workspace::init(&workspace_root2.path(), &repository_index, config, &csp)
-        .await
-        .expect("failed to initialize second workspace");
+    let ws2 = Workspace::init(
+        &workspace_root2.path(),
+        &repository_index,
+        config,
+        Arc::clone(&csp),
+    )
+    .await
+    .expect("failed to initialize second workspace");
 
     // Add some files.
     create_file!(ws1, "apple.txt", "I am an apple");
     create_file!(ws2, "orange.txt", "I am an orange");
 
-    workspace_add_files!(ws1, &csp, ["."]);
-    workspace_add_files!(ws2, &csp, ["."]);
+    workspace_add_files!(ws1, ["."]);
+    workspace_add_files!(ws2, ["."]);
 
     workspace_commit!(ws1, "Added some fruits");
     workspace_commit!(ws2, "Added some fruits");

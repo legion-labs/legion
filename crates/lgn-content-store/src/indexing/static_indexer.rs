@@ -8,15 +8,12 @@ use futures::Stream;
 use serde::{Deserialize, Serialize};
 use tokio_stream::StreamExt;
 
-use crate::{
-    indexing::TreeWriter, traits::ContentTrackerExt, ContentProvider, ContentReader,
-    ContentTracker, Error, Result,
-};
+use crate::{indexing::TreeWriter, Provider};
 
 use super::{
     tree::{TreeIdentifier, TreeLeafNode},
-    IndexKey, IndexKeyBound, IndexPath, IndexPathItem, IntoIndexKey, SearchResult, Tree, TreeNode,
-    TreeReader,
+    Error, IndexKey, IndexKeyBound, IndexPath, IndexPathItem, IntoIndexKey, Result, SearchResult,
+    Tree, TreeNode, TreeReader,
 };
 
 /// A `StaticIndexer` is an indexer that adds resources according to the prefix
@@ -176,7 +173,7 @@ impl StaticIndexer {
 
     async fn search<'i>(
         &'i self,
-        content_reader: impl ContentReader + Send + Sync + 'i,
+        provider: &'i Provider,
         root: &Tree,
         index_key: &'i IndexKey,
     ) -> Result<SearchResult<'i>> {
@@ -232,7 +229,7 @@ impl StaticIndexer {
                                         break SearchResult::Branch(stack, branch);
                                     }
 
-                                    current_node = content_reader.read_tree(&branch).await?;
+                                    current_node = provider.read_tree(&branch).await?;
                                 }
                             }
                         }
@@ -253,11 +250,7 @@ impl StaticIndexer {
         })
     }
 
-    async fn split_tree(
-        &self,
-        content_provider: impl ContentTracker + Send + Sync,
-        mut tree: Tree,
-    ) -> Result<Tree> {
+    async fn split_tree(&self, provider: &Provider, mut tree: Tree) -> Result<Tree> {
         if tree.direct_count() > self.max_children_per_layer {
             // We are sure to have at least one child or we wouldn't have reached
             // this point.
@@ -310,10 +303,11 @@ impl StaticIndexer {
                             match child {
                                 TreeNode::Leaf(leaf) => {
                                     bucket_tree.count += 1;
-                                    bucket_tree.total_size += leaf.data_size();
+                                    bucket_tree.total_size +=
+                                        provider.read_size(leaf.as_identifier()).await?;
                                 }
                                 TreeNode::Branch(tree_id) => {
-                                    let tree = content_provider.read_tree(tree_id).await?;
+                                    let tree = provider.read_tree(tree_id).await?;
                                     bucket_tree.count += tree.count;
                                     bucket_tree.total_size += tree.total_size;
                                 }
@@ -322,7 +316,7 @@ impl StaticIndexer {
 
                         tree.children.push((
                             key,
-                            TreeNode::Branch(content_provider.write_tree(&bucket_tree).await?),
+                            TreeNode::Branch(provider.write_tree(&bucket_tree).await?),
                         ));
                     }
                 }
@@ -332,11 +326,7 @@ impl StaticIndexer {
         Ok(tree)
     }
 
-    async fn merge_tree(
-        &self,
-        content_tracker: impl ContentTracker + Send + Sync,
-        mut tree: Tree,
-    ) -> Result<Tree> {
+    async fn merge_tree(&self, provider: &Provider, mut tree: Tree) -> Result<Tree> {
         if tree.direct_count() < self.min_children_per_layer
             && tree.count >= self.min_children_per_layer
         {
@@ -352,7 +342,7 @@ impl StaticIndexer {
                         return Ok(tree);
                     }
                     TreeNode::Branch(tree_id) => {
-                        let sub_tree = content_tracker.read_tree(tree_id).await?;
+                        let sub_tree = provider.read_tree(tree_id).await?;
 
                         for (sub_key, leaf) in sub_tree.children {
                             let local_key = key.join(sub_key);
@@ -366,7 +356,7 @@ impl StaticIndexer {
 
             // We could very well end-up with a tree that has too many elements
             // and needs a split-up.
-            tree = self.split_tree(content_tracker, tree).await?;
+            tree = self.split_tree(provider, tree).await?;
         }
 
         Ok(tree)
@@ -383,15 +373,15 @@ impl StaticIndexer {
     /// will be returned.
     pub async fn get_leaf(
         &self,
-        content_provider: impl ContentProvider + Send + Sync,
+        provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &IndexKey,
     ) -> Result<Option<TreeLeafNode>> {
         self.check_index_key_for_leaf(index_key)?;
 
-        let root = content_provider.read_tree(root_id).await?;
+        let root = provider.read_tree(root_id).await?;
 
-        match self.search(content_provider, &root, index_key).await? {
+        match self.search(provider, &root, index_key).await? {
             SearchResult::Leaf(_, leaf) => Ok(Some(leaf)),
             SearchResult::Branch(..) | SearchResult::NotFound(..) => Ok(None),
         }
@@ -415,16 +405,16 @@ impl StaticIndexer {
     /// will be returned.
     pub async fn add_leaf<'call>(
         &self,
-        content_tracker: impl ContentTracker + Send + Sync,
+        provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &'call IndexKey,
         leaf_node: TreeLeafNode,
     ) -> Result<TreeIdentifier> {
         self.check_index_key_for_leaf(index_key)?;
 
-        let root = content_tracker.read_tree(root_id).await?;
+        let root = provider.read_tree(root_id).await?;
 
-        match self.search(&content_tracker, &root, index_key).await? {
+        match self.search(provider, &root, index_key).await? {
             SearchResult::Leaf(_, existing_leaf_node) => Err(
                 Error::IndexTreeLeafNodeAlreadyExists(index_key.clone(), existing_leaf_node),
             ),
@@ -433,7 +423,7 @@ impl StaticIndexer {
                 index_key
             ))),
             SearchResult::NotFound(mut stack) => {
-                let size_delta = leaf_node.data_size();
+                let size_delta = provider.read_size(leaf_node.as_identifier()).await?;
 
                 // This should always be true since `NotFound` is only returned
                 // with a non-empty stack.
@@ -474,7 +464,7 @@ impl StaticIndexer {
                                 )],
                             };
 
-                            let tree_id = content_tracker.write_tree(&tree).await?;
+                            let tree_id = provider.write_tree(&tree).await?;
 
                             TreeNode::Branch(tree_id)
                         }
@@ -485,22 +475,18 @@ impl StaticIndexer {
                     item.tree.count += 1;
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        content_tracker
-                            .try_remove_content(old_node.as_identifier())
-                            .await?;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
 
                     item.tree.total_size += size_delta;
-                    item.tree = self.split_tree(&content_tracker, item.tree).await?;
+                    item.tree = self.split_tree(provider, item.tree).await?;
 
-                    node = TreeNode::Branch(content_tracker.write_tree(&item.tree).await?);
+                    node = TreeNode::Branch(provider.write_tree(&item.tree).await?);
 
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        content_tracker
-                            .try_remove_content(root_id.as_identifier())
-                            .await?;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         break Ok(node.into_branch().unwrap());
                     }
@@ -528,42 +514,40 @@ impl StaticIndexer {
     /// will be returned.
     pub async fn replace_leaf<'call>(
         &self,
-        content_tracker: impl ContentTracker + Send + Sync,
+        provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &'call IndexKey,
         leaf_node: TreeLeafNode,
     ) -> Result<(TreeIdentifier, TreeLeafNode)> {
         self.check_index_key_for_leaf(index_key)?;
 
-        let root = content_tracker.read_tree(root_id).await?;
+        let root = provider.read_tree(root_id).await?;
 
-        match self.search(&content_tracker, &root, index_key).await? {
+        match self.search(provider, &root, index_key).await? {
             SearchResult::Leaf(mut stack, existing_leaf_node) => {
                 if existing_leaf_node == leaf_node {
                     Ok((root_id.clone(), existing_leaf_node))
                 } else {
-                    let data_size = leaf_node.data_size();
+                    let data_size = provider.read_size(leaf_node.as_identifier()).await?;
                     let mut item = stack.pop().expect("stack is not empty");
                     let mut node = TreeNode::Leaf(leaf_node);
 
                     loop {
                         if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                            content_tracker
-                                .try_remove_content(old_node.as_identifier())
-                                .await?;
+                            provider.unwrite(old_node.as_identifier()).await?;
                         }
 
                         item.tree.total_size += data_size;
-                        item.tree.total_size -= existing_leaf_node.data_size();
+                        item.tree.total_size -= provider
+                            .read_size(existing_leaf_node.as_identifier())
+                            .await?;
 
-                        node = TreeNode::Branch(content_tracker.write_tree(&item.tree).await?);
+                        node = TreeNode::Branch(provider.write_tree(&item.tree).await?);
 
                         if let Some(next) = stack.pop() {
                             item = next;
                         } else {
-                            content_tracker
-                                .try_remove_content(root_id.as_identifier())
-                                .await?;
+                            provider.unwrite(root_id.as_identifier()).await?;
 
                             break Ok((node.into_branch().unwrap(), existing_leaf_node));
                         }
@@ -603,23 +587,21 @@ impl StaticIndexer {
     /// will be returned.
     pub async fn remove_leaf<'call>(
         &self,
-        content_tracker: impl ContentTracker + Send + Sync,
+        provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &'call IndexKey,
     ) -> Result<(TreeIdentifier, TreeLeafNode)> {
         self.check_index_key_for_leaf(index_key)?;
 
-        let root = content_tracker.read_tree(root_id).await?;
+        let root = provider.read_tree(root_id).await?;
 
-        match self.search(&content_tracker, &root, index_key).await? {
+        match self.search(provider, &root, index_key).await? {
             SearchResult::Leaf(mut stack, existing_leaf_node) => {
                 let mut item = stack.pop().expect("stack is not empty");
 
                 loop {
                     if let Some(old_node) = item.tree.remove_children(item.key) {
-                        content_tracker
-                            .try_remove_content(old_node.as_identifier())
-                            .await?;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
 
                     if !item.tree.is_empty() {
@@ -634,12 +616,10 @@ impl StaticIndexer {
                         // to return.
                         //
                         // This should always return an empty tree.
-                        content_tracker
-                            .try_remove_content(root_id.as_identifier())
-                            .await?;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         return Ok((
-                            content_tracker.write_tree(&Tree::default()).await?,
+                            provider.write_tree(&Tree::default()).await?,
                             existing_leaf_node,
                         ));
                     }
@@ -647,26 +627,24 @@ impl StaticIndexer {
 
                 loop {
                     item.tree.count -= 1;
-                    item.tree.total_size -= existing_leaf_node.data_size();
+                    item.tree.total_size -= provider
+                        .read_size(existing_leaf_node.as_identifier())
+                        .await?;
 
-                    item.tree = self.merge_tree(&content_tracker, item.tree).await?;
+                    item.tree = self.merge_tree(provider, item.tree).await?;
 
-                    let node = TreeNode::Branch(content_tracker.write_tree(&item.tree).await?);
+                    let node = TreeNode::Branch(provider.write_tree(&item.tree).await?);
 
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        content_tracker
-                            .try_remove_content(root_id.as_identifier())
-                            .await?;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         break Ok((node.into_branch().unwrap(), existing_leaf_node));
                     }
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        content_tracker
-                            .try_remove_content(old_node.as_identifier())
-                            .await?;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
                 }
             }
@@ -686,7 +664,7 @@ impl StaticIndexer {
     /// tree it could actually take a very long time to end. Think twice before
     /// using it.
     pub fn all_leaves<'s>(
-        provider: impl ContentReader + Send + Sync + 's,
+        provider: &'s Provider,
         root_id: &'s TreeIdentifier,
     ) -> impl Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's {
         let mut trees = VecDeque::new();
@@ -733,7 +711,7 @@ impl StaticIndexer {
     /// If the iteration fails, an error will be returned.
     pub async fn get_leaves_in_range<'s, T>(
         &'s self,
-        provider: impl ContentReader + Send + Sync + 's,
+        provider: &'s Provider,
         root_id: &'s TreeIdentifier,
         range: impl RangeBounds<T>,
     ) -> Result<Vec<(IndexKey, TreeLeafNode)>>
@@ -767,7 +745,7 @@ impl StaticIndexer {
     /// If the range is invalid, an error will be returned.
     pub fn all_leaves_in_range<'s, T>(
         &'s self,
-        provider: impl ContentReader + Send + Sync + 's,
+        provider: &'s Provider,
         root_id: &'s TreeIdentifier,
         range: impl RangeBounds<T>,
     ) -> Result<impl Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's>
@@ -891,16 +869,16 @@ mod tests {
     use super::*;
 
     macro_rules! read_tree {
-        ($content_tracker:expr, $tree_id:expr) => {{
-            $content_tracker.read_tree(&$tree_id).await.unwrap()
+        ($provider:expr, $tree_id:expr) => {{
+            $provider.read_tree(&$tree_id).await.unwrap()
         }};
     }
 
     macro_rules! get_leaf {
-        ($indexer:expr, $content_reader:expr, $tree_id:expr, $key:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr) => {{
             $indexer
                 .get_leaf(
-                    &$content_reader,
+                    &$provider,
                     &$tree_id,
                     &IndexKey::from_slice(&hex::decode(&$key).unwrap()),
                 )
@@ -910,16 +888,16 @@ mod tests {
     }
 
     macro_rules! assert_leaf_does_not_exist {
-        ($indexer:expr, $content_reader:expr, $tree_id:expr, $key:expr) => {{
-            assert!(get_leaf!($indexer, $content_reader, $tree_id, $key).is_none());
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr) => {{
+            assert!(get_leaf!($indexer, $provider, $tree_id, $key).is_none());
         }};
     }
 
     macro_rules! assert_leaf {
-        ($indexer:expr, $content_reader:expr, $tree_id:expr, $key:expr, $leaf:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $leaf:expr) => {{
             assert_eq!(
                 Some(&$leaf),
-                get_leaf!($indexer, $content_reader, $tree_id, $key).as_ref()
+                get_leaf!($indexer, $provider, $tree_id, $key).as_ref()
             );
         }};
     }
@@ -927,18 +905,20 @@ mod tests {
     macro_rules! resource_leaf {
         ($content:expr) => {{
             #[allow(clippy::string_lit_as_bytes)]
-            TreeLeafNode::Resource(ResourceIdentifier(Identifier::new($content.as_bytes())))
+            TreeLeafNode::Resource(ResourceIdentifier(Identifier::new_data(
+                $content.as_bytes(),
+            )))
         }};
     }
 
     macro_rules! add_leaf_hex {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $key:expr, $content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
 
             (
                 $indexer
                     .add_leaf(
-                        &$content_tracker,
+                        &$provider,
                         &$tree_id,
                         &IndexKey::from_slice(&hex::decode(&$key).unwrap()),
                         leaf.clone(),
@@ -951,12 +931,12 @@ mod tests {
     }
 
     macro_rules! add_leaf {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $key:expr, $content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
 
             (
                 $indexer
-                    .add_leaf(&$content_tracker, &$tree_id, &($key.into()), leaf.clone())
+                    .add_leaf(&$provider, &$tree_id, &($key.into()), leaf.clone())
                     .await
                     .unwrap(),
                 leaf,
@@ -965,12 +945,12 @@ mod tests {
     }
 
     macro_rules! assert_add_leaf_already_exists {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $key:expr, $content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
             let key = IndexKey::from_slice(&hex::decode(&$key).unwrap());
 
             match $indexer
-                .add_leaf(&$content_tracker, &$tree_id, &key, leaf.clone())
+                .add_leaf(&$provider, &$tree_id, &key, leaf.clone())
                 .await
                 .unwrap_err()
             {
@@ -984,12 +964,12 @@ mod tests {
     }
 
     macro_rules! assert_replace_leaf {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $key:expr, $old_content:expr, $content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $old_content:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
 
             let (tree_id, old_leaf) = $indexer
                 .replace_leaf(
-                    &$content_tracker,
+                    &$provider,
                     &$tree_id,
                     &IndexKey::from_slice(&hex::decode(&$key).unwrap()),
                     leaf.clone(),
@@ -1004,12 +984,12 @@ mod tests {
     }
 
     macro_rules! assert_replace_leaf_not_found {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $key:expr, $content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
             let key = IndexKey::from_slice(&hex::decode(&$key).unwrap());
 
             match $indexer
-                .replace_leaf(&$content_tracker, &$tree_id, &key, leaf.clone())
+                .replace_leaf(&$provider, &$tree_id, &key, leaf.clone())
                 .await
                 .unwrap_err()
             {
@@ -1022,10 +1002,10 @@ mod tests {
     }
 
     macro_rules! assert_remove_leaf {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $key:expr, $old_content:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $old_content:expr) => {{
             let (tree_id, old_leaf) = $indexer
                 .remove_leaf(
-                    &$content_tracker,
+                    &$provider,
                     &$tree_id,
                     &IndexKey::from_slice(&hex::decode(&$key).unwrap()),
                 )
@@ -1039,11 +1019,11 @@ mod tests {
     }
 
     macro_rules! assert_remove_leaf_not_found {
-        ($indexer:expr, $content_tracker:expr, $tree_id:expr, $key:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr) => {{
             let key = IndexKey::from_slice(&hex::decode(&$key).unwrap());
 
             match $indexer
-                .remove_leaf(&$content_tracker, &$tree_id, &key)
+                .remove_leaf(&$provider, &$tree_id, &key)
                 .await
                 .unwrap_err()
             {
@@ -1056,9 +1036,9 @@ mod tests {
     }
 
     macro_rules! assert_get_leaves_in_range {
-        ($indexer:expr, $content_reader:expr, $tree_id:expr, $range:expr, $expected:expr) => {{
+        ($indexer:expr, $provider:expr, $tree_id:expr, $range:expr, $expected:expr) => {{
             let leaves = $indexer
-                .get_leaves_in_range(&$content_reader, &$tree_id, $range)
+                .get_leaves_in_range(&$provider, &$tree_id, $range)
                 .await
                 .unwrap();
 
@@ -1068,7 +1048,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_prefix_indexer() {
-        let ct = crate::SmallContentProvider::new(crate::MemoryProvider::new());
+        let provider = Provider::new_in_memory();
         let idx = StaticIndexer {
             index_key_length: 4,
             min_children_per_layer: 2,
@@ -1079,40 +1059,40 @@ mod tests {
         //
         // In all likelyhood, the generated identifier will benefit from
         // small-content optimization and not actually be written anywhere.
-        let tree_id = ct.write_tree(&Tree::default()).await.unwrap();
+        let tree_id = provider.write_tree(&Tree::default()).await.unwrap();
 
         // Let's perform a search in the empty tree. It should yield no result.
-        assert_leaf_does_not_exist!(idx, ct, tree_id, "00000000");
+        assert_leaf_does_not_exist!(idx, provider, tree_id, "00000000");
 
         // Let's insert a new leaf node.
-        let (tree_id, leaf_node1) = add_leaf_hex!(idx, ct, tree_id, "00000000", "a");
+        let (tree_id, leaf_node1) = add_leaf_hex!(idx, provider, tree_id, "00000000", "a");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 1);
         assert_eq!(tree.total_size(), 1);
 
         // Let's perform a search in the resulting tree. It should yield the leaf node.
-        assert_leaf!(idx, ct, tree_id, "00000000", leaf_node1);
+        assert_leaf!(idx, provider, tree_id, "00000000", leaf_node1);
 
         // Adding the same leaf node with the exact same key should yield a very specific error:
         // error and no changes to the tree.
-        assert_add_leaf_already_exists!(idx, ct, tree_id, "00000000", "a");
+        assert_add_leaf_already_exists!(idx, provider, tree_id, "00000000", "a");
 
         // Let's insert a new leaf node.
-        let (tree_id, leaf_node2) = add_leaf_hex!(idx, ct, tree_id, "00000001", "bigger");
+        let (tree_id, leaf_node2) = add_leaf_hex!(idx, provider, tree_id, "00000001", "bigger");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 2);
         assert_eq!(tree.total_size, 7);
 
         // Let's perform a search in the resulting tree. It should yield the leaf node.
-        assert_leaf!(idx, ct, tree_id, "00000001", leaf_node2);
+        assert_leaf!(idx, provider, tree_id, "00000001", leaf_node2);
 
         // We add two more nodes.
-        let (tree_id, _) = add_leaf_hex!(idx, ct, tree_id, "00000002", "node3");
-        let (tree_id, _) = add_leaf_hex!(idx, ct, tree_id, "00000003", "node4");
+        let (tree_id, _) = add_leaf_hex!(idx, provider, tree_id, "00000002", "node3");
+        let (tree_id, _) = add_leaf_hex!(idx, provider, tree_id, "00000003", "node4");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 4);
         assert_eq!(tree.total_size, 17);
         assert_eq!(tree.direct_count(), 4);
@@ -1122,79 +1102,79 @@ mod tests {
         //
         // As there are only 2 different prefixes, we expect the tree to have a
         // first layer with 2 children.
-        let (tree_id, _) = add_leaf_hex!(idx, ct, tree_id, "00000100", "node5");
+        let (tree_id, _) = add_leaf_hex!(idx, provider, tree_id, "00000100", "node5");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 5);
         assert_eq!(tree.total_size, 22);
         assert_eq!(tree.direct_count(), 2); // The root tree should have been rebalanced.
 
         // The same search than before should still work.
-        assert_leaf!(idx, ct, tree_id, "00000001", leaf_node2);
+        assert_leaf!(idx, provider, tree_id, "00000001", leaf_node2);
 
         // We keep adding nodes with different prefixes to trigger a top-level
         // rebalancing.
-        let (tree_id, _) = add_leaf_hex!(idx, ct, tree_id, "01000000", "node6");
-        let (tree_id, _) = add_leaf_hex!(idx, ct, tree_id, "02000000", "node7");
-        let (tree_id, _) = add_leaf_hex!(idx, ct, tree_id, "03000000", "node8");
+        let (tree_id, _) = add_leaf_hex!(idx, provider, tree_id, "01000000", "node6");
+        let (tree_id, _) = add_leaf_hex!(idx, provider, tree_id, "02000000", "node7");
+        let (tree_id, _) = add_leaf_hex!(idx, provider, tree_id, "03000000", "node8");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 8);
         assert_eq!(tree.total_size, 37);
         assert_eq!(tree.direct_count(), 4); // The root tree should have been rebalanced.
 
         // Perform a replacement.
         let (tree_id, leaf_node2) =
-            assert_replace_leaf!(idx, ct, tree_id, "00000001", "bigger", "node2");
+            assert_replace_leaf!(idx, provider, tree_id, "00000001", "bigger", "node2");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 8);
         assert_eq!(tree.total_size, 36); // Notice how the size of the tree has decreased.
 
         // The same search than before should still work.
-        assert_leaf!(idx, ct, tree_id, "00000001", leaf_node2);
+        assert_leaf!(idx, provider, tree_id, "00000001", leaf_node2);
 
         // Perform an illegal replacement.
-        assert_replace_leaf_not_found!(idx, ct, tree_id, "00000099", "node99");
+        assert_replace_leaf_not_found!(idx, provider, tree_id, "00000099", "node99");
 
         // Remove the node5.
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "00000100", "node5");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "00000100", "node5");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 7);
         assert_eq!(tree.total_size, 31); // Notice how the size of the tree has decreased.
 
         // Perform an illegal removal.
-        assert_remove_leaf_not_found!(idx, ct, tree_id, "00000099");
+        assert_remove_leaf_not_found!(idx, provider, tree_id, "00000099");
 
         // Remove the nodes 6, 7 and 8, which should cause a rebalancing.
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "01000000", "node6");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "01000000", "node6");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 6);
         assert_eq!(tree.total_size, 26); // Notice how the size of the tree has decreased.
 
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "02000000", "node7");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "02000000", "node7");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 5);
         assert_eq!(tree.total_size, 21); // Notice how the size of the tree has decreased.
 
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "03000000", "node8");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "03000000", "node8");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 4);
         assert_eq!(tree.total_size, 16); // Notice how the size of the tree has decreased.
         assert_eq!(tree.direct_count(), 4); // We make sure the tree was rebalanced.
 
         // Remove all remaining nodes to test for the final empty tree.
 
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "00000000", "a");
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "00000001", "node2");
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "00000002", "node3");
-        let tree_id = assert_remove_leaf!(idx, ct, tree_id, "00000003", "node4");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "00000000", "a");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "00000001", "node2");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "00000002", "node3");
+        let tree_id = assert_remove_leaf!(idx, provider, tree_id, "00000003", "node4");
 
-        let tree = read_tree!(ct, tree_id);
+        let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 0);
         assert_eq!(tree.total_size, 0);
 
@@ -1205,33 +1185,45 @@ mod tests {
 
         // There should be no identifiers left to pop, as we went back to the
         // original tree.
-        let ids = ct.pop_referenced_identifiers().await.unwrap();
+        let ids = provider.pop_referenced_identifiers();
 
         assert_eq!(&ids, &[]);
     }
 
     #[tokio::test]
     async fn test_prefix_indexer_range_search() {
-        let ct = crate::SmallContentProvider::new(crate::MemoryProvider::new());
+        let provider = Provider::new_in_memory();
         let idx = StaticIndexer {
             index_key_length: 4,
             min_children_per_layer: 2,
             max_children_per_layer: 4,
         };
 
-        let tree_id = ct.write_tree(&Tree::default()).await.unwrap();
-        let (tree_id, _) = add_leaf!(idx, ct, tree_id, 1_u32, "one");
-        let (tree_id, _) = add_leaf!(idx, ct, tree_id, 2_u32, "two");
-        let (tree_id, _) = add_leaf!(idx, ct, tree_id, 8_u32, "eight");
-        let (tree_id, _) = add_leaf!(idx, ct, tree_id, 256_u32, "two hundred and fifty-six");
-        let (tree_id, _) = add_leaf!(idx, ct, tree_id, 512_u32, "five hundred and twelve");
+        let tree_id = provider.write_tree(&Tree::default()).await.unwrap();
+        let (tree_id, _) = add_leaf!(idx, provider, tree_id, 1_u32, "one");
+        let (tree_id, _) = add_leaf!(idx, provider, tree_id, 2_u32, "two");
+        let (tree_id, _) = add_leaf!(idx, provider, tree_id, 8_u32, "eight");
+        let (tree_id, _) = add_leaf!(idx, provider, tree_id, 256_u32, "two hundred and fifty-six");
+        let (tree_id, _) = add_leaf!(idx, provider, tree_id, 512_u32, "five hundred and twelve");
 
-        assert_get_leaves_in_range!(idx, ct, tree_id, 0..1, []);
-        assert_get_leaves_in_range!(idx, ct, tree_id, 0..=1, [(1.into(), resource_leaf!("one"))]);
-        assert_get_leaves_in_range!(idx, ct, tree_id, ..2, [(1.into(), resource_leaf!("one"))]);
+        assert_get_leaves_in_range!(idx, provider, tree_id, 0..1, []);
         assert_get_leaves_in_range!(
             idx,
-            ct,
+            provider,
+            tree_id,
+            0..=1,
+            [(1.into(), resource_leaf!("one"))]
+        );
+        assert_get_leaves_in_range!(
+            idx,
+            provider,
+            tree_id,
+            ..2,
+            [(1.into(), resource_leaf!("one"))]
+        );
+        assert_get_leaves_in_range!(
+            idx,
+            provider,
             tree_id,
             2..300,
             [
@@ -1242,7 +1234,7 @@ mod tests {
         );
         assert_get_leaves_in_range!(
             idx,
-            ct,
+            provider,
             tree_id,
             2..,
             [

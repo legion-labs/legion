@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lgn_content_store::ContentProvider;
+use lgn_content_store::Provider;
 use std::{io, path::Path, sync::Arc};
 
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourcePathId, Transform};
@@ -53,7 +53,7 @@ impl CompilerStub for InProcessCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        data_content_provider: &(dyn ContentProvider + Send + Sync),
+        provider: &Provider,
         _project_dir: &Path,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
@@ -64,7 +64,7 @@ impl CompilerStub for InProcessCompilerStub {
                 dependencies,
                 derived_deps,
                 registry,
-                data_content_provider,
+                provider,
                 env,
             )
             .await

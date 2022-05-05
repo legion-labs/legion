@@ -83,7 +83,7 @@ impl LocalWorkspaceBackend {
     #[span_fn]
     async fn create_changes_table(&mut self) -> Result<()> {
         let sql: &str = &format!(
-            "CREATE TABLE `{}`(canonical_path TEXT NOT NULL PRIMARY KEY, old_chunk_id VARCHAR(255), new_chunk_id VARCHAR(255), unique(canonical_path));",
+            "CREATE TABLE `{}`(canonical_path TEXT NOT NULL PRIMARY KEY, old_cs_id VARCHAR(255), new_cs_id VARCHAR(255), unique(canonical_path));",
             Self::TABLE_CHANGES
         );
 
@@ -171,7 +171,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
     async fn get_staged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
         async_span_scope!("LocalWorkspaceBackend::get_staged_changes");
         let sql: &str = &format!(
-            "SELECT canonical_path, old_chunk_id, new_chunk_id FROM {}",
+            "SELECT canonical_path, old_cs_id, new_cs_id FROM {}",
             Self::TABLE_CHANGES
         );
 
@@ -187,11 +187,11 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
         let mut res = BTreeMap::new();
 
         for row in rows {
-            let old_chunk_id: String = row.get("old_chunk_id");
+            let old_cs_id: String = row.get("old_cs_id");
 
-            let old_chunk_id = if !old_chunk_id.is_empty() {
+            let old_cs_id = if !old_cs_id.is_empty() {
                 Some(
-                    old_chunk_id
+                    old_cs_id
                         .parse()
                         .map_other_err("failed to parse old chunk id")?,
                 )
@@ -199,11 +199,11 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
                 None
             };
 
-            let new_chunk_id: String = row.get("new_chunk_id");
+            let new_cs_id: String = row.get("new_cs_id");
 
-            let new_chunk_id = if !new_chunk_id.is_empty() {
+            let new_cs_id = if !new_cs_id.is_empty() {
                 Some(
-                    new_chunk_id
+                    new_cs_id
                         .parse()
                         .map_other_err("failed to parse new chunk id")?,
                 )
@@ -213,7 +213,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
 
             let canonical_path = CanonicalPath::new(row.get("canonical_path"))?;
 
-            if let Some(change_type) = ChangeType::new(old_chunk_id, new_chunk_id) {
+            if let Some(change_type) = ChangeType::new(old_cs_id, new_cs_id) {
                 res.insert(
                     canonical_path.clone(),
                     Change::new(canonical_path, change_type),
@@ -231,7 +231,7 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
         }
 
         let sql: &str = &format!(
-            "REPLACE INTO `{}` (canonical_path, old_chunk_id, new_chunk_id) VALUES(?, ?, ?);",
+            "REPLACE INTO `{}` (canonical_path, old_cs_id, new_cs_id) VALUES(?, ?, ?);",
             Self::TABLE_CHANGES
         );
 
@@ -247,14 +247,14 @@ impl WorkspaceBackend for LocalWorkspaceBackend {
                 .bind(
                     change
                         .change_type()
-                        .old_chunk_id()
+                        .old_id()
                         .map(std::string::ToString::to_string)
                         .unwrap_or_default(),
                 )
                 .bind(
                     change
                         .change_type()
-                        .new_chunk_id()
+                        .new_id()
                         .map(std::string::ToString::to_string)
                         .unwrap_or_default(),
                 );

@@ -20,7 +20,8 @@
     "fmt": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
     "svelte:check": "tsc && svelte-check --use-new-transformation",
     "clean": "rimraf node_modules dist",
-    "test": "jest"
+    "test": "jest",
+    "fluent:generate": "cargo run --bin lgn-fluent-generator -- -i ./src/assets/locales/en-US/**/*.ftl -o ./src/types"
   },
   "devDependencies": {
     "@lgn/vite-plugin-ts-proto": "workspace:^0.1.0",

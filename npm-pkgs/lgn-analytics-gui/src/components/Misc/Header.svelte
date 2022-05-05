@@ -12,7 +12,9 @@
 
   let user: string | undefined;
 
-  const { locale } = getContext<L10nOrchestrator>(l10nOrchestratorContextKey);
+  const { locale } = getContext<L10nOrchestrator<Fluent>>(
+    l10nOrchestratorContextKey
+  );
 
   onMount(async () => {
     user = (await authClient.userInfo()).name;

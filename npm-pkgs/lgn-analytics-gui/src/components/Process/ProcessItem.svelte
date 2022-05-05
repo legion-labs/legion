@@ -14,7 +14,9 @@
   import ProcessPlatform from "./ProcessPlatform.svelte";
   import User from "./User.svelte";
 
-  const { locale } = getContext<L10nOrchestrator>(l10nOrchestratorContextKey);
+  const { locale } = getContext<L10nOrchestrator<Fluent>>(
+    l10nOrchestratorContextKey
+  );
 
   export let processInstance: ProcessInstance;
   export let depth: number;
