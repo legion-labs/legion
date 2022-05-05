@@ -3,20 +3,16 @@
 
 use std::{
     collections::HashMap,
-    fmt::Display,
     path::PathBuf,
-    str::FromStr,
     sync::{Arc, RwLock},
 };
 
-use bytesize::ByteSize;
 use clap::{Parser, Subcommand};
 use console::style;
 use futures::Future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lgn_content_store::{
-    ChunkIdentifier, ChunkIndex, Chunker, Config, ContentReaderExt, Error, Identifier,
-    MonitorAsyncAdapter, MonitorProvider, TransferCallbacks,
+    Config, Error, HashRef, Identifier, MonitorAsyncAdapter, TransferCallbacks,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, LevelFilter};
@@ -38,46 +34,16 @@ struct Args {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Get {
-        identifier: ChunkIdentifier,
+        identifier: Identifier,
 
         file_path: PathBuf,
     },
     Put {
         file_path: Option<PathBuf>,
-
-        #[clap(long, default_value_t = ByteSize::b(Chunker::DEFAULT_CHUNK_SIZE.try_into().unwrap()))]
-        chunk_size: ByteSize,
     },
     Explain {
-        identifier: GenericIdentifier,
+        identifier: Identifier,
     },
-}
-
-#[derive(Debug, Clone)]
-enum GenericIdentifier {
-    Identifier(Identifier),
-    ChunkIdentifier(ChunkIdentifier),
-}
-
-impl Display for GenericIdentifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Identifier(id) => write!(f, "{}", id),
-            Self::ChunkIdentifier(id) => write!(f, "{}", id),
-        }
-    }
-}
-
-impl FromStr for GenericIdentifier {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Ok(chunk_id) = s.parse::<ChunkIdentifier>() {
-            Ok(Self::ChunkIdentifier(chunk_id))
-        } else {
-            s.parse::<Identifier>().map(GenericIdentifier::Identifier)
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -120,8 +86,8 @@ impl TransferProgress {
     }
 }
 
-impl TransferCallbacks<Identifier> for TransferProgress {
-    fn on_transfer_avoided(&self, id: &Identifier, total: usize) {
+impl TransferCallbacks<HashRef> for TransferProgress {
+    fn on_transfer_avoided(&self, id: &HashRef, total: usize) {
         let bar = self
             .progress
             .add(ProgressBar::new(total.try_into().unwrap()));
@@ -133,7 +99,7 @@ impl TransferCallbacks<Identifier> for TransferProgress {
         self.bars.write().unwrap().insert(id.to_string(), bar);
     }
 
-    fn on_transfer_started(&self, id: &Identifier, total: usize) {
+    fn on_transfer_started(&self, id: &HashRef, total: usize) {
         let bar = self
             .progress
             .add(ProgressBar::new(total.try_into().unwrap()));
@@ -143,7 +109,7 @@ impl TransferCallbacks<Identifier> for TransferProgress {
         self.bars.write().unwrap().insert(id.to_string(), bar);
     }
 
-    fn on_transfer_progress(&self, id: &Identifier, _total: usize, inc: usize, _current: usize) {
+    fn on_transfer_progress(&self, id: &HashRef, _total: usize, inc: usize, _current: usize) {
         if let Some(bar) = self.bars.read().unwrap().get(&id.to_string()) {
             bar.inc(inc.try_into().unwrap());
         }
@@ -151,11 +117,11 @@ impl TransferCallbacks<Identifier> for TransferProgress {
 
     fn on_transfer_stopped(
         &self,
-        id: &Identifier,
+        id: &HashRef,
         _total: usize,
         inc: usize,
         _current: usize,
-        result: lgn_content_store::Result<()>,
+        result: lgn_content_store::content_providers::Result<()>,
     ) {
         if let Some(bar) = self.bars.read().unwrap().get(&id.to_string()) {
             bar.inc(inc.try_into().unwrap());
@@ -193,7 +159,7 @@ impl TransferCallbacks<String> for TransferProgress {
         _total: usize,
         inc: usize,
         _current: usize,
-        result: lgn_content_store::Result<()>,
+        result: lgn_content_store::content_providers::Result<()>,
     ) {
         if let Some(bar) = self.bars.read().unwrap().get(id) {
             bar.inc(inc.try_into().unwrap());
@@ -218,12 +184,12 @@ async fn main() -> anyhow::Result<()> {
     async_span_scope!("lgn-content-store-srv::main");
 
     let config = Config::load(&args.section)?;
-    let provider = config
+    let mut provider = config
         .instantiate_provider()
         .await
         .map_err(|err| anyhow::anyhow!("failed to create content provider: {}", err))?;
-    let provider = MonitorProvider::new(provider);
 
+    // Let's add monitoring to the content-provider.
     let transfer_progress = TransferProgress::new();
     let file_transfer_progress = transfer_progress.clone();
     let transfer_join = transfer_progress.join();
@@ -233,8 +199,7 @@ async fn main() -> anyhow::Result<()> {
             identifier,
             file_path,
         } => {
-            let provider = provider.on_download_callbacks(transfer_progress);
-            let chunker = Chunker::default();
+            provider.set_download_callbacks(transfer_progress);
 
             let output = Box::new(tokio::fs::File::create(&file_path).await.map_err(|err| {
                 anyhow::anyhow!(
@@ -244,20 +209,19 @@ async fn main() -> anyhow::Result<()> {
                 )
             })?);
 
+            let mut input = provider
+                .get_reader(&identifier)
+                .await
+                .map_err(|err| anyhow::anyhow!("failed to get content: {}", err))?;
+
             let mut output = MonitorAsyncAdapter::new(
                 output,
                 file_path.display().to_string(),
-                identifier.data_size(),
+                input.size(),
                 Arc::new(Box::new(file_transfer_progress)),
-                None,
             );
 
             let copy = async move {
-                let mut input = chunker
-                    .get_chunk_reader(provider, &identifier)
-                    .await
-                    .map_err(|err| anyhow::anyhow!("failed to get asset: {}", err))?;
-
                 tokio::io::copy_buf(
                     &mut tokio::io::BufReader::with_capacity(10 * 1024 * 1024, &mut input),
                     &mut output,
@@ -277,13 +241,8 @@ async fn main() -> anyhow::Result<()> {
             res.0?;
             res.1?;
         }
-        Commands::Put {
-            file_path,
-            chunk_size,
-        } => {
-            let provider = provider.on_upload_callbacks(transfer_progress);
-            let chunker =
-                Chunker::default().with_chunk_size(chunk_size.as_u64().try_into().unwrap());
+        Commands::Put { file_path } => {
+            provider.set_upload_callbacks(transfer_progress);
 
             let copy = async move {
                 let buf = if let Some(file_path) = file_path {
@@ -306,7 +265,6 @@ async fn main() -> anyhow::Result<()> {
                         file_path.display().to_string(),
                         metadata.len().try_into().unwrap(),
                         Arc::new(Box::new(file_transfer_progress)),
-                        None,
                     );
 
                     f.read_to_end(&mut buf)
@@ -324,8 +282,8 @@ async fn main() -> anyhow::Result<()> {
                     buf
                 };
 
-                chunker
-                    .write_chunk(provider, &buf)
+                provider
+                    .write(&buf)
                     .await
                     .map_err(|err| anyhow::anyhow!("failed to write asset: {}", err))
             };
@@ -337,102 +295,101 @@ async fn main() -> anyhow::Result<()> {
 
             println!("{}", id);
         }
-        Commands::Explain { identifier } => match identifier {
-            GenericIdentifier::ChunkIdentifier(identifier) => {
-                println!(
-                    "{} is a {} identifier.",
-                    style(&identifier).bold().yellow(),
-                    style("chunk").bold().cyan()
-                );
-                println!(
-                    "The data it represents to is {} byte(s) long.",
-                    style(identifier.data_size()).bold()
-                );
-
-                println!(
-                    "The chunk manifest it points to is {} bytes long.",
-                    style(identifier.content_id().data_size()).bold()
-                );
-
-                if identifier.content_id().is_data() {
+        Commands::Explain { identifier } => {
+            match &identifier {
+                Identifier::Data(data) => {
                     println!(
-                        "The chunk manifest is {} in the identifier, which makes the indirection free.",
-                        style("inlined").bold().green()
+                        "{} is a {} identifier.",
+                        style(&identifier).bold().yellow(),
+                        style("data").bold().cyan()
                     );
-                } else {
-                    let origin = provider.read_origin(identifier.content_id()).await?;
-
                     println!(
-                        "The chunk manifest has id `{}` and comes from {}: {}",
-                        style(identifier.content_id()).bold().yellow(),
-                        style(origin.name()).bold().red(),
-                        style(&origin).cyan(),
+                        "It's data is {} byte(s) long and is contained in the identifier itself.",
+                        style(data.len()).bold().red()
                     );
                 }
+                Identifier::HashRef(id) => {
+                    println!(
+                        "{} is a {} identifier.",
+                        style(&identifier).bold().yellow(),
+                        style("hash-ref").bold().cyan()
+                    );
+                    println!(
+                        "It's data is {} byte(s) long and is directly contained in the content-store.",
+                        style(id.data_size()).bold().red()
+                    );
+                }
+                Identifier::ManifestRef(size, id) => {
+                    println!(
+                        "{} is a {} identifier.",
+                        style(&identifier).bold().yellow(),
+                        style("manifest-ref").bold().cyan()
+                    );
+                    println!(
+                        "It's data is {} byte(s) long and is split across several identifiers in the content-store. The manifest at `{}` describes the data.",
+                        style(size).bold().red(),
+                        style(id.to_string()).bold().yellow()
+                    );
+                }
+                Identifier::Alias(key) => {
+                    println!(
+                        "{} is an {} identifier.",
+                        style(&identifier).bold().yellow(),
+                        style("alias").bold().cyan()
+                    );
 
-                println!("Fetching the chunk manifest...\n");
+                    match String::from_utf8(key.to_vec()) {
+                        Ok(key) => println!("It has an UTF-8 key: `{}`.", style(key).bold().red()),
+                        Err(_) => println!(
+                            "It has a non-UTF-8 key: `{}`.",
+                            style(hex::encode(key)).bold().red()
+                        ),
+                    }
 
-                let provider = provider.on_download_callbacks(transfer_progress);
-                let chunker = Chunker::default();
-
-                let chunk_index = chunker
-                    .read_chunk_index(&provider, &identifier)
-                    .await
-                    .map_err(|err| anyhow::anyhow!("failed to read chunk index: {}", err))?;
-
-                match chunk_index {
-                    ChunkIndex::Linear(identifiers) => {
-                        println!(
-                            "The chunk manifest is {} and contains {} possibly non-unique identifier(s).",
-                            style("linear").bold().blue(),
-                            style(identifiers.len()).bold(),
-                        );
-
-                        for (i, identifier) in identifiers.iter().enumerate() {
-                            let origin = provider.read_origin(identifier).await?;
-
-                            println!(
-                                "{:>5}/{}: `{}` is {} byte(s) long and comes from {} ({})",
-                                i + 1,
-                                identifiers.len(),
-                                style(&identifier).bold().yellow(),
-                                style(identifier.data_size()).bold(),
-                                style(origin.name()).bold().red(),
-                                style(&origin).cyan()
-                            );
+                    match provider.resolve_alias(key).await {
+                        Ok(id) => println!(
+                            "It points to the identifier: `{}`.",
+                            style(&id).bold().red()
+                        ),
+                        Err(Error::IdentifierNotFound(_)) => {
+                            println!("The alias does not seem to exist.");
                         }
-
-                        println!("End of the chunk manifest.");
+                        Err(err) => {
+                            println!("Resolving of the alias failed: {}", style(err).bold().red());
+                        }
                     }
                 }
-            }
-            GenericIdentifier::Identifier(identifier) => {
-                println!(
-                    "{} is a {} identifier.",
-                    style(&identifier).bold().yellow(),
-                    style("raw").bold().cyan()
-                );
-                println!(
-                    "The data it represents to is {} byte(s) long.",
-                    style(identifier.data_size()).bold()
-                );
+            };
 
-                if identifier.is_data() {
-                    println!(
-                        "The data is {} in the identifier, which makes the indirection free.",
-                        style("inlined").bold().green()
-                    );
-                } else {
-                    let origin = provider.read_origin(&identifier).await?;
+            match provider.get_reader(&identifier).await {
+                Ok(mut reader) => {
+                    let mut buf = Vec::new();
+                    const MAX_BUF_SIZE: usize = 512;
+                    buf.resize(MAX_BUF_SIZE, 0);
 
-                    println!(
-                        "The data comes from {} ({})",
-                        style(origin.name()).bold().red(),
-                        style(&origin).cyan(),
-                    );
+                    if reader.size() < MAX_BUF_SIZE {
+                        reader.read_to_end(&mut buf).await?;
+                    } else {
+                        println!("The content is too large to be printed in its integrality: only showing up the first {} bytes.", style(MAX_BUF_SIZE).bold().cyan());
+                        reader
+                            .take(MAX_BUF_SIZE.try_into().unwrap())
+                            .read_to_end(&mut buf)
+                            .await?;
+                    };
+
+                    match std::str::from_utf8(&buf) {
+                        Ok(s) => println!("It's data is valid UTF-8:\n{}", s),
+                        Err(_) => println!("It's data is not UTF-8:\n{}", hex::encode(&buf)),
+                    };
+                }
+                Err(Error::IdentifierNotFound(_)) => {
+                    println!("The content-store does not contain the identifier.");
+                }
+                Err(err) => {
+                    println!("Failed to get a reader: {}", style(err).bold().red());
                 }
             }
-        },
+        }
     }
 
     Ok(())

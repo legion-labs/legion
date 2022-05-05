@@ -7,7 +7,7 @@ use crate::node_crunch::nc_error::NCError;
 use lgn_data_runtime::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
-use lgn_content_store::{Config, ContentProvider, ContentReaderExt, ContentWriterExt, Identifier};
+use lgn_content_store::{Config, Identifier, Provider};
 use lgn_data_compiler::{
     compiler_api::CompilerError, compiler_cmd::CompilerCompileCmd, CompiledResource,
 };
@@ -22,14 +22,14 @@ pub struct CompileMessage {
 }
 
 async fn deploy_remotely(
-    provider: &(dyn ContentProvider + Send + Sync),
+    provider: &Provider,
     full_file_path: &Path,
     strip_prefix: &Path,
     files_to_package: Arc<RwLock<Vec<(String, Identifier)>>>,
 ) -> Result<(), CompilerError> {
     let relative_path = full_file_path.strip_prefix(strip_prefix).unwrap();
     let buf = tokio::fs::read(&full_file_path).await?;
-    let content_hash = provider.write_content(&buf).await?;
+    let content_hash = provider.write(&buf).await?;
     files_to_package
         .write()
         .unwrap()
@@ -38,7 +38,7 @@ async fn deploy_remotely(
 }
 
 async fn write_res(
-    provider: &(dyn ContentProvider + Send + Sync),
+    provider: &Provider,
     res: &ResourcePathId,
     resource_dir: &Path,
     files_to_package: Arc<RwLock<Vec<(String, Identifier)>>>,
@@ -63,14 +63,14 @@ pub(crate) async fn collect_local_resources(
     dependencies: &[ResourcePathId],
     _derived_deps: &[CompiledResource],
     build_script: &CompilerCompileCmd,
-    data_content_provider: impl ContentProvider + Send + Sync,
+    data_provider: &Provider,
 ) -> Result<String, CompilerError> {
     let files_to_package: Arc<RwLock<Vec<(String, Identifier)>>> =
         Arc::new(RwLock::new(Vec::new()));
 
     // Write the compiler .exe
     deploy_remotely(
-        &data_content_provider,
+        data_provider,
         executable,
         executable.parent().unwrap(),
         files_to_package.clone(),
@@ -79,7 +79,7 @@ pub(crate) async fn collect_local_resources(
 
     // Write the main resource.
     write_res(
-        &data_content_provider,
+        data_provider,
         compile_path,
         resource_dir,
         files_to_package.clone(),
@@ -88,13 +88,7 @@ pub(crate) async fn collect_local_resources(
 
     // Write the direct offline dependencies
     for dep in dependencies {
-        write_res(
-            &data_content_provider,
-            dep,
-            resource_dir,
-            files_to_package.clone(),
-        )
-        .await?;
+        write_res(data_provider, dep, resource_dir, files_to_package.clone()).await?;
     }
 
     // Write the build script into the message.
@@ -106,7 +100,7 @@ pub(crate) async fn collect_local_resources(
 }
 
 pub(crate) async fn deploy_files(
-    provider: &(dyn ContentProvider + Send + Sync),
+    provider: &Provider,
     files: &[(String, Identifier)],
     out_folder: &Path,
 ) -> Result<(), CompilerError> {
@@ -120,7 +114,7 @@ pub(crate) async fn deploy_files(
 
         fs::create_dir_all(file_name.parent().unwrap()).await?;
 
-        let data = provider.read_content(&file.1).await?;
+        let data = provider.read(&file.1).await?;
 
         let mut output = {
             #[cfg(unix)]

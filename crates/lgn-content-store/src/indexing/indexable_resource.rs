@@ -3,7 +3,8 @@ use std::{fmt::Display, str::FromStr};
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-use crate::{ContentReader, ContentReaderExt, ContentWriter, ContentWriterExt, Identifier, Result};
+use super::{Error, Result};
+use crate::{Identifier, Provider};
 
 /// Represents a resource identifier.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -16,18 +17,17 @@ impl Display for ResourceIdentifier {
 }
 
 impl FromStr for ResourceIdentifier {
-    type Err = crate::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        Ok(Self(s.parse()?))
+        match s.parse() {
+            Ok(id) => Ok(Self(id)),
+            Err(err) => Err(Error::InvalidResourceIdentifier(err)),
+        }
     }
 }
 
 impl ResourceIdentifier {
-    pub(crate) fn data_size(&self) -> usize {
-        self.0.data_size()
-    }
-
     pub(crate) fn as_identifier(&self) -> &Identifier {
         &self.0
     }
@@ -38,30 +38,44 @@ impl ResourceIdentifier {
 pub trait IndexableResource {}
 
 #[async_trait]
-pub trait ResourceReader: ContentReader + Send + Sync {
+pub trait ResourceReader {
+    async fn read_resource<R: IndexableResource + DeserializeOwned>(
+        &self,
+        id: &ResourceIdentifier,
+    ) -> Result<R>;
+}
+
+#[async_trait]
+impl ResourceReader for Provider {
     async fn read_resource<R: IndexableResource + DeserializeOwned>(
         &self,
         id: &ResourceIdentifier,
     ) -> Result<R> {
-        let buf = self.read_content(&id.0).await?;
+        let buf = self.read(&id.0).await?;
+
         Ok(rmp_serde::from_slice(&buf)?)
     }
 }
 
 #[async_trait]
-impl<T: ContentReader + Send + Sync> ResourceReader for T {}
+pub trait ResourceWriter {
+    async fn write_resource<R: IndexableResource + Serialize + Send + Sync>(
+        &self,
+        resource: &R,
+    ) -> Result<ResourceIdentifier>;
+}
 
 #[async_trait]
-pub trait ResourceWriter: ContentWriter + Send + Sync {
+impl ResourceWriter for Provider {
     async fn write_resource<R: IndexableResource + Serialize + Send + Sync>(
         &self,
         resource: &R,
     ) -> Result<ResourceIdentifier> {
         let buf = rmp_serde::to_vec(resource).unwrap();
 
-        self.write_content(&buf).await.map(ResourceIdentifier)
+        self.write(&buf)
+            .await
+            .map(ResourceIdentifier)
+            .map_err(Into::into)
     }
 }
-
-#[async_trait]
-impl<T: ContentWriter + Send + Sync> ResourceWriter for T {}

@@ -1,4 +1,4 @@
-use lgn_content_store::ChunkIdentifier;
+use lgn_content_store::Identifier;
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::resource::Project;
@@ -11,7 +11,7 @@ pub struct BuildManager {
     compile_env: CompilationEnv,
     runtime_manifest: Manifest,
     intermediate_manifest: Manifest,
-    runtime_manifest_id: ChunkIdentifier,
+    runtime_manifest_id: Identifier,
 }
 
 impl BuildManager {
@@ -121,7 +121,7 @@ impl BuildManager {
     }
 
     /// Runtime manifest identifier
-    pub fn get_manifest_id(&self) -> &ChunkIdentifier {
+    pub fn get_manifest_id(&self) -> &Identifier {
         &self.runtime_manifest_id
     }
 

@@ -10,7 +10,7 @@ use std::{
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use flurry::TryInsertError;
-use lgn_content_store::ChunkIdentifier;
+use lgn_content_store::Identifier;
 use lgn_tracing::{error, info};
 use serde::{Deserialize, Serialize};
 
@@ -49,7 +49,7 @@ pub(crate) enum LoaderRequest {
     Reload(HandleUntyped),
     Unload(ResourceTypeAndId),
     Terminate,
-    LoadManifest(ChunkIdentifier),
+    LoadManifest(Identifier),
 }
 
 /// State of a load request in progress.
@@ -227,7 +227,7 @@ impl AssetLoaderStub {
             .unwrap();
     }
 
-    pub(crate) fn load_manifest(&self, manifest_id: &ChunkIdentifier) {
+    pub(crate) fn load_manifest(&self, manifest_id: &Identifier) {
         self.request_tx
             .send(LoaderRequest::LoadManifest(manifest_id.clone()))
             .unwrap();
@@ -442,7 +442,7 @@ impl AssetLoaderIO {
             .unwrap();
     }
 
-    async fn process_load_manifest(&mut self, manifest_id: &ChunkIdentifier) {
+    async fn process_load_manifest(&mut self, manifest_id: &Identifier) {
         for device in &mut self.devices {
             device.reload_manifest(manifest_id).await;
         }
@@ -700,7 +700,7 @@ impl AssetLoaderIO {
 mod tests {
     use std::{sync::Arc, time::Duration};
 
-    use lgn_content_store::{ContentProvider, ContentWriterExt, MemoryProvider};
+    use lgn_content_store::Provider;
 
     use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
     use crate::{
@@ -710,8 +710,7 @@ mod tests {
     };
 
     async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_provider = Arc::new(Provider::new_in_memory());
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -719,8 +718,8 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_content_provider
-                .write_content(&test_asset::tests::BINARY_ASSETFILE)
+            let checksum = data_provider
+                .write(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
             manifest.insert(id, checksum);
@@ -729,7 +728,7 @@ mod tests {
 
         let (loader, mut io) = create_loader(vec![Box::new(vfs::CasDevice::new(
             Some(manifest),
-            Arc::clone(&data_content_provider),
+            Arc::clone(&data_provider),
         ))]);
         io.register_loader(
             test_asset::TestAsset::TYPE,
@@ -788,8 +787,7 @@ mod tests {
 
     #[tokio::test]
     async fn load_no_dependencies() {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_provider = Arc::new(Provider::new_in_memory());
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -797,8 +795,8 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_content_provider
-                .write_content(&test_asset::tests::BINARY_ASSETFILE)
+            let checksum = data_provider
+                .write(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
             manifest.insert(id, checksum);
@@ -813,10 +811,7 @@ mod tests {
         let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            vec![Box::new(vfs::CasDevice::new(
-                Some(manifest),
-                data_content_provider,
-            ))],
+            vec![Box::new(vfs::CasDevice::new(Some(manifest), data_provider))],
             request_tx.clone(),
             request_rx,
             result_tx,
@@ -856,8 +851,7 @@ mod tests {
 
     #[tokio::test]
     async fn load_failed_dependency() {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_provider = Arc::new(Provider::new_in_memory());
         let manifest = Manifest::default();
 
         let parent_id = ResourceTypeAndId {
@@ -866,8 +860,8 @@ mod tests {
         };
 
         let asset_id = {
-            let checksum = data_content_provider
-                .write_content(&test_asset::tests::BINARY_PARENT_ASSETFILE)
+            let checksum = data_provider
+                .write(&test_asset::tests::BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
             manifest.insert(parent_id, checksum);
@@ -880,10 +874,7 @@ mod tests {
         let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            vec![Box::new(vfs::CasDevice::new(
-                Some(manifest),
-                data_content_provider,
-            ))],
+            vec![Box::new(vfs::CasDevice::new(Some(manifest), data_provider))],
             request_tx.clone(),
             request_rx,
             result_tx,
@@ -913,8 +904,7 @@ mod tests {
 
     #[tokio::test]
     async fn load_with_dependency() {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_provider = Arc::new(Provider::new_in_memory());
         let manifest = Manifest::default();
 
         let parent_content = "parent";
@@ -931,13 +921,13 @@ mod tests {
         let asset_id = {
             manifest.insert(
                 child_id,
-                data_content_provider
-                    .write_content(&test_asset::tests::BINARY_ASSETFILE)
+                data_provider
+                    .write(&test_asset::tests::BINARY_ASSETFILE)
                     .await
                     .unwrap(),
             );
-            let checksum = data_content_provider
-                .write_content(&test_asset::tests::BINARY_PARENT_ASSETFILE)
+            let checksum = data_provider
+                .write(&test_asset::tests::BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
             manifest.insert(parent_id, checksum);
@@ -951,10 +941,7 @@ mod tests {
         let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
         let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
         let mut loader = AssetLoaderIO::new(
-            vec![Box::new(vfs::CasDevice::new(
-                Some(manifest),
-                data_content_provider,
-            ))],
+            vec![Box::new(vfs::CasDevice::new(Some(manifest), data_provider))],
             request_tx.clone(),
             request_rx,
             result_tx,
@@ -1023,8 +1010,7 @@ mod tests {
 
     #[tokio::test]
     async fn reload_no_dependencies() {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_provider = Arc::new(Provider::new_in_memory());
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -1032,8 +1018,8 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_content_provider
-                .write_content(&test_asset::tests::BINARY_ASSETFILE)
+            let checksum = data_provider
+                .write(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
             manifest.insert(id, checksum);
@@ -1048,7 +1034,7 @@ mod tests {
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
                 Some(manifest),
-                Arc::clone(&data_content_provider),
+                Arc::clone(&data_provider),
             ))],
             request_tx.clone(),
             request_rx,

@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store::ContentProvider;
+use lgn_content_store::Provider;
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId, ResourcePathId, ResourceType,
     ResourceTypeAndId,
@@ -74,7 +74,6 @@ pub struct Project {
     project_dir: PathBuf,
     resource_dir: PathBuf,
     workspace: Workspace,
-    source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
 }
 
@@ -114,12 +113,12 @@ pub enum ChangeType {
 impl<'a> From<&'a lgn_source_control::ChangeType> for ChangeType {
     fn from(change_type: &lgn_source_control::ChangeType) -> Self {
         match change_type {
-            lgn_source_control::ChangeType::Add { new_chunk_id: _ } => Self::Add,
+            lgn_source_control::ChangeType::Add { new_id: _ } => Self::Add,
             lgn_source_control::ChangeType::Edit {
-                old_chunk_id: _,
-                new_chunk_id: _,
+                old_id: _,
+                new_id: _,
             } => Self::Edit,
-            lgn_source_control::ChangeType::Delete { old_chunk_id: _ } => Self::Delete,
+            lgn_source_control::ChangeType::Delete { old_id: _ } => Self::Delete,
         }
     }
 }
@@ -133,7 +132,7 @@ impl Project {
     /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
     pub async fn create_with_remote_mock(
         project_dir: impl AsRef<Path>,
-        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
         let repository_index = LocalRepositoryIndex::new(remote_dir).await?;
@@ -158,7 +157,7 @@ impl Project {
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
         repository_name: RepositoryName,
-        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
         if !resource_dir.exists() {
@@ -172,7 +171,7 @@ impl Project {
                 repository_name,
                 WorkspaceRegistration::new_with_current_user(),
             ),
-            &source_control_content_provider,
+            source_control_content_provider,
         )
         .await?;
 
@@ -180,7 +179,6 @@ impl Project {
             project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
             workspace,
-            source_control_content_provider,
             deleted_pending: HashMap::new(),
         })
     }
@@ -189,17 +187,21 @@ impl Project {
     pub async fn open(
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
-        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
 
-        let workspace = Workspace::load(&resource_dir, repository_index).await?;
+        let workspace = Workspace::load(
+            &resource_dir,
+            repository_index,
+            source_control_content_provider,
+        )
+        .await?;
 
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
             resource_dir,
             workspace,
-            source_control_content_provider,
             deleted_pending: HashMap::new(),
         })
     }
@@ -415,10 +417,7 @@ impl Project {
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         self.workspace
-            .add_files(
-                &self.source_control_content_provider,
-                [meta_path.as_path(), resource_path.as_path()],
-            )
+            .add_files([meta_path.as_path(), resource_path.as_path()])
             .await?;
 
         let type_id = ResourceTypeAndId { kind, id };
@@ -448,11 +447,7 @@ impl Project {
         {
             let files = [metadata_path.as_path(), resource_path.as_path()];
             self.workspace
-                .revert_files(
-                    &self.source_control_content_provider,
-                    files,
-                    Staging::StagedAndUnstaged,
-                )
+                .revert_files(files, Staging::StagedAndUnstaged)
                 .await?;
         }
 
@@ -500,10 +495,7 @@ impl Project {
         serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
 
         self.workspace
-            .add_files(
-                &self.source_control_content_provider,
-                [metadata_path.as_path(), resource_path.as_path()],
-            ) // add
+            .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
             .await?;
 
         Ok(())
@@ -586,16 +578,11 @@ impl Project {
                             Error::SourceControl(err)
                         })?;
 
-                if let Some(lgn_source_control::ChangeType::Delete { old_chunk_id }) = tree
+                if let Some(lgn_source_control::ChangeType::Delete { old_id }) = tree
                     .get(&meta_lsc_path)
                     .map(lgn_source_control::Change::change_type)
                 {
-                    match self
-                        .workspace
-                        .get_chunker()
-                        .read_chunk(&self.source_control_content_provider, old_chunk_id)
-                        .await
-                    {
+                    match self.workspace.provider().read(old_id).await {
                         Ok(data) => {
                             if let Ok(meta) = serde_json::from_slice::<Metadata>(&data) {
                                 let value = (meta.name, meta.type_id);
@@ -715,10 +702,7 @@ impl Project {
         let metadata_path = self.metadata_path(type_id.id);
         let resource_path = self.resource_path(type_id.id);
         self.workspace
-            .add_files(
-                &self.source_control_content_provider,
-                [metadata_path.as_path(), resource_path.as_path()],
-            ) // add
+            .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
             .await
             .map_err(Error::SourceControl)?;
 
@@ -737,11 +721,7 @@ impl Project {
 
     /// Pulls all changes from the origin.
     pub async fn sync_latest(&mut self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
-        let (_, changed) = self
-            .workspace
-            .sync(&self.source_control_content_provider)
-            .await
-            .map_err(Error::SourceControl)?;
+        let (_, changed) = self.workspace.sync().await.map_err(Error::SourceControl)?;
 
         let resources = changed
             .iter()
@@ -797,7 +777,7 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
 
-    use lgn_content_store::{ContentProvider, MemoryProvider};
+    use lgn_content_store::Provider;
     use lgn_data_runtime::{
         resource, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId, ResourceProcessor,
         ResourceProcessorError, ResourceType,
@@ -1065,9 +1045,8 @@ mod tests {
     #[tokio::test]
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
-        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
+        let provider = Arc::new(Provider::new_in_memory());
+        let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let _resources = create_actor(&mut project).await;
@@ -1078,9 +1057,8 @@ mod tests {
     #[tokio::test]
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
-        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
+        let provider = Arc::new(Provider::new_in_memory());
+        let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1134,9 +1112,8 @@ mod tests {
     #[tokio::test]
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
-        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
+        let provider = Arc::new(Provider::new_in_memory());
+        let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1180,9 +1157,8 @@ mod tests {
     #[tokio::test]
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
-        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
+        let provider = Arc::new(Provider::new_in_memory());
+        let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let _resources = create_actor(&mut project).await;
@@ -1218,9 +1194,8 @@ mod tests {
     #[tokio::test]
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
-        let content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
-        let mut project = Project::create_with_remote_mock(root.path(), content_provider)
+        let provider = Arc::new(Provider::new_in_memory());
+        let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;

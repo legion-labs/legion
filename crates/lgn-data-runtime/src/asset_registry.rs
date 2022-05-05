@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use lgn_content_store::{ChunkIdentifier, ContentProvider};
+use lgn_content_store::{Identifier, Provider};
 use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
@@ -143,13 +143,9 @@ impl AssetRegistryOptions {
     /// allows to read resources from a specified content store through
     /// provided manifest.
     #[must_use]
-    pub fn add_device_cas(
-        mut self,
-        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
-        manifest: Manifest,
-    ) -> Self {
+    pub fn add_device_cas(mut self, provider: Arc<Provider>, manifest: Manifest) -> Self {
         self.devices
-            .push(Box::new(vfs::CasDevice::new(Some(manifest), content_store)));
+            .push(Box::new(vfs::CasDevice::new(Some(manifest), provider)));
         self
     }
 
@@ -157,12 +153,9 @@ impl AssetRegistryOptions {
     /// allows to read resources from a specified content store.
     /// It must subsequently be provided with a manifest to be able to fetch resources.
     #[must_use]
-    pub fn add_device_cas_with_delayed_manifest(
-        mut self,
-        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
-    ) -> Self {
+    pub fn add_device_cas_with_delayed_manifest(mut self, provider: Arc<Provider>) -> Self {
         self.devices
-            .push(Box::new(vfs::CasDevice::new(None, content_store)));
+            .push(Box::new(vfs::CasDevice::new(None, provider)));
         self
     }
 
@@ -175,7 +168,7 @@ impl AssetRegistryOptions {
     #[must_use]
     pub fn add_device_build(
         mut self,
-        content_store: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        provider: Arc<Provider>,
         manifest: Manifest,
         build_bin: impl AsRef<Path>,
         output_db_addr: String,
@@ -184,7 +177,7 @@ impl AssetRegistryOptions {
     ) -> Self {
         self.devices.push(Box::new(vfs::BuildDevice::new(
             manifest,
-            content_store,
+            provider,
             build_bin,
             output_db_addr,
             project,
@@ -640,15 +633,13 @@ impl AssetRegistry {
     }
 
     /// Delayed manifest load, will look up in all devices
-    pub fn load_manifest(&self, manifest_id: &ChunkIdentifier) {
+    pub fn load_manifest(&self, manifest_id: &Identifier) {
         self.write_inner().loader.load_manifest(manifest_id);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store::{ContentWriterExt, MemoryProvider};
-
     use crate::ResourceId;
 
     mod refs_asset {
@@ -746,8 +737,7 @@ mod tests {
     use crate::test_asset;
 
     async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_provider = Arc::new(Provider::new_in_memory());
         let manifest = Manifest::default();
 
         let asset_id = {
@@ -755,13 +745,13 @@ mod tests {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_content_provider.write_content(content).await.unwrap();
+            let checksum = data_provider.write(content).await.unwrap();
             manifest.insert(type_id, checksum);
             type_id
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(data_content_provider, manifest)
+            .add_device_cas(data_provider, manifest)
             .add_loader::<test_asset::TestAsset>()
             .create()
             .await;
@@ -770,8 +760,7 @@ mod tests {
     }
 
     async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let data_provider = Arc::new(Provider::new_in_memory());
         let manifest = Manifest::default();
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [
@@ -807,15 +796,9 @@ mod tests {
         let parent_id = {
             manifest.insert(
                 child_id,
-                data_content_provider
-                    .write_content(&BINARY_CHILD_ASSETFILE)
-                    .await
-                    .unwrap(),
+                data_provider.write(&BINARY_CHILD_ASSETFILE).await.unwrap(),
             );
-            let checksum = data_content_provider
-                .write_content(&BINARY_PARENT_ASSETFILE)
-                .await
-                .unwrap();
+            let checksum = data_provider.write(&BINARY_PARENT_ASSETFILE).await.unwrap();
             let id = ResourceTypeAndId {
                 kind: refs_asset::RefsAsset::TYPE,
                 id: ResourceId::new_explicit(2),
@@ -825,7 +808,7 @@ mod tests {
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(data_content_provider, manifest)
+            .add_device_cas(data_provider, manifest)
             .add_loader::<refs_asset::RefsAsset>()
             .create()
             .await;

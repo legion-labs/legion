@@ -1,6 +1,6 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use lgn_content_store::{ContentProvider, MemoryProvider};
+use lgn_content_store::Provider;
 use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -74,14 +74,12 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let build_dir = project_dir.as_ref().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+    let source_control_content_provider = Arc::new(Provider::new_in_memory());
     let project = Project::create_with_remote_mock(&project_dir, source_control_content_provider)
         .await
         .expect("failed to create a project");
 
-    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryProvider::new()));
+    let data_content_provider = Arc::new(Provider::new_in_memory());
 
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(project.resource_dir())

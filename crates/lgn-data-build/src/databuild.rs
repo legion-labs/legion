@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use std::{env, io};
 
-use lgn_content_store::{ChunkIdentifier, Chunker, ContentProvider, ContentWriterExt};
+use lgn_content_store::{Identifier, Provider};
 use lgn_data_compiler::compiler_api::{
     CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION,
 };
@@ -106,21 +106,21 @@ pub struct DataBuild {
     source_index: SourceIndex,
     output_index: OutputIndex,
     resource_dir: PathBuf,
-    data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+    data_content_provider: Arc<Provider>,
     compilers: CompilerNode,
 }
 
 impl DataBuild {
     async fn default_asset_registry(
         resource_dir: &Path,
-        data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        data_provider: Arc<Provider>,
         compilers: &CompilerRegistry,
         manifest: Option<Manifest>,
     ) -> Result<Arc<AssetRegistry>, Error> {
         let manifest = manifest.unwrap_or_default();
 
         let mut options = AssetRegistryOptions::new()
-            .add_device_cas(data_content_provider, manifest)
+            .add_device_cas(data_provider, manifest)
             .add_device_dir(resource_dir);
 
         options = compilers.init_all(options).await;
@@ -306,7 +306,7 @@ impl DataBuild {
     #[allow(clippy::type_complexity)]
     async fn compile_node(
         output_index: &mut OutputIndex,
-        data_content_provider: &(dyn ContentProvider + Send + Sync),
+        data_provider: &Provider,
         project_dir: &Path,
         compile_node: &ResourcePathId,
         context_hash: AssetHash,
@@ -355,7 +355,7 @@ impl DataBuild {
                         dependencies,
                         derived_deps,
                         resources,
-                        &data_content_provider,
+                        data_provider,
                         project_dir,
                         env,
                     )
@@ -751,10 +751,7 @@ impl DataBuild {
 
                 let checksum = {
                     async_span_scope!("content_store");
-                    self.source_index
-                        .content_store
-                        .write_content(&output)
-                        .await?
+                    self.source_index.content_store.write(&output).await?
                 };
                 self.output_index
                     .insert_linked(
@@ -797,14 +794,13 @@ impl DataBuild {
     }
 
     /// Writes a manifest to the data content provider, and returns its identifier
-    pub async fn write_manifest(&self, manifest: &Manifest) -> Result<ChunkIdentifier, Error> {
+    pub async fn write_manifest(&self, manifest: &Manifest) -> Result<Identifier, Error> {
         let mut buffer = vec![];
         serde_json::to_writer_pretty(&mut buffer, manifest)
             .expect("failed to convert manifest to JSON");
 
-        let chunker = Chunker::default();
-        chunker
-            .write_chunk(&self.data_content_provider, &buffer)
+        self.data_content_provider
+            .write(&buffer)
             .await
             .map_err(Error::InvalidContentStore)
     }

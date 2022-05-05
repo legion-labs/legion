@@ -6,7 +6,8 @@ use clap::Parser;
 use http::{header, Method};
 use lgn_cli_utils::termination_handler::AsyncTerminationHandler;
 use lgn_content_store::{
-    AddressProviderConfig, DataSpace, GrpcProviderSet, GrpcService, ProviderConfig, Result,
+    AddressProviderConfig, AliasProviderConfig, ContentProviderConfig, DataSpace, GrpcProviderSet,
+    GrpcService, Result,
 };
 use lgn_content_store_proto::content_store_server::ContentStoreServer;
 use lgn_online::authentication::{jwt::RequestAuthorizer, UserInfo};
@@ -57,7 +58,8 @@ impl Config {
 
 #[derive(Debug, Clone, Deserialize)]
 struct ProviderSetConfig {
-    provider: ProviderConfig,
+    content_provider: ContentProviderConfig,
+    alias_provider: AliasProviderConfig,
     address_provider: AddressProviderConfig,
 
     #[serde(default = "ProviderSetConfig::default_size_threshold")]
@@ -71,8 +73,9 @@ impl ProviderSetConfig {
 
     async fn instantiate(&self) -> Result<GrpcProviderSet> {
         Ok(GrpcProviderSet {
-            provider: self.provider.instantiate().await?,
-            address_provider: self.address_provider.instantiate().await?,
+            content_provider: self.content_provider.instantiate().await?,
+            alias_provider: self.alias_provider.instantiate().await?,
+            content_address_provider: self.address_provider.instantiate().await?,
             size_threshold: self
                 .size_treshold
                 .as_u64()
@@ -149,8 +152,8 @@ async fn main() -> anyhow::Result<()> {
             "{}: {} - provider: {} - address provider: {} - size threshold: {}",
             i,
             data_space,
-            provider_set.provider,
-            provider_set.address_provider,
+            provider_set.content_provider,
+            provider_set.content_address_provider,
             provider_set.size_threshold
         );
     }

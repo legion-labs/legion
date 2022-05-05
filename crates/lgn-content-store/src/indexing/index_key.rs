@@ -8,7 +8,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::{Error, Result};
+use super::{Error, Result};
 
 /// An index key.
 ///
@@ -158,13 +158,12 @@ impl IndexKey {
     ///
     /// If the index key is not valid UTF-8, an error is returned.
     pub fn into_string_key(self) -> Result<String> {
+        // TODO: Remove this method and implement a different IndexKey from
+        // string-based indices.
         let v: Vec<u8> = self.0.into_iter().collect();
 
         String::from_utf8(v).map_err(|err| {
-            Error::InvalidIndexKey(format!(
-                "index key cannot be converted to UTF-8 string: {}",
-                err
-            ))
+            anyhow::anyhow!("index key cannot be converted to UTF-8 string: {}", err).into()
         })
     }
 

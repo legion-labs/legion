@@ -2,6 +2,8 @@ use std::{fmt::Display, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::Identifier;
+
 /// The origin for a content.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -25,6 +27,9 @@ pub enum Origin {
         path: PathBuf,
     },
     InIdentifier {},
+    Manifest {
+        id: Identifier,
+    },
 }
 
 impl Origin {
@@ -37,6 +42,7 @@ impl Origin {
             Self::Lru { .. } => "a LRU cache",
             Self::Local { .. } => "a local file",
             Self::InIdentifier { .. } => "the identifier",
+            Self::Manifest { .. } => "a manifest",
         }
     }
 }
@@ -58,13 +64,14 @@ impl Display for Origin {
             Origin::Lru {} => write!(f, "in-lru-cache"),
             Origin::Local { path } => write!(f, "{}", path.display()),
             Origin::InIdentifier {} => write!(f, "in-identifier"),
+            Origin::Manifest { id } => write!(f, "manifest://{}", id),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Origin;
+    use super::{Identifier, Origin};
 
     #[test]
     fn test_origin_to_string() {
@@ -103,5 +110,12 @@ mod tests {
             "some/path"
         );
         assert_eq!(Origin::InIdentifier {}.to_string(), "in-identifier");
+        assert_eq!(
+            Origin::Manifest {
+                id: Identifier::empty(),
+            }
+            .to_string(),
+            "manifest://AA"
+        );
     }
 }

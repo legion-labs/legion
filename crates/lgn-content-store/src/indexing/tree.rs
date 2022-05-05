@@ -6,19 +6,15 @@ use std::{
     str::FromStr,
 };
 
-use crate::{ContentReader, ContentReaderExt, ContentWriter, ContentWriterExt, Identifier, Result};
+use crate::{Identifier, Provider};
 
-use super::{IndexKey, IntoIndexKey, ResourceIdentifier};
+use super::{Error, IndexKey, IntoIndexKey, ResourceIdentifier, Result};
 
 /// Represents a tree identifier.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct TreeIdentifier(Identifier);
+pub struct TreeIdentifier(pub(crate) Identifier);
 
 impl TreeIdentifier {
-    pub(crate) fn data_size(&self) -> usize {
-        self.0.data_size()
-    }
-
     pub(crate) fn as_identifier(&self) -> &Identifier {
         &self.0
     }
@@ -38,7 +34,7 @@ impl TreeIdentifier {
     /// will be returned.
     pub async fn visit<Visitor: TreeVisitor + Send>(
         &self,
-        provider: impl ContentReader + Send + Sync,
+        provider: &Provider,
         mut visitor: Visitor,
     ) -> Result<Visitor> {
         let root = provider.read_tree(self).await?;
@@ -92,10 +88,13 @@ impl Display for TreeIdentifier {
 }
 
 impl FromStr for TreeIdentifier {
-    type Err = crate::Error;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        Ok(Self(s.parse()?))
+        match s.parse() {
+            Ok(id) => Ok(Self(id)),
+            Err(err) => Err(Error::InvalidTreeIdentifier(err)),
+        }
     }
 }
 
@@ -252,13 +251,6 @@ impl Display for TreeLeafNode {
 }
 
 impl TreeLeafNode {
-    pub(crate) fn data_size(&self) -> usize {
-        match self {
-            TreeLeafNode::Resource(resource) => resource.data_size(),
-            TreeLeafNode::TreeRoot(tree_identifier) => tree_identifier.data_size(),
-        }
-    }
-
     pub(crate) fn as_identifier(&self) -> &Identifier {
         match self {
             TreeLeafNode::Resource(resource) => resource.as_identifier(),
@@ -414,28 +406,35 @@ impl Tree {
 }
 
 #[async_trait]
-pub trait TreeReader: ContentReader + Send + Sync {
+pub trait TreeReader {
+    async fn read_tree(&self, id: &TreeIdentifier) -> Result<Tree>;
+}
+
+#[async_trait]
+impl TreeReader for Provider {
     async fn read_tree(&self, id: &TreeIdentifier) -> Result<Tree> {
-        let buf = self.read_content(&id.0).await?;
+        let buf = self.read(&id.0).await?;
 
         Tree::from_slice(&buf)
     }
 }
 
 #[async_trait]
-impl<T: ContentReader + Send + Sync> TreeReader for T {}
-
-#[async_trait]
-pub trait TreeWriter: ContentWriter + Send + Sync {
-    async fn write_tree(&self, tree: &Tree) -> Result<TreeIdentifier> {
-        let buf = tree.as_vec();
-
-        self.write_content(&buf).await.map(TreeIdentifier)
-    }
+pub trait TreeWriter {
+    async fn write_tree(&self, tree: &Tree) -> Result<TreeIdentifier>;
 }
 
 #[async_trait]
-impl<T: ContentWriter + Send + Sync> TreeWriter for T {}
+impl TreeWriter for Provider {
+    async fn write_tree(&self, tree: &Tree) -> Result<TreeIdentifier> {
+        let buf = tree.as_vec();
+
+        self.write(&buf)
+            .await
+            .map(TreeIdentifier)
+            .map_err(Into::into)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -451,21 +450,18 @@ mod tests {
 
     #[test]
     fn test_tree_node_serialization() {
-        let tree_node = TreeNode::Branch(TreeIdentifier(Identifier::new(&[1, 2, 3])));
+        let id = Identifier::new_data(&[1, 2, 3]);
+        let tree_node = TreeNode::Branch(TreeIdentifier(id.clone()));
         let buf = rmp_serde::to_vec(&tree_node).unwrap();
         let res = rmp_serde::from_slice(&buf).unwrap();
         assert_eq!(tree_node, res);
 
-        let tree_node = TreeNode::Leaf(TreeLeafNode::Resource(ResourceIdentifier(
-            Identifier::new(&[1, 2, 3]),
-        )));
+        let tree_node = TreeNode::Leaf(TreeLeafNode::Resource(ResourceIdentifier(id.clone())));
         let buf = rmp_serde::to_vec(&tree_node).unwrap();
         let res = rmp_serde::from_slice(&buf).unwrap();
         assert_eq!(tree_node, res);
 
-        let tree_node = TreeNode::Leaf(TreeLeafNode::TreeRoot(TreeIdentifier(Identifier::new(&[
-            1, 2, 3,
-        ]))));
+        let tree_node = TreeNode::Leaf(TreeLeafNode::TreeRoot(TreeIdentifier(id)));
         let buf = rmp_serde::to_vec(&tree_node).unwrap();
         let res = rmp_serde::from_slice(&buf).unwrap();
         assert_eq!(tree_node, res);
@@ -489,9 +485,9 @@ mod tests {
             total_size: 3,
             children: vec![(
                 IndexKey::from_slice(b"a"),
-                TreeNode::Leaf(TreeLeafNode::Resource(ResourceIdentifier(Identifier::new(
-                    b"foo",
-                )))),
+                TreeNode::Leaf(TreeLeafNode::Resource(ResourceIdentifier(
+                    Identifier::new_data(b"foo"),
+                ))),
             )],
         };
         let buf = tree.as_vec();

@@ -5,7 +5,7 @@ mod tests {
     use std::{env, vec};
 
     use integer_asset::{IntegerAsset, IntegerAssetLoader};
-    use lgn_content_store::{ContentProvider, ContentReaderExt, MemoryProvider};
+    use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_api::CompilationEnv;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_compiler::{Locale, Platform, Target};
@@ -28,8 +28,8 @@ mod tests {
         PathBuf,
         PathBuf,
         LocalRepositoryIndex,
-        Arc<Box<dyn ContentProvider + Send + Sync>>,
-        Arc<Box<dyn ContentProvider + Send + Sync>>,
+        Arc<Provider>,
+        Arc<Provider>,
     ) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
@@ -38,10 +38,8 @@ mod tests {
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
             .unwrap();
-        let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
-        let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-            Arc::new(Box::new(MemoryProvider::new()));
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
+        let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (
             project_dir.to_owned(),
@@ -107,7 +105,7 @@ mod tests {
         resource_id: ResourceTypeAndId,
         project_dir: &Path,
         repository_index: impl RepositoryIndex,
-        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Provider>,
     ) {
         let mut project = Project::open(
             project_dir,
@@ -216,7 +214,10 @@ mod tests {
 
             let original_checksum = &compile_output.resources[0].compiled_content_id;
 
-            assert!(data_content_provider.exists(original_checksum).await);
+            assert!(data_content_provider
+                .exists(original_checksum)
+                .await
+                .unwrap());
 
             original_checksum.clone()
         };
@@ -276,8 +277,14 @@ mod tests {
 
             let modified_checksum = &compile_output.resources[0].compiled_content_id;
 
-            assert!(data_content_provider.exists(&original_checksum).await);
-            assert!(data_content_provider.exists(modified_checksum).await);
+            assert!(data_content_provider
+                .exists(&original_checksum)
+                .await
+                .unwrap());
+            assert!(data_content_provider
+                .exists(modified_checksum)
+                .await
+                .unwrap());
 
             modified_checksum.clone()
         };
@@ -299,7 +306,7 @@ mod tests {
     //
     async fn setup_project(
         project_dir: impl AsRef<Path>,
-        source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>>,
+        source_control_content_provider: Arc<Provider>,
     ) -> [ResourceTypeAndId; 5] {
         let mut project =
             Project::create_with_remote_mock(project_dir.as_ref(), source_control_content_provider)
@@ -418,9 +425,9 @@ mod tests {
         // validate reversed
         {
             let checksum = compile_output.resources[0].compiled_content_id.clone();
-            assert!(data_content_provider.exists(&checksum).await);
+            assert!(data_content_provider.exists(&checksum).await.unwrap());
             let resource_content = data_content_provider
-                .read_content(&checksum)
+                .read(&checksum)
                 .await
                 .expect("resource content");
 
@@ -439,9 +446,9 @@ mod tests {
         // validate integer
         {
             let checksum = compile_output.resources[1].compiled_content_id.clone();
-            assert!(data_content_provider.exists(&checksum).await);
+            assert!(data_content_provider.exists(&checksum).await.unwrap());
             let resource_content = data_content_provider
-                .read_content(&checksum)
+                .read(&checksum)
                 .await
                 .expect("asset content");
 
@@ -686,9 +693,9 @@ mod tests {
         // validate integer
         {
             let checksum = compiled_integer.compiled_content_id.clone();
-            assert!(data_content_provider.exists(&checksum).await);
+            assert!(data_content_provider.exists(&checksum).await.unwrap());
             let resource_content = data_content_provider
-                .read_content(&checksum)
+                .read(&checksum)
                 .await
                 .expect("asset content");
 
@@ -1051,7 +1058,7 @@ mod tests {
         assert_eq!(manifest.compiled_resources.len(), 2);
 
         for checksum in manifest.compiled_resources.iter().map(|a| &a.content_id) {
-            assert!(data_content_provider.exists(checksum).await);
+            assert!(data_content_provider.exists(checksum).await.unwrap());
         }
     }
 }

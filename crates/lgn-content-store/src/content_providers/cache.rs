@@ -1,6 +1,5 @@
 use std::{
     cmp::min,
-    collections::{BTreeMap, BTreeSet},
     fmt::Display,
     pin::Pin,
     task::{Context, Poll},
@@ -11,31 +10,34 @@ use lgn_tracing::{async_span_scope, debug, error, span_scope, warn};
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
-use crate::{
-    traits::AsyncReadWithOrigin, ContentAsyncReadWithOrigin, ContentAsyncWrite, ContentProvider,
-    ContentReader, ContentWriter, Error, Identifier, Origin, Result,
+use super::{
+    AsyncReadWithOriginAndSize, ContentAsyncReadWithOriginAndSize, ContentAsyncWrite,
+    ContentProvider, ContentReader, ContentWriter, Error, HashRef, Origin, Result,
 };
 
-/// A `CachingProvider` is a provider that stores locally content that was retrieved from a remote source.
+/// A `ContentProviderCache` is a provider that stores locally content that was retrieved from a remote source.
 #[derive(Debug, Clone)]
-pub struct CachingProvider<Remote, Local> {
+pub struct ContentProviderCache<Remote, Local> {
     remote: Remote,
     local: Local,
 }
 
-impl<Remote: Display, Local: Display> CachingProvider<Remote, Local> {
-    /// Creates a new `CachingProvider` instance who stores content in the
+impl<Remote: Display, Local: Display> ContentProviderCache<Remote, Local> {
+    /// Creates a new `ContentProviderCache` instance who stores content in the
     /// backing remote and local providers.
     pub fn new(remote: Remote, local: Local) -> Self {
-        span_scope!("CachingProvider::new");
+        span_scope!("ContentProviderCache::new");
 
-        debug!("CachingProvider::new(remote: {}, local: {})", remote, local);
+        debug!(
+            "ContentProviderCache::new(remote: {}, local: {})",
+            remote, local
+        );
 
         Self { remote, local }
     }
 }
 
-impl<Remote: Display, Local: Display> Display for CachingProvider<Remote, Local> {
+impl<Remote: Display, Local: Display> Display for ContentProviderCache<Remote, Local> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({} cached by {})", self.remote, self.local)
     }
@@ -43,32 +45,38 @@ impl<Remote: Display, Local: Display> Display for CachingProvider<Remote, Local>
 
 #[async_trait]
 impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> ContentReader
-    for CachingProvider<Remote, Local>
+    for ContentProviderCache<Remote, Local>
 {
-    async fn get_content_reader(&self, id: &Identifier) -> Result<ContentAsyncReadWithOrigin> {
-        async_span_scope!("CachingProvider::get_content_reader");
-        debug!("CachingProvider::get_content_reader({})", id);
+    async fn get_content_reader(&self, id: &HashRef) -> Result<ContentAsyncReadWithOriginAndSize> {
+        async_span_scope!("ContentProviderCache::get_content_reader");
+        debug!("ContentProviderCache::get_content_reader({})", id);
 
         match self.local.get_content_reader(id).await {
             Ok(reader) => {
-                debug!("CachingProvider::get_content_reader({}) -> cache-hit", id);
+                debug!(
+                    "ContentProviderCache::get_content_reader({}) -> cache-hit",
+                    id
+                );
 
                 Ok(reader)
             }
-            Err(Error::IdentifierNotFound(_)) => {
-                debug!("CachingProvider::get_content_reader({}) -> cache-miss", id);
+            Err(Error::HashRefNotFound(_)) => {
+                debug!(
+                    "ContentProviderCache::get_content_reader({}) -> cache-miss",
+                    id
+                );
 
                 match self.remote.get_content_reader(id).await {
                     Ok(reader) => {
                         debug!(
-                            "CachingProvider::get_content_reader({}) -> remote value exists",
+                            "ContentProviderCache::get_content_reader({}) -> remote value exists",
                             id
                         );
 
                         let writer = match self.local.get_content_writer(id).await {
                             Ok(writer) => {
                                 debug!(
-                                    "CachingProvider::get_content_reader({}) -> got local writer",
+                                    "ContentProviderCache::get_content_reader({}) -> got local writer",
                                     id
                                 );
 
@@ -76,7 +84,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
                             }
                             Err(err) => {
                                 warn!(
-                                    "CachingProvider::get_content_reader({}) -> failed to get local writer: {}",
+                                    "ContentProviderCache::get_content_reader({}) -> failed to get local writer: {}",
                                     id, err
                                 );
 
@@ -90,19 +98,19 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
                         };
 
                         Ok(Box::pin(TeeAsyncRead::new(reader, writer, id.data_size()))
-                            as ContentAsyncReadWithOrigin)
+                            as ContentAsyncReadWithOriginAndSize)
                     }
-                    Err(Error::IdentifierNotFound(id)) => {
+                    Err(Error::HashRefNotFound(id)) => {
                         warn!(
-                            "CachingProvider::get_content_reader({}) -> remote value does not exist",
+                            "ContentProviderCache::get_content_reader({}) -> remote value does not exist",
                             id
                         );
 
-                        Err(Error::IdentifierNotFound(id))
+                        Err(Error::HashRefNotFound(id))
                     }
                     Err(err) => {
                         error!(
-                            "CachingProvider::get_content_reader({}) -> failed to read remote value: {}",
+                            "ContentProviderCache::get_content_reader({}) -> failed to read remote value: {}",
                             id, err
                         );
 
@@ -113,7 +121,7 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
             // If the local provider fails, we just fall back to the remote without caching.
             Err(err) => {
                 error!(
-                    "CachingProvider::get_content_reader({}) -> cache error: {}",
+                    "ContentProviderCache::get_content_reader({}) -> cache error: {}",
                     id, err
                 );
 
@@ -121,139 +129,16 @@ impl<Remote: ContentReader + Send + Sync, Local: ContentProvider + Send + Sync> 
             }
         }
     }
-
-    async fn get_content_readers<'ids>(
-        &self,
-        ids: &'ids BTreeSet<Identifier>,
-    ) -> Result<BTreeMap<&'ids Identifier, Result<ContentAsyncReadWithOrigin>>> {
-        async_span_scope!("CachingProvider::get_content_readers");
-
-        debug!("CachingProvider::get_content_readers({:?})", ids);
-
-        // If we can't make the request at all, try on the remote one without caching.
-        let mut readers = match self.local.get_content_readers(ids).await {
-            Ok(readers) => {
-                debug!(
-                    "CachingProvider::get_content_readers({:?}) -> could query local cache for readers",
-                    ids,
-                );
-
-                readers
-            }
-            Err(err) => {
-                debug!(
-                    "CachingProvider::get_content_readers({:?}) -> could not query local cache for readers ({}): falling back to remote",
-                    ids, err
-                );
-
-                return self.remote.get_content_readers(ids).await;
-            }
-        };
-
-        let missing_ids = readers
-            .iter()
-            .filter_map(|(id, reader)| {
-                if let Err(Error::IdentifierNotFound(_)) = reader {
-                    Some(id)
-                } else {
-                    None
-                }
-            })
-            .copied()
-            .cloned()
-            .collect::<BTreeSet<_>>();
-
-        if !missing_ids.is_empty() {
-            let mut missing_writers = BTreeMap::new();
-
-            for missing_id in &missing_ids {
-                match self.local.get_content_writer(missing_id).await {
-                    Ok(writer) => {
-                        debug!(
-                        "CachingProvider::get_content_readers({:?}) -> created writer in local cache for missing id {}.",
-                        ids, missing_id
-                    );
-
-                        missing_writers.insert(missing_id, writer);
-                    }
-                    Err(err) => {
-                        warn!(
-                        "CachingProvider::get_content_readers({:?}) -> failed to create writer in local cache for missing id {}: {}",
-                        ids, missing_id, err
-                    );
-                    }
-                }
-            }
-
-            debug!(
-                "CachingProvider::get_content_readers({:?}) -> creating reader on remote for {} missing id(s)",
-                ids, missing_ids.len()
-            );
-
-            readers.extend(
-                self.remote
-                    .get_content_readers(&missing_ids)
-                    .await?
-                    .into_iter()
-                    .map(|(i, reader)| match reader {
-                        Ok(reader) => {
-                            if let Some(writer) = missing_writers.remove(i) {
-                                debug!(
-                                    "CachingProvider::get_content_readers({:?}) -> using local writer for first read of missing id {}.",
-                                    ids, i
-                                );
-
-                                (
-                                    ids.get(i).unwrap(),
-                                    Ok(Box::pin(TeeAsyncRead::new(reader, writer, i.data_size()))
-                                        as ContentAsyncReadWithOrigin),
-                                )
-                            } else {
-                                (ids.get(i).unwrap(), Ok(reader))
-                            }
-                        }
-                        Err(err) => (ids.get(i).unwrap(), Err(err)),
-                    }),
-            );
-        }
-
-        Ok(readers)
-    }
-
-    async fn resolve_alias(&self, key_space: &str, key: &str) -> Result<Identifier> {
-        async_span_scope!("CachingProvider::resolve_alias");
-
-        match self.local.resolve_alias(key_space, key).await {
-            Ok(id) => Ok(id),
-            Err(Error::IdentifierNotFound(_)) => {
-                match self.remote.resolve_alias(key_space, key).await {
-                    Ok(id) => {
-                        if let Err(err) = self.local.register_alias(key_space, key, &id).await {
-                            warn!(
-                                "Failed to register alias {}/{} in local cache: {}",
-                                key_space, key, err
-                            );
-                        }
-
-                        Ok(id)
-                    }
-                    Err(err) => Err(err),
-                }
-            }
-            // If the local provider fails, we just fall back to the remote without caching.
-            Err(_) => self.remote.resolve_alias(key_space, key).await,
-        }
-    }
 }
 
 #[async_trait]
 impl<Remote: ContentWriter + Send + Sync, Local: ContentWriter + Send + Sync> ContentWriter
-    for CachingProvider<Remote, Local>
+    for ContentProviderCache<Remote, Local>
 {
-    async fn get_content_writer(&self, id: &Identifier) -> Result<ContentAsyncWrite> {
-        async_span_scope!("CachingProvider::get_content_writer");
+    async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
+        async_span_scope!("ContentProviderCache::get_content_writer");
 
-        debug!("CachingProvider::get_content_writer({})", id);
+        debug!("ContentProviderCache::get_content_writer({})", id);
 
         let remote_writer = self.remote.get_content_writer(id).await?;
 
@@ -271,21 +156,6 @@ impl<Remote: ContentWriter + Send + Sync, Local: ContentWriter + Send + Sync> Co
                 Ok(remote_writer)
             }
         }
-    }
-
-    async fn register_alias(&self, key_space: &str, key: &str, id: &Identifier) -> Result<()> {
-        async_span_scope!("CachingProvider::register_alias");
-
-        self.remote.register_alias(key_space, key, id).await?;
-
-        if let Err(err) = self.local.register_alias(key_space, key, id).await {
-            warn!(
-                "Failed to register alias {}/{} in local cache: {}",
-                key_space, key, err
-            );
-        }
-
-        Ok(())
     }
 }
 
@@ -328,7 +198,13 @@ impl<R, W> TeeAsyncRead<R, W> {
     }
 }
 
-impl<W: AsyncWrite + Send> AsyncReadWithOrigin for TeeAsyncRead<ContentAsyncReadWithOrigin, W> {
+impl<W: AsyncWrite + Send> AsyncReadWithOriginAndSize
+    for TeeAsyncRead<ContentAsyncReadWithOriginAndSize, W>
+{
+    fn size(&self) -> usize {
+        self.reader.size()
+    }
+
     fn origin(&self) -> &Origin {
         self.reader.origin()
     }
@@ -614,5 +490,48 @@ mod tests {
         assert_eq!(buf1, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
         assert_eq!(buf2, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
         assert_eq!(buf3, vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::sync::Arc;
+
+    use crate::{ContentReaderExt, ContentWriterExt, LruContentProvider, MemoryContentProvider};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_cache_content_provider() {
+        let data_a: &[u8; 128] = &[0x41; 128];
+        let data_b: &[u8; 128] = &[0x42; 128];
+
+        let remote_content_provider = Arc::new(MemoryContentProvider::new());
+        let local_content_provider = Arc::new(LruContentProvider::new(128));
+        let content_provider = ContentProviderCache::new(
+            Arc::clone(&remote_content_provider),
+            Arc::clone(&local_content_provider),
+        );
+
+        let origin = Origin::Lru {};
+        crate::content_providers::test_content_provider(&content_provider, data_a, origin).await;
+
+        // Write a value to the remote but not the cache.
+        let id = remote_content_provider.write_content(data_b).await.unwrap();
+
+        // The value should be copied in the cache.
+        let (data, origin) = content_provider
+            .read_content_with_origin(&id)
+            .await
+            .unwrap();
+        assert_eq!(&data, data_b);
+        assert_eq!(origin, Origin::Memory {});
+
+        let (data, origin) = local_content_provider
+            .read_content_with_origin(&id)
+            .await
+            .unwrap();
+        assert_eq!(&data, data_b);
+        assert_eq!(origin, Origin::Lru {});
     }
 }
