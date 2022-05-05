@@ -120,7 +120,7 @@
   }
 </script>
 
-<div class="root">
+<div class="h-full w-full overflow-y-auto overflow-x-hidden bg-surface-900">
   {#if $currentResourceError}
     <div class="italic">An error occured</div>
   {:else if !$currentResource}
@@ -145,9 +145,3 @@
     {/each}
   {/if}
 </div>
-
-<style lang="postcss">
-  .root {
-    @apply h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden;
-  }
-</style>

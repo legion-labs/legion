@@ -107,15 +107,23 @@
     parentProperty.subProperties.splice(subPropertyIndex, 1);
     parentProperty.subProperties = parentProperty.subProperties;
   }
+
+  function beautifyComponentName(name: string) {
+    return name.replace("[", "").replace("]", "");
+  }
 </script>
 
 <svelte:window on:prompt-answer={removeComponent} />
 
-<div class="root" class:with-indent={level > 1}>
+<div class="flex flex-col justify-between root">
   {#if property.name}
-    <div class="property-name" title={property.name}>
-      <div class="truncate">
-        {property.name}
+    <div
+      style="padding-left:{level / 4}rem"
+      class="flex flex-row items-center justify-between pl-0 h-8 font-semibold bg-surface-900"
+      title={property.name}
+    >
+      <div class="truncate my-auto">
+        {beautifyComponentName(property.name)}
       </div>
       {#if parentProperty && propertyIsDynComponent(parentProperty)}
         <div
@@ -161,18 +169,6 @@
 </div>
 
 <style lang="postcss">
-  .root {
-    @apply flex flex-col justify-between;
-  }
-
-  .root.with-indent {
-    @apply pl-1;
-  }
-
-  .property-name {
-    @apply flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm;
-  }
-
   .optional {
     @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 cursor-pointer;
   }

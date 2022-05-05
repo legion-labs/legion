@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300&display=swap");
+@import "../../../lgn-web-client/src/assets/theme.css";
 
 @tailwind base;
 @tailwind components;
