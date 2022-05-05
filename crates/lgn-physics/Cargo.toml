@@ -23,7 +23,7 @@ lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 
 # other
 crossbeam-channel = "0.5.1"
-egui = "0.16.0"
+egui = "0.17.0"
 erased-serde = "0.3.12"
 inventory = { version = "0.2", optional = true }
 lazy_static = "1.4"
