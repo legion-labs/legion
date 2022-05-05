@@ -83,7 +83,7 @@ impl VideoStream {
     #[span_fn]
     pub(crate) fn present(
         &mut self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
         imetric!("Frame ID begin present", "frame_id", self.frame_id as u64);
@@ -96,10 +96,7 @@ impl VideoStream {
             encoder.submit_input(&EncoderWorkItem {
                 image: self.hdr2rgb.export_texture(),
                 semaphore: self.hdr2rgb.export_semaphore(),
-                cpu_frame: render_context
-                    .renderer()
-                    .device_context()
-                    .current_cpu_frame(),
+                cpu_frame: render_context.device_context().current_cpu_frame(),
             });
             let output = encoder.query_output();
             self.encoder.encode_cuda(&output[..], self.frame_id)
@@ -164,7 +161,11 @@ impl Presenter for VideoStream {
     fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents) {
         self.resize(device_context, extents).unwrap();
     }
-    fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface) {
+    fn present(
+        &mut self,
+        render_context: &mut RenderContext<'_>,
+        render_surface: &mut RenderSurface,
+    ) {
         self.present(render_context, render_surface);
     }
 }

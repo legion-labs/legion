@@ -2,6 +2,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_graphics_renderer::{
     components::RenderSurface,
+    hl_gfx_api::HLCommandBuffer,
     resources::{PipelineHandle, PipelineManager},
     RenderContext,
 };
@@ -158,13 +159,14 @@ impl RgbToYuvConverter {
     #[span_fn]
     pub fn convert(
         &mut self,
-        render_context: &RenderContext<'_>,
-
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         yuv: &mut [u8],
     ) -> anyhow::Result<()> {
         let render_frame_idx = 0;
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer_handle = render_context.acquire_command_buffer();
+        let mut cmd_buffer = HLCommandBuffer::new(cmd_buffer_handle);
+
         render_surface
             .hdr_rt_mut()
             .transition_to(&mut cmd_buffer, ResourceState::SHADER_RESOURCE);

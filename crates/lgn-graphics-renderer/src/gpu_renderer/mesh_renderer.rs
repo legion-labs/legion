@@ -30,8 +30,8 @@ use crate::{
     hl_gfx_api::HLCommandBuffer,
     labels::RenderStage,
     resources::{
-        GPUDataUpdaterBuilder, GpuBufferWithReadback, MaterialId, PipelineHandle, PipelineManager,
-        ReadbackBuffer, UnifiedStaticBufferAllocator,
+        GpuBufferWithReadback, MaterialId, PipelineHandle, PipelineManager, ReadbackBuffer,
+        UnifiedStaticBufferAllocator,
     },
     RenderContext, Renderer,
 };
@@ -291,8 +291,10 @@ impl MeshRenderer {
     }
 
     fn prepare(&mut self, renderer: &Renderer) {
-        let mut updater =
-            GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
+        // let mut updater =
+        //     GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
+        let mut render_commands = renderer.render_command_builder();
+        let device_context = renderer.device_context();
 
         let mut count_buffer_size: u64 = 0;
         let mut indirect_arg_buffer_size: u64 = 0;
@@ -300,7 +302,7 @@ impl MeshRenderer {
 
         for (index, layer) in self.default_layers.iter_mut().enumerate() {
             layer.aggregate_offsets(
-                &mut updater,
+                &mut render_commands,
                 &mut count_buffer_size,
                 &mut indirect_arg_buffer_size,
             );
@@ -309,12 +311,12 @@ impl MeshRenderer {
             }
         }
 
-        renderer.add_update_job_block(updater.job_blocks());
+        // renderer.add_update_job_block(updater.job_blocks());
 
         let readback = self
             .culling_buffers
             .stats_buffer
-            .begin_readback(renderer.device_context());
+            .begin_readback(&device_context);
 
         readback.read_gpu_data(
             0,
@@ -328,7 +330,7 @@ impl MeshRenderer {
 
         if count_buffer_size != 0 {
             create_or_replace_buffer(
-                renderer.device_context(),
+                &device_context,
                 &mut self.culling_buffers.draw_count,
                 std::mem::size_of::<u32>() as u64,
                 count_buffer_size,
@@ -342,7 +344,7 @@ impl MeshRenderer {
 
         if indirect_arg_buffer_size != 0 {
             create_or_replace_buffer(
-                renderer.device_context(),
+                &device_context,
                 &mut self.culling_buffers.draw_args,
                 std::mem::size_of::<u32>() as u64,
                 indirect_arg_buffer_size * 5,
@@ -354,7 +356,7 @@ impl MeshRenderer {
         }
 
         create_or_replace_buffer(
-            renderer.device_context(),
+            &device_context,
             &mut self.culling_buffers.culled_count,
             std::mem::size_of::<u32>() as u64,
             1,
@@ -366,7 +368,7 @@ impl MeshRenderer {
         );
 
         create_or_replace_buffer(
-            renderer.device_context(),
+            &device_context,
             &mut self.culling_buffers.tmp_culled_count,
             std::mem::size_of::<u32>() as u64,
             1,
@@ -378,7 +380,7 @@ impl MeshRenderer {
         );
 
         create_or_replace_buffer(
-            renderer.device_context(),
+            &device_context,
             &mut self.culling_buffers.culled_args,
             std::mem::size_of::<(u32, u32, u32)>() as u64,
             1,
@@ -390,7 +392,7 @@ impl MeshRenderer {
         );
 
         create_or_replace_buffer(
-            renderer.device_context(),
+            &device_context,
             &mut self.culling_buffers.tmp_culled_args,
             std::mem::size_of::<(u32, u32, u32)>() as u64,
             1,
@@ -403,7 +405,7 @@ impl MeshRenderer {
 
         if !self.gpu_instance_data.is_empty() {
             create_or_replace_buffer(
-                renderer.device_context(),
+                &device_context,
                 &mut self.culling_buffers.culled_instances,
                 std::mem::size_of::<GpuInstanceData>() as u64,
                 self.gpu_instance_data.len() as u64,
@@ -414,7 +416,7 @@ impl MeshRenderer {
             );
 
             create_or_replace_buffer(
-                renderer.device_context(),
+                &device_context,
                 &mut self.culling_buffers.culling_debug,
                 std::mem::size_of::<CullingDebugData>() as u64,
                 self.gpu_instance_data.len() as u64,
@@ -425,7 +427,7 @@ impl MeshRenderer {
             );
 
             create_or_replace_buffer(
-                renderer.device_context(),
+                &device_context,
                 &mut self.culling_buffers.tmp_culled_instances,
                 std::mem::size_of::<GpuInstanceData>() as u64,
                 self.gpu_instance_data.len() as u64,
@@ -440,7 +442,7 @@ impl MeshRenderer {
     fn cull(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         culling_buffers: &CullingArgBuffers,
         culling_options: &(IndirectDispatch, GatherPerfStats),
         culling_args: (u32, u32, u32, Vec2),
@@ -657,14 +659,15 @@ impl MeshRenderer {
 
     pub(crate) fn gen_occlusion_and_cull(
         &self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
     ) {
         if self.culling_buffers.draw_count.is_none() || self.gpu_instance_data.is_empty() {
             // TODO(vdbdd):  Remove this hack
 
-            let mut cmd_buffer = render_context.alloc_command_buffer();
+            // let mut cmd_buffer = render_context.alloc_command_buffer();
 
             cmd_buffer.begin_render_pass(
                 &[],
@@ -683,9 +686,9 @@ impl MeshRenderer {
 
             cmd_buffer.end_render_pass();
 
-            render_context
-                .graphics_queue()
-                .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+            // render_context
+            //     .graphics_queue()
+            //     .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
 
             return;
         }
@@ -699,15 +702,10 @@ impl MeshRenderer {
             render_pass_data.push(pass_data);
         }
 
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        // let mut cmd_buffer = render_context.alloc_command_buffer();
 
         cmd_buffer.with_label("Gen occlusion and cull", |cmd_buffer| {
-            cmd_buffer.bind_index_buffer(
-                render_context
-                    .renderer()
-                    .static_buffer()
-                    .index_buffer_binding(),
-            );
+            cmd_buffer.bind_index_buffer(render_context.static_buffer().index_buffer_binding());
             cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
             let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
@@ -715,7 +713,7 @@ impl MeshRenderer {
 
             render_surface.init_hzb_if_needed(render_context, cmd_buffer);
 
-            let mut transient_buffer_allocator = render_context.transient_buffer_allocator();
+            let transient_buffer_allocator = render_context.transient_buffer_allocator();
             let gpu_count_allocation = transient_buffer_allocator.copy_data(
                 &(self.gpu_instance_data.len() as u32),
                 ResourceUsage::AS_SHADER_RESOURCE,
@@ -839,15 +837,15 @@ impl MeshRenderer {
             }
         });
 
-        render_context
-            .graphics_queue()
-            .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+        // render_context
+        //     .graphics_queue()
+        //     .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
     }
 
     pub(crate) fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         layer_id: DefaultLayers,
     ) {
         let label = format!(
@@ -876,7 +874,7 @@ impl MeshRenderer {
         });
     }
 
-    pub(crate) fn render_end(&mut self) {
+    pub(crate) fn end_frame(&mut self) {
         let readback = std::mem::take(&mut self.culling_buffers.stats_buffer_readback);
 
         if let Some(readback) = readback {

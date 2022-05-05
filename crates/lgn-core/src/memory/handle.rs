@@ -12,6 +12,7 @@ impl<T> Handle<T> {
         Self { inner: Some(data) }
     }
 
+    /// Create invalid handle
     pub fn invalid() -> Self {
         Self { inner: None }
     }

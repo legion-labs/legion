@@ -1,8 +1,9 @@
 use lgn_graphics_api::Buffer;
 
 use crate::{
+    core::{BinaryWriter, RenderCommandBuilder},
     hl_gfx_api::HLCommandBuffer,
-    resources::{GPUDataUpdaterBuilder, StaticBufferAllocation, UnifiedStaticBufferAllocator},
+    resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBuffer},
     RenderContext,
 };
 
@@ -68,7 +69,7 @@ impl RenderLayer {
 
     pub fn aggregate_offsets(
         &mut self,
-        updater: &mut GPUDataUpdaterBuilder,
+        render_commands: &mut RenderCommandBuilder,
         count_buffer_offset: &mut u64,
         indirect_arg_buffer_offset: &mut u64,
     ) {
@@ -92,7 +93,15 @@ impl RenderLayer {
                 per_state_offsets[state_id] = per_batch_offsets[*batch_id as usize];
             }
 
-            updater.add_update_jobs(&per_state_offsets, self.state_page.byte_offset());
+            let mut binary_writer = BinaryWriter::new();
+            binary_writer.write(&per_state_offsets);
+
+            render_commands.push(UpdateUnifiedStaticBuffer {
+                src_buffer: binary_writer.take(),
+                dst_offset: self.state_page.byte_offset(),
+            });
+
+            // render_commands.add_update_jobs(&per_state_offsets, self.state_page.byte_offset());
         }
     }
 
@@ -107,7 +116,7 @@ impl RenderLayer {
     pub fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {

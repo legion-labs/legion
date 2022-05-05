@@ -2,24 +2,16 @@ use lgn_graphics_api::{
     CommandBuffer, Fence, GfxResult, PresentSuccessResult, Queue, Semaphore, Swapchain,
 };
 use lgn_tracing::span_fn;
-use parking_lot::RwLockReadGuard;
 
-use crate::resources::{CommandBufferHandle, CommandBufferPool};
+use crate::resources::CommandBufferHandle;
 
 pub struct HLQueue<'rc> {
-    queue: RwLockReadGuard<'rc, Queue>,
-    command_buffer_pool: &'rc CommandBufferPool,
+    queue: &'rc Queue,
 }
 
 impl<'rc> HLQueue<'rc> {
-    pub(crate) fn new(
-        queue: RwLockReadGuard<'rc, Queue>,
-        command_buffer_pool: &'rc CommandBufferPool,
-    ) -> Self {
-        Self {
-            queue,
-            command_buffer_pool,
-        }
+    pub(crate) fn new(queue: &'rc Queue) -> Self {
+        Self { queue }
     }
 
     #[span_fn]
@@ -30,28 +22,22 @@ impl<'rc> HLQueue<'rc> {
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
     ) {
-        {
-            let mut command_buffers = smallvec::SmallVec::<[&mut CommandBuffer; 16]>::with_capacity(
-                command_buffer_handles.len(),
-            );
-
-            for cbh in command_buffer_handles.iter_mut() {
-                command_buffers.push(cbh);
-            }
-
-            self.queue
-                .submit(
-                    &mut command_buffers,
-                    wait_semaphores,
-                    signal_semaphores,
-                    signal_fence,
-                )
-                .unwrap();
-        }
+        let mut command_buffers = smallvec::SmallVec::<[&mut CommandBuffer; 16]>::with_capacity(
+            command_buffer_handles.len(),
+        );
 
         for cbh in command_buffer_handles.iter_mut() {
-            self.command_buffer_pool.release(cbh.transfer());
+            command_buffers.push(cbh);
         }
+
+        self.queue
+            .submit(
+                &mut command_buffers,
+                wait_semaphores,
+                signal_semaphores,
+                signal_fence,
+            )
+            .unwrap();
     }
 
     pub fn present(
@@ -67,21 +53,4 @@ impl<'rc> HLQueue<'rc> {
     pub fn wait_for_queue_idle(&self) -> GfxResult<()> {
         self.queue.wait_for_queue_idle()
     }
-
-    // pub fn commit_sparse_bindings<'a>(
-    //     &self,
-    //     prev_frame_semaphore: &'a Semaphore,
-    //     unbind_pages: &[PagedBufferAllocation],
-    //     unbind_semaphore: &'a Semaphore,
-    //     bind_pages: &[PagedBufferAllocation],
-    //     bind_semaphore: &'a Semaphore,
-    // ) -> &'a Semaphore {
-    //     self.queue.commit_sparse_bindings(
-    //         prev_frame_semaphore,
-    //         unbind_pages,
-    //         unbind_semaphore,
-    //         bind_pages,
-    //         bind_semaphore,
-    //     )
-    // }
 }

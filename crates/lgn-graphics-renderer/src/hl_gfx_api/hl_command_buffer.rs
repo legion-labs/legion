@@ -1,4 +1,4 @@
-use std::{cell::RefCell, mem};
+use std::mem;
 
 use lgn_graphics_api::{
     Buffer, BufferBarrier, BufferCopy, CmdBlitParams, CmdCopyBufferToTextureParams,
@@ -7,22 +7,19 @@ use lgn_graphics_api::{
     TextureBarrier, VertexBufferBinding,
 };
 
-use crate::resources::{CommandBufferHandle, CommandBufferPoolHandle};
+use crate::resources::CommandBufferHandle;
 
-pub struct HLCommandBuffer<'rc> {
-    cmd_buffer_pool: &'rc CommandBufferPoolHandle,
+pub struct HLCommandBuffer {
     cmd_buffer: CommandBufferHandle,
-    cur_pipeline: RefCell<Option<Pipeline>>, // tmp? find a way to make a local cache by keeping current info
+    cur_pipeline: Option<Pipeline>,
 }
 
-impl<'rc> HLCommandBuffer<'rc> {
-    pub fn new(cmd_buffer_pool: &'rc CommandBufferPoolHandle) -> Self {
-        let mut cmd_buffer = cmd_buffer_pool.acquire();
+impl<'rc> HLCommandBuffer {
+    pub fn new(mut cmd_buffer: CommandBufferHandle) -> Self {
         cmd_buffer.begin().unwrap();
         Self {
-            cmd_buffer_pool,
             cmd_buffer,
-            cur_pipeline: RefCell::new(None),
+            cur_pipeline: None,
         }
     }
 
@@ -50,7 +47,7 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn bind_pipeline(&mut self, pipeline: &Pipeline) {
-        self.cur_pipeline.replace(Some(pipeline.clone()));
+        self.cur_pipeline = Some(pipeline.clone());
         self.cmd_buffer.cmd_bind_pipeline(pipeline);
     }
 
@@ -76,10 +73,9 @@ impl<'rc> HLCommandBuffer<'rc> {
         layout: &DescriptorSetLayout,
         handle: DescriptorSetHandle,
     ) {
-        assert!(self.cur_pipeline.borrow().is_some());
+        assert!(self.cur_pipeline.is_some());
 
-        let cur_pipeline = self.cur_pipeline.borrow();
-        let cur_pipeline = cur_pipeline.as_ref().unwrap();
+        let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
         let pipeline_type = cur_pipeline.pipeline_type();
         let root_signature = cur_pipeline.root_signature();
         let set_index = layout.frequency();
@@ -98,10 +94,9 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 
     pub fn push_constant<T: Sized>(&mut self, constants: &T) {
-        assert!(self.cur_pipeline.borrow().is_some());
+        assert!(self.cur_pipeline.is_some());
 
-        let cur_pipeline = self.cur_pipeline.borrow();
-        let cur_pipeline = cur_pipeline.as_ref().unwrap();
+        let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
         let root_signature = cur_pipeline.root_signature();
 
         assert!(&root_signature.definition().push_constant_def.is_some());
@@ -295,11 +290,10 @@ impl<'rc> HLCommandBuffer<'rc> {
     }
 }
 
-impl<'rc> Drop for HLCommandBuffer<'rc> {
+impl Drop for HLCommandBuffer {
     fn drop(&mut self) {
         if self.cmd_buffer.is_valid() {
             self.cmd_buffer.end().unwrap();
-            self.cmd_buffer_pool.release(self.cmd_buffer.transfer());
         }
     }
 }

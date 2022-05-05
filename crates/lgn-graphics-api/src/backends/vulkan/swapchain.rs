@@ -415,7 +415,7 @@ impl SwapchainVulkanInstance {
             let texture = Texture::from_existing(
                 &self.device_context,
                 Some(raw_image),
-                TextureDef {            
+                TextureDef {
                     extents: Extents3D {
                         width: self.swapchain_info.extents.width,
                         height: self.swapchain_info.extents.height,

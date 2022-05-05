@@ -130,7 +130,6 @@ impl BufferViewDef {
                 panic!();
             }
         }
-        assert!(self.byte_offset % self.element_size == 0);
 
         let upper_bound = self.byte_offset + self.element_count * self.element_size;
         assert!(upper_bound <= buffer_def.size);

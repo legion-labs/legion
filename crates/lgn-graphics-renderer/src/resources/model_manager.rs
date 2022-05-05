@@ -113,6 +113,8 @@ pub(crate) fn update_models(
     updated_models: Query<'_, '_, &ModelComponent, Changed<ModelComponent>>,
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
+    let mut render_commands = renderer.render_command_builder();
+
     for updated_model in updated_models.iter() {
         let model_resource_id = &updated_model.resource.id();
 
@@ -121,7 +123,7 @@ pub(crate) fn update_models(
         let mut mesh_instances = Vec::new();
 
         for mesh in &updated_model.meshes {
-            let mesh_id = mesh_manager.add_mesh(&renderer, mesh);
+            let mesh_id = mesh_manager.add_mesh(&mut render_commands, mesh);
 
             // for (idx, mesh) in updated_model.meshes.iter().enumerate() {
             /*
@@ -164,7 +166,6 @@ pub(crate) fn update_models(
                 mesh_id,
                 material_id,
             });
-            // }
         }
 
         model_manager.add_model(*model_resource_id, ModelMetaData { mesh_instances });

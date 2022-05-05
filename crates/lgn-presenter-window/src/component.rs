@@ -1,6 +1,7 @@
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
+    hl_gfx_api::HLCommandBuffer,
     RenderContext, Renderer,
 };
 use raw_window_handle::HasRawWindowHandle;
@@ -37,14 +38,14 @@ impl PresenterWindow {
             .unwrap();
 
         Self {
-            swapchain_helper: SwapchainHelper::new(device_context, swapchain, None).unwrap(),
+            swapchain_helper: SwapchainHelper::new(&device_context, swapchain, None).unwrap(),
             extents,
         }
     }
 
     pub fn present(
         &mut self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
         //
@@ -58,7 +59,8 @@ impl PresenterWindow {
 
         let swapchain_texture = presentable_frame.swapchain_texture();
 
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer_handle = render_context.acquire_command_buffer();
+        let mut cmd_buffer = HLCommandBuffer::new(cmd_buffer_handle);
         cmd_buffer.resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
@@ -112,7 +114,11 @@ impl Presenter for PresenterWindow {
         self.extents = extents;
     }
 
-    fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface) {
+    fn present(
+        &mut self,
+        render_context: &mut RenderContext<'_>,
+        render_surface: &mut RenderSurface,
+    ) {
         // FIXME: if the windows is minimized, we should not resize the RenderSurface
         // and we should not present the swapchain.
         if self.extents.width() > 1 && self.extents.height() > 1 {

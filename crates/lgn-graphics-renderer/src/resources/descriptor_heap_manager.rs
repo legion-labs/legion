@@ -22,7 +22,7 @@ impl DescriptorHeapManager {
 
         Self {
             heap: device_context
-                .create_descriptor_heap(&descriptor_heap_def)
+                .create_descriptor_heap(descriptor_heap_def)
                 .unwrap(),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
         }
@@ -30,7 +30,7 @@ impl DescriptorHeapManager {
 
     pub fn begin_frame(&mut self) {
         let mut pool = self.descriptor_pools.lock();
-        pool.begin_frame(|x| x.begin_frame());
+        pool.begin_frame(DescriptorPool::begin_frame);
     }
 
     pub fn end_frame(&mut self) {
@@ -42,7 +42,7 @@ impl DescriptorHeapManager {
         &self.heap
     }
 
-    pub fn acquire_descriptor_pool(&self, heap_def: &DescriptorHeapDef) -> DescriptorPoolHandle {
+    pub fn acquire_descriptor_pool(&self, heap_def: DescriptorHeapDef) -> DescriptorPoolHandle {
         let mut pool = self.descriptor_pools.lock();
         pool.acquire_or_create(|| DescriptorPool::new(&self.heap, heap_def))
     }

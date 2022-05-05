@@ -249,7 +249,7 @@ impl TextureManager {
             let mip_slices = texture_data.data();
             for (mip_level, mip_data) in mip_slices.iter().enumerate() {
                 Self::upload_texture_data(
-                    device_context,
+                    &device_context,
                     &mut cmd_buffer,
                     texture,
                     mip_data,
@@ -260,9 +260,10 @@ impl TextureManager {
 
         cmd_buffer.end().unwrap();
 
-        let graphics_queue = renderer.graphics_queue_guard(QueueType::Graphics);
+        let graphics_queue = renderer.graphics_queue();
 
         graphics_queue
+            .queue()
             .submit(&mut [&mut cmd_buffer], &[], &[], None)
             .unwrap();
 

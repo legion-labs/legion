@@ -257,7 +257,7 @@ impl DeviceContext {
 
     pub fn create_descriptor_heap(
         &self,
-        descriptor_heap_def: &DescriptorHeapDef,
+        descriptor_heap_def: DescriptorHeapDef,
     ) -> GfxResult<DescriptorHeap> {
         DescriptorHeap::new(self, descriptor_heap_def)
     }
@@ -292,7 +292,7 @@ impl DeviceContext {
         &self.inner.device_info
     }
 
-    pub fn inc_current_cpu_frame(&mut self) {
+    pub fn inc_current_cpu_frame(&self) {
         self.inner.current_cpu_frame.fetch_add(1, Ordering::Relaxed);
     }
 

@@ -12,7 +12,7 @@ pub struct DescriptorPool {
 impl DescriptorPool {
     pub(crate) fn new(
         descriptor_heap: &DescriptorHeap,
-        heap_partition_def: &DescriptorHeapDef,
+        heap_partition_def: DescriptorHeapDef,
     ) -> Self {
         Self {
             descriptor_heap_partition: DescriptorHeapPartition::new(

@@ -14,12 +14,13 @@ use lgn_transform::prelude::GlobalTransform;
 use crate::{
     cgen,
     components::VisualComponent,
+    core::{BinaryWriter, RenderCommandBuilder},
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        DefaultMeshType, GPUDataUpdaterBuilder, GpuDataAllocation, GpuDataManager, MaterialManager,
-        MeshManager, MissingVisualTracker, ModelManager, StaticBufferAllocation, StaticBufferView,
-        UnifiedStaticBufferAllocator,
+        DefaultMeshType, GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager,
+        MissingVisualTracker, ModelManager, StaticBufferAllocation, StaticBufferView,
+        UnifiedStaticBufferAllocator, UpdateUnifiedStaticBuffer,
     },
     Renderer,
 };
@@ -95,16 +96,19 @@ impl GpuVaTableForGpuInstance {
 
     pub fn set_va_table_address_for_gpu_instance(
         &self,
-        updater: &mut GPUDataUpdaterBuilder,
+        render_commands: &mut RenderCommandBuilder,
         gpu_data_allocation: GpuDataAllocation,
     ) {
         let offset_for_gpu_instance =
             self.static_allocation.byte_offset() + u64::from(gpu_data_allocation.index()) * 4;
 
-        updater.add_update_jobs(
-            std::slice::from_ref(&u32::try_from(gpu_data_allocation.va_address()).unwrap()),
-            offset_for_gpu_instance,
-        );
+        let mut binary_writer = BinaryWriter::new();
+        binary_writer.write(&offset_for_gpu_instance);
+
+        render_commands.push(UpdateUnifiedStaticBuffer {
+            src_buffer: binary_writer.take(),
+            dst_offset: offset_for_gpu_instance,
+        });
     }
 
     pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
@@ -131,10 +135,10 @@ impl GpuInstanceManager {
     pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
         Self {
             // TODO(vdbdd): as soon as we have a stable ID, we can move the transforms in their own manager.
-            transform_manager: GpuEntityTransformManager::new(1024),
-            color_manager: GpuEntityColorManager::new(256),
-            picking_data_manager: GpuPickingDataManager::new(1024),
-            va_table_manager: GpuVaTableManager::new(4096),
+            transform_manager: GpuEntityTransformManager::new(allocator, 1024),
+            color_manager: GpuEntityColorManager::new(allocator, 256),
+            picking_data_manager: GpuPickingDataManager::new(allocator, 1024),
+            va_table_manager: GpuVaTableManager::new(allocator, 4096),
             va_table_adresses: GpuVaTableForGpuInstance::new(allocator),
             entity_to_gpu_instance_block: BTreeMap::new(),
             added_render_elements: Vec::new(),
@@ -163,7 +167,6 @@ impl GpuInstanceManager {
 
     pub fn structured_buffer_view(&self) -> &BufferView {
         self.va_table_adresses.structured_buffer_view()
-        // .create_structured_buffer_view(struct_size, read_only)
     }
 
     fn clear_transient_containers(&mut self) {
@@ -183,34 +186,31 @@ impl GpuInstanceManager {
         &mut self,
         entity: Entity,
         visual: &VisualComponent,
-        renderer: &Renderer,
         model_manager: &ModelManager,
         mesh_manager: &MeshManager,
         material_manager: &MaterialManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
-        updater: &mut GPUDataUpdaterBuilder,
+        render_commands: &mut RenderCommandBuilder,
+        // updater: &mut GPUDataUpdaterBuilder,
         picking_context: &mut PickingIdContext<'_>,
     ) {
         assert!(!self.entity_to_gpu_instance_block.contains_key(&entity));
 
         // Transform are updated in their own system
         {
-            self.transform_manager
-                .alloc_gpu_data(&entity, renderer.static_buffer_allocator());
+            self.transform_manager.alloc_gpu_data(&entity);
         }
         // Color are updated in the update function
         {
-            self.color_manager
-                .alloc_gpu_data(&entity, renderer.static_buffer_allocator());
+            self.color_manager.alloc_gpu_data(&entity);
         }
         // Picking is allocated and updated at creation time
         {
-            self.picking_data_manager
-                .alloc_gpu_data(&entity, renderer.static_buffer_allocator());
+            self.picking_data_manager.alloc_gpu_data(&entity);
             let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
             picking_data.set_picking_id(picking_context.acquire_picking_id(entity).into());
             self.picking_data_manager
-                .update_gpu_data(&entity, &picking_data, updater);
+                .update_gpu_data(&entity, &picking_data, render_commands);
         }
 
         //
@@ -277,15 +277,13 @@ impl GpuInstanceManager {
             let gpu_instance_key = GpuInstanceKey { entity, mesh_index };
             gpu_instance_keys.push(gpu_instance_key);
 
-            let gpu_data_allocation = self
-                .va_table_manager
-                .alloc_gpu_data(&gpu_instance_key, renderer.static_buffer_allocator());
+            let gpu_data_allocation = self.va_table_manager.alloc_gpu_data(&gpu_instance_key);
 
             let gpu_instance_id = gpu_data_allocation.index().into();
             gpu_instance_ids.push(gpu_instance_id);
 
             self.va_table_adresses
-                .set_va_table_address_for_gpu_instance(updater, gpu_data_allocation);
+                .set_va_table_address_for_gpu_instance(render_commands, gpu_data_allocation);
 
             let mut gpu_instance_va_table = cgen::cgen_type::GpuInstanceVATable::default();
             gpu_instance_va_table.set_mesh_description_va(instance_vas.submesh_va.into());
@@ -294,7 +292,16 @@ impl GpuInstanceManager {
             gpu_instance_va_table.set_instance_color_va(instance_vas.color_va.into());
             gpu_instance_va_table.set_picking_data_va(instance_vas.picking_data_va.into());
 
-            updater.add_update_jobs(&[gpu_instance_va_table], gpu_data_allocation.va_address());
+            let mut binary_writer = BinaryWriter::new();
+            binary_writer.write(&gpu_instance_va_table);
+
+            render_commands.push(UpdateUnifiedStaticBuffer {
+                src_buffer: binary_writer.take(),
+                dst_offset: gpu_data_allocation.va_address(),
+            });
+
+            // render_commands
+            //     .add_update_jobs(&[gpu_instance_va_table], gpu_data_allocation.va_address());
 
             self.added_render_elements.push(RenderElement::new(
                 gpu_instance_id,
@@ -316,13 +323,14 @@ impl GpuInstanceManager {
         &self,
         entity: Entity,
         visual: &VisualComponent,
-        updater: &mut GPUDataUpdaterBuilder,
+        // updater: &mut GPUDataUpdaterBuilder,
+        render_commands: &mut RenderCommandBuilder,
     ) {
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
         instance_color.set_color((u32::from(visual.color())).into());
         instance_color.set_color_blend(visual.color_blend().into());
         self.color_manager
-            .update_gpu_data(&entity, &instance_color, updater);
+            .update_gpu_data(&entity, &instance_color, render_commands);
     }
 
     fn remove_gpu_instance_block(
@@ -396,7 +404,8 @@ fn update_gpu_instances(
     // Now, recreate the instance block of entities matching the request
     //
 
-    let mut updater = GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
+    let mut render_commands = renderer.render_command_builder();
+
     {
         let mut picking_context = PickingIdContext::new(&picking_manager);
 
@@ -404,12 +413,11 @@ fn update_gpu_instances(
             instance_manager.add_gpu_instance_block(
                 entity,
                 visual,
-                &renderer,
                 &model_manager,
                 &mesh_manager,
                 &material_manager,
                 &mut missing_visuals_tracker,
-                &mut updater,
+                &mut render_commands,
                 &mut picking_context,
             );
         }
@@ -418,10 +426,9 @@ fn update_gpu_instances(
     // TODO(vdbdd): this update could be done in a separate system once we don't reconstruct everything on each change.
     {
         for (entity, _, visual) in instance_query.iter() {
-            instance_manager.update_gpu_instance_block(entity, visual, &mut updater);
+            instance_manager.update_gpu_instance_block(entity, visual, &mut render_commands);
         }
     }
-    renderer.add_update_job_block(updater.job_blocks());
 }
 
 #[allow(
@@ -434,14 +441,7 @@ fn upload_transform_data(
     instance_manager: Res<'_, GpuInstanceManager>,
     query: Query<'_, '_, (Entity, &GlobalTransform, &VisualComponent), Changed<GlobalTransform>>,
 ) {
-    //
-    // TODO(vdbdd): to use a parallel for, we need a new API in bevy.
-    //
-
-    let transform_count = query.iter().count();
-    let block_size = transform_count * std::mem::size_of::<cgen::cgen_type::TransformData>();
-    let mut updater =
-        GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(block_size as u64));
+    let mut render_commands = renderer.render_command_builder();
 
     for (entity, transform, _) in query.iter() {
         let mut world = cgen::cgen_type::TransformData::default();
@@ -451,8 +451,6 @@ fn upload_transform_data(
 
         instance_manager
             .transform_manager
-            .update_gpu_data(&entity, &world, &mut updater);
+            .update_gpu_data(&entity, &world, &mut render_commands);
     }
-
-    renderer.add_update_job_block(updater.job_blocks());
 }

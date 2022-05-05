@@ -5,6 +5,7 @@ use lgn_graphics_api::{
 };
 use lgn_graphics_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
+    hl_gfx_api::HLCommandBuffer,
     render_pass::RenderTarget,
     RenderContext,
 };
@@ -85,10 +86,11 @@ impl Hdr2Rgb {
 
     pub fn present(
         &mut self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer_handle = render_context.acquire_command_buffer();
+        let mut cmd_buffer = HLCommandBuffer::new(cmd_buffer_handle);
         cmd_buffer.resource_barrier(
             &[],
             &[TextureBarrier::state_transition(

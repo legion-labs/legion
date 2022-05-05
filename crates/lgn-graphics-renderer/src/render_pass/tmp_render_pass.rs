@@ -20,7 +20,7 @@ impl TmpRenderPass {
     #[span_fn]
     pub(crate) fn render(
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         render_surface: &mut RenderSurface,
         mesh_renderer: &MeshRenderer,
     ) {

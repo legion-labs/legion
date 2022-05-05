@@ -141,7 +141,7 @@ impl LightingManager {
         lighting_data
     }
 
-    pub(crate) fn per_frame_prepare(
+    pub fn per_frame_prepare(
         &mut self,
         // mut renderer: ResMut<'_, Renderer>,
         // q_lights: Query<'_, '_, (&Transform, &LightComponent)>,
@@ -218,9 +218,9 @@ impl LightingManager {
         // renderer.add_update_job_block(updater.job_blocks());
     }
 
-    pub fn per_frame_render(
+    pub(crate) fn per_frame_render(
         &self,
-        mut transient_buffer_allocator: RefMut<'_, TransientBufferAllocator>,
+        transient_buffer_allocator: &mut TransientBufferAllocator,
         frame_descriptor_set: &mut FrameDescriptorSet,
     ) {
         let a =
@@ -228,10 +228,6 @@ impl LightingManager {
 
         let lighting_manager_view =
             a.to_buffer_view(BufferViewDef::as_const_buffer_typed::<LightingData>());
-
-        // let lighting_manager_view = transient_buffer_allocator
-        //     .copy_data(&self.gpu_data(), ResourceUsage::AS_CONST_BUFFER)
-        //     .to_buffer_view(&BufferViewDef::as_const_buffer_typed::<LightingData>());
 
         frame_descriptor_set.set_lighting_data(lighting_manager_view);
         frame_descriptor_set.set_omni_directional_lights(&self.omnidirectional_light_bufferview);

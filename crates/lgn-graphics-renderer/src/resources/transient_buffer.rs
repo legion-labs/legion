@@ -15,7 +15,7 @@ use super::GpuSafePool;
 pub struct TransientBufferAllocation {
     buffer: NonNull<Buffer>,
     byte_offset: u64,
-    size: u64,
+    _size: u64,
 }
 
 #[allow(unsafe_code)]
@@ -25,14 +25,6 @@ impl TransientBufferAllocation {
     #[allow(unsafe_code)]
     pub fn buffer(&self) -> &Buffer {
         unsafe { self.buffer.as_ref() }
-    }
-
-    pub fn byte_offset(&self) -> u64 {
-        self.byte_offset
-    }
-
-    pub fn size(&self) -> u64 {
-        self.size
     }
 
     #[allow(unsafe_code)]
@@ -54,6 +46,10 @@ impl TransientBufferAllocation {
     }
 
     pub fn to_buffer_view(&self, view_def: BufferViewDef) -> TransientBufferView {
+        let view_def = BufferViewDef {
+            byte_offset: self.byte_offset,
+            ..view_def
+        };
         self.buffer().create_transient_view(view_def)
     }
 }
@@ -99,14 +95,6 @@ impl TransientBuffer {
         self.byte_offset = 0;
     }
 
-    pub fn buffer(&self) -> &Buffer {
-        &self.buffer
-    }
-
-    pub fn byte_offset(&self) -> u64 {
-        self.byte_offset
-    }
-
     pub fn size(&self) -> u64 {
         self.capacity - self.byte_offset
     }
@@ -139,7 +127,7 @@ impl TransientBuffer {
             Some(TransientBufferAllocation {
                 buffer: NonNull::from(&self.buffer),
                 byte_offset: aligned_offset,
-                size: required_size,
+                _size: required_size,
             })
         }
     }
@@ -152,11 +140,11 @@ pub(crate) struct TransientPagedBufferInner {
 }
 
 #[derive(Clone)]
-pub struct TransientPagedBuffer {
+pub struct TransientBufferManager {
     inner: Arc<Mutex<TransientPagedBufferInner>>,
 }
 
-impl TransientPagedBuffer {
+impl TransientBufferManager {
     pub fn new(device_context: &DeviceContext, num_cpu_frames: u64) -> Self {
         Self {
             inner: Arc::new(Mutex::new(TransientPagedBufferInner {
@@ -211,22 +199,16 @@ impl TransientPagedBuffer {
 }
 
 pub struct TransientBufferAllocator {
-    device_context: DeviceContext,
-    paged_buffer: TransientPagedBuffer,
-    allocation: Handle<TransientBuffer>,
+    paged_buffer: TransientBufferManager,
+    transient_buffer: Handle<TransientBuffer>,
 }
 
 impl TransientBufferAllocator {
-    pub fn new(
-        device_context: &DeviceContext,
-        paged_buffer: &TransientPagedBuffer,
-        min_alloc_size: u64,
-    ) -> Self {
+    pub fn new(paged_buffer: &TransientBufferManager, min_alloc_size: u64) -> Self {
         let allocation = paged_buffer.acquire_page(min_alloc_size);
         Self {
             paged_buffer: paged_buffer.clone(),
-            allocation,
-            device_context: device_context.clone(),
+            transient_buffer: allocation,
         }
     }
 
@@ -260,12 +242,13 @@ impl TransientBufferAllocator {
         data_layout: Layout,
         resource_usage: ResourceUsage,
     ) -> TransientBufferAllocation {
-        let mut allocation = self.allocation.allocate(data_layout, resource_usage);
+        let mut allocation = self.transient_buffer.allocate(data_layout, resource_usage);
 
         while allocation.is_none() {
-            self.paged_buffer.release_page(self.allocation.transfer());
-            self.allocation = self.paged_buffer.acquire_page(data_layout.size() as u64);
-            allocation = self.allocation.allocate(data_layout, resource_usage);
+            self.paged_buffer
+                .release_page(self.transient_buffer.transfer());
+            self.transient_buffer = self.paged_buffer.acquire_page(data_layout.size() as u64);
+            allocation = self.transient_buffer.allocate(data_layout, resource_usage);
         }
 
         allocation.unwrap()
@@ -274,6 +257,7 @@ impl TransientBufferAllocator {
 
 impl Drop for TransientBufferAllocator {
     fn drop(&mut self) {
-        self.paged_buffer.release_page(self.allocation.transfer());
+        self.paged_buffer
+            .release_page(self.transient_buffer.transfer());
     }
 }

@@ -122,8 +122,8 @@ impl HzbSurface {
 
     pub fn generate_hzb(
         &self,
-        render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        render_context: &mut RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         depth_srv_view: &TextureView,
     ) {
         let pipeline = render_context
@@ -166,7 +166,7 @@ impl HzbSurface {
                                           0.0, 0.0, 0.0, 0.0,
                                           2.0, 0.0, 2.0, 0.0];
 
-            let mut transient_buffer_allocator = render_context.transient_buffer_allocator();
+            let transient_buffer_allocator = render_context.transient_buffer_allocator();
             let transient_buffer = transient_buffer_allocator
                 .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 

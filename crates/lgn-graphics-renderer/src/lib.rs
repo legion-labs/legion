@@ -20,13 +20,15 @@ use cgen::*;
 pub mod labels;
 
 use gpu_renderer::GpuInstanceManager;
+use hl_gfx_api::HLCommandBuffer;
 pub use labels::*;
 
 mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    AddressMode, BufferViewDef, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef,
+    AddressMode, ApiDef, BufferViewDef, CompareOp, DescriptorHeapDef, DeviceContext, FilterType,
+    GfxApi, MipMapMode, Queue, QueueType, ResourceUsage, SamplerDef,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::Vec2;
@@ -38,7 +40,8 @@ pub use render_context::*;
 pub mod resources;
 use resources::{
     DescriptorHeapManager, ModelManager, PersistentDescriptorSetManager, PipelineManager,
-    TextureManager,
+    TextureManager, TransientBufferAllocator, TransientCommandBufferAllocator,
+    TransientCommandBufferManager,
 };
 
 pub mod components;
@@ -61,6 +64,9 @@ pub mod shared;
 
 mod renderdoc;
 
+use crate::core::{
+    GpuUploadManager, RenderCommandManager, RenderResources, RenderResourcesBuilder,
+};
 use crate::features::ModelPlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
@@ -89,7 +95,7 @@ use crate::debug_display::DebugDisplay;
 
 use crate::resources::{
     ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions,
-    SharedResourcesManager,
+    SharedResourcesManager, TransientBufferManager, UnifiedStaticBuffer,
 };
 
 use crate::{
@@ -103,10 +109,28 @@ use crate::{
 pub const UP_VECTOR: Vec3 = Vec3::Y;
 pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
 
+#[derive(Clone)]
+pub struct GraphicsQueue {
+    queue: Arc<Queue>,
+}
+
+impl GraphicsQueue {
+    pub fn new(device_context: &DeviceContext) -> Self {
+        Self {
+            queue: Arc::new(device_context.create_queue(QueueType::Graphics).unwrap()),
+        }
+    }
+
+    pub fn queue(&self) -> &Queue {
+        self.queue.as_ref()
+    }
+}
+
 #[derive(Default)]
 pub struct RendererPlugin {}
 
 impl Plugin for RendererPlugin {
+    #[allow(unsafe_code)]
     fn build(&self, app: &mut App) {
         // TODO: Config resource? The renderer could be some kind of state machine reacting on some config changes?
         // TODO: refactor this with data pipeline resources
@@ -121,43 +145,45 @@ impl Plugin for RendererPlugin {
         //
         // Init in dependency order
         //
-        let mut renderer = Renderer::new(NUM_RENDER_FRAMES);
+        let gfx_api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
+        let device_context = gfx_api.device_context();
+        let graphics_queue = GraphicsQueue::new(device_context);
+        let cgen_registry = Arc::new(cgen::initialize(device_context));
+        let renderer_data = RendererData::new(NUM_RENDER_FRAMES, device_context);
+        let upload_manager = GpuUploadManager::new();
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
+        let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
+        let render_command_manager = RenderCommandManager::new();
+        let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
+        let transient_commandbuffer_manager =
+            TransientCommandBufferManager::new(NUM_RENDER_FRAMES, &graphics_queue);
 
-        let cgen_registry = Arc::new(cgen::initialize(renderer.device_context()));
-
-        let descriptor_heap_manager =
-            DescriptorHeapManager::new(NUM_RENDER_FRAMES, renderer.device_context());
-
-        let mut pipeline_manager = PipelineManager::new(renderer.device_context());
+        let mut pipeline_manager = PipelineManager::new(device_context);
         pipeline_manager.register_shader_families(&cgen_registry);
 
         let mut cgen_registry_list = CGenRegistryList::new();
         cgen_registry_list.push(cgen_registry);
 
         let mut persistent_descriptor_set_manager = PersistentDescriptorSetManager::new(
-            renderer.device_context(),
+            device_context,
             &descriptor_heap_manager,
             NUM_RENDER_FRAMES,
         );
 
-        let mut mesh_manager = MeshManager::new(&renderer);
-        {
-            renderer.begin_frame();
-            mesh_manager.initialize_default_meshes(&renderer);
-            renderer.end_frame();
-        }
+        let mut mesh_manager = MeshManager::new(static_buffer.allocator());
+        mesh_manager.initialize_default_meshes(render_command_manager.builder());
 
-        let texture_manager = TextureManager::new(renderer.device_context());
+        let texture_manager = TextureManager::new(device_context);
 
-        let material_manager = MaterialManager::new();
+        let material_manager = MaterialManager::new(static_buffer.allocator());
 
-        let shared_resources_manager =
-            SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
-
-        let mesh_renderer = MeshRenderer::new(
-            renderer.device_context(),
-            renderer.static_buffer_allocator(),
+        let shared_resources_manager = SharedResourcesManager::new(
+            device_context,
+            &graphics_queue,
+            &mut persistent_descriptor_set_manager,
         );
+
+        let mesh_renderer = MeshRenderer::new(device_context, static_buffer.allocator());
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -196,10 +222,9 @@ impl Plugin for RendererPlugin {
         app.insert_resource(ModelManager::new(&mesh_manager, &material_manager));
         app.insert_resource(mesh_manager);
         app.insert_resource(DebugDisplay::default());
-        app.insert_resource(LightingManager::new(renderer.device_context()));
-        app.insert_resource(GpuInstanceManager::new(renderer.static_buffer_allocator()));
+        app.insert_resource(LightingManager::new(device_context));
+        app.insert_resource(GpuInstanceManager::new(static_buffer.allocator()));
         app.insert_resource(MissingVisualTracker::default());
-        app.insert_resource(descriptor_heap_manager);
         app.insert_resource(persistent_descriptor_set_manager);
         app.insert_resource(shared_resources_manager);
         app.insert_resource(texture_manager);
@@ -230,9 +255,6 @@ impl Plugin for RendererPlugin {
         app.add_plugin(ModelPlugin::default());
         app.add_plugin(RenderDocPlugin {});
 
-        // This resource needs to be shutdown after all other resources
-        app.insert_resource(renderer);
-
         //
         // Events
         //
@@ -241,7 +263,6 @@ impl Plugin for RendererPlugin {
         //
         // Stage PreUpdate
         //
-        app.add_system_to_stage(CoreStage::PreUpdate, render_pre_update);
         app.add_system_to_stage(CoreStage::PreUpdate, apply_camera_setups);
 
         //
@@ -269,7 +290,6 @@ impl Plugin for RendererPlugin {
             RenderStage::Prepare,
             camera_control.exclusive_system().at_start(),
         );
-        app.add_system_to_stage(RenderStage::Prepare, prepare_shaders);
 
         //
         // Stage: Render
@@ -278,6 +298,25 @@ impl Plugin for RendererPlugin {
             RenderStage::Render,
             render_update.label(CommandBufferLabel::Generate),
         );
+
+        let render_resources_builder = RenderResourcesBuilder::new();
+
+        let render_resources = render_resources_builder
+            .insert(renderer_data)
+            .insert(gfx_api)
+            .insert(render_command_manager)
+            .insert(upload_manager)
+            .insert(static_buffer)
+            .insert(transient_buffer)
+            .insert(descriptor_heap_manager)
+            .insert(transient_commandbuffer_manager)
+            .insert(graphics_queue)
+            .finalize();
+
+        let renderer = Renderer::new(NUM_RENDER_FRAMES, render_resources);
+
+        // This resource needs to be shutdown after all other resources
+        app.insert_resource(renderer);
     }
 }
 
@@ -316,6 +355,7 @@ fn on_window_resized(
     render_surfaces: Res<'_, RenderSurfaces>,
     pipeline_manager: Res<'_, PipelineManager>,
 ) {
+    let device_context = renderer.device_context();
     for ev in ev_wnd_resized.iter() {
         let render_surface_id = render_surfaces.get_from_window_id(ev.id);
         if let Some(render_surface_id) = render_surface_id {
@@ -325,7 +365,7 @@ fn on_window_resized(
             if let Some(mut render_surface) = render_surface {
                 let wnd = wnd_list.get(ev.id).unwrap();
                 render_surface.resize(
-                    renderer.device_context(),
+                    &device_context,
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                     &pipeline_manager,
                 );
@@ -364,19 +404,6 @@ fn init_manipulation_manager(
     manipulation_manager.initialize(commands, picking_manager);
 }
 
-#[allow(clippy::needless_pass_by_value)]
-fn render_pre_update(
-    mut renderer: ResMut<'_, Renderer>,
-    mut descriptor_heap_manager: ResMut<'_, DescriptorHeapManager>,
-) {
-    renderer.begin_frame();
-    descriptor_heap_manager.begin_frame();
-}
-
-fn prepare_shaders(mut pipeline_manager: ResMut<'_, PipelineManager>) {
-    pipeline_manager.update();
-}
-
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,
@@ -386,7 +413,7 @@ fn render_update(
     resources: (
         ResMut<'_, Renderer>,
         Res<'_, TextureManager>, // unused
-        Res<'_, PipelineManager>,
+        ResMut<'_, PipelineManager>,
         ResMut<'_, MeshRenderer>,
         Res<'_, MeshManager>,
         Res<'_, PickingManager>,
@@ -394,7 +421,6 @@ fn render_update(
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
         ResMut<'_, LightingManager>,
-        ResMut<'_, DescriptorHeapManager>,
         Res<'_, PersistentDescriptorSetManager>,
         Res<'_, ModelManager>,
     ),
@@ -407,9 +433,9 @@ fn render_update(
     ),
 ) {
     // resources
-    let mut renderer = resources.0;
+    let renderer = resources.0;
     // let bindless_texture_manager = resources.1;
-    let pipeline_manager = resources.2;
+    let mut pipeline_manager = resources.2;
     let mut mesh_renderer = resources.3;
     let mesh_manager = resources.4;
     let picking_manager = resources.5;
@@ -417,9 +443,8 @@ fn render_update(
     let mut egui = resources.7;
     let mut debug_display = resources.8;
     let lighting_manager = resources.9;
-    let mut descriptor_heap_manager = resources.10;
-    let persistent_descriptor_set_manager = resources.11;
-    let model_manager = resources.12;
+    let persistent_descriptor_set_manager = resources.10;
+    let model_manager = resources.11;
 
     // queries
     let mut q_render_surfaces = queries.0;
@@ -434,15 +459,17 @@ fn render_update(
     }
     // >>< render_begin
 
+    let render_resources = renderer.render_resources().clone();
+
+    drop(renderer);
+
     /*
         Start of the RenderThread
     */
-
     // << render_update
     {
         // start
-        let mut render_context =
-            RenderContext::new(&renderer, &descriptor_heap_manager, &pipeline_manager);
+
         let q_picked_drawables = q_picked_drawables
             .iter()
             .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
@@ -460,10 +487,46 @@ fn render_update(
         } else {
             &default_camera
         };
-        
-        renderer.flush_render_commands();
 
-        renderer.flush_update_jobs(&render_context);
+        let mut renderer_data = render_resources.get_mut::<RendererData>();
+        renderer_data.begin_frame();
+
+        let mut descriptor_heap_manager = render_resources.get_mut::<DescriptorHeapManager>();
+        descriptor_heap_manager.begin_frame();
+
+        render_resources
+            .get::<RenderCommandManager>()
+            .apply(&render_resources);
+
+        let gfx_api = render_resources.get::<GfxApi>();
+        let device_context = gfx_api.device_context();
+        device_context.free_gpu_memory();
+        device_context.inc_current_cpu_frame();
+        let static_buffer = render_resources.get::<UnifiedStaticBuffer>();
+        let mut transient_buffer = render_resources.get_mut::<TransientBufferManager>();
+        transient_buffer.begin_frame();
+        let mut transient_buffer_allocator =
+            TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
+        let transient_commandbuffer_manager =
+            render_resources.get::<TransientCommandBufferManager>(); //  renderer.acquire_command_buffer_pool(QueueType::Graphics);
+        transient_commandbuffer_manager.begin_frame();
+        let mut transient_commandbuffer_allocator =
+            TransientCommandBufferAllocator::new(&transient_commandbuffer_manager);
+        let descriptor_pool =
+            descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
+        let graphics_queue = render_resources.get::<GraphicsQueue>();
+
+        pipeline_manager.update();
+
+        let mut render_context = RenderContext::new(
+            device_context,
+            &graphics_queue,
+            &descriptor_pool,
+            &pipeline_manager,
+            &mut transient_commandbuffer_allocator,
+            &mut transient_buffer_allocator,
+            &static_buffer,
+        );
 
         // Persistent descriptor set
         {
@@ -481,7 +544,7 @@ fn render_update(
                 &mut frame_descriptor_set,
             );
 
-            let static_buffer_ro_view = renderer.static_buffer_ro_view();
+            let static_buffer_ro_view = static_buffer.read_only_view();
             frame_descriptor_set.set_static_buffer(static_buffer_ro_view);
 
             let va_table_address_buffer = instance_manager
@@ -500,7 +563,7 @@ fn render_update(
                 max_anisotropy: 1.0,
                 compare_op: CompareOp::LessOrEqual,
             };
-            let material_sampler = renderer.device_context().create_sampler(sampler_def);
+            let material_sampler = render_context.device_context().create_sampler(sampler_def);
             frame_descriptor_set.set_material_sampler(&material_sampler);
 
             let frame_descriptor_set_handle = render_context.write_descriptor_set(
@@ -561,14 +624,17 @@ fn render_update(
                 );
             }
 
+            let cmd_buffer_handle = render_context.acquire_command_buffer();
+            let mut cmd_buffer = HLCommandBuffer::new(cmd_buffer_handle);
+
             mesh_renderer.gen_occlusion_and_cull(
-                &render_context,
+                &mut render_context,
+                &mut cmd_buffer,
                 &mut render_surface,
                 &instance_manager,
             );
 
-            let mut cmd_buffer = render_context.alloc_command_buffer();
-            cmd_buffer.bind_index_buffer(renderer.static_buffer().index_buffer_binding());
+            cmd_buffer.bind_index_buffer(static_buffer.index_buffer_binding());
             cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
             let picking_pass = render_surface.picking_renderpass();
@@ -612,7 +678,7 @@ fn render_update(
                 let mut egui_pass = egui_pass.write();
                 egui_pass.update_font_texture(&render_context, &mut cmd_buffer, egui.ctx());
                 egui_pass.render(
-                    &render_context,
+                    &mut render_context,
                     &mut cmd_buffer,
                     render_surface.as_mut(),
                     &egui,
@@ -625,18 +691,34 @@ fn render_update(
                 let graphics_queue = render_context.graphics_queue();
                 graphics_queue.submit(&mut [cmd_buffer.finalize()], &[present_sema], &[], None);
 
-                render_surface.present(&render_context);
+                render_surface.present(&mut render_context);
             }
+
+            render_context.release_command_buffer(cmd_buffer_handle);
         }
-    }
 
-    // << render_end
-    {
-        descriptor_heap_manager.end_frame();
-        debug_display.end_frame();
-        renderer.end_frame();
-        mesh_renderer.render_end();
-    }
+        // << render_end
+        {
+            descriptor_heap_manager.end_frame();
+            debug_display.end_frame();
+            renderer_data.end_frame(&graphics_queue);
+            transient_buffer.end_frame();
+            transient_commandbuffer_manager.end_frame();
+            mesh_renderer.end_frame();
+        }
 
-    // >> render_end
+        // >> render_end
+    }
+}
+
+fn default_descriptor_heap_size() -> DescriptorHeapDef {
+    DescriptorHeapDef {
+        max_descriptor_sets: 4096,
+        sampler_count: 128,
+        constant_buffer_count: 1024,
+        buffer_count: 1024,
+        rw_buffer_count: 1024,
+        texture_count: 1024,
+        rw_texture_count: 1024,
+    }
 }

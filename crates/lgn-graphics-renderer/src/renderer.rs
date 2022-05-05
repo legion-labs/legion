@@ -1,41 +1,83 @@
 #![allow(unsafe_code)]
 
-use lgn_core::Handle;
-use lgn_graphics_api::Queue;
-use lgn_graphics_api::{ApiDef, BufferView, DeviceContext, Fence, FenceStatus, GfxApi, QueueType};
+use lgn_graphics_api::{DeviceContext, Fence, FenceStatus, GfxApi, QueueType};
 
 use lgn_tracing::span_fn;
-use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
-use crate::core::{RenderCommand, RenderCommandManager, RenderCommandQueue};
-use crate::resources::{
-    CommandBufferPool, CommandBufferPoolHandle, GPUDataUpdaterCopy, GpuSafePool,
-    TransientBufferAllocator, TransientPagedBuffer, UnifiedStaticBuffer,
-    UnifiedStaticBufferAllocator,
-};
-use crate::RenderContext;
+use crate::core::{RenderCommandBuilder, RenderCommandManager, RenderResources};
+use crate::resources::{CommandBufferPoolHandle, TransientCommandBufferManager};
+use crate::GraphicsQueue;
 
 pub struct Renderer {
+    num_render_frames: u64,
+    render_resources: RenderResources,
+}
+
+impl Renderer {
+    pub fn new(num_render_frames: u64, render_resources: RenderResources) -> Self {
+        Self {
+            num_render_frames,
+            render_resources,
+        }
+    }
+
+    pub fn num_render_frames(&self) -> u64 {
+        self.num_render_frames
+    }
+
+    pub(crate) fn render_resources(&self) -> &RenderResources {
+        &self.render_resources
+    }
+
+    pub fn device_context(&self) -> DeviceContext {
+        self.render_resources
+            .get::<GfxApi>()
+            .device_context()
+            .clone()
+    }
+
+    pub fn render_command_builder(&self) -> RenderCommandBuilder {
+        self.render_resources
+            .get::<RenderCommandManager>()
+            .builder()
+    }
+
+    pub fn graphics_queue(&self) -> GraphicsQueue {
+        let graphics_queue = self.render_resources.get::<GraphicsQueue>();
+        graphics_queue.clone()
+    }
+
+    pub(crate) fn acquire_command_buffer_pool(
+        &self,
+        queue_type: QueueType,
+    ) -> CommandBufferPoolHandle {
+        assert!(queue_type == QueueType::Graphics);
+
+        let command_buffer_manager = self.render_resources.get::<TransientCommandBufferManager>();
+        command_buffer_manager.acquire()
+    }
+
+    pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
+        let command_buffer_manager = self.render_resources.get::<TransientCommandBufferManager>();
+        command_buffer_manager.release(handle);
+    }
+}
+
+impl Drop for Renderer {
+    fn drop(&mut self) {
+        self.graphics_queue().queue().wait_for_queue_idle().unwrap();
+    }
+}
+
+pub(crate) struct RendererData {
     frame_idx: u64,
     render_frame_idx: u64,
     num_render_frames: u64,
     frame_fences: Vec<Fence>,
-    graphics_queue: RwLock<Queue>,
-    command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
-    transient_buffer: TransientPagedBuffer,
-    static_buffer: UnifiedStaticBuffer,
-    render_command_manager: RenderCommandManager,
-    // This should be last, as it must be destroyed last.
-    api: GfxApi,
 }
 
-impl Renderer {
-    pub fn new(num_render_frames: u64) -> Self {
-        let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
-        let device_context = api.device_context();
-
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
-
+impl RendererData {
+    pub fn new(num_render_frames: u64, device_context: &DeviceContext) -> Self {
         Self {
             frame_idx: 0,
             render_frame_idx: 0,
@@ -43,103 +85,11 @@ impl Renderer {
             frame_fences: (0..num_render_frames)
                 .map(|_| device_context.create_fence().unwrap())
                 .collect(),
-            graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
-            command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, num_render_frames),
-            static_buffer,
-            render_command_manager: RenderCommandManager::new(),
-            api,
         }
-    }
-
-    pub fn device_context(&self) -> &DeviceContext {
-        self.api.device_context()
-    }
-
-    pub fn num_render_frames(&self) -> u64 {
-        self.num_render_frames
-    }
-
-    pub fn render_frame_idx(&self) -> u64 {
-        self.render_frame_idx
-    }
-
-    pub fn send_command<T: RenderCommand + 'static>(&self, command: T) {
-        let mut commands = self.render_command_manager.acquire();
-        commands.send(command);
-        self.render_command_manager.release(commands);
-    }
-
-    pub fn acquire_commands(&self) -> Handle<RenderCommandQueue> {
-        self.render_command_manager.acquire()
-    }
-
-    pub fn release_commands(&self, handle: Handle<RenderCommandQueue>) {
-        self.render_command_manager.release(handle);
-    }
-
-    pub fn graphics_queue_guard(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
-        match queue_type {
-            QueueType::Graphics => self.graphics_queue.read(),
-            _ => unreachable!(),
-        }
-    }
-
-    pub(crate) fn transient_buffer_allocator(
-        &self,
-        min_alloc_size: u64,
-    ) -> TransientBufferAllocator {
-        TransientBufferAllocator::new(
-            self.device_context(),
-            &self.transient_buffer,
-            min_alloc_size,
-        )
-    }
-
-    pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
-        &self.static_buffer
-    }
-
-    pub fn static_buffer_allocator(&self) -> &UnifiedStaticBufferAllocator {
-        self.static_buffer.allocator()
-    }
-
-    pub fn add_update_job_block(&self, job_blocks: Vec<GPUDataUpdaterCopy>) {
-        self.static_buffer
-            .allocator()
-            .add_update_job_block(job_blocks);
-    }
-
-    pub fn flush_render_commands(&self) {
-        self.render_command_manager.flush();
-    }
-
-    pub fn flush_update_jobs(&self, render_context: &RenderContext<'_>) {
-        self.static_buffer.allocator().flush_updater(render_context);
-    }
-
-    pub fn static_buffer_ro_view(&self) -> &BufferView {
-        self.static_buffer.read_only_view()
-    }
-
-    //    pub fn prev_frame_semaphore(&self)
-
-    pub(crate) fn acquire_command_buffer_pool(
-        &self,
-        queue_type: QueueType,
-    ) -> CommandBufferPoolHandle {
-        let queue = self.graphics_queue_guard(queue_type);
-        let mut pool = self.command_buffer_pools.lock();
-        pool.acquire_or_create(|| CommandBufferPool::new(&*queue))
-    }
-
-    pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
-        let mut pool = self.command_buffer_pools.lock();
-        pool.release(handle);
     }
 
     #[span_fn]
-    pub(crate) fn begin_frame(&mut self) {
+    pub fn begin_frame(&mut self) {
         //
         // Update frame indices
         //
@@ -153,55 +103,15 @@ impl Renderer {
         if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
             signal_fence.wait().unwrap();
         }
-
-        //
-        // Now, it is safe to free memory
-        //
-        let device_context = self.api.device_context();
-        device_context.free_gpu_memory();
-
-        //
-        // Broadcast begin frame event
-        //
-        {
-            let mut pool = self.command_buffer_pools.lock();
-            pool.begin_frame(CommandBufferPool::begin_frame);
-
-            self.transient_buffer.begin_frame();
-        }
-
-        //
-        // Update the current frame used for timeline semaphores
-        //
-        self.api.device_context_mut().inc_current_cpu_frame();
     }
 
     #[span_fn]
-    pub(crate) fn end_frame(&mut self) {
-        let graphics_queue = self.graphics_queue.write();
+    pub(crate) fn end_frame(&mut self, graphics_queue: &GraphicsQueue) {
         let frame_fence = &self.frame_fences[self.render_frame_idx as usize];
 
         graphics_queue
+            .queue()
             .submit(&mut [], &[], &[], Some(frame_fence))
             .unwrap();
-
-        //
-        // Broadcast end frame event
-        //
-        {
-            self.transient_buffer.end_frame();
-
-            let mut pool = self.command_buffer_pools.lock();
-            pool.end_frame(CommandBufferPool::end_frame);
-        }
-    }
-}
-
-impl Drop for Renderer {
-    fn drop(&mut self) {
-        {
-            let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
-            graphics_queue.wait_for_queue_idle().unwrap();
-        }
     }
 }

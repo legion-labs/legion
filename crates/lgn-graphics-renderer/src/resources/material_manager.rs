@@ -15,8 +15,8 @@ use crate::{
 };
 
 use super::{
-    GPUDataUpdaterBuilder, GpuDataManager, IndexAllocator, MissingVisualTracker,
-    SharedResourcesManager, TextureEvent, TextureManager, UnifiedStaticBufferAllocator,
+    GpuDataManager, IndexAllocator, MissingVisualTracker, SharedResourcesManager, TextureEvent,
+    TextureManager, UnifiedStaticBufferAllocator,
 };
 
 type GpuMaterialData = GpuDataManager<MaterialId, crate::cgen::cgen_type::MaterialData>;
@@ -70,7 +70,7 @@ impl Material {
 const MATERIAL_BLOCK_SIZE: u32 = 2048;
 
 pub struct MaterialManager {
-    allocator: IndexAllocator,
+    index_allocator: IndexAllocator,
     materials: Vec<MaterialSlot>,
     resource_id_to_material_id: BTreeMap<ResourceTypeAndId, MaterialId>,
     entity_to_material_id: BTreeMap<Entity, MaterialId>,
@@ -83,8 +83,8 @@ pub struct MaterialManager {
 }
 
 impl MaterialManager {
-    pub fn new() -> Self {
-        let mut allocator = IndexAllocator::new(MATERIAL_BLOCK_SIZE);
+    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
+        let mut index_allocator = IndexAllocator::new(MATERIAL_BLOCK_SIZE);
 
         // TODO(vdbdd): redundant and useless. remove asap.
         let default_resource_id = ResourceTypeAndId {
@@ -92,16 +92,16 @@ impl MaterialManager {
             id: ResourceId::new(),
         };
 
-        let default_material_id = allocator.acquire_index();
+        let default_material_id = index_allocator.acquire_index();
 
         Self {
-            allocator,
+            index_allocator,
             materials: Vec::new(),
             resource_id_to_material_id: BTreeMap::new(),
             entity_to_material_id: BTreeMap::new(),
             material_id_to_texture_ids: BTreeMap::new(),
             upload_queue: HashSet::new(),
-            gpu_material_data: GpuMaterialData::new(MATERIAL_BLOCK_SIZE),
+            gpu_material_data: GpuMaterialData::new(allocator, MATERIAL_BLOCK_SIZE),
             default_resource_id,
             default_material_id: default_material_id.into(),
             default_uploaded: false,
@@ -174,17 +174,12 @@ impl MaterialManager {
         }
     }
 
-    fn add_material(
-        &mut self,
-        entity: Entity,
-        material_component: &MaterialComponent,
-        allocator: &UnifiedStaticBufferAllocator,
-    ) {
+    fn add_material(&mut self, entity: Entity, material_component: &MaterialComponent) {
         let material_resource_id = material_component.resource.id();
-        let material_id: MaterialId = self.allocator.acquire_index().into();
+        let material_id: MaterialId = self.index_allocator.acquire_index().into();
         let material_data = material_component.material_data.clone();
 
-        self.alloc_material(material_id, material_resource_id, material_data, allocator);
+        self.alloc_material(material_id, material_resource_id, material_data);
 
         self.upload_queue.insert(material_id);
 
@@ -219,7 +214,7 @@ impl MaterialManager {
         let material_id = self.entity_to_material_id.remove(&entity).unwrap();
         self.material_id_to_texture_ids.remove(&material_id);
         self.gpu_material_data.remove_gpu_data(&material_id);
-        self.allocator.release_index(material_id.index());
+        self.index_allocator.release_index(material_id.index());
     }
 
     fn on_texture_state_changed(&mut self, texture_id: &ResourceTypeAndId) {
@@ -331,8 +326,7 @@ impl MaterialManager {
         shared_resources_manager: &SharedResourcesManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
     ) {
-        let mut updater =
-            GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
+        let mut render_commands = renderer.render_command_builder();
 
         for material_id in &self.upload_queue {
             let material = &self.get_material(*material_id);
@@ -343,16 +337,17 @@ impl MaterialManager {
                 texture_manager,
                 shared_resources_manager,
             );
-            self.gpu_material_data
-                .update_gpu_data(material_id, &gpu_material_data, &mut updater);
+            self.gpu_material_data.update_gpu_data(
+                material_id,
+                &gpu_material_data,
+                &mut render_commands,
+            );
 
             // TODO(vdbdd): remove asap
             missing_visuals_tracker.add_changed_resource(material.resource_id);
         }
 
         self.upload_queue.clear();
-
-        renderer.add_update_job_block(updater.job_blocks());
     }
 
     fn upload_default_material(
@@ -361,8 +356,7 @@ impl MaterialManager {
         shared_resources_manager: &SharedResourcesManager,
     ) {
         if !self.default_uploaded {
-            let mut updater =
-                GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
+            let mut render_commands = renderer.render_command_builder();
 
             let material_data = MaterialData::default();
 
@@ -396,16 +390,13 @@ impl MaterialManager {
                 self.default_material_id,
                 self.default_resource_id,
                 material_data, // TODO(vdbdd): default data not in sync with default_material_data
-                renderer.static_buffer_allocator(),
             );
 
             self.gpu_material_data.update_gpu_data(
                 &self.default_material_id,
                 &default_material_data,
-                &mut updater,
+                &mut render_commands,
             );
-
-            renderer.add_update_job_block(updater.job_blocks());
 
             self.default_uploaded = true;
         }
@@ -416,7 +407,6 @@ impl MaterialManager {
         material_id: MaterialId,
         resource_id: ResourceTypeAndId,
         material_data: MaterialData,
-        gpu_allocator: &UnifiedStaticBufferAllocator,
     ) {
         if self.materials.len() < material_id.index() as usize {
             let next_size =
@@ -425,8 +415,7 @@ impl MaterialManager {
                 .resize(next_size as usize, MaterialSlot::Empty);
         }
 
-        self.gpu_material_data
-            .alloc_gpu_data(&material_id, gpu_allocator);
+        self.gpu_material_data.alloc_gpu_data(&material_id);
 
         self.materials[material_id.index() as usize] = MaterialSlot::Occupied(Material {
             va: self.gpu_material_data.va_for_key(&material_id),
@@ -439,16 +428,11 @@ impl MaterialManager {
 #[allow(clippy::needless_pass_by_value)]
 fn on_material_added(
     mut commands: Commands<'_, '_>,
-    renderer: Res<'_, Renderer>,
     mut material_manager: ResMut<'_, MaterialManager>,
     query: Query<'_, '_, (Entity, &MaterialComponent), Added<MaterialComponent>>,
 ) {
     for (entity, material_component) in query.iter() {
-        material_manager.add_material(
-            entity,
-            material_component,
-            renderer.static_buffer_allocator(),
-        );
+        material_manager.add_material(entity, material_component);
 
         commands
             .entity(entity)

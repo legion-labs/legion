@@ -4435,6 +4435,7 @@ name = "lgn-graphics-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "atomic_refcell",
  "bitflags",
  "bumpalo",
  "crossbeam-channel",

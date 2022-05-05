@@ -19,8 +19,8 @@ struct DescriptorHeapPoolConfig {
     input_attachments: u32,
 }
 
-impl From<&DescriptorHeapDef> for DescriptorHeapPoolConfig {
-    fn from(definition: &DescriptorHeapDef) -> Self {
+impl From<DescriptorHeapDef> for DescriptorHeapPoolConfig {
+    fn from(definition: DescriptorHeapDef) -> Self {
         Self {
             pool_flags: ash::vk::DescriptorPoolCreateFlags::empty(),
             descriptor_sets: definition.max_descriptor_sets,
@@ -192,7 +192,7 @@ pub(crate) struct VulkanDescriptorHeap {
 impl VulkanDescriptorHeap {
     pub(crate) fn new(
         device_context: &DeviceContext,
-        definition: &DescriptorHeapDef,
+        definition: DescriptorHeapDef,
     ) -> GfxResult<Self> {
         let device = device_context.vk_device();
         let heap_pool_config: DescriptorHeapPoolConfig = definition.into();
@@ -221,7 +221,7 @@ impl VulkanDescriptorHeapPartition {
     pub(crate) fn new(
         device_context: &DeviceContext,
         transient: bool,
-        definition: &DescriptorHeapDef,
+        definition: DescriptorHeapDef,
     ) -> GfxResult<Self> {
         let device = device_context.vk_device();
         let mut heap_pool_config: DescriptorHeapPoolConfig = definition.into();

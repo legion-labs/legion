@@ -108,7 +108,7 @@ pub struct DescriptorHeap {
 impl DescriptorHeap {
     pub(crate) fn new(
         device_context: &DeviceContext,
-        definition: &DescriptorHeapDef,
+        definition: DescriptorHeapDef,
     ) -> GfxResult<Self> {
         let backend_descriptor_heap = BackendDescriptorHeap::new(device_context, definition)?;
 
@@ -157,7 +157,7 @@ impl DescriptorHeapPartition {
     pub fn new(
         heap: &DescriptorHeap,
         transient: bool,
-        definition: &DescriptorHeapDef,
+        definition: DescriptorHeapDef,
     ) -> GfxResult<Self> {
         let platform_descriptor_heap_partition =
             BackendDescriptorHeapPartition::new(&heap.inner.device_context, transient, definition)?;

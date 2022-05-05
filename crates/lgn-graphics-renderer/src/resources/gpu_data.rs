@@ -1,6 +1,11 @@
 use std::collections::BTreeMap;
 
-use super::{GPUDataUpdaterBuilder, IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData};
+use crate::{
+    core::{BinaryWriter, RenderCommandBuilder},
+    resources::UpdateUnifiedStaticBuffer,
+};
+
+use super::{IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData};
 
 #[derive(Clone, Copy)]
 pub(crate) struct GpuDataAllocation {
@@ -25,10 +30,10 @@ pub(crate) struct GpuDataManager<K, T> {
 }
 
 impl<K: Ord + Copy, T> GpuDataManager<K, T> {
-    pub fn new(block_size: u32) -> Self {
+    pub fn new(allocator: &UnifiedStaticBufferAllocator, block_size: u32) -> Self {
         let index_allocator = IndexAllocator::new(block_size);
         let page_size = u64::from(block_size) * std::mem::size_of::<T>() as u64;
-        let gpu_data = UniformGPUData::<T>::new(page_size);
+        let gpu_data = UniformGPUData::<T>::new(allocator, page_size);
 
         Self {
             gpu_data,
@@ -37,15 +42,11 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         }
     }
 
-    pub fn alloc_gpu_data(
-        &mut self,
-        key: &K,
-        allocator: &UnifiedStaticBufferAllocator,
-    ) -> GpuDataAllocation {
+    pub fn alloc_gpu_data(&mut self, key: &K) -> GpuDataAllocation {
         assert!(!self.data_map.contains_key(key));
 
         let gpu_data_id = self.index_allocator.acquire_index();
-        let gpu_data_va = self.gpu_data.ensure_index_allocated(allocator, gpu_data_id);
+        let gpu_data_va = self.gpu_data.ensure_index_allocated(gpu_data_id);
         let gpu_data_allocation = GpuDataAllocation {
             index: gpu_data_id,
             va_address: gpu_data_va,
@@ -63,12 +64,20 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         values.va_address
     }
 
-    pub fn update_gpu_data(&self, key: &K, data: &T, updater: &mut GPUDataUpdaterBuilder) {
+    pub fn update_gpu_data(&self, key: &K, data: &T, render_commands: &mut RenderCommandBuilder) {
         assert!(self.data_map.contains_key(key));
 
         let gpu_data_allocation = self.data_map.get(key).unwrap();
-        let data_slice = std::slice::from_ref(data);
-        updater.add_update_jobs(data_slice, gpu_data_allocation.va_address);
+
+        let mut binary_writer = BinaryWriter::new();
+        binary_writer.write(data);
+
+        render_commands.push(UpdateUnifiedStaticBuffer {
+            src_buffer: binary_writer.take(),
+            dst_offset: gpu_data_allocation.va_address,
+        });
+
+        // render_commands.add_update_jobs(data_slice, gpu_data_allocation.va_address);
     }
 
     pub fn remove_gpu_data(&mut self, key: &K) {

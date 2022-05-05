@@ -3,6 +3,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_graphics_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
+    hl_gfx_api::HLCommandBuffer,
     resources::{PipelineHandle, PipelineManager},
     RenderContext,
 };
@@ -116,11 +117,12 @@ impl OffscreenHelper {
     #[span_fn]
     pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let cmd_buffer_handle = render_context.acquire_command_buffer();
+        let mut cmd_buffer = HLCommandBuffer::new(cmd_buffer_handle);
         let render_texture = &self.render_image;
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;

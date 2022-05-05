@@ -195,12 +195,13 @@ fn presenter_snapshot_system(
             ),
         );
         let render_surface_id = render_surface.id();
+        let device_context = renderer.device_context();
 
         render_surface.register_presenter(|| {
             PresenterSnapshot::new(
                 &snapshot_descriptor.setup_name,
                 frame_counter.frame_target,
-                renderer.device_context(),
+                &device_context,
                 &pipeline_manager,
                 render_surface_id,
                 RenderSurfaceExtents::new(

@@ -1,13 +1,8 @@
 use lgn_math::{Vec3, Vec4};
 use strum::EnumIter;
 
-use super::{StaticBufferAllocation, UnifiedStaticBufferAllocator};
-use crate::{
-    cgen::cgen_type::MeshDescription,
-    components::Mesh,
-    core::{BinaryWriter, UpdateGPUBuffer},
-    Renderer,
-};
+use super::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBuffer};
+use crate::{components::Mesh, core::RenderCommandBuilder};
 
 #[derive(Clone, Copy)]
 pub struct MeshId(u32);
@@ -44,15 +39,15 @@ pub enum DefaultMeshType {
 }
 
 impl MeshManager {
-    pub fn new(renderer: &Renderer) -> Self {
+    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
         Self {
-            allocator: renderer.static_buffer_allocator().clone(),
+            allocator: allocator.clone(),
             default_mesh_ids: Vec::new(),
             static_meshes: Vec::new(),
         }
     }
 
-    pub fn initialize_default_meshes(&mut self, renderer: &Renderer) {
+    pub fn initialize_default_meshes(&mut self, mut render_commands: RenderCommandBuilder) {
         // Keep consistent with DefaultMeshType
         let default_meshes = vec![
             Mesh::new_plane(1.0),
@@ -69,12 +64,12 @@ impl MeshManager {
         ];
 
         for default_mesh in &default_meshes {
-            let mesh_id = self.add_mesh(renderer, default_mesh);
+            let mesh_id = self.add_mesh(&mut render_commands, default_mesh);
             self.default_mesh_ids.push(mesh_id);
         }
     }
 
-    pub fn add_mesh(&mut self, renderer: &Renderer, mesh: &Mesh) -> MeshId {
+    pub fn add_mesh(&mut self, render_commands: &mut RenderCommandBuilder, mesh: &Mesh) -> MeshId {
         let (buf, index_offset) = mesh.pack_gpu_data();
         let allocation = self.allocator.allocate(buf.len() as u64);
         let allocation_offset = u32::try_from(allocation.byte_offset()).unwrap();
@@ -89,10 +84,9 @@ impl MeshManager {
             _allocation: allocation.clone(),
         });
 
-        renderer.send_command(UpdateGPUBuffer {
+        render_commands.push(UpdateUnifiedStaticBuffer {
             src_buffer: buf,
-            dst_buffer: allocation.buffer().clone(),
-            dst_offset: allocation.byte_offset() as u32,
+            dst_offset: allocation.byte_offset(),
         });
 
         MeshId(u32::try_from(self.static_meshes.len() - 1).unwrap())

@@ -21,7 +21,11 @@ use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents);
-    fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface);
+    fn present(
+        &mut self,
+        render_context: &mut RenderContext<'_>,
+        render_surface: &mut RenderSurface,
+    );
 }
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -222,8 +226,8 @@ impl RenderSurface {
 
     pub(crate) fn init_hzb_if_needed(
         &mut self,
-        render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        render_context: &mut RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
     ) {
         if !self.resources.hzb_init {
             self.resources
@@ -254,8 +258,8 @@ impl RenderSurface {
 
     pub(crate) fn generate_hzb(
         &mut self,
-        render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        render_context: &mut RenderContext<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
     ) {
         cmd_buffer.with_label("Generate HZB", |cmd_buffer| {
             self.depth_rt_mut()
@@ -276,7 +280,7 @@ impl RenderSurface {
     /// Call the `present` method of all the registered presenters.
     /// No op if the render surface is "paused", i.e., it's `presenting`
     /// attribute is `false`.
-    pub fn present(&mut self, render_context: &RenderContext<'_>) {
+    pub fn present(&mut self, render_context: &mut RenderContext<'_>) {
         if matches!(
             self.presenting_status,
             RenderSurfacePresentingStatus::Paused
@@ -333,15 +337,18 @@ impl RenderSurface {
         Self {
             id,
             extents,
-            resources: SizeDependentResources::new(device_context, extents, pipeline_manager),
+            resources: SizeDependentResources::new(&device_context, extents, pipeline_manager),
             num_render_frames,
             render_frame_idx: 0,
             presenter_sems,
-            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(&device_context))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
-            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(
+                &device_context,
+                pipeline_manager,
+            ))),
             final_resolve_render_pass: Arc::new(RwLock::new(FinalResolveRenderPass::new(
-                device_context,
+                &device_context,
                 pipeline_manager,
             ))),
             presenters: Vec::new(),

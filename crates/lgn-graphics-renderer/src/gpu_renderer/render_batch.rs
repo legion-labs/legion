@@ -69,7 +69,7 @@ impl RenderBatch {
     pub fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {

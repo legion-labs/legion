@@ -180,7 +180,7 @@ impl DebugRenderPass {
     pub fn render_ground_plane(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         mesh_manager: &MeshManager,
     ) {
         cmd_buffer.with_label("Ground Plane", |cmd_buffer| {
@@ -205,7 +205,7 @@ impl DebugRenderPass {
     pub fn render_picked(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
         model_manager: &ModelManager,
@@ -252,7 +252,7 @@ impl DebugRenderPass {
     pub fn render_debug_display(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         debug_display: &DebugDisplay,
         mesh_manager: &MeshManager,
     ) {
@@ -286,7 +286,7 @@ impl DebugRenderPass {
         &self,
         render_context: &RenderContext<'_>,
 
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         render_surface: &mut RenderSurface,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
@@ -333,7 +333,7 @@ impl DebugRenderPass {
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut HLCommandBuffer,
         render_surface: &mut RenderSurface,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
@@ -343,12 +343,7 @@ impl DebugRenderPass {
         debug_display: &DebugDisplay,
     ) {
         cmd_buffer.with_label("Debug", |cmd_buffer| {
-            cmd_buffer.bind_index_buffer(
-                render_context
-                    .renderer()
-                    .static_buffer()
-                    .index_buffer_binding(),
-            );
+            cmd_buffer.bind_index_buffer(render_context.static_buffer().index_buffer_binding());
 
             cmd_buffer.begin_render_pass(
                 &[ColorRenderTargetBinding {
@@ -400,7 +395,7 @@ fn render_aabb_for_mesh(
     wire_frame_cube: &MeshMetaData,
     mesh: &MeshMetaData,
     transform: &GlobalTransform,
-    cmd_buffer: &mut HLCommandBuffer<'_>,
+    cmd_buffer: &mut HLCommandBuffer,
 ) {
     cmd_buffer.with_label("AABB", |cmd_buffer| {
         let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
@@ -435,7 +430,7 @@ fn render_mesh(
     world_xform: &GlobalTransform,
     color: Color,
     color_blend: f32,
-    cmd_buffer: &mut HLCommandBuffer<'_>,
+    cmd_buffer: &mut HLCommandBuffer,
 ) {
     let mut push_constant_data = cgen::cgen_type::ConstColorPushConstantData::default();
 

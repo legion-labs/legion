@@ -47,7 +47,7 @@ impl PresenterSnapshot {
 
     pub(crate) fn present(
         &mut self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) -> anyhow::Result<bool> {
         //
@@ -98,7 +98,7 @@ impl Presenter for PresenterSnapshot {
         unreachable!();
     }
 
-    fn present(&mut self, render_context: &RenderContext<'_>, render_surface: &mut RenderSurface) {
+    fn present(&mut self, render_context: &mut RenderContext<'_>, render_surface: &mut RenderSurface) {
         self.present(render_context, render_surface).unwrap();
     }
 }

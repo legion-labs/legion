@@ -144,13 +144,13 @@ impl Mesh {
             );
         }
         if let Some(tex_coords) = &self.tex_coords {
-            write_slice!(writer, &tex_coords, texcoord_offset, texcoord_size);
+            write_slice!(writer, tex_coords, texcoord_offset, texcoord_size);
         }
         if let Some(indices) = &self.indices {
-            write_slice!(writer, &indices, indice_offset, indice_size);
+            write_slice!(writer, indices, indice_offset, indice_size);
         }
         if let Some(colors) = &self.colors {
-            write_slice!(writer, &colors, color_offset, color_size);
+            write_slice!(writer, colors, color_offset, color_size);
         }
 
         (writer.take(), indice_offset)
