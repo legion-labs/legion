@@ -14,6 +14,7 @@
     currentResourceError,
   } from "@/orchestrators/currentResource";
   import modal from "@/stores/modal";
+  import { createPropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyContainer from "./PropertyContainer.svelte";
   import type {
@@ -24,6 +25,8 @@
   const createComponentModalId = Symbol();
 
   const propertyUpdateDebounceTimeout = 100;
+
+  const propertyGridStore = createPropertyGridStore();
 
   let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -120,7 +123,7 @@
   }
 </script>
 
-<div class="root">
+<div class="h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden">
   {#if $currentResourceError}
     <div class="italic">An error occured</div>
   {:else if !$currentResource}
@@ -139,15 +142,10 @@
             : [property.name]}
           {property}
           {index}
+          {propertyGridStore}
           parentProperty={null}
         />
       {/if}
     {/each}
   {/if}
 </div>
-
-<style lang="postcss">
-  .root {
-    @apply h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden;
-  }
-</style>
