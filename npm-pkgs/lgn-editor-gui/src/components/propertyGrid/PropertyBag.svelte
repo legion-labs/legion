@@ -48,7 +48,9 @@
 
   let removePromptId: symbol | null = null;
 
-  $: collapsed = propertyGridStore ? $propertyGridStore[propertyBagKey] : false;
+  $: collapsed = propertyGridStore
+    ? $propertyGridStore.get(propertyBagKey)
+    : false;
 
   function addVectorSubProperty() {
     const index = property.subProperties.length;
@@ -130,8 +132,8 @@
         <Icon
           class="float-left"
           width={"1.5em"}
-          icon={`ic:baseline-arrow-drop-${
-            $propertyGridStore[propertyBagKey] ? "up" : "down"
+          icon={`ic:baseline-arrow-${
+            $propertyGridStore.get(propertyBagKey) ? "right" : "drop-down"
           }`}
         />
         <div class="truncate">
@@ -163,7 +165,7 @@
       {/if}
     </div>
   {/if}
-  <span hidden={collapsed}>
+  <div hidden={collapsed}>
     {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
       {#if !subProperty.attributes.hidden}
         <PropertyContainer
@@ -181,7 +183,7 @@
         />
       {/if}
     {/each}
-  </span>
+  </div>
 </div>
 
 <style lang="postcss">

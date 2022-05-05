@@ -1,13 +1,13 @@
-import { writable } from "svelte/store";
+import { createMapStore } from "@lgn/web-client/src/stores/map";
 
 export type PropertyGridStore = ReturnType<typeof createPropertyGridStore>;
 
 export function createPropertyGridStore() {
-  const { subscribe, update } = writable<Record<symbol, boolean>>({});
+  const { subscribe, update } = createMapStore<symbol, boolean>();
 
   const switchCollapse = (key: symbol) => {
     update((s) => {
-      s[key] = !s[key];
+      s.set(key, s.has(key) ? !s.get(key) : true);
 
       return s;
     });
