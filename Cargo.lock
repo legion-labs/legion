@@ -2259,7 +2259,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic",
- "uuid",
+ "uuid 1.0.0",
  "zip",
 ]
 
@@ -3650,7 +3650,6 @@ dependencies = [
  "openh264-sys2",
  "smallvec",
  "thiserror",
- "uuid",
 ]
 
 [[package]]
@@ -3957,7 +3956,7 @@ dependencies = [
  "tonic-web",
  "tower",
  "tower-http",
- "uuid",
+ "uuid 1.0.0",
 ]
 
 [[package]]
@@ -4175,7 +4174,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "typetag",
- "uuid",
+ "uuid 1.0.0",
  "xxhash-rust",
 ]
 
@@ -4211,7 +4210,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
- "uuid",
+ "uuid 1.0.0",
 ]
 
 [[package]]
@@ -4416,7 +4415,7 @@ dependencies = [
  "smallvec",
  "static_assertions",
  "strum",
- "uuid",
+ "uuid 1.0.0",
 ]
 
 [[package]]
@@ -4811,7 +4810,7 @@ dependencies = [
  "tower",
  "tower-http",
  "urlencoding",
- "uuid",
+ "uuid 1.0.0",
  "whoami",
 ]
 
@@ -4946,7 +4945,7 @@ dependencies = [
  "time 0.3.9",
  "tokio",
  "tonic",
- "uuid",
+ "uuid 1.0.0",
  "winapi",
 ]
 
@@ -4974,7 +4973,7 @@ dependencies = [
  "raw-cpuid",
  "thiserror",
  "thread-id",
- "uuid",
+ "uuid 1.0.0",
  "whoami",
 ]
 
@@ -5087,7 +5086,7 @@ dependencies = [
  "lgn-tracing",
  "lgn-utils",
  "raw-window-handle",
- "uuid",
+ "uuid 1.0.0",
  "web-sys",
 ]
 
@@ -8005,7 +8004,6 @@ dependencies = [
  "sqlx",
  "tokio",
  "tonic",
- "uuid",
  "warp",
  "whoami",
 ]
@@ -8724,6 +8722,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 dependencies = [
  "getrandom 0.2.6",
+]
+
+[[package]]
+name = "uuid"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
+dependencies = [
+ "getrandom 0.2.6",
  "serde",
 ]
 
@@ -9144,7 +9151,7 @@ dependencies = [
  "tokio",
  "turn",
  "url",
- "uuid",
+ "uuid 0.8.2",
  "waitgroup",
  "webrtc-mdns",
  "webrtc-util",

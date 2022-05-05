@@ -57,7 +57,7 @@ use std::fmt;
 
 impl fmt::Display for WindowId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.to_simple().fmt(f)
+        self.0.as_simple().fmt(f)
     }
 }
 

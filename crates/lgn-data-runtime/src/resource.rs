@@ -142,7 +142,7 @@ impl ResourceId {
             std::num::NonZeroU128::new(
                 uuid::Builder::from_u128(u128::from(id))
                     .set_version(unsafe { std::mem::transmute(0xF_u8) })
-                    .build()
+                    .as_uuid()
                     .as_u128(),
             )
             .unwrap(),
@@ -162,7 +162,7 @@ impl ResourceId {
             std::num::NonZeroU128::new(
                 uuid::Builder::from_u128(id)
                     .set_version(uuid::Version::Sha1)
-                    .build()
+                    .as_uuid()
                     .as_u128(),
             )
             .unwrap(),
