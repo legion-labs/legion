@@ -5,16 +5,18 @@
     PerformanceAnalyticsClientImpl,
     ProcessInstance,
   } from "@lgn/proto-telemetry/dist/analytics";
-  import L10n from "@lgn/web-client/src/components/L10n.svelte";
   import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
+  import L10n from "@/components/Misc/L10n.svelte";
   import { l10nOrchestratorContextKey } from "@/constants";
   import { makeGrpcClient } from "@/lib/client";
 
   import Loader from "../Misc/Loader.svelte";
   import ProcessItem from "./ProcessItem.svelte";
 
-  const { t } = getContext<L10nOrchestrator>(l10nOrchestratorContextKey);
+  const { t } = getContext<L10nOrchestrator<Fluent>>(
+    l10nOrchestratorContextKey
+  );
 
   let processes: ProcessInstance[] = [];
   let client: PerformanceAnalyticsClientImpl | null = null;

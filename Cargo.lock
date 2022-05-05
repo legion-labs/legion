@@ -171,7 +171,7 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
- "clap 3.1.14",
+ "clap 3.1.15",
  "futures",
  "http",
  "lgn-analytics",
@@ -243,6 +243,54 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "006ca68e0f2b03f22d6fa9f2860f85aed430d257fec20f8879b2145e7c7ae1a6"
 dependencies = [
  "libloading",
+]
+
+[[package]]
+name = "askama"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb98f10f371286b177db5eeb9a6e5396609555686a35e1d4f7b9a9c6d8af0139"
+dependencies = [
+ "askama_derive",
+ "askama_escape",
+ "askama_shared",
+]
+
+[[package]]
+name = "askama_derive"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87bf87e6e8b47264efa9bde63d6225c6276a52e05e91bf37eaa8afd0032d6b71"
+dependencies = [
+ "askama_shared",
+ "proc-macro2",
+ "syn",
+]
+
+[[package]]
+name = "askama_escape"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "619743e34b5ba4e9703bba34deac3427c72507c7159f5fd030aea8cac0cfe341"
+
+[[package]]
+name = "askama_shared"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf722b94118a07fcbc6640190f247334027685d4e218b794dbfe17c32bf38ed0"
+dependencies = [
+ "askama_escape",
+ "humansize",
+ "mime",
+ "mime_guess",
+ "nom 7.1.1",
+ "num-traits",
+ "percent-encoding",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "syn",
+ "toml",
 ]
 
 [[package]]
@@ -1261,9 +1309,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.14"
+version = "3.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "535434c063ced786eb04aaf529308092c5ab60889e8fe24275d15de07b01fa97"
+checksum = "85a35a599b11c089a7f49105658d089b8f2cf0882993c17daf6de15285c2c35d"
 dependencies = [
  "atty",
  "bitflags",
@@ -2161,7 +2209,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "clap 3.1.14",
+ "clap 3.1.15",
  "crossbeam-channel",
  "erased-serde",
  "generic-data",
@@ -2382,6 +2430,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e1267f4ac4f343772758f7b1bdcbe767c218bbab93bb432acbf5162bbf85a6c4"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "fluent-syntax"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0abed97648395c902868fee9026de96483933faa54ea3b40d652f7dfe61ca78"
+dependencies = [
+ "thiserror",
 ]
 
 [[package]]
@@ -3060,6 +3117,12 @@ dependencies = [
  "serde_urlencoded",
  "tokio",
 ]
+
+[[package]]
+name = "humansize"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02296996cb8796d7c6e3bc2d9211b7802812d36999a51bb754123ead7d37d026"
 
 [[package]]
 name = "humantime"
@@ -3853,7 +3916,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "bytesize",
- "clap 3.1.14",
+ "clap 3.1.15",
  "console",
  "duration-string",
  "futures",
@@ -3961,7 +4024,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap 3.1.14",
+ "clap 3.1.15",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -4000,7 +4063,7 @@ dependencies = [
  "async-trait",
  "binary-resource",
  "bincode",
- "clap 3.1.14",
+ "clap 3.1.15",
  "erased-serde",
  "integer-asset",
  "lgn-content-store",
@@ -4028,7 +4091,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "chacha20poly1305",
- "clap 3.1.14",
+ "clap 3.1.15",
  "freelist",
  "futures",
  "integer-asset",
@@ -4210,7 +4273,7 @@ dependencies = [
 name = "lgn-electron"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.14",
+ "clap 3.1.15",
  "dunce",
  "http",
  "http-serde",
@@ -4225,6 +4288,18 @@ name = "lgn-embedded-fs"
 version = "0.1.0"
 dependencies = [
  "once_cell",
+]
+
+[[package]]
+name = "lgn-fluent-generator"
+version = "0.1.0"
+dependencies = [
+ "askama",
+ "clap 3.1.15",
+ "fluent-syntax",
+ "glob",
+ "rayon",
+ "thiserror",
 ]
 
 [[package]]
@@ -4249,7 +4324,7 @@ name = "lgn-graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.14",
+ "clap 3.1.15",
  "fxhash",
  "hassle-rs",
  "heck 0.4.0",
@@ -4348,7 +4423,7 @@ dependencies = [
 name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.14",
+ "clap 3.1.15",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -4705,7 +4780,7 @@ dependencies = [
  "aws-sdk-s3",
  "bytes",
  "chrono",
- "clap 3.1.14",
+ "clap 3.1.15",
  "futures",
  "http",
  "itertools",
@@ -4745,7 +4820,7 @@ name = "lgn-source-control-fs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.14",
+ "clap 3.1.15",
  "fuser",
  "lgn-cli-utils",
  "lgn-content-store",
@@ -5255,7 +5330,7 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
- "clap 3.1.14",
+ "clap 3.1.15",
  "determinator",
  "dunce",
  "fs_extra",
@@ -6103,7 +6178,7 @@ name = "physics-rebuild-data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.14",
+ "clap 3.1.15",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -6310,7 +6385,7 @@ name = "pong-rebuild-data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.14",
+ "clap 3.1.15",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -6981,7 +7056,7 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.14",
+ "clap 3.1.15",
  "crossbeam-channel",
  "generic-data",
  "instant",
@@ -7186,7 +7261,7 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap 3.1.14",
+ "clap 3.1.15",
  "generic-data",
  "lgn-config",
  "lgn-content-store",
@@ -7895,7 +7970,7 @@ name = "telemetry-admin"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.14",
+ "clap 3.1.15",
  "fs_extra",
  "json",
  "lgn-analytics",
@@ -7917,7 +7992,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "chrono",
- "clap 3.1.14",
+ "clap 3.1.15",
  "http",
  "hyper",
  "lgn-blob-storage",
@@ -8679,7 +8754,7 @@ name = "vm-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.14",
+ "clap 3.1.15",
  "lgn-cli-utils",
  "lgn-telemetry-sink",
  "lgn-tracing",

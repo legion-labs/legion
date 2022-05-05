@@ -22,6 +22,7 @@
     "svelte:check": "tsc && svelte-check --use-new-transformation",
     "clean": "rimraf node_modules dist",
     "test": "vitest run",
+    "fluent:generate": "cargo run --bin lgn-fluent-generator -- -i ./src/assets/locales/en-US/**/*.ftl -o ./src/types",
     "benchmark": "vite build --mode development -c benchmarks/vite.config.js -l silent && node dist/benchmarks/index.js"
   },
   "devDependencies": {
