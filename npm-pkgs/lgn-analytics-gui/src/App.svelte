@@ -78,17 +78,13 @@
 
   // TODO: Here we can control the UI and display a modal like in the Editor
   onMount(() => {
+    if (initAuthStatus?.type === "error") {
+      window.location.href = initAuthStatus.authorizationUrl;
+    }
+
     const unsubscribe = theme.subscribe(({ name }) => {
       replaceClassesWith(document.body, `theme-${name}`);
     });
-
-    if (initAuthStatus) {
-      switch (initAuthStatus.type) {
-        case "error": {
-          window.location.href = initAuthStatus.authorizationUrl;
-        }
-      }
-    }
 
     return unsubscribe;
   });
