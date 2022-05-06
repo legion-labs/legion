@@ -26,6 +26,8 @@
 
   const debouncedSearchValue = debounced(searchValue, 300);
 
+  $: cleanSearchValue = $debouncedSearchValue.trim();
+
   let processes: ProcessInstance[] = [];
   let client: PerformanceAnalyticsClientImpl | null = null;
   let loading = true;
@@ -41,7 +43,7 @@
     processes = response.processes;
   });
 
-  async function search(mode: Mode) {
+  async function search(mode: Mode, search: string) {
     if (!client) {
       return;
     }
@@ -49,16 +51,16 @@
     const response =
       mode === "search"
         ? await client.search_processes({
-            search: $debouncedSearchValue,
+            search,
           })
         : await client.list_recent_processes({ parentProcessId: undefined });
 
     processes = response.processes;
   }
 
-  $: mode = $debouncedSearchValue.trim() ? "search" : "default";
+  $: mode = cleanSearchValue ? "search" : "default";
 
-  $: search(mode);
+  $: search(mode, cleanSearchValue);
 </script>
 
 <Loader {loading}>
