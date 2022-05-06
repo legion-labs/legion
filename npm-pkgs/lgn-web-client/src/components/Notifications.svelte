@@ -47,7 +47,7 @@
   }
 
   .title {
-    @apply border-b-2 px-2 py-2;
+    @apply border-b-2 px-2 py-2 break-words;
   }
 
   .title.success {
@@ -63,7 +63,7 @@
   }
 
   .message {
-    @apply px-2 py-2;
+    @apply px-2 py-2 break-words;
   }
 
   .progress {

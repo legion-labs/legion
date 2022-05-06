@@ -1,15 +1,18 @@
 import grpcWeb from "@improbable-eng/grpc-web";
 import { SvelteComponentTyped } from "svelte";
+import type { Unsubscriber } from "svelte/store";
 
 import { initApiClient } from "./api";
+import type { NonEmptyArray } from "./lib/array";
 import type { InitAuthUserConfig } from "./lib/auth";
 import { authClient, initAuth } from "./lib/auth";
 import type { InitAuthStatus } from "./lib/auth";
 import log from "./lib/log";
-import type { Level as LogLevel } from "./lib/log";
+import type { Transport } from "./lib/log";
 import userInfo from "./orchestrators/userInfo";
 
 export class AppComponent extends SvelteComponentTyped<{
+  dispose(): void;
   initAuthStatus: InitAuthStatus | null;
   grpcMetadata: grpcWeb.grpc.Metadata | null;
 }> {}
@@ -31,20 +34,27 @@ export function getTarget(rootQuerySelector: string) {
 }
 
 export type Config = {
+  /** Hook called before the application start */
+  onPreInit?(): Promise<void> | void;
   /** A Svelte component class */
   appComponent: typeof AppComponent;
+  /** A valid query selector to mount your app into  */
+  rootQuerySelector: string;
+  // TODO: Improve type safety for `appComponent` and `extraProps` using
+  // https://devblogs.microsoft.com/typescript/announcing-typescript-4-7-beta/#instantiation-expressions
+  /** Optionally inject extra props to the app component */
+  extraProps?: Record<string, unknown>;
   /**
-   * Enable authentication or not (using `null`).
+   * Enables authentication.
    *
    * If authentication is not enabled some functionalities like `userInfo` will not be usable
    */
-  auth: InitAuthUserConfig | null;
-  /** A valid query selector to mount your app into  */
-  rootQuerySelector: string;
-  /** Log level, if set to `null` logs are entirely disabled  */
-  logLevel: LogLevel | null;
-  /** Hook called before the application start */
-  onPreInit?(): Promise<void> | void;
+  auth?: InitAuthUserConfig;
+  /** * Enables log */
+  log?: {
+    /** Transports to use */
+    transports: NonEmptyArray<Transport>;
+  };
   editorServerUrl?: string;
   runtimeServerUrl?: string;
 };
@@ -61,31 +71,23 @@ export type Config = {
  *     This has value `null` if `auth` config is not set.
  */
 export async function run({
-  appComponent: AppComponent,
-  auth: authConfig,
-  rootQuerySelector,
-  logLevel,
   onPreInit,
+  appComponent: AppComponent,
+  extraProps,
+  rootQuerySelector,
+  auth: authConfig,
+  log: logConfig,
   editorServerUrl,
   runtimeServerUrl,
 }: Config): Promise<void> {
-  onPreInit && (await onPreInit());
+  await onPreInit?.();
 
   initApiClient({ editorServerUrl, runtimeServerUrl });
 
   const target = getTarget(rootQuerySelector);
 
-  if (logLevel) {
-    log.init();
-    log.set(logLevel);
-
-    // TODO: Cleanup this subscription
-    userInfo.data.subscribe((userInfo) => {
-      log.debug(
-        "user",
-        userInfo ? log.json`User is authed: ${userInfo}` : "User is not authed"
-      );
-    });
+  if (logConfig) {
+    log.init(logConfig.transports);
   }
 
   if (!target) {
@@ -95,6 +97,8 @@ export async function run({
   let initAuthStatus: InitAuthStatus | null = null;
 
   let grpcMetadata: grpcWeb.grpc.Metadata | null = null;
+
+  let logUnsubscriber: Unsubscriber | null = null;
 
   if (authConfig) {
     initAuthStatus = await initAuth(authConfig);
@@ -114,10 +118,32 @@ export async function run({
 
       grpcMetadata = metadata;
     }
+
+    if (logConfig) {
+      logUnsubscriber = userInfo.data.subscribe((userInfo) => {
+        log.debug(
+          "user",
+          userInfo
+            ? log.json`User is authed: ${userInfo}`
+            : "User is not authed"
+        );
+      });
+    }
+  }
+
+  function dispose() {
+    logUnsubscriber?.();
+
+    if (logConfig) {
+      log.dispose();
+    }
   }
 
   try {
-    new AppComponent({ target, props: { grpcMetadata, initAuthStatus } });
+    new AppComponent({
+      target,
+      props: { ...extraProps, dispose, grpcMetadata, initAuthStatus },
+    });
   } catch (error) {
     log.error(error);
 
@@ -126,18 +152,27 @@ export async function run({
 }
 
 export type HeadlessConfig = {
+  /** Hook called before the application start */
+  onPreInit?(): Promise<void> | void;
   /**
-   * Enable authentication or not (using `null`).
+   * Enables authentication.
    *
    * If authentication is not enabled some functionalities like `userInfo` will not be usable
    */
-  auth: InitAuthUserConfig | null;
-  /** Log level, if set to `null` logs are entirely disabled  */
-  logLevel: LogLevel | null;
-  /** Hook called before the application start */
-  onPreInit?(): Promise<void> | void;
+  auth?: InitAuthUserConfig;
+  /** * Enables log */
+  log?: {
+    /** Transports to use */
+    transports: NonEmptyArray<Transport>;
+  };
   editorServerUrl?: string;
   runtimeServerUrl?: string;
+};
+
+export type HeadlessRun = {
+  dispose(this: void): void;
+  initAuthStatus: InitAuthStatus | null;
+  grpcMetadata: grpcWeb.grpc.Metadata | null;
 };
 
 /**
@@ -153,34 +188,25 @@ export type HeadlessConfig = {
  *     This has value `null` if `auth` config is not set.
  */
 export async function headlessRun({
-  auth: authConfig,
-  logLevel,
   onPreInit,
+  auth: authConfig,
+  log: logConfig,
   editorServerUrl,
   runtimeServerUrl,
-}: HeadlessConfig): Promise<{
-  initAuthStatus: InitAuthStatus | null;
-  grpcMetadata: grpcWeb.grpc.Metadata | null;
-}> {
-  onPreInit && (await onPreInit());
+}: HeadlessConfig): Promise<HeadlessRun> {
+  await onPreInit?.();
 
   initApiClient({ editorServerUrl, runtimeServerUrl });
 
-  if (logLevel) {
-    log.init();
-    log.set(logLevel);
-
-    userInfo.data.subscribe((userInfo) => {
-      log.debug(
-        "user",
-        userInfo ? log.json`User is authed: ${userInfo}` : "User is not authed"
-      );
-    });
+  if (logConfig) {
+    log.init(logConfig.transports);
   }
 
   let initAuthStatus: InitAuthStatus | null = null;
 
   let grpcMetadata: grpcWeb.grpc.Metadata | null = null;
+
+  let logUnsubscriber: Unsubscriber | null = null;
 
   if (authConfig) {
     initAuthStatus = await initAuth(authConfig);
@@ -200,7 +226,26 @@ export async function headlessRun({
 
       grpcMetadata = metadata;
     }
+
+    if (logConfig) {
+      logUnsubscriber = userInfo.data.subscribe((userInfo) => {
+        log.debug(
+          "user",
+          userInfo
+            ? log.json`User is authed: ${userInfo}`
+            : "User is not authed"
+        );
+      });
+    }
   }
 
-  return { initAuthStatus, grpcMetadata };
+  function dispose() {
+    logUnsubscriber?.();
+
+    if (logConfig) {
+      log.dispose();
+    }
+  }
+
+  return { initAuthStatus, grpcMetadata, dispose };
 }

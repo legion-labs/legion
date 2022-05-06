@@ -1,14 +1,23 @@
 import { navigate } from "svelte-navigator";
 
 import { AppComponent, run } from "@lgn/web-client";
+import type { Level } from "@lgn/web-client/src/lib/log";
+import {
+  ConsoleTransport,
+  NotificationsTransport,
+} from "@lgn/web-client/src/lib/log/transports";
+import { createNotificationsStore } from "@lgn/web-client/src/stores/notifications";
 
 import App from "./App.svelte";
 import "./assets/index.css";
 
 const redirectUri = document.location.origin + "/";
 
+const notifications = createNotificationsStore();
+
 run({
   appComponent: App as typeof AppComponent,
+  extraProps: { notifications },
   auth: {
     issuerUrl:
       "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz",
@@ -26,7 +35,18 @@ run({
     },
   },
   rootQuerySelector: "#root",
-  logLevel: "debug",
+  log: {
+    transports: [
+      new ConsoleTransport({
+        level: import.meta.env.VITE_LEGION_ANALYTICS_CONSOLE_LOG_LEVEL as Level,
+      }),
+      new NotificationsTransport({
+        notificationsStore: notifications,
+        level: import.meta.env
+          .VITE_LEGION_ANALYTICS_NOTIFICATION_LOG_LEVEL as Level,
+      }),
+    ],
+  },
 })
   // eslint-disable-next-line no-console
   .catch((error) => console.error("Application couldn't start", error));
