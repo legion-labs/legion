@@ -8,6 +8,15 @@
   /* Black Opacity 100 */
   --color-background-max: rgba(1, 1, 1, 1);
 
+  /* Charcoal 700 */
+  --list-item-bg-even: rgba(32, 32, 32, 1);
+  /* Charcoal 800 */
+  --list-item-bg-odd: rgba(24, 24, 24, 1);
+  /* Charcoal 900 */
+  --list-item-bg-header: rgba(15, 15, 15, 1);
+  /* Black Opacity 100 */
+  --text-box-bg: rgba(1, 1, 1, 1);
+
   /* Vector : X*/
   --color-vector-x: rgba(183, 113, 106, 1);
   /* Vector : Y*/
