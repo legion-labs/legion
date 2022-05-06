@@ -96,7 +96,11 @@
               {tab}
             </div>
             <div class="property-grid-content" slot="content">
-              <PropertyGrid />
+              {#if $currentResource}
+                {#key $currentResource.id}
+                  <PropertyGrid />
+                {/key}
+              {/if}
             </div>
           </Panel>
         </div>
