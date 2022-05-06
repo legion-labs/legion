@@ -7,6 +7,7 @@
     BagResourceProperty,
     ResourceProperty,
   } from "@/lib/propertyGrid";
+  import type { PropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyBag from "./PropertyBag.svelte";
   import PropertyUnit from "./PropertyUnit.svelte";
@@ -21,6 +22,8 @@
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
   }>();
 
+  export let propertyGridStore: PropertyGridStore;
+
   export let property: ResourceProperty;
 
   export let parentProperty: BagResourceProperty | null = null;
@@ -34,7 +37,7 @@
   export let index: number;
 </script>
 
-<div class="root">
+<div>
   {#if propertyIsBag(property)}
     <PropertyBag
       on:input={(event) => dispatch("input", event.detail)}
@@ -46,6 +49,7 @@
       {property}
       {level}
       {pathParts}
+      {propertyGridStore}
     />
   {:else}
     <PropertyUnit

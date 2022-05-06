@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from "@iconify/svelte";
   import { createEventDispatcher } from "svelte";
 
   import log from "@lgn/web-client/src/lib/log";
@@ -13,6 +14,7 @@
   import type { BagResourceProperty } from "@/lib/propertyGrid";
   import { currentResource } from "@/orchestrators/currentResource";
   import modal from "@/stores/modal";
+  import type { PropertyGridStore } from "@/stores/propertyGrid";
 
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyContainer from "./PropertyContainer.svelte";
@@ -30,6 +32,8 @@
   // TODO: Optional property bags are disabled until they're properly supported
   const disabledOptionalProperty = true;
 
+  const propertyBagKey = Symbol();
+
   // Option resource property can be groups
   export let property: BagResourceProperty;
 
@@ -40,7 +44,13 @@
   /** The property path parts */
   export let pathParts: string[];
 
+  export let propertyGridStore: PropertyGridStore;
+
   let removePromptId: symbol | null = null;
+
+  $: collapsed = propertyGridStore
+    ? $propertyGridStore.get(propertyBagKey)
+    : false;
 
   function addVectorSubProperty() {
     const index = property.subProperties.length;
@@ -113,9 +123,22 @@
 
 <div class="root" class:with-indent={level > 1}>
   {#if property.name}
-    <div class="property-name" title={property.name}>
-      <div class="truncate">
-        {property.name}
+    <div
+      on:click={(_) => propertyGridStore.switchCollapse(propertyBagKey)}
+      class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+      title={property.name}
+    >
+      <div>
+        <Icon
+          class="float-left"
+          width={"1.5em"}
+          icon={`ic:baseline-arrow-${
+            $propertyGridStore.get(propertyBagKey) ? "right" : "drop-down"
+          }`}
+        />
+        <div class="truncate">
+          {property.name}
+        </div>
       </div>
       {#if parentProperty && propertyIsDynComponent(parentProperty)}
         <div
@@ -142,22 +165,25 @@
       {/if}
     </div>
   {/if}
-  {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
-    {#if !subProperty.attributes.hidden}
-      <PropertyContainer
-        on:input
-        on:addVectorSubProperty
-        on:removeVectorSubProperty
-        pathParts={propertyIsGroup(property) || !property.name
-          ? pathParts
-          : [...pathParts, property.name]}
-        property={subProperty}
-        bind:parentProperty={property}
-        level={level + 1}
-        {index}
-      />
-    {/if}
-  {/each}
+  <div hidden={collapsed}>
+    {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
+      {#if !subProperty.attributes.hidden}
+        <PropertyContainer
+          on:input
+          on:addVectorSubProperty
+          on:removeVectorSubProperty
+          pathParts={propertyIsGroup(property) || !property.name
+            ? pathParts
+            : [...pathParts, property.name]}
+          property={subProperty}
+          bind:parentProperty={property}
+          level={level + 1}
+          {index}
+          {propertyGridStore}
+        />
+      {/if}
+    {/each}
+  </div>
 </div>
 
 <style lang="postcss">
@@ -167,10 +193,6 @@
 
   .root.with-indent {
     @apply pl-1;
-  }
-
-  .property-name {
-    @apply flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm;
   }
 
   .optional {
