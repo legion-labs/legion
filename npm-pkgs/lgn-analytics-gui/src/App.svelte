@@ -23,6 +23,7 @@
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
   import { getThreadItemLength } from "./components/Timeline/Values/TimelineValues";
   import {
+    httpClientContextKey,
     l10nOrchestratorContextKey,
     localeStorageKey,
     themeContextKey,
@@ -30,6 +31,7 @@
     threadItemLengthContextKey,
     threadItemLengthFallback,
   } from "./constants";
+  import { makeGrpcClient } from "./lib/client";
 
   export let initAuthStatus: InitAuthStatus | null;
 
@@ -59,6 +61,8 @@
   setContext(themeContextKey, theme);
 
   setContext(l10nOrchestratorContextKey, l10n);
+
+  setContext(httpClientContextKey, makeGrpcClient());
 
   try {
     setContext(threadItemLengthContextKey, getThreadItemLength());

@@ -3,12 +3,17 @@
   import { getContext } from "svelte";
   import { link } from "svelte-navigator";
 
-  import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
+  import type {
+    PerformanceAnalyticsClientImpl,
+    ProcessInstance,
+  } from "@lgn/proto-telemetry/dist/analytics";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
   import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
-  import { l10nOrchestratorContextKey } from "@/constants";
-  import { makeGrpcClient } from "@/lib/client";
+  import {
+    httpClientContextKey,
+    l10nOrchestratorContextKey,
+  } from "@/constants";
   import { formatProcessName } from "@/lib/format";
 
   import ProcessComputer from "./ProcessComputer.svelte";
@@ -18,6 +23,8 @@
   const { locale } = getContext<L10nOrchestrator<Fluent>>(
     l10nOrchestratorContextKey
   );
+  const client =
+    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
 
   export let processInstance: ProcessInstance;
   export let depth: number;
@@ -32,10 +39,11 @@
 
   async function onClick() {
     collapsed = !collapsed;
+
     if (processes) {
       return;
     }
-    const client = makeGrpcClient();
+
     ({ processes } = await client.list_recent_processes({
       parentProcessId: processInstance.processInfo?.processId,
     }));

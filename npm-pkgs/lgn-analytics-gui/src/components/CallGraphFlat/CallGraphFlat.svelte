@@ -1,7 +1,10 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { getContext, onMount } from "svelte";
   import { useLocation } from "svelte-navigator";
 
+  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+
+  import { httpClientContextKey } from "@/constants";
   import { CallGraphParameters } from "@/lib/CallGraph/CallGraphParameters";
   import { getProcessCumulatedCallGraphFlat } from "@/lib/CallGraph/CallGraphStore";
   import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
@@ -13,6 +16,8 @@
 
   const components: Record<number, GraphNode> = {};
   const locationStore = useLocation();
+  const client =
+    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
 
   let beginMsFilter = 0;
   let endMsFilter = 0;
@@ -31,6 +36,7 @@
     loadingStore.reset(1);
 
     store = await getProcessCumulatedCallGraphFlat(
+      client,
       processId,
       beginMsFilter,
       endMsFilter,

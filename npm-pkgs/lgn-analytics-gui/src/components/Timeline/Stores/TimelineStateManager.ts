@@ -9,7 +9,6 @@ import { displayError } from "@lgn/web-client/src/lib/errors";
 import log from "@lgn/web-client/src/lib/log";
 
 import { loadPromise, loadWrap } from "@/lib/Misc/LoadingStore";
-import { makeGrpcClient } from "@/lib/client";
 import {
   computePreferredBlockLod,
   processMsOffsetToRoot,
@@ -29,17 +28,20 @@ export class TimelineStateManager {
   state: TimelineStateStore;
   process: Process | undefined = undefined;
   rootStartTime = NaN;
-  private client: PerformanceAnalyticsClientImpl;
-  private processId: string;
-  private nbRequestsInFlight = 0;
+
+  #client: PerformanceAnalyticsClientImpl;
+  #processId: string;
+  #nbRequestsInFlight = 0;
+
   constructor(
+    client: PerformanceAnalyticsClientImpl,
     processId: string,
     canvasWidth: number,
     start: number | null,
     end: number | null
   ) {
-    this.client = makeGrpcClient();
-    this.processId = processId;
+    this.#client = client;
+    this.#processId = processId;
     this.state = createTimelineStateStore(
       new TimelineState(canvasWidth, start, end)
     );
@@ -47,12 +49,12 @@ export class TimelineStateManager {
 
   async init() {
     this.process = (
-      await this.client.find_process({
-        processId: this.processId,
+      await this.#client.find_process({
+        processId: this.#processId,
       })
     ).process;
     if (!this.process) {
-      throw new Error(`Process ${this.processId} not found`);
+      throw new Error(`Process ${this.#processId} not found`);
     }
     this.rootStartTime = Date.parse(this.process.startTime);
     this.state.addProcess(this.process);
@@ -89,7 +91,7 @@ export class TimelineStateManager {
   }
 
   async fetchStreams(process: Process) {
-    const { streams } = await this.client.list_process_streams({
+    const { streams } = await this.#client.list_process_streams({
       processId: process.processId,
     });
 
@@ -111,7 +113,7 @@ export class TimelineStateManager {
   }
 
   private async fetchChildren(process: Process) {
-    const { processes } = await this.client.list_process_children({
+    const { processes } = await this.#client.list_process_children({
       processId: process.processId,
     });
 
@@ -148,9 +150,9 @@ export class TimelineStateManager {
       }
     }
 
-    this.nbRequestsInFlight += 1;
+    this.#nbRequestsInFlight += 1;
     await loadPromise(
-      this.client
+      this.#client
         .fetch_async_spans({
           sectionSequenceNumber: sectionSequenceNumber,
           sectionLod: sectionLod,
@@ -170,7 +172,7 @@ export class TimelineStateManager {
           }
         )
         .finally(() => {
-          this.nbRequestsInFlight -= 1;
+          this.#nbRequestsInFlight -= 1;
         })
     );
   }
@@ -189,7 +191,7 @@ export class TimelineStateManager {
     const lastSection = Math.floor(viewRange[1] / sectionWidthMs);
     const promises: Promise<void>[] = [];
     for (let iSection = firstSection; iSection <= lastSection; iSection += 1) {
-      if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
+      if (this.#nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
         break;
       }
       if (!(iSection in processAsyncData.sections)) {
@@ -230,14 +232,14 @@ export class TimelineStateManager {
       const blockBelongsToProcess =
         thread.streamInfo.processId === process.processId;
       if (overlaps && blockStatsMissing && blockBelongsToProcess) {
-        if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
+        if (this.#nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
           break;
         }
         sentRequest = true;
-        this.nbRequestsInFlight += 1;
+        this.#nbRequestsInFlight += 1;
         promises.push(
           loadPromise(
-            this.client
+            this.#client
               .fetch_block_async_stats({
                 process,
                 stream: thread.streamInfo,
@@ -257,7 +259,7 @@ export class TimelineStateManager {
                 }
               )
               .finally(() => {
-                this.nbRequestsInFlight -= 1;
+                this.#nbRequestsInFlight -= 1;
               })
           )
         );
@@ -271,7 +273,7 @@ export class TimelineStateManager {
   private async fetchBlocks(process: Process, stream: Stream) {
     const processOffset = processMsOffsetToRoot(this.process, process);
     const response = await loadWrap(async () => {
-      return await this.client.list_stream_blocks({
+      return await this.#client.list_stream_blocks({
         streamId: stream.streamId,
       });
     });
@@ -299,7 +301,7 @@ export class TimelineStateManager {
         sentRequest = true;
         promises.push(this.fetchBlockSpans(block, lod));
       }
-      if (this.nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
+      if (this.#nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
         break;
       }
     }
@@ -329,9 +331,9 @@ export class TimelineStateManager {
     }
     block.lods[lodToFetch].state = LODState.Requested;
     const blockId = block.blockDefinition.blockId;
-    this.nbRequestsInFlight += 1;
+    this.#nbRequestsInFlight += 1;
     await loadPromise(
-      this.client
+      this.#client
         .block_spans({
           blockId: blockId,
           process,
@@ -349,7 +351,7 @@ export class TimelineStateManager {
           }
         )
         .finally(() => {
-          this.nbRequestsInFlight -= 1;
+          this.#nbRequestsInFlight -= 1;
         })
     );
   }

@@ -1,10 +1,9 @@
 import { writable } from "svelte/store";
 
+import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import type { CumulativeCallGraphBlockDesc } from "@lgn/proto-telemetry/dist/callgraph";
 import { displayError } from "@lgn/web-client/src/lib/errors";
 import log from "@lgn/web-client/src/lib/log";
-
-import { makeGrpcClient } from "@/lib/client";
 
 import type { LoadingStore } from "../Misc/LoadingStore";
 import { CallGraphFlatState } from "./CallGraphFlatState";
@@ -20,12 +19,14 @@ export type CumulatedCallGraphHierarchyStore = Awaited<
 >;
 
 export async function getProcessCumulatedCallGraphHierarchy(
+  client: PerformanceAnalyticsClientImpl,
   processId: string,
   begin: number,
   end: number,
   loadingStore: LoadingStore | null = null
 ) {
   return getProcessCumulatedCallGraph<CallGraphHierarchyState>(
+    client,
     processId,
     begin,
     end,
@@ -35,12 +36,14 @@ export async function getProcessCumulatedCallGraphHierarchy(
 }
 
 export async function getProcessCumulatedCallGraphFlat(
+  client: PerformanceAnalyticsClientImpl,
   processId: string,
   begin: number,
   end: number,
   loadingStore: LoadingStore | null = null
 ) {
   return getProcessCumulatedCallGraph<CallGraphFlatState>(
+    client,
     processId,
     begin,
     end,
@@ -50,6 +53,7 @@ export async function getProcessCumulatedCallGraphFlat(
 }
 
 async function getProcessCumulatedCallGraph<T extends CallGraphState>(
+  client: PerformanceAnalyticsClientImpl,
   processId: string,
   begin: number,
   end: number,
@@ -57,8 +61,6 @@ async function getProcessCumulatedCallGraph<T extends CallGraphState>(
   loadingStore: LoadingStore | null = null
 ) {
   const { subscribe, set, update } = writable<T>();
-
-  const client = makeGrpcClient();
 
   set(state);
 

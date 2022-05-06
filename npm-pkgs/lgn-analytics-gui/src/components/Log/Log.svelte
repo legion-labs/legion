@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { getContext, onMount } from "svelte";
   import { link } from "svelte-navigator";
 
   import type {
@@ -7,24 +7,22 @@
     PerformanceAnalyticsClientImpl,
   } from "@lgn/proto-telemetry/dist/analytics";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
-  import log from "@lgn/web-client/src/lib/log";
 
-  import { makeGrpcClient } from "@/lib/client";
+  import { httpClientContextKey } from "@/constants";
 
-  let client: PerformanceAnalyticsClientImpl | null = null;
+  const MAX_NB_ENTRIES_IN_PAGE = 1000;
+
+  const client =
+    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
 
   export let id: string;
-  const MAX_NB_ENTRIES_IN_PAGE = 1000;
+
   let nbEntries = 0;
   let viewRange: [number, number] = [0, 0];
   let processInfo: Process | null = null;
   let logEntries: LogEntry[] = [];
 
   async function fetchLogEntries() {
-    if (!client) {
-      log.error("no client in fetchLogEntries");
-      return;
-    }
     const { process } = await client.find_process({
       processId: id,
     });
@@ -59,7 +57,6 @@
   }
 
   onMount(async () => {
-    client = makeGrpcClient();
     await fetchLogEntries();
   });
 

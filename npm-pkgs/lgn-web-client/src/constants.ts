@@ -3,4 +3,6 @@
  *
  * Used in the `L10n` component.
  */
-export const l10nOrchestratorContextKey = "l10n-orchestrator-context-key";
+export const l10nOrchestratorContextKey = Symbol.for(
+  "l10n-orchestrator-context-key"
+);
