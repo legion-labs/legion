@@ -2,7 +2,7 @@ use lgn_utils::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
 use crate::backends::BackendPipeline;
-use crate::{deferred_drop::Drc, GfxResult, PipelineType, RootSignature};
+use crate::{deferred_drop::Drc, PipelineType, RootSignature};
 use crate::{
     BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode, DeviceContext,
     FillMode, Format, FrontFace, PrimitiveTopology, SampleCount, Shader, StencilOp,
@@ -248,6 +248,7 @@ impl BlendState {
 }
 
 /// Used to create a `Pipeline` for graphics operations
+#[derive(Clone, Copy)]
 pub struct GraphicsPipelineDef<'a> {
     pub shader: &'a Shader,
     pub root_signature: &'a RootSignature,
@@ -262,6 +263,7 @@ pub struct GraphicsPipelineDef<'a> {
 }
 
 /// Used to create a `Pipeline` for compute operations
+#[derive(Clone, Copy)]
 pub struct ComputePipelineDef<'a> {
     pub shader: &'a Shader,
     pub root_signature: &'a RootSignature,
@@ -288,33 +290,32 @@ pub struct Pipeline {
 impl Pipeline {
     pub fn new_graphics_pipeline(
         device_context: &DeviceContext,
-        pipeline_def: &GraphicsPipelineDef<'_>,
-    ) -> GfxResult<Self> {
-        let backend_pipeline =
-            BackendPipeline::new_graphics_pipeline(device_context, pipeline_def)?;
+        pipeline_def: GraphicsPipelineDef<'_>,
+    ) -> Self {
+        let backend_pipeline = BackendPipeline::new_graphics_pipeline(device_context, pipeline_def);
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(PipelineInner {
                 pipeline_type: PipelineType::Graphics,
                 root_signature: pipeline_def.root_signature.clone(),
                 backend_pipeline,
             }),
-        })
+        }
     }
 
     pub fn new_compute_pipeline(
         device_context: &DeviceContext,
-        pipeline_def: &ComputePipelineDef<'_>,
-    ) -> GfxResult<Self> {
-        let backend_pipeline = BackendPipeline::new_compute_pipeline(device_context, pipeline_def)?;
+        pipeline_def: ComputePipelineDef<'_>,
+    ) -> Self {
+        let backend_pipeline = BackendPipeline::new_compute_pipeline(device_context, pipeline_def);
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(PipelineInner {
                 pipeline_type: PipelineType::Compute,
                 root_signature: pipeline_def.root_signature.clone(),
                 backend_pipeline,
             }),
-        })
+        }
     }
 
     pub fn pipeline_type(&self) -> PipelineType {

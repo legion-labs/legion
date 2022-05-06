@@ -1,7 +1,6 @@
 use lgn_graphics_api::prelude::*;
 use lgn_graphics_renderer::{
     components::{Presenter, RenderSurface, RenderSurfaceExtents},
-    hl_gfx_api::HLCommandBuffer,
     RenderContext, Renderer,
 };
 use raw_window_handle::HasRawWindowHandle;
@@ -26,19 +25,17 @@ impl PresenterWindow {
         extents: RenderSurfaceExtents,
     ) -> Self {
         let device_context = renderer.device_context();
-        let swapchain = device_context
-            .create_swapchain(
-                hwnd,
-                &SwapchainDef {
-                    width: extents.width(),
-                    height: extents.height(),
-                    enable_vsync: true,
-                },
-            )
-            .unwrap();
+        let swapchain = device_context.create_swapchain(
+            hwnd,
+            SwapchainDef {
+                width: extents.width(),
+                height: extents.height(),
+                enable_vsync: true,
+            },
+        );
 
         Self {
-            swapchain_helper: SwapchainHelper::new(&device_context, swapchain, None).unwrap(),
+            swapchain_helper: SwapchainHelper::new(&device_context, swapchain, None),
             extents,
         }
     }
@@ -59,9 +56,12 @@ impl PresenterWindow {
 
         let swapchain_texture = presentable_frame.swapchain_texture();
 
-        let cmd_buffer_handle = render_context.acquire_command_buffer();
-        let mut cmd_buffer = HLCommandBuffer::new(cmd_buffer_handle);
-        cmd_buffer.resource_barrier(
+        let mut cmd_buffer_handle = render_context.acquire_command_buffer();
+        let cmd_buffer = cmd_buffer_handle.as_mut();
+
+        cmd_buffer.begin();
+
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 swapchain_texture,
@@ -77,11 +77,11 @@ impl PresenterWindow {
         final_resolve_render_pass.render(
             render_context,
             render_surface,
-            &mut cmd_buffer,
+            cmd_buffer,
             presentable_frame.swapchain_rtv(),
         );
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 swapchain_texture,
@@ -90,6 +90,8 @@ impl PresenterWindow {
             )],
         );
 
+        cmd_buffer.end();
+
         //
         // Present
         //
@@ -97,9 +99,11 @@ impl PresenterWindow {
             let present_queue = render_context.graphics_queue();
             let wait_sem = render_surface.presenter_sem();
             presentable_frame
-                .present(&present_queue, wait_sem, &mut [cmd_buffer.finalize()])
+                .present(&mut present_queue.queue_mut(), wait_sem, &[cmd_buffer])
                 .unwrap();
         }
+
+        render_context.release_command_buffer(cmd_buffer_handle);
     }
 }
 

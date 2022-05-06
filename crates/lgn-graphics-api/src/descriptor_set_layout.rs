@@ -1,8 +1,8 @@
 use std::{num::NonZeroU32, sync::atomic::Ordering};
 
 use crate::{
-    backends::BackendDescriptorSetLayout, deferred_drop::Drc, DeviceContext, GfxResult,
-    ShaderResourceType, MAX_DESCRIPTOR_BINDINGS,
+    backends::BackendDescriptorSetLayout, deferred_drop::Drc, DeviceContext, ShaderResourceType,
+    MAX_DESCRIPTOR_BINDINGS,
 };
 
 static NEXT_DESCRIPTOR_SET_LAYOUT_ID: std::sync::atomic::AtomicU32 =
@@ -56,7 +56,6 @@ pub(crate) struct DescriptorSetLayoutInner {
     device_context: DeviceContext,
     definition: DescriptorSetLayoutDef,
     id: u32,
-    frequency: u32,
     descriptors: Vec<Descriptor>,
     flat_descriptor_count: u32,
 
@@ -75,10 +74,7 @@ pub struct DescriptorSetLayout {
 }
 
 impl DescriptorSetLayout {
-    pub fn new(
-        device_context: &DeviceContext,
-        definition: &DescriptorSetLayoutDef,
-    ) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, definition: DescriptorSetLayoutDef) -> Self {
         assert!(definition.descriptor_defs.len() < MAX_DESCRIPTOR_BINDINGS);
 
         let mut flat_descriptor_count = 0;
@@ -100,26 +96,23 @@ impl DescriptorSetLayout {
             descriptors.push(descriptor);
         }
 
-        let backend_layout = BackendDescriptorSetLayout::new(device_context, &descriptors)?;
+        let backend_layout = BackendDescriptorSetLayout::new(device_context, &descriptors);
 
         let descriptor_set_layout_id =
             NEXT_DESCRIPTOR_SET_LAYOUT_ID.fetch_add(1, Ordering::Relaxed);
 
-        let result = Self {
+        Self {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(DescriptorSetLayoutInner {
                     device_context: device_context.clone(),
-                    definition: definition.clone(),
+                    definition,
                     id: descriptor_set_layout_id,
-                    frequency: definition.frequency,
                     descriptors,
                     flat_descriptor_count,
                     backend_layout,
                 }),
-        };
-
-        Ok(result)
+        }
     }
 
     pub fn device_context(&self) -> &DeviceContext {
@@ -135,7 +128,7 @@ impl DescriptorSetLayout {
     }
 
     pub fn frequency(&self) -> u32 {
-        self.inner.frequency
+        self.inner.definition.frequency
     }
 
     pub fn descriptor_count(&self) -> u32 {

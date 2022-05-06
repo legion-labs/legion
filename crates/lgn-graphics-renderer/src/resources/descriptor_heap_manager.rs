@@ -10,20 +10,16 @@ pub struct DescriptorHeapManager {
 
 impl DescriptorHeapManager {
     pub fn new(num_render_frames: u64, device_context: &DeviceContext) -> Self {
-        let descriptor_heap_def = DescriptorHeapDef {
-            max_descriptor_sets: 32 * 4096,
-            sampler_count: 32 * 128,
-            constant_buffer_count: 32 * 1024,
-            buffer_count: 32 * 1024,
-            rw_buffer_count: 32 * 1024,
-            texture_count: 32 * 1024,
-            rw_texture_count: 32 * 1024,
-        };
-
         Self {
-            heap: device_context
-                .create_descriptor_heap(descriptor_heap_def)
-                .unwrap(),
+            heap: device_context.create_descriptor_heap(DescriptorHeapDef {
+                max_descriptor_sets: 32 * 4096,
+                sampler_count: 32 * 128,
+                constant_buffer_count: 32 * 1024,
+                buffer_count: 32 * 1024,
+                rw_buffer_count: 32 * 1024,
+                texture_count: 32 * 1024,
+                rw_texture_count: 32 * 1024,
+            }),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
         }
     }

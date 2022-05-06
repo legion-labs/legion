@@ -5,7 +5,7 @@ use crate::{
 };
 
 /// Used to create a `Swapchain`
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct SwapchainDef {
     pub width: u32,
     pub height: u32,
@@ -29,23 +29,22 @@ impl Swapchain {
     pub fn new(
         device_context: &DeviceContext,
         raw_window_handle: &dyn HasRawWindowHandle,
-        swapchain_def: &SwapchainDef,
-    ) -> GfxResult<Self> {
+        swapchain_def: SwapchainDef,
+    ) -> Self {
         //TODO: Check image count of swapchain and update swapchain_def with
         // swapchain.swapchain_images.len();
-        let swapchain_def = swapchain_def.clone();
 
         let backend_swapchain =
-            BackendSwapchain::new(device_context, raw_window_handle, &swapchain_def)?;
+            BackendSwapchain::new(device_context, raw_window_handle, swapchain_def);
 
-        Ok(Self {
+        Self {
             device_context: device_context.clone(),
             swapchain_def,
             backend_swapchain,
-        })
+        }
     }
 
-    pub fn swapchain_def(&self) -> &SwapchainDef {
+    pub fn definition(&self) -> &SwapchainDef {
         &self.swapchain_def
     }
 
@@ -70,7 +69,7 @@ impl Swapchain {
         self.backend_acquire_next_image_semaphore(semaphore)
     }
 
-    pub fn rebuild(&mut self, swapchain_def: &SwapchainDef) -> GfxResult<()> {
+    pub fn rebuild(&mut self, swapchain_def: SwapchainDef) -> GfxResult<()> {
         self.backend_rebuild(swapchain_def)
     }
 }

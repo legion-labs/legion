@@ -40,6 +40,24 @@ impl<T> Handle<T> {
     }
 }
 
+impl<T> AsRef<T> for Handle<T> {
+    fn as_ref(&self) -> &T {
+        match &self.inner {
+            Some(e) => e,
+            None => unreachable!(),
+        }
+    }
+}
+
+impl<T> AsMut<T> for Handle<T> {
+    fn as_mut(&mut self) -> &mut T {
+        match &mut self.inner {
+            Some(e) => e,
+            None => unreachable!(),
+        }
+    }
+}
+
 impl<T> Deref for Handle<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {

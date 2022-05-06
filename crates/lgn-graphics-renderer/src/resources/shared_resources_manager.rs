@@ -67,17 +67,16 @@ impl SharedResourcesManager {
             texture.definition(),
         ));
 
-        let cmd_buffer_pool = graphics_queue
+        let mut cmd_buffer_pool = graphics_queue
             .queue()
-            .create_command_pool(&CommandPoolDef { transient: false })
+            .create_command_pool(CommandPoolDef { transient: false })
             .unwrap();
 
-        let mut cmd_buffer = cmd_buffer_pool
-            .create_command_buffer(&CommandBufferDef {
-                is_secondary: false,
-            })
-            .unwrap();
-        cmd_buffer.begin().unwrap();
+        let mut cmd_buffer = cmd_buffer_pool.create_command_buffer(CommandBufferDef {
+            is_secondary: false,
+        });
+
+        cmd_buffer.begin();
 
         {
             let data = texture_data.data()[0].as_slice();
@@ -121,14 +120,13 @@ impl SharedResourcesManager {
             );
         }
 
-        cmd_buffer.end().unwrap();
+        cmd_buffer.end();
 
         graphics_queue
-            .queue()
-            .submit(&mut [&mut cmd_buffer], &[], &[], None)
-            .unwrap();
+            .queue_mut()
+            .submit(&[&cmd_buffer], &[], &[], None);
 
-        graphics_queue.queue().wait_for_queue_idle().unwrap();
+        graphics_queue.queue_mut().wait_for_queue_idle();
 
         texture_view
     }

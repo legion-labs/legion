@@ -3,8 +3,6 @@ use lgn_graphics_api::{
 };
 use lgn_tracing::span_fn;
 
-use crate::resources::CommandBufferHandle;
-
 pub struct HLQueue<'rc> {
     queue: &'rc Queue,
 }
@@ -17,22 +15,14 @@ impl<'rc> HLQueue<'rc> {
     #[span_fn]
     pub fn submit(
         &self,
-        command_buffer_handles: &mut [CommandBufferHandle],
+        command_buffers: &[&CommandBuffer],
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
     ) {
-        let mut command_buffers = smallvec::SmallVec::<[&mut CommandBuffer; 16]>::with_capacity(
-            command_buffer_handles.len(),
-        );
-
-        for cbh in command_buffer_handles.iter_mut() {
-            command_buffers.push(cbh);
-        }
-
         self.queue
             .submit(
-                &mut command_buffers,
+                command_buffers,
                 wait_semaphores,
                 signal_semaphores,
                 signal_fence,

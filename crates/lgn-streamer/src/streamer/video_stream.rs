@@ -101,13 +101,11 @@ impl VideoStream {
             let output = encoder.query_output();
             self.encoder.encode_cuda(&output[..], self.frame_id)
         } else {
-            self.rgb_to_yuv
-                .convert(
-                    render_context,
-                    render_surface,
-                    self.encoder.yuv_holder.yuv.as_mut_slice(),
-                )
-                .unwrap();
+            self.rgb_to_yuv.convert(
+                render_context,
+                render_surface,
+                self.encoder.yuv_holder.yuv.as_mut_slice(),
+            );
 
             self.encoder.encode(self.frame_id)
         };

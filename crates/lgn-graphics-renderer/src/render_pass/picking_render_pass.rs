@@ -1,5 +1,6 @@
 use lgn_graphics_api::{
-    ColorClearValue, ColorRenderTargetBinding, DeviceContext, LoadOp, ResourceState, StoreOp,
+    ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DeviceContext, LoadOp, ResourceState,
+    StoreOp,
 };
 use lgn_math::Vec4;
 use lgn_transform::components::GlobalTransform;
@@ -11,7 +12,6 @@ use crate::{
     },
     components::{CameraComponent, LightComponent, ManipulatorComponent, RenderSurface},
     gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
-    hl_gfx_api::HLCommandBuffer,
     picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{DefaultMeshType, GpuBufferWithReadback, MeshManager, MeshMetaData},
     RenderContext,
@@ -38,7 +38,7 @@ impl PickingRenderPass {
         &mut self,
         picking_manager: &PickingManager,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer,
+        cmd_buffer: &mut CommandBuffer,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
@@ -79,7 +79,7 @@ impl PickingRenderPass {
 
                 self.count_buffer.clear_buffer(cmd_buffer);
 
-                cmd_buffer.begin_render_pass(
+                cmd_buffer.cmd_begin_render_pass(
                     &[ColorRenderTargetBinding {
                         texture_view: render_surface.hdr_rt().rtv(),
                         load_op: LoadOp::Clear,
@@ -94,12 +94,13 @@ impl PickingRenderPass {
                     .get_pipeline(mesh_renderer.get_tmp_pso_handle(DefaultLayers::Picking as usize))
                     .unwrap();
 
-                cmd_buffer.bind_pipeline(pipeline);
+                cmd_buffer.cmd_bind_pipeline(pipeline);
 
                 render_context.bind_default_descriptor_sets(cmd_buffer);
 
-                cmd_buffer.bind_index_buffer(render_context.static_buffer().index_buffer_binding());
-                cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+                cmd_buffer
+                    .cmd_bind_index_buffer(render_context.static_buffer().index_buffer_binding());
+                cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
                 let mut picking_descriptor_set =
                     cgen::descriptor_set::PickingDescriptorSet::default();
@@ -109,7 +110,7 @@ impl PickingRenderPass {
                     cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
                     picking_descriptor_set.descriptor_refs(),
                 );
-                cmd_buffer.bind_descriptor_set(
+                cmd_buffer.cmd_bind_descriptor_set_handle(
                     cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
                     picking_descriptor_set_handle,
                 );
@@ -118,7 +119,7 @@ impl PickingRenderPass {
                 push_constant_data.set_picking_distance(1.0.into());
                 push_constant_data.set_use_gpu_pipeline(1.into());
 
-                cmd_buffer.push_constant(&push_constant_data);
+                cmd_buffer.cmd_push_constant_typed(&push_constant_data);
 
                 mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Picking);
 
@@ -154,7 +155,7 @@ impl PickingRenderPass {
                     );
                 }
 
-                cmd_buffer.end_render_pass();
+                cmd_buffer.cmd_end_render_pass();
 
                 self.count_buffer
                     .copy_buffer_to_readback(cmd_buffer, &count_readback);
@@ -176,7 +177,7 @@ fn render_mesh(
     picking_id: u32,
     picking_distance: f32,
     mesh: &MeshMetaData,
-    cmd_buffer: &mut HLCommandBuffer,
+    cmd_buffer: &mut CommandBuffer,
 ) {
     let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();
 
@@ -192,11 +193,11 @@ fn render_mesh(
     push_constant_data.set_picking_distance(picking_distance.into());
     push_constant_data.set_use_gpu_pipeline(0.into());
 
-    cmd_buffer.push_constant(&push_constant_data);
+    cmd_buffer.cmd_push_constant_typed(&push_constant_data);
 
     if mesh.index_count != 0 {
-        cmd_buffer.draw_indexed(mesh.index_count, mesh.index_offset, 0);
+        cmd_buffer.cmd_draw_indexed(mesh.index_count, mesh.index_offset, 0);
     } else {
-        cmd_buffer.draw(mesh.vertex_count, 0);
+        cmd_buffer.cmd_draw(mesh.vertex_count, 0);
     }
 }

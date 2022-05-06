@@ -1,5 +1,4 @@
 use std::{
-    alloc::Layout,
     ptr::NonNull,
     sync::{Arc, Mutex},
 };
@@ -12,16 +11,31 @@ use lgn_graphics_api::{
 
 use super::GpuSafePool;
 
+const TRANSIENT_BUFFER_RESOURCE_USAGE: ResourceUsage = ResourceUsage::from_bits_truncate(
+    ResourceUsage::AS_SHADER_RESOURCE.bits()
+        | ResourceUsage::AS_UNORDERED_ACCESS.bits()
+        | ResourceUsage::AS_CONST_BUFFER.bits()
+        | ResourceUsage::AS_VERTEX_BUFFER.bits()
+        | ResourceUsage::AS_INDEX_BUFFER.bits(),
+);
+
+const TRANSIENT_BUFFER_BLOCK_SIZE: u64 = 64 * 1024;
+
 pub struct TransientBufferAllocation {
     buffer: NonNull<Buffer>,
     byte_offset: u64,
+    resource_usage: ResourceUsage,
     _size: u64,
 }
 
-#[allow(unsafe_code)]
-unsafe impl Send for TransientBufferAllocation {}
+// #[allow(unsafe_code)]
+//  unsafe impl Send for TransientBufferAllocation {}
 
 impl TransientBufferAllocation {
+    pub fn byte_offset(&self) -> u64 {
+        self.byte_offset
+    }
+
     #[allow(unsafe_code)]
     pub fn buffer(&self) -> &Buffer {
         unsafe { self.buffer.as_ref() }
@@ -38,14 +52,34 @@ impl TransientBufferAllocation {
     }
 
     pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
+        assert!(self
+            .resource_usage
+            .intersects(ResourceUsage::AS_VERTEX_BUFFER));
         VertexBufferBinding::new(self.buffer(), self.byte_offset)
     }
 
     pub fn index_buffer_binding(&self, index_type: IndexType) -> IndexBufferBinding {
+        assert!(self
+            .resource_usage
+            .intersects(ResourceUsage::AS_INDEX_BUFFER));
         IndexBufferBinding::new(self.buffer(), self.byte_offset, index_type)
     }
 
     pub fn to_buffer_view(&self, view_def: BufferViewDef) -> TransientBufferView {
+        match view_def.gpu_view_type {
+            lgn_graphics_api::GPUViewType::ConstantBuffer => assert!(self
+                .resource_usage
+                .intersects(ResourceUsage::AS_CONST_BUFFER)),
+            lgn_graphics_api::GPUViewType::ShaderResource => assert!(self
+                .resource_usage
+                .intersects(ResourceUsage::AS_SHADER_RESOURCE)),
+            lgn_graphics_api::GPUViewType::UnorderedAccess => assert!(self
+                .resource_usage
+                .intersects(ResourceUsage::AS_UNORDERED_ACCESS)),
+            lgn_graphics_api::GPUViewType::RenderTarget
+            | lgn_graphics_api::GPUViewType::DepthStencil => panic!(),
+        }
+
         let view_def = BufferViewDef {
             byte_offset: self.byte_offset,
             ..view_def
@@ -53,8 +87,6 @@ impl TransientBufferAllocation {
         self.buffer().create_transient_view(view_def)
     }
 }
-
-const TRANSIENT_BUFFER_BLOCK_SIZE: u64 = 64 * 1024;
 
 struct TransientBuffer {
     device_context: DeviceContext,
@@ -71,11 +103,7 @@ impl TransientBuffer {
         let buffer = device_context.create_buffer(
             BufferDef {
                 size: required_size,
-                usage_flags: ResourceUsage::AS_SHADER_RESOURCE
-                    | ResourceUsage::AS_UNORDERED_ACCESS
-                    | ResourceUsage::AS_CONST_BUFFER
-                    | ResourceUsage::AS_VERTEX_BUFFER
-                    | ResourceUsage::AS_INDEX_BUFFER,
+                usage_flags: TRANSIENT_BUFFER_RESOURCE_USAGE,
                 create_flags: BufferCreateFlags::empty(),
                 memory_usage: MemoryUsage::CpuToGpu,
                 always_mapped: true,
@@ -101,10 +129,21 @@ impl TransientBuffer {
 
     fn allocate(
         &mut self,
-        data_layout: Layout,
+        required_size: u64,
         resource_usage: ResourceUsage,
     ) -> Option<TransientBufferAllocation> {
-        let min_alignment = if resource_usage == ResourceUsage::AS_CONST_BUFFER {
+        assert_eq!(
+            ResourceUsage::empty(),
+            resource_usage & TRANSIENT_BUFFER_RESOURCE_USAGE.complement()
+        );
+
+        let resource_usage = if resource_usage.is_empty() {
+            TRANSIENT_BUFFER_RESOURCE_USAGE
+        } else {
+            resource_usage
+        };
+
+        let required_alignment = if resource_usage.intersects(ResourceUsage::AS_CONST_BUFFER) {
             self.device_context
                 .device_info()
                 .min_uniform_buffer_offset_alignment
@@ -113,10 +152,11 @@ impl TransientBuffer {
                 .device_info()
                 .min_storage_buffer_offset_alignment
         };
-        let required_alignment = u64::from(min_alignment).max(data_layout.align() as u64);
-        let required_size = data_layout.size() as u64;
-        let aligned_offset =
-            lgn_utils::memory::round_size_up_to_alignment_u64(self.byte_offset, required_alignment);
+
+        let aligned_offset = lgn_utils::memory::round_size_up_to_alignment_u64(
+            self.byte_offset,
+            u64::from(required_alignment),
+        );
         let next_offset = aligned_offset + required_size;
 
         if next_offset > self.capacity {
@@ -127,6 +167,7 @@ impl TransientBuffer {
             Some(TransientBufferAllocation {
                 buffer: NonNull::from(&self.buffer),
                 byte_offset: aligned_offset,
+                resource_usage,
                 _size: required_size,
             })
         }
@@ -170,8 +211,8 @@ impl TransientBufferManager {
 
         let mut frame_pool = std::mem::take(&mut inner.frame_pool);
 
-        frame_pool.drain(..).for_each(|mut handle| {
-            inner.transient_buffers.release(handle.transfer());
+        frame_pool.drain(..).for_each(|handle| {
+            inner.transient_buffers.release(handle);
         });
 
         inner.transient_buffers.end_frame(|_| ());
@@ -225,30 +266,26 @@ impl TransientBufferAllocator {
         data: &[T],
         resource_usage: ResourceUsage,
     ) -> TransientBufferAllocation {
-        let data_layout = Layout::array::<T>(data.len()).unwrap();
+        let src_size = std::mem::size_of_val(data);
         let src = data.as_ptr().cast::<u8>();
-        let dst = self.allocate(data_layout, resource_usage);
+        let dst = self.allocate(src_size as u64, resource_usage);
 
         #[allow(unsafe_code)]
         unsafe {
-            std::ptr::copy_nonoverlapping(src, dst.ptr(), data_layout.size());
+            std::ptr::copy_nonoverlapping(src, dst.ptr(), src_size);
         }
 
         dst
     }
 
-    fn allocate(
-        &mut self,
-        data_layout: Layout,
-        resource_usage: ResourceUsage,
-    ) -> TransientBufferAllocation {
-        let mut allocation = self.transient_buffer.allocate(data_layout, resource_usage);
+    fn allocate(&mut self, size: u64, resource_usage: ResourceUsage) -> TransientBufferAllocation {
+        let mut allocation = self.transient_buffer.allocate(size, resource_usage);
 
         while allocation.is_none() {
             self.paged_buffer
                 .release_page(self.transient_buffer.transfer());
-            self.transient_buffer = self.paged_buffer.acquire_page(data_layout.size() as u64);
-            allocation = self.transient_buffer.allocate(data_layout, resource_usage);
+            self.transient_buffer = self.paged_buffer.acquire_page(size);
+            allocation = self.transient_buffer.allocate(size, resource_usage);
         }
 
         allocation.unwrap()

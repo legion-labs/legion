@@ -19,8 +19,7 @@ impl DescriptorPool {
                 descriptor_heap,
                 true,
                 heap_partition_def,
-            )
-            .unwrap(),
+            ),
         }
     }
 

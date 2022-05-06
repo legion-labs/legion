@@ -99,8 +99,8 @@ impl VulkanSwapchain {
     pub fn new(
         device_context: &DeviceContext,
         raw_window_handle: &dyn HasRawWindowHandle,
-        swapchain_def: &SwapchainDef,
-    ) -> GfxResult<Self> {
+        swapchain_def: SwapchainDef,
+    ) -> Self {
         // Get the surface, needed to select the best queue family
         let surface = unsafe {
             crate::backends::vulkan::create_surface(
@@ -108,7 +108,8 @@ impl VulkanSwapchain {
                 device_context.vk_instance(),
                 raw_window_handle,
                 None,
-            )?
+            )
+            .unwrap()
         };
 
         let surface_loader = device_context.deferred_dropper().new_drc(khr::Surface::new(
@@ -116,7 +117,7 @@ impl VulkanSwapchain {
             device_context.vk_instance(),
         ));
 
-        let present_mode_priority = present_mode_priority(swapchain_def);
+        let present_mode_priority = present_mode_priority(&swapchain_def);
 
         let swapchain = SwapchainVulkanInstance::new(
             device_context,
@@ -129,17 +130,18 @@ impl VulkanSwapchain {
                 height: swapchain_def.height,
             },
         )
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format!("{:?}", e))
+        .unwrap();
 
-        let swapchain_images = Self::setup_swapchain_images(device_context, &swapchain)?;
+        let swapchain_images = Self::setup_swapchain_images(device_context, &swapchain).unwrap();
 
-        Ok(Self {
+        Self {
             swapchain: ManuallyDrop::new(swapchain),
             surface,
             surface_loader,
             swapchain_images,
             last_image_suboptimal: false,
-        })
+        }
     }
 
     pub fn destroy(&mut self) {
@@ -157,12 +159,12 @@ impl VulkanSwapchain {
         device_context: &DeviceContext,
         swapchain: &SwapchainVulkanInstance,
     ) -> GfxResult<Vec<SwapchainImage>> {
-        let queue = device_context.create_queue(QueueType::Graphics)?;
-        let cmd_pool = queue.create_command_pool(&CommandPoolDef { transient: true })?;
-        let mut command_buffer = cmd_pool.create_command_buffer(&CommandBufferDef {
+        let mut queue = device_context.create_queue(QueueType::Graphics);
+        let mut cmd_pool = queue.create_command_pool(CommandPoolDef { transient: true })?;
+        let mut command_buffer = cmd_pool.create_command_buffer(CommandBufferDef {
             is_secondary: false,
-        })?;
-        command_buffer.begin()?;
+        });
+        command_buffer.begin();
 
         let swapchain_images = swapchain._images();
 
@@ -179,9 +181,12 @@ impl VulkanSwapchain {
 
         command_buffer.cmd_resource_barrier(&[], &image_barriers);
 
-        command_buffer.end()?;
-        queue.submit(&mut [&mut command_buffer], &[], &[], None)?;
-        queue.wait_for_queue_idle()?;
+        command_buffer.end();
+
+        queue.submit(&[&command_buffer], &[], &[], None);
+
+        queue.wait_for_queue_idle();
+
         Ok(swapchain_images)
     }
 }
@@ -277,10 +282,10 @@ impl Swapchain {
         }
     }
 
-    pub(crate) fn backend_rebuild(&mut self, swapchain_def: &SwapchainDef) -> GfxResult<()> {
-        self.swapchain_def = swapchain_def.clone();
+    pub(crate) fn backend_rebuild(&mut self, swapchain_def: SwapchainDef) -> GfxResult<()> {
+        
 
-        let present_mode_priority = present_mode_priority(swapchain_def);
+        let present_mode_priority = present_mode_priority(&swapchain_def);
         let device_context = &self.device_context;
         let new_swapchain = SwapchainVulkanInstance::new(
             device_context,
@@ -297,8 +302,8 @@ impl Swapchain {
         unsafe {
             ManuallyDrop::drop(&mut self.backend_swapchain.swapchain);
         }
+        self.swapchain_def = swapchain_def;
         self.backend_swapchain.swapchain = ManuallyDrop::new(new_swapchain);
-
         self.backend_swapchain.last_image_suboptimal = false;
         self.backend_swapchain.swapchain_images = VulkanSwapchain::setup_swapchain_images(
             device_context,

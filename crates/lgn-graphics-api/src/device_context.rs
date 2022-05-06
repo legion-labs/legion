@@ -201,11 +201,11 @@ impl DeviceContext {
         })
     }
 
-    pub fn create_queue(&self, queue_type: QueueType) -> GfxResult<Queue> {
+    pub fn create_queue(&self, queue_type: QueueType) -> Queue {
         Queue::new(self, queue_type)
     }
 
-    pub fn create_fence(&self) -> GfxResult<Fence> {
+    pub fn create_fence(&self) -> Fence {
         Fence::new(self)
     }
 
@@ -216,8 +216,8 @@ impl DeviceContext {
     pub fn create_swapchain(
         &self,
         raw_window_handle: &dyn HasRawWindowHandle,
-        swapchain_def: &SwapchainDef,
-    ) -> GfxResult<Swapchain> {
+        swapchain_def: SwapchainDef,
+    ) -> Swapchain {
         Swapchain::new(self, raw_window_handle, swapchain_def)
     }
 
@@ -243,36 +243,30 @@ impl DeviceContext {
 
     pub fn create_descriptorset_layout(
         &self,
-        descriptorset_layout_def: &DescriptorSetLayoutDef,
-    ) -> GfxResult<DescriptorSetLayout> {
+        descriptorset_layout_def: DescriptorSetLayoutDef,
+    ) -> DescriptorSetLayout {
         DescriptorSetLayout::new(self, descriptorset_layout_def)
     }
 
-    pub fn create_root_signature(
-        &self,
-        root_signature_def: &RootSignatureDef,
-    ) -> GfxResult<RootSignature> {
+    pub fn create_root_signature(&self, root_signature_def: RootSignatureDef) -> RootSignature {
         RootSignature::new(self, root_signature_def)
     }
 
-    pub fn create_descriptor_heap(
-        &self,
-        descriptor_heap_def: DescriptorHeapDef,
-    ) -> GfxResult<DescriptorHeap> {
+    pub fn create_descriptor_heap(&self, descriptor_heap_def: DescriptorHeapDef) -> DescriptorHeap {
         DescriptorHeap::new(self, descriptor_heap_def)
     }
 
     pub fn create_graphics_pipeline(
         &self,
-        graphics_pipeline_def: &GraphicsPipelineDef<'_>,
-    ) -> GfxResult<Pipeline> {
+        graphics_pipeline_def: GraphicsPipelineDef<'_>,
+    ) -> Pipeline {
         Pipeline::new_graphics_pipeline(self, graphics_pipeline_def)
     }
 
     pub fn create_compute_pipeline(
         &self,
-        compute_pipeline_def: &ComputePipelineDef<'_>,
-    ) -> GfxResult<Pipeline> {
+        compute_pipeline_def: ComputePipelineDef<'_>,
+    ) -> Pipeline {
         Pipeline::new_compute_pipeline(self, compute_pipeline_def)
     }
 

@@ -3,10 +3,9 @@ use std::slice;
 use lgn_core::Handle;
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, BufferCreateFlags, BufferDef,
-    BufferView, BufferViewDef, DeviceContext, MemoryUsage, ResourceState, ResourceUsage,
+    BufferView, BufferViewDef, CommandBuffer, DeviceContext, MemoryUsage, ResourceState,
+    ResourceUsage,
 };
-
-use crate::hl_gfx_api::HLCommandBuffer;
 
 use super::GpuSafePool;
 
@@ -135,8 +134,8 @@ impl GpuBufferWithReadback {
         &self.rw_view
     }
 
-    pub(crate) fn clear_buffer(&self, cmd_buffer: &mut HLCommandBuffer) {
-        cmd_buffer.resource_barrier(
+    pub(crate) fn clear_buffer(&self, cmd_buffer: &mut CommandBuffer) {
+        cmd_buffer.cmd_resource_barrier(
             &[BufferBarrier {
                 buffer: self.buffer(),
                 src_state: ResourceState::UNORDERED_ACCESS,
@@ -146,9 +145,9 @@ impl GpuBufferWithReadback {
             &[],
         );
 
-        cmd_buffer.fill_buffer(self.buffer(), 0, !0, 0);
+        cmd_buffer.cmd_fill_buffer(self.buffer(), 0, !0, 0);
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[BufferBarrier {
                 buffer: self.buffer(),
                 src_state: ResourceState::COPY_DST,
@@ -161,10 +160,10 @@ impl GpuBufferWithReadback {
 
     pub(crate) fn copy_buffer_to_readback(
         &self,
-        cmd_buffer: &mut HLCommandBuffer,
+        cmd_buffer: &mut CommandBuffer,
         readback: &Handle<ReadbackBuffer>,
     ) {
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[BufferBarrier {
                 buffer: self.buffer(),
                 src_state: ResourceState::UNORDERED_ACCESS,
@@ -174,7 +173,7 @@ impl GpuBufferWithReadback {
             &[],
         );
 
-        cmd_buffer.copy_buffer_to_buffer(
+        cmd_buffer.cmd_copy_buffer_to_buffer(
             self.buffer(),
             readback.buffer(),
             &[BufferCopy {
@@ -184,7 +183,7 @@ impl GpuBufferWithReadback {
             }],
         );
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[BufferBarrier {
                 buffer: self.buffer(),
                 src_state: ResourceState::COPY_SRC,

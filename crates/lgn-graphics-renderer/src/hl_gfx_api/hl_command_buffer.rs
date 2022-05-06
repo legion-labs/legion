@@ -11,16 +11,19 @@ use crate::resources::CommandBufferHandle;
 
 pub struct HLCommandBuffer {
     cmd_buffer: CommandBufferHandle,
-    cur_pipeline: Option<Pipeline>,
 }
 
 impl<'rc> HLCommandBuffer {
     pub fn new(mut cmd_buffer: CommandBufferHandle) -> Self {
-        cmd_buffer.begin().unwrap();
-        Self {
-            cmd_buffer,
-            cur_pipeline: None,
-        }
+        Self { cmd_buffer }
+    }
+
+    pub fn begin(&mut self) {
+        self.cmd_buffer.begin();
+    }
+
+    pub fn end(&mut self) {
+        self.cmd_buffer.end();
     }
 
     pub fn begin_render_pass(
@@ -29,8 +32,7 @@ impl<'rc> HLCommandBuffer {
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
     ) {
         self.cmd_buffer
-            .cmd_begin_render_pass(color_targets, depth_target)
-            .unwrap();
+            .cmd_begin_render_pass(color_targets, depth_target);
     }
 
     pub fn end_render_pass(&mut self) {
@@ -47,7 +49,6 @@ impl<'rc> HLCommandBuffer {
     }
 
     pub fn bind_pipeline(&mut self, pipeline: &Pipeline) {
-        self.cur_pipeline = Some(pipeline.clone());
         self.cmd_buffer.cmd_bind_pipeline(pipeline);
     }
 
@@ -73,43 +74,12 @@ impl<'rc> HLCommandBuffer {
         layout: &DescriptorSetLayout,
         handle: DescriptorSetHandle,
     ) {
-        assert!(self.cur_pipeline.is_some());
-
-        let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
-        let pipeline_type = cur_pipeline.pipeline_type();
-        let root_signature = cur_pipeline.root_signature();
-        let set_index = layout.frequency();
-
-        assert_eq!(
-            &root_signature.definition().descriptor_set_layouts[set_index as usize],
-            layout
-        );
-
-        self.cmd_buffer.cmd_bind_descriptor_set_handle(
-            pipeline_type,
-            root_signature,
-            set_index,
-            handle,
-        );
+        self.cmd_buffer
+            .cmd_bind_descriptor_set_handle(layout, handle);
     }
 
     pub fn push_constant<T: Sized>(&mut self, constants: &T) {
-        assert!(self.cur_pipeline.is_some());
-
-        let cur_pipeline = self.cur_pipeline.as_ref().unwrap();
-        let root_signature = cur_pipeline.root_signature();
-
-        assert!(&root_signature.definition().push_constant_def.is_some());
-        assert_eq!(
-            root_signature.definition().push_constant_def.unwrap().size as usize,
-            mem::size_of::<T>()
-        );
-
-        let constants_size = mem::size_of::<T>();
-        let constants_ptr = (constants as *const T).cast::<u8>();
-        #[allow(unsafe_code)]
-        let data = unsafe { &*std::ptr::slice_from_raw_parts(constants_ptr, constants_size) };
-        self.cmd_buffer.cmd_push_constant(root_signature, data);
+        self.cmd_buffer.cmd_push_constant_typed(constants);
     }
 
     pub fn draw(&mut self, vertex_count: u32, first_vertex: u32) {
@@ -284,8 +254,8 @@ impl<'rc> HLCommandBuffer {
             .cmd_fill_buffer(dst_buffer, offset, size, data);
     }
 
-    pub fn finalize(mut self) -> CommandBufferHandle {
-        self.cmd_buffer.end().unwrap();
+    pub fn finalize_(mut self) -> CommandBufferHandle {
+        self.cmd_buffer.end();
         self.cmd_buffer.transfer()
     }
 }
@@ -293,7 +263,7 @@ impl<'rc> HLCommandBuffer {
 impl Drop for HLCommandBuffer {
     fn drop(&mut self) {
         if self.cmd_buffer.is_valid() {
-            self.cmd_buffer.end().unwrap();
+            self.cmd_buffer.end();
         }
     }
 }

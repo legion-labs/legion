@@ -1,6 +1,6 @@
 use ash::vk;
 
-use crate::{Descriptor, DescriptorSetLayout, DeviceContext, GfxResult};
+use crate::{Descriptor, DescriptorSetLayout, DeviceContext};
 
 #[derive(Clone, Debug)]
 pub(crate) struct VulkanDescriptorSetLayout {
@@ -9,10 +9,7 @@ pub(crate) struct VulkanDescriptorSetLayout {
 }
 
 impl VulkanDescriptorSetLayout {
-    pub(crate) fn new(
-        device_context: &DeviceContext,
-        descriptors: &[Descriptor],
-    ) -> GfxResult<Self> {
+    pub(crate) fn new(device_context: &DeviceContext, descriptors: &[Descriptor]) -> Self {
         let mut vk_bindless_info = vk::DescriptorSetLayoutBindingFlagsCreateInfo::builder();
         let mut vk_bindings = Vec::<vk::DescriptorSetLayoutBinding>::new();
         let mut vk_descriptor_binding_flags = Vec::new();
@@ -94,13 +91,14 @@ impl VulkanDescriptorSetLayout {
         let vk_layout = unsafe {
             device_context
                 .vk_device()
-                .create_descriptor_set_layout(&*create_info, None)?
+                .create_descriptor_set_layout(&*create_info, None)
+                .unwrap()
         };
 
-        Ok(Self {
+        Self {
             vk_layout,
             typed_flat_indices,
-        })
+        }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext) {

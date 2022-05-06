@@ -1,8 +1,7 @@
-use lgn_graphics_api::Buffer;
+use lgn_graphics_api::{Buffer, CommandBuffer};
 
 use crate::{
     core::{BinaryWriter, RenderCommandBuilder},
-    hl_gfx_api::HLCommandBuffer,
     resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBuffer},
     RenderContext,
 };
@@ -116,7 +115,7 @@ impl RenderLayer {
     pub fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer,
+        cmd_buffer: &mut CommandBuffer,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {

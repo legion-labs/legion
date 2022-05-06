@@ -39,10 +39,11 @@ impl PersistentDescriptorSetManager {
             BINDLESS_TEXTURE_ARRAY_LEN
         );
 
-        let def = DescriptorHeapDef::from_descriptor_set_layout_def(layout.definition(), 1);
-        let persistent_partition =
-            DescriptorHeapPartition::new(descriptor_heap_manager.descriptor_heap(), false, def)
-                .unwrap();
+        let persistent_partition = DescriptorHeapPartition::new(
+            descriptor_heap_manager.descriptor_heap(),
+            false,
+            DescriptorHeapDef::from_descriptor_set_layout_def(layout.definition(), 1),
+        );
 
         Self {
             device_context: device_context.clone(),

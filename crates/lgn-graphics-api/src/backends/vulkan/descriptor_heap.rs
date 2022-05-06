@@ -40,7 +40,7 @@ impl From<DescriptorHeapDef> for DescriptorHeapPoolConfig {
 }
 
 impl DescriptorHeapPoolConfig {
-    fn create_pool(&self, device: &ash::Device) -> GfxResult<ash::vk::DescriptorPool> {
+    fn create_pool(&self, device: &ash::Device) -> ash::vk::DescriptorPool {
         let mut pool_sizes = Vec::with_capacity(16);
 
         fn add_if_not_zero(
@@ -72,16 +72,18 @@ impl DescriptorHeapPoolConfig {
         };
 
         let vk_pool = unsafe {
-            device.create_descriptor_pool(
-                &*ash::vk::DescriptorPoolCreateInfo::builder()
-                    .flags(self.pool_flags)
-                    .max_sets(self.descriptor_sets)
-                    .pool_sizes(&pool_sizes),
-                None,
-            )?
+            device
+                .create_descriptor_pool(
+                    &*ash::vk::DescriptorPoolCreateInfo::builder()
+                        .flags(self.pool_flags)
+                        .max_sets(self.descriptor_sets)
+                        .pool_sizes(&pool_sizes),
+                    None,
+                )
+                .unwrap()
         };
 
-        Ok(vk_pool)
+        vk_pool
     }
 }
 /*
@@ -190,15 +192,12 @@ pub(crate) struct VulkanDescriptorHeap {
 }
 
 impl VulkanDescriptorHeap {
-    pub(crate) fn new(
-        device_context: &DeviceContext,
-        definition: DescriptorHeapDef,
-    ) -> GfxResult<Self> {
+    pub(crate) fn new(device_context: &DeviceContext, definition: DescriptorHeapDef) -> Self {
         let device = device_context.vk_device();
         let heap_pool_config: DescriptorHeapPoolConfig = definition.into();
-        let vk_pool = heap_pool_config.create_pool(device)?;
+        let vk_pool = heap_pool_config.create_pool(device);
 
-        Ok(Self { vk_pool })
+        Self { vk_pool }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext) {
@@ -222,7 +221,7 @@ impl VulkanDescriptorHeapPartition {
         device_context: &DeviceContext,
         transient: bool,
         definition: DescriptorHeapDef,
-    ) -> GfxResult<Self> {
+    ) -> Self {
         let device = device_context.vk_device();
         let mut heap_pool_config: DescriptorHeapPoolConfig = definition.into();
         if !transient {
@@ -230,9 +229,9 @@ impl VulkanDescriptorHeapPartition {
                 | ash::vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND;
         }
 
-        let vk_pool = heap_pool_config.create_pool(device)?;
-
-        Ok(Self { vk_pool })
+        Self {
+            vk_pool: heap_pool_config.create_pool(device),
+        }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext) {

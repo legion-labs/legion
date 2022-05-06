@@ -14,13 +14,14 @@ mod cgen {
 
 use std::sync::Arc;
 
+use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
 #[allow(unused_imports)]
 use cgen::*;
 
 pub mod labels;
 
 use gpu_renderer::GpuInstanceManager;
-use hl_gfx_api::HLCommandBuffer;
+
 pub use labels::*;
 
 mod asset_to_ecs;
@@ -64,9 +65,7 @@ pub mod shared;
 
 mod renderdoc;
 
-use crate::core::{
-    GpuUploadManager, RenderCommandManager, RenderResources, RenderResourcesBuilder,
-};
+use crate::core::{GpuUploadManager, RenderCommandManager, RenderResourcesBuilder};
 use crate::features::ModelPlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
@@ -111,18 +110,24 @@ pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
 
 #[derive(Clone)]
 pub struct GraphicsQueue {
-    queue: Arc<Queue>,
+    queue: Arc<AtomicRefCell<Queue>>,
 }
 
 impl GraphicsQueue {
     pub fn new(device_context: &DeviceContext) -> Self {
         Self {
-            queue: Arc::new(device_context.create_queue(QueueType::Graphics).unwrap()),
+            queue: Arc::new(AtomicRefCell::new(
+                device_context.create_queue(QueueType::Graphics),
+            )),
         }
     }
 
-    pub fn queue(&self) -> &Queue {
-        self.queue.as_ref()
+    pub fn queue(&self) -> AtomicRef<'_, Queue> {
+        self.queue.borrow()
+    }
+
+    pub fn queue_mut(&self) -> AtomicRefMut<'_, Queue> {
+        self.queue.borrow_mut()
     }
 }
 
@@ -149,7 +154,7 @@ impl Plugin for RendererPlugin {
         let device_context = gfx_api.device_context();
         let graphics_queue = GraphicsQueue::new(device_context);
         let cgen_registry = Arc::new(cgen::initialize(device_context));
-        let renderer_data = RendererData::new(NUM_RENDER_FRAMES, device_context);
+        let render_scope = RenderScope::new(NUM_RENDER_FRAMES, device_context);
         let upload_manager = GpuUploadManager::new();
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
@@ -302,7 +307,7 @@ impl Plugin for RendererPlugin {
         let render_resources_builder = RenderResourcesBuilder::new();
 
         let render_resources = render_resources_builder
-            .insert(renderer_data)
+            .insert(render_scope)
             .insert(gfx_api)
             .insert(render_command_manager)
             .insert(upload_manager)
@@ -453,11 +458,7 @@ fn render_update(
     let q_lights = queries.3;
     let q_cameras = queries.4;
 
-    // << render_begin
-    {
-        crate::egui::egui_plugin::end_frame(&mut egui);
-    }
-    // >>< render_begin
+    crate::egui::egui_plugin::end_frame(&mut egui);
 
     let render_resources = renderer.render_resources().clone();
 
@@ -466,10 +467,7 @@ fn render_update(
     /*
         Start of the RenderThread
     */
-    // << render_update
     {
-        // start
-
         let q_picked_drawables = q_picked_drawables
             .iter()
             .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
@@ -488,8 +486,8 @@ fn render_update(
             &default_camera
         };
 
-        let mut renderer_data = render_resources.get_mut::<RendererData>();
-        renderer_data.begin_frame();
+        let mut render_scope = render_resources.get_mut::<RenderScope>();
+        render_scope.begin_frame();
 
         let mut descriptor_heap_manager = render_resources.get_mut::<DescriptorHeapManager>();
         descriptor_heap_manager.begin_frame();
@@ -508,7 +506,7 @@ fn render_update(
         let mut transient_buffer_allocator =
             TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
         let transient_commandbuffer_manager =
-            render_resources.get::<TransientCommandBufferManager>(); //  renderer.acquire_command_buffer_pool(QueueType::Graphics);
+            render_resources.get::<TransientCommandBufferManager>();
         transient_commandbuffer_manager.begin_frame();
         let mut transient_commandbuffer_allocator =
             TransientCommandBufferAllocator::new(&transient_commandbuffer_manager);
@@ -527,6 +525,10 @@ fn render_update(
             &mut transient_buffer_allocator,
             &static_buffer,
         );
+
+        render_resources
+            .get_mut::<GpuUploadManager>()
+            .upload(&mut render_context);
 
         // Persistent descriptor set
         {
@@ -624,25 +626,27 @@ fn render_update(
                 );
             }
 
-            let cmd_buffer_handle = render_context.acquire_command_buffer();
-            let mut cmd_buffer = HLCommandBuffer::new(cmd_buffer_handle);
+            let mut cmd_buffer_handle = render_context.acquire_command_buffer();
+            let cmd_buffer = cmd_buffer_handle.as_mut();
+
+            cmd_buffer.begin();
 
             mesh_renderer.gen_occlusion_and_cull(
                 &mut render_context,
-                &mut cmd_buffer,
+                cmd_buffer,
                 &mut render_surface,
                 &instance_manager,
             );
 
-            cmd_buffer.bind_index_buffer(static_buffer.index_buffer_binding());
-            cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+            cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
+            cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
             let picking_pass = render_surface.picking_renderpass();
             let mut picking_pass = picking_pass.write();
             picking_pass.render(
                 &picking_manager,
                 &render_context,
-                &mut cmd_buffer,
+                cmd_buffer,
                 render_surface.as_mut(),
                 &instance_manager,
                 q_manipulator_drawables.as_slice(),
@@ -654,7 +658,7 @@ fn render_update(
 
             TmpRenderPass::render(
                 &render_context,
-                &mut cmd_buffer,
+                cmd_buffer,
                 render_surface.as_mut(),
                 &mesh_renderer,
             );
@@ -663,7 +667,7 @@ fn render_update(
             let debug_renderpass = debug_renderpass.write();
             debug_renderpass.render(
                 &render_context,
-                &mut cmd_buffer,
+                cmd_buffer,
                 render_surface.as_mut(),
                 q_picked_drawables.as_slice(),
                 q_manipulator_drawables.as_slice(),
@@ -676,20 +680,25 @@ fn render_update(
             if egui.is_enabled() {
                 let egui_pass = render_surface.egui_renderpass();
                 let mut egui_pass = egui_pass.write();
-                egui_pass.update_font_texture(&render_context, &mut cmd_buffer, egui.ctx());
+                egui_pass.update_font_texture(&render_context, cmd_buffer, egui.ctx());
                 egui_pass.render(
                     &mut render_context,
-                    &mut cmd_buffer,
+                    cmd_buffer,
                     render_surface.as_mut(),
                     &egui,
                 );
             }
 
+            cmd_buffer.end();
+
             // queue
             let present_sema = render_surface.acquire();
             {
                 let graphics_queue = render_context.graphics_queue();
-                graphics_queue.submit(&mut [cmd_buffer.finalize()], &[present_sema], &[], None);
+
+                graphics_queue
+                    .queue_mut()
+                    .submit(&[cmd_buffer], &[present_sema], &[], None);
 
                 render_surface.present(&mut render_context);
             }
@@ -697,17 +706,16 @@ fn render_update(
             render_context.release_command_buffer(cmd_buffer_handle);
         }
 
-        // << render_end
-        {
-            descriptor_heap_manager.end_frame();
-            debug_display.end_frame();
-            renderer_data.end_frame(&graphics_queue);
-            transient_buffer.end_frame();
-            transient_commandbuffer_manager.end_frame();
-            mesh_renderer.end_frame();
-        }
+        descriptor_heap_manager.release_descriptor_pool(descriptor_pool);
+        drop(transient_buffer_allocator);
+        drop(transient_commandbuffer_allocator);
 
-        // >> render_end
+        descriptor_heap_manager.end_frame();
+        debug_display.end_frame();
+        render_scope.end_frame(&graphics_queue);
+        transient_buffer.end_frame();
+        transient_commandbuffer_manager.end_frame();
+        mesh_renderer.end_frame();
     }
 }
 

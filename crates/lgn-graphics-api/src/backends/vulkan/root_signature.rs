@@ -4,7 +4,7 @@ use ash::vk;
 use lgn_tracing::trace;
 
 use crate::{
-    DeviceContext, GfxResult, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS,
+    DeviceContext, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS,
 };
 
 // Not currently exposed
@@ -19,10 +19,7 @@ pub(crate) struct VulkanRootSignature {
 }
 
 impl VulkanRootSignature {
-    pub(crate) fn new(
-        device_context: &DeviceContext,
-        definition: &RootSignatureDef,
-    ) -> GfxResult<Self> {
+    pub(crate) fn new(device_context: &DeviceContext, definition: RootSignatureDef) -> Self {
         trace!("Create VulkanRootSignature");
 
         //
@@ -56,10 +53,11 @@ impl VulkanRootSignature {
         let vk_pipeline_layout = unsafe {
             device_context
                 .vk_device()
-                .create_pipeline_layout(&pipeline_layout_create_info, None)?
+                .create_pipeline_layout(&pipeline_layout_create_info, None)
+                .unwrap()
         };
 
-        Ok(Self { vk_pipeline_layout })
+        Self { vk_pipeline_layout }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext) {

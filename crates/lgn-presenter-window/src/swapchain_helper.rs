@@ -3,12 +3,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crossbeam_channel::{Receiver, Sender};
-use lgn_core::Handle;
+
 use lgn_graphics_api::{
-    CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult,
+    CommandBuffer, DeviceContext, Fence, Format, GfxError, GfxResult, PresentSuccessResult, Queue,
     Semaphore, SemaphoreDef, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureView,
 };
-use lgn_graphics_renderer::hl_gfx_api::HLQueue;
+
 use lgn_tracing::{debug, error, info, trace};
 
 /// May be implemented to get callbacks related to the swapchain being
@@ -48,7 +48,7 @@ struct SwapchainHelperSharedState {
 }
 
 impl SwapchainHelperSharedState {
-    fn new(device_context: &DeviceContext, swapchain: Arc<Mutex<Swapchain>>) -> GfxResult<Self> {
+    fn new(device_context: &DeviceContext, swapchain: Arc<Mutex<Swapchain>>) -> Self {
         let image_count = swapchain.lock().unwrap().image_count();
         let mut image_available_semaphores = Vec::with_capacity(image_count);
         let mut render_finished_semaphores = Vec::with_capacity(image_count);
@@ -59,12 +59,12 @@ impl SwapchainHelperSharedState {
                 .push(device_context.create_semaphore(SemaphoreDef::default()));
             render_finished_semaphores
                 .push(device_context.create_semaphore(SemaphoreDef::default()));
-            in_flight_fences.push(device_context.create_fence()?);
+            in_flight_fences.push(device_context.create_fence());
         }
 
         let (result_tx, result_rx) = crossbeam_channel::unbounded();
 
-        Ok(Self {
+        Self {
             sync_frame_index: AtomicUsize::new(0),
             image_available_semaphores,
             render_finished_semaphores,
@@ -72,7 +72,7 @@ impl SwapchainHelperSharedState {
             result_tx,
             result_rx,
             swapchain,
-        })
+        }
     }
 }
 
@@ -107,9 +107,9 @@ impl PresentableFrame {
     /// be presented after their completion
     pub fn present(
         mut self,
-        queue: &HLQueue<'_>,
+        queue: &mut Queue,
         wait_sem: &Semaphore,
-        command_buffers: &mut [Handle<CommandBuffer>],
+        command_buffers: &[&CommandBuffer],
     ) -> GfxResult<PresentSuccessResult> {
         trace!(
             "Calling PresentableFrame::present with {} command buffers",
@@ -127,9 +127,9 @@ impl PresentableFrame {
     /// Present the current swapchain    
     pub fn do_present(
         &mut self,
-        queue: &HLQueue<'_>,
+        queue: &mut Queue,
         wait_sem: &Semaphore,
-        command_buffers: &mut [Handle<CommandBuffer>],
+        command_buffers: &[&CommandBuffer],
     ) -> GfxResult<PresentSuccessResult> {
         // A present can only occur using the result from the previous
         // acquire_next_image call
@@ -208,29 +208,31 @@ impl SwapchainHelper {
         device_context: &DeviceContext,
         swapchain: Swapchain,
         mut event_listener: Option<&mut dyn SwapchainEventListener>,
-    ) -> GfxResult<Self> {
+    ) -> Self {
         let format = swapchain.format();
         let image_count = swapchain.image_count();
-        let swapchain_def = swapchain.swapchain_def().clone();
+        let swapchain_def = *swapchain.definition();
 
         let shared_state = Arc::new(SwapchainHelperSharedState::new(
             device_context,
             Arc::new(Mutex::new(swapchain)),
-        )?);
+        ));
 
         if let Some(event_listener) = event_listener.as_mut() {
             let swapchain = shared_state.swapchain.lock().unwrap();
-            event_listener.swapchain_created(device_context, &*swapchain)?;
+            event_listener
+                .swapchain_created(device_context, &*swapchain)
+                .unwrap();
         }
 
-        Ok(Self {
+        Self {
             device_context: device_context.clone(),
             shared_state: Some(shared_state),
             format,
             image_count,
             swapchain_def,
             expect_result_from_previous_frame: false,
-        })
+        }
     }
 
     /// destroy swapchain helper
@@ -443,7 +445,7 @@ impl SwapchainHelper {
         // check if window size changed and we are out of date
         let shared_state = self.shared_state.as_ref().unwrap();
         let mut swapchain = shared_state.swapchain.lock().unwrap();
-        let swapchain_def = swapchain.swapchain_def();
+        let swapchain_def = swapchain.definition();
 
         if swapchain_def.width != window_width || swapchain_def.height != window_height {
             debug!("Force swapchain rebuild due to changed window size");
@@ -488,11 +490,11 @@ impl SwapchainHelper {
                 event_listener.swapchain_destroyed(&self.device_context, &*swapchain)?;
             }
 
-            let mut swapchain_def = swapchain.swapchain_def().clone();
+            let mut swapchain_def = *swapchain.definition();
             swapchain_def.width = window_width;
             swapchain_def.height = window_height;
 
-            swapchain.rebuild(&swapchain_def)?;
+            swapchain.rebuild(swapchain_def)?;
 
             if let Some(event_listener) = event_listener.as_mut() {
                 event_listener.swapchain_created(&self.device_context, &swapchain)?;
@@ -500,13 +502,13 @@ impl SwapchainHelper {
 
             self.format = swapchain.format();
             self.image_count = swapchain.image_count();
-            self.swapchain_def = swapchain_def;
+            self.swapchain_def = *swapchain.definition();
         }
 
         self.shared_state = Some(Arc::new(SwapchainHelperSharedState::new(
             &self.device_context,
             shared_state.swapchain.clone(),
-        )?));
+        )));
         Ok(())
     }
 }

@@ -1,7 +1,6 @@
-use crate::{
-    hl_gfx_api::HLCommandBuffer,
-    resources::{MaterialId, MeshMetaData},
-};
+use lgn_graphics_api::CommandBuffer;
+
+use crate::resources::{MaterialId, MeshMetaData};
 
 use super::GpuInstanceId;
 
@@ -37,9 +36,9 @@ impl RenderElement {
         self.material_id
     }
 
-    pub fn draw(&self, cmd_buffer: &mut HLCommandBuffer) {
+    pub fn draw(&self, cmd_buffer: &mut CommandBuffer) {
         if self.index_count != 0 {
-            cmd_buffer.draw_indexed_instanced(
+            cmd_buffer.cmd_draw_indexed_instanced(
                 self.index_count,
                 self.index_offset,
                 1,
@@ -47,7 +46,7 @@ impl RenderElement {
                 0,
             );
         } else {
-            cmd_buffer.draw_instanced(self.vertex_count, 0, 1, self.gpu_instance_id.index());
+            cmd_buffer.cmd_draw_instanced(self.vertex_count, 0, 1, self.gpu_instance_id.index());
         }
     }
 }

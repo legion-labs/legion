@@ -778,11 +778,8 @@ impl CGenRegistry {
             layout_def.descriptor_defs.push(descriptor_def);
         }
 
-        self.descriptor_set_layouts.push(
-            device_context
-                .create_descriptorset_layout(&layout_def)
-                .unwrap(),
-        );
+        self.descriptor_set_layouts
+            .push(device_context.create_descriptorset_layout(layout_def));
     }
 
     pub fn descriptor_set_layout(&self, id: u32) -> &DescriptorSetLayout {
@@ -809,11 +806,8 @@ impl CGenRegistry {
             push_constant_def,
         };
 
-        self.pipeline_layouts.push(
-            device_context
-                .create_root_signature(&signature_def)
-                .unwrap(),
-        );
+        self.pipeline_layouts
+            .push(device_context.create_root_signature(signature_def));
     }
 
     pub fn pipeline_layout(&self, id: u32) -> &RootSignature {

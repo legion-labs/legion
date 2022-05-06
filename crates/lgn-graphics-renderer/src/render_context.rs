@@ -1,7 +1,8 @@
-use lgn_graphics_api::{DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext};
+use lgn_graphics_api::{
+    CommandBuffer, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext,
+};
 
 use crate::{
-    hl_gfx_api::{HLCommandBuffer, HLQueue},
     resources::{
         CommandBufferHandle, DescriptorPoolHandle, PipelineManager, TransientBufferAllocator,
         TransientCommandBufferAllocator, UnifiedStaticBuffer,
@@ -62,8 +63,8 @@ impl<'frame> RenderContext<'frame> {
         self.pipeline_manager
     }
 
-    pub fn graphics_queue(&self) -> HLQueue<'_> {
-        HLQueue::new(self.graphics_queue.queue())
+    pub fn graphics_queue(&self) -> &GraphicsQueue {
+        self.graphics_queue
     }
 
     pub fn acquire_command_buffer(&mut self) -> CommandBufferHandle {
@@ -127,16 +128,16 @@ impl<'frame> RenderContext<'frame> {
         self.view_descriptor_set = Some((layout, handle));
     }
 
-    pub fn bind_default_descriptor_sets(&self, cmd_buffer: &mut HLCommandBuffer) {
-        cmd_buffer.bind_descriptor_set(
+    pub fn bind_default_descriptor_sets(&self, cmd_buffer: &mut CommandBuffer) {
+        cmd_buffer.cmd_bind_descriptor_set_handle(
             self.persistent_descriptor_set.unwrap().0,
             self.persistent_descriptor_set.unwrap().1,
         );
-        cmd_buffer.bind_descriptor_set(
+        cmd_buffer.cmd_bind_descriptor_set_handle(
             self.frame_descriptor_set.unwrap().0,
             self.frame_descriptor_set.unwrap().1,
         );
-        cmd_buffer.bind_descriptor_set(
+        cmd_buffer.cmd_bind_descriptor_set_handle(
             self.view_descriptor_set.unwrap().0,
             self.view_descriptor_set.unwrap().1,
         );

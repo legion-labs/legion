@@ -7,16 +7,17 @@ pub(crate) struct VulkanFence {
 }
 
 impl VulkanFence {
-    pub(crate) fn new(device_context: &DeviceContext) -> GfxResult<Self> {
+    pub(crate) fn new(device_context: &DeviceContext) -> Self {
         let create_info = vk::FenceCreateInfo::builder().flags(vk::FenceCreateFlags::empty());
 
         let vk_fence = unsafe {
             device_context
                 .vk_device()
-                .create_fence(&*create_info, None)?
+                .create_fence(&*create_info, None)
+                .unwrap()
         };
 
-        Ok(Self { vk_fence })
+        Self { vk_fence }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext) {
@@ -30,7 +31,7 @@ impl VulkanFence {
 
 impl Fence {
     pub(crate) fn vk_fence(&self) -> vk::Fence {
-        self.inner.backend_fence.vk_fence
+        self.backend_fence.vk_fence
     }
 
     pub(crate) fn backend_wait_for_fences(
@@ -51,11 +52,11 @@ impl Fence {
     }
 
     pub(crate) fn get_fence_status_platform(&self) -> GfxResult<FenceStatus> {
-        let device = self.inner.device_context.vk_device();
+        let device = self.device_context.vk_device();
         unsafe {
-            let is_ready = device.get_fence_status(self.inner.backend_fence.vk_fence)?;
+            let is_ready = device.get_fence_status(self.backend_fence.vk_fence)?;
             if is_ready {
-                device.reset_fences(&[self.inner.backend_fence.vk_fence])?;
+                device.reset_fences(&[self.backend_fence.vk_fence])?;
             }
 
             if is_ready {

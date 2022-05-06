@@ -170,56 +170,6 @@ impl UnifiedStaticBufferAllocator {
         let inner = &mut *self.inner.lock().unwrap();
         inner.segment_allocator.free(range);
     }
-
-    // pub fn add_update_job_block(&self, mut job_blocks: Vec<GPUDataUpdaterCopy>) {
-    //     let inner = &mut *self.inner.lock().unwrap();
-
-    //     inner.job_blocks.extend(job_blocks.drain(..));
-    // }
-
-    // #[span_fn]
-    // pub(crate) fn flush_updater(&self, render_context: &RenderContext<'_>) {
-    //     let inner = &mut *self.inner.lock().unwrap();
-
-    //     let graphics_queue = render_context.graphics_queue();
-
-    //     let mut cmd_buffer = render_context.alloc_command_buffer();
-
-    //     cmd_buffer.resource_barrier(
-    //         &[BufferBarrier {
-    //             buffer: &inner.buffer,
-    //             src_state: ResourceState::SHADER_RESOURCE,
-    //             dst_state: ResourceState::COPY_DST,
-    //             queue_transition: BarrierQueueTransition::None,
-    //         }],
-    //         &[],
-    //     );
-
-    //     for job in &inner.job_blocks {
-    //         cmd_buffer.copy_buffer_to_buffer(
-    //             job.src_allocation.buffer(),
-    //             &inner.buffer,
-    //             &[BufferCopy {
-    //                 src_offset: job.src_allocation.byte_offset(),
-    //                 dst_offset: job.static_buffer_offset,
-    //                 size: job.src_allocation.size(),
-    //             }],
-    //         );
-    //     }
-    //     inner.job_blocks.clear();
-
-    //     cmd_buffer.resource_barrier(
-    //         &[BufferBarrier {
-    //             buffer: &inner.buffer,
-    //             src_state: ResourceState::COPY_DST,
-    //             dst_state: ResourceState::SHADER_RESOURCE,
-    //             queue_transition: BarrierQueueTransition::None,
-    //         }],
-    //         &[],
-    //     );
-
-    //     graphics_queue.submit(&mut [cmd_buffer.finalize()], &[], &[], None);
-    // }
 }
 
 pub struct UniformGPUData<T> {
@@ -266,11 +216,6 @@ impl<T> UniformGPUData<T> {
         page_write_access[index_of_page as usize].byte_offset() + (index_in_page * element_size)
     }
 }
-
-// pub struct GPUDataUpdaterCopy {
-//     src_allocation: TransientBufferAllocation,
-//     static_buffer_offset: u64,
-// }
 
 #[derive(Debug)]
 pub struct UpdateUnifiedStaticBuffer {

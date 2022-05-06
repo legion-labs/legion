@@ -6,8 +6,6 @@ use crate::cgen;
 use crate::components::RenderSurface;
 use crate::egui::Egui;
 
-use crate::hl_gfx_api::HLCommandBuffer;
-
 use crate::RenderContext;
 
 use crate::resources::{PipelineHandle, PipelineManager};
@@ -53,20 +51,18 @@ impl EguiPass {
                 cgen::shader::egui_shader::TOTO,
             ),
             move |device_context, shader| {
-                device_context
-                    .create_graphics_pipeline(&GraphicsPipelineDef {
-                        shader,
-                        root_signature,
-                        vertex_layout: &vertex_layout,
-                        blend_state: &BlendState::default_alpha_enabled(),
-                        depth_state: &DepthState::default(),
-                        rasterizer_state: &RasterizerState::default(),
-                        color_formats: &[Format::R16G16B16A16_SFLOAT],
-                        sample_count: SampleCount::SampleCount1,
-                        depth_stencil_format: None,
-                        primitive_topology: PrimitiveTopology::TriangleList,
-                    })
-                    .unwrap()
+                device_context.create_graphics_pipeline(GraphicsPipelineDef {
+                    shader,
+                    root_signature,
+                    vertex_layout: &vertex_layout,
+                    blend_state: &BlendState::default_alpha_enabled(),
+                    depth_state: &DepthState::default(),
+                    rasterizer_state: &RasterizerState::default(),
+                    color_formats: &[Format::R16G16B16A16_SFLOAT],
+                    sample_count: SampleCount::SampleCount1,
+                    depth_stencil_format: None,
+                    primitive_topology: PrimitiveTopology::TriangleList,
+                })
             },
         );
 
@@ -94,7 +90,7 @@ impl EguiPass {
     pub fn update_font_texture(
         &mut self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer,
+        cmd_buffer: &mut CommandBuffer,
         egui_ctx: &egui::CtxRef,
     ) {
         if let Some((version, ..)) = self.texture_data {
@@ -134,7 +130,7 @@ impl EguiPass {
 
         staging_buffer.copy_to_host_visible_buffer(&egui_font_image.pixels);
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 &texture,
@@ -143,13 +139,13 @@ impl EguiPass {
             )],
         );
 
-        cmd_buffer.copy_buffer_to_texture(
+        cmd_buffer.cmd_copy_buffer_to_texture(
             &staging_buffer,
             &texture,
             &CmdCopyBufferToTextureParams::default(),
         );
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 &texture,
@@ -164,12 +160,12 @@ impl EguiPass {
     pub fn render(
         &self,
         render_context: &mut RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer,
+        cmd_buffer: &mut CommandBuffer,
         render_surface: &RenderSurface,
         egui: &Egui,
     ) {
         cmd_buffer.with_label("egui", |cmd_buffer| {
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: render_surface.hdr_rt().rtv(),
                     load_op: LoadOp::Load,
@@ -183,7 +179,7 @@ impl EguiPass {
 
             let pipeline = pipeline_manager.get_pipeline(self.pipeline_handle).unwrap();
 
-            cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.cmd_bind_pipeline(pipeline);
 
             let clipped_meshes = egui.tessellate();
 
@@ -195,7 +191,7 @@ impl EguiPass {
                 cgen::descriptor_set::EguiDescriptorSet::descriptor_set_layout(),
                 descriptor_set.descriptor_refs(),
             );
-            cmd_buffer.bind_descriptor_set(
+            cmd_buffer.cmd_bind_descriptor_set_handle(
                 cgen::descriptor_set::EguiDescriptorSet::descriptor_set_layout(),
                 descriptor_set_handle,
             );
@@ -225,10 +221,11 @@ impl EguiPass {
                 let transient_buffer = transient_allocator
                     .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
-                cmd_buffer.bind_vertex_buffers(0, &[transient_buffer.vertex_buffer_binding()]);
+                cmd_buffer.cmd_bind_vertex_buffers(0, &[transient_buffer.vertex_buffer_binding()]);
 
-                cmd_buffer
-                    .bind_index_buffer(transient_buffer.index_buffer_binding(IndexType::Uint32));
+                cmd_buffer.cmd_bind_index_buffer(
+                    transient_buffer.index_buffer_binding(IndexType::Uint32),
+                );
 
                 let scale = 1.0;
                 let mut push_constant_data = cgen::cgen_type::EguiPushConstantData::default();
@@ -243,10 +240,10 @@ impl EguiPass {
                         .into(),
                 );
 
-                cmd_buffer.push_constant(&push_constant_data);
-                cmd_buffer.draw_indexed(mesh.indices.len() as u32, 0, 0);
+                cmd_buffer.cmd_push_constant_typed(&push_constant_data);
+                cmd_buffer.cmd_draw_indexed(mesh.indices.len() as u32, 0, 0);
             }
-            cmd_buffer.end_render_pass();
+            cmd_buffer.cmd_end_render_pass();
         });
     }
 }

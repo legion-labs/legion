@@ -65,25 +65,25 @@ impl Renderer {
 
 impl Drop for Renderer {
     fn drop(&mut self) {
-        self.graphics_queue().queue().wait_for_queue_idle().unwrap();
+        self.graphics_queue().queue_mut().wait_for_queue_idle();
     }
 }
 
-pub(crate) struct RendererData {
+pub(crate) struct RenderScope {
     frame_idx: u64,
     render_frame_idx: u64,
     num_render_frames: u64,
     frame_fences: Vec<Fence>,
 }
 
-impl RendererData {
+impl RenderScope {
     pub fn new(num_render_frames: u64, device_context: &DeviceContext) -> Self {
         Self {
             frame_idx: 0,
             render_frame_idx: 0,
             num_render_frames,
             frame_fences: (0..num_render_frames)
-                .map(|_| device_context.create_fence().unwrap())
+                .map(|_| device_context.create_fence())
                 .collect(),
         }
     }
@@ -110,8 +110,7 @@ impl RendererData {
         let frame_fence = &self.frame_fences[self.render_frame_idx as usize];
 
         graphics_queue
-            .queue()
-            .submit(&mut [], &[], &[], Some(frame_fence))
-            .unwrap();
+            .queue_mut()
+            .submit(&[], &[], &[], Some(frame_fence));
     }
 }

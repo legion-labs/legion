@@ -2,8 +2,9 @@ use std::{cmp::max, sync::Arc};
 
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Format,
-    GPUViewType, LoadOp, ResourceState, ResourceUsage, Semaphore, SemaphoreDef, StoreOp,
+    CommandBuffer, DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext,
+    Extents2D, Format, GPUViewType, LoadOp, ResourceState, ResourceUsage, Semaphore, SemaphoreDef,
+    StoreOp,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -12,7 +13,6 @@ use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
 use crate::gpu_renderer::HzbSurface;
-use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_pass::{
     DebugRenderPass, FinalResolveRenderPass, PickingRenderPass, RenderTarget,
 };
@@ -227,14 +227,14 @@ impl RenderSurface {
     pub(crate) fn init_hzb_if_needed(
         &mut self,
         render_context: &mut RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer,
+        cmd_buffer: &mut CommandBuffer,
     ) {
         if !self.resources.hzb_init {
             self.resources
                 .depth_rt
                 .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
 
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[],
                 &Some(DepthStencilRenderTargetBinding {
                     texture_view: self.resources.depth_rt.rtv(),
@@ -248,7 +248,7 @@ impl RenderSurface {
                     },
                 }),
             );
-            cmd_buffer.end_render_pass();
+            cmd_buffer.cmd_end_render_pass();
 
             self.generate_hzb(render_context, cmd_buffer);
 
@@ -259,7 +259,7 @@ impl RenderSurface {
     pub(crate) fn generate_hzb(
         &mut self,
         render_context: &mut RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer,
+        cmd_buffer: &mut CommandBuffer,
     ) {
         cmd_buffer.with_label("Generate HZB", |cmd_buffer| {
             self.depth_rt_mut()

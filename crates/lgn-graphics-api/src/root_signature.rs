@@ -1,6 +1,6 @@
 use crate::backends::BackendRootSignature;
 use crate::deferred_drop::Drc;
-use crate::{DescriptorSetLayout, DeviceContext, GfxResult};
+use crate::{DescriptorSetLayout, DeviceContext};
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -13,19 +13,10 @@ pub struct PushConstantDef {
     pub size: u32,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct RootSignatureDef {
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
-}
-
-impl Clone for RootSignatureDef {
-    fn clone(&self) -> Self {
-        Self {
-            descriptor_set_layouts: self.descriptor_set_layouts.clone(),
-            push_constant_def: self.push_constant_def,
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -47,18 +38,18 @@ pub struct RootSignature {
 }
 
 impl RootSignature {
-    pub fn new(device_context: &DeviceContext, definition: &RootSignatureDef) -> GfxResult<Self> {
-        let backend_root_signature = BackendRootSignature::new(device_context, definition)?;
+    pub fn new(device_context: &DeviceContext, definition: RootSignatureDef) -> Self {
+        let backend_root_signature = BackendRootSignature::new(device_context, definition.clone());
 
         let inner = RootSignatureInner {
             device_context: device_context.clone(),
-            definition: definition.clone(),
+            definition,
             backend_root_signature,
         };
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(inner),
-        })
+        }
     }
 
     pub fn device_context(&self) -> &DeviceContext {

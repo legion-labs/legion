@@ -235,10 +235,11 @@ impl TextureManager {
     #[span_fn]
     fn upload_texture(&mut self, renderer: &Renderer, upload_job: &UploadTextureJob) {
         let device_context = renderer.device_context();
-        let cmd_buffer_pool = renderer.acquire_command_buffer_pool(QueueType::Graphics);
-        let mut cmd_buffer = cmd_buffer_pool.acquire();
+        let mut cmd_buffer_pool = renderer.acquire_command_buffer_pool(QueueType::Graphics);
+        let mut cmd_buffer_handle = cmd_buffer_pool.acquire();
+        let cmd_buffer = cmd_buffer_handle.as_mut();
 
-        cmd_buffer.begin().unwrap();
+        cmd_buffer.begin();
 
         // let gpu_texture_id = upload_job.gpu_texture_id;
         let entity = upload_job.entity;
@@ -250,7 +251,7 @@ impl TextureManager {
             for (mip_level, mip_data) in mip_slices.iter().enumerate() {
                 Self::upload_texture_data(
                     &device_context,
-                    &mut cmd_buffer,
+                    cmd_buffer,
                     texture,
                     mip_data,
                     mip_level as u8,
@@ -258,16 +259,15 @@ impl TextureManager {
             }
         }
 
-        cmd_buffer.end().unwrap();
+        cmd_buffer.end();
 
         let graphics_queue = renderer.graphics_queue();
 
         graphics_queue
-            .queue()
-            .submit(&mut [&mut cmd_buffer], &[], &[], None)
-            .unwrap();
+            .queue_mut()
+            .submit(&[cmd_buffer], &[], &[], None);
 
-        cmd_buffer_pool.release(cmd_buffer);
+        cmd_buffer_pool.release(cmd_buffer_handle);
 
         renderer.release_command_buffer_pool(cmd_buffer_pool);
     }

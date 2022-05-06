@@ -106,20 +106,17 @@ pub struct DescriptorHeap {
 }
 
 impl DescriptorHeap {
-    pub(crate) fn new(
-        device_context: &DeviceContext,
-        definition: DescriptorHeapDef,
-    ) -> GfxResult<Self> {
-        let backend_descriptor_heap = BackendDescriptorHeap::new(device_context, definition)?;
+    pub(crate) fn new(device_context: &DeviceContext, definition: DescriptorHeapDef) -> Self {
+        let backend_descriptor_heap = BackendDescriptorHeap::new(device_context, definition);
 
-        Ok(Self {
+        Self {
             inner: device_context
                 .deferred_dropper()
                 .new_drc(DescriptorHeapInner {
                     device_context: device_context.clone(),
                     backend_descriptor_heap,
                 }),
-        })
+        }
     }
 
     pub fn device_context(&self) -> &DeviceContext {
@@ -154,14 +151,10 @@ pub struct DescriptorHeapPartition {
 }
 
 impl DescriptorHeapPartition {
-    pub fn new(
-        heap: &DescriptorHeap,
-        transient: bool,
-        definition: DescriptorHeapDef,
-    ) -> GfxResult<Self> {
+    pub fn new(heap: &DescriptorHeap, transient: bool, definition: DescriptorHeapDef) -> Self {
         let platform_descriptor_heap_partition =
-            BackendDescriptorHeapPartition::new(&heap.inner.device_context, transient, definition)?;
-        Ok(Self {
+            BackendDescriptorHeapPartition::new(&heap.inner.device_context, transient, definition);
+        Self {
             inner: heap
                 .device_context()
                 .deferred_dropper()
@@ -170,7 +163,7 @@ impl DescriptorHeapPartition {
                     transient,
                     backend_descriptor_heap_partition: platform_descriptor_heap_partition,
                 }),
-        })
+        }
     }
 
     pub fn reset(&self) -> GfxResult<()> {

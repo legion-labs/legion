@@ -1,9 +1,10 @@
 use lgn_graphics_api::{
-    DeviceContext, Extents3D, Format, GPUViewType, MemoryUsage, ResourceFlags, ResourceState,
-    ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    CommandBuffer, DeviceContext, Extents3D, Format, GPUViewType, MemoryUsage, ResourceFlags,
+    ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
+    TextureViewDef,
 };
 
-use crate::{components::RenderSurfaceExtents, hl_gfx_api::HLCommandBuffer};
+use crate::components::RenderSurfaceExtents;
 
 pub struct RenderTarget {
     texture: Texture,
@@ -56,16 +57,12 @@ impl RenderTarget {
         }
     }
 
-    pub fn transition_to(
-        &mut self,
-        cmd_buffer: &mut HLCommandBuffer,
-        dst_state: ResourceState,
-    ) {
+    pub fn transition_to(&mut self, cmd_buffer: &mut CommandBuffer, dst_state: ResourceState) {
         let src_state = self.state;
         let dst_state = dst_state;
 
         if src_state != dst_state {
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     &self.texture,

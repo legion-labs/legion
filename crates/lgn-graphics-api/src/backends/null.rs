@@ -106,7 +106,7 @@ pub(crate) struct NullCommandBuffer;
 impl NullCommandBuffer {
     pub(crate) fn new(
         command_pool: &CommandPool,
-        command_buffer_def: &CommandBufferDef,
+        command_buffer_def: CommandBufferDef,
     ) -> GfxResult<Self> {
         unimplemented!()
     }
