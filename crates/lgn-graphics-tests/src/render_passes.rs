@@ -1,9 +1,13 @@
-use lgn_graphics_api::{Extents3D, Format, PlaneSlice, ViewDimension};
+use lgn_graphics_api::{ColorClearValue, Extents3D, Format, PlaneSlice, ViewDimension};
 
-use crate::render_script::{
-    RenderGraphBuilder, RenderGraphExecuteContext, RenderGraphResourceDef, RenderGraphResourceId,
-    RenderGraphTextureDef, RenderGraphTextureViewDef, RenderGraphViewDef, RenderGraphViewId,
-    RenderView,
+use crate::{
+    render_graph::{
+        ColorOrDepthClearValue, RenderGraphExecuteContext, RenderGraphResourceDef,
+        RenderGraphResourceId, RenderGraphTextureDef, RenderGraphTextureViewDef,
+        RenderGraphViewDef, RenderGraphViewId,
+    },
+    render_graph_builder::RenderGraphBuilder,
+    render_script::RenderView,
 };
 
 pub struct GpuCullingPass {}
@@ -59,14 +63,14 @@ impl GpuCullingPass {
             mips += 1;
         }
 
-        RenderGraphResourceDef::Texture {
-            definition: RenderGraphTextureDef {
-                extents: view_extents,
-                array_length: 1,
-                total_mip_count: mips,
-                format: Format::R16G16_SFLOAT,
-            },
-        }
+        RenderGraphResourceDef::Texture(RenderGraphTextureDef {
+            extents: view_extents,
+            array_length: 1,
+            mip_count: mips,
+            format: Format::R16G16_SFLOAT,
+            clear: true,
+            clear_value: ColorOrDepthClearValue::Color(ColorClearValue([0.0; 4])),
+        })
     }
 
     #[allow(clippy::unused_self)]
@@ -80,18 +84,17 @@ impl GpuCullingPass {
     ) -> RenderGraphBuilder {
         let mut builder = builder;
 
-        let depth_view_def = RenderGraphViewDef::Texture {
-            definition: RenderGraphTextureViewDef {
-                view_dimension: ViewDimension::_2D,
-                first_mip: 0,
-                mip_count: 1,
-                plane_slice: PlaneSlice::Default,
-                first_array_slice: 0,
-                array_size: 1,
-            },
-        };
+        let depth_view_def = RenderGraphViewDef::Texture(RenderGraphTextureViewDef {
+            view_dimension: ViewDimension::_2D,
+            first_mip: 0,
+            mip_count: 1,
+            plane_slice: PlaneSlice::Default,
+            first_array_slice: 0,
+            array_size: 1,
+            read_only: false,
+        });
 
-        for i in 0..downsampled_depth_desc.texture_def().total_mip_count {
+        for i in 0..downsampled_depth_desc.texture_def().mip_count {
             let read_res_id = if i == 0 {
                 depth_buffer_id
             } else {
@@ -102,7 +105,7 @@ impl GpuCullingPass {
             let mut read_view_def = depth_view_def.clone();
             let read_view_id = if i == 0 {
                 read_view_def.texture_view_def_mut().plane_slice = PlaneSlice::Depth;
-                builder.declare_view(&depth_view_def)
+                builder.declare_view(&read_view_def)
             } else {
                 read_view_def.texture_view_def_mut().first_mip = i - 1;
                 builder.declare_view(&read_view_def)
@@ -142,9 +145,8 @@ impl DepthLayerPass {
         })
     }
 
-    fn execute_depth_layer_pass(execute_context: &RenderGraphExecuteContext<'_>) {
-        println!("DepthLayerPass execute {}", execute_context.name);
-        println!("Resources: {:?}", execute_context.resources);
+    fn execute_depth_layer_pass(_execute_context: &RenderGraphExecuteContext<'_>) {
+        println!("DepthLayerPass execute");
     }
 }
 
@@ -169,8 +171,8 @@ impl OpaqueLayerPass {
         })
     }
 
-    fn execute_opaque_layer_pass(execute_context: &RenderGraphExecuteContext<'_>) {
-        println!("OpaqueLayerPass execute {}", execute_context.name);
+    fn execute_opaque_layer_pass(_execute_context: &RenderGraphExecuteContext<'_>) {
+        println!("OpaqueLayerPass execute");
     }
 }
 
@@ -274,8 +276,8 @@ impl PostProcessPass {
         })
     }
 
-    fn execute_dof_coc(execute_context: &RenderGraphExecuteContext<'_>) {
-        println!("DOF CoC pass execute {}", execute_context.name);
+    fn execute_dof_coc(_execute_context: &RenderGraphExecuteContext<'_>) {
+        println!("DOF CoC pass execute");
     }
 }
 
@@ -366,14 +368,14 @@ impl SSAOPass {
 
     #[allow(clippy::unused_self)]
     fn make_raw_ao_buffer_desc(&self, view: &RenderView) -> RenderGraphResourceDef {
-        RenderGraphResourceDef::Texture {
-            definition: RenderGraphTextureDef {
-                extents: view.target.definition().extents,
-                array_length: 1,
-                total_mip_count: 1,
-                format: Format::R8_UNORM,
-            },
-        }
+        RenderGraphResourceDef::Texture(RenderGraphTextureDef {
+            extents: view.target.definition().extents,
+            array_length: 1,
+            mip_count: 1,
+            format: Format::R8_UNORM,
+            clear: true,
+            clear_value: ColorOrDepthClearValue::Color(ColorClearValue([0.0; 4])),
+        })
     }
 }
 

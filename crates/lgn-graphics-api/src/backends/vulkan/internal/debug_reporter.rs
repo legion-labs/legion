@@ -39,8 +39,12 @@ pub extern "system" fn vulkan_debug_callback(
                 }
 
                 if !ignored {
-                    error!("{:?}", msg);
-                    panic!();
+                    if lgn_tracing::max_level() < lgn_tracing::LevelFilter::Error {
+                        panic!("{:?}", msg);
+                    } else {
+                        error!("{:?}", msg);
+                        panic!();
+                    }
                 }
             } else if flags.intersects(vk::DebugUtilsMessageSeverityFlagsEXT::WARNING) {
                 warn!("{:?}", msg);

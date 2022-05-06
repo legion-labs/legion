@@ -1,6 +1,6 @@
 use lgn_graphics_api::{
-    ApiDef, DeviceContext, Extents3D, Format, GfxApi, MemoryUsage, ResourceFlags, ResourceUsage,
-    TextureDef, TextureTiling,
+    ApiDef, CommandPoolDef, DeviceContext, Extents3D, Format, GfxApi, MemoryUsage, QueueType,
+    ResourceFlags, ResourceUsage, TextureDef, TextureTiling,
 };
 use lgn_graphics_tests::render_passes::{
     AlphaBlendedLayerPass, DepthLayerPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
@@ -71,11 +71,31 @@ fn test_render_graph(device_context: &DeviceContext) {
             println!("{}", render_graph);
             println!("\n\n");
 
-            // Execute it (which currently just prints the passes in each pass execute function)
-            render_graph.execute();
+            // TODO: Questions:
+            // * Management of textures: pool for now, aliasing later
+            // * Management of command buffers: one command buffer per pass for now
+            // * Multithreaded execution: none for now
+
+            let queue = device_context.create_queue(QueueType::Graphics).unwrap();
+            let command_pool = queue
+                .create_command_pool(&CommandPoolDef { transient: true })
+                .unwrap();
+
+            let mut context = render_graph.compile();
+
+            println!("\n\n");
+
+            // Execute it
+            for i in 0..30 {
+                println!(
+                    "*****************************************************************************"
+                );
+                println!("Frame {}", i);
+                render_graph.execute(&mut context, device_context, &command_pool);
+            }
         }
         Err(error) => {
-            println!("{}", error.msg);
+            println!("{}", error);
         }
     }
 }
