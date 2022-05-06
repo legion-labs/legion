@@ -19,7 +19,7 @@ export function makeGrpcClient() {
   const token = authClient.accessToken;
 
   if (!token) {
-    throw new Error("Access token not found");
+    return new PerformanceAnalyticsClientImpl(new GrpcWebImpl(getUrl(), {}));
   }
 
   metadata.set("Authorization", "Bearer " + token);
