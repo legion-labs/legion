@@ -551,7 +551,7 @@ export type InitAuthUserConfig = {
    * If you provide your own function it's strongly adviced to use an alternative that's close
    * to  `window.history.replaceState` with history state replacement.
    */
-  redirectFunction?: (url: URL) => Promise<void>;
+  redirectFunction?: (url: URL) => Promise<void> | void;
 };
 
 export async function initAuth({

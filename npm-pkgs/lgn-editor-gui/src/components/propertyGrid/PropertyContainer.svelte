@@ -7,6 +7,7 @@
     BagResourceProperty,
     ResourceProperty,
   } from "@/lib/propertyGrid";
+  import type { PropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyBag from "./PropertyBag.svelte";
   import PropertyUnit from "./PropertyUnit.svelte";
@@ -21,6 +22,8 @@
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
   }>();
 
+  export let propertyGridStore: PropertyGridStore;
+
   export let property: ResourceProperty;
 
   export let parentProperty: BagResourceProperty | null = null;
@@ -34,27 +37,30 @@
   export let index: number;
 </script>
 
-{#if propertyIsBag(property)}
-  <PropertyBag
-    on:input={(event) => dispatch("input", event.detail)}
-    on:addVectorSubProperty={(event) =>
-      dispatch("addVectorSubProperty", event.detail)}
-    on:removeVectorSubProperty={(event) =>
-      dispatch("removeVectorSubProperty", event.detail)}
-    bind:parentProperty
-    {property}
-    {level}
-    {pathParts}
-  />
-{:else}
-  <PropertyUnit
-    on:input={(event) => dispatch("input", event.detail)}
-    on:removeVectorSubProperty={(event) =>
-      dispatch("removeVectorSubProperty", event.detail)}
-    {property}
-    bind:parentProperty
-    {pathParts}
-    {level}
-    {index}
-  />
-{/if}
+<div>
+  {#if propertyIsBag(property)}
+    <PropertyBag
+      on:input={(event) => dispatch("input", event.detail)}
+      on:addVectorSubProperty={(event) =>
+        dispatch("addVectorSubProperty", event.detail)}
+      on:removeVectorSubProperty={(event) =>
+        dispatch("removeVectorSubProperty", event.detail)}
+      bind:parentProperty
+      {property}
+      {level}
+      {pathParts}
+      {propertyGridStore}
+    />
+  {:else}
+    <PropertyUnit
+      on:input={(event) => dispatch("input", event.detail)}
+      on:removeVectorSubProperty={(event) =>
+        dispatch("removeVectorSubProperty", event.detail)}
+      {property}
+      bind:parentProperty
+      {pathParts}
+      {index}
+      {level}
+    />
+  {/if}
+</div>

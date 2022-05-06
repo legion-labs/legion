@@ -2,6 +2,7 @@
 //! and cachable manner.
 
 use std::{
+    cmp::min,
     collections::HashMap,
     path::PathBuf,
     sync::{Arc, RwLock},
@@ -363,24 +364,28 @@ async fn main() -> anyhow::Result<()> {
 
             match provider.get_reader(&identifier).await {
                 Ok(mut reader) => {
-                    let mut buf = Vec::new();
-                    const MAX_BUF_SIZE: usize = 512;
-                    buf.resize(MAX_BUF_SIZE, 0);
-
-                    if reader.size() < MAX_BUF_SIZE {
-                        reader.read_to_end(&mut buf).await?;
+                    if reader.size() == 0 {
+                        println!("The identifier points to an empty blob.");
                     } else {
-                        println!("The content is too large to be printed in its integrality: only showing up the first {} bytes.", style(MAX_BUF_SIZE).bold().cyan());
-                        reader
-                            .take(MAX_BUF_SIZE.try_into().unwrap())
-                            .read_to_end(&mut buf)
-                            .await?;
-                    };
+                        let mut buf = Vec::new();
+                        const MAX_BUF_SIZE: usize = 512;
+                        buf.reserve(min(MAX_BUF_SIZE, reader.size()));
 
-                    match std::str::from_utf8(&buf) {
-                        Ok(s) => println!("It's data is valid UTF-8:\n{}", s),
-                        Err(_) => println!("It's data is not UTF-8:\n{}", hex::encode(&buf)),
-                    };
+                        if reader.size() < MAX_BUF_SIZE {
+                            reader.read_to_end(&mut buf).await?;
+                        } else {
+                            println!("The content is too large to be printed in its integrality: only showing up the first {} bytes.", style(MAX_BUF_SIZE).bold().cyan());
+                            reader
+                                .take(MAX_BUF_SIZE.try_into().unwrap())
+                                .read_to_end(&mut buf)
+                                .await?;
+                        };
+
+                        match std::str::from_utf8(&buf) {
+                            Ok(s) => println!("It's data is valid UTF-8:\n{}", s),
+                            Err(_) => println!("It's data is not UTF-8:\n{}", hex::encode(&buf)),
+                        };
+                    }
                 }
                 Err(Error::IdentifierNotFound(_)) => {
                     println!("The content-store does not contain the identifier.");

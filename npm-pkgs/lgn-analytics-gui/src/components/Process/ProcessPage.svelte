@@ -1,10 +1,12 @@
 <script lang="ts">
   import { getContext, onMount } from "svelte";
+  import { writable } from "svelte/store";
 
   import type {
     PerformanceAnalyticsClientImpl,
     ProcessInstance,
   } from "@lgn/proto-telemetry/dist/analytics";
+  import { debounced } from "@lgn/web-client/src/lib/store";
   import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
   import L10n from "@/components/Misc/L10n.svelte";
@@ -14,32 +16,51 @@
   import Loader from "../Misc/Loader.svelte";
   import ProcessItem from "./ProcessItem.svelte";
 
+  type Mode = "default" | "search";
+
   const { t } = getContext<L10nOrchestrator<Fluent>>(
     l10nOrchestratorContextKey
   );
 
+  const searchValue = writable("");
+
+  const debouncedSearchValue = debounced(searchValue, 300);
+
+  $: cleanSearchValue = $debouncedSearchValue.trim();
+
   let processes: ProcessInstance[] = [];
   let client: PerformanceAnalyticsClientImpl | null = null;
   let loading = true;
+  let mode: Mode = "default";
 
   onMount(async () => {
     client = makeGrpcClient();
-    const result = await client
+
+    const response = await client
       .list_recent_processes({ parentProcessId: undefined })
       .finally(() => (loading = false));
-    processes = result.processes;
+
+    processes = response.processes;
   });
 
-  async function onSearchChange(
-    evt: Event & { currentTarget: EventTarget & HTMLInputElement }
-  ) {
+  async function search(mode: Mode, search: string) {
     if (!client) {
       return;
     }
-    const searchString = evt.currentTarget.value;
-    const response = await client.search_processes({ search: searchString });
+
+    const response =
+      mode === "search"
+        ? await client.search_processes({
+            search,
+          })
+        : await client.list_recent_processes({ parentProcessId: undefined });
+
     processes = response.processes;
   }
+
+  $: mode = cleanSearchValue ? "search" : "default";
+
+  $: search(mode, cleanSearchValue);
 </script>
 
 <Loader {loading}>
@@ -51,7 +72,7 @@
         type="text"
         class="h-8 w-96 placeholder rounded-sm pl-2 surface"
         placeholder={$t("process-list-search")}
-        on:input={onSearchChange}
+        bind:value={$searchValue}
       />
     </div>
     <div class="flex flex-col gap-y-2 text-sm">
@@ -78,7 +99,13 @@
         </div>
       </div>
       {#each processes as processInstance, index (processInstance.processInfo?.processId)}
-        <ProcessItem {processInstance} depth={0} {index} />
+        <ProcessItem
+          highlightedPattern={$debouncedSearchValue}
+          {processInstance}
+          depth={0}
+          {index}
+          noFold={mode === "search"}
+        />
       {/each}
     </div>
   </div>

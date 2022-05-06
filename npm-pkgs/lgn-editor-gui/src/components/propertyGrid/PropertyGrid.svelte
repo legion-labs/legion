@@ -14,6 +14,7 @@
     currentResourceError,
   } from "@/orchestrators/currentResource";
   import modal from "@/stores/modal";
+  import { createPropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyContainer from "./PropertyContainer.svelte";
   import type {
@@ -24,6 +25,8 @@
   const createComponentModalId = Symbol();
 
   const propertyUpdateDebounceTimeout = 100;
+
+  const propertyGridStore = createPropertyGridStore();
 
   let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -139,6 +142,7 @@
             : [property.name]}
           {property}
           {index}
+          {propertyGridStore}
           parentProperty={null}
         />
       {/if}

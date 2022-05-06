@@ -121,8 +121,7 @@ async fn main() -> anyhow::Result<()> {
             Method::HEAD,
             Method::OPTIONS,
             Method::CONNECT,
-        ])
-        .expose_headers(tower_http::cors::Any {});
+        ]);
 
     let validation = lgn_online::Config::load()?
         .signature_validation

@@ -18,10 +18,8 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 
 # other
 raw-window-handle = "0.4.2"
+uuid = { version = "1.0", features = ["v4", "serde"] }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-uuid = { version = "0.8", features = ["v4", "serde"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-uuid = { version = "0.8", features = ["wasm-bindgen"] }
 web-sys = "0.3"

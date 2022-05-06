@@ -22,4 +22,3 @@ openh264-sys2 = { version = "0.2", default-features = false, features = [
 ] }
 smallvec = "1.7"
 thiserror = "1"
-uuid = { version = "0.8", default-features = false }
