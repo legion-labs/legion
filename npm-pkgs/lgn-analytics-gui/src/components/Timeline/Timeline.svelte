@@ -3,7 +3,12 @@
   import { useLocation } from "svelte-navigator";
   import { get } from "svelte/store";
 
-  import { threadItemLengthContextKey } from "@/constants";
+  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+
+  import {
+    httpClientContextKey,
+    threadItemLengthContextKey,
+  } from "@/constants";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
@@ -22,7 +27,8 @@
   export let processId: string;
 
   const location = useLocation();
-
+  const client =
+    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
   const threadItemLength = getContext<number>(threadItemLengthContextKey);
 
   let stateManager: TimelineStateManager;
@@ -56,7 +62,13 @@
     const end = e != null ? Number.parseFloat(e) : null;
     const canvasWidth = windowInnerWidth - threadItemLength;
 
-    stateManager = new TimelineStateManager(processId, canvasWidth, start, end);
+    stateManager = new TimelineStateManager(
+      client,
+      processId,
+      canvasWidth,
+      start,
+      end
+    );
     stateStore = stateManager.state;
 
     try {

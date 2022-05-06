@@ -1,10 +1,13 @@
 <script lang="ts">
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
-  import { onDestroy, onMount } from "svelte";
+  import { getContext, onDestroy, onMount } from "svelte";
   import type { Unsubscriber } from "svelte/store";
   import { get } from "svelte/store";
 
+  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
+
+  import { httpClientContextKey } from "@/constants";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
@@ -26,9 +29,11 @@
   let metricStore: MetricStore;
 
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
-
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
+
+  const client =
+    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
 
   let mainWidth = 0;
   $: width = mainWidth - margin.left - margin.right;
@@ -124,7 +129,7 @@
   }
 
   async function fetchMetrics() {
-    metricStreamer = new MetricStreamer(id);
+    metricStreamer = new MetricStreamer(client, id);
     metricStore = metricStreamer.metricStore;
     await metricStreamer.initialize();
 

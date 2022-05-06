@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getContext, onMount } from "svelte";
+  import { getContext } from "svelte";
   import { writable } from "svelte/store";
 
   import type {
@@ -10,8 +10,10 @@
   import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
   import L10n from "@/components/Misc/L10n.svelte";
-  import { l10nOrchestratorContextKey } from "@/constants";
-  import { makeGrpcClient } from "@/lib/client";
+  import {
+    httpClientContextKey,
+    l10nOrchestratorContextKey,
+  } from "@/constants";
 
   import Loader from "../Misc/Loader.svelte";
   import ProcessItem from "./ProcessItem.svelte";
@@ -26,36 +28,28 @@
 
   const debouncedSearchValue = debounced(searchValue, 300);
 
+  const client =
+    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
+
   $: cleanSearchValue = $debouncedSearchValue.trim();
 
   let processes: ProcessInstance[] = [];
-  let client: PerformanceAnalyticsClientImpl | null = null;
   let loading = true;
   let mode: Mode = "default";
 
-  onMount(async () => {
-    client = makeGrpcClient();
-
-    const response = await client
-      .list_recent_processes({ parentProcessId: undefined })
-      .finally(() => (loading = false));
-
-    processes = response.processes;
-  });
-
   async function search(mode: Mode, search: string) {
-    if (!client) {
-      return;
+    try {
+      const response =
+        mode === "search"
+          ? await client.search_processes({
+              search,
+            })
+          : await client.list_recent_processes({ parentProcessId: undefined });
+
+      processes = response.processes;
+    } finally {
+      loading = false;
     }
-
-    const response =
-      mode === "search"
-        ? await client.search_processes({
-            search,
-          })
-        : await client.list_recent_processes({ parentProcessId: undefined });
-
-    processes = response.processes;
   }
 
   $: mode = cleanSearchValue ? "search" : "default";

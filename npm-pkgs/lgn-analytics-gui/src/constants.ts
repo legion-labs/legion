@@ -8,6 +8,8 @@ export const threadItemLengthContextKey = Symbol.for(
 );
 /** Key to the l10n store set context */
 export const l10nOrchestratorContextKey = originalL10nOrchestratorContextKey;
+/** Key to the http client context */
+export const httpClientContextKey = Symbol.for("http-client-context-key");
 
 export const themeStorageKey = "theme";
 export const localeStorageKey = "locale";
