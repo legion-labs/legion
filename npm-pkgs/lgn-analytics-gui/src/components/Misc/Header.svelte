@@ -1,24 +1,18 @@
 <script lang="ts">
-  import { getContext, onMount } from "svelte";
+  import { getContext } from "svelte";
   import { link } from "svelte-navigator";
 
-  import { authClient } from "@lgn/web-client/src/lib/auth";
   import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
+  import { userInfo } from "@lgn/web-client/src/orchestrators/userInfo";
 
   import { l10nOrchestratorContextKey } from "@/constants";
 
   import iconPath from "../../../icons/128x128.png";
   import User from "../Process/User.svelte";
 
-  let user: string | undefined;
-
   const { locale } = getContext<L10nOrchestrator<Fluent>>(
     l10nOrchestratorContextKey
   );
-
-  onMount(async () => {
-    user = (await authClient.userInfo()).name;
-  });
 
   function toggleLocale(event: MouseEvent) {
     if (event.ctrlKey && event.shiftKey) {
@@ -27,6 +21,8 @@
       $locale = $locale === "fr-CA" ? "en-US" : "fr-CA";
     }
   }
+
+  $: user = $userInfo?.name;
 </script>
 
 <div class="w-full flex justify-between pl-6 pt-4 pr-4">
