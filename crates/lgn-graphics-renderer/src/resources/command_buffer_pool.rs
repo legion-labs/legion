@@ -20,9 +20,7 @@ pub struct CommandBufferPool {
 impl CommandBufferPool {
     pub(crate) fn new(queue: &Queue) -> Self {
         Self {
-            command_pool: queue
-                .create_command_pool(CommandPoolDef { transient: true })
-                .unwrap(),
+            command_pool: queue.create_command_pool(CommandPoolDef { transient: true }),
             availables: Vec::new(),
             in_flights: Vec::new(),
             acquired_count: 0,
@@ -61,8 +59,6 @@ impl CommandBufferPool {
     }
 }
 
-pub type CommandBufferPoolHandle = Handle<CommandBufferPool>;
-
 struct Inner {
     command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
     graphics_queue: GraphicsQueue,
@@ -93,13 +89,13 @@ impl TransientCommandBufferManager {
         command_buffer_pools.end_frame(CommandBufferPool::end_frame);
     }
 
-    pub fn acquire(&self) -> CommandBufferPoolHandle {
+    pub fn acquire(&self) -> Handle<CommandBufferPool> {
         let mut command_buffer_pools = self.inner.command_buffer_pools.lock();
         command_buffer_pools
             .acquire_or_create(|| CommandBufferPool::new(&self.inner.graphics_queue.queue()))
     }
 
-    pub fn release(&self, handle: CommandBufferPoolHandle) {
+    pub fn release(&self, handle: Handle<CommandBufferPool>) {
         let mut command_buffer_pools = self.inner.command_buffer_pools.lock();
         command_buffer_pools.release(handle);
     }
@@ -107,7 +103,7 @@ impl TransientCommandBufferManager {
 
 pub struct TransientCommandBufferAllocator {
     command_buffer_manager: TransientCommandBufferManager,
-    command_buffer_pool: CommandBufferPoolHandle,
+    command_buffer_pool: Handle<CommandBufferPool>,
 }
 
 impl TransientCommandBufferAllocator {

@@ -25,17 +25,17 @@ impl Drop for CommandPool {
 }
 
 impl CommandPool {
-    pub fn new(queue: &Queue, command_pool_def: CommandPoolDef) -> GfxResult<Self> {
+    pub fn new(queue: &Queue, command_pool_def: CommandPoolDef) -> Self {
         let device_context = queue.device_context().clone();
         let backend_command_pool =
-            BackendCommandPool::new(&device_context, queue, command_pool_def)?;
+            BackendCommandPool::new(&device_context, queue, command_pool_def);
 
-        Ok(Self {
+        Self {
             device_context,
             queue_type: queue.queue_type(),
             queue_family_index: queue.family_index(),
             backend_command_pool,
-        })
+        }
     }
 
     pub fn create_command_buffer(&mut self, command_buffer_def: CommandBufferDef) -> CommandBuffer {

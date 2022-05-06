@@ -50,7 +50,7 @@ impl Queue {
         self.backend_family_index()
     }
 
-    pub fn create_command_pool(&self, command_pool_def: CommandPoolDef) -> GfxResult<CommandPool> {
+    pub fn create_command_pool(&self, command_pool_def: CommandPoolDef) -> CommandPool {
         CommandPool::new(self, command_pool_def)
     }
 

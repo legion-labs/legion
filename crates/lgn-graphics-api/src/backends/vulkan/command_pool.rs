@@ -11,7 +11,7 @@ impl VulkanCommandPool {
         device_context: &DeviceContext,
         queue: &Queue,
         command_pool_def: CommandPoolDef,
-    ) -> GfxResult<Self> {
+    ) -> Self {
         let queue_family_index = queue.family_index();
         trace!(
             "Creating command pool on queue family index {:?}",
@@ -30,10 +30,11 @@ impl VulkanCommandPool {
         let vk_command_pool = unsafe {
             device_context
                 .vk_device()
-                .create_command_pool(&pool_create_info, None)?
+                .create_command_pool(&pool_create_info, None)
+                .unwrap()
         };
 
-        Ok(Self { vk_command_pool })
+        Self { vk_command_pool }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext) {

@@ -234,6 +234,7 @@ impl TextureManager {
 
     #[span_fn]
     fn upload_texture(&mut self, renderer: &Renderer, upload_job: &UploadTextureJob) {
+        return;
         let device_context = renderer.device_context();
         let mut cmd_buffer_pool = renderer.acquire_command_buffer_pool(QueueType::Graphics);
         let mut cmd_buffer_handle = cmd_buffer_pool.acquire();

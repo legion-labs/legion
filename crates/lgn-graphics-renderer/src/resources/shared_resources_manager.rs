@@ -69,8 +69,7 @@ impl SharedResourcesManager {
 
         let mut cmd_buffer_pool = graphics_queue
             .queue()
-            .create_command_pool(CommandPoolDef { transient: false })
-            .unwrap();
+            .create_command_pool(CommandPoolDef { transient: false });
 
         let mut cmd_buffer = cmd_buffer_pool.create_command_buffer(CommandBufferDef {
             is_secondary: false,

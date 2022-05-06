@@ -494,7 +494,7 @@ impl SwapchainHelper {
             swapchain_def.width = window_width;
             swapchain_def.height = window_height;
 
-            swapchain.rebuild(swapchain_def)?;
+            swapchain.rebuild(swapchain_def);
 
             if let Some(event_listener) = event_listener.as_mut() {
                 event_listener.swapchain_created(&self.device_context, &swapchain)?;

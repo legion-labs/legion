@@ -133,7 +133,7 @@ impl VulkanSwapchain {
         .map_err(|e| format!("{:?}", e))
         .unwrap();
 
-        let swapchain_images = Self::setup_swapchain_images(device_context, &swapchain).unwrap();
+        let swapchain_images = Self::setup_swapchain_images(device_context, &swapchain);
 
         Self {
             swapchain: ManuallyDrop::new(swapchain),
@@ -158,9 +158,9 @@ impl VulkanSwapchain {
     fn setup_swapchain_images(
         device_context: &DeviceContext,
         swapchain: &SwapchainVulkanInstance,
-    ) -> GfxResult<Vec<SwapchainImage>> {
+    ) -> Vec<SwapchainImage> {
         let mut queue = device_context.create_queue(QueueType::Graphics);
-        let mut cmd_pool = queue.create_command_pool(CommandPoolDef { transient: true })?;
+        let mut cmd_pool = queue.create_command_pool(CommandPoolDef { transient: true });
         let mut command_buffer = cmd_pool.create_command_buffer(CommandBufferDef {
             is_secondary: false,
         });
@@ -187,7 +187,7 @@ impl VulkanSwapchain {
 
         queue.wait_for_queue_idle();
 
-        Ok(swapchain_images)
+        swapchain_images
     }
 }
 
@@ -282,9 +282,7 @@ impl Swapchain {
         }
     }
 
-    pub(crate) fn backend_rebuild(&mut self, swapchain_def: SwapchainDef) -> GfxResult<()> {
-        
-
+    pub(crate) fn backend_rebuild(&mut self, swapchain_def: SwapchainDef) {
         let present_mode_priority = present_mode_priority(&swapchain_def);
         let device_context = &self.device_context;
         let new_swapchain = SwapchainVulkanInstance::new(
@@ -297,7 +295,8 @@ impl Swapchain {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
             },
-        )?;
+        )
+        .unwrap();
 
         unsafe {
             ManuallyDrop::drop(&mut self.backend_swapchain.swapchain);
@@ -308,8 +307,7 @@ impl Swapchain {
         self.backend_swapchain.swapchain_images = VulkanSwapchain::setup_swapchain_images(
             device_context,
             &self.backend_swapchain.swapchain,
-        )?;
-        Ok(())
+        );
     }
 }
 

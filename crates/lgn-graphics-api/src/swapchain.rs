@@ -69,7 +69,7 @@ impl Swapchain {
         self.backend_acquire_next_image_semaphore(semaphore)
     }
 
-    pub fn rebuild(&mut self, swapchain_def: SwapchainDef) -> GfxResult<()> {
-        self.backend_rebuild(swapchain_def)
+    pub fn rebuild(&mut self, swapchain_def: SwapchainDef) {
+        self.backend_rebuild(swapchain_def);
     }
 }

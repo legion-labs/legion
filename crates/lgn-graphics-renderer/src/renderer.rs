@@ -1,11 +1,12 @@
 #![allow(unsafe_code)]
 
+use lgn_core::Handle;
 use lgn_graphics_api::{DeviceContext, Fence, FenceStatus, GfxApi, QueueType};
 
 use lgn_tracing::span_fn;
 
 use crate::core::{RenderCommandBuilder, RenderCommandManager, RenderResources};
-use crate::resources::{CommandBufferPoolHandle, TransientCommandBufferManager};
+use crate::resources::{CommandBufferPool, TransientCommandBufferManager};
 use crate::GraphicsQueue;
 
 pub struct Renderer {
@@ -50,14 +51,14 @@ impl Renderer {
     pub(crate) fn acquire_command_buffer_pool(
         &self,
         queue_type: QueueType,
-    ) -> CommandBufferPoolHandle {
+    ) -> Handle<CommandBufferPool> {
         assert!(queue_type == QueueType::Graphics);
 
         let command_buffer_manager = self.render_resources.get::<TransientCommandBufferManager>();
         command_buffer_manager.acquire()
     }
 
-    pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
+    pub(crate) fn release_command_buffer_pool(&self, handle: Handle<CommandBufferPool>) {
         let command_buffer_manager = self.render_resources.get::<TransientCommandBufferManager>();
         command_buffer_manager.release(handle);
     }
