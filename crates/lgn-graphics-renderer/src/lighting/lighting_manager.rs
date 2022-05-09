@@ -221,8 +221,8 @@ impl LightingManager {
         transient_buffer_allocator: &mut TransientBufferAllocator,
         frame_descriptor_set: &mut FrameDescriptorSet,
     ) {
-        let a = transient_buffer_allocator
-            .copy_data(&self.gpu_data(), ResourceUsage::AS_CONST_BUFFER);
+        let a =
+            transient_buffer_allocator.copy_data(&self.gpu_data(), ResourceUsage::AS_CONST_BUFFER);
 
         let lighting_manager_view =
             a.to_buffer_view(BufferViewDef::as_const_buffer_typed::<LightingData>());

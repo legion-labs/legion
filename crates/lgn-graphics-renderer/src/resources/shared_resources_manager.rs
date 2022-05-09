@@ -2,12 +2,14 @@ use lgn_graphics_data::Color;
 use strum::{EnumCount, IntoEnumIterator};
 
 use lgn_graphics_api::{
-    BufferDef, CmdCopyBufferToTextureParams, CommandBufferDef, CommandPoolDef, DeviceContext,
-    Extents3D, Format, MemoryUsage, ResourceFlags, ResourceState, ResourceUsage, TextureBarrier,
-    TextureDef, TextureTiling, TextureView, TextureViewDef,
+    DeviceContext, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceUsage, TextureDef,
+    TextureTiling, TextureView, TextureViewDef,
 };
 
-use crate::{components::TextureData, GraphicsQueue};
+use crate::{
+    components::TextureData,
+    core::{RenderCommandBuilder, UploadTextureCommand},
+};
 
 use super::PersistentDescriptorSetManager;
 
@@ -31,13 +33,13 @@ pub struct SharedResourcesManager {
 
 impl SharedResourcesManager {
     pub fn new(
+        render_commands: &mut RenderCommandBuilder,
         device_context: &DeviceContext,
-        graphics_queue: &GraphicsQueue,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) -> Self {
         let shared_textures = Self::create_shared_textures(
+            render_commands,
             device_context,
-            graphics_queue,
             persistent_descriptor_set_manager,
         );
 
@@ -51,8 +53,8 @@ impl SharedResourcesManager {
     }
 
     fn create_texture(
+        render_commands: &mut RenderCommandBuilder,
         device_context: &DeviceContext,
-        graphics_queue: &GraphicsQueue,
         shared_texture_id: SharedTextureId,
     ) -> TextureView {
         let (texture_def, texture_data, name) = match shared_texture_id {
@@ -67,65 +69,10 @@ impl SharedResourcesManager {
             texture.definition(),
         ));
 
-        let mut cmd_buffer_pool = graphics_queue
-            .queue()
-            .create_command_pool(CommandPoolDef { transient: false });
-
-        let mut cmd_buffer = cmd_buffer_pool.create_command_buffer(CommandBufferDef {
-            is_secondary: false,
+        render_commands.push(UploadTextureCommand {
+            src_data: texture_data,
+            dst_texture: texture,
         });
-
-        cmd_buffer.begin();
-
-        {
-            let data = texture_data.data()[0].as_slice();
-
-            // todo: this code must be completly rewritten (-> upload manager)
-            let staging_buffer = device_context.create_buffer(
-                BufferDef::for_staging_buffer_data(data, ResourceUsage::empty()),
-                "tmp_buffer",
-            );
-
-            staging_buffer.copy_to_host_visible_buffer(data);
-
-            // todo: not needed here
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &texture,
-                    ResourceState::UNDEFINED,
-                    ResourceState::COPY_DST,
-                )],
-            );
-
-            cmd_buffer.cmd_copy_buffer_to_texture(
-                &staging_buffer,
-                &texture,
-                &CmdCopyBufferToTextureParams {
-                    buffer_offset: 0,
-                    array_layer: 0,
-                    mip_level: 0,
-                },
-            );
-
-            // todo: not needed here
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &texture,
-                    ResourceState::COPY_DST,
-                    ResourceState::SHADER_RESOURCE,
-                )],
-            );
-        }
-
-        cmd_buffer.end();
-
-        graphics_queue
-            .queue_mut()
-            .submit(&[&cmd_buffer], &[], &[], None);
-
-        graphics_queue.queue_mut().wait_for_queue_idle();
 
         texture_view
     }
@@ -252,14 +199,14 @@ impl SharedResourcesManager {
     }
 
     fn create_shared_textures(
+        render_commands: &mut RenderCommandBuilder,
         device_context: &DeviceContext,
-        graphics_queue: &GraphicsQueue,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) -> Vec<SharedTexture> {
         SharedTextureId::iter()
             .map(|shared_texture_id| {
                 let texture_view =
-                    Self::create_texture(device_context, graphics_queue, shared_texture_id);
+                    Self::create_texture(render_commands, device_context, shared_texture_id);
                 SharedTexture {
                     _texture_view: texture_view.clone(),
                     bindless_index: persistent_descriptor_set_manager

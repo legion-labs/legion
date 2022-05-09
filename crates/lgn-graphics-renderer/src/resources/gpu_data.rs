@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     core::{BinaryWriter, RenderCommandBuilder},
-    resources::UpdateUnifiedStaticBuffer,
+    resources::UpdateUnifiedStaticBufferCommand,
 };
 
 use super::{IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData};
@@ -72,7 +72,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         let mut binary_writer = BinaryWriter::new();
         binary_writer.write(data);
 
-        render_commands.push(UpdateUnifiedStaticBuffer {
+        render_commands.push(UpdateUnifiedStaticBufferCommand {
             src_buffer: binary_writer.take(),
             dst_offset: gpu_data_allocation.va_address,
         });

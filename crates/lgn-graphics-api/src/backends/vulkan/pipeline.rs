@@ -2,9 +2,7 @@ use std::ffi::CString;
 
 use ash::vk;
 
-use crate::{
-    ComputePipelineDef, DeviceContext, GraphicsPipelineDef, Pipeline, ShaderStageFlags,
-};
+use crate::{ComputePipelineDef, DeviceContext, GraphicsPipelineDef, Pipeline, ShaderStageFlags};
 
 #[derive(Debug)]
 pub(crate) struct VulkanPipeline {

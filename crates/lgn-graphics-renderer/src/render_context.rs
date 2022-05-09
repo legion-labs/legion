@@ -4,7 +4,7 @@ use lgn_graphics_api::{
 
 use crate::{
     resources::{
-        CommandBufferHandle, DescriptorPoolHandle, PipelineManager, TransientBufferAllocator,
+        DescriptorPoolHandle, PipelineManager, TransientBufferAllocator,
         TransientCommandBufferAllocator, UnifiedStaticBuffer,
     },
     GraphicsQueue,

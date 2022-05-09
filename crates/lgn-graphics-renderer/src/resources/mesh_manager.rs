@@ -1,7 +1,9 @@
 use lgn_math::{Vec3, Vec4};
 use strum::EnumIter;
 
-use super::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBuffer};
+use super::{
+    StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
+};
 use crate::{components::Mesh, core::RenderCommandBuilder};
 
 #[derive(Clone, Copy)]
@@ -84,7 +86,7 @@ impl MeshManager {
             _allocation: allocation.clone(),
         });
 
-        render_commands.push(UpdateUnifiedStaticBuffer {
+        render_commands.push(UpdateUnifiedStaticBufferCommand {
             src_buffer: buf,
             dst_offset: allocation.byte_offset(),
         });

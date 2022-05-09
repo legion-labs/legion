@@ -2,7 +2,9 @@ use lgn_graphics_api::{Buffer, CommandBuffer};
 
 use crate::{
     core::{BinaryWriter, RenderCommandBuilder},
-    resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBuffer},
+    resources::{
+        StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
+    },
     RenderContext,
 };
 
@@ -95,12 +97,10 @@ impl RenderLayer {
             let mut binary_writer = BinaryWriter::new();
             binary_writer.write(&per_state_offsets);
 
-            render_commands.push(UpdateUnifiedStaticBuffer {
+            render_commands.push(UpdateUnifiedStaticBufferCommand {
                 src_buffer: binary_writer.take(),
                 dst_offset: self.state_page.byte_offset(),
             });
-
-            // render_commands.add_update_jobs(&per_state_offsets, self.state_page.byte_offset());
         }
     }
 

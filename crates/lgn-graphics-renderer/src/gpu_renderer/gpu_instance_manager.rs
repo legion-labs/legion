@@ -20,7 +20,7 @@ use crate::{
     resources::{
         DefaultMeshType, GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager,
         MissingVisualTracker, ModelManager, StaticBufferAllocation, StaticBufferView,
-        UnifiedStaticBufferAllocator, UpdateUnifiedStaticBuffer,
+        UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
     },
     Renderer,
 };
@@ -105,7 +105,7 @@ impl GpuVaTableForGpuInstance {
         let mut binary_writer = BinaryWriter::new();
         binary_writer.write(&offset_for_gpu_instance);
 
-        render_commands.push(UpdateUnifiedStaticBuffer {
+        render_commands.push(UpdateUnifiedStaticBufferCommand {
             src_buffer: binary_writer.take(),
             dst_offset: offset_for_gpu_instance,
         });
@@ -295,7 +295,7 @@ impl GpuInstanceManager {
             let mut binary_writer = BinaryWriter::new();
             binary_writer.write(&gpu_instance_va_table);
 
-            render_commands.push(UpdateUnifiedStaticBuffer {
+            render_commands.push(UpdateUnifiedStaticBufferCommand {
                 src_buffer: binary_writer.take(),
                 dst_offset: gpu_data_allocation.va_address(),
             });

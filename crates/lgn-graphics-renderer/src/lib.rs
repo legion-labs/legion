@@ -159,6 +159,7 @@ impl Plugin for RendererPlugin {
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
         let render_command_manager = RenderCommandManager::new();
+        let mut render_commands = render_command_manager.command_builder();
         let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
         let transient_commandbuffer_manager =
             TransientCommandBufferManager::new(NUM_RENDER_FRAMES, &graphics_queue);
@@ -176,15 +177,15 @@ impl Plugin for RendererPlugin {
         );
 
         let mut mesh_manager = MeshManager::new(static_buffer.allocator());
-        mesh_manager.initialize_default_meshes(render_command_manager.builder());
+        mesh_manager.initialize_default_meshes(render_command_manager.command_builder());
 
         let texture_manager = TextureManager::new(device_context);
 
         let material_manager = MaterialManager::new(static_buffer.allocator());
 
         let shared_resources_manager = SharedResourcesManager::new(
+            &mut render_commands,
             device_context,
-            &graphics_queue,
             &mut persistent_descriptor_set_manager,
         );
 

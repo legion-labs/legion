@@ -6,7 +6,9 @@ use lgn_graphics_api::{
 };
 
 use super::{Range, RangeAllocator};
-use crate::core::{BufferUpdate, GpuUploadManager, RenderCommand, RenderResources};
+use crate::core::{
+    GpuUploadManager, RenderCommand, RenderResources, UploadGPUBuffer, UploadGPUResource,
+};
 
 const PAGE_SIZE: u64 = 256;
 
@@ -218,19 +220,19 @@ impl<T> UniformGPUData<T> {
 }
 
 #[derive(Debug)]
-pub struct UpdateUnifiedStaticBuffer {
+pub struct UpdateUnifiedStaticBufferCommand {
     pub src_buffer: Vec<u8>,
     pub dst_offset: u64,
 }
 
-impl RenderCommand for UpdateUnifiedStaticBuffer {
+impl RenderCommand for UpdateUnifiedStaticBufferCommand {
     fn execute(self, render_resources: &RenderResources) {
         let mut upload_manager = render_resources.get_mut::<GpuUploadManager>();
         let unified_static_buffer = render_resources.get::<UnifiedStaticBuffer>();
-        upload_manager.push(BufferUpdate {
-            src_buffer: self.src_buffer,
+        upload_manager.push(UploadGPUResource::Buffer(UploadGPUBuffer {
+            src_data: self.src_buffer,
             dst_buffer: unified_static_buffer.buffer().clone(),
             dst_offset: self.dst_offset,
-        });
+        }));
     }
 }

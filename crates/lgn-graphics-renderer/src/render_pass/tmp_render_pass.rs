@@ -1,8 +1,8 @@
 #![allow(unsafe_code)]
 
 use lgn_graphics_api::{
-    ColorClearValue, ColorRenderTargetBinding, DepthStencilClearValue,
-    DepthStencilRenderTargetBinding, LoadOp, ResourceState, StoreOp, CommandBuffer,
+    ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DepthStencilClearValue,
+    DepthStencilRenderTargetBinding, LoadOp, ResourceState, StoreOp,
 };
 use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;

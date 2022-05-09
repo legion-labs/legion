@@ -112,7 +112,7 @@ impl Buffer {
 
     pub fn set_name<T: AsRef<str>>(&self, name: T) {
         self.inner.device_context.set_buffer_name(self, name);
-    }    
+    }
 
     pub fn device_context(&self) -> &DeviceContext {
         &self.inner.device_context

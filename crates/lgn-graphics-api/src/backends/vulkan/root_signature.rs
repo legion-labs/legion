@@ -3,9 +3,7 @@ use std::cmp;
 use ash::vk;
 use lgn_tracing::trace;
 
-use crate::{
-    DeviceContext, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS,
-};
+use crate::{DeviceContext, RootSignature, RootSignatureDef, MAX_DESCRIPTOR_SET_LAYOUTS};
 
 // Not currently exposed
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -19,6 +17,7 @@ pub(crate) struct VulkanRootSignature {
 }
 
 impl VulkanRootSignature {
+    #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn new(device_context: &DeviceContext, definition: RootSignatureDef) -> Self {
         trace!("Create VulkanRootSignature");
 

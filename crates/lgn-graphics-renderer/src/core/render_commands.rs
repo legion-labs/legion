@@ -23,7 +23,7 @@ impl RenderCommandManager {
         }
     }
 
-    pub fn builder(&self) -> RenderCommandBuilder {
+    pub fn command_builder(&self) -> RenderCommandBuilder {
         RenderCommandBuilder::new(self)
     }
 
