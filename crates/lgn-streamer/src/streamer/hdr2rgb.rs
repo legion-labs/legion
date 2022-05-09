@@ -88,7 +88,7 @@ impl Hdr2Rgb {
         render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
     ) {
-        let mut cmd_buffer_handle = render_context.acquire_command_buffer();
+        let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
         let cmd_buffer = cmd_buffer_handle.as_mut();
 
         cmd_buffer.begin();
@@ -125,7 +125,7 @@ impl Hdr2Rgb {
         cmd_buffer.end();
 
         let wait_sem = render_surface.presenter_sem();
-        render_context.graphics_queue().queue_mut().submit(
+        render_context.graphics_queue.queue_mut().submit(
             &[cmd_buffer],
             &[wait_sem],
             &[&self.export_semaphore.external_resource()],

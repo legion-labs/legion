@@ -118,7 +118,7 @@ impl OffscreenHelper {
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
-        let mut cmd_buffer_handle = render_context.acquire_command_buffer();
+        let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
         let cmd_buffer = cmd_buffer_handle.as_mut();
 
         cmd_buffer.begin();
@@ -151,7 +151,7 @@ impl OffscreenHelper {
         );
 
         let pipeline = render_context
-            .pipeline_manager()
+            .pipeline_manager
             .get_pipeline(self.pipeline_handle)
             .unwrap();
         cmd_buffer.cmd_bind_pipeline(pipeline);
@@ -228,16 +228,19 @@ impl OffscreenHelper {
         // Present the image
         //
 
-        let wait_sem = render_surface.presenter_sem();
-        let graphics_queue = render_context.graphics_queue();
-
         cmd_buffer.end();
 
-        graphics_queue
+        let wait_sem = render_surface.presenter_sem();
+
+        render_context
+            .graphics_queue
             .queue_mut()
             .submit(&[cmd_buffer], &[wait_sem], &[], None);
 
-        graphics_queue.queue_mut().wait_for_queue_idle();
+        render_context
+            .graphics_queue
+            .queue_mut()
+            .wait_for_queue_idle();
 
         let sub_resource = copy_texture.map_texture(PlaneSlice::Default)?;
         copy_fn(sub_resource.data, sub_resource.row_pitch as usize);

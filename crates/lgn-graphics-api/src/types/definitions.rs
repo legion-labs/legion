@@ -42,7 +42,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GPUViewType {
     ConstantBuffer,
     ShaderResource,
@@ -51,7 +51,7 @@ pub enum GPUViewType {
     DepthStencil,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlaneSlice {
     Default,
     Depth,

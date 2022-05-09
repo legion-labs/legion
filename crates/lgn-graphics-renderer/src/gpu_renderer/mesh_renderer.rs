@@ -484,7 +484,7 @@ impl MeshRenderer {
             };
 
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(pipeline_handle)
                 .unwrap();
             cmd_buffer.cmd_bind_pipeline(pipeline);
@@ -696,7 +696,7 @@ impl MeshRenderer {
         }
 
         cmd_buffer.with_label("Gen occlusion and cull", |cmd_buffer| {
-            cmd_buffer.cmd_bind_index_buffer(render_context.static_buffer().index_buffer_binding());
+            cmd_buffer.cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
             cmd_buffer.cmd_bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
 
             let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
@@ -704,8 +704,8 @@ impl MeshRenderer {
 
             render_surface.init_hzb_if_needed(render_context, cmd_buffer);
 
-            let transient_buffer_allocator = render_context.transient_buffer_allocator();
-            let gpu_count_allocation = transient_buffer_allocator.copy_data(
+            
+            let gpu_count_allocation = render_context.transient_buffer_allocator.copy_data(
                 &(self.gpu_instance_data.len() as u32),
                 ResourceUsage::AS_SHADER_RESOURCE,
             );
@@ -713,7 +713,7 @@ impl MeshRenderer {
             let gpu_count_view = gpu_count_allocation
                 .to_buffer_view(BufferViewDef::as_structured_buffer_typed::<u32>(1, true));
 
-            let gpu_instance_allocation = transient_buffer_allocator.copy_data_slice(
+            let gpu_instance_allocation = render_context.transient_buffer_allocator.copy_data_slice(
                 &self.gpu_instance_data,
                 ResourceUsage::AS_SHADER_RESOURCE,
             );
@@ -725,7 +725,7 @@ impl MeshRenderer {
                 ),
             );
 
-            let render_pass_allocation = transient_buffer_allocator
+            let render_pass_allocation = render_context.transient_buffer_allocator
                 .copy_data_slice(&render_pass_data, ResourceUsage::AS_SHADER_RESOURCE);
 
             let render_pass_view =

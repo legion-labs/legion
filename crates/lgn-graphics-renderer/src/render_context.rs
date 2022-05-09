@@ -14,13 +14,13 @@ use crate::{
 
 pub struct RenderContext<'frame> {
     // renderer: &'frame Renderer,
-    device_context: &'frame DeviceContext,
-    graphics_queue: &'frame GraphicsQueue,
-    descriptor_pool: &'frame DescriptorPoolHandle,
-    pipeline_manager: &'frame PipelineManager,
-    transient_commandbuffer_allocator: &'frame mut TransientCommandBufferAllocator,
-    transient_buffer_allocator: &'frame mut TransientBufferAllocator,
-    static_buffer: &'frame UnifiedStaticBuffer,
+    pub device_context: &'frame DeviceContext,
+    pub graphics_queue: &'frame GraphicsQueue,
+    pub descriptor_pool: &'frame DescriptorPoolHandle,
+    pub pipeline_manager: &'frame PipelineManager,
+    pub transient_commandbuffer_allocator: &'frame mut TransientCommandBufferAllocator,
+    pub transient_buffer_allocator: &'frame mut TransientBufferAllocator,
+    pub static_buffer: &'frame UnifiedStaticBuffer,
     // tmp
     persistent_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
     frame_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
@@ -51,33 +51,6 @@ impl<'frame> RenderContext<'frame> {
         }
     }
 
-    pub fn device_context(&self) -> &DeviceContext {
-        self.device_context
-    }
-
-    pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
-        self.static_buffer
-    }
-
-    pub fn pipeline_manager(&self) -> &PipelineManager {
-        self.pipeline_manager
-    }
-
-    pub fn graphics_queue(&self) -> &GraphicsQueue {
-        self.graphics_queue
-    }
-
-    pub fn acquire_command_buffer(&mut self) -> CommandBufferHandle {
-        self.transient_commandbuffer_allocator.acquire()
-    }
-    pub fn release_command_buffer(&mut self, handle: CommandBufferHandle) {
-        self.transient_commandbuffer_allocator.release(handle);
-    }
-
-    pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {
-        self.descriptor_pool
-    }
-
     #[allow(clippy::todo)]
     pub fn write_descriptor_set(
         &self,
@@ -86,10 +59,6 @@ impl<'frame> RenderContext<'frame> {
     ) -> DescriptorSetHandle {
         self.descriptor_pool
             .write_descriptor_set(layout, descriptors)
-    }
-
-    pub fn transient_buffer_allocator(&mut self) -> &mut TransientBufferAllocator {
-        self.transient_buffer_allocator
     }
 
     pub fn persistent_descriptor_set(&self) -> (&DescriptorSetLayout, DescriptorSetHandle) {

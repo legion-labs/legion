@@ -12,7 +12,7 @@ struct VertexOut {
 VertexOut main_vs(uint vertexId: SV_VertexID) {
     MeshDescription mesh_desc = LoadMeshDescription(static_buffer, push_constant.mesh_description_offset);
 
-    VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexId);
+    VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, push_constant.mesh_description_offset, vertexId);
     VertexOut vertex_out;
 
     float3 view_pos = transform_from_tr(view_data.camera_translation, view_data.camera_rotation)

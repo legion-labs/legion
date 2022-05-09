@@ -126,7 +126,7 @@ impl HzbSurface {
         depth_srv_view: &TextureView,
     ) {
         let pipeline = render_context
-            .pipeline_manager()
+            .pipeline_manager
             .get_pipeline(self.pipeline_handle)
             .unwrap();
 
@@ -165,8 +165,8 @@ impl HzbSurface {
                                           0.0, 0.0, 0.0, 0.0,
                                           2.0, 0.0, 2.0, 0.0];
 
-            let transient_buffer_allocator = render_context.transient_buffer_allocator();
-            let transient_buffer = transient_buffer_allocator
+            let transient_buffer = render_context
+                .transient_buffer_allocator
                 .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
             let vertex_binding = transient_buffer.vertex_buffer_binding();

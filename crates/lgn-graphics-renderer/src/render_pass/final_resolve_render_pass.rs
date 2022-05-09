@@ -45,7 +45,7 @@ impl FinalResolveRenderPass {
     ) {
         cmd_buffer.with_label("Final resolve", |cmd_buffer| {
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.pipeline_handle)
                 .unwrap();
 
@@ -73,9 +73,8 @@ impl FinalResolveRenderPass {
                                             2.0, 0.0, 2.0, 0.0,
                                             0.0, 0.0, 0.0, 0.0 ];
 
-            let transient_buffer_allocator = render_context.transient_buffer_allocator();
-
-            let sub_allocation = transient_buffer_allocator
+            let sub_allocation = render_context
+                .transient_buffer_allocator
                 .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
             cmd_buffer.cmd_bind_vertex_buffer(0, sub_allocation.vertex_buffer_binding());

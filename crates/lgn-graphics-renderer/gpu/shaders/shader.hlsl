@@ -21,7 +21,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, vertexIn.va_table_address);
     MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
 
-    VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
+    VertexIn vertex_in = LoadVertex<VertexIn>(mesh_desc, addresses.mesh_description_va, vertexIn.vertexId);
     VertexOut vertex_out = (VertexOut)0;
 
     TransformData transform = LoadTransformData(static_buffer, addresses.world_transform_va);

@@ -96,7 +96,7 @@ impl VideoStream {
             encoder.submit_input(&EncoderWorkItem {
                 image: self.hdr2rgb.export_texture(),
                 semaphore: self.hdr2rgb.export_semaphore(),
-                cpu_frame: render_context.device_context().current_cpu_frame(),
+                cpu_frame: render_context.device_context.current_cpu_frame(),
             });
             let output = encoder.query_output();
             self.encoder.encode_cuda(&output[..], self.frame_id)

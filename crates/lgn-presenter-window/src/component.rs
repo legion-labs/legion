@@ -56,7 +56,7 @@ impl PresenterWindow {
 
         let swapchain_texture = presentable_frame.swapchain_texture();
 
-        let mut cmd_buffer_handle = render_context.acquire_command_buffer();
+        let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
         let cmd_buffer = cmd_buffer_handle.as_mut();
 
         cmd_buffer.begin();
@@ -96,14 +96,19 @@ impl PresenterWindow {
         // Present
         //
         {
-            let present_queue = render_context.graphics_queue();
             let wait_sem = render_surface.presenter_sem();
             presentable_frame
-                .present(&mut present_queue.queue_mut(), wait_sem, &[cmd_buffer])
+                .present(
+                    &mut render_context.graphics_queue.queue_mut(),
+                    wait_sem,
+                    &[cmd_buffer],
+                )
                 .unwrap();
         }
 
-        render_context.release_command_buffer(cmd_buffer_handle);
+        render_context
+            .transient_commandbuffer_allocator
+            .release(cmd_buffer_handle);
     }
 }
 

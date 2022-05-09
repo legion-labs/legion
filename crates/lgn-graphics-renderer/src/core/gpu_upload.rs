@@ -28,15 +28,15 @@ impl GpuUploadManager {
             return;
         }
 
-        let mut cmd_buffer_handle = render_context.acquire_command_buffer();
-        let transient_allocator = render_context.transient_buffer_allocator();
+        let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
         let cmd_buffer = cmd_buffer_handle.as_mut();
 
         cmd_buffer.begin();
 
         for update in self.updates.drain(..) {
-            let transient_alloc =
-                transient_allocator.copy_data_slice(&update.src_buffer, ResourceUsage::empty());
+            let transient_alloc = render_context
+                .transient_buffer_allocator
+                .copy_data_slice(&update.src_buffer, ResourceUsage::empty());
 
             cmd_buffer.cmd_resource_barrier(
                 &[BufferBarrier {
@@ -72,10 +72,12 @@ impl GpuUploadManager {
         cmd_buffer.end();
 
         render_context
-            .graphics_queue()
+            .graphics_queue
             .queue_mut()
             .submit(&[cmd_buffer], &[], &[], None);
 
-        render_context.release_command_buffer(cmd_buffer_handle);
+        render_context
+            .transient_commandbuffer_allocator
+            .release(cmd_buffer_handle);
     }
 }

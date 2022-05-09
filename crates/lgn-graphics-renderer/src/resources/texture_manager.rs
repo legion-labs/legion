@@ -235,7 +235,7 @@ impl TextureManager {
     #[span_fn]
     fn upload_texture(&mut self, renderer: &Renderer, upload_job: &UploadTextureJob) {
         return;
-        let device_context = renderer.device_context();
+
         let mut cmd_buffer_pool = renderer.acquire_command_buffer_pool(QueueType::Graphics);
         let mut cmd_buffer_handle = cmd_buffer_pool.acquire();
         let cmd_buffer = cmd_buffer_handle.as_mut();
@@ -251,7 +251,7 @@ impl TextureManager {
             let mip_slices = texture_data.data();
             for (mip_level, mip_data) in mip_slices.iter().enumerate() {
                 Self::upload_texture_data(
-                    &device_context,
+                    &renderer.device_context(),
                     cmd_buffer,
                     texture,
                     mip_data,

@@ -48,11 +48,13 @@ impl PickingRenderPass {
         mesh_renderer: &MeshRenderer,
     ) {
         cmd_buffer.with_label("Picking", |cmd_buffer| {
-            let device_context = render_context.device_context();
-
             let mut count: usize = 0;
-            let mut count_readback = self.count_buffer.begin_readback(device_context);
-            let mut picked_readback = self.picked_buffer.begin_readback(device_context);
+            let mut count_readback = self
+                .count_buffer
+                .begin_readback(render_context.device_context);
+            let mut picked_readback = self
+                .picked_buffer
+                .begin_readback(render_context.device_context);
 
             count_readback.read_gpu_data(
                 0,
@@ -90,7 +92,7 @@ impl PickingRenderPass {
                 );
 
                 let pipeline = render_context
-                    .pipeline_manager()
+                    .pipeline_manager
                     .get_pipeline(mesh_renderer.get_tmp_pso_handle(DefaultLayers::Picking as usize))
                     .unwrap();
 
@@ -99,7 +101,7 @@ impl PickingRenderPass {
                 render_context.bind_default_descriptor_sets(cmd_buffer);
 
                 cmd_buffer
-                    .cmd_bind_index_buffer(render_context.static_buffer().index_buffer_binding());
+                    .cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
                 cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
                 let mut picking_descriptor_set =

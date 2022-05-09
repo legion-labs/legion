@@ -176,7 +176,7 @@ impl DebugRenderPass {
     ) {
         cmd_buffer.with_label("Ground Plane", |cmd_buffer| {
             let wire_pso_depth_pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.wire_pso_depth_handle)
                 .unwrap();
             cmd_buffer.cmd_bind_pipeline(wire_pso_depth_pipeline);
@@ -205,11 +205,11 @@ impl DebugRenderPass {
             render_context.bind_default_descriptor_sets(cmd_buffer);
 
             let wire_pso_depth_pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.wire_pso_depth_handle)
                 .unwrap();
             let solid_pso_depth_pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.solid_pso_depth_handle)
                 .unwrap();
 
@@ -249,7 +249,7 @@ impl DebugRenderPass {
     ) {
         cmd_buffer.with_label("Debug_Display", |cmd_buffer| {
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.wire_pso_depth_handle)
                 .unwrap();
             cmd_buffer.cmd_bind_pipeline(pipeline);
@@ -301,7 +301,7 @@ impl DebugRenderPass {
                     color.a = if manipulator.transparent { 225 } else { 255 };
 
                     let pipeline = render_context
-                        .pipeline_manager()
+                        .pipeline_manager
                         .get_pipeline(self.solid_pso_nodepth_handle)
                         .unwrap();
                     cmd_buffer.cmd_bind_pipeline(pipeline);
@@ -334,7 +334,7 @@ impl DebugRenderPass {
         debug_display: &DebugDisplay,
     ) {
         cmd_buffer.with_label("Debug", |cmd_buffer| {
-            cmd_buffer.cmd_bind_index_buffer(render_context.static_buffer().index_buffer_binding());
+            cmd_buffer.cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
 
             cmd_buffer.cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {

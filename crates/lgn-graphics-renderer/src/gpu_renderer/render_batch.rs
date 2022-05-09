@@ -78,7 +78,7 @@ impl RenderBatch {
 
         if self.element_count > 0 || !self.elements.is_empty() {
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.state_set.pipeline_handle)
                 .unwrap();
 

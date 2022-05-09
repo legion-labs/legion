@@ -22,7 +22,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
         GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, vertexIn.va_table_address);
         MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
         
-        vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
+        vertex_in = LoadVertex<VertexIn>(mesh_desc, addresses.mesh_description_va, vertexIn.vertexId);
 
         TransformData transform = LoadTransformData(static_buffer, addresses.world_transform_va);
         world_pos = ((Transform)transform).apply_to_point(vertex_in.pos);
@@ -30,7 +30,7 @@ VertexOut main_vs(GpuPipelineVertexIn vertexIn) {
     else
     {
         MeshDescription mesh_desc = LoadMeshDescription(static_buffer, push_constant.mesh_description_offset);
-        vertex_in = LoadVertex<VertexIn>(mesh_desc, vertexIn.vertexId);
+        vertex_in = LoadVertex<VertexIn>(mesh_desc, push_constant.mesh_description_offset, vertexIn.vertexId);
         world_pos = ((Transform)push_constant.transform).apply_to_point(vertex_in.pos);
     }
 

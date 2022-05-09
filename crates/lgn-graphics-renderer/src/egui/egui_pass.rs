@@ -101,7 +101,7 @@ impl EguiPass {
 
         let egui_font_image = &egui_ctx.font_image();
 
-        let texture = render_context.device_context().create_texture(
+        let texture = render_context.device_context.create_texture(
             TextureDef {
                 extents: Extents3D {
                     width: egui_font_image.width as u32,
@@ -123,7 +123,7 @@ impl EguiPass {
             texture.definition(),
         ));
 
-        let staging_buffer = render_context.device_context().create_buffer(
+        let staging_buffer = render_context.device_context.create_buffer(
             BufferDef::for_staging_buffer_data(&egui_font_image.pixels, ResourceUsage::empty()),
             "staging_buffer",
         );
@@ -175,9 +175,10 @@ impl EguiPass {
                 &None,
             );
 
-            let pipeline_manager = render_context.pipeline_manager();
-
-            let pipeline = pipeline_manager.get_pipeline(self.pipeline_handle).unwrap();
+            let pipeline = render_context
+                .pipeline_manager
+                .get_pipeline(self.pipeline_handle)
+                .unwrap();
 
             cmd_buffer.cmd_bind_pipeline(pipeline);
 
@@ -217,8 +218,8 @@ impl EguiPass {
                     })
                     .collect();
 
-                let transient_allocator = render_context.transient_buffer_allocator();
-                let transient_buffer = transient_allocator
+                let transient_buffer = render_context
+                    .transient_buffer_allocator
                     .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
 
                 cmd_buffer.cmd_bind_vertex_buffers(0, &[transient_buffer.vertex_buffer_binding()]);

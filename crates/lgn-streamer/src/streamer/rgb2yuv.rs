@@ -161,7 +161,7 @@ impl RgbToYuvConverter {
         yuv: &mut [u8],
     ) {
         let render_frame_idx = 0;
-        let mut cmd_buffer_handle = render_context.acquire_command_buffer();
+        let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
         let cmd_buffer = cmd_buffer_handle.as_mut();
 
         cmd_buffer.begin();
@@ -197,7 +197,7 @@ impl RgbToYuvConverter {
             );
 
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.pipeline_handle)
                 .unwrap();
             cmd_buffer.cmd_bind_pipeline(pipeline);
@@ -339,7 +339,7 @@ impl RgbToYuvConverter {
         //
 
         let wait_sem = render_surface.presenter_sem();
-        let mut graphics_queue = render_context.graphics_queue().queue_mut();
+        let mut graphics_queue = render_context.graphics_queue.queue_mut();
 
         graphics_queue.submit(&[cmd_buffer], &[wait_sem], &[], None);
 

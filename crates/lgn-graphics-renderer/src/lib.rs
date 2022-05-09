@@ -542,7 +542,7 @@ fn render_update(
             let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
 
             lighting_manager.per_frame_render(
-                render_context.transient_buffer_allocator(),
+                render_context.transient_buffer_allocator,
                 &mut frame_descriptor_set,
             );
 
@@ -565,7 +565,7 @@ fn render_update(
                 max_anisotropy: 1.0,
                 compare_op: CompareOp::LessOrEqual,
             };
-            let material_sampler = render_context.device_context().create_sampler(sampler_def);
+            let material_sampler = render_context.device_context.create_sampler(sampler_def);
             frame_descriptor_set.set_material_sampler(&material_sampler);
 
             let frame_descriptor_set_handle = render_context.write_descriptor_set(
@@ -603,7 +603,7 @@ fn render_update(
                 );
 
                 let sub_allocation = render_context
-                    .transient_buffer_allocator()
+                    .transient_buffer_allocator
                     .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
                 let const_buffer_view = sub_allocation
@@ -626,7 +626,7 @@ fn render_update(
                 );
             }
 
-            let mut cmd_buffer_handle = render_context.acquire_command_buffer();
+            let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
             let cmd_buffer = cmd_buffer_handle.as_mut();
 
             cmd_buffer.begin();
@@ -694,16 +694,19 @@ fn render_update(
             // queue
             let present_sema = render_surface.acquire();
             {
-                let graphics_queue = render_context.graphics_queue();
-
-                graphics_queue
-                    .queue_mut()
-                    .submit(&[cmd_buffer], &[present_sema], &[], None);
+                render_context.graphics_queue.queue_mut().submit(
+                    &[cmd_buffer],
+                    &[present_sema],
+                    &[],
+                    None,
+                );
 
                 render_surface.present(&mut render_context);
             }
 
-            render_context.release_command_buffer(cmd_buffer_handle);
+            render_context
+                .transient_commandbuffer_allocator
+                .release(cmd_buffer_handle);
         }
 
         descriptor_heap_manager.release_descriptor_pool(descriptor_pool);
