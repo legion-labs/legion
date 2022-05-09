@@ -245,7 +245,7 @@ export abstract class TimelineTrackCanvasBaseDrawer {
 
     ctx.fillStyle = "#000000";
     const lastSeparator = caption.lastIndexOf("::");
-    // we start at the half with of a character mark
+    // we start at the half width of a character mark
     x += characterWidth / 2;
     // to keep it simple if there is a scope in the remaining caption, we
     // display the fist part with the sub font and the last part with the main font
