@@ -22,10 +22,12 @@ use lgn_editor_proto::source_control::{
     staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
     CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
     GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
-    InitUploadRawFileResponse, ResourceDescription, RevertResourcesRequest,
-    RevertResourcesResponse, StagedResource, SyncLatestResponse, SyncLatestResquest,
-    UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse, UploadStatus,
+    InitUploadRawFileResponse, PullDccAssetRequest, PullDccAssetResponse, ResourceDescription,
+    RevertResourcesRequest, RevertResourcesResponse, StagedResource, SyncLatestResponse,
+    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
+    UploadStatus,
 };
+use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
 use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
 use lgn_tracing::error;
@@ -711,5 +713,23 @@ impl SourceControl for SourceControlRPC {
         }
 
         Ok(Response::new(RevertResourcesResponse {}))
+    }
+
+    async fn pull_dcc_asset(
+        &self,
+        request: Request<PullDccAssetRequest>,
+    ) -> Result<Response<PullDccAssetResponse>, Status> {
+        let message = request.into_inner();
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let resource = ctx.asset_registry.load_sync::<GltfFile>(
+            ResourceTypeAndId::from_str(message.id.as_str()).map_err(Status::unknown)?,
+        );
+
+        let gltf_file = resource.get(&ctx.asset_registry).unwrap();
+        Ok(Response::new(PullDccAssetResponse {
+            size: gltf_file.bytes().len() as u32,
+            content: gltf_file.bytes().to_vec(),
+        }))
     }
 }

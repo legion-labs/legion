@@ -199,16 +199,6 @@
             });
           }
 
-          if (lowerCasedName.endsWith(".gltf.zip")) {
-            // FIXME: Incorrect, should be an import
-            return createResource({
-              resourceName: name.slice(0, -4),
-              resourceType: "gltfzip",
-              parentResourceId: $currentResourceDescriptionEntry?.item.id,
-              uploadId: id,
-            });
-          }
-
           if (lowerCasedName.endsWith(".gltf")) {
             return createResource({
               resourceName: name,
@@ -371,7 +361,7 @@
       case "import": {
         files.open({
           multiple: false,
-          fileTypeSpecifiers: [".png", ".gltf.zip", ".glb", ".gltf"],
+          fileTypeSpecifiers: [".png", ".glb", ".gltf"],
         });
 
         break;

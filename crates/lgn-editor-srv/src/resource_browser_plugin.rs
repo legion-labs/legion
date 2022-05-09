@@ -18,11 +18,12 @@ use lgn_data_transaction::{
 use lgn_ecs::prelude::*;
 use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
 use lgn_editor_proto::resource_browser::{
-    CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
+    CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse, DccAsset,
     DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest, GetActiveScenesResponse,
     GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, GetRuntimeSceneInfoRequest,
-    GetRuntimeSceneInfoResponse, ImportResourceRequest, ImportResourceResponse, OpenSceneRequest,
-    OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+    GetRuntimeSceneInfoResponse, ImportResourceRequest, ImportResourceResponse,
+    ListDccAssetsRequest, ListDccAssetsResponse, OpenSceneRequest, OpenSceneResponse,
+    RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
     ReparentResourceResponse, SearchResourcesRequest,
 };
 
@@ -325,39 +326,10 @@ fn update_entity_parenting(
     transaction
 }
 
-/// At the moment the logic is:
-/// - Receive a .zip of a .gltf and it's dependencies.
-/// - Unpack the zip into the temp folder.
-/// - Load unpacked data into `GltfFile` object.
-fn create_gltfzip_resource(zip_path: &Path) -> Result<PathBuf, Status> {
-    let mut folder = zip_path.to_owned();
-    folder.pop();
-    let temp_folder = folder.join("temp");
-
-    let mut buffer = std::fs::read(zip_path.with_extension("gltf.zip"))
-        .map_err(|err| Status::internal(err.to_string()))?;
-    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&mut buffer))
-        .map_err(|err| Status::internal(err.to_string()))?;
-    zip.extract(&temp_folder)
-        .map_err(|err| Status::internal(err.to_string()))?;
-
-    let paths = std::fs::read_dir(temp_folder).map_err(|err| Status::internal(err.to_string()))?;
-    for path in paths {
-        let path = path
-            .map_err(|err| Status::internal(err.to_string()))?
-            .path();
-        if let Some(extension) = path.extension() {
-            if extension == "gltf" {
-                return create_gltf_resource(&path);
-            }
-        }
-    }
-    Err(Status::internal(".zip file doesn't contain .gltf file"))
-}
-
-// Works for both .gltf and .glb
+// Works for both .gltf and .glb (doesn't support external references anymore)
 fn create_gltf_resource(gltf_path: &Path) -> Result<PathBuf, Status> {
-    let gltf_file = GltfFile::from_path(gltf_path);
+    let raw_data = std::fs::read(gltf_path)?;
+    let gltf_file = GltfFile::from_bytes(raw_data);
     let path = gltf_path.with_extension("temp");
     let mut file = std::fs::File::create(&path).map_err(|err| Status::internal(err.to_string()))?;
     gltf_file
@@ -458,11 +430,6 @@ impl ResourceBrowser for ResourceBrowserRPC {
             .map(|upload_id| self.uploads_folder.join(upload_id).join(name));
 
         match resource_type {
-            "gltfzip" => {
-                if let Some(tmp_content_path) = content_path {
-                    content_path = Some(create_gltfzip_resource(&tmp_content_path)?);
-                }
-            }
             "gltf" | "glb" => {
                 if let Some(tmp_content_path) = content_path {
                     content_path = Some(create_gltf_resource(&tmp_content_path)?);
@@ -922,5 +889,55 @@ impl ResourceBrowser for ResourceBrowserRPC {
             manifest_id: manifest_id.to_string(),
             asset_id: asset_id.to_string(),
         }))
+    }
+
+    async fn list_dcc_assets(
+        &self,
+        request: Request<ListDccAssetsRequest>,
+    ) -> Result<Response<ListDccAssetsResponse>, Status> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let request = request.get_ref();
+        let dcc_name = request.dcc_name.to_lowercase();
+        let dcc_name_str = dcc_name.as_str();
+        let asset_types = match dcc_name_str {
+            "blender" => vec![GltfFile::TYPE],
+            _ => {
+                return Err(Status::internal(format!(
+                    "Unsupported DCC \"{}\"",
+                    dcc_name
+                )))
+            }
+        };
+        let assets = ctx
+            .project
+            .resource_list()
+            .await
+            .into_iter()
+            .filter_map(|resource_id| {
+                if let Ok(kind) = ctx.project.resource_type(resource_id) {
+                    if asset_types.contains(&kind) {
+                        let path: String = ctx
+                            .project
+                            .resource_name(resource_id)
+                            .unwrap_or_else(|_err| "".into())
+                            .to_string();
+                        Some(DccAsset {
+                            id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
+                                kind,
+                                id: resource_id,
+                            }),
+                            asset_name: path,
+                        })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<DccAsset>>();
+
+        Ok(Response::new(ListDccAssetsResponse { assets }))
     }
 }
