@@ -1,20 +1,16 @@
 <script lang="ts">
-  import { getContext, onMount } from "svelte";
+  import { onMount } from "svelte";
   import { link } from "svelte-navigator";
 
-  import type {
-    LogEntry,
-    PerformanceAnalyticsClientImpl,
-  } from "@lgn/proto-telemetry/dist/analytics";
+  import type { LogEntry } from "@lgn/proto-telemetry/dist/analytics";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
   import L10n from "@/components/Misc/L10n.svelte";
-  import { httpClientContextKey } from "@/constants";
+  import { getHttpClientContext } from "@/contexts";
 
   const MAX_NB_ENTRIES_IN_PAGE = 1000;
 
-  const client =
-    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
+  const client = getHttpClientContext();
 
   export let id: string;
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getL10nOrchestratorContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
   import { MergeThresholdForLOD, getLodFromPixelSizeMs } from "@/lib/lod";
 
@@ -6,24 +7,26 @@
 
   export let store: TimelineStateStore;
 
+  const { t } = getL10nOrchestratorContext();
+
   let pixelSize: number;
   let lod: number;
   let mergeThreshold: number;
   let title: string;
 
   $: {
-    const vr = $store.getViewRange();
-    pixelSize = (vr[1] - vr[0]) / $store.canvasWidth;
+    const [begin, end] = $store.getViewRange();
+
+    pixelSize = (end - begin) / $store.canvasWidth;
     lod = getLodFromPixelSizeMs(pixelSize);
     mergeThreshold = MergeThresholdForLOD(lod);
-    title = Array.from(getDebugEntries()).join("\n");
-  }
 
-  function* getDebugEntries() {
-    yield `Pixel size: ${formatExecutionTime(pixelSize)}`;
-    yield `Lod: ${lod}`;
-    yield `Threshold: ${formatExecutionTime(mergeThreshold)}`;
-    yield `Events: ${$store.eventCount.toLocaleString()}`;
+    title = $t("timeline-debug-tooltip", {
+      events: $store.eventCount.toLocaleString(),
+      lod,
+      pixelSize: formatExecutionTime(pixelSize),
+      threshold: formatExecutionTime(mergeThreshold),
+    });
   }
 </script>
 

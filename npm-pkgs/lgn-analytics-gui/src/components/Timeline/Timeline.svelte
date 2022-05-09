@@ -1,14 +1,9 @@
 <script lang="ts">
-  import { afterUpdate, getContext, onMount, tick } from "svelte";
+  import { afterUpdate, onMount, tick } from "svelte";
   import { useLocation } from "svelte-navigator";
   import { get } from "svelte/store";
 
-  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
-
-  import {
-    httpClientContextKey,
-    threadItemLengthContextKey,
-  } from "@/constants";
+  import { getHttpClientContext, getThreadItemLengthContext } from "@/contexts";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
@@ -27,9 +22,8 @@
   export let processId: string;
 
   const location = useLocation();
-  const client =
-    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
-  const threadItemLength = getContext<number>(threadItemLengthContextKey);
+  const client = getHttpClientContext();
+  const threadItemLength = getThreadItemLengthContext();
 
   let stateManager: TimelineStateManager;
   let windowInnerWidth: number;
@@ -301,28 +295,5 @@
     display: flex;
     flex-direction: column;
     @apply gap-y-1;
-  }
-
-  ::-webkit-scrollbar {
-    width: 20px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background-color: transparent;
-  }
-
-  ::-webkit-scrollbar-corner {
-    background: rgba(0, 0, 0, 0);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background-color: #454545;
-    border-radius: 20px;
-    border: 6px solid transparent;
-    background-clip: content-box;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: #707070;
   }
 </style>
