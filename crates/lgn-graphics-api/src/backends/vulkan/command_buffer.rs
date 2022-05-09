@@ -193,17 +193,20 @@ impl CommandBuffer {
                 .build()
         });
 
-        let render_info = ash::vk::RenderingInfo::builder()
+        let mut render_info = ash::vk::RenderingInfo::builder()
             .render_area(render_area)
             .layer_count(1)
             .color_attachments(&color_attachments);
 
-        let mut render_info = render_info.build();
+        if let Some(depth_attachment) = &depth_attachment {
+            render_info = render_info.depth_attachment(depth_attachment);
+        }
 
-        if depth_target.is_some() {
-            render_info.p_depth_attachment = &depth_attachment.unwrap();
-            render_info.p_stencil_attachment = &stencil_attachment.unwrap();
-        };
+        if let Some(stencil_attachment) = &stencil_attachment {
+            render_info = render_info.stencil_attachment(stencil_attachment);
+        }
+
+        let render_info = render_info.build();
 
         unsafe {
             self.inner.device_context.vk_device().cmd_begin_rendering(
