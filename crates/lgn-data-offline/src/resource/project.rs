@@ -502,10 +502,6 @@ impl Project {
     }
 
     /// Loads a resource of a given id.
-    ///
-    /// In-memory representation of that resource is managed by
-    /// `ResourceRegistry`. In order to update the resource on disk see
-    /// [`Self::save_resource()`].
     pub fn load_resource(
         &self,
         type_id: ResourceTypeAndId,

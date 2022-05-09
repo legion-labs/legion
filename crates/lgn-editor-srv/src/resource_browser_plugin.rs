@@ -6,7 +6,7 @@ use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_model::json_utils::get_property_as_json_string;
 use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_offline::resource::{Project, ResourceHandles, ResourceRegistry};
+use lgn_data_offline::resource::{Project, ResourceHandles};
 use lgn_data_runtime::{
     Resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
