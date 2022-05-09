@@ -89,8 +89,7 @@ fn main() {
     let args = Args::parse();
 
     let mut telemetry_guard_builder = lgn_telemetry_sink::TelemetryGuardBuilder::default();
-    // if args.verbose {
-    if true {
+    if args.verbose {
         telemetry_guard_builder =
             telemetry_guard_builder.with_max_level_override(LevelFilter::Trace);
     }
