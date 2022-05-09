@@ -91,7 +91,7 @@ fn test_render_graph(device_context: &DeviceContext) {
                     "*****************************************************************************"
                 );
                 println!("Frame {}", i);
-                render_graph.execute(&mut context, device_context, &command_pool);
+                render_graph.execute(&mut context, device_context, &command_pool, &queue);
             }
         }
         Err(error) => {

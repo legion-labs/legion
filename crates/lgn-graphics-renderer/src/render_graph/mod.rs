@@ -1,5 +1,4 @@
-//! Graphics tests.
-
+#[allow(clippy::module_inception)]
 pub mod render_graph;
 pub use render_graph::*;
 
