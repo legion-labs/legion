@@ -8,7 +8,7 @@ use tokio::sync::MutexGuard;
 
 use crate::{BuildManager, Error, SelectionManager, TransactionManager};
 
-/// Describe a Lock on the Database (Project/ResourceRegistry/LoadedResources)
+/// Describe a Lock on the Database (Project/AssetRegistry/LoadedResources)
 pub struct LockContext<'a> {
     /// Lock on the `Project`
     pub project: MutexGuard<'a, Project>,
