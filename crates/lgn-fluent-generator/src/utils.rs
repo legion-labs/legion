@@ -1,8 +1,4 @@
-use std::{
-    fs::{create_dir_all, read_to_string, File},
-    io::Write,
-    path::Path,
-};
+use std::fs::read_to_string;
 
 use glob::glob;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
@@ -22,27 +18,4 @@ pub fn read_files_from_glob(pattern: &str) -> Result<String> {
         .collect::<Result<String>>()?;
 
     Ok(ftl)
-}
-
-/// Write the [`String`] content into a file, if a file under the provided directory.
-///
-/// # Errors
-///
-/// If the provided directory already exists but is _not_ a directory, then an error occurs
-pub fn write_string_content<P: AsRef<Path>, C: Into<String>>(out_dir: P, content: C) -> Result<()> {
-    let out_dir = out_dir.as_ref();
-
-    if !out_dir.exists() {
-        create_dir_all(&out_dir)?;
-    }
-
-    if !out_dir.is_dir() {
-        return Err(Error::OutDirNotDir);
-    }
-
-    let mut file = File::create(out_dir.join("fluent.d.ts"))?;
-
-    file.write_all(content.into().as_bytes())?;
-
-    Ok(())
 }

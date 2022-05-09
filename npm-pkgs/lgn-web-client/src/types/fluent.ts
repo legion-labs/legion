@@ -2,33 +2,33 @@ import type { FluentVariable } from "@fluent/bundle";
 
 export type FluentBase = Record<
   string,
-  { attributes: string | null; variables: string | null }
+  { attributes?: string; variables?: string } | null
 >;
 
 export type FluentBaseVariablesOnly = Record<
   string,
-  Pick<FluentBase[string], "variables">
+  Pick<Exclude<FluentBase[string], null>, "variables"> | null
 >;
 
 export type FluentBaseAttributesOnly = Record<
   string,
-  Pick<FluentBase[string], "attributes">
+  Pick<Exclude<FluentBase[string], null>, "attributes"> | null
 >;
 
 export type ResolveFluentArguments<
   Fluent extends FluentBase,
   Id extends keyof Fluent
-> = Fluent[Id]["attributes"] extends string
-  ? Fluent[Id]["variables"] extends string
-    ? [
-        id: Id,
-        attributes: Fluent[Id]["attributes"],
-        variables: {
-          [Key in Fluent[Id]["variables"]]: FluentVariable;
-        }
-      ]
-    : [id: Id, attributes: Fluent[Id]["attributes"]]
-  : Fluent[Id]["variables"] extends string
+> = Fluent[Id] extends { attributes: string; variables: string }
+  ? [
+      id: Id,
+      attributes: Fluent[Id]["attributes"],
+      variables: {
+        [Key in Fluent[Id]["variables"]]: FluentVariable;
+      }
+    ]
+  : Fluent[Id] extends { attributes: string }
+  ? [id: Id, attributes: Fluent[Id]["attributes"]]
+  : Fluent[Id] extends { variables: string }
   ? [
       id: Id,
       variables: {
@@ -40,17 +40,17 @@ export type ResolveFluentArguments<
 export type ResolveFluentRecord<
   Fluent extends FluentBase,
   Id extends keyof Fluent
-> = Fluent[Id]["attributes"] extends string
-  ? Fluent[Id]["variables"] extends string
-    ? {
-        id: Id;
-        attributes: Fluent[Id]["attributes"];
-        variables: {
-          [Key in Fluent[Id]["variables"]]: FluentVariable;
-        };
-      }
-    : { id: Id; attributes: Fluent[Id]["attributes"] }
-  : Fluent[Id]["variables"] extends string
+> = Fluent[Id] extends { attributes: string; variables: string }
+  ? {
+      id: Id;
+      attributes: Fluent[Id]["attributes"];
+      variables: {
+        [Key in Fluent[Id]["variables"]]: FluentVariable;
+      };
+    }
+  : Fluent[Id] extends { attributes: string }
+  ? { id: Id; attributes: Fluent[Id]["attributes"] }
+  : Fluent[Id] extends { variables: string }
   ? {
       id: Id;
       variables: {
@@ -60,9 +60,9 @@ export type ResolveFluentRecord<
   : { id: Id };
 
 export type ResolveFluentArgumentsVariablesOnly<
-  Fluent extends FluentBaseVariablesOnly,
+  Fluent extends FluentBase,
   Id extends keyof Fluent
-> = Fluent[Id]["variables"] extends string
+> = Fluent[Id] extends { variables: string }
   ? [
       id: Id,
       variables: {
@@ -72,9 +72,9 @@ export type ResolveFluentArgumentsVariablesOnly<
   : [id: Id];
 
 export type ResolveFluentRecordVariablesOnly<
-  Fluent extends FluentBaseVariablesOnly,
+  Fluent extends FluentBase,
   Id extends keyof Fluent
-> = Fluent[Id]["variables"] extends string
+> = Fluent[Id] extends { variables: string }
   ? {
       id: Id;
       variables: {
@@ -84,25 +84,18 @@ export type ResolveFluentRecordVariablesOnly<
   : { id: Id };
 
 export type ResolveFluentArgumentsAttributesOnly<
-  Fluent extends FluentBaseAttributesOnly,
+  Fluent extends FluentBase,
   Id extends keyof Fluent
-> = Fluent[Id]["attributes"] extends string
-  ? [
-      id: Id,
-      attributes: {
-        [Key in Fluent[Id]["attributes"]]: FluentVariable;
-      }
-    ]
+> = Fluent[Id] extends { attributes: string }
+  ? [id: Id, attributes: Fluent[Id]["attributes"]]
   : [id: Id];
 
 export type ResolveFluentRecordAttributesOnly<
-  Fluent extends FluentBaseAttributesOnly,
+  Fluent extends FluentBase,
   Id extends keyof Fluent
-> = Fluent[Id]["attributes"] extends string
+> = Fluent[Id] extends { attributes: string }
   ? {
       id: Id;
-      attributes: {
-        [Key in Fluent[Id]["attributes"]]: FluentVariable;
-      };
+      attributes: Fluent[Id]["attributes"];
     }
   : { id: Id };

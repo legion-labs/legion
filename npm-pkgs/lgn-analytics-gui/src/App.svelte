@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, setContext } from "svelte";
+  import { writable } from "svelte/store";
 
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
@@ -25,6 +26,7 @@
   import TimelineRenderer from "./components/Timeline/Timeline.svelte";
   import { getThreadItemLength } from "./components/Timeline/Values/TimelineValues";
   import {
+    debugContextKey,
     httpClientContextKey,
     l10nOrchestratorContextKey,
     localeStorageKey,
@@ -81,6 +83,11 @@
   setContext(httpClientContextKey, makeGrpcClient());
 
   setContext(notificationsContextKey, notifications);
+
+  setContext(
+    debugContextKey,
+    writable(import.meta.env.VITE_LEGION_ANALYTICS_DEBUG === "true")
+  );
 
   try {
     setContext(threadItemLengthContextKey, getThreadItemLength());
