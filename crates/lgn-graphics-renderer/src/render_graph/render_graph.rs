@@ -12,26 +12,6 @@ use lgn_graphics_api::{
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_graph::RenderGraphBuilder;
 
-#[derive(Clone, Debug)]
-pub enum ColorOrDepthClearValue {
-    Color(ColorClearValue),
-    Depth(DepthStencilClearValue),
-}
-
-impl PartialEq for ColorOrDepthClearValue {
-    fn eq(&self, other: &Self) -> bool {
-        match self {
-            ColorOrDepthClearValue::Color(c) => match other {
-                ColorOrDepthClearValue::Color(oc) => c.0 == oc.0,
-                ColorOrDepthClearValue::Depth(_) => false,
-            },
-            ColorOrDepthClearValue::Depth(c) => match other {
-                ColorOrDepthClearValue::Color(_) => false,
-                ColorOrDepthClearValue::Depth(oc) => c.depth == oc.depth && c.stencil == oc.stencil,
-            },
-        }
-    }
-}
 #[derive(Clone, Debug, PartialEq)]
 pub struct RenderGraphTextureDef {
     // TextureDef
