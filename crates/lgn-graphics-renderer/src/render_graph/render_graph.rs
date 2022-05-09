@@ -2,11 +2,12 @@ use std::collections::HashMap;
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferDef, BufferView, BufferViewDef,
-    BufferViewFlags, ColorClearValue, ColorRenderTargetBinding, DepthStencilClearValue,
-    DepthStencilRenderTargetBinding, DeviceContext, Extents3D, Format, GPUViewType, LoadOp,
-    MemoryUsage, PlaneSlice, ResourceCreation, ResourceFlags, ResourceState, ResourceUsage,
-    StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
-    ViewDimension, MAX_RENDER_TARGET_ATTACHMENTS,
+    BufferViewFlags, CmdCopyBufferToTextureParams, ColorClearValue, ColorRenderTargetBinding,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents3D, Format,
+    GPUViewType, LoadOp, MemoryAllocation, MemoryAllocationDef, MemoryUsage, PlaneSlice,
+    ResourceCreation, ResourceFlags, ResourceState, ResourceUsage, StoreOp, Texture,
+    TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef, ViewDimension,
+    MAX_RENDER_TARGET_ATTACHMENTS,
 };
 
 use crate::hl_gfx_api::HLCommandBuffer;
@@ -43,9 +44,13 @@ impl From<RenderGraphTextureDef> for TextureDef {
             format: item.format,
             usage_flags: if item.format.has_depth() {
                 // TODO: will depend on read / write and whether the format is depth/stencil
-                ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE
+                ResourceUsage::AS_DEPTH_STENCIL
+                    | ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_TRANSFERABLE
             } else {
-                ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE
+                ResourceUsage::AS_RENDER_TARGET
+                    | ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_TRANSFERABLE
             },
             resource_flags: ResourceFlags::empty(),
             mem_usage: MemoryUsage::GpuOnly,
@@ -225,8 +230,8 @@ pub(crate) struct RGNode {
     pub(crate) depth_stencil: Option<(RenderGraphResourceId, RenderGraphViewId)>,
     pub(crate) children: Vec<RGNode>,
     pub(crate) execute_fn: Option<Box<RenderGraphExecuteFn>>,
-    pub(crate) clear_write_resources: Vec<Option<ColorClearValue>>, // index matches write_resources
-    pub(crate) clear_rt_resources: Vec<Option<ColorClearValue>>,    // index matches render_targets
+    pub(crate) clear_write_resources: Vec<Option<u32>>, // index matches write_resources
+    pub(crate) clear_rt_resources: Vec<Option<ColorClearValue>>, // index matches render_targets
     pub(crate) clear_ds_resource: Option<DepthStencilClearValue>,
 }
 
@@ -241,7 +246,7 @@ impl Default for RGNode {
             children: vec![],
             execute_fn: None,
             clear_write_resources: vec![],
-            clear_rt_resources: vec![],
+            clear_rt_resources: vec![None; MAX_RENDER_TARGET_ATTACHMENTS],
             clear_ds_resource: None,
         }
     }
@@ -451,7 +456,6 @@ impl RenderGraph {
     ) {
         let res_id = resource_id.0 as usize;
 
-        // TODO: Create the resource, clear it if necessary, and transition it to write.
         if !context.created.iter().any(|r| *r == resource_id.0) {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id.0) {
                 println!("  !! Create {} ", self.resource_names[res_id]);
@@ -470,7 +474,6 @@ impl RenderGraph {
                         .api_resource_state
                         .insert(res_mip_id, ResourceState::UNDEFINED);
                 }
-                // TODO: Create
             }
 
             context.created.push(resource_id.0);
@@ -485,7 +488,6 @@ impl RenderGraph {
     ) {
         let res_id = resource_id.0 as usize;
 
-        // TODO: Create the resource, clear it if necessary, and transition it to write.
         if !context.created.iter().any(|r| *r == resource_id.0) {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id.0) {
                 println!("  !! Create {} ", self.resource_names[res_id]);
@@ -502,7 +504,6 @@ impl RenderGraph {
                 context
                     .api_resource_state
                     .insert(res_mip_id, ResourceState::UNDEFINED);
-                // TODO: Create
             }
 
             context.created.push(resource_id.0);
@@ -831,6 +832,56 @@ impl RenderGraph {
         }
     }
 
+    // TODO: Could be moved to a utilities file somewhere (same code used in egui_pass.rs)
+    #[allow(clippy::unused_self)]
+    fn copy_data_to_texture(
+        &self,
+        device_context: &DeviceContext,
+        command_buffer: &mut HLCommandBuffer<'_>,
+        texture: &Texture,
+        data: &[u32],
+        next_state: ResourceState,
+    ) {
+        let staging_buffer = device_context.create_buffer(&BufferDef::for_staging_buffer_data(
+            data,
+            ResourceUsage::empty(),
+        ));
+
+        let alloc_def = MemoryAllocationDef {
+            memory_usage: MemoryUsage::CpuToGpu,
+            always_mapped: true,
+        };
+
+        let buffer_memory =
+            MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
+
+        buffer_memory.copy_to_host_visible_buffer(data);
+
+        command_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                texture,
+                ResourceState::UNDEFINED,
+                ResourceState::COPY_DST,
+            )],
+        );
+
+        command_buffer.copy_buffer_to_texture(
+            &staging_buffer,
+            texture,
+            &CmdCopyBufferToTextureParams::default(),
+        );
+
+        command_buffer.resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                texture,
+                ResourceState::COPY_DST,
+                next_state,
+            )],
+        );
+    }
+
     fn begin_execute(
         &self,
         context: &mut RenderGraphContext,
@@ -839,6 +890,7 @@ impl RenderGraph {
         command_buffer: &mut HLCommandBuffer<'_>,
         device_context: &DeviceContext,
     ) -> bool {
+        // Gather barriers into a container.
         let mut barriers: Vec<ResourceBarrier> = Vec::with_capacity(32);
 
         self.gather_read_resource_transitions(
@@ -907,13 +959,12 @@ impl RenderGraph {
         }
 
         // Execute the batch of barriers.
-        let execute_barriers = true;
-        if execute_barriers {
-            command_buffer.resource_barrier(&buffer_barriers, &texture_barriers);
-        }
+        command_buffer.resource_barrier(&buffer_barriers, &texture_barriers);
 
+        // Create the views we will need for the next steps.
         self.create_views(context, execute_context);
 
+        // Do begin render pass which will also clear render targets and depth stencil.
         let need_begin_end_render_pass =
             node.render_targets.iter().flatten().next().is_some() || node.depth_stencil.is_some();
 
@@ -943,14 +994,18 @@ impl RenderGraph {
                 Vec::with_capacity(node.render_targets.len());
             let mut depth_target: Option<DepthStencilRenderTargetBinding<'_>> = None;
 
-            for resource_id in node.render_targets.iter().flatten() {
+            for (i, resource_id) in node.render_targets.iter().flatten().enumerate() {
                 let texture_view = (&context.views[resource_id]).try_into().unwrap();
 
                 let binding = ColorRenderTargetBinding {
                     texture_view,
-                    load_op: LoadOp::DontCare,
+                    load_op: if node.clear_rt_resources[i].is_some() {
+                        LoadOp::Clear
+                    } else {
+                        LoadOp::Load
+                    },
                     store_op: StoreOp::Store,
-                    clear_value: ColorClearValue::default(),
+                    clear_value: node.clear_rt_resources[i].unwrap_or_default(),
                 };
                 color_targets.push(binding);
             }
@@ -960,15 +1015,56 @@ impl RenderGraph {
 
                 depth_target = Some(DepthStencilRenderTargetBinding {
                     texture_view,
-                    depth_load_op: LoadOp::DontCare,
+                    depth_load_op: if node.clear_ds_resource.is_some() {
+                        LoadOp::Clear
+                    } else {
+                        LoadOp::Load
+                    },
                     depth_store_op: StoreOp::Store,
-                    stencil_load_op: LoadOp::DontCare,
+                    stencil_load_op: if node.clear_ds_resource.is_some() {
+                        LoadOp::Clear
+                    } else {
+                        LoadOp::Load
+                    },
                     stencil_store_op: StoreOp::Store,
-                    clear_value: DepthStencilClearValue::default(),
+                    clear_value: node.clear_ds_resource.unwrap_or_default(),
                 });
             }
 
             command_buffer.begin_render_pass(&color_targets, &depth_target);
+        }
+
+        // Clear any write targets that need to.
+        for (i, value) in node.clear_write_resources.iter().enumerate() {
+            if value.is_some() {
+                assert!(
+                    node.write_resources.len() > i,
+                    "Write resource {} is not set but is supposed to be cleared.",
+                    i
+                );
+                let res_id = node.write_resources[i].0 as usize;
+                println!("  !! Clear {} ", self.resource_names[res_id]);
+                match context.resources[res_id].as_ref().unwrap() {
+                    RenderGraphResource::Buffer(buffer) => {
+                        command_buffer.fill_buffer(
+                            buffer,
+                            0,
+                            buffer.definition().size,
+                            value.unwrap(),
+                        );
+                    }
+                    RenderGraphResource::Texture(texture) => {
+                        let data = vec![value.unwrap(); texture.vk_alloc_size() as usize / 4];
+                        self.copy_data_to_texture(
+                            device_context,
+                            command_buffer,
+                            texture,
+                            &data,
+                            self.get_api_state(context.resource_state[&(res_id as u32, 0)], None),
+                        );
+                    }
+                }
+            }
         }
 
         need_begin_end_render_pass

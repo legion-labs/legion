@@ -1,4 +1,6 @@
-use lgn_graphics_api::{Extents3D, Format, PlaneSlice, ViewDimension};
+use lgn_graphics_api::{
+    ColorClearValue, DepthStencilClearValue, Extents3D, Format, PlaneSlice, ViewDimension,
+};
 
 use crate::{
     hl_gfx_api::HLCommandBuffer,
@@ -116,12 +118,17 @@ impl GpuCullingPass {
 
             let pass_name = format!("DepthDownsample mip {}", i);
             let mip_index = i;
-            builder = builder.add_compute_pass(&pass_name, move |compute_pass_builder| {
+            builder = builder.add_compute_pass(&pass_name, move |mut compute_pass_builder| {
                 // The mip 0 pass should be a straight copy, not a compute shader.
-                compute_pass_builder
+                compute_pass_builder = compute_pass_builder
                     .read(read_res_id, read_view_id)
                     .write(write_res_id, write_view_id)
-                    .execute(move |_, _| println!("DepthDownsample execute mip {}", mip_index))
+                    .execute(move |_, _| println!("DepthDownsample execute mip {}", mip_index));
+
+                if i == 0 {
+                    compute_pass_builder = compute_pass_builder.clear_write(0, 0);
+                }
+                compute_pass_builder
             });
         }
         builder
@@ -139,6 +146,10 @@ impl DepthLayerPass {
         builder.add_graphics_pass("DepthLayer", |graphics_pass_builder| {
             graphics_pass_builder
                 .depth_stencil(depth_buffer_id, depth_view_id)
+                .clear_ds(DepthStencilClearValue {
+                    depth: 1.0,
+                    stencil: 0,
+                })
                 .execute(Self::execute_depth_layer_pass)
         })
     }
@@ -167,6 +178,10 @@ impl OpaqueLayerPass {
                 .render_target(1, gbuffer_ids[1], gbuffer_view_id)
                 .render_target(2, gbuffer_ids[2], gbuffer_view_id)
                 .render_target(3, gbuffer_ids[3], gbuffer_view_id)
+                .clear_rt(0, ColorClearValue([0.0; 4]))
+                .clear_rt(1, ColorClearValue([0.0; 4]))
+                .clear_rt(2, ColorClearValue([0.0; 4]))
+                .clear_rt(3, ColorClearValue([0.0; 4]))
                 .depth_stencil(depth_buffer_id, depth_view_id)
                 .execute(Self::execute_opaque_layer_pass)
         })
@@ -395,6 +410,7 @@ impl UiPass {
         builder.add_graphics_pass("UI", |graphics_pass_builder| {
             graphics_pass_builder
                 .render_target(0, ui_buffer_id, ui_view_id)
+                .clear_rt(0, ColorClearValue([0.0; 4]))
                 .execute(|_, _| {
                     println!("UiPass execute");
                 })

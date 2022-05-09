@@ -322,14 +322,17 @@ impl RenderScript {
         ui_buffer_id: Option<RenderGraphResourceId>,
         ui_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
-        builder.add_compute_pass("Combine", |compute_pass_builder| {
-            compute_pass_builder
+        builder.add_compute_pass("Combine", |mut compute_pass_builder| {
+            compute_pass_builder = compute_pass_builder
                 .read(radiance_buffer_id, radiance_view_id)
-                .read_if(ui_buffer_id, ui_view_id)
                 .write(view_target_id, view_view_id)
                 .execute(|_, _| {
                     println!("Combine pass execute");
-                })
+                });
+            if let Some(ui_buffer_id) = ui_buffer_id {
+                compute_pass_builder = compute_pass_builder.read(ui_buffer_id, ui_view_id);
+            }
+            compute_pass_builder
         })
     }
 }

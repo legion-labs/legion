@@ -1,4 +1,4 @@
-use lgn_graphics_api::Texture;
+use lgn_graphics_api::{ColorClearValue, DepthStencilClearValue, Texture};
 
 use crate::{
     hl_gfx_api::HLCommandBuffer,
@@ -17,15 +17,6 @@ impl GraphicsPassBuilder {
     pub fn read(mut self, resource: RenderGraphResourceId, view: RenderGraphViewId) -> Self {
         self.node.read_resources.push((resource, view));
         self
-    }
-
-    #[allow(dead_code)]
-    pub fn read_if(self, resource: Option<RenderGraphResourceId>, view: RenderGraphViewId) -> Self {
-        if let Some(resource) = resource {
-            self.read(resource, view)
-        } else {
-            self
-        }
     }
 
     #[allow(dead_code)]
@@ -53,6 +44,27 @@ impl GraphicsPassBuilder {
         self
     }
 
+    pub fn clear_rt(mut self, slot: u32, clear_value: ColorClearValue) -> Self {
+        self.node.clear_rt_resources[slot as usize] = Some(clear_value);
+        self
+    }
+
+    pub fn clear_ds(mut self, clear_value: DepthStencilClearValue) -> Self {
+        self.node.clear_ds_resource = Some(clear_value);
+        self
+    }
+
+    #[allow(dead_code)]
+    pub fn clear_write(mut self, slot: u32, clear_value: u32) -> Self {
+        if self.node.clear_write_resources.len() <= slot as usize {
+            self.node
+                .clear_write_resources
+                .resize(slot as usize + 1, None);
+        }
+        self.node.clear_write_resources[slot as usize] = Some(clear_value);
+        self
+    }
+
     pub fn execute<F>(mut self, f: F) -> Self
     where
         F: Fn(&RenderGraphExecuteContext<'_>, &mut HLCommandBuffer<'_>) + 'static,
@@ -72,16 +84,18 @@ impl ComputePassBuilder {
         self
     }
 
-    pub fn read_if(self, resource: Option<RenderGraphResourceId>, view: RenderGraphViewId) -> Self {
-        if let Some(resource) = resource {
-            self.read(resource, view)
-        } else {
-            self
-        }
-    }
-
     pub fn write(mut self, resource: RenderGraphResourceId, view: RenderGraphViewId) -> Self {
         self.node.write_resources.push((resource, view));
+        self
+    }
+
+    pub fn clear_write(mut self, slot: u32, clear_value: u32) -> Self {
+        if self.node.clear_write_resources.len() <= slot as usize {
+            self.node
+                .clear_write_resources
+                .resize(slot as usize + 1, None);
+        }
+        self.node.clear_write_resources[slot as usize] = Some(clear_value);
         self
     }
 
@@ -226,9 +240,6 @@ impl RenderGraphBuilder {
             children: self.top_level_nodes,
             ..RGNode::default()
         };
-
-        // TODO: reads and writes should bubble up from child nodes to parents
-        // TODO: transitions from write to read should insert a barrier
 
         RenderGraph {
             root,
