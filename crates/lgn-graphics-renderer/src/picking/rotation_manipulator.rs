@@ -47,13 +47,15 @@ impl RotationManipulator {
         let green = (0, 255, 0).into();
         let blue = (0, 0, 255).into();
 
+        let ring_scale = Vec3::new(0.5, 0.5, 0.5);
+
         self.parts = vec![
             ManipulatorPart::new(
                 red,
                 ManipulatorType::Rotation,
                 0,
                 false,
-                Transform::from_matrix(rotate_x_pointer),
+                Transform::from_matrix(rotate_x_pointer).with_scale(ring_scale),
                 DefaultMeshType::RotationRing,
                 commands,
                 picking_context,
@@ -63,7 +65,7 @@ impl RotationManipulator {
                 ManipulatorType::Rotation,
                 1,
                 false,
-                Transform::from_matrix(rotate_y_pointer),
+                Transform::from_matrix(rotate_y_pointer).with_scale(ring_scale),
                 DefaultMeshType::RotationRing,
                 commands,
                 picking_context,
@@ -73,7 +75,7 @@ impl RotationManipulator {
                 ManipulatorType::Rotation,
                 2,
                 false,
-                Transform::from_matrix(Mat4::IDENTITY),
+                Transform::from_matrix(Mat4::IDENTITY).with_scale(ring_scale),
                 DefaultMeshType::RotationRing,
                 commands,
                 picking_context,
