@@ -11,8 +11,8 @@
   import type { NotificationsStore } from "@lgn/web-client/src/stores/notifications";
   import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
-  import en from "@/assets/locales/en-US/example.ftl?raw";
-  import fr from "@/assets/locales/fr-CA/example.ftl?raw";
+  import en from "@/assets/locales/en-US/main.ftl?raw";
+  import fr from "@/assets/locales/fr-CA/main.ftl?raw";
   import CallGraphFlat from "@/components/CallGraphFlat/CallGraphFlat.svelte";
   import { Route, Router } from "@/lib/navigator";
   import Health from "@/pages/Health.svelte";

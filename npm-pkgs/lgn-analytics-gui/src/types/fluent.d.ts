@@ -35,6 +35,41 @@ declare type Fluent = {
     variables: null;
   };
 
+  "log-process-id": {
+    attributes: null;
+    variables: null;
+  };
+
+  "log-executable": {
+    attributes: null;
+    variables: null;
+  };
+
+  "log-parent-link": {
+    attributes: null;
+    variables: null;
+  };
+
+  "global-pagination-first": {
+    attributes: null;
+    variables: null;
+  };
+
+  "global-pagination-previous": {
+    attributes: null;
+    variables: null;
+  };
+
+  "global-pagination-last": {
+    attributes: null;
+    variables: null;
+  };
+
+  "global-pagination-next": {
+    attributes: null;
+    variables: null;
+  };
+
   "hello-user": {
     attributes: null;
     variables: "userName";

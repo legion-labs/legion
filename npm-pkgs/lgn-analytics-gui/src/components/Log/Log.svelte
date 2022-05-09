@@ -8,6 +8,7 @@
   } from "@lgn/proto-telemetry/dist/analytics";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
+  import L10n from "@/components/Misc/L10n.svelte";
   import { httpClientContextKey } from "@/constants";
 
   const MAX_NB_ENTRIES_IN_PAGE = 1000;
@@ -78,83 +79,94 @@
   }
 </script>
 
-<div>
+<div class="flex flex-col h-[calc(100vh-5.6rem)] space-y-2">
   {#if processInfo}
-    <div class="text-left">
-      <div>Process Id: {processInfo.processId}</div>
-      <div>Executable: {processInfo.exe}</div>
+    <div class="flex flex-row justify-between">
+      <div>
+        <div>
+          <span class="font-bold"><L10n id="log-process-id" /></span>
+          {processInfo.processId}
+        </div>
+        <div>
+          <span class="font-bold"><L10n id="log-executable" /></span>
+          {processInfo.exe}
+        </div>
+      </div>
       {#if processInfo.parentProcessId}
-        <div class="nav-link">
+        <div class="text-primary">
           <a href={`/log/${processInfo.parentProcessId}`} use:link>
-            Parent Process Log
+            <L10n id="log-parent-link" />
           </a>
         </div>
       {/if}
     </div>
   {/if}
-  {#each logEntries as entry, index (index)}
-    <div class="text-left background flex flex-row gap-x-4">
-      <div class="font-bold basis-28 shrink-0">
-        {formatTime(entry.timeMs)}
-      </div>
-      <div>{entry.msg}</div>
+
+  {#if logEntries.length}
+    <div class="overflow-y-auto w-100 p-1 rounded-sm background flex-1">
+      {#each logEntries as entry, index (index)}
+        <div class="flex rounded flex-row gap-x-4">
+          <div class="font-bold basis-28 shrink-0">
+            {formatTime(entry.timeMs)}
+          </div>
+          <div>{entry.msg}</div>
+        </div>
+      {/each}
     </div>
-  {/each}
+  {/if}
 
   {#if nbEntries > MAX_NB_ENTRIES_IN_PAGE}
-    <div class="text-left">
+    <div class="text-primary flex space-x-8 self-center">
       {#if viewRange[0] > 0}
-        <span class="nav-link">
-          <a
-            href={`/log/${id}?begin=0&end=${Math.min(
-              MAX_NB_ENTRIES_IN_PAGE,
-              nbEntries
-            )}`}
-            use:link
-          >
-            First
-          </a>
-        </span>
-        <span class="nav-link">
-          <a
-            href={`/log/${id}?begin=${Math.max(
-              0,
-              viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
-            )}&end=${viewRange[0]}`}
-            use:link
-          >
-            Previous
-          </a>
-        </span>
+        <div class="flex space-x-4">
+          <span class="nav-link">
+            <a
+              href={`/log/${id}?begin=0&end=${Math.min(
+                MAX_NB_ENTRIES_IN_PAGE,
+                nbEntries
+              )}`}
+              use:link
+            >
+              <L10n id="global-pagination-first" />
+            </a>
+          </span>
+          <span class="nav-link">
+            <a
+              href={`/log/${id}?begin=${Math.max(
+                0,
+                viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
+              )}&end=${viewRange[0]}`}
+              use:link
+            >
+              <L10n id="global-pagination-previous" />
+            </a>
+          </span>
+        </div>
       {/if}
       {#if viewRange[1] < nbEntries}
-        <span class="nav-link">
-          <a
-            href={`/log/${id}?begin=${viewRange[1]}&end=${
-              viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
-            }`}
-            use:link
-          >
-            Next
-          </a>
-        </span>
-        <span class="nav-link">
-          <a
-            href={`/log/${id}?begin=${
-              nbEntries - MAX_NB_ENTRIES_IN_PAGE
-            }&end=${nbEntries}`}
-            use:link
-          >
-            Last
-          </a>
-        </span>
+        <div class="flex space-x-4">
+          <span class="nav-link">
+            <a
+              href={`/log/${id}?begin=${viewRange[1]}&end=${
+                viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
+              }`}
+              use:link
+            >
+              <L10n id="global-pagination-next" />
+            </a>
+          </span>
+          <span class="nav-link">
+            <a
+              href={`/log/${id}?begin=${
+                nbEntries - MAX_NB_ENTRIES_IN_PAGE
+              }&end=${nbEntries}`}
+              use:link
+            >
+              <L10n id="global-pagination-last" />
+            </a>
+          </span>
+        </div>
       {/if}
     </div>
   {/if}
 </div>
-
-<style lang="postcss">
-  .nav-link {
-    @apply text-primary;
-  }
-</style>
