@@ -5,9 +5,14 @@ import type { SpanTrack } from "@lgn/proto-telemetry/dist/span";
 import { spanPixelHeight } from "@/components/Timeline/Values/TimelineValues";
 import { formatExecutionTime } from "@/lib/format";
 
-import type { TimelineCaptionItem } from "../Lib/TimelineSpanCaptionItem";
 import type { TimelineState } from "../Stores/TimelineState";
 import type { TimelineTrackContext } from "./TimelineTrackContext";
+
+enum CaptionType {
+  Main,
+  Sub,
+  Annotation,
+}
 
 export abstract class TimelineTrackCanvasBaseDrawer {
   protected canvas: HTMLCanvasElement | undefined;
@@ -59,7 +64,6 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       canvasHeight
     );
 
-    this.ctx.font = "15px arial";
     this.drawImpl(context, state);
   }
 
@@ -72,7 +76,6 @@ export abstract class TimelineTrackCanvasBaseDrawer {
     if (!this.ctx) {
       return;
     }
-
     const processOffsetMs = this.processOffsetMs;
     const beginViewRange = timelineTrackContext.begin;
     const endViewRange = timelineTrackContext.end;
@@ -114,26 +117,30 @@ export abstract class TimelineTrackCanvasBaseDrawer {
     }
 
     const ctx = this.ctx;
+    ctx.font = this.captionFont(CaptionType.Main);
     const testString = "<>_w";
     const testTextMetrics = ctx.measureText(testString);
     const characterWidth = testTextMetrics.width / testString.length;
     const characterHeight = testTextMetrics.actualBoundingBoxAscent;
     const offsetY = trackIndex * spanPixelHeight;
-    const color = this.getIndexColor(trackIndex);
-
-    for (let spanIndex = firstSpan; spanIndex < lastSpan; spanIndex += 1) {
+    const color = this.spanColor(trackIndex);
+    ctx.save();
+    for (let spanIndex = firstSpan; spanIndex < lastSpan; ++spanIndex) {
       const span = track.spans[spanIndex];
       const beginSpan = span.beginMs + processOffsetMs;
       const endSpan = span.endMs + processOffsetMs;
 
-      const beginPixels = (beginSpan - beginViewRange) * msToPixelsFactor;
+      const beginPixels = Math.max(
+        0,
+        (beginSpan - beginViewRange) * msToPixelsFactor
+      );
       const endPixels = (endSpan - beginViewRange) * msToPixelsFactor;
       const callWidth = endPixels - beginPixels;
-      if (callWidth < 0.1) {
+      // if less than half a pixel, clip it
+      if (callWidth < 0.5) {
         continue;
       }
       ctx.globalAlpha = span.alpha / 255;
-
       if (span.scopeHash !== 0) {
         let name = "<unknown_scope>";
         const scope = state.scopes[span.scopeHash];
@@ -142,19 +149,35 @@ export abstract class TimelineTrackCanvasBaseDrawer {
         }
         ctx.fillStyle =
           search && name.toLowerCase().includes(search.toLowerCase())
-            ? "#ffee59"
-            : color;
-        ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
-        this.drawSpanLeftMarker(ctx.fillStyle, beginPixels, offsetY);
-        if (callWidth > characterWidth * 5) {
-          ctx.fillStyle = "#000000";
+            ? "#FFEE59"
+            : this.spanColor(span.scopeHash);
+
+        // To visually separate consecutive spans, offset them by a pixel
+        // unless smaller than 2 pixels
+        if (callWidth > 2) {
+          ctx.fillRect(
+            beginPixels + 1,
+            offsetY,
+            callWidth - 1,
+            spanPixelHeight
+          );
+        } else {
+          ctx.fillRect(beginPixels, offsetY, callWidth, spanPixelHeight);
+        }
+
+        // this test is done again within the writeCaption function
+        // need to profile if it is faster to do it here or not
+        // TODO: #1713 Remove double check of caption
+        if (callWidth > characterWidth * 2) {
           const extraHeight = 0.5 * (spanPixelHeight - characterHeight);
-          this.writeText(
+          this.writeSpanCaption(
+            name,
             ctx,
             callWidth,
             characterWidth,
-            Array.from(this.getCaptions(name, beginSpan, endSpan)),
-            beginPixels + 5,
+            beginSpan,
+            endSpan,
+            beginPixels,
             offsetY + characterHeight + extraHeight
           );
         }
@@ -164,109 +187,88 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       }
       ctx.globalAlpha = 1.0;
     }
-  }
-
-  private drawSpanLeftMarker(
-    color: string,
-    beginPixels: number,
-    offsetY: number
-  ) {
-    if (this.ctx) {
-      const ctx = this.ctx;
-      ctx.save();
-      ctx.fillStyle = this.shadeColor(color, 1.08);
-      ctx.fillRect(beginPixels, offsetY, 2, spanPixelHeight);
-      ctx.restore();
-    }
-  }
-
-  private writeText(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    characterWidth: number,
-    items: TimelineCaptionItem[],
-    x: number,
-    y: number
-  ) {
-    const defaultFillStyle = ctx.fillStyle;
-    const defaultFont = ctx.font;
-    ctx.save();
-    for (const { value, font, color, skippable } of items) {
-      ctx.fillStyle = color || defaultFillStyle;
-      ctx.font = font || defaultFont;
-      const budget = Math.floor(width / characterWidth);
-      if (!budget) {
-        break;
-      }
-      if (value.length > budget && skippable) {
-        continue;
-      }
-      const textSlice = value.slice(0, budget);
-      ctx.fillText(textSlice, x, y);
-      const size = ctx.measureText(textSlice).width;
-      x += size;
-      width -= size;
-    }
     ctx.restore();
   }
 
-  private *getCaptions(
-    caption: string,
-    beginSpan: number,
-    endSpan: number
-  ): Generator<TimelineCaptionItem> {
-    const mainColor = "#000000";
-    const subColor = "#4d4d4d";
-    const defaultFont = "15px arial";
-    const split = caption.split("::");
-    if (split.length > 1) {
-      const first = split.shift();
-      yield { value: first ?? "", font: defaultFont, color: subColor };
-      let current = null;
-      while ((current = split.shift())) {
-        yield {
-          value: `::${current}`,
-          font: defaultFont,
-          color: split.length > 0 ? subColor : mainColor,
-        };
+  private spanColor(hash: number): string {
+    const colors = [
+      "#57CF86",
+      "#FFC464",
+      "#F97577",
+      "#CA8AF8",
+      "#63AAFF",
+      "#D9DAE4",
+    ];
+    return colors[hash % colors.length];
+  }
+
+  // For correctness of the code below, the font must be monospaced
+  private captionFont(captionType: CaptionType): string {
+    switch (captionType) {
+      case CaptionType.Main: {
+        return "600 14px Inconsolata";
       }
-    } else {
-      yield { value: caption, color: mainColor };
+      case CaptionType.Sub: {
+        return "14px Inconsolata";
+      }
+      case CaptionType.Annotation: {
+        return "italic 12px Inconsolata";
+      }
     }
-    yield {
-      value: `  (${formatExecutionTime(endSpan - beginSpan)})`,
-      color: subColor,
-      font: "12px arial",
-      skippable: true,
-    };
   }
 
-  private getIndexColor(trackIndex: number) {
-    return trackIndex % 2 === 0 ? "#fea446" : "#fede99";
-  }
+  private writeSpanCaption(
+    caption: string,
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    characterWidth: number,
+    beginSpan: number,
+    endSpan: number,
+    x: number,
+    y: number
+  ) {
+    const captionBudget = width / characterWidth - 2;
+    if (captionBudget < 0) {
+      return;
+    }
 
-  private shadeColor(color: string, decimal: number): string {
-    const base = color.startsWith("#") ? 1 : 0;
+    // we truncate the caption if it's too long
+    // if less than 2 character, we just clip it
+    // if more than 2 characters, we switch the 2 first chars by ..
+    if (caption.length > captionBudget) {
+      if (captionBudget <= 2) {
+        caption = caption.slice(caption.length - captionBudget);
+      } else {
+        caption = ".." + caption.slice(caption.length - captionBudget + 2);
+      }
+    }
 
-    let r = parseInt(color.substring(base, 3), 16);
-    let g = parseInt(color.substring(base + 2, 5), 16);
-    let b = parseInt(color.substring(base + 4, 7), 16);
+    ctx.fillStyle = "#000000";
+    const lastSeparator = caption.lastIndexOf("::");
+    // we start at the half with of a character mark
+    x += characterWidth / 2;
+    // to keep it simple if there is a scope in the remaining caption, we
+    // display the fist part with the sub font and the last part with the main font
+    if (lastSeparator !== -1) {
+      const mainCaption = caption.slice(lastSeparator + 2, caption.length);
+      const subCaption = caption.slice(0, lastSeparator + 2);
+      ctx.font = this.captionFont(CaptionType.Sub);
+      ctx.fillText(subCaption, x, y);
+      ctx.font = this.captionFont(CaptionType.Main);
+      ctx.fillText(mainCaption, x + subCaption.length * characterWidth, y);
+    } else {
+      ctx.font = this.captionFont(CaptionType.Main);
+      ctx.fillText(caption, x, y);
+    }
 
-    r = Math.round(r / decimal);
-    g = Math.round(g / decimal);
-    b = Math.round(b / decimal);
-
-    r = r < 255 ? r : 255;
-    g = g < 255 ? g : 255;
-    b = b < 255 ? b : 255;
-
-    const rr =
-      r.toString(16).length === 1 ? `0${r.toString(16)}` : r.toString(16);
-    const gg =
-      g.toString(16).length === 1 ? `0${g.toString(16)}` : g.toString(16);
-    const bb =
-      b.toString(16).length === 1 ? `0${b.toString(16)}` : b.toString(16);
-
-    return `#${rr}${gg}${bb}`;
+    const remainingBudget = captionBudget - caption.length;
+    // quick discard to display the annotation
+    if (remainingBudget > 4) {
+      const timing = `  ${formatExecutionTime(endSpan - beginSpan)}`;
+      if (timing.length <= remainingBudget) {
+        ctx.font = this.captionFont(CaptionType.Annotation);
+        ctx.fillText(timing, x + caption.length * characterWidth, y);
+      }
+    }
   }
 }
