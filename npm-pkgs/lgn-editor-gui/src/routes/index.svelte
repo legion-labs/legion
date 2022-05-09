@@ -1,12 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
-  import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
-  import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
-  import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
   import { EmptyPanel, Panel } from "@lgn/web-client/src/components/panel";
 
   import DynamicPanel from "@/components/DynamicPanel.svelte";
@@ -19,10 +16,7 @@
   } from "@/orchestrators/allResources";
   import { currentResource } from "@/orchestrators/currentResource";
   import { currentResourceDescriptionEntry } from "@/orchestrators/resourceBrowserEntries";
-  import contextMenu from "@/stores/contextMenu";
   import devSettings from "@/stores/devSettings";
-  import modal from "@/stores/modal";
-  import notifications from "@/stores/notifications";
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
@@ -46,12 +40,6 @@
     return fetchAllResources();
   }
 </script>
-
-<ModalContainer store={modal} />
-
-<ContextMenu store={contextMenu} />
-
-<Notifications store={notifications} />
 
 <div class="root">
   <TopBar devSettings={$devSettings} />

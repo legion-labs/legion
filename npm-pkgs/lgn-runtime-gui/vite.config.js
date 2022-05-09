@@ -5,6 +5,8 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
+process.env.VITE_CONSOLE_LOG_LEVEL = "debug";
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [

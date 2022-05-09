@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount, setContext } from "svelte";
 
+  import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
   import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
   import { createL10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
+  import type { NotificationsStore } from "@lgn/web-client/src/stores/notifications";
   import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
   import en from "@/assets/locales/en-US/example.ftl?raw";
@@ -26,6 +28,7 @@
     httpClientContextKey,
     l10nOrchestratorContextKey,
     localeStorageKey,
+    notificationsContextKey,
     themeContextKey,
     themeStorageKey,
     threadItemLengthContextKey,
@@ -34,6 +37,10 @@
   import { makeGrpcClient } from "./lib/client";
 
   export let initAuthStatus: InitAuthStatus | null;
+
+  export let notifications: NotificationsStore;
+
+  export let dispose: () => void | undefined;
 
   const theme = createThemeStore(themeStorageKey, "dark");
 
@@ -64,6 +71,8 @@
 
   setContext(httpClientContextKey, makeGrpcClient());
 
+  setContext(notificationsContextKey, notifications);
+
   try {
     setContext(threadItemLengthContextKey, getThreadItemLength());
   } catch (error) {
@@ -86,9 +95,15 @@
       replaceClassesWith(document.body, `theme-${name}`);
     });
 
-    return unsubscribe;
+    return () => {
+      dispose?.();
+
+      unsubscribe();
+    };
   });
 </script>
+
+<Notifications store={notifications} />
 
 <LoadingBar />
 

@@ -49,6 +49,8 @@ export default defineConfig(() => {
       "online.authentication.client_id",
   });
 
+  process.env.VITE_CONSOLE_LOG_LEVEL = "debug";
+
   // https://vitejs.dev/config/
   return {
     // TODO: Drop this option when vite-tsconfig-paths
