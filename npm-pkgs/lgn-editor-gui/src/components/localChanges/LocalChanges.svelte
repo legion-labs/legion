@@ -9,7 +9,46 @@
   import LocalChangesGrid from "./LocalChangesGrid.svelte";
   import LocalChangesHeader from "./LocalChangesHeader.svelte";
   import LocalChangesList from "./LocalChangesList.svelte";
+  import {
+    filterContextMenuEvents,
+    type ContextMenuEvent,
+  } from "@lgn/web-client/src/types/contextMenu";
+  import {
+    localChangesContextMenuId,
+    type ContextMenuEntryRecord,
+  } from "@/stores/contextMenu";
+  import { revertResources } from "@/api";
+  import { selectedLocalChange } from "./localChangesStore";
+  import { fetchAllResources } from "@/orchestrators/allResources";
+
+  async function handleContextMenuEvents({
+    detail: { action, close },
+  }: ContextMenuEvent<
+    typeof localChangesContextMenuId,
+    Pick<ContextMenuEntryRecord, typeof localChangesContextMenuId>
+  >) {
+    close();
+
+    switch (action) {
+      case "revert": {
+        if ($selectedLocalChange?.info?.id) {
+          await revertResources({
+            ids: [$selectedLocalChange.info.id],
+          });
+          await fetchAllResources();
+          break;
+        }
+      }
+    }
+  }
 </script>
+
+<svelte:window
+  on:contextmenu-action={filterContextMenuEvents(
+    handleContextMenuEvents,
+    localChangesContextMenuId
+  )}
+/>
 
 <div class="root">
   <PanelHeader>
@@ -19,9 +58,15 @@
   <div class="content">
     {#if $stagedResources && $stagedResources.length}
       {#if $stagedResourcesMode === "card"}
-        <LocalChangesGrid stagedResources={$stagedResources} />
+        <LocalChangesGrid
+          stagedResources={$stagedResources}
+          selectedResource={selectedLocalChange}
+        />
       {:else if $stagedResourcesMode === "list"}
-        <LocalChangesList stagedResources={$stagedResources} />
+        <LocalChangesList
+          stagedResources={$stagedResources}
+          selectedResource={selectedLocalChange}
+        />
       {/if}
     {:else}
       <div class="no-local-changes">

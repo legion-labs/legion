@@ -1,17 +1,29 @@
 <script lang="ts">
+  import type { Writable } from "svelte/store";
+
   import { StagedResource_ChangeType as ChangeType } from "@lgn/proto-editor/dist/source_control";
   import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
 
+  import contextMenu from "@/actions/contextMenu";
   import { fileName } from "@/lib/path";
+  import { localChangesContextMenuId } from "@/stores/contextMenu";
 
   import FileIcon from "../FileIcon.svelte";
 
   export let stagedResources: StagedResource[];
+  export let selectedResource: Writable<StagedResource | null>;
 </script>
 
 <div class="root">
   {#each stagedResources as resource, index (index)}
-    <div class="resource" title={resource.info?.path || "Unknown path"}>
+    <div
+      class="resource"
+      class:selected={$selectedResource === resource}
+      title={resource.info?.path || "Unknown path"}
+      on:click={() => selectedResource.set(resource)}
+      on:mousedown={() => selectedResource.set(resource)}
+      use:contextMenu={localChangesContextMenuId}
+    >
       <div
         class="resource-icon"
         class:border-green-600={resource.changeType === ChangeType.Add}
@@ -46,8 +58,12 @@
     @apply w-full shadow-xl rounded-sm h-40;
   }
 
+  .resource.selected {
+    @apply bg-black;
+  }
+
   .resource-icon {
-    @apply flex flex-col items-center p-4 bg-gray-800 border rounded-t-sm border-b-0;
+    @apply flex flex-col items-center p-4 bg-gray-700 border rounded-t-sm border-b-0;
   }
 
   .resource-text {

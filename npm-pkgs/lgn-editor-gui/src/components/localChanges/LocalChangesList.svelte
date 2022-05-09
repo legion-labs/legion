@@ -1,10 +1,15 @@
 <script lang="ts">
+  import type { Writable } from "svelte/store";
+
   import { StagedResource_ChangeType as ChangeType } from "@lgn/proto-editor/dist/source_control";
   import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
 
   import { fileName } from "@/lib/path";
+  import { localChangesContextMenuId } from "@/stores/contextMenu";
+  import contextMenu from "@/actions/contextMenu";
 
   export let stagedResources: StagedResource[];
+  export let selectedResource: Writable<StagedResource | null>;
 
   function changeTypeLabel(changeType: ChangeType) {
     switch (changeType) {
@@ -31,7 +36,14 @@
   </div>
   <div class="body">
     {#each stagedResources as resource, index (index)}
-      <div class="resource-row" title={resource.info?.path || "Unknown path"}>
+      <div
+        class="resource-row"
+        title={resource.info?.path || "Unknown path"}
+        class:selected={$selectedResource === resource}
+        on:click={() => selectedResource.set(resource)}
+        on:mousedown={() => selectedResource.set(resource)}
+        use:contextMenu={localChangesContextMenuId}
+      >
         <div class="w-1/12 flex flex-row justify-center">
           <div
             class="w-4 h-4"
@@ -72,6 +84,10 @@
   }
 
   .resource-row {
-    @apply flex flex-row w-full h-12 bg-gray-800 odd:bg-opacity-50 even:bg-opacity-30 px-2 items-center;
+    @apply flex flex-row w-full h-12 bg-gray-700 odd:bg-opacity-50 even:bg-opacity-30 px-2 items-center;
+  }
+
+  .resource-row.selected {
+    @apply bg-gray-800;
   }
 </style>
