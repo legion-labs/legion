@@ -150,7 +150,7 @@ impl Plugin for RendererPlugin {
         //
         // Init in dependency order
         //
-        let gfx_api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
+        let gfx_api = GfxApiArc::new(ApiDef::default());
         let device_context = gfx_api.device_context();
         let graphics_queue = GraphicsQueue::new(device_context);
         let cgen_registry = Arc::new(cgen::initialize(device_context));
@@ -309,7 +309,7 @@ impl Plugin for RendererPlugin {
 
         let render_resources = render_resources_builder
             .insert(render_scope)
-            .insert(gfx_api)
+            .insert(gfx_api.clone())
             .insert(render_command_manager)
             .insert(upload_manager)
             .insert(static_buffer)
@@ -319,7 +319,7 @@ impl Plugin for RendererPlugin {
             .insert(graphics_queue)
             .finalize();
 
-        let renderer = Renderer::new(NUM_RENDER_FRAMES, render_resources);
+        let renderer = Renderer::new(NUM_RENDER_FRAMES, render_resources, gfx_api);
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
@@ -497,7 +497,7 @@ fn render_update(
             .get::<RenderCommandManager>()
             .apply(&render_resources);
 
-        let gfx_api = render_resources.get::<GfxApi>();
+        let gfx_api = render_resources.get::<GfxApiArc>();
         let device_context = gfx_api.device_context();
         device_context.free_gpu_memory();
         device_context.inc_current_cpu_frame();

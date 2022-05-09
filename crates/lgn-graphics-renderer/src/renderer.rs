@@ -1,6 +1,8 @@
 #![allow(unsafe_code)]
 
-use lgn_graphics_api::{DeviceContext, Fence, FenceStatus, GfxApi};
+use std::sync::Arc;
+
+use lgn_graphics_api::{ApiDef, DeviceContext, Fence, FenceStatus, GfxApi};
 
 use lgn_tracing::span_fn;
 
@@ -8,16 +10,44 @@ use crate::core::{RenderCommandBuilder, RenderCommandManager, RenderResources};
 
 use crate::GraphicsQueue;
 
+#[derive(Clone)]
+pub struct GfxApiArc {
+    inner: Arc<GfxApi>,
+}
+
+impl GfxApiArc {
+    pub fn new(api_def: ApiDef) -> Self {
+        let gfx_api = unsafe { GfxApi::new(api_def).unwrap() };
+        Self {
+            inner: Arc::new(gfx_api),
+        }
+    }
+}
+
+impl std::ops::Deref for GfxApiArc {
+    type Target = GfxApi;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 pub struct Renderer {
     num_render_frames: u64,
     render_resources: RenderResources,
+    gfx_api: GfxApiArc,
 }
 
 impl Renderer {
-    pub fn new(num_render_frames: u64, render_resources: RenderResources) -> Self {
+    pub fn new(
+        num_render_frames: u64,
+        render_resources: RenderResources,
+        gfx_api: GfxApiArc,
+    ) -> Self {
         Self {
             num_render_frames,
             render_resources,
+            gfx_api: gfx_api.clone(),
         }
     }
 
@@ -31,7 +61,7 @@ impl Renderer {
 
     pub fn device_context(&self) -> DeviceContext {
         self.render_resources
-            .get::<GfxApi>()
+            .get::<GfxApiArc>()
             .device_context()
             .clone()
     }
