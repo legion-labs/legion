@@ -33,12 +33,12 @@ impl PositionManipulator {
         let rotate_yz_plane = Mat4::from_axis_angle(Vec3::X, -std::f32::consts::PI * 0.5);
         let rotate_xy_plane = Mat4::from_axis_angle(Vec3::Z, std::f32::consts::PI * 0.5);
 
-        let cone_offset = Mat4::from_translation(Vec3::new(0.0, 0.5, 0.0));
-        let plane_offset = Mat4::from_translation(Vec3::new(0.2, 0.0, 0.2));
+        let cone_offset = Mat4::from_translation(Vec3::new(0.0, 0.25, 0.0));
+        let plane_offset = Mat4::from_translation(Vec3::new(0.1, 0.0, 0.1));
 
-        let cone_scale = Vec3::new(0.1, 0.1, 0.1);
-        let cylinder_scale = Vec3::new(0.025, 0.5, 0.025);
-        let plane_scale = Vec3::new(0.2, 0.2, 0.2);
+        let cone_scale = Vec3::new(0.05, 0.05, 0.05);
+        let cylinder_scale = Vec3::new(0.0125, 0.25, 0.0125);
+        let plane_scale = Vec3::new(0.1, 0.1, 0.1);
 
         self.parts = vec![
             ManipulatorPart::new(
