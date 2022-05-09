@@ -57,10 +57,6 @@ impl PersistentDescriptorSetManager {
         }
     }
 
-    pub fn init_ecs(app: &mut App) {
-        app.add_system_to_stage(RenderStage::Prepare, frame_update);
-    }
-
     // todo: make batched versions (set_bindless_textureS with a slice?)
     pub fn set_bindless_texture(&mut self, texture_view: &TextureView) -> u32 {
         let index = self.bindless_index_allocator.acquire_index();
@@ -96,14 +92,10 @@ impl PersistentDescriptorSetManager {
         &self.descriptor_set
     }
 
-    fn frame_update(&mut self) {
+    pub fn update(&mut self) {
         self.render_frame = (self.render_frame + 1) % self.num_render_frames as u64;
         self.bindless_index_allocator
             .release_indexes(&self.removed_indices[self.render_frame as usize]);
         self.removed_indices[self.render_frame as usize].clear();
     }
-}
-
-fn frame_update(mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>) {
-    persistent_descriptor_set_manager.frame_update();
 }

@@ -35,7 +35,7 @@ impl std::ops::Deref for GfxApiArc {
 pub struct Renderer {
     num_render_frames: u64,
     render_resources: RenderResources,
-    gfx_api: GfxApiArc,
+    _gfx_api: GfxApiArc,
 }
 
 impl Renderer {
@@ -47,7 +47,7 @@ impl Renderer {
         Self {
             num_render_frames,
             render_resources,
-            gfx_api: gfx_api.clone(),
+            _gfx_api: gfx_api.clone(),
         }
     }
 

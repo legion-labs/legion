@@ -1,3 +1,4 @@
+use lgn_graphics_api::ResourceUsage;
 use lgn_math::{Vec3, Vec4};
 use strum::EnumIter;
 
@@ -73,7 +74,11 @@ impl MeshManager {
 
     pub fn add_mesh(&mut self, render_commands: &mut RenderCommandBuilder, mesh: &Mesh) -> MeshId {
         let (buf, index_offset) = mesh.pack_gpu_data();
-        let allocation = self.allocator.allocate(buf.len() as u64);
+
+        let allocation = self
+            .allocator
+            .allocate(buf.len() as u64, ResourceUsage::AS_SHADER_RESOURCE);
+
         let allocation_offset = u32::try_from(allocation.byte_offset()).unwrap();
 
         self.static_meshes.push(MeshMetaData {

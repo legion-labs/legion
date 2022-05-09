@@ -29,7 +29,7 @@ mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
     AddressMode, ApiDef, BufferViewDef, CompareOp, DescriptorHeapDef, DeviceContext, FilterType,
-    GfxApi, MipMapMode, Queue, QueueType, ResourceUsage, SamplerDef,
+    MipMapMode, Queue, QueueType, ResourceUsage, SamplerDef,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::Vec2;
@@ -244,7 +244,6 @@ impl Plugin for RendererPlugin {
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
-        PersistentDescriptorSetManager::init_ecs(app);
         GpuInstanceManager::init_ecs(app);
 
         // Only Init AssetRegistry event handler if there's AssetRegistryEvent already registered
@@ -427,7 +426,7 @@ fn render_update(
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
         ResMut<'_, LightingManager>,
-        Res<'_, PersistentDescriptorSetManager>,
+        ResMut<'_, PersistentDescriptorSetManager>,
         Res<'_, ModelManager>,
     ),
     queries: (
@@ -449,7 +448,7 @@ fn render_update(
     let mut egui = resources.7;
     let mut debug_display = resources.8;
     let lighting_manager = resources.9;
-    let persistent_descriptor_set_manager = resources.10;
+    let mut persistent_descriptor_set_manager = resources.10;
     let model_manager = resources.11;
 
     // queries
@@ -515,8 +514,21 @@ fn render_update(
             descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
         let graphics_queue = render_resources.get::<GraphicsQueue>();
 
+        ///
+        /// Update
+        ///
+        persistent_descriptor_set_manager.update();
         pipeline_manager.update();
 
+        render_resources.get_mut::<GpuUploadManager>().upload(
+            &mut transient_commandbuffer_allocator,
+            &mut transient_buffer_allocator,
+            &graphics_queue,
+        );
+
+        ///
+        /// Render
+        ///
         let mut render_context = RenderContext::new(
             device_context,
             &graphics_queue,
@@ -526,10 +538,6 @@ fn render_update(
             &mut transient_buffer_allocator,
             &static_buffer,
         );
-
-        render_resources
-            .get_mut::<GpuUploadManager>()
-            .upload(&mut render_context);
 
         // Persistent descriptor set
         {

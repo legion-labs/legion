@@ -1,6 +1,10 @@
 use lgn_graphics_api::prelude::*;
 
-use crate::{components::TextureData, RenderContext};
+use crate::{
+    components::TextureData,
+    resources::{TransientBufferAllocator, TransientCommandBufferAllocator},
+    GraphicsQueue, RenderContext,
+};
 
 use super::RenderCommand;
 
@@ -67,12 +71,17 @@ impl GpuUploadManager {
         self.updates.push(update);
     }
 
-    pub fn upload(&mut self, render_context: &mut RenderContext<'_>) {
+    pub fn upload(
+        &mut self,
+        transient_commandbuffer_allocator: &mut TransientCommandBufferAllocator,
+        transient_buffer_allocator: &mut TransientBufferAllocator,
+        graphics_queue: &GraphicsQueue,
+    ) {
         if self.updates.is_empty() {
             return;
         }
 
-        let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
+        let mut cmd_buffer_handle = transient_commandbuffer_allocator.acquire();
         let cmd_buffer = cmd_buffer_handle.as_mut();
 
         cmd_buffer.begin();
@@ -80,8 +89,7 @@ impl GpuUploadManager {
         for update in self.updates.drain(..) {
             match update {
                 UploadGPUResource::Buffer(upload_buf) => {
-                    let transient_alloc = render_context
-                        .transient_buffer_allocator
+                    let transient_alloc = transient_buffer_allocator
                         .copy_data_slice(&upload_buf.src_data, ResourceUsage::empty());
 
                     cmd_buffer.cmd_resource_barrier(
@@ -129,8 +137,7 @@ impl GpuUploadManager {
                     );
 
                     for (mip_level, mip_data) in mip_slices.iter().enumerate() {
-                        let transient_alloc = render_context
-                            .transient_buffer_allocator
+                        let transient_alloc = transient_buffer_allocator
                             .copy_data_slice(mip_data, ResourceUsage::empty());
 
                         cmd_buffer.cmd_copy_buffer_to_texture(
@@ -157,13 +164,10 @@ impl GpuUploadManager {
 
         cmd_buffer.end();
 
-        render_context
-            .graphics_queue
+        graphics_queue
             .queue_mut()
             .submit(&[cmd_buffer], &[], &[], None);
 
-        render_context
-            .transient_commandbuffer_allocator
-            .release(cmd_buffer_handle);
+        transient_commandbuffer_allocator.release(cmd_buffer_handle);
     }
 }

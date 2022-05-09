@@ -4,7 +4,6 @@ use crate::{Buffer, BufferCopy, BufferDef, BufferMappingInfo, DeviceContext, Res
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
-    // vk_mem_requirements: ash::vk::MemoryRequirements,
     vk_allocation: vk_mem::Allocation,
     vk_allocation_info: vk_mem::AllocationInfo,
     vk_buffer: ash::vk::Buffer,
@@ -12,6 +11,8 @@ pub(crate) struct VulkanBuffer {
 
 impl VulkanBuffer {
     pub fn new(device_context: &DeviceContext, buffer_def: BufferDef) -> Self {
+        trace!("creating VulkanBuffer");
+
         buffer_def.verify();
         let allocation_size = if buffer_def
             .usage_flags
@@ -66,29 +67,6 @@ impl VulkanBuffer {
             .create_buffer(&buffer_info, &allocation_create_info)
             .unwrap();
 
-        // let vk_buffer = unsafe {
-        //     device_context
-        //         .vk_device()
-        //         .create_buffer(&buffer_info, None)
-        //         .unwrap()
-        // };
-
-        // let vk_mem_requirements = unsafe {
-        //     device_context
-        //         .vk_device()
-        //         .get_buffer_memory_requirements(vk_buffer)
-        // };
-
-        // let (vk_allocation, vk_allocation_info) = device_context
-        //     .vk_allocator()
-        //     .allocate_memory_for_buffer(buffer.vk_buffer(), &allocation_create_info)
-        //     .unwrap();
-
-        // device_context
-        //     .vk_allocator()
-        //     .bind_buffer_memory(buffer.vk_buffer(), &vk_allocation)
-        //     .unwrap();
-
         trace!(
             "Buffer {:?} created with size {}",
             vk_buffer,
@@ -96,7 +74,6 @@ impl VulkanBuffer {
         );
 
         Self {
-            // vk_mem_requirements,
             vk_allocation,
             vk_allocation_info,
             vk_buffer,
@@ -127,10 +104,6 @@ impl Buffer {
         self.inner.backend_buffer.vk_buffer
     }
 
-    // pub(crate) fn backend_required_alignment(&self) -> u64 {
-    //     self.inner.backend_buffer.vk_mem_requirements.alignment
-    // }
-
     pub(crate) fn backend_map_buffer(&self) -> BufferMappingInfo<'_> {
         let ptr = self
             .inner
@@ -141,7 +114,6 @@ impl Buffer {
 
         BufferMappingInfo {
             _buffer: self,
-            // allocation: self.clone(),
             data_ptr: ptr,
         }
     }

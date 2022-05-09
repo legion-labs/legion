@@ -28,9 +28,6 @@ pub struct TransientBufferAllocation {
     _size: u64,
 }
 
-// #[allow(unsafe_code)]
-//  unsafe impl Send for TransientBufferAllocation {}
-
 impl TransientBufferAllocation {
     pub fn byte_offset(&self) -> u64 {
         self.byte_offset

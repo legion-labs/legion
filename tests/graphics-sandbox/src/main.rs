@@ -26,6 +26,7 @@ use lgn_input::InputPlugin;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
+use lgn_tracing::LevelFilter;
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
@@ -58,6 +59,9 @@ impl Default for SnapshotFrameCounter {
 #[clap(name = "graphics-sandbox")]
 #[clap(about = "A sandbox for graphics", version, author)]
 struct Args {
+    /// Verbose
+    #[clap(short, long)]
+    verbose: bool,
     /// The width of the window
     #[clap(short, long, default_value_t = 1280.0)]
     width: f32,
@@ -84,7 +88,14 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let mut app = App::default();
+    let mut telemetry_guard_builder = lgn_telemetry_sink::TelemetryGuardBuilder::default();
+    // if args.verbose {
+    if true {
+        telemetry_guard_builder =
+            telemetry_guard_builder.with_max_level_override(LevelFilter::Trace);
+    }
+
+    let mut app = App::new(telemetry_guard_builder);
 
     if args.use_asset_registry {
         let root_asset = args

@@ -1,4 +1,4 @@
-use lgn_graphics_api::{Buffer, CommandBuffer};
+use lgn_graphics_api::{Buffer, CommandBuffer, ResourceUsage};
 
 use crate::{
     core::{BinaryWriter, RenderCommandBuilder},
@@ -22,7 +22,7 @@ impl RenderLayer {
     pub fn new(allocator: &UnifiedStaticBufferAllocator, cpu_render_set: bool) -> Self {
         const TEMP_MAX_MATERIAL_COUNT: usize = 8192;
         let page_size = TEMP_MAX_MATERIAL_COUNT * std::mem::size_of::<u32>();
-        let material_page = allocator.allocate(page_size as u64);
+        let material_page = allocator.allocate(page_size as u64, ResourceUsage::empty());
 
         Self {
             state_page: material_page,

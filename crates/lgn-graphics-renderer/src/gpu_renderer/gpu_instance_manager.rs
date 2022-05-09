@@ -5,7 +5,7 @@ use lgn_ecs::{
     prelude::{Changed, Entity, Query, RemovedComponents, Res, ResMut},
     schedule::{SystemLabel, SystemSet},
 };
-use lgn_graphics_api::{BufferView, BufferViewDef, VertexBufferBinding};
+use lgn_graphics_api::{BufferView, BufferViewDef, ResourceUsage, VertexBufferBinding};
 
 use lgn_math::Vec4;
 use lgn_tracing::warn;
@@ -80,7 +80,10 @@ impl GpuVaTableForGpuInstance {
     pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
         let element_count = 1024 * 1024;
         let element_size = std::mem::size_of::<u32>() as u64;
-        let static_allocation = allocator.allocate(element_count * element_size);
+        let static_allocation = allocator.allocate(
+            element_count * element_size,
+            ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_VERTEX_BUFFER,
+        );
 
         let buffer_view = static_allocation.create_view(BufferViewDef::as_structured_buffer(
             element_count,
