@@ -633,14 +633,14 @@ fn render_update(
             //****************************************************************
             cmd_buffer.with_label("RenderGraph", |cmd_buffer| {
 
-                let gpu_culling_pass = GpuCullingPass {};
-                let depth_layer_pass = DepthLayerPass {};
-                let opaque_layer_pass = OpaqueLayerPass {};
-                let ssao_pass = SSAOPass {};
-                let alphablended_layer_pass = AlphaBlendedLayerPass {};
-                let postprocess_pass = PostProcessPass {};
-                let lighting_pass = LightingPass {};
-                let ui_pass = UiPass {};
+                let gpu_culling_pass = GpuCullingPass;
+                let depth_layer_pass = DepthLayerPass;
+                let opaque_layer_pass = OpaqueLayerPass;
+                let ssao_pass = SSAOPass;
+                let alphablended_layer_pass = AlphaBlendedLayerPass;
+                let postprocess_pass = PostProcessPass;
+                let lighting_pass = LightingPass;
+                let ui_pass = UiPass;
 
                 let view_desc = TextureDef {
                     name: "ViewBuffer".to_string(),
@@ -709,6 +709,10 @@ fn render_update(
                         println!("Frame {}", renderer.render_frame_idx());
                         render_graph.execute(
                             &mut context,
+                            &renderer,
+                            &mesh_renderer,
+                            &instance_manager,
+                            &render_context,
                             renderer.device_context(),
                             cmd_buffer,
                         );

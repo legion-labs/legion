@@ -179,9 +179,9 @@ impl MeshRenderer {
     ) -> Self {
         Self {
             default_layers: vec![
-                RenderLayer::new(allocator, false),
-                RenderLayer::new(allocator, false),
-                RenderLayer::new(allocator, false),
+                RenderLayer::new(allocator, true),
+                RenderLayer::new(allocator, true),
+                RenderLayer::new(allocator, true),
             ],
             culling_buffers: CullingArgBuffers {
                 draw_count: None,
@@ -223,7 +223,9 @@ impl MeshRenderer {
             );
             self.tmp_pipeline_handles.push(pipeline_handle);
 
-            let pipeline_handle = build_temp_pso(pipeline_manager);
+            let need_depth_write =
+                self.default_layers[DefaultLayers::Opaque as usize].cpu_render_set();
+            let pipeline_handle = build_temp_pso(pipeline_manager, need_depth_write);
             self.tmp_batch_ids.push(
                 self.default_layers[DefaultLayers::Opaque as usize]
                     .register_state_set(&RenderStateSet { pipeline_handle }),
@@ -975,7 +977,7 @@ fn build_depth_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     )
 }
 
-fn build_temp_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
+fn build_temp_pso(pipeline_manager: &PipelineManager, need_depth_write: bool) -> PipelineHandle {
     let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
     let mut vertex_layout = VertexLayout::default();
@@ -992,8 +994,12 @@ fn build_temp_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
 
     let depth_state = DepthState {
         depth_test_enable: true,
-        depth_write_enable: false,
-        depth_compare_op: CompareOp::Equal,
+        depth_write_enable: need_depth_write,
+        depth_compare_op: if need_depth_write {
+            CompareOp::Less
+        } else {
+            CompareOp::Equal
+        },
         stencil_test_enable: false,
         stencil_read_mask: 0xFF,
         stencil_write_mask: 0xFF,

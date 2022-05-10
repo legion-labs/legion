@@ -6,6 +6,7 @@ use crate::{
         RenderGraphResourceDef, RenderGraphResourceId, RenderGraphViewDef, RenderGraphViewId,
     },
     hl_gfx_api::HLCommandBuffer,
+    RenderContext,
 };
 
 use super::{RenderGraphLoadState, ResourceData};
@@ -70,9 +71,9 @@ impl GraphicsPassBuilder {
         self
     }
 
-    pub fn execute<F>(mut self, f: F) -> Self
+    pub fn execute<F: 'static>(mut self, f: F) -> Self
     where
-        F: Fn(&RenderGraphExecuteContext<'_>, &mut HLCommandBuffer<'_>) + 'static,
+        F: Fn(&RenderGraphExecuteContext<'_>, &RenderContext<'_>, &mut HLCommandBuffer<'_>),
     {
         self.node.execute_fn = Some(Box::new(f));
         self
@@ -110,9 +111,9 @@ impl ComputePassBuilder {
         self
     }
 
-    pub fn execute<F>(mut self, f: F) -> Self
+    pub fn execute<F: 'static>(mut self, f: F) -> Self
     where
-        F: Fn(&RenderGraphExecuteContext<'_>, &mut HLCommandBuffer<'_>) + 'static,
+        F: Fn(&RenderGraphExecuteContext<'_>, &RenderContext<'_>, &mut HLCommandBuffer<'_>),
     {
         self.node.execute_fn = Some(Box::new(f));
         self

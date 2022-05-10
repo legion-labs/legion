@@ -72,9 +72,9 @@ impl RenderScript {
     /// # Examples
     ///
     /// ```
-    /// use lgn_graphics_tests::render_script::RenderScript;
+    /// use lgn_graphics_renderer::core::render_script::RenderScript;
     ///
-    /// let mut render_script = ;
+    /// let mut render_script = ...;
     /// let result = render_script.build_render_graph(view, config);
     /// assert_eq!(result, );
     /// assert_eq!(render_script, );
@@ -215,7 +215,7 @@ impl RenderScript {
             extents: view.target.definition().extents,
             array_length: 1,
             mip_count: 1,
-            format: Format::D24_UNORM_S8_UINT,
+            format: Format::D32_SFLOAT,
         })
     }
 
@@ -333,12 +333,8 @@ impl RenderScript {
                     radiance_view_id,
                     RenderGraphLoadState::Load,
                 )
-                .write(
-                    view_target_id,
-                    view_view_id,
-                    RenderGraphLoadState::ClearValue(0),
-                )
-                .execute(|_, _| {
+                .write(view_target_id, view_view_id, RenderGraphLoadState::DontCare)
+                .execute(|_, _, _| {
                     println!("Combine pass execute");
                 });
             if let Some(ui_buffer_id) = ui_buffer_id {

@@ -10,8 +10,10 @@ use lgn_graphics_api::{
 };
 
 use crate::core::render_graph::RenderGraphBuilder;
+use crate::gpu_renderer::{GpuInstanceManager, MeshRenderer};
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::resources::TextureManager;
+use crate::{RenderContext, Renderer};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RenderGraphTextureDef {
@@ -225,7 +227,7 @@ pub enum RenderGraphLoadState {
     DontCare,
     Load,
     ClearColor(ColorClearValue),
-    ClearDepth(DepthStencilClearValue),
+    ClearDepthStencil(DepthStencilClearValue),
     ClearValue(u32),
 }
 
@@ -241,7 +243,8 @@ pub struct ResourceData {
     pub load_state: RenderGraphLoadState,
 }
 
-type RenderGraphExecuteFn = dyn Fn(&RenderGraphExecuteContext<'_>, &mut HLCommandBuffer<'_>);
+pub type RenderGraphExecuteFn =
+    dyn Fn(&RenderGraphExecuteContext<'_>, &RenderContext<'_>, &mut HLCommandBuffer<'_>);
 
 pub(crate) struct RGNode {
     pub(crate) name: String,
@@ -419,11 +422,14 @@ pub struct RenderGraphContext {
     views: HashMap<(RenderGraphResourceId, RenderGraphViewId), RenderGraphView>,
 }
 
-pub struct RenderGraphExecuteContext<'a> {
-    pub(crate) read_resources: &'a Vec<ResourceData>,
-    pub(crate) write_resources: &'a Vec<ResourceData>,
-    pub(crate) render_targets: &'a Vec<Option<ResourceData>>,
-    pub(crate) depth_stencil: &'a Option<ResourceData>,
+pub struct RenderGraphExecuteContext<'frame> {
+    pub(crate) read_resources: &'frame Vec<ResourceData>,
+    pub(crate) write_resources: &'frame Vec<ResourceData>,
+    pub(crate) render_targets: &'frame Vec<Option<ResourceData>>,
+    pub(crate) depth_stencil: &'frame Option<ResourceData>,
+    pub(crate) renderer: &'frame Renderer,
+    pub(crate) mesh_renderer: &'frame MeshRenderer,
+    pub(crate) instance_manager: &'frame GpuInstanceManager,
 }
 
 pub struct RenderGraph {
@@ -903,7 +909,7 @@ impl RenderGraph {
                     RenderGraphLoadState::ClearColor(_) => {
                         println!("  !! Clear {} ", self.resource_names[res_id]);
                     }
-                    RenderGraphLoadState::ClearDepth(_) => {
+                    RenderGraphLoadState::ClearDepthStencil(_) => {
                         panic!("Color render target binding {} cannot be cleared with a depth stencil clear value.", self.resource_names[res_id]);
                     }
                     RenderGraphLoadState::ClearValue(_) => {
@@ -918,7 +924,7 @@ impl RenderGraph {
             if let Some(resource_data) = &node.depth_stencil {
                 let res_id = resource_data.key.0 as usize;
                 match resource_data.load_state {
-                    RenderGraphLoadState::ClearDepth(_) => {
+                    RenderGraphLoadState::ClearDepthStencil(_) => {
                         println!("  !! Clear {} ", self.resource_names[res_id]);
                     }
                     RenderGraphLoadState::ClearColor(_) => {
@@ -965,7 +971,7 @@ impl RenderGraph {
                     depth_load_op: match resource_data.load_state {
                         RenderGraphLoadState::DontCare => LoadOp::DontCare,
                         RenderGraphLoadState::Load => LoadOp::Load,
-                        RenderGraphLoadState::ClearDepth(_) => LoadOp::Clear,
+                        RenderGraphLoadState::ClearDepthStencil(_) => LoadOp::Clear,
                         _ => {
                             panic!()
                         }
@@ -974,14 +980,14 @@ impl RenderGraph {
                     stencil_load_op: match resource_data.load_state {
                         RenderGraphLoadState::DontCare => LoadOp::DontCare,
                         RenderGraphLoadState::Load => LoadOp::Load,
-                        RenderGraphLoadState::ClearDepth(_) => LoadOp::Clear,
+                        RenderGraphLoadState::ClearDepthStencil(_) => LoadOp::Clear,
                         _ => {
                             panic!()
                         }
                     },
                     stencil_store_op: StoreOp::Store,
                     clear_value: match resource_data.load_state {
-                        RenderGraphLoadState::ClearDepth(clear_value) => clear_value,
+                        RenderGraphLoadState::ClearDepthStencil(clear_value) => clear_value,
                         _ => DepthStencilClearValue::default(),
                     },
                 });
@@ -1075,7 +1081,7 @@ impl RenderGraph {
                         self.resource_names[res_id]
                     );
                 }
-                RenderGraphLoadState::ClearDepth(_) => {
+                RenderGraphLoadState::ClearDepthStencil(_) => {
                     panic!(
                         "Write target {} cannot be cleared with a depth stencil clear value.",
                         self.resource_names[res_id]
@@ -1150,18 +1156,37 @@ impl RenderGraph {
         context
     }
 
-    pub fn execute(
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn execute(
         &self,
         context: &mut RenderGraphContext,
+        renderer: &Renderer,
+        mesh_renderer: &MeshRenderer,
+        instance_manager: &GpuInstanceManager,
+        render_context: &RenderContext<'_>,
         device_context: &DeviceContext,
         command_buffer: &mut HLCommandBuffer<'_>,
     ) {
-        self.execute_inner(context, &self.root, device_context, command_buffer);
+        self.execute_inner(
+            context,
+            renderer,
+            mesh_renderer,
+            instance_manager,
+            render_context,
+            &self.root,
+            device_context,
+            command_buffer,
+        );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn execute_inner(
         &self,
         context: &mut RenderGraphContext,
+        renderer: &Renderer,
+        mesh_renderer: &MeshRenderer,
+        instance_manager: &GpuInstanceManager,
+        render_context: &RenderContext<'_>,
         node: &RGNode,
         device_context: &DeviceContext,
         command_buffer: &mut HLCommandBuffer<'_>,
@@ -1175,6 +1200,9 @@ impl RenderGraph {
                     write_resources: &node.write_resources,
                     render_targets: &node.render_targets,
                     depth_stencil: &node.depth_stencil,
+                    renderer,
+                    mesh_renderer,
+                    instance_manager,
                 };
 
                 self.begin_execute(
@@ -1184,12 +1212,21 @@ impl RenderGraph {
                     command_buffer,
                     device_context,
                 );
-                (execute_fn)(&execute_context, command_buffer);
+                (execute_fn)(&execute_context, render_context, command_buffer);
                 self.end_execute(context, node, command_buffer, device_context);
             }
 
             for child in &node.children {
-                self.execute_inner(context, child, device_context, command_buffer);
+                self.execute_inner(
+                    context,
+                    renderer,
+                    mesh_renderer,
+                    instance_manager,
+                    render_context,
+                    child,
+                    device_context,
+                    command_buffer,
+                );
             }
         });
     }
