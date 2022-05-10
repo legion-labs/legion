@@ -1502,12 +1502,6 @@ dependencies = [
 
 [[package]]
 name = "core-foundation-sys"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7ca8a5221364ef15ce201e8ed2f609fc312682a8f4e0e3d4aa5879764e0fa3b"
-
-[[package]]
-name = "core-foundation-sys"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
@@ -2752,7 +2746,7 @@ dependencies = [
 [[package]]
 name = "gilrs"
 version = "0.8.2"
-source = "git+https://github.com/legion-labs/gilrs?rev=e9ec370f6235120336412c6224b44857e4f3f7b5#e9ec370f6235120336412c6224b44857e4f3f7b5"
+source = "git+https://github.com/legion-labs/gilrs?rev=d62075021e15657c6aaf7f039028b85c50c3e63e#d62075021e15657c6aaf7f039028b85c50c3e63e"
 dependencies = [
  "fnv",
  "gilrs-core",
@@ -2764,7 +2758,7 @@ dependencies = [
 [[package]]
 name = "gilrs-core"
 version = "0.3.2"
-source = "git+https://github.com/legion-labs/gilrs?rev=e9ec370f6235120336412c6224b44857e4f3f7b5#e9ec370f6235120336412c6224b44857e4f3f7b5"
+source = "git+https://github.com/legion-labs/gilrs?rev=d62075021e15657c6aaf7f039028b85c50c3e63e#d62075021e15657c6aaf7f039028b85c50c3e63e"
 dependencies = [
  "core-foundation 0.9.3",
  "io-kit-sys",
@@ -3380,10 +3374,9 @@ dependencies = [
 [[package]]
 name = "io-kit-sys"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f21dcc74995dd4cd090b147e79789f8d65959cbfb5f0b118002db869ea3bd0a0"
+source = "git+https://github.com/legion-labs/io-kit-rs?rev=351a702d9876b67c78ae42a7ea2a443046d7260c#351a702d9876b67c78ae42a7ea2a443046d7260c"
 dependencies = [
- "core-foundation-sys 0.6.2",
+ "core-foundation-sys 0.8.3",
  "mach",
 ]
 
@@ -5271,9 +5264,9 @@ dependencies = [
 
 [[package]]
 name = "mach"
-version = "0.2.3"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86dd2487cdfea56def77b88438a2c915fb45113c5319bfe7e14306ca4cd0b0e1"
+checksum = "b823e83b2affd8f40a9ee8c29dbc56404c1e34cd2710921f2801e2cf29527afa"
 dependencies = [
  "libc",
 ]
