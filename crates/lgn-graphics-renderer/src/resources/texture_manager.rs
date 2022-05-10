@@ -254,6 +254,7 @@ impl TextureManager {
                     texture,
                     mip_data,
                     mip_level as u8,
+                    ResourceState::SHADER_RESOURCE,
                 );
             }
         }
@@ -333,12 +334,13 @@ impl TextureManager {
         }
     }
 
-    fn upload_texture_data(
+    pub fn upload_texture_data<T: Copy>(
         device_context: &DeviceContext,
         cmd_buffer: &mut CommandBuffer,
         texture: &Texture,
-        data: &[u8],
+        data: &[T],
         mip_level: u8,
+        outgoing_state: ResourceState,
     ) {
         //
         // TODO(vdbdd): this code shoud be moved (-> upload manager)
@@ -387,7 +389,7 @@ impl TextureManager {
             &[TextureBarrier::state_transition(
                 texture,
                 ResourceState::COPY_DST,
-                ResourceState::SHADER_RESOURCE,
+                outgoing_state,
             )],
         );
     }

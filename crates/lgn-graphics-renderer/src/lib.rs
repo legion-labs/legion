@@ -26,8 +26,8 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    AddressMode, CompareOp, Extents3D, FilterType, Format, MemoryUsage, MipMapMode,
-    ResourceFlags, ResourceUsage, SamplerDef, TextureDef, TextureTiling,
+    AddressMode, CompareOp, Extents3D, FilterType, Format, MemoryUsage, MipMapMode, ResourceFlags,
+    ResourceUsage, SamplerDef, TextureDef, TextureTiling,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::Vec2;
@@ -78,11 +78,11 @@ use crate::{
     egui::{egui_plugin::EguiPlugin, Egui},
     lighting::LightingManager,
     picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    resources::MeshManager,
     render_graph::{
-        AlphaBlendedLayerPass, Config, DepthLayerPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
-        PostProcessPass, RenderScript, RenderView, SSAOPass, UiPass,
+        AlphaBlendedLayerPass, Config, DepthLayerPass, GpuCullingPass, LightingPass,
+        OpaqueLayerPass, PostProcessPass, RenderScript, RenderView, SSAOPass, UiPass,
     },
+    resources::MeshManager,
     RenderStage,
 };
 use lgn_app::{App, CoreStage, Events, Plugin};
@@ -627,8 +627,8 @@ fn render_update(
             }
 
             render_context
-            .graphics_queue()
-            .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+                .graphics_queue()
+                .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
 
             let mut cmd_buffer = render_context.alloc_command_buffer();
 
@@ -643,7 +643,7 @@ fn render_update(
                 let postprocess_pass = PostProcessPass {};
                 let lighting_pass = LightingPass {};
                 let ui_pass = UiPass {};
-    
+
                 let view_desc = TextureDef {
                     name: "ViewBuffer".to_string(),
                     extents: Extents3D {
@@ -663,7 +663,7 @@ fn render_update(
                 let view = RenderView {
                     target: view_target,
                 };
-    
+
                 let depth_desc = TextureDef {
                     name: "PrefDepthBuffer".to_string(),
                     extents: view.target.definition().extents,
@@ -676,7 +676,7 @@ fn render_update(
                     tiling: TextureTiling::Optimal,
                 };
                 let prev_depth = renderer.device_context().create_texture(&depth_desc);
-    
+
                 let mut render_script = RenderScript {
                     gpu_culling_pass,
                     depth_layer_pass,
@@ -688,24 +688,24 @@ fn render_update(
                     ui_pass,
                     prev_depth,
                 };
-    
+
                 let config = Config::default();
-    
+
                 match render_script.build_render_graph(&view, &config) {
                     Ok(render_graph) => {
                         // Print out the render graph
                         println!("{}", render_graph);
                         println!("\n\n");
-    
+
                         // TODO: Questions:
                         // * Management of textures: pool for now, aliasing later
                         // * Management of command buffers: one command buffer for all passes for now
                         // * Multithreaded execution: none for now
-    
+
                         let mut context = render_graph.compile();
-    
+
                         println!("\n\n");
-    
+
                         // Execute it
                         println!("*****************************************************************************");
                         println!("Frame {}", renderer.render_frame_idx());
@@ -719,7 +719,7 @@ fn render_update(
                         println!("{}", error);
                     }
                 }
-    
+
             });
 
             //****************************************************************

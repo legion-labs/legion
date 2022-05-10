@@ -2,16 +2,16 @@ use std::collections::HashMap;
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferDef, BufferView, BufferViewDef,
-    BufferViewFlags, CmdCopyBufferToTextureParams, ColorClearValue, ColorRenderTargetBinding,
-    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Extents3D, Format,
-    GPUViewType, LoadOp, MemoryAllocation, MemoryAllocationDef, MemoryUsage, PlaneSlice,
-    ResourceCreation, ResourceFlags, ResourceState, ResourceUsage, StoreOp, Texture,
-    TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef, ViewDimension,
-    MAX_RENDER_TARGET_ATTACHMENTS,
+    BufferViewFlags, ColorClearValue, ColorRenderTargetBinding, DepthStencilClearValue,
+    DepthStencilRenderTargetBinding, DeviceContext, Extents3D, Format, GPUViewType, LoadOp,
+    MemoryUsage, PlaneSlice, ResourceCreation, ResourceFlags, ResourceState, ResourceUsage,
+    StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    ViewDimension, MAX_RENDER_TARGET_ATTACHMENTS,
 };
 
 use crate::hl_gfx_api::HLCommandBuffer;
 use crate::render_graph::RenderGraphBuilder;
+use crate::resources::TextureManager;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RenderGraphTextureDef {
@@ -805,110 +805,13 @@ impl RenderGraph {
         }
     }
 
-    fn create_views(
+    fn do_resource_transitions(
         &self,
         context: &mut RenderGraphContext,
-        execute_context: &RenderGraphExecuteContext<'_>,
-    ) {
-        for resource_data in execute_context.render_targets.iter().flatten() {
-            let res_id = resource_data.key.0 as usize;
-            let view_id = resource_data.key.1 as usize;
-
-            if let std::collections::hash_map::Entry::Vacant(e) =
-                context.views.entry(resource_data.key)
-            {
-                let texture: &Texture = context.resources[res_id]
-                    .as_ref()
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
-                let mut texture_view_def: TextureViewDef =
-                    self.views[view_id].texture_view_def().clone().into();
-                texture_view_def.gpu_view_type = GPUViewType::RenderTarget;
-                let texture_view_temp = texture.create_view(&texture_view_def);
-                e.insert(RenderGraphView::TextureView(texture_view_temp));
-            }
-        }
-
-        if let Some(resource_data) = execute_context.depth_stencil {
-            let res_id = resource_data.key.0 as usize;
-            let view_id = resource_data.key.1 as usize;
-
-            if let std::collections::hash_map::Entry::Vacant(e) =
-                context.views.entry(resource_data.key)
-            {
-                let texture: &Texture = context.resources[res_id]
-                    .as_ref()
-                    .unwrap()
-                    .try_into()
-                    .unwrap();
-                let mut texture_view_def: TextureViewDef =
-                    self.views[view_id].texture_view_def().clone().into();
-                texture_view_def.gpu_view_type = GPUViewType::DepthStencil;
-                let texture_view_temp = texture.create_view(&texture_view_def);
-                e.insert(RenderGraphView::TextureView(texture_view_temp));
-            }
-        }
-    }
-
-    // TODO: Could be moved to a utilities file somewhere (same code used in egui_pass.rs)
-    #[allow(clippy::unused_self)]
-    fn copy_data_to_texture(
-        &self,
-        device_context: &DeviceContext,
-        command_buffer: &mut HLCommandBuffer<'_>,
-        texture: &Texture,
-        data: &[u32],
-        next_state: ResourceState,
-    ) {
-        let staging_buffer = device_context.create_buffer(&BufferDef::for_staging_buffer_data(
-            data,
-            ResourceUsage::empty(),
-        ));
-
-        let alloc_def = MemoryAllocationDef {
-            memory_usage: MemoryUsage::CpuToGpu,
-            always_mapped: true,
-        };
-
-        let buffer_memory =
-            MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
-
-        buffer_memory.copy_to_host_visible_buffer(data);
-
-        command_buffer.resource_barrier(
-            &[],
-            &[TextureBarrier::state_transition(
-                texture,
-                ResourceState::UNDEFINED,
-                ResourceState::COPY_DST,
-            )],
-        );
-
-        command_buffer.copy_buffer_to_texture(
-            &staging_buffer,
-            texture,
-            &CmdCopyBufferToTextureParams::default(),
-        );
-
-        command_buffer.resource_barrier(
-            &[],
-            &[TextureBarrier::state_transition(
-                texture,
-                ResourceState::COPY_DST,
-                next_state,
-            )],
-        );
-    }
-
-    fn begin_execute(
-        &self,
-        context: &mut RenderGraphContext,
-        node: &RGNode,
         execute_context: &mut RenderGraphExecuteContext<'_>,
         command_buffer: &mut HLCommandBuffer<'_>,
         device_context: &DeviceContext,
-    ) -> bool {
+    ) {
         // Gather barriers into a container.
         let mut barriers: Vec<ResourceBarrier> = Vec::with_capacity(32);
 
@@ -979,11 +882,14 @@ impl RenderGraph {
 
         // Execute the batch of barriers.
         command_buffer.resource_barrier(&buffer_barriers, &texture_barriers);
+    }
 
-        // Create the views we will need for the next steps.
-        self.create_views(context, execute_context);
-
-        // Do begin render pass which will also clear render targets and depth stencil.
+    fn do_begin_render_pass(
+        &self,
+        context: &mut RenderGraphContext,
+        node: &RGNode,
+        command_buffer: &mut HLCommandBuffer<'_>,
+    ) -> bool {
         let need_begin_end_render_pass =
             node.render_targets.iter().flatten().next().is_some() || node.depth_stencil.is_some();
 
@@ -1081,7 +987,62 @@ impl RenderGraph {
             command_buffer.begin_render_pass(&color_targets, &depth_target);
         }
 
-        // Clear any write targets that need to.
+        need_begin_end_render_pass
+    }
+
+    fn create_views(
+        &self,
+        context: &mut RenderGraphContext,
+        execute_context: &RenderGraphExecuteContext<'_>,
+    ) {
+        for resource_data in execute_context.render_targets.iter().flatten() {
+            let res_id = resource_data.key.0 as usize;
+            let view_id = resource_data.key.1 as usize;
+
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                context.views.entry(resource_data.key)
+            {
+                let texture: &Texture = context.resources[res_id]
+                    .as_ref()
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                let mut texture_view_def: TextureViewDef =
+                    self.views[view_id].texture_view_def().clone().into();
+                texture_view_def.gpu_view_type = GPUViewType::RenderTarget;
+                let texture_view_temp = texture.create_view(&texture_view_def);
+                e.insert(RenderGraphView::TextureView(texture_view_temp));
+            }
+        }
+
+        if let Some(resource_data) = execute_context.depth_stencil {
+            let res_id = resource_data.key.0 as usize;
+            let view_id = resource_data.key.1 as usize;
+
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                context.views.entry(resource_data.key)
+            {
+                let texture: &Texture = context.resources[res_id]
+                    .as_ref()
+                    .unwrap()
+                    .try_into()
+                    .unwrap();
+                let mut texture_view_def: TextureViewDef =
+                    self.views[view_id].texture_view_def().clone().into();
+                texture_view_def.gpu_view_type = GPUViewType::DepthStencil;
+                let texture_view_temp = texture.create_view(&texture_view_def);
+                e.insert(RenderGraphView::TextureView(texture_view_temp));
+            }
+        }
+    }
+
+    fn clear_write_targets(
+        &self,
+        context: &mut RenderGraphContext,
+        node: &RGNode,
+        command_buffer: &mut HLCommandBuffer<'_>,
+        device_context: &DeviceContext,
+    ) {
         for resource_data in &node.write_resources {
             let res_id = resource_data.key.0 as usize;
             match resource_data.load_state {
@@ -1093,11 +1054,12 @@ impl RenderGraph {
                         }
                         RenderGraphResource::Texture(texture) => {
                             let data = vec![value; texture.vk_alloc_size() as usize / 4];
-                            self.copy_data_to_texture(
+                            TextureManager::upload_texture_data(
                                 device_context,
-                                command_buffer,
+                                command_buffer.cmd_buffer(),
                                 texture,
                                 &data,
+                                0,
                                 self.get_api_state(
                                     context.resource_state[&(res_id as u32, 0)],
                                     None,
@@ -1121,6 +1083,27 @@ impl RenderGraph {
                 _ => {}
             }
         }
+    }
+
+    fn begin_execute(
+        &self,
+        context: &mut RenderGraphContext,
+        node: &RGNode,
+        execute_context: &mut RenderGraphExecuteContext<'_>,
+        command_buffer: &mut HLCommandBuffer<'_>,
+        device_context: &DeviceContext,
+    ) -> bool {
+        // Batch up and execute resource transitions.
+        self.do_resource_transitions(context, execute_context, command_buffer, device_context);
+
+        // Create the views we will need for the next steps.
+        self.create_views(context, execute_context);
+
+        // Do begin render pass which will also clear render targets and depth stencil.
+        let need_begin_end_render_pass = self.do_begin_render_pass(context, node, command_buffer);
+
+        // Clear any write targets that need to.
+        self.clear_write_targets(context, node, command_buffer, device_context);
 
         need_begin_end_render_pass
     }

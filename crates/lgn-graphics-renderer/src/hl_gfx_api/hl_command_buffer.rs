@@ -26,6 +26,10 @@ impl<'rc> HLCommandBuffer<'rc> {
         }
     }
 
+    pub fn cmd_buffer(&mut self) -> &mut CommandBufferHandle {
+        &mut self.cmd_buffer
+    }
+
     pub fn begin_render_pass(
         &mut self,
         color_targets: &[ColorRenderTargetBinding<'_>],

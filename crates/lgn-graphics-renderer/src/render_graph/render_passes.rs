@@ -453,7 +453,11 @@ impl SSAOPass {
                         .read(gbuffer_ids[2], gbuffer_view_id, RenderGraphLoadState::Load)
                         .read(gbuffer_ids[3], gbuffer_view_id, RenderGraphLoadState::Load)
                         .read(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
-                        .write(raw_ao_buffer_id, ao_view_id, RenderGraphLoadState::ClearValue(0))
+                        .write(
+                            raw_ao_buffer_id,
+                            ao_view_id,
+                            RenderGraphLoadState::ClearValue(0),
+                        )
                         .execute(|_, _| {
                             println!("AO pass execute");
                         })
@@ -462,7 +466,11 @@ impl SSAOPass {
                     compute_pass_builder
                         .read(raw_ao_buffer_id, ao_view_id, RenderGraphLoadState::Load)
                         .read(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
-                        .write(blur_buffer_id, ao_view_id, RenderGraphLoadState::ClearValue(0))
+                        .write(
+                            blur_buffer_id,
+                            ao_view_id,
+                            RenderGraphLoadState::ClearValue(0),
+                        )
                         .execute(|_, _| {
                             println!("BlurX pass execute");
                         })
@@ -471,7 +479,11 @@ impl SSAOPass {
                     compute_pass_builder
                         .read(blur_buffer_id, ao_view_id, RenderGraphLoadState::Load)
                         .read(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
-                        .write(ao_buffer_id, ao_view_id, RenderGraphLoadState::ClearValue(0))
+                        .write(
+                            ao_buffer_id,
+                            ao_view_id,
+                            RenderGraphLoadState::ClearValue(0),
+                        )
                         .execute(|_, _| {
                             println!("BlurY pass execute");
                         })
@@ -500,7 +512,12 @@ impl UiPass {
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("UI", |graphics_pass_builder| {
             graphics_pass_builder
-                .render_target(0, ui_buffer_id, ui_view_id, RenderGraphLoadState::ClearColor(ColorClearValue([0.0;4])))
+                .render_target(
+                    0,
+                    ui_buffer_id,
+                    ui_view_id,
+                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
+                )
                 .execute(|_, _| {
                     println!("UiPass execute");
                 })

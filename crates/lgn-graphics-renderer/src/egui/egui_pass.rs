@@ -10,7 +10,7 @@ use crate::hl_gfx_api::HLCommandBuffer;
 
 use crate::RenderContext;
 
-use crate::resources::{PipelineHandle, PipelineManager};
+use crate::resources::{PipelineHandle, PipelineManager, TextureManager};
 
 pub struct EguiPass {
     pipeline_handle: PipelineHandle,
@@ -128,45 +128,13 @@ impl EguiPass {
         let texture_view =
             texture.create_view(&TextureViewDef::as_shader_resource_view(&texture_def));
 
-        let staging_buffer = render_context.renderer().device_context().create_buffer(
-            &BufferDef::for_staging_buffer_data(&egui_font_image.pixels, ResourceUsage::empty()),
-        );
-
-        let alloc_def = MemoryAllocationDef {
-            memory_usage: MemoryUsage::CpuToGpu,
-            always_mapped: true,
-        };
-
-        let buffer_memory = MemoryAllocation::from_buffer(
+        TextureManager::upload_texture_data(
             render_context.renderer().device_context(),
-            &staging_buffer,
-            &alloc_def,
-        );
-
-        buffer_memory.copy_to_host_visible_buffer(&egui_font_image.pixels);
-
-        cmd_buffer.resource_barrier(
-            &[],
-            &[TextureBarrier::state_transition(
-                &texture,
-                ResourceState::UNDEFINED,
-                ResourceState::COPY_DST,
-            )],
-        );
-
-        cmd_buffer.copy_buffer_to_texture(
-            &staging_buffer,
+            cmd_buffer.cmd_buffer(),
             &texture,
-            &CmdCopyBufferToTextureParams::default(),
-        );
-
-        cmd_buffer.resource_barrier(
-            &[],
-            &[TextureBarrier::state_transition(
-                &texture,
-                ResourceState::COPY_DST,
-                ResourceState::SHADER_RESOURCE,
-            )],
+            &egui_font_image.pixels,
+            0,
+            ResourceState::SHADER_RESOURCE,
         );
 
         self.texture_data = Some((egui_font_image.version, texture, texture_view));
