@@ -206,13 +206,13 @@ export abstract class TimelineTrackCanvasBaseDrawer {
   private captionFont(captionType: CaptionType): string {
     switch (captionType) {
       case CaptionType.Main: {
-        return "600 14px Inconsolata";
+        return "500 13px Roboto Mono";
       }
       case CaptionType.Sub: {
-        return "14px Inconsolata";
+        return "13px Roboto Mono";
       }
       case CaptionType.Annotation: {
-        return "italic 12px Inconsolata";
+        return "italic 11px Roboto Mono";
       }
     }
   }
