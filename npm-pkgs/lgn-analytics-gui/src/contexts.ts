@@ -38,7 +38,7 @@ export function getHttpClientContext() {
 
 /** Get the notifications context */
 export function getNotificationsContext() {
-  return getContext<NotificationsStore>(notificationsContextKey);
+  return getContext<NotificationsStore<Fluent>>(notificationsContextKey);
 }
 
 /** Get the debug context */

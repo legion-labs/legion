@@ -40,7 +40,7 @@
 
   export let initAuthStatus: InitAuthStatus | null;
 
-  export let notifications: NotificationsStore;
+  export let notifications: NotificationsStore<Fluent>;
 
   export let dispose: () => void | undefined;
 

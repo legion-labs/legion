@@ -67,3 +67,5 @@ timeline-debug-tooltip =
   Niveau de détail : { $lod }
   Seuil : { $threshold }
   Nombre d'événements : { $events }
+timeline-link-copy-notification-title = Copie effectuée
+timeline-link-copy-notification-message = Le lien a bien été copié dans votre presse-papier
