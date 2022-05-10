@@ -2744,6 +2744,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "gilrs"
+version = "0.8.2"
+source = "git+https://github.com/legion-labs/gilrs?rev=ef1486ef74367b29f31284e8340c366af6e7a489#ef1486ef74367b29f31284e8340c366af6e7a489"
+dependencies = [
+ "fnv",
+ "gilrs-core",
+ "log",
+ "uuid 1.0.0",
+ "vec_map",
+]
+
+[[package]]
+name = "gilrs-core"
+version = "0.3.2"
+source = "git+https://github.com/legion-labs/gilrs?rev=ef1486ef74367b29f31284e8340c366af6e7a489#ef1486ef74367b29f31284e8340c366af6e7a489"
+dependencies = [
+ "core-foundation 0.9.3",
+ "io-kit-sys",
+ "js-sys",
+ "libc",
+ "libudev-sys",
+ "log",
+ "nix 0.23.1",
+ "rusty-xinput",
+ "uuid 1.0.0",
+ "vec_map",
+ "wasm-bindgen",
+ "web-sys",
+ "winapi",
+]
+
+[[package]]
 name = "gimli"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3337,6 +3369,15 @@ checksum = "84344c6e0b90a9e2b6f3f9abe5cc74402684e348df7b32adca28747e0cef091a"
 dependencies = [
  "ctor",
  "ghost",
+]
+
+[[package]]
+name = "io-kit-sys"
+version = "0.1.0"
+source = "git+https://github.com/legion-labs/io-kit-rs?rev=351a702d9876b67c78ae42a7ea2a443046d7260c#351a702d9876b67c78ae42a7ea2a443046d7260c"
+dependencies = [
+ "core-foundation-sys 0.8.3",
+ "mach",
 ]
 
 [[package]]
@@ -4302,6 +4343,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-gilrs"
+version = "0.1.0"
+dependencies = [
+ "gilrs",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-input",
+ "lgn-tracing",
+]
+
+[[package]]
 name = "lgn-graphics-api"
 version = "0.1.0"
 dependencies = [
@@ -4431,6 +4483,7 @@ dependencies = [
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-gilrs",
  "lgn-graphics-api",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
@@ -5143,6 +5196,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libudev-sys"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c8469b4a23b962c1396b9b451dda50ef5b283e8dd309d69033475fa9b334324"
+dependencies = [
+ "libc",
+ "pkg-config",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5197,6 +5260,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5827b976d911b5d2e42b2ccfc7c0d2461a1414e8280436885218762fc529b3f8"
 dependencies = [
  "twox-hash",
+]
+
+[[package]]
+name = "mach"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b823e83b2affd8f40a9ee8c29dbc56404c1e34cd2710921f2801e2cf29527afa"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
@@ -7067,6 +7139,7 @@ dependencies = [
  "lgn-core",
  "lgn-data-runtime",
  "lgn-ecs",
+ "lgn-gilrs",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-grpc",
@@ -7211,6 +7284,16 @@ name = "rustversion"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2cc38e8fa666e2de3c4aba7edeb5ffc5246c1c2ed0e3d17e560aeeba736b23f"
+
+[[package]]
+name = "rusty-xinput"
+version = "1.2.1-alpha.0"
+source = "git+https://github.com/legion-labs/rusty-xinput?rev=222e2aca98a0eb69881aa7f17e7267180ff16d7f#222e2aca98a0eb69881aa7f17e7267180ff16d7f"
+dependencies = [
+ "lazy_static",
+ "log",
+ "winapi",
+]
 
 [[package]]
 name = "ryu"
@@ -8739,6 +8822,12 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "vec_map"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
 
 [[package]]
 name = "version_check"
