@@ -2746,7 +2746,7 @@ dependencies = [
 [[package]]
 name = "gilrs"
 version = "0.8.2"
-source = "git+https://github.com/legion-labs/gilrs?rev=d62075021e15657c6aaf7f039028b85c50c3e63e#d62075021e15657c6aaf7f039028b85c50c3e63e"
+source = "git+https://github.com/legion-labs/gilrs?rev=7b4adc5744b35da29d62d50fb1aca4be48ee3a43#7b4adc5744b35da29d62d50fb1aca4be48ee3a43"
 dependencies = [
  "fnv",
  "gilrs-core",
@@ -2758,7 +2758,7 @@ dependencies = [
 [[package]]
 name = "gilrs-core"
 version = "0.3.2"
-source = "git+https://github.com/legion-labs/gilrs?rev=d62075021e15657c6aaf7f039028b85c50c3e63e#d62075021e15657c6aaf7f039028b85c50c3e63e"
+source = "git+https://github.com/legion-labs/gilrs?rev=7b4adc5744b35da29d62d50fb1aca4be48ee3a43#7b4adc5744b35da29d62d50fb1aca4be48ee3a43"
 dependencies = [
  "core-foundation 0.9.3",
  "io-kit-sys",
@@ -7287,9 +7287,8 @@ checksum = "f2cc38e8fa666e2de3c4aba7edeb5ffc5246c1c2ed0e3d17e560aeeba736b23f"
 
 [[package]]
 name = "rusty-xinput"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2aa654bc32eb9ca14cce1a084abc9dfe43949a4547c35269a094c39272db3bb"
+version = "1.2.1-alpha.0"
+source = "git+https://github.com/Lokathor/rusty-xinput?rev=222e2aca98a0eb69881aa7f17e7267180ff16d7f#222e2aca98a0eb69881aa7f17e7267180ff16d7f"
 dependencies = [
  "lazy_static",
  "log",
