@@ -9,8 +9,8 @@ use lgn_graphics_api::{
     ViewDimension, MAX_RENDER_TARGET_ATTACHMENTS,
 };
 
+use crate::core::render_graph::RenderGraphBuilder;
 use crate::hl_gfx_api::HLCommandBuffer;
-use crate::render_graph::RenderGraphBuilder;
 use crate::resources::TextureManager;
 
 #[derive(Clone, Debug, PartialEq)]

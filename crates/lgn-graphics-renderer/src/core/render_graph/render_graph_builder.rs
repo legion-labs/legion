@@ -1,11 +1,11 @@
 use lgn_graphics_api::Texture;
 
 use crate::{
-    hl_gfx_api::HLCommandBuffer,
-    render_graph::{
+    core::render_graph::{
         RGNode, RenderGraph, RenderGraphExecuteContext, RenderGraphResource,
         RenderGraphResourceDef, RenderGraphResourceId, RenderGraphViewDef, RenderGraphViewId,
     },
+    hl_gfx_api::HLCommandBuffer,
 };
 
 use super::{RenderGraphLoadState, ResourceData};

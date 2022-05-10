@@ -3,13 +3,13 @@ use lgn_graphics_api::{
 };
 
 use crate::{
-    hl_gfx_api::HLCommandBuffer,
-    render_graph::RenderGraphBuilder,
-    render_graph::RenderView,
-    render_graph::{
+    core::render_graph::RenderGraphBuilder,
+    core::render_graph::RenderView,
+    core::render_graph::{
         RenderGraphExecuteContext, RenderGraphResourceDef, RenderGraphResourceId,
         RenderGraphTextureDef, RenderGraphTextureViewDef, RenderGraphViewDef, RenderGraphViewId,
     },
+    hl_gfx_api::HLCommandBuffer,
 };
 
 use super::RenderGraphLoadState;

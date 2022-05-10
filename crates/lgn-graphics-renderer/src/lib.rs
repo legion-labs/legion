@@ -53,8 +53,6 @@ pub mod egui;
 
 pub mod hl_gfx_api;
 
-pub mod render_graph;
-
 pub(crate) mod lighting;
 pub mod render_pass;
 
@@ -75,13 +73,13 @@ use crate::{
         debug_display_lights, ui_lights, update_lights, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
-    egui::{egui_plugin::EguiPlugin, Egui},
-    lighting::LightingManager,
-    picking::{ManipulatorManager, PickingManager, PickingPlugin},
-    render_graph::{
+    core::render_graph::{
         AlphaBlendedLayerPass, Config, DepthLayerPass, GpuCullingPass, LightingPass,
         OpaqueLayerPass, PostProcessPass, RenderScript, RenderView, SSAOPass, UiPass,
     },
+    egui::{egui_plugin::EguiPlugin, Egui},
+    lighting::LightingManager,
+    picking::{ManipulatorManager, PickingManager, PickingPlugin},
     resources::MeshManager,
     RenderStage,
 };

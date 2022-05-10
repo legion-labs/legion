@@ -1,10 +1,10 @@
 use crate::{
-    render_graph::RenderGraphBuilder,
-    render_graph::{
+    core::render_graph::RenderGraphBuilder,
+    core::render_graph::{
         AlphaBlendedLayerPass, DepthLayerPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
         PostProcessPass, SSAOPass, UiPass,
     },
-    render_graph::{
+    core::render_graph::{
         RenderGraph, RenderGraphResourceDef, RenderGraphResourceId, RenderGraphTextureDef,
         RenderGraphTextureViewDef, RenderGraphViewDef, RenderGraphViewId,
     },
