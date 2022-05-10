@@ -1,11 +1,9 @@
-use lgn_app::App;
-use lgn_ecs::prelude::ResMut;
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSet, DescriptorSetWriter,
     DeviceContext, TextureView,
 };
 
-use crate::{cgen, labels::RenderStage, resources::IndexAllocator};
+use crate::{cgen, resources::IndexAllocator};
 
 use super::DescriptorHeapManager;
 

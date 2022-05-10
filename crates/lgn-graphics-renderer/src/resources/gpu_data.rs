@@ -76,8 +76,6 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
             src_buffer: binary_writer.take(),
             dst_offset: gpu_data_allocation.va_address,
         });
-
-        // render_commands.add_update_jobs(data_slice, gpu_data_allocation.va_address);
     }
 
     pub fn remove_gpu_data(&mut self, key: &K) {

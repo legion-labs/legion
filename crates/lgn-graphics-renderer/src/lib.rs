@@ -54,8 +54,6 @@ pub mod picking;
 pub mod debug_display;
 pub mod egui;
 
-pub mod hl_gfx_api;
-
 pub(crate) mod lighting;
 pub mod render_pass;
 
@@ -558,9 +556,7 @@ fn render_update(
             let static_buffer_ro_view = static_buffer.read_only_view();
             frame_descriptor_set.set_static_buffer(static_buffer_ro_view);
 
-            let va_table_address_buffer = instance_manager
-                // .structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
-                .structured_buffer_view();
+            let va_table_address_buffer = instance_manager.structured_buffer_view();
             frame_descriptor_set.set_va_table_address_buffer(va_table_address_buffer);
 
             let sampler_def = SamplerDef {

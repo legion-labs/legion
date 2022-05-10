@@ -105,8 +105,10 @@ impl GpuVaTableForGpuInstance {
         let offset_for_gpu_instance =
             self.static_allocation.byte_offset() + u64::from(gpu_data_allocation.index()) * 4;
 
+        let va = u32::try_from(gpu_data_allocation.va_address()).unwrap();
+
         let mut binary_writer = BinaryWriter::new();
-        binary_writer.write(&offset_for_gpu_instance);
+        binary_writer.write(&va);
 
         render_commands.push(UpdateUnifiedStaticBufferCommand {
             src_buffer: binary_writer.take(),
@@ -302,10 +304,7 @@ impl GpuInstanceManager {
                 src_buffer: binary_writer.take(),
                 dst_offset: gpu_data_allocation.va_address(),
             });
-
-            // render_commands
-            //     .add_update_jobs(&[gpu_instance_va_table], gpu_data_allocation.va_address());
-
+            
             self.added_render_elements.push(RenderElement::new(
                 gpu_instance_id,
                 material_id,

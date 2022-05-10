@@ -137,7 +137,6 @@ struct CullingArgBuffer {
     buffer: Buffer,
     srv_view: BufferView,
     uav_view: BufferView,
-    // _allocation: MemoryAllocation,
 }
 
 struct CullingArgBuffers {
@@ -251,7 +250,7 @@ impl MeshRenderer {
     fn register_element(&mut self, element: &RenderElement) {
         let new_index = self.gpu_instance_data.len() as u32;
         let gpu_instance_index = element.gpu_instance_id().index();
-        if gpu_instance_index > self.instance_data_idxs.len() as u32 {
+        if gpu_instance_index >= self.instance_data_idxs.len() as u32 {
             self.instance_data_idxs
                 .resize(gpu_instance_index as usize + 1, u32::MAX);
         }
@@ -290,8 +289,6 @@ impl MeshRenderer {
     }
 
     fn prepare(&mut self, renderer: &Renderer) {
-        // let mut updater =
-        //     GPUDataUpdaterBuilder::new(renderer.transient_buffer_allocator(64 * 1024));
         let mut render_commands = renderer.render_command_builder();
         let device_context = renderer.device_context();
 
@@ -688,7 +685,7 @@ impl MeshRenderer {
 
         let mut render_pass_data: Vec<RenderPassData> = vec![];
         for layer in &self.default_layers {
-            let offset_base_va = layer.offsets_va();
+            let offset_base_va = u32::try_from(layer.offsets_va()).unwrap();
 
             let mut pass_data = RenderPassData::default();
             pass_data.set_offset_base_va(offset_base_va.into());
@@ -697,7 +694,7 @@ impl MeshRenderer {
 
         cmd_buffer.with_label("Gen occlusion and cull", |cmd_buffer| {
             cmd_buffer.cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
-            cmd_buffer.cmd_bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+            cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
             let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
             let hzb_max_lod = render_surface.get_hzb_surface().hzb_max_lod();
@@ -775,7 +772,7 @@ impl MeshRenderer {
             render_surface.generate_hzb(render_context, cmd_buffer);
 
             // Rebind global vertex buffer after gen Hzb changes it
-            cmd_buffer.cmd_bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+            cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
             // Retest elements culled from first pass against new Hzb
             self.cull(

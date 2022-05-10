@@ -47,7 +47,7 @@ impl Renderer {
         Self {
             num_render_frames,
             render_resources,
-            _gfx_api: gfx_api.clone(),
+            _gfx_api: gfx_api,
         }
     }
 

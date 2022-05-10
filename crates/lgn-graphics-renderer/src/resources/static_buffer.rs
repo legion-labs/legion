@@ -161,7 +161,7 @@ impl StaticBufferAllocation {
         }
 
         let view_definition = BufferViewDef {
-            byte_offset: self.inner.aligned_range.begin(),
+            byte_offset: self.byte_offset(),
             ..view_definition
         };
 

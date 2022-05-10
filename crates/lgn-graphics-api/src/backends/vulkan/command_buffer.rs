@@ -1,6 +1,7 @@
-use std::sync::Arc;
-
+use ash;
 use lgn_tracing::trace;
+use smallvec::SmallVec;
+use std::sync::Arc;
 
 use super::{internal, VkDebugReporter};
 use crate::{
@@ -9,6 +10,7 @@ use crate::{
     CommandBufferDef, CommandPool, DepthStencilRenderTargetBinding, DescriptorSetHandle,
     DeviceContext, IndexBufferBinding, Pipeline, PipelineType, PlaneSlice, ResourceState,
     ResourceUsage, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
+    MAX_VERTEX_INPUT_BINDINGS,
 };
 pub(crate) struct VulkanCommandBuffer {
     vk_command_buffer: ash::vk::CommandBuffer,
@@ -301,8 +303,12 @@ impl CommandBuffer {
         first_binding: u32,
         bindings: &[VertexBufferBinding],
     ) {
-        let mut buffers = Vec::with_capacity(bindings.len());
-        let mut offsets = Vec::with_capacity(bindings.len());
+        let mut buffers =
+            SmallVec::<[ash::vk::Buffer; MAX_VERTEX_INPUT_BINDINGS]>::with_capacity(bindings.len());
+        let mut offsets =
+            SmallVec::<[ash::vk::DeviceSize; MAX_VERTEX_INPUT_BINDINGS]>::with_capacity(
+                bindings.len(),
+            );
         for binding in bindings {
             buffers.push(binding.buffer().vk_buffer());
             offsets.push(binding.byte_offset());

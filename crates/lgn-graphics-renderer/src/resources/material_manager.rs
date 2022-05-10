@@ -408,9 +408,9 @@ impl MaterialManager {
         resource_id: ResourceTypeAndId,
         material_data: MaterialData,
     ) {
-        if self.materials.len() < material_id.index() as usize {
+        if material_id.index() as usize >= self.materials.len() {
             let next_size =
-                round_size_up_to_alignment_u32(material_id.index(), MATERIAL_BLOCK_SIZE);
+                round_size_up_to_alignment_u32(material_id.index() + 1, MATERIAL_BLOCK_SIZE);
             self.materials
                 .resize(next_size as usize, MaterialSlot::Empty);
         }

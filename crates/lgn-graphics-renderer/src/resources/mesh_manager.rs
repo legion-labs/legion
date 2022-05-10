@@ -73,7 +73,7 @@ impl MeshManager {
     }
 
     pub fn add_mesh(&mut self, render_commands: &mut RenderCommandBuilder, mesh: &Mesh) -> MeshId {
-        let (buf, index_offset) = mesh.pack_gpu_data();
+        let (buf, index_byte_offset) = mesh.pack_gpu_data();
 
         let allocation = self
             .allocator
@@ -84,7 +84,8 @@ impl MeshManager {
         self.static_meshes.push(MeshMetaData {
             vertex_count: mesh.num_vertices() as u32,
             index_count: mesh.num_indices() as u32,
-            index_offset: allocation_offset + index_offset,
+            index_offset: (allocation_offset + index_byte_offset)
+                / std::mem::size_of::<u16>() as u32,
             mesh_description_offset: allocation_offset,
             positions: mesh.positions.clone(),
             bounding_sphere: mesh.bounding_sphere,

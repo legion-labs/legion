@@ -16,8 +16,9 @@ impl IndexBlock {
     pub fn new(base_index: u32, block_size: u32) -> Self {
         let mut indexes = Vec::with_capacity(block_size as usize);
         indexes.reserve(block_size as usize);
+        let last_index = base_index + block_size - 1;
         for i in 0..block_size {
-            indexes.push(base_index + i as u32);
+            indexes.push(last_index - i as u32);
         }
 
         Self {

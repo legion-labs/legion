@@ -22,10 +22,10 @@ impl RenderLayer {
     pub fn new(allocator: &UnifiedStaticBufferAllocator, cpu_render_set: bool) -> Self {
         const TEMP_MAX_MATERIAL_COUNT: usize = 8192;
         let page_size = TEMP_MAX_MATERIAL_COUNT * std::mem::size_of::<u32>();
-        let material_page = allocator.allocate(page_size as u64, ResourceUsage::empty());
+        let state_page = allocator.allocate(page_size as u64, ResourceUsage::empty());
 
         Self {
-            state_page: material_page,
+            state_page,
             state_to_batch: vec![],
             batches: vec![],
             cpu_render_set,
@@ -95,7 +95,7 @@ impl RenderLayer {
             }
 
             let mut binary_writer = BinaryWriter::new();
-            binary_writer.write(&per_state_offsets);
+            binary_writer.write_slice(&per_state_offsets);
 
             render_commands.push(UpdateUnifiedStaticBufferCommand {
                 src_buffer: binary_writer.take(),
@@ -104,9 +104,9 @@ impl RenderLayer {
         }
     }
 
-    pub fn offsets_va(&self) -> u32 {
+    pub fn offsets_va(&self) -> u64 {
         if !self.cpu_render_set && !self.state_to_batch.is_empty() {
-            self.state_page.byte_offset() as u32
+            self.state_page.byte_offset()
         } else {
             0
         }

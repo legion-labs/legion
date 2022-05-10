@@ -94,7 +94,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
                 culled_instances[previous_count] = instance_data;
             #endif
             }            
-        }
+        }        
         
         if (!culled) {
             if (push_constant.options.is_set(CullingOptions_GATHER_PERF_STATS)) {
@@ -118,7 +118,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
 
                 draw_args[inirect_offset + 0] = mesh_desc.index_count;
                 draw_args[inirect_offset + 1] = 1;
-                draw_args[inirect_offset + 2] = mesh_desc.index_offset;
+                draw_args[inirect_offset + 2] = (addresses.mesh_description_va + mesh_desc.index_offset) / 2;
                 draw_args[inirect_offset + 3] = 0;
                 draw_args[inirect_offset + 4] = instance_data.gpu_instance_id;
             }

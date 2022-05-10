@@ -3,7 +3,7 @@ use lgn_graphics_api::prelude::*;
 use crate::{
     components::TextureData,
     resources::{TransientBufferAllocator, TransientCommandBufferAllocator},
-    GraphicsQueue, RenderContext,
+    GraphicsQueue,
 };
 
 use super::RenderCommand;
