@@ -24,9 +24,8 @@ export function makeGrpcClient() {
 
   metadata.set("Authorization", "Bearer " + token);
 
-  const options = { metadata: metadata };
   const client = new PerformanceAnalyticsClientImpl(
-    new GrpcWebImpl(getUrl(), options)
+    new GrpcWebImpl(getUrl(), { metadata })
   );
 
   return client;

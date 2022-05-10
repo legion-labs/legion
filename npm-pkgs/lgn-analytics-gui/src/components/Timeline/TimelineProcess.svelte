@@ -41,7 +41,7 @@
 
   $: style = collapsed
     ? `min-height:${sph}px;max-height:${sph}px;overflow-y:hidden`
-    : ``;
+    : undefined;
 
   onMount(() => {
     collapsed = index !== 0;
