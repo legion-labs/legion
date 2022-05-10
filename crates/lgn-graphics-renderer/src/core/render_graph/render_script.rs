@@ -88,7 +88,7 @@ impl RenderScript {
         view: &RenderView,
         config: &Config,
     ) -> GfxResult<RenderGraph> {
-        let mut rendergraph_builder = RenderGraph::builder();
+        let mut render_graph_builder = RenderGraph::builder();
 
         if view.target.definition().extents.width == 0
             || view.target.definition().extents.height == 0
@@ -98,53 +98,55 @@ impl RenderScript {
             return Err(GfxError::String("View target is invalid".to_string()));
         }
 
-        let view_target_id = rendergraph_builder.inject_render_target("ViewTarget", &view.target);
+        let view_target_id = render_graph_builder.inject_render_target("ViewTarget", &view.target);
 
         let depth_buffer_desc = self.make_depth_buffer_desc(view);
         let depth_buffer_id =
-            rendergraph_builder.declare_render_target("DepthBuffer", &depth_buffer_desc);
+            render_graph_builder.declare_render_target("DepthBuffer", &depth_buffer_desc);
         let single_mip_color_view_def = self.make_single_mip_color_view_def();
-        let single_mip_color_view_id = rendergraph_builder.declare_view(&single_mip_color_view_def);
+        let single_mip_color_view_id =
+            render_graph_builder.declare_view(&single_mip_color_view_def);
         let single_mip_depth_view_def = self.make_single_mip_depth_view_def();
-        let single_mip_depth_view_id = rendergraph_builder.declare_view(&single_mip_depth_view_def);
+        let single_mip_depth_view_id =
+            render_graph_builder.declare_view(&single_mip_depth_view_def);
         let single_mip_depth_read_only_view_def = self.make_single_mip_depth_read_only_view_def();
         let single_mip_depth_read_only_view_id =
-            rendergraph_builder.declare_view(&single_mip_depth_read_only_view_def);
+            render_graph_builder.declare_view(&single_mip_depth_read_only_view_def);
 
         let gbuffer_descs = self.make_gbuffer_descs(view);
         let gbuffer_ids = [
-            rendergraph_builder.declare_render_target("GBuffer0", &gbuffer_descs[0]),
-            rendergraph_builder.declare_render_target("GBuffer1", &gbuffer_descs[1]),
-            rendergraph_builder.declare_render_target("GBuffer2", &gbuffer_descs[2]),
-            rendergraph_builder.declare_render_target("GBuffer3", &gbuffer_descs[3]),
+            render_graph_builder.declare_render_target("GBuffer0", &gbuffer_descs[0]),
+            render_graph_builder.declare_render_target("GBuffer1", &gbuffer_descs[1]),
+            render_graph_builder.declare_render_target("GBuffer2", &gbuffer_descs[2]),
+            render_graph_builder.declare_render_target("GBuffer3", &gbuffer_descs[3]),
         ];
 
         let radiance_buffer_desc = self.make_radiance_buffer_desc(view);
         let radiance_buffer_id =
-            rendergraph_builder.declare_render_target("RadianceBuffer", &radiance_buffer_desc);
+            render_graph_builder.declare_render_target("RadianceBuffer", &radiance_buffer_desc);
 
         let ao_buffer_desc = self.make_ao_buffer_desc(view);
-        let ao_buffer_id = rendergraph_builder.declare_render_target("AOBuffer", &ao_buffer_desc);
+        let ao_buffer_id = render_graph_builder.declare_render_target("AOBuffer", &ao_buffer_desc);
 
-        rendergraph_builder = self.depth_layer_pass.build_render_graph(
-            rendergraph_builder,
+        render_graph_builder = self.depth_layer_pass.build_render_graph(
+            render_graph_builder,
             depth_buffer_id,
             single_mip_depth_view_id,
         );
-        rendergraph_builder = self.gpu_culling_pass.build_render_graph(
-            rendergraph_builder,
+        render_graph_builder = self.gpu_culling_pass.build_render_graph(
+            render_graph_builder,
             depth_buffer_id,
             single_mip_depth_read_only_view_id,
         );
-        rendergraph_builder = self.opaque_layer_pass.build_render_graph(
-            rendergraph_builder,
+        render_graph_builder = self.opaque_layer_pass.build_render_graph(
+            render_graph_builder,
             depth_buffer_id,
             single_mip_depth_read_only_view_id,
             gbuffer_ids,
             single_mip_color_view_id,
         );
-        rendergraph_builder = self.ssao_pass.build_render_graph(
-            rendergraph_builder,
+        render_graph_builder = self.ssao_pass.build_render_graph(
+            render_graph_builder,
             view,
             depth_buffer_id,
             single_mip_depth_read_only_view_id,
@@ -153,8 +155,8 @@ impl RenderScript {
             ao_buffer_id,
             single_mip_color_view_id,
         );
-        rendergraph_builder = self.lighting_pass.build_render_graph(
-            rendergraph_builder,
+        render_graph_builder = self.lighting_pass.build_render_graph(
+            render_graph_builder,
             depth_buffer_id,
             single_mip_depth_read_only_view_id,
             gbuffer_ids,
@@ -164,8 +166,8 @@ impl RenderScript {
             radiance_buffer_id,
             single_mip_color_view_id,
         );
-        rendergraph_builder = self.alphablended_layer_pass.build_render_graph(
-            rendergraph_builder,
+        render_graph_builder = self.alphablended_layer_pass.build_render_graph(
+            render_graph_builder,
             depth_buffer_id,
             single_mip_depth_read_only_view_id,
             radiance_buffer_id,
@@ -173,8 +175,8 @@ impl RenderScript {
         );
 
         if config.display_post_process() {
-            rendergraph_builder = self.postprocess_pass.build_render_graph(
-                rendergraph_builder,
+            render_graph_builder = self.postprocess_pass.build_render_graph(
+                render_graph_builder,
                 radiance_buffer_id,
                 single_mip_color_view_id,
             );
@@ -183,9 +185,9 @@ impl RenderScript {
         let ui_buffer_id = if config.display_ui() {
             let ui_buffer_desc = self.make_ui_buffer_desc(view);
             let ui_buffer_id =
-                rendergraph_builder.declare_render_target("UIBuffer", &ui_buffer_desc);
-            rendergraph_builder = self.ui_pass.build_render_graph(
-                rendergraph_builder,
+                render_graph_builder.declare_render_target("UIBuffer", &ui_buffer_desc);
+            render_graph_builder = self.ui_pass.build_render_graph(
+                render_graph_builder,
                 ui_buffer_id,
                 single_mip_color_view_id,
             );
@@ -194,8 +196,8 @@ impl RenderScript {
             None
         };
 
-        rendergraph_builder = self.combine_pass(
-            rendergraph_builder,
+        render_graph_builder = self.combine_pass(
+            render_graph_builder,
             view_target_id,
             single_mip_color_view_id,
             radiance_buffer_id,
@@ -204,7 +206,7 @@ impl RenderScript {
             single_mip_color_view_id,
         );
 
-        Ok(rendergraph_builder.build())
+        Ok(render_graph_builder.build())
     }
 
     #[allow(clippy::unused_self)]

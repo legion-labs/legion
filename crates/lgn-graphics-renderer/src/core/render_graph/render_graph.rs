@@ -351,6 +351,7 @@ pub enum RenderGraphResourceState {
     Write,
     RenderTarget,
     DepthStencil,
+    // TODO: we will need CopySrc, CopyDst (see the ResourceState enum)
 }
 
 #[derive(Clone)]
