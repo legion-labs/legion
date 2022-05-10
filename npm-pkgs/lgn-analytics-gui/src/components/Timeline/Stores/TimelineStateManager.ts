@@ -292,7 +292,8 @@ export class TimelineStateManager {
     let sentRequest = false;
     for (const block of Object.values(state.blocks)) {
       const lod = computePreferredBlockLod(state.canvasWidth, range, block);
-      if (lod && !block.lods[lod]) {
+
+      if (typeof lod === "number" && !block.lods[lod]) {
         block.lods[lod] = {
           state: LODState.Missing,
           tracks: [],
