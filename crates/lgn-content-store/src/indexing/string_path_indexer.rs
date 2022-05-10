@@ -12,7 +12,7 @@ use super::{
     TreeReader,
 };
 
-/// A `FilesystemIndexer` is an indexer that adds resources according to a
+/// A `StringPathIndexer` is an indexer that adds resources according to a
 /// virtual filesystem path.
 ///
 /// The index keys can be of any size but are expected to be UTF-8 encoded
@@ -32,36 +32,36 @@ use super::{
 /// and removal are thus reasonably fast, but the responsibility of not
 /// overloading branches (directories) is left to the user.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct FilesystemIndexer {
+pub struct StringPathIndexer {
     /// The separator used to separate the path elements.
-    #[serde(default = "FilesystemIndexer::default_path_separator")]
-    path_separator: u8,
+    #[serde(default = "StringPathIndexer::default_path_separator")]
+    path_separator: char,
 
     /// Whether to keep empty directories when removing a resource.
     #[serde(default)]
     keep_empty_branches: bool,
 }
 
-impl Default for FilesystemIndexer {
+impl Default for StringPathIndexer {
     fn default() -> Self {
         Self::new(Self::default_path_separator())
     }
 }
 
-impl FilesystemIndexer {
+impl StringPathIndexer {
     /// Create a new static indexer with the specified key size.
     ///
     /// By default, the indexer will use a minimum of 2 children and a maximum
     /// of 256 children per layer.
-    pub fn new(path_separator: u8) -> Self {
+    pub fn new(path_separator: char) -> Self {
         Self {
             path_separator,
             keep_empty_branches: false,
         }
     }
 
-    fn default_path_separator() -> u8 {
-        b'/'
+    fn default_path_separator() -> char {
+        '/'
     }
 
     /// Set whether to remove empty directories when removing a resource.
@@ -69,48 +69,52 @@ impl FilesystemIndexer {
         self.keep_empty_branches = keep_empty_branches;
     }
 
-    fn sanitize_index_key<'k>(&self, index_key: &'k [u8]) -> &'k [u8] {
-        // If the index key starts with the separator, discard it silently.
-        let index_key = if index_key.first() == Some(&self.path_separator) {
-            &index_key[1..]
-        } else {
-            index_key
-        };
+    /// Convert the index key to its UTF-8 string representation, and trims it
+    /// to a conforming format that allows later splitting by
+    /// `split_first_index_key` and `split_last_index_key`.
+    ///
+    /// # Errors
+    ///
+    /// If the index key is not UTF-8 encoded, an error is returned.
+    fn sanitize_index_key<'k>(&self, index_key: &'k [u8]) -> Result<&'k str> {
+        let index_key = std::str::from_utf8(index_key)
+            .map_err(|err| Error::InvalidIndexKey(format!("invalid UTF-8: {}", err)))?;
 
-        if index_key.last() == Some(&self.path_separator) {
-            &index_key[..index_key.len() - 1]
-        } else {
-            index_key
-        }
+        Ok(index_key.trim_matches(self.path_separator))
     }
 
     /// Split the index key into its first path element and the remaining path.
     ///
     /// The index key should have been sanitized before calling this function.
     /// See `sanitize_index_key`.
-    fn split_first_index_key<'k>(&self, index_key: &'k [u8]) -> (&'k [u8], &'k [u8]) {
-        if let Some(position) = index_key.iter().position(|&b| b == self.path_separator) {
-            let (a, b) = index_key.split_at(position);
-            (a, &b[1..])
+    fn split_first_index_key<'k>(&self, index_key: &'k str) -> (&'k str, &'k str) {
+        let mut iter = index_key.splitn(2, self.path_separator);
+        let first = iter
+            .next()
+            .expect("splitn should return at least one value");
+
+        if let Some(second) = iter.next() {
+            (first, second)
         } else {
-            (index_key, &[])
+            (first, "")
         }
     }
 
-    /// Split the index key into its last path element and the remaining path.
+    /// Split the index key into its optional folder hierarchy and "file name"
+    /// part.
     ///
     /// The index key should have been sanitized before calling this function.
     /// See `sanitize_index_key`.
-    fn split_last_index_key<'k>(&self, index_key: &'k [u8]) -> (&'k [u8], &'k [u8]) {
-        if let Some(position) = index_key
-            .iter()
-            .rev()
-            .position(|&b| b == self.path_separator)
-        {
-            let (a, b) = index_key.split_at(index_key.len() - position - 1);
-            (a, &b[1..])
+    fn split_last_index_key<'k>(&self, index_key: &'k str) -> (&'k str, &'k str) {
+        let mut iter = index_key.rsplitn(2, self.path_separator);
+        let first = iter
+            .next()
+            .expect("rsplit should return at least one value");
+
+        if let Some(second) = iter.next() {
+            (second, first)
         } else {
-            (index_key, &[])
+            ("", first)
         }
     }
 
@@ -122,26 +126,26 @@ impl FilesystemIndexer {
     ) -> Result<SearchResult<'i>> {
         Ok({
             let mut current_node = root.clone();
-            let mut remaining_key: &[u8] = self.sanitize_index_key(index_key);
-            let mut local_key: &[u8];
+            let mut remaining_key: &str = self.sanitize_index_key(index_key)?;
+            let mut local_key: &str;
 
             let mut stack = IndexPath::default();
 
             loop {
                 stack.push(IndexPathItem {
                     tree: current_node.clone(),
-                    key: remaining_key,
+                    key: remaining_key.as_bytes(),
                 });
 
                 (local_key, remaining_key) = self.split_first_index_key(remaining_key);
 
-                match current_node.into_children(local_key) {
+                match current_node.into_children(local_key.as_bytes()) {
                     None => return Ok(SearchResult::NotFound(stack)),
                     Some(node) => {
                         // We found a children with the local key: let's
                         // replace the key of the last element in the
                         // stack to reflect that.
-                        stack.last_mut().unwrap().key = local_key;
+                        stack.last_mut().unwrap().key = local_key.as_bytes();
 
                         match node {
                             TreeNode::Leaf(leaf) => {
@@ -225,19 +229,23 @@ impl FilesystemIndexer {
                 // with a non-empty stack.
                 let mut item = stack.pop().expect("stack is not empty");
                 let mut node = TreeNode::Leaf(leaf_node);
-                let mut local_key: &[u8];
+                let mut item_key: &str;
+                let mut local_key: &str;
 
                 node = loop {
-                    (item.key, local_key) = self.split_last_index_key(item.key);
+                    (item_key, local_key) =
+                        self.split_last_index_key(self.sanitize_index_key(item.key)?);
 
-                    if local_key.is_empty() {
+                    if item_key.is_empty() {
                         break node;
                     }
+
+                    item.key = item_key.as_bytes();
 
                     let tree = Tree {
                         count: 1,
                         total_size: size_delta,
-                        children: vec![(local_key.into_index_key(), node)],
+                        children: vec![(local_key.as_bytes().into_index_key(), node)],
                     };
 
                     let tree_id = provider.write_tree(&tree).await?;
@@ -562,54 +570,44 @@ mod tests {
 
     #[test]
     fn test_filesystem_indexer_sanitize() {
-        let idx = FilesystemIndexer::new(0);
+        let idx = StringPathIndexer::new('/');
 
-        let b = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-        assert_eq!(idx.sanitize_index_key(&b), &b);
+        let b = "foo/bar/baz/qux/quux";
+        assert_eq!(idx.sanitize_index_key(b.as_bytes()).unwrap(), b);
 
-        let b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-        assert_eq!(idx.sanitize_index_key(&b), &b[1..10]);
-
-        let b = [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0];
-        assert_eq!(idx.sanitize_index_key(&b), &b[1..12]);
+        let b = "///foo/bar/baz/qux/quux///";
+        assert_eq!(
+            idx.sanitize_index_key(b.as_bytes()).unwrap(),
+            "foo/bar/baz/qux/quux"
+        );
     }
 
     #[test]
     fn test_filesystem_indexer_split_first() {
-        let idx = FilesystemIndexer::new(4);
+        let idx = StringPathIndexer::new('/');
 
-        let b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        assert_eq!(idx.split_first_index_key(&b), (&b[..4], &b[5..]));
+        let b = "foo/bar/baz/qux/quux";
+        assert_eq!(idx.split_first_index_key(b), ("foo", "bar/baz/qux/quux"));
 
-        let b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 1];
-        assert_eq!(idx.split_first_index_key(&b), (&b[..4], &b[5..]));
-
-        let idx = FilesystemIndexer::new(0xA);
-
-        let b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        assert_eq!(idx.split_first_index_key(&b), (&b[..], &[] as &[u8]));
+        let b = "foo-bar";
+        assert_eq!(idx.split_first_index_key(b), ("foo-bar", ""));
     }
 
     #[test]
     fn test_filesystem_indexer_split_last() {
-        let idx = FilesystemIndexer::new(4);
+        let idx = StringPathIndexer::new('/');
 
-        let b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        assert_eq!(idx.split_last_index_key(&b), (&b[..4], &b[5..]));
+        let b = "foo/bar/baz/qux/quux";
+        assert_eq!(idx.split_last_index_key(b), ("foo/bar/baz/qux", "quux"));
 
-        let b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 4, 1];
-        assert_eq!(idx.split_last_index_key(&b), (&b[..10], &b[11..]));
-
-        let idx = FilesystemIndexer::new(0xA);
-
-        let b = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-        assert_eq!(idx.split_last_index_key(&b), (&b[..], &[] as &[u8]));
+        let b = "foo-bar";
+        assert_eq!(idx.split_last_index_key(b), ("", "foo-bar"));
     }
 
     #[tokio::test]
     async fn test_filesystem_indexer() {
         let provider = Provider::new_in_memory();
-        let idx = FilesystemIndexer::default();
+        let idx = StringPathIndexer::default();
 
         // This is our starting point: we write an empty tree.
         //
@@ -625,10 +623,11 @@ mod tests {
         let (tree_id, _) = add_leaf!(idx, provider, tree_id, "/fruits/banana.txt", "banana");
         let (tree_id, _) = add_leaf!(idx, provider, tree_id, "/vegetables/tomato.txt", "tomato");
 
+        // Uncomment this to generate GraphViz output for the above tree.
         //let visitor = crate::indexing::GraphvizVisitor::create("tree.dot")
         //    .await
         //    .unwrap();
-        //tree_id.visit(&ct, visitor).await.unwrap();
+        //tree_id.visit(&provider, visitor).await.unwrap();
 
         let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 4);

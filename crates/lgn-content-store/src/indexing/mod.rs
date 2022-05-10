@@ -2,7 +2,6 @@
 
 mod composite_index_key;
 mod errors;
-mod filesystem_indexer;
 mod graphviz_visitor;
 mod index;
 mod index_key;
@@ -12,11 +11,11 @@ mod indexer;
 mod json_visitor;
 mod search_result;
 mod static_indexer;
+mod string_path_indexer;
 mod tree;
 
 pub use composite_index_key::CompositeIndexKey;
 pub use errors::{Error, Result};
-pub use filesystem_indexer::FilesystemIndexer;
 pub use graphviz_visitor::GraphvizVisitor;
 pub use index::{Index, IndexIdentifier, IndexReader, IndexWriter};
 pub use index_key::{IndexKey, IndexKeyBound, IntoIndexKey};
@@ -27,6 +26,7 @@ pub use indexer::{Indexer, IndexerIdentifier, IndexerReader, IndexerWriter};
 pub use json_visitor::JsonVisitor;
 pub(crate) use search_result::SearchResult;
 pub use static_indexer::StaticIndexer;
+pub use string_path_indexer::StringPathIndexer;
 pub use tree::{
     Tree, TreeIdentifier, TreeLeafNode, TreeNode, TreeReader, TreeVisitor, TreeVisitorAction,
     TreeWriter,

@@ -44,6 +44,12 @@ enum Commands {
     },
     Explain {
         identifier: Identifier,
+        #[clap(
+            short = 's',
+            long = "show-data",
+            help = "Show the data of the identifier"
+        )]
+        show_data: bool,
     },
 }
 
@@ -296,7 +302,10 @@ async fn main() -> anyhow::Result<()> {
 
             println!("{}", id);
         }
-        Commands::Explain { identifier } => {
+        Commands::Explain {
+            identifier,
+            show_data,
+        } => {
             match &identifier {
                 Identifier::Data(data) => {
                     println!(
@@ -306,7 +315,7 @@ async fn main() -> anyhow::Result<()> {
                     );
                     println!(
                         "It's data is {} byte(s) long and is contained in the identifier itself.",
-                        style(data.len()).bold().red()
+                        style(data.len()).bold().green()
                     );
                 }
                 Identifier::HashRef(id) => {
@@ -316,8 +325,8 @@ async fn main() -> anyhow::Result<()> {
                         style("hash-ref").bold().cyan()
                     );
                     println!(
-                        "It's data is {} byte(s) long and is directly contained in the content-store.",
-                        style(id.data_size()).bold().red()
+                        "It's data is {} byte(s) long and should live directly in a content-store blob.",
+                        style(id.data_size()).bold().green()
                     );
                 }
                 Identifier::ManifestRef(size, id) => {
@@ -328,7 +337,7 @@ async fn main() -> anyhow::Result<()> {
                     );
                     println!(
                         "It's data is {} byte(s) long and is split across several identifiers in the content-store. The manifest at `{}` describes the data.",
-                        style(size).bold().red(),
+                        style(size).bold().green(),
                         style(id.to_string()).bold().yellow()
                     );
                 }
@@ -340,17 +349,19 @@ async fn main() -> anyhow::Result<()> {
                     );
 
                     match String::from_utf8(key.to_vec()) {
-                        Ok(key) => println!("It has an UTF-8 key: `{}`.", style(key).bold().red()),
+                        Ok(key) => {
+                            println!("It has an UTF-8 key: `{}`.", style(key).bold().green());
+                        }
                         Err(_) => println!(
                             "It has a non-UTF-8 key: `{}`.",
-                            style(hex::encode(key)).bold().red()
+                            style(hex::encode(key)).bold().green()
                         ),
                     }
 
                     match provider.resolve_alias(key).await {
                         Ok(id) => println!(
                             "It points to the identifier: `{}`.",
-                            style(&id).bold().red()
+                            style(&id).bold().yellow()
                         ),
                         Err(Error::IdentifierNotFound(_)) => {
                             println!("The alias does not seem to exist.");
@@ -364,9 +375,14 @@ async fn main() -> anyhow::Result<()> {
 
             match provider.get_reader(&identifier).await {
                 Ok(mut reader) => {
+                    println!(
+                        "The data comes from: {}",
+                        style(reader.origin()).bold().magenta()
+                    );
+
                     if reader.size() == 0 {
                         println!("The identifier points to an empty blob.");
-                    } else {
+                    } else if show_data {
                         let mut buf = Vec::new();
                         const MAX_BUF_SIZE: usize = 512;
                         buf.reserve(min(MAX_BUF_SIZE, reader.size()));
@@ -383,12 +399,22 @@ async fn main() -> anyhow::Result<()> {
 
                         match std::str::from_utf8(&buf) {
                             Ok(s) => println!("It's data is valid UTF-8:\n{}", s),
-                            Err(_) => println!("It's data is not UTF-8:\n{}", hex::encode(&buf)),
+                            Err(_) => {
+                                println!("It's data is not UTF-8:\n{}", hex::encode(&buf));
+                            }
                         };
+                    } else {
+                        println!(
+                            "The content is not shown. Specify `{}` to show it.",
+                            style("--show-data").bold().cyan()
+                        );
                     }
                 }
                 Err(Error::IdentifierNotFound(_)) => {
-                    println!("The content-store does not contain the identifier.");
+                    println!(
+                        "{}: the content-store does not contain the identifier.",
+                        style("Error").bold().red()
+                    );
                 }
                 Err(err) => {
                     println!("Failed to get a reader: {}", style(err).bold().red());

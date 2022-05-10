@@ -148,12 +148,13 @@ async fn main() -> anyhow::Result<()> {
 
     for (i, (data_space, provider_set)) in providers.iter().enumerate() {
         info!(
-            "{}: {} - provider: {} - address provider: {} - size threshold: {}",
+            "{}: {} - provider: {} - address provider: {} - size threshold: {} - alias provider: {}",
             i,
             data_space,
             provider_set.content_provider,
             provider_set.content_address_provider,
-            provider_set.size_threshold
+            provider_set.size_threshold,
+            provider_set.alias_provider,
         );
     }
 
