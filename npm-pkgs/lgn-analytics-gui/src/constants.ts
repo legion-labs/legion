@@ -12,6 +12,8 @@ export const l10nOrchestratorContextKey = originalL10nOrchestratorContextKey;
 export const httpClientContextKey = Symbol.for("http-client-context-key");
 /** Key to the notifications context */
 export const notificationsContextKey = Symbol.for("notifications-context-key");
+/** Key to the notifications context */
+export const debugContextKey = Symbol.for("debug-context-key");
 
 export const themeStorageKey = "theme";
 export const localeStorageKey = "locale";

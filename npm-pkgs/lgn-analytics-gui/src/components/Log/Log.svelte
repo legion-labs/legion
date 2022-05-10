@@ -18,6 +18,7 @@
   let viewRange: [number, number] = [0, 0];
   let processInfo: Process | null = null;
   let logEntries: LogEntry[] = [];
+  let log: HTMLDivElement | null = null;
 
   async function fetchLogEntries() {
     const { process } = await client.find_process({
@@ -99,7 +100,14 @@
   {/if}
 
   {#if logEntries.length}
-    <div class="overflow-y-auto w-100 p-1 rounded-sm background flex-1">
+    <!-- svelte-ignore a11y-autofocus -->
+    <div
+      class="overflow-y-auto w-100 p-1 rounded-sm background flex-1 outline-none"
+      tabindex={-1}
+      autofocus
+      bind:this={log}
+      on:blur={() => log?.focus()}
+    >
       {#each logEntries as entry, index (index)}
         <div class="flex rounded flex-row gap-x-4">
           <div class="font-bold basis-28 shrink-0">

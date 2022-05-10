@@ -3,7 +3,7 @@
 
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
-  import { getL10nOrchestratorContext } from "@/contexts";
+  import { getDebugContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatExecutionTime, formatProcessName } from "@/lib/format";
 
   import L10n from "../Misc/L10n.svelte";
@@ -25,6 +25,7 @@
 
   const wheelDispatcher = createEventDispatcher<{ zoom: WheelEvent }>();
   const processOffsetMs = Date.parse(process.startTime) - rootStartTime;
+  const debug = getDebugContext();
   const { t } = getL10nOrchestratorContext();
 
   let collapsed = false;
@@ -80,7 +81,9 @@
           on:click|stopPropagation={() =>
             components.forEach((c) => c.setCollapse(false))}
         />
-        <TimelineDebug store={stateStore} />
+        {#if $debug}
+          <TimelineDebug store={stateStore} />
+        {/if}
       </div>
     {/if}
   </div>
