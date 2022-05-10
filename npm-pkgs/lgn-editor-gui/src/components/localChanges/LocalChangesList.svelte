@@ -40,8 +40,8 @@
         class="resource-row"
         title={resource.info?.path || "Unknown path"}
         class:selected={$selectedResource === resource}
-        on:click={() => selectedResource.set(resource)}
-        on:mousedown={() => selectedResource.set(resource)}
+        on:click={() => $selectedResource = resource}
+        on:mousedown={() => $selectedResource = resource}
         use:contextMenu={localChangesContextMenuId}
       >
         <div class="w-1/12 flex flex-row justify-center">
