@@ -884,16 +884,18 @@ impl RenderGraph {
         command_buffer.resource_barrier(&buffer_barriers, &texture_barriers);
     }
 
+    #[allow(clippy::unused_self)]
+    fn need_begin_end_render_pass(&self, node: &RGNode) -> bool {
+        node.render_targets.iter().flatten().next().is_some() || node.depth_stencil.is_some()
+    }
+
     fn do_begin_render_pass(
         &self,
         context: &mut RenderGraphContext,
         node: &RGNode,
         command_buffer: &mut HLCommandBuffer<'_>,
-    ) -> bool {
-        let need_begin_end_render_pass =
-            node.render_targets.iter().flatten().next().is_some() || node.depth_stencil.is_some();
-
-        if need_begin_end_render_pass {
+    ) {
+        if self.need_begin_end_render_pass(node) {
             for resource_data in node.render_targets.iter().flatten() {
                 let res_id = resource_data.key.0 as usize;
                 match resource_data.load_state {
@@ -986,8 +988,6 @@ impl RenderGraph {
 
             command_buffer.begin_render_pass(&color_targets, &depth_target);
         }
-
-        need_begin_end_render_pass
     }
 
     fn create_views(
@@ -1092,7 +1092,7 @@ impl RenderGraph {
         execute_context: &mut RenderGraphExecuteContext<'_>,
         command_buffer: &mut HLCommandBuffer<'_>,
         device_context: &DeviceContext,
-    ) -> bool {
+    ) {
         // Batch up and execute resource transitions.
         self.do_resource_transitions(context, execute_context, command_buffer, device_context);
 
@@ -1100,12 +1100,10 @@ impl RenderGraph {
         self.create_views(context, execute_context);
 
         // Do begin render pass which will also clear render targets and depth stencil.
-        let need_begin_end_render_pass = self.do_begin_render_pass(context, node, command_buffer);
+        self.do_begin_render_pass(context, node, command_buffer);
 
         // Clear any write targets that need to.
         self.clear_write_targets(context, node, command_buffer, device_context);
-
-        need_begin_end_render_pass
     }
 
     fn end_execute(
@@ -1114,9 +1112,8 @@ impl RenderGraph {
         node: &RGNode,
         command_buffer: &mut HLCommandBuffer<'_>,
         _device_context: &DeviceContext,
-        need_begin_end_render_pass: bool,
     ) {
-        if need_begin_end_render_pass {
+        if self.need_begin_end_render_pass(node) {
             command_buffer.end_render_pass();
         }
 
@@ -1179,7 +1176,7 @@ impl RenderGraph {
                     depth_stencil: &node.depth_stencil,
                 };
 
-                let need_begin_end_render_pass = self.begin_execute(
+                self.begin_execute(
                     context,
                     node,
                     &mut execute_context,
@@ -1187,13 +1184,7 @@ impl RenderGraph {
                     device_context,
                 );
                 (execute_fn)(&execute_context, command_buffer);
-                self.end_execute(
-                    context,
-                    node,
-                    command_buffer,
-                    device_context,
-                    need_begin_end_render_pass,
-                );
+                self.end_execute(context, node, command_buffer, device_context);
             }
 
             for child in &node.children {
