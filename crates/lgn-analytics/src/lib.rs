@@ -257,6 +257,18 @@ pub async fn fetch_child_processes(
     Ok(processes)
 }
 
+// parse_tags returns a list of tags
+// the new ingestion protocol saves the tags as json, but we still have space-separated tags in the database
+fn parse_tags(tags_str: &str) -> Vec<String> {
+    if let Ok(serde_json::Value::Array(items)) = serde_json::from_str(tags_str) {
+        return items
+            .iter()
+            .map(|v| v.as_str().unwrap_or_default().to_owned())
+            .collect();
+    }
+    tags_str.split(' ').map(ToOwned::to_owned).collect()
+}
+
 #[span_fn]
 pub async fn find_process_streams_tagged(
     connection: &mut sqlx::AnyConnection,
@@ -296,7 +308,7 @@ pub async fn find_process_streams_tagged(
             process_id: r.get("process_id"),
             dependencies_metadata: Some(dependencies_metadata),
             objects_metadata: Some(objects_metadata),
-            tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+            tags: parse_tags(&tags_str),
             properties,
         });
     }
@@ -339,7 +351,7 @@ pub async fn find_process_streams(
             process_id: r.get("process_id"),
             dependencies_metadata: Some(dependencies_metadata),
             objects_metadata: Some(objects_metadata),
-            tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+            tags: parse_tags(&tags_str),
             properties,
         });
     }
@@ -429,7 +441,7 @@ pub async fn find_stream(
         process_id: row.get("process_id"),
         dependencies_metadata: Some(dependencies_metadata),
         objects_metadata: Some(objects_metadata),
-        tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+        tags: parse_tags(&tags_str),
         properties,
     })
 }
@@ -467,7 +479,7 @@ pub async fn find_block_stream(
         process_id: row.get("process_id"),
         dependencies_metadata: Some(dependencies_metadata),
         objects_metadata: Some(objects_metadata),
-        tags: tags_str.split(' ').map(ToOwned::to_owned).collect(),
+        tags: parse_tags(&tags_str),
         properties,
     })
 }
