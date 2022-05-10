@@ -33,7 +33,7 @@ pub struct PipelineManager {
 }
 
 impl PipelineManager {
-    pub(crate) fn new(device_context: &DeviceContext) -> Self {
+    pub fn new(device_context: &DeviceContext) -> Self {
         Self {
             device_context: device_context.clone(),
             shader_compiler: HlslCompiler::new().unwrap(),
