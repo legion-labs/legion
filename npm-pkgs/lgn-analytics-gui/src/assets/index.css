@@ -14,25 +14,25 @@ body {
   --thread-item-length: 11rem;
 }
 
+/* TODO: Use theme for the scrollbar */
+
 /* Customize scrollbar on Chrome, Safari, Edge */
 *::-webkit-scrollbar {
   @apply w-3 h-3;
 }
 
 *::-webkit-scrollbar-track {
-  @apply on-surface;
+  @apply bg-default;
 }
 
 *::-webkit-scrollbar-thumb {
-  @apply hover:bg-gray-400 opacity-0 duration-150 transition-colors;
+  @apply hover:bg-gray-400 opacity-0 duration-150 transition-colors rounded-full;
 
-  background-color: rgba(var(--color-text), 0.5);
+  border: 0.15rem solid transparent;
+  background-color: #454545;
+  background-clip: content-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(var(--color-text), 0.8);
-}
-
-.thin-scrollbar::-webkit-scrollbar {
-  @apply w-1 h-1;
+  background-color: #707070;
 }

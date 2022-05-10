@@ -57,6 +57,15 @@
     ],
     {
       local: {
+        functions: {
+          LOWERCASE([value]) {
+            if (!value || typeof value !== "string") {
+              return value;
+            }
+
+            return value.toLowerCase();
+          },
+        },
         connect: {
           key: localeStorageKey,
           storage: new DefaultLocalStorage(),

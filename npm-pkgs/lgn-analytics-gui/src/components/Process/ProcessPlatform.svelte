@@ -1,19 +1,24 @@
 <script lang="ts">
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
+  import L10n from "../Misc/L10n.svelte";
+
   export let process: Process | undefined;
 
   function getPlatform(distro: string | undefined) {
     if (!distro) {
-      return "Unknown";
+      return "unknown";
     }
+
     const lowerCaseDistro = distro.toLowerCase();
+
     if (lowerCaseDistro.startsWith("windows")) {
-      return "Windows";
+      return "windows";
     } else if (lowerCaseDistro.startsWith("ubuntu")) {
-      return "Linux";
+      return "linux";
     }
-    return "Unknown";
+
+    return "unknown";
   }
 
   $: platform = getPlatform(process?.distro);
@@ -21,5 +26,7 @@
 
 <div class="flex gap-2 items-center">
   <i class="bi bi-pc placeholder" />
-  <span class="capitalize">{platform}</span>
+  <span class="capitalize">
+    <L10n id="global-platform" variables={{ platform }} />
+  </span>
 </div>

@@ -3,8 +3,10 @@
 
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
+  import { getL10nOrchestratorContext } from "@/contexts";
   import { formatExecutionTime, formatProcessName } from "@/lib/format";
 
+  import L10n from "../Misc/L10n.svelte";
   import { TimelineTrackCanvasAsyncDrawer } from "./Drawing/TimelineTrackCanvasAsyncDrawer";
   import { TimelineTrackCanvasSyncDrawer } from "./Drawing/TimelineTrackCanvasSyncDrawer";
   import type { TimelineStateStore } from "./Stores/TimelineStateStore";
@@ -23,6 +25,7 @@
 
   const wheelDispatcher = createEventDispatcher<{ zoom: WheelEvent }>();
   const processOffsetMs = Date.parse(process.startTime) - rootStartTime;
+  const { t } = getL10nOrchestratorContext();
 
   let collapsed = false;
   let components: TimelineRow[] = [];
@@ -55,25 +58,24 @@
         {formatProcessName(process)}
       </span>
       {#if collapsed}
-        <span class="text-xs placeholder"
-          >{!validThreadCount
-            ? "(No thread data)"
-            : `(${validThreadCount} thread${
-                validThreadCount > 1 ? "s" : ""
-              } with data)`}</span
-        >
+        <span class="text-xs placeholder">
+          <L10n
+            id="timeline-main-collapsed-extra"
+            variables={{ validThreadCount }}
+          />
+        </span>
       {/if}
     </div>
     {#if !collapsed}
       <div class="flex flex-row gap-1">
         <i
-          title="Collapse"
+          title={$t("timeline-main-collapse")}
           class="bi-arrows-angle-contract"
           on:click|stopPropagation={() =>
             components.forEach((c) => c.setCollapse(true))}
         />
         <i
-          title="Expand"
+          title={$t("timeline-main-expand")}
           class="bi-arrows-angle-expand"
           on:click|stopPropagation={() =>
             components.forEach((c) => c.setCollapse(false))}
@@ -111,15 +113,22 @@
         <TimelineRow
           bind:this={components[index + 1]}
           processCollapsed={collapsed}
-          threadTitle={`${threadName}\n${threadLength}\n${thread.block_ids.length} block(s)`}
+          threadTitle={$t("timeline-main-thread-description-title", {
+            threadName,
+            threadBlocks: thread.block_ids.length,
+            threadLength,
+          })}
           {threadName}
           maxDepth={thread.maxDepth}
         >
-          <span class="text text-xs placeholder" slot="details"
-            >{threadLength} ({thread.block_ids.length} block{thread.block_ids
-              .length
-              ? "s"
-              : ""})
+          <span class="text-xs placeholder" slot="details">
+            <L10n
+              id="timeline-main-thread-description"
+              variables={{
+                threadBlocks: thread.block_ids.length,
+                threadLength,
+              }}
+            />
           </span>
           <TimelineTrack
             slot="canvas"

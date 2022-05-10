@@ -1,18 +1,14 @@
 <script lang="ts">
-  import { getContext } from "svelte";
   import { link } from "svelte-navigator";
 
-  import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
   import { userInfo } from "@lgn/web-client/src/orchestrators/userInfo";
 
-  import { l10nOrchestratorContextKey } from "@/constants";
+  import { getL10nOrchestratorContext } from "@/contexts";
 
   import iconPath from "../../../icons/128x128.png";
   import User from "../Process/User.svelte";
 
-  const { locale } = getContext<L10nOrchestrator<Fluent>>(
-    l10nOrchestratorContextKey
-  );
+  const { locale } = getL10nOrchestratorContext();
 
   function toggleLocale(event: MouseEvent) {
     if (event.ctrlKey && event.shiftKey) {

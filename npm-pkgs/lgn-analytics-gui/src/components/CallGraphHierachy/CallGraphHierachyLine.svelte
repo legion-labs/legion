@@ -23,36 +23,42 @@
       }
     }
   }
+
+  const children = Array.from(getChildren()).sort(
+    (r, l) => l.value.acc - r.value.acc
+  );
 </script>
 
 {#if node}
-  <tr class="cursor-pointer text-sm">
-    <td
-      style={`padding-left: ${depth * 20}px`}
-      class="truncate"
-      on:click={(_) => (collapsed = !collapsed)}
-      >{$store.scopes && $store.scopes[node.hash]?.name}
-    </td>
-    <td class="stat">{value.count.toLocaleString()}</td>
-    <td class="stat">{formatExecutionTime(value.avg)}</td>
-    <td class="stat">{formatExecutionTime(value.min)}</td>
-    <td class="stat">{formatExecutionTime(value.max)}</td>
-    <td class="stat">{formatExecutionTime(value.sd)}</td>
-    <td class="stat">{formatExecutionTime(value.acc)}</td>
-  </tr>
+  <div role="row" class="root flex flex-row cursor-pointer text-sm">
+    <div
+      role="cell"
+      style={`padding-left: ${depth + 0.25}rem`}
+      class="truncate w-1/2 flex-grow"
+      on:click={() => (collapsed = !collapsed)}
+    >
+      {$store.scopes && $store.scopes[node.hash]?.name}
+    </div>
+    <div role="cell" class="stat">{value.count.toLocaleString()}</div>
+    <div role="cell" class="stat">{formatExecutionTime(value.avg)}</div>
+    <div role="cell" class="stat">{formatExecutionTime(value.min)}</div>
+    <div role="cell" class="stat">{formatExecutionTime(value.max)}</div>
+    <div role="cell" class="stat">{formatExecutionTime(value.sd)}</div>
+    <div role="cell" class="stat">{formatExecutionTime(value.acc)}</div>
+  </div>
 {/if}
 {#if !collapsed}
-  {#each Array.from(getChildren()).sort((r, l) => l.value.acc - r.value.acc) as n (n.hash)}
+  {#each children as n (n.hash)}
     <svelte:self node={n} {store} {threadId} depth={depth + 1} />
   {/each}
 {/if}
 
 <style lang="postcss">
-  .stat {
-    @apply text-center text-xs w-48 truncate;
+  .root:nth-child(odd) {
+    @apply surface;
   }
 
-  tr:nth-child(even) {
-    @apply surface;
+  .stat {
+    @apply text-right text-xs w-28 truncate flex-shrink-0 pr-2;
   }
 </style>

@@ -1,35 +1,24 @@
 <script lang="ts">
-  import { getContext } from "svelte";
   import { writable } from "svelte/store";
 
-  import type {
-    PerformanceAnalyticsClientImpl,
-    ProcessInstance,
-  } from "@lgn/proto-telemetry/dist/analytics";
+  import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
   import { debounced } from "@lgn/web-client/src/lib/store";
-  import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
   import L10n from "@/components/Misc/L10n.svelte";
-  import {
-    httpClientContextKey,
-    l10nOrchestratorContextKey,
-  } from "@/constants";
+  import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
 
   import Loader from "../Misc/Loader.svelte";
   import ProcessItem from "./ProcessItem.svelte";
 
   type Mode = "default" | "search";
 
-  const { t } = getContext<L10nOrchestrator<Fluent>>(
-    l10nOrchestratorContextKey
-  );
+  const { t } = getL10nOrchestratorContext();
+
+  const client = getHttpClientContext();
 
   const searchValue = writable("");
 
   const debouncedSearchValue = debounced(searchValue, 300);
-
-  const client =
-    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
 
   $: cleanSearchValue = $debouncedSearchValue.trim();
 

@@ -1,30 +1,19 @@
 <script lang="ts">
   import { formatDistance } from "date-fns";
-  import { getContext } from "svelte";
   import { link } from "svelte-navigator";
 
-  import type {
-    PerformanceAnalyticsClientImpl,
-    ProcessInstance,
-  } from "@lgn/proto-telemetry/dist/analytics";
+  import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
-  import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
-  import {
-    httpClientContextKey,
-    l10nOrchestratorContextKey,
-  } from "@/constants";
+  import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatProcessName } from "@/lib/format";
 
   import ProcessComputer from "./ProcessComputer.svelte";
   import ProcessPlatform from "./ProcessPlatform.svelte";
   import User from "./User.svelte";
 
-  const { locale } = getContext<L10nOrchestrator<Fluent>>(
-    l10nOrchestratorContextKey
-  );
-  const client =
-    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
+  const { locale } = getL10nOrchestratorContext();
+  const client = getHttpClientContext();
 
   export let processInstance: ProcessInstance;
   export let depth: number;

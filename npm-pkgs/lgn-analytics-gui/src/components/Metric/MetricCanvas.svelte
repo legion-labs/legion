@@ -1,13 +1,11 @@
 <script lang="ts">
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
-  import { getContext, onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import type { Unsubscriber } from "svelte/store";
   import { get } from "svelte/store";
 
-  import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
-
-  import { httpClientContextKey } from "@/constants";
+  import { getHttpClientContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
@@ -32,8 +30,7 @@
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
 
-  const client =
-    getContext<PerformanceAnalyticsClientImpl>(httpClientContextKey);
+  const client = getHttpClientContext();
 
   let mainWidth = 0;
   $: width = mainWidth - margin.left - margin.right;
