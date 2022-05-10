@@ -220,19 +220,37 @@ impl RenderGraphViewDef {
 
 pub type RenderGraphViewId = u32;
 
+#[derive(Clone)]
+pub enum RenderGraphLoadState {
+    DontCare,
+    Load,
+    ClearColor(ColorClearValue),
+    ClearDepth(DepthStencilClearValue),
+    ClearValue(u32),
+}
+
+#[derive(Clone)]
+pub enum RenderGraphStoreState {
+    DontCare,
+    Store,
+}
+
+#[derive(Clone)]
+pub struct ResourceData {
+    pub key: (RenderGraphResourceId, RenderGraphViewId),
+    pub load_state: RenderGraphLoadState,
+}
+
 type RenderGraphExecuteFn = dyn Fn(&RenderGraphExecuteContext<'_>, &mut HLCommandBuffer<'_>);
 
 pub(crate) struct RGNode {
     pub(crate) name: String,
-    pub(crate) read_resources: Vec<(RenderGraphResourceId, RenderGraphViewId)>,
-    pub(crate) write_resources: Vec<(RenderGraphResourceId, RenderGraphViewId)>,
-    pub(crate) render_targets: Vec<Option<(RenderGraphResourceId, RenderGraphViewId)>>,
-    pub(crate) depth_stencil: Option<(RenderGraphResourceId, RenderGraphViewId)>,
+    pub(crate) read_resources: Vec<ResourceData>,
+    pub(crate) write_resources: Vec<ResourceData>,
+    pub(crate) render_targets: Vec<Option<ResourceData>>,
+    pub(crate) depth_stencil: Option<ResourceData>,
     pub(crate) children: Vec<RGNode>,
     pub(crate) execute_fn: Option<Box<RenderGraphExecuteFn>>,
-    pub(crate) clear_write_resources: Vec<Option<u32>>, // index matches write_resources
-    pub(crate) clear_rt_resources: Vec<Option<ColorClearValue>>, // index matches render_targets
-    pub(crate) clear_ds_resource: Option<DepthStencilClearValue>,
 }
 
 impl Default for RGNode {
@@ -245,9 +263,6 @@ impl Default for RGNode {
             depth_stencil: None,
             children: vec![],
             execute_fn: None,
-            clear_write_resources: vec![],
-            clear_rt_resources: vec![None; MAX_RENDER_TARGET_ATTACHMENTS],
-            clear_ds_resource: None,
         }
     }
 }
@@ -272,7 +287,7 @@ impl RGNode {
         let mut str = format!("{}*-{}\n", indent_str, self.name);
 
         let iter = self.render_targets.iter().flatten();
-        let render_targets = iter.collect::<Vec<&(RenderGraphResourceId, RenderGraphViewId)>>();
+        let render_targets = iter.collect::<Vec<&ResourceData>>();
         if !render_targets.is_empty() {
             str += &format!("{}  | Render targets:\n", indent_str);
 
@@ -280,8 +295,8 @@ impl RGNode {
                 str += &format!(
                     "{}  |   {} mip {}\n",
                     indent_str,
-                    resource_names[res.0 as usize],
-                    views[res.1 as usize].texture_view_def().first_mip,
+                    resource_names[res.key.0 as usize],
+                    views[res.key.1 as usize].texture_view_def().first_mip,
                 );
             }
         }
@@ -291,8 +306,10 @@ impl RGNode {
             str += &format!(
                 "{}  |   {} mip {}\n",
                 indent_str,
-                resource_names[depth_stencil.0 as usize],
-                views[depth_stencil.1 as usize].texture_view_def().first_mip,
+                resource_names[depth_stencil.key.0 as usize],
+                views[depth_stencil.key.1 as usize]
+                    .texture_view_def()
+                    .first_mip,
             );
         }
 
@@ -302,8 +319,8 @@ impl RGNode {
                 str += &format!(
                     "{}  |   {} mip {}\n",
                     indent_str,
-                    resource_names[res.0 as usize],
-                    views[res.1 as usize].texture_view_def().first_mip,
+                    resource_names[res.key.0 as usize],
+                    views[res.key.1 as usize].texture_view_def().first_mip,
                 );
             }
         }
@@ -314,8 +331,8 @@ impl RGNode {
                 str += &format!(
                     "{}  |   {} mip {}\n",
                     indent_str,
-                    resource_names[res.0 as usize],
-                    views[res.1 as usize].texture_view_def().first_mip,
+                    resource_names[res.key.0 as usize],
+                    views[res.key.1 as usize].texture_view_def().first_mip,
                 );
             }
         }
@@ -402,10 +419,10 @@ pub struct RenderGraphContext {
 }
 
 pub struct RenderGraphExecuteContext<'a> {
-    pub(crate) read_resources: &'a Vec<(RenderGraphResourceId, RenderGraphViewId)>,
-    pub(crate) write_resources: &'a Vec<(RenderGraphResourceId, RenderGraphViewId)>,
-    pub(crate) render_targets: &'a Vec<Option<(RenderGraphResourceId, RenderGraphViewId)>>,
-    pub(crate) depth_stencil: &'a Option<(RenderGraphResourceId, RenderGraphViewId)>,
+    pub(crate) read_resources: &'a Vec<ResourceData>,
+    pub(crate) write_resources: &'a Vec<ResourceData>,
+    pub(crate) render_targets: &'a Vec<Option<ResourceData>>,
+    pub(crate) depth_stencil: &'a Option<ResourceData>,
 }
 
 pub struct RenderGraph {
@@ -461,7 +478,9 @@ impl RenderGraph {
                 println!("  !! Create {} ", self.resource_names[res_id]);
                 let texture_def = &self.resources[res_id];
                 let texture_def = texture_def.texture_def().clone();
-                let texture = device_context.create_texture(&texture_def.clone().into());
+                let mut texture_def: TextureDef = texture_def.into();
+                texture_def.name = self.resource_names[res_id].clone();
+                let texture = device_context.create_texture(&texture_def);
                 let texture = RenderGraphResource::Texture(texture);
                 context.resources[res_id] = Some(texture);
 
@@ -493,7 +512,9 @@ impl RenderGraph {
                 println!("  !! Create {} ", self.resource_names[res_id]);
                 let buffer_def = &self.resources[res_id];
                 let buffer_def = buffer_def.buffer_def().clone();
-                let buffer = device_context.create_buffer(&buffer_def.into());
+                let mut buffer_def: BufferDef = buffer_def.into();
+                buffer_def.name = self.resource_names[res_id].clone();
+                let buffer = device_context.create_buffer(&buffer_def);
                 let buffer = RenderGraphResource::Buffer(buffer);
                 context.resources[res_id] = Some(buffer);
 
@@ -721,7 +742,7 @@ impl RenderGraph {
     ) {
         for read_res in execute_context.read_resources {
             self.gather_resource_transitions(
-                *read_res,
+                read_res.key,
                 RenderGraphResourceState::Read,
                 context,
                 device_context,
@@ -739,7 +760,7 @@ impl RenderGraph {
     ) {
         for write_res in execute_context.write_resources {
             self.gather_resource_transitions(
-                *write_res,
+                write_res.key,
                 RenderGraphResourceState::Write,
                 context,
                 device_context,
@@ -757,7 +778,7 @@ impl RenderGraph {
     ) {
         for rt_res in execute_context.render_targets.iter().flatten() {
             self.gather_resource_transitions(
-                *rt_res,
+                rt_res.key,
                 RenderGraphResourceState::RenderTarget,
                 context,
                 device_context,
@@ -775,7 +796,7 @@ impl RenderGraph {
     ) {
         if let Some(depth_stencil_res) = execute_context.depth_stencil {
             self.gather_resource_transitions(
-                *depth_stencil_res,
+                depth_stencil_res.key,
                 RenderGraphResourceState::DepthStencil,
                 context,
                 device_context,
@@ -789,11 +810,13 @@ impl RenderGraph {
         context: &mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_>,
     ) {
-        for resource_id in execute_context.render_targets.iter().flatten() {
-            let res_id = resource_id.0 as usize;
-            let view_id = resource_id.1 as usize;
+        for resource_data in execute_context.render_targets.iter().flatten() {
+            let res_id = resource_data.key.0 as usize;
+            let view_id = resource_data.key.1 as usize;
 
-            if !context.views.contains_key(resource_id) {
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                context.views.entry(resource_data.key)
+            {
                 let texture: &Texture = context.resources[res_id]
                     .as_ref()
                     .unwrap()
@@ -803,18 +826,17 @@ impl RenderGraph {
                     self.views[view_id].texture_view_def().clone().into();
                 texture_view_def.gpu_view_type = GPUViewType::RenderTarget;
                 let texture_view_temp = texture.create_view(&texture_view_def);
-                context.views.insert(
-                    *resource_id,
-                    RenderGraphView::TextureView(texture_view_temp),
-                );
+                e.insert(RenderGraphView::TextureView(texture_view_temp));
             }
         }
 
-        if let Some(resource_id) = execute_context.depth_stencil {
-            let res_id = resource_id.0 as usize;
-            let view_id = resource_id.1 as usize;
+        if let Some(resource_data) = execute_context.depth_stencil {
+            let res_id = resource_data.key.0 as usize;
+            let view_id = resource_data.key.1 as usize;
 
-            if !context.views.contains_key(resource_id) {
+            if let std::collections::hash_map::Entry::Vacant(e) =
+                context.views.entry(resource_data.key)
+            {
                 let texture: &Texture = context.resources[res_id]
                     .as_ref()
                     .unwrap()
@@ -824,10 +846,7 @@ impl RenderGraph {
                     self.views[view_id].texture_view_def().clone().into();
                 texture_view_def.gpu_view_type = GPUViewType::DepthStencil;
                 let texture_view_temp = texture.create_view(&texture_view_def);
-                context.views.insert(
-                    *resource_id,
-                    RenderGraphView::TextureView(texture_view_temp),
-                );
+                e.insert(RenderGraphView::TextureView(texture_view_temp));
             }
         }
     }
@@ -969,65 +988,93 @@ impl RenderGraph {
             node.render_targets.iter().flatten().next().is_some() || node.depth_stencil.is_some();
 
         if need_begin_end_render_pass {
-            for (i, value) in node.clear_rt_resources.iter().enumerate() {
-                if value.is_some() {
-                    assert!(
-                        node.render_targets[i].is_some(),
-                        "Target {} is not set but is supposed to be cleared.",
-                        i
-                    );
-                    let res_id = node.render_targets[i].unwrap().0 as usize;
-                    println!("  !! Clear {} ", self.resource_names[res_id]);
-                }
+            for resource_data in node.render_targets.iter().flatten() {
+                let res_id = resource_data.key.0 as usize;
+                match resource_data.load_state {
+                    RenderGraphLoadState::ClearColor(_) => {
+                        println!("  !! Clear {} ", self.resource_names[res_id]);
+                    }
+                    RenderGraphLoadState::ClearDepth(_) => {
+                        panic!("Color render target binding {} cannot be cleared with a depth stencil clear value.", self.resource_names[res_id]);
+                    }
+                    RenderGraphLoadState::ClearValue(_) => {
+                        panic!(
+                            "Color render target binding {} cannot be cleared with a u32 clear value.", self.resource_names[res_id]
+                        );
+                    }
+                    _ => {}
+                };
             }
 
-            if node.clear_ds_resource.is_some() {
-                assert!(
-                    node.depth_stencil.is_some(),
-                    "Depth Stencil is not set but is supposed to be cleared.",
-                );
-                let res_id = node.depth_stencil.unwrap().0 as usize;
-                println!("  !! Clear {} ", self.resource_names[res_id]);
+            if let Some(resource_data) = &node.depth_stencil {
+                let res_id = resource_data.key.0 as usize;
+                match resource_data.load_state {
+                    RenderGraphLoadState::ClearDepth(_) => {
+                        println!("  !! Clear {} ", self.resource_names[res_id]);
+                    }
+                    RenderGraphLoadState::ClearColor(_) => {
+                        panic!("Depth stencil render target binding {} cannot be cleared with a color clear value.", self.resource_names[res_id]);
+                    }
+                    RenderGraphLoadState::ClearValue(_) => {
+                        panic!("Depth stencil render target binding {} cannot be cleared with a u32 clear value.", self.resource_names[res_id]);
+                    }
+                    _ => {}
+                };
             }
 
             let mut color_targets: Vec<ColorRenderTargetBinding<'_>> =
                 Vec::with_capacity(node.render_targets.len());
             let mut depth_target: Option<DepthStencilRenderTargetBinding<'_>> = None;
 
-            for (i, resource_id) in node.render_targets.iter().flatten().enumerate() {
-                let texture_view = (&context.views[resource_id]).try_into().unwrap();
+            for resource_data in node.render_targets.iter().flatten() {
+                let texture_view = (&context.views[&resource_data.key]).try_into().unwrap();
 
                 let binding = ColorRenderTargetBinding {
                     texture_view,
-                    load_op: if node.clear_rt_resources[i].is_some() {
-                        LoadOp::Clear
-                    } else {
-                        LoadOp::Load
+                    load_op: match resource_data.load_state {
+                        RenderGraphLoadState::DontCare => LoadOp::DontCare,
+                        RenderGraphLoadState::Load => LoadOp::Load,
+                        RenderGraphLoadState::ClearColor(_) => LoadOp::Clear,
+                        _ => {
+                            panic!()
+                        }
                     },
                     store_op: StoreOp::Store,
-                    clear_value: node.clear_rt_resources[i].unwrap_or_default(),
+                    clear_value: match resource_data.load_state {
+                        RenderGraphLoadState::ClearColor(clear_value) => clear_value,
+                        _ => ColorClearValue::default(),
+                    },
                 };
                 color_targets.push(binding);
             }
 
-            if let Some(resource_id) = node.depth_stencil {
-                let texture_view = (&context.views[&resource_id]).try_into().unwrap();
+            if let Some(resource_data) = &node.depth_stencil {
+                let texture_view = (&context.views[&resource_data.key]).try_into().unwrap();
 
                 depth_target = Some(DepthStencilRenderTargetBinding {
                     texture_view,
-                    depth_load_op: if node.clear_ds_resource.is_some() {
-                        LoadOp::Clear
-                    } else {
-                        LoadOp::Load
+                    depth_load_op: match resource_data.load_state {
+                        RenderGraphLoadState::DontCare => LoadOp::DontCare,
+                        RenderGraphLoadState::Load => LoadOp::Load,
+                        RenderGraphLoadState::ClearDepth(_) => LoadOp::Clear,
+                        _ => {
+                            panic!()
+                        }
                     },
                     depth_store_op: StoreOp::Store,
-                    stencil_load_op: if node.clear_ds_resource.is_some() {
-                        LoadOp::Clear
-                    } else {
-                        LoadOp::Load
+                    stencil_load_op: match resource_data.load_state {
+                        RenderGraphLoadState::DontCare => LoadOp::DontCare,
+                        RenderGraphLoadState::Load => LoadOp::Load,
+                        RenderGraphLoadState::ClearDepth(_) => LoadOp::Clear,
+                        _ => {
+                            panic!()
+                        }
                     },
                     stencil_store_op: StoreOp::Store,
-                    clear_value: node.clear_ds_resource.unwrap_or_default(),
+                    clear_value: match resource_data.load_state {
+                        RenderGraphLoadState::ClearDepth(clear_value) => clear_value,
+                        _ => DepthStencilClearValue::default(),
+                    },
                 });
             }
 
@@ -1035,35 +1082,43 @@ impl RenderGraph {
         }
 
         // Clear any write targets that need to.
-        for (i, value) in node.clear_write_resources.iter().enumerate() {
-            if value.is_some() {
-                assert!(
-                    node.write_resources.len() > i,
-                    "Write resource {} is not set but is supposed to be cleared.",
-                    i
-                );
-                let res_id = node.write_resources[i].0 as usize;
-                println!("  !! Clear {} ", self.resource_names[res_id]);
-                match context.resources[res_id].as_ref().unwrap() {
-                    RenderGraphResource::Buffer(buffer) => {
-                        command_buffer.fill_buffer(
-                            buffer,
-                            0,
-                            buffer.definition().size,
-                            value.unwrap(),
-                        );
-                    }
-                    RenderGraphResource::Texture(texture) => {
-                        let data = vec![value.unwrap(); texture.vk_alloc_size() as usize / 4];
-                        self.copy_data_to_texture(
-                            device_context,
-                            command_buffer,
-                            texture,
-                            &data,
-                            self.get_api_state(context.resource_state[&(res_id as u32, 0)], None),
-                        );
+        for resource_data in &node.write_resources {
+            let res_id = resource_data.key.0 as usize;
+            match resource_data.load_state {
+                RenderGraphLoadState::ClearValue(value) => {
+                    println!("  !! Clear {} ", self.resource_names[res_id]);
+                    match context.resources[res_id].as_ref().unwrap() {
+                        RenderGraphResource::Buffer(buffer) => {
+                            command_buffer.fill_buffer(buffer, 0, buffer.definition().size, value);
+                        }
+                        RenderGraphResource::Texture(texture) => {
+                            let data = vec![value; texture.vk_alloc_size() as usize / 4];
+                            self.copy_data_to_texture(
+                                device_context,
+                                command_buffer,
+                                texture,
+                                &data,
+                                self.get_api_state(
+                                    context.resource_state[&(res_id as u32, 0)],
+                                    None,
+                                ),
+                            );
+                        }
                     }
                 }
+                RenderGraphLoadState::ClearColor(_) => {
+                    panic!(
+                        "Write target {} cannot be cleared with a color clear value.",
+                        self.resource_names[res_id]
+                    );
+                }
+                RenderGraphLoadState::ClearDepth(_) => {
+                    panic!(
+                        "Write target {} cannot be cleared with a depth stencil clear value.",
+                        self.resource_names[res_id]
+                    );
+                }
+                _ => {}
             }
         }
 
@@ -1204,23 +1259,23 @@ impl RenderGraph {
         let resource_used = node
             .read_resources
             .iter()
-            .any(|res_and_view| res_and_view.0 == id);
+            .any(|resource_data| resource_data.key.0 == id);
         let resource_used = resource_used
             || node
                 .write_resources
                 .iter()
-                .any(|res_and_view| res_and_view.0 == id);
+                .any(|resource_data| resource_data.key.0 == id);
         let resource_used = resource_used
             || node
                 .render_targets
                 .iter()
                 .any(|res_and_view| match res_and_view {
-                    Some(res_and_view) => res_and_view.0 == id,
+                    Some(resource_data) => resource_data.key.0 == id,
                     _ => false,
                 });
         let resource_used = resource_used
-            || match node.depth_stencil {
-                Some(res_and_view) => res_and_view.0 == id,
+            || match &node.depth_stencil {
+                Some(resource_data) => resource_data.key.0 == id,
                 _ => false,
             };
 

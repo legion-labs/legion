@@ -654,7 +654,7 @@ fn render_update(
                     array_length: 1,
                     mip_count: 1,
                     format: Format::R8G8B8A8_UNORM,
-                    usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE,
+                    usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
                     resource_flags: ResourceFlags::empty(),
                     mem_usage: MemoryUsage::GpuOnly,
                     tiling: TextureTiling::Optimal,

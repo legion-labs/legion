@@ -1,4 +1,4 @@
-use lgn_graphics_api::{ColorClearValue, DepthStencilClearValue, Texture};
+use lgn_graphics_api::Texture;
 
 use crate::{
     hl_gfx_api::HLCommandBuffer,
@@ -8,20 +8,38 @@ use crate::{
     },
 };
 
+use super::{RenderGraphLoadState, ResourceData};
+
 pub(crate) struct GraphicsPassBuilder {
     node: RGNode,
 }
 
 impl GraphicsPassBuilder {
     #[allow(dead_code)]
-    pub fn read(mut self, resource: RenderGraphResourceId, view: RenderGraphViewId) -> Self {
-        self.node.read_resources.push((resource, view));
+    pub fn read(
+        mut self,
+        resource: RenderGraphResourceId,
+        view: RenderGraphViewId,
+        resource_state: RenderGraphLoadState,
+    ) -> Self {
+        self.node.read_resources.push(ResourceData {
+            key: (resource, view),
+            load_state: resource_state,
+        });
         self
     }
 
     #[allow(dead_code)]
-    pub fn write(mut self, resource: RenderGraphResourceId, view: RenderGraphViewId) -> Self {
-        self.node.write_resources.push((resource, view));
+    pub fn write(
+        mut self,
+        resource: RenderGraphResourceId,
+        view: RenderGraphViewId,
+        resource_state: RenderGraphLoadState,
+    ) -> Self {
+        self.node.write_resources.push(ResourceData {
+            key: (resource, view),
+            load_state: resource_state,
+        });
         self
     }
 
@@ -30,8 +48,12 @@ impl GraphicsPassBuilder {
         slot: u32,
         resource: RenderGraphResourceId,
         view: RenderGraphViewId,
+        resource_state: RenderGraphLoadState,
     ) -> Self {
-        self.node.render_targets[slot as usize] = Some((resource, view));
+        self.node.render_targets[slot as usize] = Some(ResourceData {
+            key: (resource, view),
+            load_state: resource_state,
+        });
         self
     }
 
@@ -39,29 +61,12 @@ impl GraphicsPassBuilder {
         mut self,
         resource: RenderGraphResourceId,
         view: RenderGraphViewId,
+        resource_state: RenderGraphLoadState,
     ) -> Self {
-        self.node.depth_stencil = Some((resource, view));
-        self
-    }
-
-    pub fn clear_rt(mut self, slot: u32, clear_value: ColorClearValue) -> Self {
-        self.node.clear_rt_resources[slot as usize] = Some(clear_value);
-        self
-    }
-
-    pub fn clear_ds(mut self, clear_value: DepthStencilClearValue) -> Self {
-        self.node.clear_ds_resource = Some(clear_value);
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn clear_write(mut self, slot: u32, clear_value: u32) -> Self {
-        if self.node.clear_write_resources.len() <= slot as usize {
-            self.node
-                .clear_write_resources
-                .resize(slot as usize + 1, None);
-        }
-        self.node.clear_write_resources[slot as usize] = Some(clear_value);
+        self.node.depth_stencil = Some(ResourceData {
+            key: (resource, view),
+            load_state: resource_state,
+        });
         self
     }
 
@@ -79,23 +84,29 @@ pub(crate) struct ComputePassBuilder {
 }
 
 impl ComputePassBuilder {
-    pub fn read(mut self, resource: RenderGraphResourceId, view: RenderGraphViewId) -> Self {
-        self.node.read_resources.push((resource, view));
+    pub fn read(
+        mut self,
+        resource: RenderGraphResourceId,
+        view: RenderGraphViewId,
+        resource_state: RenderGraphLoadState,
+    ) -> Self {
+        self.node.read_resources.push(ResourceData {
+            key: (resource, view),
+            load_state: resource_state,
+        });
         self
     }
 
-    pub fn write(mut self, resource: RenderGraphResourceId, view: RenderGraphViewId) -> Self {
-        self.node.write_resources.push((resource, view));
-        self
-    }
-
-    pub fn clear_write(mut self, slot: u32, clear_value: u32) -> Self {
-        if self.node.clear_write_resources.len() <= slot as usize {
-            self.node
-                .clear_write_resources
-                .resize(slot as usize + 1, None);
-        }
-        self.node.clear_write_resources[slot as usize] = Some(clear_value);
+    pub fn write(
+        mut self,
+        resource: RenderGraphResourceId,
+        view: RenderGraphViewId,
+        resource_state: RenderGraphLoadState,
+    ) -> Self {
+        self.node.write_resources.push(ResourceData {
+            key: (resource, view),
+            load_state: resource_state,
+        });
         self
     }
 

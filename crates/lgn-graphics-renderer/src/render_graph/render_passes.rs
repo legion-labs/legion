@@ -12,6 +12,8 @@ use crate::{
     },
 };
 
+use super::RenderGraphLoadState;
+
 pub struct GpuCullingPass {}
 
 pub struct DepthLayerPass {}
@@ -121,13 +123,18 @@ impl GpuCullingPass {
             builder = builder.add_compute_pass(&pass_name, move |mut compute_pass_builder| {
                 // The mip 0 pass should be a straight copy, not a compute shader.
                 compute_pass_builder = compute_pass_builder
-                    .read(read_res_id, read_view_id)
-                    .write(write_res_id, write_view_id)
+                    .read(read_res_id, read_view_id, RenderGraphLoadState::Load)
+                    .write(
+                        write_res_id,
+                        write_view_id,
+                        if i == 0 {
+                            RenderGraphLoadState::ClearValue(0)
+                        } else {
+                            RenderGraphLoadState::Load
+                        },
+                    )
                     .execute(move |_, _| println!("DepthDownsample execute mip {}", mip_index));
 
-                if i == 0 {
-                    compute_pass_builder = compute_pass_builder.clear_write(0, 0);
-                }
                 compute_pass_builder
             });
         }
@@ -145,11 +152,14 @@ impl DepthLayerPass {
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("DepthLayer", |graphics_pass_builder| {
             graphics_pass_builder
-                .depth_stencil(depth_buffer_id, depth_view_id)
-                .clear_ds(DepthStencilClearValue {
-                    depth: 1.0,
-                    stencil: 0,
-                })
+                .depth_stencil(
+                    depth_buffer_id,
+                    depth_view_id,
+                    RenderGraphLoadState::ClearDepth(DepthStencilClearValue {
+                        depth: 1.0,
+                        stencil: 0,
+                    }),
+                )
                 .execute(Self::execute_depth_layer_pass)
         })
     }
@@ -174,15 +184,31 @@ impl OpaqueLayerPass {
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("OpaqueLayer", |graphics_pass_builder| {
             graphics_pass_builder
-                .render_target(0, gbuffer_ids[0], gbuffer_view_id)
-                .render_target(1, gbuffer_ids[1], gbuffer_view_id)
-                .render_target(2, gbuffer_ids[2], gbuffer_view_id)
-                .render_target(3, gbuffer_ids[3], gbuffer_view_id)
-                .clear_rt(0, ColorClearValue([0.0; 4]))
-                .clear_rt(1, ColorClearValue([0.0; 4]))
-                .clear_rt(2, ColorClearValue([0.0; 4]))
-                .clear_rt(3, ColorClearValue([0.0; 4]))
-                .depth_stencil(depth_buffer_id, depth_view_id)
+                .render_target(
+                    0,
+                    gbuffer_ids[0],
+                    gbuffer_view_id,
+                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
+                )
+                .render_target(
+                    1,
+                    gbuffer_ids[1],
+                    gbuffer_view_id,
+                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
+                )
+                .render_target(
+                    2,
+                    gbuffer_ids[2],
+                    gbuffer_view_id,
+                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
+                )
+                .render_target(
+                    3,
+                    gbuffer_ids[3],
+                    gbuffer_view_id,
+                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
+                )
+                .depth_stencil(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
                 .execute(Self::execute_opaque_layer_pass)
         })
     }
@@ -207,8 +233,13 @@ impl AlphaBlendedLayerPass {
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("AlphaBlendedLayer", |graphics_pass_builder| {
             graphics_pass_builder
-                .render_target(0, radiance_buffer_id, radiance_view_id)
-                .depth_stencil(depth_buffer_id, depth_view_id)
+                .render_target(
+                    0,
+                    radiance_buffer_id,
+                    radiance_view_id,
+                    RenderGraphLoadState::Load,
+                )
+                .depth_stencil(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
                 .execute(|_, _| {
                     println!("AlphaBlendedLayerPass execute");
                 })
@@ -234,22 +265,46 @@ impl PostProcessPass {
                     builder
                         .add_compute_pass("DOF CoC", |compute_pass_builder| {
                             compute_pass_builder
-                                .read(radiance_buffer_id, radiance_view_id)
-                                .write(radiance_buffer_id, radiance_view_id)
+                                .read(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
+                                .write(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
                                 .execute(Self::execute_dof_coc)
                         })
                         .add_compute_pass("DOF Blur CoC", |compute_pass_builder| {
                             compute_pass_builder
-                                .read(radiance_buffer_id, radiance_view_id)
-                                .write(radiance_buffer_id, radiance_view_id)
+                                .read(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
+                                .write(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
                                 .execute(|_, _| {
                                     println!("DOF Blur CoC pass execute");
                                 })
                         })
                         .add_compute_pass("DOF Composite", |compute_pass_builder| {
                             compute_pass_builder
-                                .read(radiance_buffer_id, radiance_view_id)
-                                .write(radiance_buffer_id, radiance_view_id)
+                                .read(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
+                                .write(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
                                 .execute(|_, _| {
                                     println!("DOF Composite pass execute");
                                 })
@@ -260,24 +315,48 @@ impl PostProcessPass {
                     builder
                         .add_compute_pass("Bloom Downsample", |compute_pass_builder| {
                             compute_pass_builder
-                                .read(radiance_buffer_id, radiance_view_id)
-                                .write(radiance_buffer_id, radiance_view_id)
+                                .read(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
+                                .write(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
                                 .execute(|_, _| {
                                     println!("Bloom Downsample pass execute");
                                 })
                         })
                         .add_compute_pass("Bloom Threshold", |compute_pass_builder| {
                             compute_pass_builder
-                                .read(radiance_buffer_id, radiance_view_id)
-                                .write(radiance_buffer_id, radiance_view_id)
+                                .read(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
+                                .write(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
                                 .execute(|_, _| {
                                     println!("Bloom Threshold pass execute");
                                 })
                         })
                         .add_compute_pass("Bloom Apply", |compute_pass_builder| {
                             compute_pass_builder
-                                .read(radiance_buffer_id, radiance_view_id)
-                                .write(radiance_buffer_id, radiance_view_id)
+                                .read(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
+                                .write(
+                                    radiance_buffer_id,
+                                    radiance_view_id,
+                                    RenderGraphLoadState::Load,
+                                )
                                 .execute(|_, _| {
                                     println!("Bloom Apply pass execute");
                                 })
@@ -286,8 +365,16 @@ impl PostProcessPass {
                 // This could be a separate struct ToneMappingPass with its own build_render_graph(builder) method.
                 .add_compute_pass("ToneMapping", |compute_pass_builder| {
                     compute_pass_builder
-                        .read(radiance_buffer_id, radiance_view_id)
-                        .write(radiance_buffer_id, radiance_view_id)
+                        .read(
+                            radiance_buffer_id,
+                            radiance_view_id,
+                            RenderGraphLoadState::Load,
+                        )
+                        .write(
+                            radiance_buffer_id,
+                            radiance_view_id,
+                            RenderGraphLoadState::Load,
+                        )
                         .execute(|_, _| {
                             println!("ToneMapping pass execute");
                         })
@@ -320,13 +407,17 @@ impl LightingPass {
     ) -> RenderGraphBuilder {
         builder.add_compute_pass("Lighting", |compute_pass_builder| {
             compute_pass_builder
-                .read(gbuffer_ids[0], gbuffer_view_id)
-                .read(gbuffer_ids[1], gbuffer_view_id)
-                .read(gbuffer_ids[2], gbuffer_view_id)
-                .read(gbuffer_ids[3], gbuffer_view_id)
-                .read(depth_buffer_id, depth_view_id)
-                .read(ao_buffer_id, ao_view_id)
-                .write(radiance_buffer_id, radiance_view_id)
+                .read(gbuffer_ids[0], gbuffer_view_id, RenderGraphLoadState::Load)
+                .read(gbuffer_ids[1], gbuffer_view_id, RenderGraphLoadState::Load)
+                .read(gbuffer_ids[2], gbuffer_view_id, RenderGraphLoadState::Load)
+                .read(gbuffer_ids[3], gbuffer_view_id, RenderGraphLoadState::Load)
+                .read(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
+                .read(ao_buffer_id, ao_view_id, RenderGraphLoadState::Load)
+                .write(
+                    radiance_buffer_id,
+                    radiance_view_id,
+                    RenderGraphLoadState::ClearValue(0),
+                )
                 .execute(|_, _| {
                     println!("LightingPass execute");
                 })
@@ -357,30 +448,30 @@ impl SSAOPass {
             builder
                 .add_compute_pass("AO", |compute_pass_builder| {
                     compute_pass_builder
-                        .read(gbuffer_ids[0], gbuffer_view_id)
-                        .read(gbuffer_ids[1], gbuffer_view_id)
-                        .read(gbuffer_ids[2], gbuffer_view_id)
-                        .read(gbuffer_ids[3], gbuffer_view_id)
-                        .read(depth_buffer_id, depth_view_id)
-                        .write(raw_ao_buffer_id, ao_view_id)
+                        .read(gbuffer_ids[0], gbuffer_view_id, RenderGraphLoadState::Load)
+                        .read(gbuffer_ids[1], gbuffer_view_id, RenderGraphLoadState::Load)
+                        .read(gbuffer_ids[2], gbuffer_view_id, RenderGraphLoadState::Load)
+                        .read(gbuffer_ids[3], gbuffer_view_id, RenderGraphLoadState::Load)
+                        .read(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
+                        .write(raw_ao_buffer_id, ao_view_id, RenderGraphLoadState::ClearValue(0))
                         .execute(|_, _| {
                             println!("AO pass execute");
                         })
                 })
                 .add_compute_pass("BlurX", |compute_pass_builder| {
                     compute_pass_builder
-                        .read(raw_ao_buffer_id, ao_view_id)
-                        .read(depth_buffer_id, depth_view_id)
-                        .write(blur_buffer_id, ao_view_id)
+                        .read(raw_ao_buffer_id, ao_view_id, RenderGraphLoadState::Load)
+                        .read(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
+                        .write(blur_buffer_id, ao_view_id, RenderGraphLoadState::ClearValue(0))
                         .execute(|_, _| {
                             println!("BlurX pass execute");
                         })
                 })
                 .add_compute_pass("BlurY", |compute_pass_builder| {
                     compute_pass_builder
-                        .read(blur_buffer_id, ao_view_id)
-                        .read(depth_buffer_id, depth_view_id)
-                        .write(ao_buffer_id, ao_view_id)
+                        .read(blur_buffer_id, ao_view_id, RenderGraphLoadState::Load)
+                        .read(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
+                        .write(ao_buffer_id, ao_view_id, RenderGraphLoadState::ClearValue(0))
                         .execute(|_, _| {
                             println!("BlurY pass execute");
                         })
@@ -409,8 +500,7 @@ impl UiPass {
     ) -> RenderGraphBuilder {
         builder.add_graphics_pass("UI", |graphics_pass_builder| {
             graphics_pass_builder
-                .render_target(0, ui_buffer_id, ui_view_id)
-                .clear_rt(0, ColorClearValue([0.0; 4]))
+                .render_target(0, ui_buffer_id, ui_view_id, RenderGraphLoadState::ClearColor(ColorClearValue([0.0;4])))
                 .execute(|_, _| {
                     println!("UiPass execute");
                 })

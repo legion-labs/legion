@@ -12,6 +12,8 @@ use crate::{
 
 use lgn_graphics_api::{Format, GfxError, GfxResult, PlaneSlice, Texture, ViewDimension};
 
+use super::RenderGraphLoadState;
+
 ///
 ///
 /// `https://logins.github.io/graphics/2021/05/31/RenderGraphs.html`
@@ -324,13 +326,22 @@ impl RenderScript {
     ) -> RenderGraphBuilder {
         builder.add_compute_pass("Combine", |mut compute_pass_builder| {
             compute_pass_builder = compute_pass_builder
-                .read(radiance_buffer_id, radiance_view_id)
-                .write(view_target_id, view_view_id)
+                .read(
+                    radiance_buffer_id,
+                    radiance_view_id,
+                    RenderGraphLoadState::Load,
+                )
+                .write(
+                    view_target_id,
+                    view_view_id,
+                    RenderGraphLoadState::ClearValue(0),
+                )
                 .execute(|_, _| {
                     println!("Combine pass execute");
                 });
             if let Some(ui_buffer_id) = ui_buffer_id {
-                compute_pass_builder = compute_pass_builder.read(ui_buffer_id, ui_view_id);
+                compute_pass_builder =
+                    compute_pass_builder.read(ui_buffer_id, ui_view_id, RenderGraphLoadState::Load);
             }
             compute_pass_builder
         })
