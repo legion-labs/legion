@@ -1,0 +1,14 @@
+[package]
+name = "lgn-graphics-tests"
+version = "0.1.0"
+authors = ["Legion Labs <devs@legionlabs.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lgn-graphics-api = { path = "../../crates/lgn-graphics-api", version = "0.1.0", features = [
+    "vulkan",
+] }
+lgn-graphics-renderer = { path = "../../crates/lgn-graphics-renderer", version = "0.1.0" }
