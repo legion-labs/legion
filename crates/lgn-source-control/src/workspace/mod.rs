@@ -1,5 +1,10 @@
 use itertools::Itertools;
-use lgn_content_store::{Identifier, Provider};
+use lgn_content_store::{
+    indexing::{
+        IndexableResource, ResourceWriter, StaticIndexer, TreeIdentifier, TreeLeafNode, TreeWriter,
+    },
+    Identifier, Provider,
+};
 use lgn_tracing::{debug, warn};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -21,6 +26,8 @@ mod local_backend;
 pub use backend::WorkspaceBackend;
 pub use local_backend::LocalWorkspaceBackend;
 
+pub type ResourceId = u128;
+
 /// Represents a workspace.
 pub struct Workspace {
     root: PathBuf,
@@ -28,6 +35,8 @@ pub struct Workspace {
     backend: Box<dyn WorkspaceBackend>,
     registration: WorkspaceRegistration,
     provider: Arc<Provider>,
+    main_index: StaticIndexer,
+    main_index_tree: TreeIdentifier,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,7 +114,22 @@ impl Workspace {
             .load_repository(&config.repository_name)
             .await?;
 
-        let workspace = Self::new(root, index, config, backend, provider).await?;
+        let main_index = StaticIndexer::new(std::mem::size_of::<ResourceId>());
+        let main_index_tree = provider
+            .write_tree(&lgn_content_store::indexing::Tree::default())
+            .await
+            .map_other_err("creating main index tree")?;
+
+        let workspace = Self::new(
+            root,
+            index,
+            config,
+            backend,
+            provider,
+            main_index,
+            main_index_tree,
+        )
+        .await?;
 
         workspace.register().await?;
         workspace.initial_checkout("main").await?;
@@ -153,7 +177,22 @@ impl Workspace {
             .load_repository(&config.repository_name)
             .await?;
 
-        Self::new(root, index, config, backend, provider).await
+        let main_index = StaticIndexer::new(std::mem::size_of::<ResourceId>());
+        let main_index_tree = provider
+            .write_tree(&lgn_content_store::indexing::Tree::default())
+            .await
+            .expect("unable to create main index tree");
+
+        Self::new(
+            root,
+            index,
+            config,
+            backend,
+            provider,
+            main_index,
+            main_index_tree,
+        )
+        .await
     }
 
     /// Find an existing workspace in the specified folder or one of its
@@ -231,6 +270,8 @@ impl Workspace {
         config: WorkspaceConfig,
         backend: Box<dyn WorkspaceBackend>,
         provider: Arc<Provider>,
+        main_index: StaticIndexer,
+        main_index_tree: TreeIdentifier,
     ) -> Result<Self> {
         Ok(Self {
             root,
@@ -238,6 +279,8 @@ impl Workspace {
             backend,
             registration: config.registration,
             provider,
+            main_index,
+            main_index_tree,
         })
     }
 
@@ -363,10 +406,42 @@ impl Workspace {
         self.backend.get_staged_changes().await
     }
 
+    /// Add a resource to the local changes.
+    ///
+    /// The list of new resources added is returned. If all the resources were already
+    /// added, an empty list is returned and call still succeeds.
+    pub async fn add_resource<R>(
+        &self,
+        resource_id: ResourceId,
+        resource_contents: &R,
+    ) -> Result<()>
+    where
+        R: IndexableResource + Serialize + Send + Sync,
+    {
+        let resource_identifier = self
+            .provider
+            .write_resource(resource_contents)
+            .await
+            .map_other_err("writing resource contents")?;
+
+        self.main_index
+            .add_leaf(
+                &self.provider,
+                &self.main_index_tree,
+                &resource_id.into(),
+                TreeLeafNode::Resource(resource_identifier),
+            )
+            .await
+            .map_other_err("adding resource to main index")?;
+
+        Ok(())
+    }
+
     /// Add files to the local changes.
     ///
     /// The list of new files added is returned. If all the files were already
     /// added, an empty list is returned and call still succeeds.
+    #[deprecated = "use add_resource instead"]
     pub async fn add_files(
         &self,
         paths: impl IntoIterator<Item = &Path> + Clone,
