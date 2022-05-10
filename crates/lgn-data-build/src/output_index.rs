@@ -268,7 +268,7 @@ impl OutputIndex {
     }
 
     pub(crate) async fn insert_linked(
-        &mut self,
+        &self,
         id: ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,

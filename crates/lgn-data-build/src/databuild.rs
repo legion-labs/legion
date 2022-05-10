@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
 use std::{env, io};
 
+use futures::future::try_join_all;
+use futures::{Future, FutureExt};
 use lgn_content_store::{Identifier, Provider};
 use lgn_data_compiler::compiler_api::{
     CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION,
@@ -699,6 +702,71 @@ impl DataBuild {
         })
     }
 
+    async fn link_work(
+        &self,
+        resource: &CompiledResourceInfo,
+        references: &[CompiledResourceReference],
+    ) -> Result<CompiledResource, Error> {
+        info!("Linking {:?} ...", resource);
+        let checksum = if let Some(checksum) = self
+            .output_index
+            .find_linked(
+                resource.compiled_path.clone(),
+                resource.context_hash,
+                resource.source_hash,
+            )
+            .await?
+        {
+            checksum
+        } else {
+            //
+            // for now, every derived resource gets an `assetfile` representation.
+            //
+            let asset_id = resource.compiled_path.resource_id();
+
+            let resource_list = std::iter::once((asset_id, resource.compiled_content_id.clone()));
+            let reference_list = references
+                .iter()
+                .filter(|r| r.is_reference_of(resource))
+                .map(|r| {
+                    (
+                        resource.compiled_path.resource_id(),
+                        (
+                            r.compiled_reference.resource_id(),
+                            r.compiled_reference.resource_id(),
+                        ),
+                    )
+                });
+
+            let output = write_assetfile(
+                resource_list,
+                reference_list,
+                &self.source_index.content_store,
+            )
+            .await?;
+
+            let checksum = {
+                async_span_scope!("content_store");
+                self.source_index.content_store.write(&output).await?
+            };
+            self.output_index
+                .insert_linked(
+                    resource.compiled_path.clone(),
+                    resource.context_hash,
+                    resource.source_hash,
+                    checksum.clone(),
+                )
+                .await?;
+            checksum
+        };
+
+        let asset_file = CompiledResource {
+            path: resource.compiled_path.clone(),
+            content_id: checksum,
+        };
+        Ok(asset_file)
+    }
+
     /// Create asset files in runtime format containing compiled resources that
     /// include reference (load-time dependency) information
     /// based on provided compilation information.
@@ -708,70 +776,33 @@ impl DataBuild {
         resources: &[CompiledResourceInfo],
         references: &[CompiledResourceReference],
     ) -> Result<Vec<CompiledResource>, Error> {
-        let mut resource_files = Vec::with_capacity(resources.len());
-        for resource in resources {
-            info!("Linking {:?} ...", resource);
-            let checksum = if let Some(checksum) = self
-                .output_index
-                .find_linked(
-                    resource.compiled_path.clone(),
-                    resource.context_hash,
-                    resource.source_hash,
-                )
-                .await?
-            {
-                checksum
-            } else {
-                //
-                // for now, every derived resource gets an `assetfile` representation.
-                //
-                let asset_id = resource.compiled_path.resource_id();
+        let timer = std::time::Instant::now();
 
-                let resource_list =
-                    std::iter::once((asset_id, resource.compiled_content_id.clone()));
-                let reference_list = references
-                    .iter()
-                    .filter(|r| r.is_reference_of(resource))
-                    .map(|r| {
-                        (
-                            resource.compiled_path.resource_id(),
-                            (
-                                r.compiled_reference.resource_id(),
-                                r.compiled_reference.resource_id(),
-                            ),
-                        )
-                    });
+        #[allow(clippy::type_complexity)]
+        let work: Vec<
+            Pin<Box<dyn Future<Output = Result<CompiledResource, Error>> + Send>>,
+        > = resources
+            .iter()
+            .map(|resource| {
+                async {
+                    let link_timer = std::time::Instant::now();
 
-                let output = write_assetfile(
-                    resource_list,
-                    reference_list,
-                    &self.source_index.content_store,
-                )
-                .await?;
+                    let asset_file = self.link_work(resource, references).await?;
+                    info!(
+                        "Linked {} into: {} in {:?}",
+                        resource.compiled_path,
+                        asset_file.content_id,
+                        link_timer.elapsed()
+                    );
+                    Ok(asset_file)
+                }
+                .boxed()
+            })
+            .collect::<Vec<_>>();
 
-                let checksum = {
-                    async_span_scope!("content_store");
-                    self.source_index.content_store.write(&output).await?
-                };
-                self.output_index
-                    .insert_linked(
-                        resource.compiled_path.clone(),
-                        resource.context_hash,
-                        resource.source_hash,
-                        checksum.clone(),
-                    )
-                    .await?;
-                checksum
-            };
+        let resource_files = try_join_all(work).await?;
 
-            let asset_file = CompiledResource {
-                path: resource.compiled_path.clone(),
-                content_id: checksum.clone(),
-            };
-
-            info!("Linked {} into: {}", resource.compiled_path, checksum);
-            resource_files.push(asset_file);
-        }
+        info!("Linking ended in {:?}.", timer.elapsed());
 
         Ok(resource_files)
     }

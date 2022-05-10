@@ -4326,6 +4326,7 @@ dependencies = [
  "async-recursion",
  "bincode",
  "byteorder",
+ "futures",
  "hex",
  "integer-asset",
  "lgn-content-store",
