@@ -13,7 +13,7 @@ Please refer to the following files for for the full licenses terms :
 
 ### Blender Add-on
 
-The blender add-on is licensed under the GPL v2 license.
+The (blender add-on)[dccs/blender] is licensed under the GPL v2 license.
 
 Please refer to the following files for for the full license terms :
 
