@@ -328,6 +328,10 @@ async fn main() -> Result<(), String> {
             .map_err(|e| e.to_string())?,
     );
 
+    let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
+        .await
+        .map_err(|e| format!("failed creating repository index {}", e))?;
+
     match args.command {
         Commands::Rty { path, command } => {
             let code_dir = path.unwrap_or_else(|| std::env::current_dir().unwrap());
@@ -364,6 +368,7 @@ async fn main() -> Result<(), String> {
                     .open(
                         Arc::clone(&source_control_content_provider),
                         Arc::clone(&data_content_provider),
+                        repository_index,
                     )
                     .await?;
                 build
@@ -396,11 +401,6 @@ async fn main() -> Result<(), String> {
             }
         }
         Commands::Source { path, command } => {
-            let repository_index =
-                lgn_source_control::Config::load_and_instantiate_repository_index()
-                    .await
-                    .map_err(|e| format!("failed creating repository index {}", e))?;
-
             let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
             let project = Project::open(
                 proj_file,
@@ -466,6 +466,7 @@ async fn main() -> Result<(), String> {
                     .open(
                         Arc::clone(&source_control_content_provider),
                         Arc::clone(&data_content_provider),
+                        repository_index,
                     )
                     .await?;
                 build
@@ -706,21 +707,28 @@ async fn parse_asset_file(
             let asset_ref_id =
                 ResourceId::from_raw(f.read_u128::<LittleEndian>().expect("valid data"));
             if let Some(config) = config {
-                let (_build, project) = config
-                    .open(
-                        Arc::clone(&source_control_content_provider),
-                        Arc::clone(&data_content_provider),
-                    )
-                    .await
-                    .expect("open config");
-                let path_id = ResourcePathId::from(ResourceTypeAndId {
-                    kind: asset_ref_type,
-                    id: asset_ref_id,
-                });
-                println!(
-                    "\t\treference: {}",
-                    pretty_name_from_pathid(&path_id, &project, config)
-                );
+                if let Ok(repository_index) =
+                    lgn_source_control::Config::load_and_instantiate_repository_index()
+                        .await
+                        .map_err(|e| format!("failed creating repository index {}", e))
+                {
+                    let (_build, project) = config
+                        .open(
+                            Arc::clone(&source_control_content_provider),
+                            Arc::clone(&data_content_provider),
+                            repository_index,
+                        )
+                        .await
+                        .expect("open config");
+                    let path_id = ResourcePathId::from(ResourceTypeAndId {
+                        kind: asset_ref_type,
+                        id: asset_ref_id,
+                    });
+                    println!(
+                        "\t\treference: {}",
+                        pretty_name_from_pathid(&path_id, &project, config)
+                    );
+                }
             } else {
                 println!(
                     "\t\treference: {}",
