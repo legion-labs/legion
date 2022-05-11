@@ -11,7 +11,7 @@ service SourceControl {
   rpc SyncLatest(SyncLatestResquest) returns (SyncLatestResponse);
 
   rpc RevertResources(RevertResourcesRequest) returns (RevertResourcesResponse);
-  rpc PullDCCAsset(PullDCCAssetRequest) returns (PullDCCAssetResponse);
+  rpc PullAsset(PullAssetRequest) returns (PullAssetResponse);
 }
 
 message InitUploadRawFileRequest {
@@ -97,11 +97,11 @@ message RevertResourcesRequest {
 
 message RevertResourcesResponse {}
 
-message PullDCCAssetRequest {
+message PullAssetRequest {
   string id = 1;
 }
 
-message PullDCCAssetResponse {
+message PullAssetResponse {
   uint32 size = 1;
   bytes content = 2;
 }

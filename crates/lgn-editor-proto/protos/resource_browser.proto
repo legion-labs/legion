@@ -26,7 +26,7 @@ service ResourceBrowser {
 
   rpc GetRuntimeSceneInfo(GetRuntimeSceneInfoRequest) returns (GetRuntimeSceneInfoResponse);
 
-  rpc ListDCCAssets(ListDCCAssetsRequest) returns (ListDCCAssetsResponse);
+  rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
 }
 
 message SearchResourcesRequest {
@@ -125,13 +125,13 @@ message GetRuntimeSceneInfoResponse {
   string asset_id = 2;
 }
 
-message DCCAsset {
+message Asset {
   string id = 1;
   string asset_name = 2;
 }
-message ListDCCAssetsRequest {
-  string dcc_name = 1;
+message ListAssetsRequest {
+  repeated string asset_types = 1;
 }
-message ListDCCAssetsResponse {
-  repeated DCCAsset assets = 1;
+message ListAssetsResponse {
+  repeated Asset assets = 1;
 }

@@ -38,7 +38,7 @@ class LgnListAssetsOperator(bpy.types.Operator):
         context.scene.pull_properties.assets.clear()
         with sonora.client.insecure_web_channel(server_address) as channel:
             rb_stub = resource_browser_pb2_grpc.ResourceBrowserStub(channel)
-            response = rb_stub.ListDCCAssets(resource_browser_pb2.ListDCCAssetsRequest(dcc_name="blender"))
+            response = rb_stub.ListAssets(resource_browser_pb2.ListAssetsRequest(asset_types=["0d4207bbf3a2fd08"])) # gltf
             for asset in response.assets:
                 print("{}".format(asset))
                 prop = context.scene.pull_properties.assets.add()
@@ -58,7 +58,7 @@ class LgnPullAssetOperator(bpy.types.Operator):
         with sonora.client.insecure_web_channel(server_address) as channel:
             sc_stub = source_control_pb2_grpc.SourceControlStub(channel)
             selected_asset_name = context.scene.pull_properties.assets[context.scene.pull_properties.assets_index].id
-            response = sc_stub.PullDCCAsset(source_control_pb2.PullDCCAssetRequest(id=selected_asset_name))
+            response = sc_stub.PullAsset(source_control_pb2.PullAssetRequest(id=selected_asset_name))
             filename = "{}/{}.glb".format(bpy.app.tempdir, selected_asset_name)
             with open(filename, "wb") as file:
                 file.write(response.content)

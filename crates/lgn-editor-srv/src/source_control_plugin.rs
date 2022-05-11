@@ -22,7 +22,7 @@ use lgn_editor_proto::source_control::{
     staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
     CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
     GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
-    InitUploadRawFileResponse, PullDccAssetRequest, PullDccAssetResponse, ResourceDescription,
+    InitUploadRawFileResponse, PullAssetRequest, PullAssetResponse, ResourceDescription,
     RevertResourcesRequest, RevertResourcesResponse, StagedResource, SyncLatestResponse,
     SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
     UploadStatus,
@@ -715,21 +715,26 @@ impl SourceControl for SourceControlRPC {
         Ok(Response::new(RevertResourcesResponse {}))
     }
 
-    async fn pull_dcc_asset(
+    async fn pull_asset(
         &self,
-        request: Request<PullDccAssetRequest>,
-    ) -> Result<Response<PullDccAssetResponse>, Status> {
+        request: Request<PullAssetRequest>,
+    ) -> Result<Response<PullAssetResponse>, Status> {
         let message = request.into_inner();
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
-        let resource = ctx.asset_registry.load_sync::<GltfFile>(
-            ResourceTypeAndId::from_str(message.id.as_str()).map_err(Status::unknown)?,
-        );
-
-        let gltf_file = resource.get(&ctx.asset_registry).unwrap();
-        Ok(Response::new(PullDccAssetResponse {
-            size: gltf_file.bytes().len() as u32,
-            content: gltf_file.bytes().to_vec(),
-        }))
+        let id = ResourceTypeAndId::from_str(message.id.as_str()).map_err(Status::unknown)?;
+        if id.kind != GltfFile::TYPE {
+            return Err(Status::internal(
+                "pull_asset supports GltfFile only at the moment",
+            ));
+        }
+        let resource = ctx.asset_registry.load_sync::<GltfFile>(id);
+        if let Some(gltf_file) = resource.get(&ctx.asset_registry) {
+            return Ok(Response::new(PullAssetResponse {
+                size: gltf_file.bytes().len() as u32,
+                content: gltf_file.bytes().to_vec(),
+            }));
+        }
+        return Err(Status::internal(format!("Failed to get an asset {}", id)));
     }
 }

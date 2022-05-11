@@ -18,13 +18,13 @@ use lgn_data_transaction::{
 use lgn_ecs::prelude::*;
 use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
 use lgn_editor_proto::resource_browser::{
-    CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse, DccAsset,
+    Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
     DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest, GetActiveScenesResponse,
     GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, GetRuntimeSceneInfoRequest,
-    GetRuntimeSceneInfoResponse, ImportResourceRequest, ImportResourceResponse,
-    ListDccAssetsRequest, ListDccAssetsResponse, OpenSceneRequest, OpenSceneResponse,
-    RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
-    ReparentResourceResponse, SearchResourcesRequest,
+    GetRuntimeSceneInfoResponse, ImportResourceRequest, ImportResourceResponse, ListAssetsRequest,
+    ListAssetsResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
+    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
+    SearchResourcesRequest,
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -891,24 +891,20 @@ impl ResourceBrowser for ResourceBrowserRPC {
         }))
     }
 
-    async fn list_dcc_assets(
+    async fn list_assets(
         &self,
-        request: Request<ListDccAssetsRequest>,
-    ) -> Result<Response<ListDccAssetsResponse>, Status> {
+        request: Request<ListAssetsRequest>,
+    ) -> Result<Response<ListAssetsResponse>, Status> {
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
         let request = request.get_ref();
-        let dcc_name = request.dcc_name.to_lowercase();
-        let dcc_name_str = dcc_name.as_str();
-        let asset_types = match dcc_name_str {
-            "blender" => vec![GltfFile::TYPE],
-            _ => {
-                return Err(Status::internal(format!(
-                    "Unsupported DCC \"{}\"",
-                    dcc_name
-                )))
-            }
-        };
+        let mut asset_types = Vec::new();
+        for asset_type in &request.asset_types {
+            asset_types.push(
+                ResourceType::from_str(asset_type.as_str())
+                    .map_err(|err| Status::internal(err.to_string()))?,
+            );
+        }
         let assets = ctx
             .project
             .resource_list()
@@ -922,7 +918,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
                             .resource_name(resource_id)
                             .unwrap_or_else(|_err| "".into())
                             .to_string();
-                        Some(DccAsset {
+                        Some(Asset {
                             id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
                                 kind,
                                 id: resource_id,
@@ -936,8 +932,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
                     None
                 }
             })
-            .collect::<Vec<DccAsset>>();
+            .collect::<Vec<Asset>>();
 
-        Ok(Response::new(ListDccAssetsResponse { assets }))
+        Ok(Response::new(ListAssetsResponse { assets }))
     }
 }
