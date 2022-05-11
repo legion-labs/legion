@@ -13,7 +13,8 @@ global-link-copy = Copier le lien
 global-link-share = Partager le lien
 global-cumulative-call-graph = Graphique d'appel cumulatif
 global-log = Journal
-global-timeline = Ligne du temps
+global-timeline = Fils d'exécution
+global-metrics = Mesures
 global-thread = unité
 
 # Process list
@@ -69,3 +70,21 @@ timeline-debug-tooltip =
   Nombre d'événements : { $events }
 timeline-link-copy-notification-title = Copie effectuée
 timeline-link-copy-notification-message = Le lien a bien été copié dans votre presse-papier
+
+# Metrics
+metrics-search-choose-metrics = Filtrer les mesures
+metrics-search-placeholder = Rechercher des mesures...
+metrics-search-result-number =
+  {$selectedMetricCount} {$selectedMetricCount ->
+    [one] mesure
+    *[other] mesures
+  } sélectionnées
+metrics-search-clear = Effacer les filtres
+metrics-recently-used = Mesures récemment utilisées
+metrics-all-metrics = Liste des mesures
+metrics-open-cumulative-call-graph = Ouvrir le { LOWERCASE(global-cumulative-call-graph) }
+metrics-open-timeline = Ouvrir la page contenant les { LOWERCASE(global-timeline) }
+metrics-selected-time-range = Plage temporelle sélectionnée
+metrics-selected-time-range-duration = Durée :
+metrics-selected-time-range-beginning = Début :
+metrics-selected-time-range-end = Fin :
