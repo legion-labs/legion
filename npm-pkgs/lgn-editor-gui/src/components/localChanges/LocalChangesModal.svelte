@@ -14,6 +14,7 @@
   import TextArea from "../inputs/TextArea.svelte";
   import LocalChangesGrid from "./LocalChangesGrid.svelte";
   import LocalChangesList from "./LocalChangesList.svelte";
+  import { selectedLocalChange } from "./localChangesStore";
 
   export let close: () => void;
 
@@ -67,9 +68,15 @@
       <div class="local-changes">
         {#if $stagedResources && $stagedResources.length}
           {#if $stagedResourcesMode === "card"}
-            <LocalChangesGrid stagedResources={$stagedResources} />
+            <LocalChangesGrid
+              stagedResources={$stagedResources}
+              selectedResource={selectedLocalChange}
+            />
           {:else if $stagedResourcesMode === "list"}
-            <LocalChangesList stagedResources={$stagedResources} />
+            <LocalChangesList
+              stagedResources={$stagedResources}
+              selectedResource={selectedLocalChange}
+            />
           {/if}
         {:else}
           <div class="no-local-changes">
