@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { NotificationsStore } from "../stores/notifications";
+  import type { FluentBase } from "../types/fluent";
+  import L10n from "./L10n.svelte";
 
-  export let store: NotificationsStore;
+  export let store: NotificationsStore<FluentBase>;
 </script>
 
 <div class="root">
@@ -20,10 +22,18 @@
         class:warning={notification.type === "warning"}
         class:error={notification.type === "error"}
       >
-        {notification.title}
+        {#if notification.payload.type === "raw"}
+          {notification.payload.title}
+        {:else}
+          <L10n {...notification.payload.title} />
+        {/if}
       </div>
       <div class="message">
-        {notification.message}
+        {#if notification.payload.type === "raw"}
+          {notification.payload.message}
+        {:else}
+          <L10n {...notification.payload.message} />
+        {/if}
       </div>
       <div class="progress">
         {#if typeof notification.percentage === "number"}
