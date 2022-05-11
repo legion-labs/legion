@@ -83,7 +83,7 @@ impl RenderScript {
     /// # Errors
     ///
     /// This function will return an error if .
-    pub fn build_render_graph(
+    pub(crate) fn build_render_graph(
         &mut self,
         view: &RenderView,
         config: &Config,

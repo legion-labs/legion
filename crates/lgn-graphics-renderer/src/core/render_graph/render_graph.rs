@@ -243,7 +243,7 @@ pub struct ResourceData {
     pub load_state: RenderGraphLoadState,
 }
 
-pub type RenderGraphExecuteFn =
+pub(crate) type RenderGraphExecuteFn =
     dyn Fn(&RenderGraphExecuteContext<'_>, &RenderContext<'_>, &mut HLCommandBuffer<'_>);
 
 pub(crate) struct RGNode {
@@ -422,7 +422,7 @@ pub struct RenderGraphContext {
     views: HashMap<(RenderGraphResourceId, RenderGraphViewId), RenderGraphView>,
 }
 
-pub struct RenderGraphExecuteContext<'frame> {
+pub(crate) struct RenderGraphExecuteContext<'frame> {
     pub(crate) read_resources: &'frame Vec<ResourceData>,
     pub(crate) write_resources: &'frame Vec<ResourceData>,
     pub(crate) render_targets: &'frame Vec<Option<ResourceData>>,
@@ -432,7 +432,14 @@ pub struct RenderGraphExecuteContext<'frame> {
     pub(crate) instance_manager: &'frame GpuInstanceManager,
 }
 
-pub struct RenderGraph {
+// Stand-in for Vincent's changes...
+pub(crate) struct RendererResources<'frame> {
+    pub(crate) renderer: &'frame Renderer,
+    pub(crate) mesh_renderer: &'frame MeshRenderer,
+    pub(crate) instance_manager: &'frame GpuInstanceManager,
+}
+
+pub(crate) struct RenderGraph {
     pub(crate) root: RGNode,
     pub(crate) resources: Vec<RenderGraphResourceDef>,
     pub(crate) resource_names: Vec<String>,
@@ -1160,18 +1167,14 @@ impl RenderGraph {
     pub(crate) fn execute(
         &self,
         context: &mut RenderGraphContext,
-        renderer: &Renderer,
-        mesh_renderer: &MeshRenderer,
-        instance_manager: &GpuInstanceManager,
+        renderer_resources: &RendererResources<'_>,
         render_context: &RenderContext<'_>,
         device_context: &DeviceContext,
         command_buffer: &mut HLCommandBuffer<'_>,
     ) {
         self.execute_inner(
             context,
-            renderer,
-            mesh_renderer,
-            instance_manager,
+            renderer_resources,
             render_context,
             &self.root,
             device_context,
@@ -1183,9 +1186,7 @@ impl RenderGraph {
     fn execute_inner(
         &self,
         context: &mut RenderGraphContext,
-        renderer: &Renderer,
-        mesh_renderer: &MeshRenderer,
-        instance_manager: &GpuInstanceManager,
+        renderer_resources: &RendererResources<'_>,
         render_context: &RenderContext<'_>,
         node: &RGNode,
         device_context: &DeviceContext,
@@ -1200,9 +1201,9 @@ impl RenderGraph {
                     write_resources: &node.write_resources,
                     render_targets: &node.render_targets,
                     depth_stencil: &node.depth_stencil,
-                    renderer,
-                    mesh_renderer,
-                    instance_manager,
+                    renderer: renderer_resources.renderer,
+                    mesh_renderer: renderer_resources.mesh_renderer,
+                    instance_manager: renderer_resources.instance_manager,
                 };
 
                 self.begin_execute(
@@ -1219,9 +1220,7 @@ impl RenderGraph {
             for child in &node.children {
                 self.execute_inner(
                     context,
-                    renderer,
-                    mesh_renderer,
-                    instance_manager,
+                    renderer_resources,
                     render_context,
                     child,
                     device_context,

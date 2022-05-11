@@ -62,6 +62,7 @@ pub mod shared;
 
 mod renderdoc;
 
+use crate::core::RendererResources;
 use crate::features::mesh_feature::MeshFeaturePlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
@@ -700,7 +701,13 @@ fn render_update(
                         // * Management of command buffers: one command buffer for all passes for now
                         // * Multithreaded execution: none for now
 
-                        let mut context = render_graph.compile();
+                        let renderer_resources = RendererResources {
+                            renderer: &renderer,
+                            mesh_renderer: &mesh_renderer,
+                            instance_manager: &instance_manager,
+                        };
+
+                        let mut render_graph_context = render_graph.compile();
 
                         println!("\n\n");
 
@@ -708,10 +715,8 @@ fn render_update(
                         println!("*****************************************************************************");
                         println!("Frame {}", renderer.render_frame_idx());
                         render_graph.execute(
-                            &mut context,
-                            &renderer,
-                            &mesh_renderer,
-                            &instance_manager,
+                            &mut render_graph_context,
+                            &renderer_resources,
                             &render_context,
                             renderer.device_context(),
                             cmd_buffer,
