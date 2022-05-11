@@ -907,45 +907,12 @@ impl RenderGraph {
         command_buffer: &mut CommandBuffer,
     ) {
         if self.need_begin_end_render_pass(node) {
-            for resource_data in node.render_targets.iter().flatten() {
-                let res_id = resource_data.key.0 as usize;
-                match resource_data.load_state {
-                    RenderGraphLoadState::ClearColor(_) => {
-                        println!("  !! Clear {} ", self.resource_names[res_id]);
-                    }
-                    RenderGraphLoadState::ClearDepthStencil(_) => {
-                        panic!("Color render target binding {} cannot be cleared with a depth stencil clear value.", self.resource_names[res_id]);
-                    }
-                    RenderGraphLoadState::ClearValue(_) => {
-                        panic!(
-                            "Color render target binding {} cannot be cleared with a u32 clear value.", self.resource_names[res_id]
-                        );
-                    }
-                    _ => {}
-                };
-            }
-
-            if let Some(resource_data) = &node.depth_stencil {
-                let res_id = resource_data.key.0 as usize;
-                match resource_data.load_state {
-                    RenderGraphLoadState::ClearDepthStencil(_) => {
-                        println!("  !! Clear {} ", self.resource_names[res_id]);
-                    }
-                    RenderGraphLoadState::ClearColor(_) => {
-                        panic!("Depth stencil render target binding {} cannot be cleared with a color clear value.", self.resource_names[res_id]);
-                    }
-                    RenderGraphLoadState::ClearValue(_) => {
-                        panic!("Depth stencil render target binding {} cannot be cleared with a u32 clear value.", self.resource_names[res_id]);
-                    }
-                    _ => {}
-                };
-            }
-
             let mut color_targets: Vec<ColorRenderTargetBinding<'_>> =
                 Vec::with_capacity(node.render_targets.len());
             let mut depth_target: Option<DepthStencilRenderTargetBinding<'_>> = None;
 
             for resource_data in node.render_targets.iter().flatten() {
+                let res_id = resource_data.key.0 as usize;
                 let texture_view = (&context.views[&resource_data.key]).try_into().unwrap();
 
                 let binding = ColorRenderTargetBinding {
@@ -953,9 +920,17 @@ impl RenderGraph {
                     load_op: match resource_data.load_state {
                         RenderGraphLoadState::DontCare => LoadOp::DontCare,
                         RenderGraphLoadState::Load => LoadOp::Load,
-                        RenderGraphLoadState::ClearColor(_) => LoadOp::Clear,
-                        _ => {
-                            panic!()
+                        RenderGraphLoadState::ClearColor(_) => {
+                            println!("  !! Clear {} ", self.resource_names[res_id]);
+                            LoadOp::Clear
+                        }
+                        RenderGraphLoadState::ClearDepthStencil(_) => {
+                            panic!("Color render target binding {} cannot be cleared with a depth stencil clear value.", self.resource_names[res_id]);
+                        }
+                        RenderGraphLoadState::ClearValue(_) => {
+                            panic!(
+                                "Color render target binding {} cannot be cleared with a u32 clear value.", self.resource_names[res_id]
+                            );
                         }
                     },
                     store_op: StoreOp::Store,
@@ -968,6 +943,7 @@ impl RenderGraph {
             }
 
             if let Some(resource_data) = &node.depth_stencil {
+                let res_id = resource_data.key.0 as usize;
                 let texture_view = (&context.views[&resource_data.key]).try_into().unwrap();
 
                 depth_target = Some(DepthStencilRenderTargetBinding {
@@ -975,9 +951,15 @@ impl RenderGraph {
                     depth_load_op: match resource_data.load_state {
                         RenderGraphLoadState::DontCare => LoadOp::DontCare,
                         RenderGraphLoadState::Load => LoadOp::Load,
-                        RenderGraphLoadState::ClearDepthStencil(_) => LoadOp::Clear,
-                        _ => {
-                            panic!()
+                        RenderGraphLoadState::ClearDepthStencil(_) => {
+                            println!("  !! Clear {} ", self.resource_names[res_id]);
+                            LoadOp::Clear
+                        }
+                        RenderGraphLoadState::ClearColor(_) => {
+                            panic!("Depth stencil render target binding {} cannot be cleared with a color clear value.", self.resource_names[res_id]);
+                        }
+                        RenderGraphLoadState::ClearValue(_) => {
+                            panic!("Depth stencil render target binding {} cannot be cleared with a u32 clear value.", self.resource_names[res_id]);
                         }
                     },
                     depth_store_op: StoreOp::Store,
