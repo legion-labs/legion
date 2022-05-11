@@ -4,9 +4,9 @@
   import { StagedResource_ChangeType as ChangeType } from "@lgn/proto-editor/dist/source_control";
   import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
 
+  import contextMenu from "@/actions/contextMenu";
   import { fileName } from "@/lib/path";
   import { localChangesContextMenuId } from "@/stores/contextMenu";
-  import contextMenu from "@/actions/contextMenu";
 
   export let stagedResources: StagedResource[];
   export let selectedResource: Writable<StagedResource | null>;
@@ -40,8 +40,8 @@
         class="resource-row"
         title={resource.info?.path || "Unknown path"}
         class:selected={$selectedResource === resource}
-        on:click={() => $selectedResource = resource}
-        on:mousedown={() => $selectedResource = resource}
+        on:click={() => ($selectedResource = resource)}
+        on:mousedown={() => ($selectedResource = resource)}
         use:contextMenu={localChangesContextMenuId}
       >
         <div class="w-1/12 flex flex-row justify-center">

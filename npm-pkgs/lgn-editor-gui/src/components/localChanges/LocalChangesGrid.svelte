@@ -20,8 +20,8 @@
       class="resource"
       class:selected={$selectedResource === resource}
       title={resource.info?.path || "Unknown path"}
-      on:click={() => $selectedResource = resource}
-      on:mousedown={() => $selectedResource = resource}
+      on:click={() => ($selectedResource = resource)}
+      on:mousedown={() => ($selectedResource = resource)}
       use:contextMenu={localChangesContextMenuId}
     >
       <div

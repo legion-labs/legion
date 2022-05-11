@@ -1,25 +1,19 @@
 <script lang="ts">
   import { PanelHeader } from "@lgn/web-client/src/components/panel";
+  import { filterContextMenuEvents } from "@lgn/web-client/src/types/contextMenu";
+  import type { ContextMenuEvent } from "@lgn/web-client/src/types/contextMenu";
 
-  import {
-    stagedResources,
-    stagedResourcesMode,
-  } from "@/stores/stagedResources";
+  import { revertResources } from "@/api";
+  import { fetchAllResources } from "@/orchestrators/allResources";
+  import { localChangesContextMenuId } from "@/stores/contextMenu";
+  import type { ContextMenuEntryRecord } from "@/stores/contextMenu";
+  import { stagedResourcesMode } from "@/stores/stagedResources";
+  import { stagedResources } from "@/stores/stagedResources";
 
   import LocalChangesGrid from "./LocalChangesGrid.svelte";
   import LocalChangesHeader from "./LocalChangesHeader.svelte";
   import LocalChangesList from "./LocalChangesList.svelte";
-  import {
-    filterContextMenuEvents,
-    type ContextMenuEvent,
-  } from "@lgn/web-client/src/types/contextMenu";
-  import {
-    localChangesContextMenuId,
-    type ContextMenuEntryRecord,
-  } from "@/stores/contextMenu";
-  import { revertResources } from "@/api";
   import { selectedLocalChange } from "./localChangesStore";
-  import { fetchAllResources } from "@/orchestrators/allResources";
 
   async function handleContextMenuEvents({
     detail: { action, close },
