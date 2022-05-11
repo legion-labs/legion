@@ -46,14 +46,12 @@ export class MetricStreamer {
     const metricStates = new Map<string, MetricState>();
 
     for (const blockManifest of blockManifests) {
-      if (blockManifest) {
-        for (const metricDesc of blockManifest.metrics) {
-          if (!metricStates.get(metricDesc.name)) {
-            metricStates.set(metricDesc.name, new MetricState(metricDesc));
-          }
-          const metricState = metricStates.get(metricDesc.name);
-          metricState?.registerBlock(blockManifest);
+      for (const metricDesc of blockManifest.metrics) {
+        if (!metricStates.get(metricDesc.name)) {
+          metricStates.set(metricDesc.name, new MetricState(metricDesc));
         }
+        const metricState = metricStates.get(metricDesc.name);
+        metricState?.registerBlock(blockManifest);
       }
     }
 
@@ -89,14 +87,15 @@ export class MetricStreamer {
       metric.blocks.forEach(async (block) => {
         await this.#semaphore.acquire();
         try {
-          const blockData = await this.#client?.fetch_block_metric({
+          const blockData = await this.#client.fetch_block_metric({
             processId: this.#processId,
             streamId: block.streamId,
             metricName: metric.name,
             blockId: block.blockId,
             lod: lod,
           });
-          if (blockData) {
+          // TODO: Is this really correct? It seems the value is guaranteed not to be undefined
+          if (blockData !== undefined) {
             this.metricStore.registerBlock(
               blockData,
               block.blockId,

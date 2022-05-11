@@ -13,7 +13,7 @@ export function getThreadItemLength(): number {
 
   const rem = value.match(/^(\d+)rem$/)?.[1];
 
-  if (!rem) {
+  if (rem === undefined || !rem.length) {
     throw new Error(
       `The --thread-item-length CSS variable is not set or not set properly, it should be provided using the rem unit, was "${value}"`
     );

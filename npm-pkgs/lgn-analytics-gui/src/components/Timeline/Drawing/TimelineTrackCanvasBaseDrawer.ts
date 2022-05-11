@@ -50,7 +50,7 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       return;
     }
 
-    const [begin, end] = state.getViewRange();
+    const [begin, end] = state.viewRange;
     const invTimeSpan = 1.0 / (end - begin);
     const msToPixelsFactor = invTimeSpan * canvasWidth;
     const context = { begin, end, msToPixelsFactor, search };
@@ -144,7 +144,7 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       if (span.scopeHash !== 0) {
         let name = "<unknown_scope>";
         const scope = state.scopes[span.scopeHash];
-        if (scope) {
+        if (scope !== undefined) {
           name = scope.name;
         }
         ctx.fillStyle =

@@ -19,7 +19,7 @@ export function processMsOffsetToRoot(
   currentProcess: Process | undefined,
   process: Process
 ): number {
-  if (!currentProcess?.startTime) {
+  if (currentProcess?.startTime === undefined) {
     throw new Error("Parent process start time undefined");
   }
   const parentStartTime = Date.parse(currentProcess?.startTime);

@@ -18,7 +18,7 @@ export function makeGrpcClient() {
   const metadata = new grpc.Metadata();
   const token = authClient.accessToken;
 
-  if (!token) {
+  if (token === null) {
     return new PerformanceAnalyticsClientImpl(new GrpcWebImpl(getUrl(), {}));
   }
 

@@ -62,5 +62,7 @@ module.exports = {
         ignoreReadBeforeAssign: false,
       },
     ],
+    // Switch to error as soon as all the warninngs are gone
+    "@typescript-eslint/strict-boolean-expressions": "warn",
   },
 };

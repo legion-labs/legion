@@ -183,7 +183,7 @@ export class TimelineStateManager {
     }
 
     const state = get(this.state);
-    const viewRange = state.getViewRange();
+    const viewRange = state.viewRange;
     const processAsyncData = state.processAsyncData[process.processId];
 
     const sectionWidthMs = 1000.0;
@@ -217,7 +217,7 @@ export class TimelineStateManager {
     const asyncData = state.processAsyncData[process.processId];
     const promises: Promise<void>[] = [];
     let sentRequest = false;
-    const viewRange = state.getViewRange();
+    const viewRange = state.viewRange;
 
     for (const block of Object.values(state.blocks)) {
       const streamId = block.blockDefinition.streamId;
@@ -287,13 +287,13 @@ export class TimelineStateManager {
 
   async fetchThreadData(): Promise<boolean> {
     const state = get(this.state);
-    const range = state.getViewRange();
+    const range = state.viewRange;
     const promises: Promise<void>[] = [];
     let sentRequest = false;
     for (const block of Object.values(state.blocks)) {
       const lod = computePreferredBlockLod(state.canvasWidth, range, block);
 
-      if (typeof lod === "number" && !block.lods[lod]) {
+      if (typeof lod === "number" && !(lod in block.lods)) {
         block.lods[lod] = {
           state: LODState.Missing,
           tracks: [],
