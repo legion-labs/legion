@@ -15,7 +15,7 @@ mod cgen {
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
-#[allow(unused_imports)]
+#[allow(unused_imports, clippy::wildcard_imports)]
 use cgen::*;
 
 pub mod labels;
@@ -795,15 +795,9 @@ fn render_update(
                                 instance_manager: &instance_manager,
                             };
 
-                            static mut FRAME_IDX: u64 = 0;
-                            let local_frame_idx =
-                            unsafe {
-                                FRAME_IDX
-                            };
-
                             // Execute it
                             println!("*****************************************************************************");
-                            println!("Frame {}", local_frame_idx);
+                            println!("Frame {}", render_scope.frame_idx());
                             render_graph.execute(
                                 &mut render_graph_context,
                                 &render_resources,
@@ -812,10 +806,6 @@ fn render_update(
                                 render_context.device_context,
                                 cmd_buffer,
                             );
-
-                            unsafe {
-                                FRAME_IDX+= 1;
-                            }
                         }
                         Err(error) => {
                             println!("{}", error);

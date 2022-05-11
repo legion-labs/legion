@@ -128,4 +128,8 @@ impl RenderScope {
             .queue_mut()
             .submit(&[], &[], &[], Some(frame_fence));
     }
+
+    pub(crate) fn frame_idx(&self) -> u64 {
+        self.frame_idx
+    }
 }
