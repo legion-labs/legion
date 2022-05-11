@@ -111,13 +111,16 @@ fn generate_rust_descriptor_set(
 
     // struct
     {
-        let mut writer =
-            writer.add_block(&[format!("pub struct {} {{", descriptor_set.name)], &["}"]);
-
-        writer.add_line(format!(
-            "descriptor_refs: [DescriptorRef; {}],",
-            descriptor_set.flat_descriptor_count
-        ));
+        if !descriptor_set.contains_bindless_descriptors() {
+            let mut writer =
+                writer.add_block(&[format!("pub struct {} {{", descriptor_set.name)], &["}"]);
+            writer.add_line(format!(
+                "descriptor_refs: [DescriptorRef; {}],",
+                descriptor_set.flat_descriptor_count
+            ));
+        } else {
+            writer.add_line(format!("pub struct {};", descriptor_set.name));
+        }
     }
 
     writer.new_line();
@@ -185,27 +188,29 @@ fn generate_rust_descriptor_set(
         writer.add_line("pub fn def() -> &'static CGenDescriptorSetDef { &DESCRIPTOR_SET_DEF }");
         writer.new_line();
 
-        // impl: new
-        writer.add_line("pub fn new() -> Self { Self::default() }");
-        writer.new_line();
+        if !descriptor_set.contains_bindless_descriptors() {
+            // impl: new
+            writer.add_line("pub fn new() -> Self { Self::default() }");
+            writer.new_line();
 
-        // impl: descriptor_refs
-        writer.add_line(
-            "pub fn descriptor_refs(&self) -> &[DescriptorRef] { &self.descriptor_refs }",
-        );
-        writer.new_line();
+            // impl: descriptor_refs
+            writer.add_line(
+                "pub fn descriptor_refs(&self) -> &[DescriptorRef] { &self.descriptor_refs }",
+            );
+            writer.new_line();
+        }
 
         // impl: set methods
         for (descriptor_index, descriptor) in descriptor_set.descriptors.iter().enumerate() {
-            {
+            if !descriptor.bindless {
                 if let Some(n) = descriptor.array_len {
                     let mut writer = writer.add_block(
-                        &[format!(
-                            "pub fn set_{}<T: Copy + Into<DescriptorRef>>(&mut self, values: [T;{}]) {{",
-                            descriptor.name, n
-                        )],
-                        &["}"],
-                    );
+                            &[format!(
+                                "pub fn set_{}<T: Copy + Into<DescriptorRef>>(&mut self, values: [T;{}]) {{",
+                                descriptor.name, n
+                            )],
+                            &["}"],
+                        );
                     {
                         let mut writer =
                             writer.add_block(&[format!("for i in 0..{} {{", n)], &["}"]);
@@ -238,15 +243,15 @@ fn generate_rust_descriptor_set(
                     ));
                 }
             }
+
             writer.new_line();
         }
         writer.new_line();
     }
 
-    writer.new_line();
-
     // trait: default
-    {
+    if !descriptor_set.contains_bindless_descriptors() {
+        writer.new_line();
         let mut writer = writer.add_block(
             &[format!("impl Default for {} {{", descriptor_set.name)],
             &["}"],

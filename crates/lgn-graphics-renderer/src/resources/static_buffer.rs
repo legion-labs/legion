@@ -141,6 +141,7 @@ impl StaticBufferAllocation {
         VertexBufferBinding::new(self.buffer(), self.byte_offset())
     }
 
+    #[allow(dead_code)]
     pub fn index_buffer_binding(&self, index_type: IndexType) -> IndexBufferBinding {
         assert!(self
             .inner

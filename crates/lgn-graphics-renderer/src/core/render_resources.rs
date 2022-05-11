@@ -21,12 +21,15 @@ impl ResourceId {
     }
 }
 
-pub trait RenderResource: Any + Send + Sync {
+pub trait RenderResource: 'static + Any + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-impl<T: Any + Send + Sync> RenderResource for T {
+impl<T> RenderResource for T
+where
+    T: Any + Send + Sync,
+{
     fn as_any(&self) -> &dyn Any {
         self
     }

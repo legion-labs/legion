@@ -309,8 +309,6 @@ impl MeshRenderer {
             }
         }
 
-        // renderer.add_update_job_block(updater.job_blocks());
-
         let readback = self
             .culling_buffers
             .stats_buffer
@@ -861,6 +859,12 @@ impl MeshRenderer {
         if let Some(readback) = readback {
             self.culling_buffers.stats_buffer.end_readback(readback);
         }
+    }
+}
+
+impl Drop for MeshRenderer {
+    fn drop(&mut self) {
+        println!("MeshRenderer dropped");
     }
 }
 

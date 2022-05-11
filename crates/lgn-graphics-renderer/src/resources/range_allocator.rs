@@ -6,6 +6,7 @@ pub struct Range {
     end: u64,
 }
 
+#[allow(dead_code)]
 impl Range {
     pub fn from_begin_end(begin: u64, end: u64) -> Self {
         assert!(begin <= end);

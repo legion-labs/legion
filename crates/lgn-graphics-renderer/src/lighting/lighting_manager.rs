@@ -18,28 +18,12 @@ const OMNI_DIRECTIONAL_LIGHT_MAX: u64 = 4096;
 const DIRECTIONAL_LIGHT_MAX: u64 = 4096;
 const SPOT_LIGHT_MAX: u64 = 4096;
 
-// macro_rules! impl_static_buffer_accessor {
-//     ($name:ident, $buffer_type:ty, $type:ty) => {
-//         paste::paste! {
-//             pub fn [<acquire_ $name>](&mut self) -> $buffer_type {
-//                 self.$name.transfer()
-//             }
-//             pub fn [<release_ $name>](&mut self, $name: $buffer_type) {
-//                 self.$name = $name;
-//             }
-//             pub fn [<$name _create_structured_buffer_view>](&self) -> BufferView {
-//                 self.$name.create_structured_buffer_view($type::NUM)
-//             }
-//         }
-//     };
-// }
-
 pub struct RenderLight {}
 
-type RenderObjectLights = RenderObjectSet<RenderLight>;
+type RenderLights = RenderObjectSet<RenderLight>;
 
 pub struct LightingManager {
-    pub render_object_lights: RenderObjectLights,
+    pub render_lights: RenderLights,
 
     pub omnidirectional_light_buffer: Buffer,
     pub omnidirectional_light_bufferview: BufferView,
@@ -107,7 +91,7 @@ impl LightingManager {
         );
 
         Self {
-            render_object_lights: RenderObjectLights::new(256),
+            render_lights: RenderLights::new(256),
 
             omnidirectional_light_buffer: omnidirectional_lights_buffer,
             omnidirectional_light_bufferview: omnidirectional_lights_bufferview,
@@ -125,6 +109,8 @@ impl LightingManager {
             apply_specular: true,
         }
     }
+
+    pub fn update(&self) {}
 
     fn gpu_data(&self) -> LightingData {
         let mut lighting_data = LightingData::default();
@@ -231,5 +217,51 @@ impl LightingManager {
         frame_descriptor_set.set_omni_directional_lights(&self.omnidirectional_light_bufferview);
         frame_descriptor_set.set_directional_lights(&self.directional_light_bufferview);
         frame_descriptor_set.set_spot_lights(&self.spot_light_bufferview);
+    }
+
+    fn debug_display_lights(&self) {
+        // bump_allocator_pool.scoped_bump(|bump| {
+        //     debug_display.create_display_list(bump, |builder| {
+        //         for (light, transform) in lights.iter() {
+        //             builder.add_default_mesh(
+        //                 &GlobalTransform::identity()
+        //                     .with_translation(transform.translation)
+        //                     .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
+        //                     .with_rotation(transform.rotation),
+        //                 DefaultMeshType::Sphere,
+        //                 Color::WHITE,
+        //             );
+        //             match light.light_type {
+        //                 LightType::Directional => {
+        //                     builder.add_default_mesh(
+        //                         &GlobalTransform::identity()
+        //                             .with_translation(
+        //                                 transform.translation
+        //                                     - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
+        //                             )
+        //                             .with_rotation(transform.rotation),
+        //                         DefaultMeshType::Arrow,
+        //                         Color::WHITE,
+        //                     );
+        //                 }
+        //                 LightType::Spotlight { cone_angle, .. } => {
+        //                     let factor = 4.0 * (cone_angle / 2.0).tan(); // assumes that default cone mesh has 1 to 4 ratio between radius and height
+        //                     builder.add_default_mesh(
+        //                         &GlobalTransform::identity()
+        //                             .with_translation(
+        //                                 transform.translation
+        //                                     - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
+        //                             )
+        //                             .with_scale(Vec3::new(factor, 1.0, factor))
+        //                             .with_rotation(transform.rotation),
+        //                         DefaultMeshType::Cone,
+        //                         Color::WHITE,
+        //                     );
+        //                 }
+        //                 LightType::Omnidirectional { .. } => (),
+        //             }
+        //         }
+        //     });
+        // });
     }
 }

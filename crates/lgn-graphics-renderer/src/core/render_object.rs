@@ -181,6 +181,10 @@ impl<RenderObjectStaticDataT> RenderObjectSet<RenderObjectStaticDataT> {
     }
 }
 
+// pub struct RenderObjectBridge<T> {
+
+// }
+
 #[cfg(test)]
 mod tests {
     use super::*;

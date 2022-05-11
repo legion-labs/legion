@@ -11,7 +11,6 @@ use super::GpuSafePool;
 
 pub(crate) struct ReadbackBuffer {
     buffer: Buffer,
-    // allocation: MemoryAllocation,
     cpu_frame_for_results: u64,
 }
 
@@ -74,12 +73,6 @@ impl ReadbackBuffer {
     }
 }
 
-// impl OnFrameEventHandler for ReadbackBuffer {
-//     fn on_begin_frame(&mut self) {}
-
-//     fn on_end_frame(&mut self) {}
-// }
-
 pub(crate) struct GpuBufferWithReadback {
     buffer: Buffer,
     rw_view: BufferView,
@@ -87,10 +80,10 @@ pub(crate) struct GpuBufferWithReadback {
 }
 
 impl GpuBufferWithReadback {
-    pub(crate) fn new(device_context: &DeviceContext, element_size: u64) -> Self {
+    pub(crate) fn new(device_context: &DeviceContext, size: u64) -> Self {
         let buffer = device_context.create_buffer(
             BufferDef {
-                size: element_size,
+                size,
                 usage_flags: ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS
                     | ResourceUsage::AS_TRANSFERABLE,
@@ -101,8 +94,7 @@ impl GpuBufferWithReadback {
             "GpuReadbackBuffer",
         );
 
-        let rw_view =
-            buffer.create_view(BufferViewDef::as_structured_buffer(1, element_size, false));
+        let rw_view = buffer.create_view(BufferViewDef::as_structured_buffer(1, size, false));
 
         Self {
             buffer,

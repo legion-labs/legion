@@ -1,13 +1,9 @@
-use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
-use lgn_math::Vec3;
-use lgn_transform::components::{GlobalTransform, Transform};
 
-use crate::{
-    core::RenderObjectId, debug_display::DebugDisplay, egui::Egui, lighting::LightingManager,
-    resources::DefaultMeshType, Renderer,
-};
+use lgn_transform::components::Transform;
+
+use crate::{core::RenderObjectId, Renderer};
 
 pub enum LightType {
     Omnidirectional,
@@ -33,123 +29,33 @@ impl Default for LightComponent {
             radiance: 40.0,
             enabled: true,
             picking_id: 0,
-            render_object_id: Default::default(),
+            render_object_id: RenderObjectId::default(),
         }
     }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub(crate) fn ui_lights(
-    egui: Res<'_, Egui>,
-    mut lights: Query<'_, '_, &mut LightComponent>,
-    mut lighting_manager: ResMut<'_, LightingManager>,
-) {
-    egui.window("Lights", |ui| {
-        ui.checkbox(&mut lighting_manager.apply_ambient, "Apply Ambient");
-        ui.checkbox(&mut lighting_manager.apply_diffuse, "Apply Diffuse");
-        ui.checkbox(&mut lighting_manager.apply_specular, "Apply Specular");
-        ui.label("Lights");
-        for (i, mut light) in lights.iter_mut().enumerate() {
-            ui.horizontal(|ui| {
-                ui.add(egui::Checkbox::new(&mut light.enabled, "Enabled"));
-                match light.light_type {
-                    LightType::Directional => {
-                        ui.label(format!("Directional light {}: ", i));
-                    }
-                    LightType::Omnidirectional { .. } => {
-                        ui.label(format!("Omni light {}: ", i));
-                    }
-                    LightType::Spotlight { ref mut cone_angle } => {
-                        ui.label(format!("Spotlight {}: ", i));
-                        ui.add(
-                            egui::Slider::new(cone_angle, -0.0..=std::f32::consts::PI)
-                                .text("angle"),
-                        );
-                    }
-                }
-                ui.add(egui::Slider::new(&mut light.radiance, 0.0..=300.0).text("radiance"));
-                let mut rgb = [light.color.r, light.color.g, light.color.b];
-                if ui.color_edit_button_srgb(&mut rgb).changed() {
-                    light.color.r = rgb[0];
-                    light.color.g = rgb[1];
-                    light.color.b = rgb[2];
-                }
-            });
-        }
-    });
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub(crate) fn debug_display_lights(
-    debug_display: Res<'_, DebugDisplay>,
-    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
-    lights: Query<'_, '_, (&LightComponent, &Transform)>,
-) {
-    if lights.is_empty() {
-        return;
-    }
-
-    bump_allocator_pool.scoped_bump(|bump| {
-        debug_display.create_display_list(bump, |builder| {
-            for (light, transform) in lights.iter() {
-                builder.add_default_mesh(
-                    &GlobalTransform::identity()
-                        .with_translation(transform.translation)
-                        .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
-                        .with_rotation(transform.rotation),
-                    DefaultMeshType::Sphere,
-                    Color::WHITE,
-                );
-                match light.light_type {
-                    LightType::Directional => {
-                        builder.add_default_mesh(
-                            &GlobalTransform::identity()
-                                .with_translation(
-                                    transform.translation
-                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
-                                )
-                                .with_rotation(transform.rotation),
-                            DefaultMeshType::Arrow,
-                            Color::WHITE,
-                        );
-                    }
-                    LightType::Spotlight { cone_angle, .. } => {
-                        let factor = 4.0 * (cone_angle / 2.0).tan(); // assumes that default cone mesh has 1 to 4 ratio between radius and height
-                        builder.add_default_mesh(
-                            &GlobalTransform::identity()
-                                .with_translation(
-                                    transform.translation - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
-                                )
-                                .with_scale(Vec3::new(factor, 1.0, factor))
-                                .with_rotation(transform.rotation),
-                            DefaultMeshType::Cone,
-                            Color::WHITE,
-                        );
-                    }
-                    LightType::Omnidirectional { .. } => (),
-                }
-            }
-        });
-    });
 }
 
 #[allow(clippy::needless_pass_by_value, clippy::type_complexity)]
-pub(crate) fn reflect_lights(
-    mut renderer: ResMut<'_, Renderer>,
-    mut lighting_manager: ResMut<'_, LightingManager>,
-    q_changes: Query<
-        '_,
-        '_,
-        (Entity, &Transform, &LightComponent),
-        Or<(Changed<Transform>, Changed<LightComponent>)>,
-    >,
-    removals: RemovedComponents<'_, LightComponent>,
-) {
-    // for e in removals.iter() {
+pub(crate) fn reflect_render_objects<C, R>(
+    mut renderer: Res<'_, Renderer>,
+    q_changes: Query<'_, '_, (Entity, &Transform, &mut C), Or<(Changed<Transform>, Changed<C>)>>,
+    q_removals: RemovedComponents<'_, C>,
+) where
+    C: Component,
+{
+    println!("reflect lights");
+
+    // let render_commands = renderer.render_command_builder();
+
+    // for e in q_removals.iter() {
+
+    //     render_commands.push( RemoveRenderObjectCommand::<RenderLight>::new(    )  )
+
     //     lighting_manager
     //         .light_set()
     //         .remove(lighting_manager.render_object_id_from_entity(e));
     // }
+
+    // for (e, transform, lightcomp) in q_changes.iter_mut() {
 
     // q_changes.for_each( |(e,t,l)| {
 
