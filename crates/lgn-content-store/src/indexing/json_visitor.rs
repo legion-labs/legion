@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    tree::TreeIdentifier, IndexKey, Result, Tree, TreeLeafNode, TreeVisitor, TreeVisitorAction,
+    tree::TreeIdentifier, IndexKey, IndexKeyDisplayFormat, Result, Tree, TreeLeafNode, TreeVisitor,
+    TreeVisitorAction,
 };
 
 /// A visitor that generates a JSON representation of the tree.
@@ -28,8 +29,9 @@ use super::{
 ///     ],
 /// }
 /// ```
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct JsonVisitor {
+    display_format: IndexKeyDisplayFormat,
     result: JsonResult,
 }
 
@@ -57,6 +59,13 @@ pub struct JsonLink {
 }
 
 impl JsonVisitor {
+    pub fn new(display_format: IndexKeyDisplayFormat) -> Self {
+        Self {
+            display_format,
+            result: JsonResult::default(),
+        }
+    }
+
     pub fn into_result(self) -> JsonResult {
         self.result
     }
@@ -108,7 +117,7 @@ impl TreeVisitor for JsonVisitor {
         self.result.links.push(JsonLink {
             source: parent_id.to_string(),
             target: branch_id.to_string(),
-            alias: local_key.to_string(),
+            alias: local_key.format(self.display_format),
         });
 
         Ok(TreeVisitorAction::Continue)
@@ -131,7 +140,7 @@ impl TreeVisitor for JsonVisitor {
         self.result.links.push(JsonLink {
             source: parent_id.to_string(),
             target: leaf.to_string(),
-            alias: local_key.to_string(),
+            alias: local_key.format(self.display_format),
         });
 
         Ok(())

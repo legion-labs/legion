@@ -8,7 +8,7 @@ use std::{
 
 use crate::{Identifier, Provider};
 
-use super::{Error, IndexKey, IntoIndexKey, ResourceIdentifier, Result};
+use super::{Error, IndexKey, ResourceIdentifier, Result};
 
 /// Represents a tree identifier.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -354,11 +354,9 @@ impl Tree {
             .children
             .binary_search_by(|(k, _)| k.as_slice().cmp(key))
         {
-            Ok(idx) => {
-                Some(std::mem::replace(&mut self.children[idx], (key.into_index_key(), node)).1)
-            }
+            Ok(idx) => Some(std::mem::replace(&mut self.children[idx], (key.into(), node)).1),
             Err(idx) => {
-                self.children.insert(idx, (key.into_index_key(), node));
+                self.children.insert(idx, (key.into(), node));
 
                 None
             }
@@ -484,7 +482,7 @@ mod tests {
             count: 1,
             total_size: 3,
             children: vec![(
-                IndexKey::from_slice(b"a"),
+                "a".into(),
                 TreeNode::Leaf(TreeLeafNode::Resource(ResourceIdentifier(
                     Identifier::new_data(b"foo"),
                 ))),

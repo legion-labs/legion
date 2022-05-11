@@ -8,8 +8,7 @@ use crate::{indexing::TreeWriter, Provider};
 
 use super::{
     tree::{TreeIdentifier, TreeLeafNode},
-    Error, IndexKey, IndexPath, IndexPathItem, IntoIndexKey, Result, SearchResult, Tree, TreeNode,
-    TreeReader,
+    Error, IndexKey, IndexPath, IndexPathItem, Result, SearchResult, Tree, TreeNode, TreeReader,
 };
 
 /// A `StringPathIndexer` is an indexer that adds resources according to a
@@ -219,7 +218,7 @@ impl StringPathIndexer {
                 Error::IndexTreeLeafNodeAlreadyExists(index_key.clone(), existing_leaf_node),
             ),
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node with the same key already exists: `{}`",
+                "a branch node with the same key already exists: `{:?}`",
                 index_key
             ))),
             SearchResult::NotFound(mut stack) => {
@@ -245,7 +244,7 @@ impl StringPathIndexer {
                     let tree = Tree {
                         count: 1,
                         total_size: size_delta,
-                        children: vec![(local_key.as_bytes().into_index_key(), node)],
+                        children: vec![(local_key.into(), node)],
                     };
 
                     let tree_id = provider.write_tree(&tree).await?;
@@ -334,7 +333,7 @@ impl StringPathIndexer {
                 }
             }
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node was found at `{}` which can't be replaced",
+                "a branch node was found at `{:?}` which can't be replaced",
                 index_key
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
@@ -422,7 +421,7 @@ impl StringPathIndexer {
                 }
             }
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node was found at `{}` which can't be removed",
+                "a branch node was found at `{:?}` which can't be removed",
                 index_key
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),

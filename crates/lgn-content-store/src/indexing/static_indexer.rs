@@ -12,8 +12,8 @@ use crate::{indexing::TreeWriter, Provider};
 
 use super::{
     tree::{TreeIdentifier, TreeLeafNode},
-    Error, IndexKey, IndexKeyBound, IndexPath, IndexPathItem, IntoIndexKey, Result, SearchResult,
-    Tree, TreeNode, TreeReader,
+    Error, IndexKey, IndexKeyBound, IndexPath, IndexPathItem, Result, SearchResult, Tree, TreeNode,
+    TreeReader,
 };
 
 /// A `StaticIndexer` is an indexer that adds resources according to the prefix
@@ -157,7 +157,7 @@ impl StaticIndexer {
     fn check_index_key_for_leaf(&self, index_key: &IndexKey) -> Result<()> {
         if index_key.len() != self.index_key_length {
             Err(Error::InvalidIndexKey(format!(
-                "expected index key length of {} but got {} ({} byte(s) long)",
+                "expected index key length of {} but got `{:?}` ({} byte(s) long)",
                 self.index_key_length,
                 index_key,
                 index_key.len()
@@ -270,10 +270,8 @@ impl StaticIndexer {
                         for (key, item) in &tree.children {
                             let (bucket_key, key) = key.split_at(split_index);
 
-                            (*buckets
-                                .entry(bucket_key.into_index_key())
-                                .or_insert(Vec::new()))
-                            .push((key.into_index_key(), item.clone()));
+                            (*buckets.entry(bucket_key.into()).or_insert(Vec::new()))
+                                .push((key.into(), item.clone()));
                         }
 
                         // Check if we have enough buckets.
@@ -419,7 +417,7 @@ impl StaticIndexer {
                 Error::IndexTreeLeafNodeAlreadyExists(index_key.clone(), existing_leaf_node),
             ),
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node with the same key already exists: `{}`",
+                "a branch node with the same key already exists: `{:?}`",
                 index_key
             ))),
             SearchResult::NotFound(mut stack) => {
@@ -458,10 +456,7 @@ impl StaticIndexer {
                             let tree = Tree {
                                 count: 1,
                                 total_size: size_delta,
-                                children: vec![(
-                                    remaining_key.into_index_key(),
-                                    TreeNode::Leaf(leaf_node),
-                                )],
+                                children: vec![(remaining_key.into(), TreeNode::Leaf(leaf_node))],
                             };
 
                             let tree_id = provider.write_tree(&tree).await?;
@@ -555,7 +550,7 @@ impl StaticIndexer {
                 }
             }
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node was found at `{}` which can't be replaced",
+                "a branch node was found at `{:?}` which can't be replaced",
                 index_key
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
@@ -649,7 +644,7 @@ impl StaticIndexer {
                 }
             }
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node was found at `{}` which can't be removed",
+                "a branch node was found at `{:?}` which can't be removed",
                 index_key
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
@@ -722,7 +717,7 @@ impl StaticIndexer {
             .map(|(key, leaf_res)| match leaf_res {
                 Ok(leaf) => Ok((key, leaf)),
                 Err(err) => Err(Error::Unknown(anyhow::anyhow!(
-                    "failed to read leaf at {}: {}",
+                    "failed to read leaf at `{:?}`: {}",
                     key,
                     err
                 ))),
@@ -877,11 +872,7 @@ mod tests {
     macro_rules! get_leaf {
         ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr) => {{
             $indexer
-                .get_leaf(
-                    &$provider,
-                    &$tree_id,
-                    &IndexKey::from_slice(&hex::decode(&$key).unwrap()),
-                )
+                .get_leaf(&$provider, &$tree_id, &IndexKey::from_hex(&$key).unwrap())
                 .await
                 .unwrap()
         }};
@@ -920,7 +911,7 @@ mod tests {
                     .add_leaf(
                         &$provider,
                         &$tree_id,
-                        &IndexKey::from_slice(&hex::decode(&$key).unwrap()),
+                        &IndexKey::from_hex(&$key).unwrap(),
                         leaf.clone(),
                     )
                     .await
@@ -947,7 +938,7 @@ mod tests {
     macro_rules! assert_add_leaf_already_exists {
         ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
-            let key = IndexKey::from_slice(&hex::decode(&$key).unwrap());
+            let key = IndexKey::from_hex(&$key).unwrap();
 
             match $indexer
                 .add_leaf(&$provider, &$tree_id, &key, leaf.clone())
@@ -971,7 +962,7 @@ mod tests {
                 .replace_leaf(
                     &$provider,
                     &$tree_id,
-                    &IndexKey::from_slice(&hex::decode(&$key).unwrap()),
+                    &IndexKey::from_hex(&$key).unwrap(),
                     leaf.clone(),
                 )
                 .await
@@ -986,7 +977,7 @@ mod tests {
     macro_rules! assert_replace_leaf_not_found {
         ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $content:expr) => {{
             let leaf = resource_leaf!($content);
-            let key = IndexKey::from_slice(&hex::decode(&$key).unwrap());
+            let key = IndexKey::from_hex(&$key).unwrap();
 
             match $indexer
                 .replace_leaf(&$provider, &$tree_id, &key, leaf.clone())
@@ -1004,11 +995,7 @@ mod tests {
     macro_rules! assert_remove_leaf {
         ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr, $old_content:expr) => {{
             let (tree_id, old_leaf) = $indexer
-                .remove_leaf(
-                    &$provider,
-                    &$tree_id,
-                    &IndexKey::from_slice(&hex::decode(&$key).unwrap()),
-                )
+                .remove_leaf(&$provider, &$tree_id, &IndexKey::from_hex(&$key).unwrap())
                 .await
                 .unwrap();
 
@@ -1020,7 +1007,7 @@ mod tests {
 
     macro_rules! assert_remove_leaf_not_found {
         ($indexer:expr, $provider:expr, $tree_id:expr, $key:expr) => {{
-            let key = IndexKey::from_slice(&hex::decode(&$key).unwrap());
+            let key = IndexKey::from_hex(&$key).unwrap();
 
             match $indexer
                 .remove_leaf(&$provider, &$tree_id, &key)
