@@ -12,3 +12,6 @@ pub use render_resources::*;
 
 mod gpu_upload;
 pub use gpu_upload::*;
+
+pub mod render_graph;
+pub use render_graph::*;

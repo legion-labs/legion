@@ -112,6 +112,10 @@ impl RenderLayer {
         }
     }
 
+    pub fn cpu_render_set(&self) -> bool {
+        self.cpu_render_set
+    }
+
     pub fn draw(
         &self,
         render_context: &RenderContext<'_>,

@@ -28,8 +28,9 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    AddressMode, ApiDef, BufferViewDef, CompareOp, DescriptorHeapDef, DeviceContext, FilterType,
-    MipMapMode, Queue, QueueType, ResourceUsage, SamplerDef,
+    AddressMode, ApiDef, BufferViewDef, CompareOp, DescriptorHeapDef, DeviceContext, Extents3D,
+    FilterType, Format, MemoryUsage, MipMapMode, Queue, QueueType, ResourceFlags, ResourceUsage,
+    SamplerDef, TextureDef, TextureTiling,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::Vec2;
@@ -63,7 +64,7 @@ pub mod shared;
 
 mod renderdoc;
 
-use crate::core::{GpuUploadManager, RenderCommandManager, RenderResourcesBuilder};
+use crate::core::{GpuUploadManager, RenderCommandManager, RenderManagers, RenderResourcesBuilder};
 use crate::features::ModelPlugin;
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
@@ -74,6 +75,10 @@ use crate::{
     components::{
         debug_display_lights, reflect_lights, ui_lights, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
+    },
+    core::render_graph::{
+        AlphaBlendedLayerPass, Config, DepthLayerPass, GpuCullingPass, LightingPass,
+        OpaqueLayerPass, PostProcessPass, RenderScript, RenderView, SSAOPass, UiPass,
     },
     egui::{egui_plugin::EguiPlugin, Egui},
     lighting::LightingManager,
@@ -512,9 +517,9 @@ fn render_update(
             descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
         let graphics_queue = render_resources.get::<GraphicsQueue>();
 
-        ///
-        /// Update
-        ///
+        //
+        // Update
+        //
         persistent_descriptor_set_manager.update();
         pipeline_manager.update();
 
@@ -524,9 +529,9 @@ fn render_update(
             &graphics_queue,
         );
 
-        ///
-        /// Render
-        ///
+        //
+        // Render
+        //
         let mut render_context = RenderContext::new(
             device_context,
             &graphics_queue,
@@ -696,22 +701,167 @@ fn render_update(
 
             cmd_buffer.end();
 
-            // queue
-            let present_sema = render_surface.acquire();
-            {
-                render_context.graphics_queue.queue_mut().submit(
-                    &[cmd_buffer],
-                    &[present_sema],
-                    &[],
-                    None,
-                );
+            let test_render_graph = false;
+            if test_render_graph {
+                render_context
+                    .graphics_queue
+                    .queue_mut()
+                    .submit(&[cmd_buffer], &[], &[], None);
 
-                render_surface.present(&mut render_context);
+                render_context
+                    .transient_commandbuffer_allocator
+                    .release(cmd_buffer_handle);
+
+                let mut cmd_buffer_handle =
+                    render_context.transient_commandbuffer_allocator.acquire();
+                let cmd_buffer = cmd_buffer_handle.as_mut();
+
+                cmd_buffer.begin();
+
+                //****************************************************************
+                cmd_buffer.with_label("RenderGraph", |cmd_buffer| {
+
+                    let gpu_culling_pass = GpuCullingPass;
+                    let depth_layer_pass = DepthLayerPass;
+                    let opaque_layer_pass = OpaqueLayerPass;
+                    let ssao_pass = SSAOPass;
+                    let alphablended_layer_pass = AlphaBlendedLayerPass;
+                    let postprocess_pass = PostProcessPass;
+                    let lighting_pass = LightingPass;
+                    let ui_pass = UiPass;
+
+                    let view_desc = TextureDef {
+                        extents: Extents3D {
+                            width: 1920,
+                            height: 1080,
+                            depth: 1,
+                        },
+                        array_length: 1,
+                        mip_count: 1,
+                        format: Format::R8G8B8A8_UNORM,
+                        usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
+                        resource_flags: ResourceFlags::empty(),
+                        memory_usage: MemoryUsage::GpuOnly,
+                        tiling: TextureTiling::Optimal,
+                    };
+                    let view_target = render_context.device_context.create_texture(view_desc, "ViewBuffer");
+                    let view = RenderView {
+                        target: view_target,
+                    };
+
+                    let depth_desc = TextureDef {
+                        extents: view.target.definition().extents,
+                        array_length: 1,
+                        mip_count: 1,
+                        format: Format::D24_UNORM_S8_UINT,
+                        usage_flags: ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE,
+                        resource_flags: ResourceFlags::empty(),
+                        memory_usage: MemoryUsage::GpuOnly,
+                        tiling: TextureTiling::Optimal,
+                    };
+                    let prev_depth = render_context.device_context.create_texture(depth_desc, "PrevDepthBuffer");
+
+                    let mut render_script = RenderScript {
+                        gpu_culling_pass,
+                        depth_layer_pass,
+                        opaque_layer_pass,
+                        ssao_pass,
+                        alphablended_layer_pass,
+                        postprocess_pass,
+                        lighting_pass,
+                        ui_pass,
+                        prev_depth,
+                    };
+
+                    let config = Config::default();
+
+                    match render_script.build_render_graph(&view, &config) {
+                        Ok(render_graph) => {
+                            // Print out the render graph
+                            println!("{}", render_graph);
+                            println!("\n\n");
+
+                            // TODO: Questions:
+                            // * Management of textures: pool for now, aliasing later
+                            // * Management of command buffers: one command buffer for all passes for now
+                            // * Multithreaded execution: none for now
+
+                            let mut render_graph_context = render_graph.compile();
+
+                            println!("\n\n");
+
+                            let render_managers = RenderManagers {
+                                mesh_renderer: &mesh_renderer,
+                                instance_manager: &instance_manager,
+                            };
+
+                            static mut FRAME_IDX: u64 = 0;
+                            let local_frame_idx =
+                            unsafe {
+                                FRAME_IDX
+                            };
+
+                            // Execute it
+                            println!("*****************************************************************************");
+                            println!("Frame {}", local_frame_idx);
+                            render_graph.execute(
+                                &mut render_graph_context,
+                                &render_resources,
+                                &render_managers,
+                                &render_context,
+                                &render_context.device_context,
+                                cmd_buffer,
+                            );
+
+                            unsafe {
+                                FRAME_IDX+= 1;
+                            }
+                        }
+                        Err(error) => {
+                            println!("{}", error);
+                        }
+                    }
+
+                });
+
+                //****************************************************************
+
+                cmd_buffer.end();
+
+                // queue
+                let present_sema = render_surface.acquire();
+                {
+                    render_context.graphics_queue.queue_mut().submit(
+                        &[cmd_buffer],
+                        &[present_sema],
+                        &[],
+                        None,
+                    );
+
+                    render_surface.present(&mut render_context);
+                }
+
+                render_context
+                    .transient_commandbuffer_allocator
+                    .release(cmd_buffer_handle);
+            } else {
+                // queue
+                let present_sema = render_surface.acquire();
+                {
+                    render_context.graphics_queue.queue_mut().submit(
+                        &[cmd_buffer],
+                        &[present_sema],
+                        &[],
+                        None,
+                    );
+
+                    render_surface.present(&mut render_context);
+                }
+
+                render_context
+                    .transient_commandbuffer_allocator
+                    .release(cmd_buffer_handle);
             }
-
-            render_context
-                .transient_commandbuffer_allocator
-                .release(cmd_buffer_handle);
         }
 
         descriptor_heap_manager.release_descriptor_pool(descriptor_pool);

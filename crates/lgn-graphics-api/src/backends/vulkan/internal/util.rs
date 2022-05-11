@@ -151,6 +151,9 @@ pub(crate) fn resource_state_to_image_layout(state: ResourceState) -> Option<vk:
     } else if state.intersects(ResourceState::DEPTH_WRITE) {
         assert!(state.difference(ResourceState::DEPTH_WRITE).is_empty());
         Some(vk::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+    } else if state.intersects(ResourceState::DEPTH_READ) {
+        assert!(state.difference(ResourceState::DEPTH_READ).is_empty());
+        Some(vk::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL)
     } else if state.intersects(ResourceState::UNORDERED_ACCESS) {
         assert!(state.difference(ResourceState::UNORDERED_ACCESS).is_empty());
         Some(vk::ImageLayout::GENERAL)
