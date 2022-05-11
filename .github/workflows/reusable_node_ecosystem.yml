@@ -24,7 +24,7 @@ on:
 jobs:
   check:
     name: Checks and tests
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     steps:
@@ -47,7 +47,7 @@ jobs:
   build:
     name: Build
     needs: [check]
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     steps:
