@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { BarLoader } from "svelte-loading-spinners";
-  import { link } from "svelte-navigator";
 
   import { getHttpClientContext } from "@/contexts";
   import type { CumulatedCallGraphHierarchyStore } from "@/lib/CallGraph/CallGraphStore";
@@ -52,15 +51,14 @@
         <CallTreeDebug {store} {begin} {end} />
       {/if}
       <div class="flex flex-col gap-y-2">
-        <div class="surface hover:background px-2 py-1 text-xs w-fit">
+        <div class="surface hover:background text-xs w-fit">
           <a
-            class="placeholder"
+            class="flex placeholder h-full w-full px-2 py-1 space-x-1"
             href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${begin}&${endQueryParam}=${end}`}
             target="_blank"
-            use:link
           >
-            <i class="bi bi-arrow-up-right-circle" />
-            <L10n id="timeline-open-cumulative-call-graph" />
+            <div><i class="bi bi-arrow-up-right-circle" /></div>
+            <div><L10n id="timeline-open-cumulative-call-graph" /></div>
           </a>
         </div>
         <div class="overflow-auto" style:max-height={`${size}px`}>

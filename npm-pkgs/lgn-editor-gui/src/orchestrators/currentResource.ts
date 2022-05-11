@@ -42,8 +42,11 @@ export async function fetchCurrentResourceDescription(
   } catch (error) {
     notifications.push(Symbol(), {
       type: "error",
-      title: "Resources",
-      message: "An error occured while loading the resource",
+      payload: {
+        type: "raw",
+        title: "Resources",
+        message: "An error occured while loading the resource",
+      },
     });
 
     log.error(

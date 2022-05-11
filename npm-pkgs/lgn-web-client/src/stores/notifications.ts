@@ -1,14 +1,44 @@
 import type { Writable } from "svelte/store";
 import { writable } from "svelte/store";
 
-export type Notification = {
-  type: "success" | "warning" | "error";
+import type {
+  FluentBase,
+  ResolveFluentRecordVariablesOnly,
+} from "../types/fluent";
+
+export type NotificationRawPayload = {
+  type: "raw";
   title: string;
   message: string;
-  timeout?: number;
 };
 
-export type NotificationsValue = Notification & {
+export type NotificationL10nPayload<
+  Fluent extends FluentBase,
+  TitleId extends keyof Fluent,
+  MessageId extends keyof Fluent
+> = {
+  type: "l10n";
+  title: ResolveFluentRecordVariablesOnly<Fluent, TitleId>;
+  message: ResolveFluentRecordVariablesOnly<Fluent, MessageId>;
+};
+
+export type Notification<
+  Fluent extends FluentBase,
+  TitleId extends keyof Fluent,
+  MessageId extends keyof Fluent
+> = {
+  type: "success" | "warning" | "error";
+  timeout?: number;
+  payload:
+    | NotificationRawPayload
+    | NotificationL10nPayload<Fluent, TitleId, MessageId>;
+};
+
+export type NotificationsValue<
+  Fluent extends FluentBase,
+  TitleId extends keyof Fluent,
+  MessageId extends keyof Fluent
+> = Notification<Fluent, TitleId, MessageId> & {
   started: number;
   timeout: number;
   percentage: number | null;
@@ -16,21 +46,26 @@ export type NotificationsValue = Notification & {
   intervalId: ReturnType<typeof setInterval>;
 };
 
-export type NotificationsStore = Writable<
-  Record<symbol, NotificationsValue>
+export type NotificationsStore<Fluent extends FluentBase> = Writable<
+  Record<symbol, NotificationsValue<Fluent, keyof Fluent, keyof Fluent>>
 > & {
   close(key: symbol): void;
   pause(key: symbol): void;
   resume(key: symbol): void;
-  push(key: symbol, value: Notification): void;
+  push<TitleId extends keyof Fluent, MessageId extends keyof Fluent>(
+    key: symbol,
+    value: Notification<Fluent, TitleId, MessageId>
+  ): void;
 };
 
 const intervalMs = 16;
 
-export function createNotificationsStore(
+export function createNotificationsStore<Fluent extends FluentBase>(
   requestedTimeout = 5_000
-): NotificationsStore {
-  const notificationsStore = writable<Record<symbol, NotificationsValue>>({});
+): NotificationsStore<Fluent> {
+  const notificationsStore = writable<
+    Record<symbol, NotificationsValue<Fluent, keyof Fluent, keyof Fluent>>
+  >({});
 
   return {
     ...notificationsStore,
@@ -80,7 +115,10 @@ export function createNotificationsStore(
       });
     },
 
-    push(key: symbol, value: Notification) {
+    push<TitleId extends keyof Fluent, MessageId extends keyof Fluent>(
+      key: symbol,
+      value: Notification<Fluent, TitleId, MessageId>
+    ) {
       notificationsStore.update((notifications) => {
         if (key in notifications) {
           return notifications;

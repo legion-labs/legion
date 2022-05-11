@@ -5,4 +5,4 @@ export type {
   NotificationsStore,
 } from "@lgn/web-client/src/stores/notifications";
 
-export default createNotificationsStore();
+export default createNotificationsStore<Fluent>();
