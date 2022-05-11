@@ -318,28 +318,44 @@ impl RGNode {
         if !self.read_resources.is_empty() {
             str += &format!("{}  | Reads:\n", indent_str);
             for res in &self.read_resources {
-                // TODO: Doesn't work because view_def could be a RenderGraphBufferViewDef.
-                let view_def: &RenderGraphTextureViewDef =
-                    (&views[res.key.1 as usize]).try_into().unwrap();
-
-                str += &format!(
-                    "{}  |   {} mip {}\n",
-                    indent_str, resource_names[res.key.0 as usize], view_def.first_mip,
-                );
+                match &views[res.key.1 as usize] {
+                    RenderGraphViewDef::Texture(texture_view_def) => {
+                        str += &format!(
+                            "{}  |   {} mip {}\n",
+                            indent_str,
+                            resource_names[res.key.0 as usize],
+                            texture_view_def.first_mip,
+                        );
+                    }
+                    RenderGraphViewDef::Buffer(_) => {
+                        str += &format!(
+                            "{}  |   {}\n",
+                            indent_str, resource_names[res.key.0 as usize],
+                        );
+                    }
+                }
             }
         }
 
         if !self.write_resources.is_empty() {
             str += &format!("{}  | Writes:\n", indent_str);
             for res in &self.write_resources {
-                // TODO: Doesn't work because view_def could be a RenderGraphBufferViewDef.
-                let view_def: &RenderGraphTextureViewDef =
-                    (&views[res.key.1 as usize]).try_into().unwrap();
-
-                str += &format!(
-                    "{}  |   {} mip {}\n",
-                    indent_str, resource_names[res.key.0 as usize], view_def.first_mip,
-                );
+                match &views[res.key.1 as usize] {
+                    RenderGraphViewDef::Texture(texture_view_def) => {
+                        str += &format!(
+                            "{}  |   {} mip {}\n",
+                            indent_str,
+                            resource_names[res.key.0 as usize],
+                            texture_view_def.first_mip,
+                        );
+                    }
+                    RenderGraphViewDef::Buffer(_) => {
+                        str += &format!(
+                            "{}  |   {}\n",
+                            indent_str, resource_names[res.key.0 as usize],
+                        );
+                    }
+                }
             }
         }
 
