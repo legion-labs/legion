@@ -24,6 +24,8 @@ globs = [
     "legion.toml",
     "npm-pkgs/**/*",
     "package.json",
+    "postcss.config.cjs",
+    "tailwind.config.cjs",
     # Ignore *.md documentation
     "*.md",
 ]
