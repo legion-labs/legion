@@ -1,5 +1,5 @@
 [s3]
-bucket = "legionlabs-ci-artefacts"
+bucket = "legionlabs-governance-ci-artefacts"
 prefix = "releases/legion/"
 region = "ca-central-1"
 
