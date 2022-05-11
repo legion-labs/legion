@@ -15,7 +15,7 @@ export type TopBarMenuStore = Writable<TopBarMenuValue> & {
 export const menus = [
   { id: 1, title: "File" },
   { id: 2, title: "Edit" },
-  { id: 3, title: "View" },
+  { id: 3, title: "Window", children: [] },
   { id: 4, title: "Help" },
 ] as const;
 

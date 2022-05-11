@@ -20,6 +20,8 @@
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
+  import { LayoutComponentMap } from "@/components/layout/LayoutConfig";
+  import Layout from "@/components/layout/Layout.svelte";
 
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
@@ -45,6 +47,9 @@
   <TopBar devSettings={$devSettings} />
   <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
+      <Layout let:type>
+        <svelte:component this={LayoutComponentMap[type]} />
+      </Layout>
       <div class="secondary-contents">
         <div class="scene-explorer">
           <!-- TODO: Move this into a dedicated component DynamicTile -->
@@ -68,6 +73,7 @@
         </div>
       </div>
       <div class="v-separator" />
+
       <div class="main-content">
         <!-- TODO: Move this into a dedicated component DynamicTile -->
         <Tile id={viewportTileId} {workspace}>
