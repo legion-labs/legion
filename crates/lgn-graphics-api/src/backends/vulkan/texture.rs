@@ -22,14 +22,14 @@ static NEXT_TEXTURE_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::Atomic
 #[derive(Debug)]
 pub(crate) struct VulkanRawImage {
     pub(crate) vk_image: vk::Image,
-    pub(crate) vk_allocation: Option<vk_mem::Allocation>,
+    pub(crate) vkmem_allocation: Option<vk_mem::Allocation>,
     pub(crate) vk_device_memory: Option<DeviceMemory>,
     pub(crate) vk_alloc_size: DeviceSize,
 }
 
 impl VulkanRawImage {
     fn destroy_image(&mut self, device_context: &DeviceContext) {
-        if let Some(allocation) = self.vk_allocation.take() {
+        if let Some(allocation) = self.vkmem_allocation.take() {
             trace!("destroying ImageVulkan");
             assert_ne!(self.vk_image, vk::Image::null());
             device_context
@@ -53,7 +53,7 @@ impl VulkanRawImage {
 
 impl Drop for VulkanRawImage {
     fn drop(&mut self) {
-        assert!(self.vk_allocation.is_none());
+        assert!(self.vkmem_allocation.is_none());
     }
 }
 
@@ -103,7 +103,7 @@ impl VulkanTexture {
             // format for the various ways we might use it
             let allocation_create_info = vk_mem::AllocationCreateInfo {
                 usage: texture_def.memory_usage.into(),
-                flags: vk_mem::AllocationCreateFlags::NONE,
+                flags: vk_mem::AllocationCreateFlags::USER_DATA_COPY_STRING,
                 required_flags,
                 preferred_flags: vk::MemoryPropertyFlags::empty(),
                 memory_type_bits: 0, // Do not exclude any memory types
@@ -138,7 +138,7 @@ impl VulkanTexture {
 
             VulkanRawImage {
                 vk_image: image,
-                vk_allocation: Some(allocation),
+                vkmem_allocation: Some(allocation),
                 vk_device_memory: None,
                 vk_alloc_size: allocation_info.get_size() as DeviceSize,
             }
@@ -250,7 +250,7 @@ impl VulkanTexture {
 
         let raw_image = VulkanRawImage {
             vk_image: image,
-            vk_allocation: None,
+            vkmem_allocation: None,
             vk_device_memory: Some(memory),
             vk_alloc_size: memory_requirements.size,
         };
@@ -330,8 +330,8 @@ impl Texture {
         self.inner.backend_texture.image.vk_image
     }
 
-    pub(crate) fn vk_allocation(&self) -> Option<vk_mem::Allocation> {
-        self.inner.backend_texture.image.vk_allocation
+    pub(crate) fn vkmem_allocation(&self) -> Option<vk_mem::Allocation> {
+        self.inner.backend_texture.image.vkmem_allocation
     }
 
     pub fn vk_alloc_size(&self) -> DeviceSize {
@@ -346,7 +346,7 @@ impl Texture {
             .inner
             .device_context
             .vk_allocator()
-            .map_memory(&self.vk_allocation().unwrap())?;
+            .map_memory(&self.vkmem_allocation().unwrap())?;
 
         let aspect_mask = match plane {
             crate::PlaneSlice::Default => {
@@ -385,6 +385,6 @@ impl Texture {
         self.inner
             .device_context
             .vk_allocator()
-            .unmap_memory(&self.vk_allocation().unwrap());
+            .unmap_memory(&self.vkmem_allocation().unwrap());
     }
 }

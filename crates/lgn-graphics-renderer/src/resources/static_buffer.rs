@@ -46,7 +46,16 @@ impl UnifiedStaticBuffer {
         let read_only_view =
             buffer.create_view(BufferViewDef::as_byte_address_buffer(element_count, true));
 
-        let allocator = UnifiedStaticBufferAllocator::new(device_context, &buffer);
+        let required_alignment = std::cmp::max(
+            device_context
+                .device_info()
+                .min_uniform_buffer_offset_alignment,
+            device_context
+                .device_info()
+                .min_storage_buffer_offset_alignment,
+        );
+
+        let allocator = UnifiedStaticBufferAllocator::new(&buffer, u64::from(required_alignment));
 
         Self {
             buffer,
@@ -91,9 +100,8 @@ impl StaticBufferView {
 }
 
 struct StaticBufferAllocationInner {
-    alloc_range: Range,
-    aligned_range: Range,
     allocator: UnifiedStaticBufferAllocator,
+    alloc_range: Range,
     resource_usage: ResourceUsage,
 }
 
@@ -106,14 +114,12 @@ impl StaticBufferAllocation {
     fn new(
         allocator: &UnifiedStaticBufferAllocator,
         alloc_range: Range,
-        aligned_range: Range,
         resource_usage: ResourceUsage,
     ) -> Self {
         Self {
             inner: Arc::new(StaticBufferAllocationInner {
-                alloc_range,
-                aligned_range,
                 allocator: allocator.clone(),
+                alloc_range,
                 resource_usage,
             }),
         }
@@ -124,7 +130,7 @@ impl StaticBufferAllocation {
     }
 
     pub fn byte_offset(&self) -> u64 {
-        self.inner.aligned_range.begin()
+        self.inner.alloc_range.begin()
     }
 
     pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
@@ -177,15 +183,15 @@ impl Drop for StaticBufferAllocationInner {
 
 #[derive(Clone)]
 pub struct UnifiedStaticBufferAllocator {
-    device_context: DeviceContext,
+    required_alignment: u64,
     buffer: Buffer,
     allocator: Arc<Mutex<RangeAllocator>>,
 }
 
 impl UnifiedStaticBufferAllocator {
-    pub fn new(device_context: &DeviceContext, buffer: &Buffer) -> Self {
+    pub fn new(buffer: &Buffer, required_alignment: u64) -> Self {
         Self {
-            device_context: device_context.clone(),
+            required_alignment,
             buffer: buffer.clone(),
             allocator: Arc::new(Mutex::new(RangeAllocator::new(buffer.definition().size))),
         }
@@ -207,19 +213,10 @@ impl UnifiedStaticBufferAllocator {
             resource_usage
         };
 
-        let required_alignment = if resource_usage.intersects(ResourceUsage::AS_CONST_BUFFER) {
-            self.device_context
-                .device_info()
-                .min_uniform_buffer_offset_alignment
-        } else {
-            self.device_context
-                .device_info()
-                .min_storage_buffer_offset_alignment
-        };
-
-        let required_alignment = 256;
-
-        let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(required_size, 256);
+        let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(
+            required_size,
+            self.required_alignment,
+        );
 
         if required_size != alloc_size {
             warn!( "UnifiedStaticBufferAllocator: the segment required size ({} bytes) is less than the allocated size ({} bytes). {} bytes of memory will be wasted", required_size, alloc_size, alloc_size-required_size  );
@@ -228,21 +225,13 @@ impl UnifiedStaticBufferAllocator {
         let allocator = &mut *self.allocator.lock().unwrap();
 
         let alloc_range = allocator.allocate(alloc_size).unwrap();
-        let aligned_range = Range::from_begin_end(
-            alloc_range.begin(),
-            // lgn_utils::memory::round_size_up_to_alignment_u64(
-            //     alloc_range.begin() as u64,
-            //     required_alignment as u64,
-            // ),
-            alloc_range.end(),
-        );
 
         println!("Alloc {:?}", &alloc_range);
 
-        assert_eq!(alloc_range, aligned_range);
-        assert_eq!(aligned_range.begin() % required_alignment, 0);
+        assert_eq!(alloc_range.begin() % self.required_alignment, 0);
+        assert!(alloc_range.size() >= required_size);
 
-        StaticBufferAllocation::new(self, alloc_range, aligned_range, resource_usage)
+        StaticBufferAllocation::new(self, alloc_range, resource_usage)
     }
 
     fn free(&self, range: Range) {

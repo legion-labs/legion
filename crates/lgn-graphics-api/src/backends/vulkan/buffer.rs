@@ -4,8 +4,8 @@ use crate::{Buffer, BufferCopy, BufferDef, BufferMappingInfo, DeviceContext, Res
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
-    vk_allocation: vk_mem::Allocation,
-    vk_allocation_info: vk_mem::AllocationInfo,
+    vkmem_allocation: vk_mem::Allocation,
+    vkmem_allocation_info: vk_mem::AllocationInfo,
     vk_buffer: ash::vk::Buffer,
 }
 
@@ -48,6 +48,9 @@ impl VulkanBuffer {
             .sharing_mode(ash::vk::SharingMode::EXCLUSIVE);
 
         let mut alloc_flags = vk_mem::AllocationCreateFlags::NONE;
+
+        alloc_flags |= vk_mem::AllocationCreateFlags::USER_DATA_COPY_STRING;
+
         if buffer_def.always_mapped {
             alloc_flags |= vk_mem::AllocationCreateFlags::MAPPED;
         }
@@ -74,8 +77,8 @@ impl VulkanBuffer {
         );
 
         Self {
-            vk_allocation,
-            vk_allocation_info,
+            vkmem_allocation: vk_allocation,
+            vkmem_allocation_info: vk_allocation_info,
             vk_buffer,
         }
     }
@@ -104,12 +107,16 @@ impl Buffer {
         self.inner.backend_buffer.vk_buffer
     }
 
+    pub(crate) fn vkmem_allocation(&self) -> vk_mem::Allocation {
+        self.inner.backend_buffer.vkmem_allocation
+    }
+
     pub(crate) fn backend_map_buffer(&self) -> BufferMappingInfo<'_> {
         let ptr = self
             .inner
             .device_context
             .vk_allocator()
-            .map_memory(&self.inner.backend_buffer.vk_allocation)
+            .map_memory(&self.inner.backend_buffer.vkmem_allocation)
             .unwrap();
 
         BufferMappingInfo {
@@ -122,13 +129,13 @@ impl Buffer {
         self.inner
             .device_context
             .vk_allocator()
-            .unmap_memory(&self.inner.backend_buffer.vk_allocation);
+            .unmap_memory(&self.inner.backend_buffer.vkmem_allocation);
     }
 
     pub(crate) fn backend_mapped_ptr(&self) -> *mut u8 {
         self.inner
             .backend_buffer
-            .vk_allocation_info
+            .vkmem_allocation_info
             .get_mapped_data()
     }
 }

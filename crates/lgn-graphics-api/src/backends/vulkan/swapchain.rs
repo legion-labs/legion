@@ -409,7 +409,7 @@ impl SwapchainVulkanInstance {
         for (image_index, image) in self.swapchain_images.iter().enumerate() {
             let raw_image = VulkanRawImage {
                 vk_image: *image,
-                vk_allocation: None,
+                vkmem_allocation: None,
                 vk_device_memory: None,
                 vk_alloc_size: 0,
             };
