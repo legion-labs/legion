@@ -16,7 +16,7 @@ jobs:
   bootstrap_rust:
     name: Rust bootstrap
     needs: [image_setup]
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ needs.image_setup.outputs.image }}
     steps:
