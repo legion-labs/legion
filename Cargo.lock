@@ -171,7 +171,7 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "chrono",
- "clap 3.1.17",
+ "clap 3.1.18",
  "futures",
  "http",
  "lgn-analytics",
@@ -1266,9 +1266,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.17"
+version = "3.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47582c09be7c8b32c0ab3a6181825ababb713fde6fff20fc573a3870dd45c6a0"
+checksum = "d2dbdf4bdacb33466e854ce889eee8dfd5729abf7ccd7664d0a2d60cd384440b"
 dependencies = [
  "atty",
  "bitflags",
@@ -1283,9 +1283,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "3.1.7"
+version = "3.1.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3aab4734e083b809aaf5794e14e756d1c798d2c69c7f7de7a09a2f5214993c1"
+checksum = "25320346e922cffe59c0bbc5410c8d8784509efb321488971081313cb1e1a33c"
 dependencies = [
  "heck 0.4.0",
  "proc-macro-error",
@@ -2166,7 +2166,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "clap 3.1.17",
+ "clap 3.1.18",
  "crossbeam-channel",
  "erased-serde",
  "generic-data",
@@ -3847,7 +3847,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "bytesize",
- "clap 3.1.17",
+ "clap 3.1.18",
  "console",
  "duration-string",
  "futures",
@@ -3955,7 +3955,7 @@ name = "lgn-data-build-cli"
 version = "0.1.0"
 dependencies = [
  "byteorder",
- "clap 3.1.17",
+ "clap 3.1.18",
  "integer-asset",
  "lgn-content-store",
  "lgn-data-build",
@@ -3994,7 +3994,7 @@ dependencies = [
  "async-trait",
  "binary-resource",
  "bincode",
- "clap 3.1.17",
+ "clap 3.1.18",
  "erased-serde",
  "integer-asset",
  "lgn-content-store",
@@ -4022,7 +4022,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "chacha20poly1305",
- "clap 3.1.17",
+ "clap 3.1.18",
  "freelist",
  "futures",
  "integer-asset",
@@ -4204,7 +4204,7 @@ dependencies = [
 name = "lgn-electron"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.17",
+ "clap 3.1.18",
  "dunce",
  "http",
  "http-serde",
@@ -4226,7 +4226,7 @@ name = "lgn-fluent-generator"
 version = "0.1.0"
 dependencies = [
  "askama",
- "clap 3.1.17",
+ "clap 3.1.18",
  "fluent-syntax",
  "glob",
  "rayon",
@@ -4266,7 +4266,7 @@ name = "lgn-graphics-cgen"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.17",
+ "clap 3.1.18",
  "fxhash",
  "hassle-rs",
  "heck 0.4.0",
@@ -4365,7 +4365,7 @@ dependencies = [
 name = "lgn-graphics-sandbox"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.17",
+ "clap 3.1.18",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -4719,7 +4719,7 @@ dependencies = [
  "aws-sdk-s3",
  "bytes",
  "chrono",
- "clap 3.1.17",
+ "clap 3.1.18",
  "futures",
  "http",
  "itertools",
@@ -4759,7 +4759,7 @@ name = "lgn-source-control-fs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.17",
+ "clap 3.1.18",
  "fuser",
  "lgn-cli-utils",
  "lgn-content-store",
@@ -5277,7 +5277,7 @@ dependencies = [
  "anyhow",
  "atty",
  "camino",
- "clap 3.1.17",
+ "clap 3.1.18",
  "determinator",
  "dunce",
  "fs_extra",
@@ -6131,7 +6131,7 @@ name = "physics-rebuild-data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.17",
+ "clap 3.1.18",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -6338,7 +6338,7 @@ name = "pong-rebuild-data"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.17",
+ "clap 3.1.18",
  "generic-data",
  "lgn-app",
  "lgn-compiler-runtime-entity",
@@ -6998,7 +6998,7 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
- "clap 3.1.17",
+ "clap 3.1.18",
  "crossbeam-channel",
  "generic-data",
  "instant",
@@ -7214,7 +7214,7 @@ name = "sample-data-compiler"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap 3.1.17",
+ "clap 3.1.18",
  "generic-data",
  "lgn-config",
  "lgn-content-store",
@@ -7923,7 +7923,7 @@ name = "telemetry-admin"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.17",
+ "clap 3.1.18",
  "fs_extra",
  "json",
  "lgn-analytics",
@@ -7945,7 +7945,7 @@ dependencies = [
  "anyhow",
  "bytes",
  "chrono",
- "clap 3.1.17",
+ "clap 3.1.18",
  "http",
  "hyper",
  "lgn-blob-storage",
@@ -8724,7 +8724,7 @@ name = "vm-agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "clap 3.1.17",
+ "clap 3.1.18",
  "lgn-cli-utils",
  "lgn-telemetry-sink",
  "lgn-tracing",
