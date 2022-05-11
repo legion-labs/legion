@@ -941,20 +941,14 @@ async fn test_multiple_repositories() {
         .await
         .unwrap();
 
-    let workspace_root2 = tempfile::tempdir().expect("failed to create temp dir");
     let config = WorkspaceConfig::new(
         repository_name.clone(),
         WorkspaceRegistration::new_with_current_user(),
     );
 
-    let ws2 = Workspace::init(
-        &workspace_root2.path(),
-        &repository_index,
-        config,
-        Arc::clone(&csp),
-    )
-    .await
-    .expect("failed to initialize second workspace");
+    let ws2 = Workspace::init(&repository_index, config, Arc::clone(&csp))
+        .await
+        .expect("failed to initialize second workspace");
 
     // Add some files.
     create_file!(ws1, "apple.txt", "I am an apple");

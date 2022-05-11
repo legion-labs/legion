@@ -32,15 +32,14 @@ pub type ResourceId = u128;
 
 /// Represents a workspace.
 pub struct Workspace {
-    root: PathBuf,
     index: Box<dyn Index>,
     backend: Box<dyn WorkspaceBackend>,
     registration: WorkspaceRegistration,
     provider: Arc<Provider>,
     main_index: StaticIndexer,
     main_index_tree: TreeIdentifier,
-    file_path_index: StringPathIndexer,
-    file_path_index_tree: TreeIdentifier,
+    path_index: StringPathIndexer,
+    path_index_tree: TreeIdentifier,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,12 +81,10 @@ impl Workspace {
     ///
     /// The workspace must not already exist.
     pub async fn init(
-        root: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
         config: WorkspaceConfig,
         provider: Arc<Provider>,
     ) -> Result<Self> {
-        let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
         let lsc_directory = Self::get_lsc_directory(&root);
 
         tokio::fs::create_dir_all(&lsc_directory)
@@ -124,22 +121,21 @@ impl Workspace {
             .await
             .map_other_err("creating main index tree")?;
 
-        let file_path_index = StringPathIndexer::new('/');
-        let file_path_index_tree = provider
+        let path_index = StringPathIndexer::new('/');
+        let path_index_tree = provider
             .write_tree(&indexing::Tree::default())
             .await
             .map_other_err("creating main index tree")?;
 
         let workspace = Self::new(
-            root,
             index,
             config,
             backend,
             provider,
             main_index,
             main_index_tree,
-            file_path_index,
-            file_path_index_tree,
+            path_index,
+            path_index_tree,
         )
         .await?;
 
@@ -155,11 +151,9 @@ impl Workspace {
     ///
     /// To load a workspace from a possible subfolder, use `Workspace::find`.
     pub async fn load(
-        root: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
         provider: Arc<Provider>,
     ) -> Result<Self> {
-        let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
         let lsc_directory = Self::get_lsc_directory(&root);
         let workspace_config_path = Self::get_workspace_config_path(lsc_directory);
 
@@ -193,20 +187,18 @@ impl Workspace {
         let main_index = StaticIndexer::new(std::mem::size_of::<ResourceId>());
         let main_index_tree = TreeIdentifier::from_str("0").map_other_err("id construction")?;
 
-        let file_path_index = StringPathIndexer::new('/');
-        let file_path_index_tree =
-            TreeIdentifier::from_str("1").map_other_err("id construction")?;
+        let path_index = StringPathIndexer::new('/');
+        let path_index_tree = TreeIdentifier::from_str("1").map_other_err("id construction")?;
 
         Self::new(
-            root,
             index,
             config,
             backend,
             provider,
             main_index,
             main_index_tree,
-            file_path_index,
-            file_path_index_tree,
+            path_index,
+            path_index_tree,
         )
         .await
     }
@@ -254,7 +246,7 @@ impl Workspace {
         };
 
         loop {
-            match Self::load(path, &repository_index, Arc::clone(&provider)).await {
+            match Self::load(&repository_index, Arc::clone(&provider)).await {
                 Ok(workspace) => return Ok(workspace),
                 Err(err) => match err {
                     Error::NotAWorkspace { path: _ } => {
@@ -282,26 +274,24 @@ impl Workspace {
 
     #[allow(clippy::too_many_arguments)]
     async fn new(
-        root: PathBuf,
         index: Box<dyn Index>,
         config: WorkspaceConfig,
         backend: Box<dyn WorkspaceBackend>,
         provider: Arc<Provider>,
         main_index: StaticIndexer,
         main_index_tree: TreeIdentifier,
-        file_path_index: StringPathIndexer,
-        file_path_index_tree: TreeIdentifier,
+        path_index: StringPathIndexer,
+        path_index_tree: TreeIdentifier,
     ) -> Result<Self> {
         Ok(Self {
-            root,
             index,
             backend,
             registration: config.registration,
             provider,
             main_index,
             main_index_tree,
-            file_path_index,
-            file_path_index_tree,
+            path_index,
+            path_index_tree,
         })
     }
 
@@ -319,10 +309,6 @@ impl Workspace {
             provider,
         )
         .await
-    }
-
-    pub fn root(&self) -> &Path {
-        &self.root
     }
 
     /// Returns the canonical paths designated by the specified paths.
@@ -457,10 +443,10 @@ impl Workspace {
             .map_other_err("adding resource to main index")?;
 
         let file_path_id = self
-            .file_path_index
+            .path_index
             .add_leaf(
                 &self.provider,
-                &self.file_path_index_tree,
+                &self.path_index_tree,
                 &path.into(),
                 TreeLeafNode::Resource(resource_identifier),
             )

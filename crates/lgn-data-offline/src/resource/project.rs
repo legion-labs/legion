@@ -164,7 +164,6 @@ impl Project {
         }
 
         let workspace = Workspace::init(
-            &resource_dir,
             repository_index,
             WorkspaceConfig::new(
                 repository_name,
@@ -188,14 +187,7 @@ impl Project {
         repository_index: impl RepositoryIndex,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
-        let resource_dir = project_dir.as_ref().join("offline");
-
-        let workspace = Workspace::load(
-            &resource_dir,
-            repository_index,
-            source_control_content_provider,
-        )
-        .await?;
+        let workspace = Workspace::load(repository_index, source_control_content_provider).await?;
 
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
@@ -398,11 +390,11 @@ impl Project {
         std::fs::create_dir_all(&directory).map_err(|e| Error::Io(directory.clone(), e))?;
 
         let (resource_contents, build_dependencies) = {
-            let mut mem_buffer = std::io::Cursor::new(Vec::new());
+            let mut resource_contents = std::io::Cursor::new(Vec::new());
             let (_written, build_deps) = registry
-                .serialize_resource(kind, handle, &mut mem_buffer)
+                .serialize_resource(kind, handle, &mut resource_contents)
                 .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
-            (mem_buffer.into_inner(), build_deps)
+            (resource_contents.into_inner(), build_deps)
         };
 
         let meta_file = File::create(&meta_path).map_err(|e| {

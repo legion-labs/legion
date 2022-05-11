@@ -60,8 +60,6 @@ enum Commands {
     /// Initializes a workspace and populates it with the latest version of the main branch
     #[clap(name = "init-workspace", alias = "init")]
     InitWorkspace {
-        /// lsc workspace directory
-        workspace_directory: PathBuf,
         /// uri printed at the creation of the repository
         repository_name: RepositoryName,
     },
@@ -332,10 +330,7 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
-        Commands::InitWorkspace {
-            workspace_directory,
-            repository_name,
-        } => {
+        Commands::InitWorkspace { repository_name } => {
             info!("init-workspace");
 
             let config = WorkspaceConfig::new(
@@ -343,7 +338,7 @@ async fn main() -> anyhow::Result<()> {
                 WorkspaceRegistration::new_with_current_user(),
             );
 
-            Workspace::init(&workspace_directory, repository_index, config, provider)
+            Workspace::init(repository_index, config, provider)
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
