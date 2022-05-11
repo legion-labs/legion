@@ -40,10 +40,9 @@ impl GpuCullingPass {
         depth_buffer_id: RenderGraphResourceId,
         depth_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder {
-        let depth_buffer_extents = builder
-            .get_resource_def(depth_buffer_id)
-            .texture_def()
-            .extents;
+        let depth_resource_def = builder.get_resource_def(depth_buffer_id);
+        let depth_resource_def: &RenderGraphTextureDef = depth_resource_def.try_into().unwrap();
+        let depth_buffer_extents = depth_resource_def.extents;
         let downsampled_depth_desc = self.make_downsampled_depth_desc(depth_buffer_extents);
         let mut builder = builder;
         let downsampled_depth_id =
@@ -99,7 +98,9 @@ impl GpuCullingPass {
             read_only: false,
         });
 
-        for i in 0..downsampled_depth_desc.texture_def().mip_count {
+        let downsampled_depth_desc: &RenderGraphTextureDef =
+            downsampled_depth_desc.try_into().unwrap();
+        for i in 0..downsampled_depth_desc.mip_count {
             let read_res_id = if i == 0 {
                 depth_buffer_id
             } else {
@@ -108,18 +109,23 @@ impl GpuCullingPass {
             let write_res_id = downsampled_depth_id;
 
             let mut read_view_def = depth_view_def.clone();
+            let mut read_view_def: &mut RenderGraphTextureViewDef =
+                (&mut read_view_def).try_into().unwrap();
             let read_view_id = if i == 0 {
-                read_view_def.texture_view_def_mut().plane_slice = PlaneSlice::Depth;
-                builder.declare_view(&read_view_def)
+                read_view_def.plane_slice = PlaneSlice::Depth;
+                builder.declare_view(&RenderGraphViewDef::Texture(read_view_def.clone()))
             } else {
-                read_view_def.texture_view_def_mut().first_mip = i - 1;
-                builder.declare_view(&read_view_def)
+                read_view_def.first_mip = i - 1;
+                builder.declare_view(&RenderGraphViewDef::Texture(read_view_def.clone()))
             };
 
             let mut write_view_def = depth_view_def.clone();
-            write_view_def.texture_view_def_mut().first_mip = i;
-            write_view_def.texture_view_def_mut().plane_slice = PlaneSlice::Default;
-            let write_view_id = builder.declare_view(&write_view_def);
+            let mut write_view_def: &mut RenderGraphTextureViewDef =
+                (&mut write_view_def).try_into().unwrap();
+            write_view_def.first_mip = i;
+            write_view_def.plane_slice = PlaneSlice::Default;
+            let write_view_id =
+                builder.declare_view(&RenderGraphViewDef::Texture(write_view_def.clone()));
 
             let pass_name = format!("DepthDownsample mip {}", i);
             let mip_index = i;

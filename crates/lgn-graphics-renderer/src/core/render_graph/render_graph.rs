@@ -145,35 +145,24 @@ pub(crate) enum RenderGraphResourceDef {
     Buffer(RenderGraphBufferDef),
 }
 
-impl RenderGraphResourceDef {
-    pub(crate) fn texture_def(&self) -> &RenderGraphTextureDef {
-        match self {
-            RenderGraphResourceDef::Texture(texture_def) => texture_def,
-            RenderGraphResourceDef::Buffer(_) => panic!("Type is not a texture def."),
+impl<'a> TryFrom<&'a RenderGraphResourceDef> for &'a RenderGraphTextureDef {
+    type Error = &'static str;
+
+    fn try_from(value: &'a RenderGraphResourceDef) -> Result<Self, Self::Error> {
+        match &value {
+            RenderGraphResourceDef::Texture(texture_def) => Ok(texture_def),
+            RenderGraphResourceDef::Buffer(_) => Err("Conversion of RenderGraphResourceDef to RenderGraphTextureDef failed because def contains a BufferDef."),
         }
     }
+}
 
-    #[allow(dead_code)]
-    pub(crate) fn buffer_def(&self) -> &RenderGraphBufferDef {
-        match self {
-            RenderGraphResourceDef::Texture(_) => panic!("Type is not a buffer def."),
-            RenderGraphResourceDef::Buffer(buffer_def) => buffer_def,
-        }
-    }
+impl<'a> TryFrom<&'a RenderGraphResourceDef> for &'a RenderGraphBufferDef {
+    type Error = &'static str;
 
-    #[allow(dead_code)]
-    pub(crate) fn texture_def_mut(&mut self) -> &mut RenderGraphTextureDef {
-        match self {
-            RenderGraphResourceDef::Texture(texture_def) => texture_def,
-            RenderGraphResourceDef::Buffer(_) => panic!("Type is not a texture def."),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn buffer_def_mut(&mut self) -> &mut RenderGraphBufferDef {
-        match self {
-            RenderGraphResourceDef::Texture(_) => panic!("Type is not a buffer def."),
-            RenderGraphResourceDef::Buffer(buffer_def) => buffer_def,
+    fn try_from(value: &'a RenderGraphResourceDef) -> Result<Self, Self::Error> {
+        match &value {
+            RenderGraphResourceDef::Texture(_) => Err("Conversion of RenderGraphResourceDef to RenderGraphBufferDef failed because def contains a TextureDef."),
+            RenderGraphResourceDef::Buffer(buffer_def) => Ok(buffer_def),
         }
     }
 }
@@ -187,35 +176,46 @@ pub(crate) enum RenderGraphViewDef {
     Buffer(RenderGraphBufferViewDef),
 }
 
-impl RenderGraphViewDef {
-    pub(crate) fn texture_view_def(&self) -> &RenderGraphTextureViewDef {
-        match self {
-            RenderGraphViewDef::Texture(texture_def) => texture_def,
-            RenderGraphViewDef::Buffer(_) => panic!("Type is not a texture def."),
+impl<'a> TryFrom<&'a RenderGraphViewDef> for &'a RenderGraphTextureViewDef {
+    type Error = &'static str;
+
+    fn try_from(value: &'a RenderGraphViewDef) -> Result<Self, Self::Error> {
+        match &value {
+            RenderGraphViewDef::Texture(texture_view_def) => Ok(texture_view_def),
+            RenderGraphViewDef::Buffer(_) => Err("Conversion of RenderGraphViewDef to RenderGraphTextureViewDef failed because def contains a BufferViewDef."),
         }
     }
+}
 
-    #[allow(dead_code)]
-    pub(crate) fn buffer_view_def(&self) -> &RenderGraphBufferViewDef {
-        match self {
-            RenderGraphViewDef::Texture(_) => panic!("Type is not a buffer def."),
-            RenderGraphViewDef::Buffer(buffer_def) => buffer_def,
+impl<'a> TryFrom<&'a RenderGraphViewDef> for &'a RenderGraphBufferViewDef {
+    type Error = &'static str;
+
+    fn try_from(value: &'a RenderGraphViewDef) -> Result<Self, Self::Error> {
+        match &value {
+            RenderGraphViewDef::Texture(_) => Err("Conversion of RenderGraphViewDef to RenderGraphBufferViewDef failed because def contains a TextureViewDef."),
+            RenderGraphViewDef::Buffer(buffer_view_def) => Ok(buffer_view_def),
         }
     }
+}
 
-    #[allow(dead_code)]
-    pub(crate) fn texture_view_def_mut(&mut self) -> &mut RenderGraphTextureViewDef {
-        match self {
-            RenderGraphViewDef::Texture(texture_def) => texture_def,
-            RenderGraphViewDef::Buffer(_) => panic!("Type is not a texture def."),
+impl<'a> TryFrom<&'a mut RenderGraphViewDef> for &'a mut RenderGraphTextureViewDef {
+    type Error = &'static str;
+
+    fn try_from(value: &'a mut RenderGraphViewDef) -> Result<Self, Self::Error> {
+        match value {
+            RenderGraphViewDef::Texture(texture_view_def) => Ok(texture_view_def),
+            RenderGraphViewDef::Buffer(_) => Err("Conversion of RenderGraphViewDef to RenderGraphTextureViewDef failed because def contains a BufferViewDef."),
         }
     }
+}
 
-    #[allow(dead_code)]
-    pub(crate) fn buffer_view_def_mut(&mut self) -> &mut RenderGraphBufferViewDef {
-        match self {
-            RenderGraphViewDef::Texture(_) => panic!("Type is not a buffer def."),
-            RenderGraphViewDef::Buffer(buffer_def) => buffer_def,
+impl<'a> TryFrom<&'a mut RenderGraphViewDef> for &'a mut RenderGraphBufferViewDef {
+    type Error = &'static str;
+
+    fn try_from(value: &'a mut RenderGraphViewDef) -> Result<Self, Self::Error> {
+        match value {
+            RenderGraphViewDef::Texture(_) => Err("Conversion of RenderGraphViewDef to RenderGraphBufferViewDef failed because def contains a TextureViewDef."),
+            RenderGraphViewDef::Buffer(buffer_view_def) => Ok(buffer_view_def),
         }
     }
 }
@@ -295,35 +295,36 @@ impl RGNode {
             str += &format!("{}  | Render targets:\n", indent_str);
 
             for res in render_targets {
+                let view_def: &RenderGraphTextureViewDef =
+                    (&views[res.key.1 as usize]).try_into().unwrap();
                 str += &format!(
                     "{}  |   {} mip {}\n",
-                    indent_str,
-                    resource_names[res.key.0 as usize],
-                    views[res.key.1 as usize].texture_view_def().first_mip,
+                    indent_str, resource_names[res.key.0 as usize], view_def.first_mip,
                 );
             }
         }
 
         if let Some(depth_stencil) = &self.depth_stencil {
+            let view_def: &RenderGraphTextureViewDef =
+                (&views[depth_stencil.key.1 as usize]).try_into().unwrap();
+
             str += &format!("{}  | Depth stencil:\n", indent_str);
             str += &format!(
                 "{}  |   {} mip {}\n",
-                indent_str,
-                resource_names[depth_stencil.key.0 as usize],
-                views[depth_stencil.key.1 as usize]
-                    .texture_view_def()
-                    .first_mip,
+                indent_str, resource_names[depth_stencil.key.0 as usize], view_def.first_mip,
             );
         }
 
         if !self.read_resources.is_empty() {
             str += &format!("{}  | Reads:\n", indent_str);
             for res in &self.read_resources {
+                // TODO: Doesn't work because view_def could be a RenderGraphBufferViewDef.
+                let view_def: &RenderGraphTextureViewDef =
+                    (&views[res.key.1 as usize]).try_into().unwrap();
+
                 str += &format!(
                     "{}  |   {} mip {}\n",
-                    indent_str,
-                    resource_names[res.key.0 as usize],
-                    views[res.key.1 as usize].texture_view_def().first_mip,
+                    indent_str, resource_names[res.key.0 as usize], view_def.first_mip,
                 );
             }
         }
@@ -331,11 +332,13 @@ impl RGNode {
         if !self.write_resources.is_empty() {
             str += &format!("{}  | Writes:\n", indent_str);
             for res in &self.write_resources {
+                // TODO: Doesn't work because view_def could be a RenderGraphBufferViewDef.
+                let view_def: &RenderGraphTextureViewDef =
+                    (&views[res.key.1 as usize]).try_into().unwrap();
+
                 str += &format!(
                     "{}  |   {} mip {}\n",
-                    indent_str,
-                    resource_names[res.key.0 as usize],
-                    views[res.key.1 as usize].texture_view_def().first_mip,
+                    indent_str, resource_names[res.key.0 as usize], view_def.first_mip,
                 );
             }
         }
@@ -488,8 +491,8 @@ impl RenderGraph {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id.0) {
                 println!("  !! Create {} ", self.resource_names[res_id]);
                 let texture_def = &self.resources[res_id];
-                let texture_def = texture_def.texture_def().clone();
-                let texture_def: TextureDef = texture_def.into();
+                let texture_def: &RenderGraphTextureDef = texture_def.try_into().unwrap();
+                let texture_def = texture_def.clone().into();
                 let texture =
                     device_context.create_texture(texture_def, &self.resource_names[res_id]);
                 let texture = RenderGraphResource::Texture(texture);
@@ -522,8 +525,8 @@ impl RenderGraph {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id.0) {
                 println!("  !! Create {} ", self.resource_names[res_id]);
                 let buffer_def = &self.resources[res_id];
-                let buffer_def = buffer_def.buffer_def().clone();
-                let buffer_def: BufferDef = buffer_def.into();
+                let buffer_def: &RenderGraphBufferDef = buffer_def.try_into().unwrap();
+                let buffer_def: BufferDef = buffer_def.clone().into();
                 let buffer =
                     device_context.create_buffer(buffer_def, self.resource_names[res_id].clone());
                 let buffer = RenderGraphResource::Buffer(buffer);
@@ -863,7 +866,8 @@ impl RenderGraph {
             let view_id = barrier.resource_id.1 as usize;
             match context.resources[res_id].as_ref().unwrap() {
                 RenderGraphResource::Texture(texture) => {
-                    let texture_view_def = &self.views[view_id].texture_view_def();
+                    let texture_view_def: &RenderGraphTextureViewDef =
+                        (&self.views[view_id]).try_into().unwrap();
                     let first_mip = texture_view_def.first_mip;
                     let mip_count = texture_view_def.mip_count;
                     for mip in first_mip..first_mip + mip_count {
@@ -1000,8 +1004,9 @@ impl RenderGraph {
                     .unwrap()
                     .try_into()
                     .unwrap();
-                let mut texture_view_def: TextureViewDef =
-                    self.views[view_id].texture_view_def().clone().into();
+                let texture_view_def: &RenderGraphTextureViewDef =
+                    (&self.views[view_id]).try_into().unwrap();
+                let mut texture_view_def: TextureViewDef = texture_view_def.clone().into();
                 texture_view_def.gpu_view_type = GPUViewType::RenderTarget;
                 let texture_view_temp = texture.create_view(texture_view_def);
                 e.insert(RenderGraphView::TextureView(texture_view_temp));
@@ -1020,8 +1025,9 @@ impl RenderGraph {
                     .unwrap()
                     .try_into()
                     .unwrap();
-                let mut texture_view_def: TextureViewDef =
-                    self.views[view_id].texture_view_def().clone().into();
+                let texture_view_def: &RenderGraphTextureViewDef =
+                    (&self.views[view_id]).try_into().unwrap();
+                let mut texture_view_def: TextureViewDef = texture_view_def.clone().into();
                 texture_view_def.gpu_view_type = GPUViewType::DepthStencil;
                 let texture_view_temp = texture.create_view(texture_view_def);
                 e.insert(RenderGraphView::TextureView(texture_view_temp));
