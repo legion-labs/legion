@@ -194,3 +194,9 @@ impl GpuBufferWithReadback {
         );
     }
 }
+
+impl Drop for GpuBufferWithReadback {
+    fn drop(&mut self) {
+        println!("GpuBufferWithReadback dropped");
+    }
+}

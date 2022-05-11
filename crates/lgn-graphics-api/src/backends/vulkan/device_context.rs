@@ -207,15 +207,13 @@ impl VulkanDeviceContext {
 
     pub(crate) fn set_texture_name(&self, texture: &Texture, name: &str) {
         unsafe {
-            match texture.vkmem_allocation() {
-                Some(e) => {
-                    let cstr = std::ffi::CString::new(name).unwrap();
-
-                    self.vk_allocator
-                        .set_allocation_user_data(&e, cstr.as_ptr() as *mut std::ffi::c_void);
-                }
-                None => (),
-            };
+            if let Some(vkmem_allocation) = texture.vkmem_allocation() {
+                let cstr = std::ffi::CString::new(name).unwrap();
+                self.vk_allocator.set_allocation_user_data(
+                    &vkmem_allocation,
+                    cstr.as_ptr() as *mut std::ffi::c_void,
+                );
+            }
         }
 
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
