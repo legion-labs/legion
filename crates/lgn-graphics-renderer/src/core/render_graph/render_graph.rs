@@ -416,7 +416,7 @@ impl<'a> TryFrom<&'a RenderGraphView> for &'a TextureView {
     fn try_from(value: &'a RenderGraphView) -> Result<Self, Self::Error> {
         match &value {
             RenderGraphView::TextureView(texture_view) => Ok(texture_view),
-            RenderGraphView::BufferView(_) => Err("Conversion of RenderGraphView to BufferView failed because view contains a TextureView."),
+            RenderGraphView::BufferView(_) => Err("Conversion of RenderGraphView to TextureView failed because view contains a BufferView."),
         }
     }
 }
@@ -426,7 +426,7 @@ impl<'a> TryFrom<&'a RenderGraphView> for &'a BufferView {
 
     fn try_from(value: &'a RenderGraphView) -> Result<Self, Self::Error> {
         match &value {
-            RenderGraphView::TextureView(_) => Err("Conversion of RenderGraphView to TextureView failed because view contains a BufferView."),
+            RenderGraphView::TextureView(_) => Err("Conversion of RenderGraphView to BufferView failed because view contains a TextureView."),
             RenderGraphView::BufferView(buffer_view) => Ok(buffer_view),
         }
     }
