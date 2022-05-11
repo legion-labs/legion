@@ -53,14 +53,11 @@ enum Commands {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct TransferProgress {
     progress: Arc<MultiProgress>,
     progress_style: ProgressStyle,
     bars: Arc<RwLock<HashMap<String, ProgressBar>>>,
-
-    #[allow(dead_code)]
-    hidden_bar: Arc<ProgressBar>,
 }
 
 impl TransferProgress {
@@ -70,15 +67,10 @@ impl TransferProgress {
                 .template("{prefix:52!} [{elapsed_precise}] {bar:40.cyan/blue} {bytes}/{total_bytes} ({bytes_per_sec}, {eta}) {msg}");
         let bars = Arc::new(RwLock::new(HashMap::new()));
 
-        // Let's add a hidden bar to the progress bar that the progress stays
-        // alive until we explicitely shut it down.
-        let hidden_bar = Arc::new(progress.add(ProgressBar::hidden()));
-
         Self {
             progress,
             progress_style,
             bars,
-            hidden_bar,
         }
     }
 
@@ -102,8 +94,6 @@ impl TransferCallbacks<HashRef> for TransferProgress {
         bar.set_prefix(id.to_string());
         bar.set_position(id.data_size().try_into().unwrap());
         bar.finish_with_message("♥");
-
-        self.bars.write().unwrap().insert(id.to_string(), bar);
     }
 
     fn on_transfer_started(&self, id: &HashRef, total: usize) {
@@ -130,7 +120,7 @@ impl TransferCallbacks<HashRef> for TransferProgress {
         _current: usize,
         result: lgn_content_store::content_providers::Result<()>,
     ) {
-        if let Some(bar) = self.bars.read().unwrap().get(&id.to_string()) {
+        if let Some(bar) = self.bars.write().unwrap().remove(&id.to_string()) {
             bar.inc(inc.try_into().unwrap());
 
             match result {
@@ -168,7 +158,7 @@ impl TransferCallbacks<String> for TransferProgress {
         _current: usize,
         result: lgn_content_store::content_providers::Result<()>,
     ) {
-        if let Some(bar) = self.bars.read().unwrap().get(id) {
+        if let Some(bar) = self.bars.write().unwrap().remove(id) {
             bar.inc(inc.try_into().unwrap());
 
             match result {
@@ -197,8 +187,7 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|err| anyhow::anyhow!("failed to create content provider: {}", err))?;
 
     // Let's add monitoring to the content-provider.
-    let transfer_progress = TransferProgress::new();
-    let file_transfer_progress = transfer_progress.clone();
+    let transfer_progress = Arc::new(TransferProgress::new());
     let transfer_join = transfer_progress.join();
 
     match args.command {
@@ -206,7 +195,7 @@ async fn main() -> anyhow::Result<()> {
             identifier,
             file_path,
         } => {
-            provider.set_download_callbacks(transfer_progress);
+            provider.set_download_callbacks(transfer_progress.clone());
 
             let output = Box::new(tokio::fs::File::create(&file_path).await.map_err(|err| {
                 anyhow::anyhow!(
@@ -225,7 +214,7 @@ async fn main() -> anyhow::Result<()> {
                 output,
                 file_path.display().to_string(),
                 input.size(),
-                Arc::new(Box::new(file_transfer_progress)),
+                Arc::new(Box::new(transfer_progress)),
             );
 
             let copy = async move {
@@ -249,7 +238,7 @@ async fn main() -> anyhow::Result<()> {
             res.1?;
         }
         Commands::Put { file_path } => {
-            provider.set_upload_callbacks(transfer_progress);
+            provider.set_upload_callbacks(transfer_progress.clone());
 
             let copy = async move {
                 let buf = if let Some(file_path) = file_path {
@@ -271,7 +260,7 @@ async fn main() -> anyhow::Result<()> {
                         f,
                         file_path.display().to_string(),
                         metadata.len().try_into().unwrap(),
-                        Arc::new(Box::new(file_transfer_progress)),
+                        Arc::new(Box::new(transfer_progress)),
                     );
 
                     f.read_to_end(&mut buf)
