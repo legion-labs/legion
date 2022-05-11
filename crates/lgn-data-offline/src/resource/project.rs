@@ -1,8 +1,8 @@
 use core::fmt;
 use std::{
-    collections::{hash_map::Entry, HashMap},
-    fs::{self, File, OpenOptions},
-    io::Seek,
+    collections::HashMap,
+    // fs::{self, File, OpenOptions},
+    // io::Seek,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -14,15 +14,15 @@ use lgn_data_runtime::{
     ResourceTypeAndId,
 };
 use lgn_source_control::{
-    CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Staging,
-    Workspace, WorkspaceConfig, WorkspaceRegistration,
+    CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace, WorkspaceConfig,
+    WorkspaceRegistration,
 };
 use lgn_tracing::error;
 use thiserror::Error;
 
 use crate::resource::{metadata::Metadata, ResourcePathName};
 
-const METADATA_EXT: &str = "meta";
+// const METADATA_EXT: &str = "meta";
 
 pub use lgn_source_control::data_types::Tree;
 
@@ -187,6 +187,8 @@ impl Project {
         repository_index: impl RepositoryIndex,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
+        let resource_dir = project_dir.as_ref().join("offline");
+
         let workspace = Workspace::load(repository_index, source_control_content_provider).await?;
 
         Ok(Self {
@@ -195,11 +197,6 @@ impl Project {
             workspace,
             deleted_pending: HashMap::new(),
         })
-    }
-
-    /// Deletes the project by deleting the index file.
-    pub async fn delete(self) {
-        std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
     }
 
     /// Return the list of stages resources
@@ -372,24 +369,13 @@ impl Project {
     pub async fn add_resource_with_id(
         &mut self,
         name: ResourcePathName,
-        kind_name: &str,
+        _kind_name: &str,
         kind: ResourceType,
         id: ResourceId,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let meta_path = self.metadata_path(id);
-        let resource_path = self.resource_path(id);
-
-        let directory = {
-            let mut directory = resource_path.clone();
-            directory.pop();
-            directory
-        };
-
-        std::fs::create_dir_all(&directory).map_err(|e| Error::Io(directory.clone(), e))?;
-
-        let (resource_contents, build_dependencies) = {
+        let (resource_contents, _build_dependencies) = {
             let mut resource_contents = std::io::Cursor::new(Vec::new());
             let (_written, build_deps) = registry
                 .serialize_resource(kind, handle, &mut resource_contents)
@@ -397,17 +383,9 @@ impl Project {
             (resource_contents.into_inner(), build_deps)
         };
 
-        let meta_file = File::create(&meta_path).map_err(|e| {
-            fs::remove_file(&resource_path).unwrap();
-            Error::Io(meta_path.clone(), e)
-        })?;
-
         self.workspace
             .add_resource(id.as_raw(), name.as_str(), &resource_contents)
             .await?;
-
-        let metadata = Metadata::new_with_dependencies(name, kind_name, kind, &build_dependencies);
-        serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         let type_id = ResourceTypeAndId { kind, id };
 
@@ -416,29 +394,22 @@ impl Project {
 
     /// Delete the resource+meta files, remove from Registry and Flush index
     pub async fn delete_resource(&mut self, id: ResourceId) -> Result<(), Error> {
-        let resource_path = self.resource_path(id);
-        let metadata_path = self.metadata_path(id);
-
-        {
-            let files = [metadata_path.as_path(), resource_path.as_path()];
-
-            self.workspace.delete_files(files).await?;
-        }
+        self.workspace.delete_resource(id.as_raw()).await?;
 
         Ok(())
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub async fn revert_resource(&mut self, id: ResourceId) -> Result<(), Error> {
-        let resource_path = self.resource_path(id);
-        let metadata_path = self.metadata_path(id);
+    pub async fn revert_resource(&mut self, _id: ResourceId) -> Result<(), Error> {
+        // let resource_path = self.resource_path(id);
+        // let metadata_path = self.metadata_path(id);
 
-        {
-            let files = [metadata_path.as_path(), resource_path.as_path()];
-            self.workspace
-                .revert_files(files, Staging::StagedAndUnstaged)
-                .await?;
-        }
+        // {
+        //     let files = [metadata_path.as_path(), resource_path.as_path()];
+        //     self.workspace
+        //         .revert_files(files, Staging::StagedAndUnstaged)
+        //         .await?;
+        // }
 
         Ok(())
     }
@@ -447,63 +418,66 @@ impl Project {
     /// corresponding .meta file.
     pub async fn save_resource(
         &mut self,
-        type_id: ResourceTypeAndId,
-        handle: impl AsRef<HandleUntyped>,
-        resources: &AssetRegistry,
+        _type_id: ResourceTypeAndId,
+        _handle: impl AsRef<HandleUntyped>,
+        _resources: &AssetRegistry,
     ) -> Result<(), Error> {
-        let resource_path = self.resource_path(type_id.id);
-        let metadata_path = self.metadata_path(type_id.id);
+        // let resource_path = self.resource_path(type_id.id);
+        // let metadata_path = self.metadata_path(type_id.id);
 
-        self.checkout(type_id).await?;
+        // self.checkout(type_id).await?;
 
-        let mut meta_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&metadata_path)
-            .map_err(|e| Error::Io(metadata_path.clone(), e))?;
-        let mut metadata: Metadata = serde_json::from_reader(&meta_file)
-            .map_err(|e| Error::Parse(metadata_path.clone(), e))?;
+        // let mut meta_file = OpenOptions::new()
+        //     .read(true)
+        //     .write(true)
+        //     .open(&metadata_path)
+        //     .map_err(|e| Error::Io(metadata_path.clone(), e))?;
+        // let mut metadata: Metadata = serde_json::from_reader(&meta_file)
+        //     .map_err(|e| Error::Parse(metadata_path.clone(), e))?;
 
-        let build_dependencies = {
-            let mut resource_file = OpenOptions::new()
-                .write(true)
-                .truncate(true)
-                .open(&resource_path)
-                .map_err(|e| Error::Io(resource_path.clone(), e))?;
+        // let build_dependencies = {
+        //     let mut resource_file = OpenOptions::new()
+        //         .write(true)
+        //         .truncate(true)
+        //         .open(&resource_path)
+        //         .map_err(|e| Error::Io(resource_path.clone(), e))?;
 
-            let (_written, build_deps) = resources
-                .serialize_resource(type_id.kind, handle, &mut resource_file)
-                .map_err(|e| Error::ResourceRegistry(type_id, e))?;
-            build_deps
-        };
+        //     let (_written, build_deps) = resources
+        //         .serialize_resource(type_id.kind, handle, &mut resource_file)
+        //         .map_err(|e| Error::ResourceRegistry(type_id, e))?;
+        //     build_deps
+        // };
 
-        metadata.dependencies = build_dependencies;
+        // metadata.dependencies = build_dependencies;
 
-        meta_file.set_len(0).unwrap();
-        meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
+        // meta_file.set_len(0).unwrap();
+        // meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        // serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
 
-        self.workspace
-            .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
-            .await?;
+        // self.workspace
+        //     .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
+        //     .await?;
 
         Ok(())
     }
 
     /// Loads a resource of a given id.
+    #[allow(clippy::unused_self)]
     pub fn load_resource(
         &self,
-        type_id: ResourceTypeAndId,
-        resources: &AssetRegistry,
+        _type_id: ResourceTypeAndId,
+        _resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
-        let resource_path = self.resource_path(type_id.id);
+        // let resource_path = self.resource_path(type_id.id);
 
-        let mut resource_file =
-            File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
-        let handle = resources
-            .deserialize_resource(type_id, &mut resource_file)
-            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
-        Ok(handle)
+        // let mut resource_file =
+        //     File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
+        // let handle = resources
+        //     .deserialize_resource(type_id, &mut resource_file)
+        //     .map_err(|e| Error::ResourceRegistry(type_id, e))?;
+        // Ok(handle)
+
+        Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
     /// Returns information about a given resource from its `.meta` file.
@@ -545,49 +519,51 @@ impl Project {
     /// Returns the name of the resource from its `.meta` file.
     pub async fn deleted_resource_info(
         &mut self,
-        id: ResourceId,
+        _id: ResourceId,
     ) -> Result<(ResourcePathName, ResourceType), Error> {
-        let metadata_path = self.metadata_path(id);
+        // let metadata_path = self.metadata_path(id);
 
-        match self.deleted_pending.entry(id) {
-            Entry::Vacant(entry) => {
-                let tree = self.workspace.get_staged_changes().await?;
+        // match self.deleted_pending.entry(id) {
+        //     Entry::Vacant(entry) => {
+        //         let tree = self.workspace.get_staged_changes().await?;
 
-                let meta_lsc_path =
-                    CanonicalPath::new_from_canonical_paths(self.workspace.root(), &metadata_path)
-                        .map_err(|err| {
-                            error!(
-                                "Failed to retrieve delete info for Resource {}: {}",
-                                id, err
-                            );
-                            Error::SourceControl(err)
-                        })?;
+        //         let meta_lsc_path =
+        //             CanonicalPath::new_from_canonical_paths(self.workspace.root(), &metadata_path)
+        //                 .map_err(|err| {
+        //                     error!(
+        //                         "Failed to retrieve delete info for Resource {}: {}",
+        //                         id, err
+        //                     );
+        //                     Error::SourceControl(err)
+        //                 })?;
 
-                if let Some(lgn_source_control::ChangeType::Delete { old_id }) = tree
-                    .get(&meta_lsc_path)
-                    .map(lgn_source_control::Change::change_type)
-                {
-                    match self.workspace.provider().read(old_id).await {
-                        Ok(data) => {
-                            if let Ok(meta) = serde_json::from_slice::<Metadata>(&data) {
-                                let value = (meta.name, meta.type_id);
-                                entry.insert(value.clone());
-                                return Ok(value);
-                            }
-                        }
-                        Err(err) => {
-                            error!(
-                                "Failed to retrieve delete info for Resource {}: {}",
-                                id, err
-                            );
-                        }
-                    }
-                }
+        //         if let Some(lgn_source_control::ChangeType::Delete { old_id }) = tree
+        //             .get(&meta_lsc_path)
+        //             .map(lgn_source_control::Change::change_type)
+        //         {
+        //             match self.workspace.provider().read(old_id).await {
+        //                 Ok(data) => {
+        //                     if let Ok(meta) = serde_json::from_slice::<Metadata>(&data) {
+        //                         let value = (meta.name, meta.type_id);
+        //                         entry.insert(value.clone());
+        //                         return Ok(value);
+        //                     }
+        //                 }
+        //                 Err(err) => {
+        //                     error!(
+        //                         "Failed to retrieve delete info for Resource {}: {}",
+        //                         id, err
+        //                     );
+        //                 }
+        //             }
+        //         }
 
-                Err(Error::FileNotFound(meta_lsc_path.to_string()))
-            }
-            Entry::Occupied(entry) => Ok(entry.get().clone()),
-        }
+        //         Err(Error::FileNotFound(meta_lsc_path.to_string()))
+        //     }
+        //     Entry::Occupied(entry) => Ok(entry.get().clone()),
+        // }
+
+        Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
     /// Returns the raw name of the resource from its `.meta` file.
@@ -606,65 +582,58 @@ impl Project {
     pub fn resource_dir(&self) -> PathBuf {
         self.resource_dir.clone()
     }
-
-    fn metadata_path(&self, id: ResourceId) -> PathBuf {
-        let mut path = self.resource_dir();
-        path.push(id.resource_path());
-        path.set_extension(METADATA_EXT);
-        path
-    }
-
-    fn resource_path(&self, id: ResourceId) -> PathBuf {
-        self.resource_dir().join(id.resource_path())
-    }
-
     /// Moves a `remote` resources to the list of `local` resources.
-    pub async fn checkout(&mut self, id: ResourceTypeAndId) -> Result<(), Error> {
-        let metadata_path = self.metadata_path(id.id);
-        let resource_path = self.resource_path(id.id);
-        self.workspace
-            .checkout_files([metadata_path.as_path(), resource_path.as_path()])
-            .await
-            .map_err(Error::SourceControl)
-            .map(|_e| ())
+    pub async fn checkout(&mut self, _id: ResourceTypeAndId) -> Result<(), Error> {
+        // let metadata_path = self.metadata_path(id.id);
+        // let resource_path = self.resource_path(id.id);
+        // self.workspace
+        //     .checkout_files([metadata_path.as_path(), resource_path.as_path()])
+        //     .await
+        //     .map_err(Error::SourceControl)
+        //     .map(|_e| ())
+
+        Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
-    fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
-        let path = self.metadata_path(id);
+    #[allow(clippy::unused_self)]
+    fn read_meta(&self, _id: ResourceId) -> Result<Metadata, Error> {
+        // let path = self.metadata_path(id);
 
-        let file = File::open(&path).map_err(|e| Error::Io(path.clone(), e))?;
+        // let file = File::open(&path).map_err(|e| Error::Io(path.clone(), e))?;
 
-        let result = serde_json::from_reader(file).map_err(|e| Error::Parse(path, e))?;
-        Ok(result)
+        // let result = serde_json::from_reader(file).map_err(|e| Error::Parse(path, e))?;
+        // Ok(result)
+
+        Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
-    async fn update_meta<F>(&self, id: ResourceId, mut func: F)
+    async fn update_meta<F>(&self, _id: ResourceId, mut _func: F)
     where
         F: FnMut(&mut Metadata),
     {
-        let path = self.metadata_path(id);
+        // let path = self.metadata_path(id);
 
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&path)
-            .unwrap(); // todo(kstasik): return a result and propagate an error
+        // let mut file = OpenOptions::new()
+        //     .read(true)
+        //     .write(true)
+        //     .open(&path)
+        //     .unwrap(); // todo(kstasik): return a result and propagate an error
 
-        let mut meta = serde_json::from_reader(&file).unwrap();
+        // let mut meta = serde_json::from_reader(&file).unwrap();
 
-        func(&mut meta);
+        // func(&mut meta);
 
-        file.set_len(0).unwrap();
-        file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&file, &meta).unwrap();
+        // file.set_len(0).unwrap();
+        // file.seek(std::io::SeekFrom::Start(0)).unwrap();
+        // serde_json::to_writer_pretty(&file, &meta).unwrap();
 
-        {
-            self.workspace
-                .checkout_files([path.as_path()])
-                .await
-                .map_err(Error::SourceControl)
-                .unwrap();
-        }
+        // {
+        //     self.workspace
+        //         .checkout_files([path.as_path()])
+        //         .await
+        //         .map_err(Error::SourceControl)
+        //         .unwrap();
+        // }
     }
 
     /// Change the name of the resource.
@@ -684,12 +653,12 @@ impl Project {
         })
         .await;
 
-        let metadata_path = self.metadata_path(type_id.id);
-        let resource_path = self.resource_path(type_id.id);
-        self.workspace
-            .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
-            .await
-            .map_err(Error::SourceControl)?;
+        // let metadata_path = self.metadata_path(type_id.id);
+        // let resource_path = self.resource_path(type_id.id);
+        // self.workspace
+        //     .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
+        //     .await
+        //     .map_err(Error::SourceControl)?;
 
         Ok(old_name.unwrap())
     }

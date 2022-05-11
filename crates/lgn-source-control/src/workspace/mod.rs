@@ -1,11 +1,11 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    path::{Path, PathBuf},
+    path::Path,
     str::FromStr,
     sync::Arc,
 };
 
-use itertools::Itertools;
+// use itertools::Itertools;
 use lgn_content_store::{
     indexing::{
         self, IndexableResource, ResourceWriter, StaticIndexer, StringPathIndexer, TreeIdentifier,
@@ -13,7 +13,7 @@ use lgn_content_store::{
     },
     Identifier, Provider,
 };
-use lgn_tracing::{debug, warn};
+// use lgn_tracing::{debug, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -33,7 +33,7 @@ pub type ResourceId = u128;
 /// Represents a workspace.
 pub struct Workspace {
     index: Box<dyn Index>,
-    backend: Box<dyn WorkspaceBackend>,
+    // backend: Box<dyn WorkspaceBackend>,
     registration: WorkspaceRegistration,
     provider: Arc<Provider>,
     main_index: StaticIndexer,
@@ -74,7 +74,7 @@ impl Staging {
 }
 
 impl Workspace {
-    const LSC_DIR_NAME: &'static str = ".lsc";
+    // const LSC_DIR_NAME: &'static str = ".lsc";
 
     /// Create a new workspace pointing at the given directory and using the
     /// given configuration.
@@ -85,31 +85,10 @@ impl Workspace {
         config: WorkspaceConfig,
         provider: Arc<Provider>,
     ) -> Result<Self> {
-        let lsc_directory = Self::get_lsc_directory(&root);
+        // let config_data = serde_json::to_string(&config)
+        //     .map_other_err("failed to serialize workspace configuration")?;
 
-        tokio::fs::create_dir_all(&lsc_directory)
-            .await
-            .map_other_err(format!(
-                "failed to create `{}` directory",
-                Self::LSC_DIR_NAME
-            ))?;
-
-        let tmp_path = Self::get_tmp_path(&lsc_directory);
-
-        tokio::fs::create_dir_all(&tmp_path)
-            .await
-            .map_other_err("failed to create tmp directory")?;
-
-        let workspace_config_path = Self::get_workspace_config_path(&lsc_directory);
-
-        let config_data = serde_json::to_string(&config)
-            .map_other_err("failed to serialize workspace configuration")?;
-
-        tokio::fs::write(workspace_config_path, config_data)
-            .await
-            .map_other_err("failed to write workspace configuration")?;
-
-        let backend = Box::new(LocalWorkspaceBackend::create(lsc_directory).await?);
+        // let backend = Box::new(LocalWorkspaceBackend::create(lsc_directory).await?);
 
         let index = repository_index
             .load_repository(&config.repository_name)
@@ -130,7 +109,7 @@ impl Workspace {
         let workspace = Self::new(
             index,
             config,
-            backend,
+            // backend,
             provider,
             main_index,
             main_index_tree,
@@ -154,30 +133,31 @@ impl Workspace {
         repository_index: impl RepositoryIndex,
         provider: Arc<Provider>,
     ) -> Result<Self> {
-        let lsc_directory = Self::get_lsc_directory(&root);
-        let workspace_config_path = Self::get_workspace_config_path(lsc_directory);
+        // let lsc_directory = Self::get_lsc_directory(&root);
+        // let workspace_config_path = Self::get_workspace_config_path(lsc_directory);
 
-        let config_data = match tokio::fs::read_to_string(workspace_config_path).await {
-            Ok(data) => data,
-            Err(err) => {
-                return match err.kind() {
-                    std::io::ErrorKind::NotFound => Err(Error::not_a_workspace(root)),
-                    _ => Err(Error::Other {
-                        source: err.into(),
-                        context: format!(
-                            "failed to read workspace configuration in `{}`",
-                            root.display()
-                        ),
-                    }),
-                };
-            }
-        };
+        // let config_data = match tokio::fs::read_to_string(workspace_config_path).await {
+        //     Ok(data) => data,
+        //     Err(err) => {
+        //         return match err.kind() {
+        //             std::io::ErrorKind::NotFound => Err(Error::not_a_workspace(root)),
+        //             _ => Err(Error::Other {
+        //                 source: err.into(),
+        //                 context: format!(
+        //                     "failed to read workspace configuration in `{}`",
+        //                     root.display()
+        //                 ),
+        //             }),
+        //         };
+        //     }
+        // };
+        let config_data = "";
 
-        let config: WorkspaceConfig = serde_json::from_str(&config_data)
+        let config: WorkspaceConfig = serde_json::from_str(config_data)
             .map_other_err("failed to parse workspace configuration")?;
 
-        let lsc_directory = Self::get_lsc_directory(&root);
-        let backend = Box::new(LocalWorkspaceBackend::connect(lsc_directory).await?);
+        // let lsc_directory = Self::get_lsc_directory(&root);
+        // let backend = Box::new(LocalWorkspaceBackend::connect(lsc_directory).await?);
 
         let index = repository_index
             .load_repository(&config.repository_name)
@@ -193,7 +173,7 @@ impl Workspace {
         Self::new(
             index,
             config,
-            backend,
+            // backend,
             provider,
             main_index,
             main_index_tree,
@@ -276,7 +256,7 @@ impl Workspace {
     async fn new(
         index: Box<dyn Index>,
         config: WorkspaceConfig,
-        backend: Box<dyn WorkspaceBackend>,
+        // backend: Box<dyn WorkspaceBackend>,
         provider: Arc<Provider>,
         main_index: StaticIndexer,
         main_index_tree: TreeIdentifier,
@@ -285,7 +265,7 @@ impl Workspace {
     ) -> Result<Self> {
         Ok(Self {
             index,
-            backend,
+            // backend,
             registration: config.registration,
             provider,
             main_index,
@@ -321,6 +301,7 @@ impl Workspace {
     /// under it are considered.
     ///
     /// If the path points to a symbolic link, an error is returned.
+    /*
     pub async fn to_canonical_paths(
         &self,
         paths: impl IntoIterator<Item = &Path> + Clone,
@@ -341,8 +322,10 @@ impl Workspace {
         .into_iter()
         .collect::<Result<BTreeSet<_>>>()
     }
+    */
 
     /// Get the tree of files and directories for the disk.
+    /*
     pub async fn get_filesystem_tree(
         &self,
         inclusion_rules: BTreeSet<CanonicalPath>,
@@ -354,8 +337,10 @@ impl Workspace {
 
         Tree::from_root(&self.provider, &self.root, &tree_filter).await
     }
+    */
 
     /// Give the current relative path for a given canonical path.
+    /*
     pub fn make_relative_path(&self, current_dir: &Path, path: &CanonicalPath) -> String {
         let abs_path = path.to_path_buf(&self.root);
 
@@ -366,6 +351,7 @@ impl Workspace {
         .display()
         .to_string()
     }
+    */
 
     /// Get the commits chain, starting from the specified commit.
     pub async fn list_commits<'q>(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
@@ -374,9 +360,12 @@ impl Workspace {
 
     /// Get the current commit.
     pub async fn get_current_commit(&self) -> Result<Commit> {
+        /*
         let current_branch = self.backend.get_current_branch().await?;
 
         self.index.get_commit(current_branch.head).await
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Get the tree of files and directories for the current branch and commit.
@@ -410,7 +399,10 @@ impl Workspace {
     /// Get the list of staged changes, regardless of the actual content of the
     /// files or their existence on disk or in the current tree.
     pub async fn get_staged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
+        /*
         self.backend.get_staged_changes().await
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Add a resource to the local changes.
@@ -463,8 +455,9 @@ impl Workspace {
     #[deprecated = "use add_resource instead"]
     pub async fn add_files(
         &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
+        _paths: impl IntoIterator<Item = &Path> + Clone,
     ) -> Result<BTreeSet<CanonicalPath>> {
+        /*
         let canonical_paths = self.to_canonical_paths(paths).await?;
         let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
 
@@ -551,6 +544,8 @@ impl Workspace {
         self.backend.save_staged_changes(&changes_to_save).await?;
 
         Ok(changes_to_save.into_iter().map(Into::into).collect())
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Mark some local files for edition.
@@ -562,8 +557,9 @@ impl Workspace {
     /// nothing.
     pub async fn checkout_files(
         &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
+        _paths: impl IntoIterator<Item = &Path> + Clone,
     ) -> Result<BTreeSet<CanonicalPath>> {
+        /*
         let canonical_paths = self.to_canonical_paths(paths).await?;
         let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
         let commit = self.get_current_commit().await?;
@@ -615,16 +611,28 @@ impl Workspace {
         }
 
         Ok(changes_to_save.into_iter().map(Into::into).collect())
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Mark some local files for deletion.
     ///
     /// The list of new files edited is returned. If all the files were already
     /// edited, an empty list is returned and call still succeeds.
+    pub async fn delete_resource(&self, _id: ResourceId) -> Result<()> {
+        Ok(())
+    }
+
+    /// Mark some local files for deletion.
+    ///
+    /// The list of new files edited is returned. If all the files were already
+    /// edited, an empty list is returned and call still succeeds.
+    #[deprecated = "use delete_resource instead"]
     pub async fn delete_files(
         &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
+        _paths: impl IntoIterator<Item = &Path> + Clone,
     ) -> Result<BTreeSet<CanonicalPath>> {
+        /*
         debug!(
             "delete_files: {}",
             paths
@@ -696,6 +704,8 @@ impl Workspace {
             .chain(changes_to_clear.into_iter())
             .map(Into::into)
             .collect())
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Returns the status of the workspace, according to the staging
@@ -723,9 +733,10 @@ impl Workspace {
     /// - staged or not - an empty list is returned and call still succeeds.
     pub async fn revert_files(
         &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
-        staging: Staging,
+        _paths: impl IntoIterator<Item = &Path> + Clone,
+        _staging: Staging,
     ) -> Result<BTreeSet<CanonicalPath>> {
+        /*
         debug!(
             "revert_files: {}",
             paths
@@ -828,6 +839,8 @@ impl Workspace {
             .chain(changes_to_ignore.into_iter())
             .map(Into::into)
             .collect())
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Commit the changes in the workspace.
@@ -835,7 +848,8 @@ impl Workspace {
     /// # Returns
     ///
     /// The commit id.
-    pub async fn commit(&self, message: &str, behavior: CommitMode) -> Result<Commit> {
+    pub async fn commit(&self, _message: &str, _behavior: CommitMode) -> Result<Commit> {
+        /*
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
         let current_branch = self.backend.get_current_branch().await?;
@@ -971,10 +985,13 @@ impl Workspace {
         self.backend.clear_pending_branch_merges().await?;
 
         Ok(commit)
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Get a list of the currently unstaged changes.
     pub async fn get_unstaged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
+        /*
         let commit = self.get_current_commit().await?;
         let staged_changes = self.backend.get_staged_changes().await?;
         let tree = self
@@ -984,6 +1001,8 @@ impl Workspace {
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
         self.get_unstaged_changes_for_trees(&tree, &fs_tree).await
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Get a list of the currently unstaged changes.
@@ -1037,14 +1056,18 @@ impl Workspace {
 
     /// Get the current branch.
     pub async fn get_current_branch(&self) -> Result<Branch> {
+        /*
         self.backend.get_current_branch().await
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Create a branch with the given name and the current commit as its head.
     ///
     /// The newly created branch will be a descendant of the current branch and
     /// share the same lock domain.
-    pub async fn create_branch(&self, branch_name: &str) -> Result<Branch> {
+    pub async fn create_branch(&self, _branch_name: &str) -> Result<Branch> {
+        /*
         let current_branch = self.backend.get_current_branch().await?;
 
         if branch_name == current_branch.name {
@@ -1058,6 +1081,8 @@ impl Workspace {
         self.backend.set_current_branch(&new_branch).await?;
 
         Ok(new_branch)
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Detach the current branch from its parent.
@@ -1066,6 +1091,7 @@ impl Workspace {
     ///
     /// The resulting branch is detached and now uses its own lock domain.
     pub async fn detach_branch(&self) -> Result<Branch> {
+        /*
         let mut current_branch = self.backend.get_current_branch().await?;
 
         current_branch.detach();
@@ -1074,6 +1100,8 @@ impl Workspace {
         self.backend.set_current_branch(&current_branch).await?;
 
         Ok(current_branch)
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Attach the current branch to the specified branch.
@@ -1082,7 +1110,8 @@ impl Workspace {
     ///
     /// The resulting branch is attached and now uses the same lock domain as
     /// its parent.
-    pub async fn attach_branch(&self, branch_name: &str) -> Result<Branch> {
+    pub async fn attach_branch(&self, _branch_name: &str) -> Result<Branch> {
+        /*
         let mut current_branch = self.backend.get_current_branch().await?;
         let parent_branch = self.index.get_branch(branch_name).await?;
 
@@ -1092,6 +1121,8 @@ impl Workspace {
         self.backend.set_current_branch(&current_branch).await?;
 
         Ok(current_branch)
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Get the branches in the repository.
@@ -1107,7 +1138,8 @@ impl Workspace {
     /// Switch to a different branch and updates the current files.
     ///
     /// Returns the commit id of the new branch as well as the changes.
-    pub async fn switch_branch(&self, branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
+    pub async fn switch_branch(&self, _branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
+        /*
         let current_branch = self.backend.get_current_branch().await?;
 
         if branch_name == current_branch.name {
@@ -1125,6 +1157,8 @@ impl Workspace {
         self.backend.set_current_branch(&branch).await?;
 
         Ok((branch, changes))
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Sync the current branch to its latest commit.
@@ -1133,6 +1167,7 @@ impl Workspace {
     ///
     /// The commit id that the workspace was synced to as well as the changes.
     pub async fn sync(&self) -> Result<(Branch, BTreeSet<Change>)> {
+        /*
         let current_branch = self.backend.get_current_branch().await?;
 
         let branch = self.index.get_branch(&current_branch.name).await?;
@@ -1140,6 +1175,8 @@ impl Workspace {
         let changes = self.sync_to(branch.head).await?;
 
         Ok((branch, changes))
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
     /// Sync the current branch with the specified commit.
@@ -1147,7 +1184,8 @@ impl Workspace {
     /// # Returns
     ///
     /// The changes.
-    pub async fn sync_to(&self, commit_id: CommitId) -> Result<BTreeSet<Change>> {
+    pub async fn sync_to(&self, _commit_id: CommitId) -> Result<BTreeSet<Change>> {
+        /*
         let mut current_branch = self.backend.get_current_branch().await?;
 
         if current_branch.head == commit_id {
@@ -1166,8 +1204,11 @@ impl Workspace {
         self.backend.set_current_branch(&current_branch).await?;
 
         Ok(changes)
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
+    /*
     async fn make_file_read_only(&self, path: impl AsRef<Path>, readonly: bool) -> Result<()> {
         let path = path.as_ref();
 
@@ -1187,7 +1228,9 @@ impl Workspace {
             .await
             .map_other_err(format!("failed to set permissions for {}", path.display()))
     }
+    */
 
+    /*
     /// Cache a file to the blob storage cache
     ///
     /// # Returns
@@ -1205,7 +1248,9 @@ impl Workspace {
             .await
             .map_other_err(format!("failed to cache file `{}`", canonical_path))
     }
+    */
 
+    /*
     async fn download_file(
         &self,
         id: &Identifier,
@@ -1235,12 +1280,14 @@ impl Workspace {
             Err(err) => Err(err).map_other_err("failed to download blob"),
         }
     }
+    */
 
     async fn register(&self) -> Result<()> {
         self.index.register_workspace(&self.registration).await
     }
 
-    async fn initial_checkout(&self, branch_name: &str) -> Result<BTreeSet<Change>> {
+    async fn initial_checkout(&self, _branch_name: &str) -> Result<BTreeSet<Change>> {
+        /*
         // 1. Read the branch information.
         let branch = self.index.get_branch(branch_name).await?;
 
@@ -1255,8 +1302,11 @@ impl Workspace {
 
         // 5. Write the files on disk.
         self.sync_tree(&Tree::empty(), &tree).await
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 
+    /*
     async fn sync_tree(&self, from: &Tree, to: &Tree) -> Result<BTreeSet<Change>> {
         let changes_to_apply = from.get_changes_to(to);
 
@@ -1341,7 +1391,9 @@ impl Workspace {
 
         Ok(changes_to_apply)
     }
+    */
 
+    /*
     async fn remove_file(&self, path: &CanonicalPath) -> Result<()> {
         let abs_path = path.to_path_buf(&self.root);
 
@@ -1353,10 +1405,12 @@ impl Workspace {
             .await
             .map_other_err(format!("failed to delete file `{}`", path))
     }
+    */
 
     /// Download a blob from the index backend and write it to the local
     /// temporary folder.
-    pub async fn download_temporary_file(&self, id: &Identifier) -> Result<tempfile::TempPath> {
+    pub async fn download_temporary_file(&self, _id: &Identifier) -> Result<tempfile::TempPath> {
+        /*
         let temp_file_path =
             Self::get_tmp_path(Self::get_lsc_directory(&self.root)).join(id.to_string());
 
@@ -1377,18 +1431,8 @@ impl Workspace {
             ))?;
 
         Ok(tempfile::TempPath::from_path(temp_file_path))
-    }
-
-    fn get_lsc_directory(root: impl AsRef<Path>) -> PathBuf {
-        root.as_ref().join(Self::LSC_DIR_NAME)
-    }
-
-    fn get_workspace_config_path(lsc_root: impl AsRef<Path>) -> PathBuf {
-        lsc_root.as_ref().join("workspace.json")
-    }
-
-    fn get_tmp_path(lsc_root: impl AsRef<Path>) -> PathBuf {
-        lsc_root.as_ref().join("tmp")
+        */
+        Err(Error::Unspecified("not implemented".to_owned()))
     }
 }
 

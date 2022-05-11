@@ -8,8 +8,8 @@ use std::{path::Path, sync::Arc};
 
 use lgn_content_store::Provider;
 use lgn_source_control::{
-    Error, LocalRepositoryIndex, MapOtherError, RepositoryIndex, RepositoryName, Staging,
-    Workspace, WorkspaceConfig, WorkspaceRegistration,
+    Error, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Staging, Workspace,
+    WorkspaceConfig, WorkspaceRegistration,
 };
 use lgn_telemetry_sink::TelemetryGuard;
 
