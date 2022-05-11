@@ -397,14 +397,12 @@ impl Project {
 
         std::fs::create_dir_all(&directory).map_err(|e| Error::Io(directory.clone(), e))?;
 
-        let build_dependencies = {
-            let mut resource_file =
-                File::create(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
-
+        let (resource_contents, build_dependencies) = {
+            let mut mem_buffer = std::io::Cursor::new(Vec::new());
             let (_written, build_deps) = registry
-                .serialize_resource(kind, handle, &mut resource_file)
+                .serialize_resource(kind, handle, &mut mem_buffer)
                 .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
-            build_deps
+            (mem_buffer.into_inner(), build_deps)
         };
 
         let meta_file = File::create(&meta_path).map_err(|e| {
@@ -416,7 +414,7 @@ impl Project {
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
 
         self.workspace
-            .add_files([meta_path.as_path(), resource_path.as_path()])
+            .add_resource(id.as_raw(), &resource_contents)
             .await?;
 
         let type_id = ResourceTypeAndId { kind, id };

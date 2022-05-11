@@ -410,21 +410,23 @@ impl Workspace {
     ///
     /// The list of new resources added is returned. If all the resources were already
     /// added, an empty list is returned and call still succeeds.
-    pub async fn add_resource<R>(
+    pub async fn add_resource(
         &self,
         resource_id: ResourceId,
-        resource_contents: &R,
-    ) -> Result<()>
-    where
-        R: IndexableResource + Serialize + Send + Sync,
-    {
+        resource_contents: &[u8],
+    ) -> Result<TreeIdentifier> {
+        let resource_data = WorkspaceResource {
+            data: resource_contents,
+        };
+
         let resource_identifier = self
             .provider
-            .write_resource(resource_contents)
+            .write_resource(&resource_data)
             .await
             .map_other_err("writing resource contents")?;
 
-        self.main_index
+        let tree_identifier = self
+            .main_index
             .add_leaf(
                 &self.provider,
                 &self.main_index_tree,
@@ -434,7 +436,7 @@ impl Workspace {
             .await
             .map_other_err("adding resource to main index")?;
 
-        Ok(())
+        Ok(tree_identifier)
     }
 
     /// Add files to the local changes.
@@ -1390,5 +1392,20 @@ impl WorkspaceConfig {
             repository_name,
             registration,
         }
+    }
+}
+
+struct WorkspaceResource<'data> {
+    data: &'data [u8],
+}
+
+impl<'data> IndexableResource for WorkspaceResource<'data> {}
+
+impl<'data> Serialize for WorkspaceResource<'data> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(self.data)
     }
 }
