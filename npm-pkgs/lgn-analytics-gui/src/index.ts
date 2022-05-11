@@ -13,7 +13,7 @@ import "./assets/index.css";
 
 const redirectUri = document.location.origin + "/";
 
-const notifications = createNotificationsStore();
+const notifications = createNotificationsStore<Fluent>();
 
 run({
   appComponent: App as typeof AppComponent,
@@ -40,7 +40,7 @@ run({
       new ConsoleTransport({
         level: import.meta.env.VITE_LEGION_ANALYTICS_CONSOLE_LOG_LEVEL as Level,
       }),
-      new NotificationsTransport({
+      new NotificationsTransport<Fluent>({
         notificationsStore: notifications,
         level: import.meta.env
           .VITE_LEGION_ANALYTICS_NOTIFICATION_LOG_LEVEL as Level,

@@ -1,6 +1,7 @@
 import { eventName } from ".";
 import type { Level, Message, Transport } from ".";
 import type { NotificationsStore } from "../../stores/notifications";
+import type { FluentBase } from "../../types/fluent";
 
 function levelPriority(level: Level) {
   switch (level) {
@@ -144,14 +145,16 @@ function levelToNotificationType(level: Level) {
 }
 
 /** The "notifications" transport, uses the console API to log messages */
-export class NotificationsTransport extends TransportBase {
-  #notificationsStore: NotificationsStore;
+export class NotificationsTransport<
+  Fluent extends FluentBase
+> extends TransportBase {
+  #notificationsStore: NotificationsStore<Fluent>;
 
   constructor({
     notificationsStore,
     ...config
   }: {
-    notificationsStore: NotificationsStore;
+    notificationsStore: NotificationsStore<Fluent>;
     level: Level;
     namespace?: RegExp;
   }) {
@@ -162,11 +165,15 @@ export class NotificationsTransport extends TransportBase {
 
   override handleMessage({ date, level, message, namespace }: Message): void {
     this.#notificationsStore.push(Symbol(), {
-      message: typeof message === "string" ? message : JSON.stringify(message),
-      title: namespace
-        ? `${namespace} - ${date.toISOString()}`
-        : date.toISOString(),
       type: levelToNotificationType(level),
+      payload: {
+        type: "raw",
+        message:
+          typeof message === "string" ? message : JSON.stringify(message),
+        title: namespace
+          ? `${namespace} - ${date.toISOString()}`
+          : date.toISOString(),
+      },
     });
   }
 }

@@ -48,4 +48,6 @@ declare type Fluent = {
   "timeline-debug-tooltip": {
     variables: "pixelSize" | "lod" | "threshold" | "events";
   };
+  "timeline-link-copy-notification-title": null;
+  "timeline-link-copy-notification-message": null;
 };
