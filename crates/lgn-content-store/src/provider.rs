@@ -318,23 +318,16 @@ impl Provider {
     ) -> Result<ContentAsyncReadWithOriginAndSize> {
         debug!("Provider::get_chunk_reader({})", id);
 
-        // TODO: This implementation is actually not great:
+        // Note:
         //
-        // It fetches all the readers in one go but reads them one at a time.
-        // This means that the later used readers have all the time in the world
-        // to timeout before an actual read is even attempted.
+        // This function fetches all the readers in one go but reads them one at
+        // a time. This means that the later used readers have all the time in
+        // the world to timeout before an actual read is even attempted for very
+        // big manifests and/or slow connections.
         //
-        // It is also not very nice to the backend to spam it with requests all
-        // at once.
-        //
-        // It would be better if we fetched readers as we go along and forgo
-        // failing early in favor of more reliable reads.
-        //
-        // Alternatively, we we could make it so that the HTTP AsyncRead don't
-        // actually establish the connection until first polled. That would help
-        // too. Not sure if it is possible to do efficiently though.
-        //
-        // Anthony D.: a task for you? :D
+        // It is thus very important that the readers cannot timeout before the
+        // first time they are polled. The HTTP client reader in the gRPC
+        // content provider is a good example on how to do this.
 
         let manifest = self.read_manifest(id).await?;
 
