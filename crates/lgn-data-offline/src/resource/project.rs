@@ -410,12 +410,12 @@ impl Project {
             Error::Io(meta_path.clone(), e)
         })?;
 
+        self.workspace
+            .add_resource(id.as_raw(), name.as_str(), &resource_contents)
+            .await?;
+
         let metadata = Metadata::new_with_dependencies(name, kind_name, kind, &build_dependencies);
         serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
-
-        self.workspace
-            .add_resource(id.as_raw(), &resource_contents)
-            .await?;
 
         let type_id = ResourceTypeAndId { kind, id };
 

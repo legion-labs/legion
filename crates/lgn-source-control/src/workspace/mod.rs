@@ -1,17 +1,19 @@
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::{Path, PathBuf},
+    str::FromStr,
+    sync::Arc,
+};
+
 use itertools::Itertools;
 use lgn_content_store::{
     indexing::{
-        IndexableResource, ResourceWriter, StaticIndexer, TreeIdentifier, TreeLeafNode, TreeWriter,
+        self, IndexableResource, ResourceWriter, StaticIndexer, StringPathIndexer, TreeIdentifier,
+        TreeLeafNode, TreeWriter,
     },
     Identifier, Provider,
 };
 use lgn_tracing::{debug, warn};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::{Path, PathBuf},
-    sync::Arc,
-};
-
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -37,6 +39,8 @@ pub struct Workspace {
     provider: Arc<Provider>,
     main_index: StaticIndexer,
     main_index_tree: TreeIdentifier,
+    file_path_index: StringPathIndexer,
+    file_path_index_tree: TreeIdentifier,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -116,7 +120,13 @@ impl Workspace {
 
         let main_index = StaticIndexer::new(std::mem::size_of::<ResourceId>());
         let main_index_tree = provider
-            .write_tree(&lgn_content_store::indexing::Tree::default())
+            .write_tree(&indexing::Tree::default())
+            .await
+            .map_other_err("creating main index tree")?;
+
+        let file_path_index = StringPathIndexer::new('/');
+        let file_path_index_tree = provider
+            .write_tree(&indexing::Tree::default())
             .await
             .map_other_err("creating main index tree")?;
 
@@ -128,6 +138,8 @@ impl Workspace {
             provider,
             main_index,
             main_index_tree,
+            file_path_index,
+            file_path_index_tree,
         )
         .await?;
 
@@ -177,11 +189,13 @@ impl Workspace {
             .load_repository(&config.repository_name)
             .await?;
 
+        // TODO, load indices persisted in provider
         let main_index = StaticIndexer::new(std::mem::size_of::<ResourceId>());
-        let main_index_tree = provider
-            .write_tree(&lgn_content_store::indexing::Tree::default())
-            .await
-            .expect("unable to create main index tree");
+        let main_index_tree = TreeIdentifier::from_str("0").map_other_err("id construction")?;
+
+        let file_path_index = StringPathIndexer::new('/');
+        let file_path_index_tree =
+            TreeIdentifier::from_str("1").map_other_err("id construction")?;
 
         Self::new(
             root,
@@ -191,6 +205,8 @@ impl Workspace {
             provider,
             main_index,
             main_index_tree,
+            file_path_index,
+            file_path_index_tree,
         )
         .await
     }
@@ -264,6 +280,7 @@ impl Workspace {
         &self.provider
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn new(
         root: PathBuf,
         index: Box<dyn Index>,
@@ -272,6 +289,8 @@ impl Workspace {
         provider: Arc<Provider>,
         main_index: StaticIndexer,
         main_index_tree: TreeIdentifier,
+        file_path_index: StringPathIndexer,
+        file_path_index_tree: TreeIdentifier,
     ) -> Result<Self> {
         Ok(Self {
             root,
@@ -281,6 +300,8 @@ impl Workspace {
             provider,
             main_index,
             main_index_tree,
+            file_path_index,
+            file_path_index_tree,
         })
     }
 
@@ -412,12 +433,11 @@ impl Workspace {
     /// added, an empty list is returned and call still succeeds.
     pub async fn add_resource(
         &self,
-        resource_id: ResourceId,
-        resource_contents: &[u8],
-    ) -> Result<TreeIdentifier> {
-        let resource_data = WorkspaceResource {
-            data: resource_contents,
-        };
+        id: ResourceId,
+        path: &str,
+        data: &[u8],
+    ) -> Result<(TreeIdentifier, TreeIdentifier)> {
+        let resource_data = WorkspaceResource { data };
 
         let resource_identifier = self
             .provider
@@ -425,18 +445,29 @@ impl Workspace {
             .await
             .map_other_err("writing resource contents")?;
 
-        let tree_identifier = self
+        let main_id = self
             .main_index
             .add_leaf(
                 &self.provider,
                 &self.main_index_tree,
-                &resource_id.into(),
+                &id.into(),
+                TreeLeafNode::Resource(resource_identifier.clone()),
+            )
+            .await
+            .map_other_err("adding resource to main index")?;
+
+        let file_path_id = self
+            .file_path_index
+            .add_leaf(
+                &self.provider,
+                &self.file_path_index_tree,
+                &path.into(),
                 TreeLeafNode::Resource(resource_identifier),
             )
             .await
             .map_other_err("adding resource to main index")?;
 
-        Ok(tree_identifier)
+        Ok((main_id, file_path_id))
     }
 
     /// Add files to the local changes.
