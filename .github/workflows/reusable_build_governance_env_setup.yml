@@ -1,0 +1,35 @@
+name: Build governance setup reusable workflow
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: false
+        type: string
+    outputs:
+      image:
+        description: "The resulting container image name to use"
+        value: ${{ jobs.setup_image.outputs.image }}
+
+env:
+  MONOREPO_DOCKER_REGISTRY: 616787818023.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
+
+jobs:
+  setup_image:
+    name: Setup Image
+    runs-on: [self-hosted, linux, governance-common, build]
+    outputs:
+      image: ${{ steps.set-image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      - name: Build
+        env:
+          IMAGE_TAG: ${{ inputs.tag }}
+        run: ./build/env/setup.sh
+
+      - name: Set container image
+        id: set-image
+        run: echo "::set-output name=image::${{ env.image }}"
