@@ -67,3 +67,5 @@ timeline-debug-tooltip =
   Lod: { $lod }
   Threshold: { $threshold }
   Events: { $events }
+timeline-link-copy-notification-title = Copy Succeeded
+timeline-link-copy-notification-message = The link has been copied to your clipboard successfully

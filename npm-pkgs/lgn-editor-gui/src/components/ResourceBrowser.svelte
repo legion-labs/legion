@@ -118,8 +118,11 @@
     } catch (error) {
       notifications.push(Symbol.for("resource-renaming-error"), {
         type: "error",
-        title: "Resources",
-        message: "An error occured while renaming the resource",
+        payload: {
+          type: "raw",
+          title: "Resources",
+          message: "An error occured while renaming the resource",
+        },
       });
 
       log.error(
@@ -144,9 +147,12 @@
           }).then(({ id, status }) => {
             if (!id || status === UploadStatus.REJECTED) {
               notifications.push(Symbol.for("file-upload"), {
-                title: "File Upload",
-                message: `File ${file.name} couldn't be uploaded`,
                 type: "error",
+                payload: {
+                  type: "raw",
+                  title: "File Upload",
+                  message: `File ${file.name} couldn't be uploaded`,
+                },
               });
 
               return null;
@@ -294,9 +300,12 @@
             await fetchAllActiveScenes();
           } catch (error) {
             notifications.push(Symbol(), {
-              title: "Scene Explorer",
-              message: displayError(error),
               type: "error",
+              payload: {
+                type: "raw",
+                title: "Scene Explorer",
+                message: displayError(error),
+              },
             });
           }
         }
@@ -321,16 +330,22 @@
               });
             } catch (error) {
               notifications.push(Symbol(), {
-                title: "Runtime Server",
-                message: displayError(error),
                 type: "error",
+                payload: {
+                  type: "raw",
+                  title: "Runtime Server",
+                  message: displayError(error),
+                },
               });
             }
           } catch (error) {
             notifications.push(Symbol(), {
-              title: "Scene Explorer",
-              message: displayError(error),
               type: "error",
+              payload: {
+                type: "raw",
+                title: "Scene Explorer",
+                message: displayError(error),
+              },
             });
           }
         }
@@ -547,8 +562,11 @@
     } catch (error) {
       notifications.push(Symbol.for("resource-creation-error"), {
         type: "error",
-        title: "Resources",
-        message: "An error occured while removing the resource",
+        payload: {
+          type: "raw",
+          title: "Resources",
+          message: "An error occured while removing the resource",
+        },
       });
 
       log.error(
