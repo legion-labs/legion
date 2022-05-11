@@ -28,7 +28,7 @@
 
   $: if (
     $stateStore?.scopes ||
-    $stateStore?.getViewRange() ||
+    $stateStore?.viewRange ||
     $stateStore?.canvasWidth ||
     $stateStore?.currentSelection
   ) {
@@ -86,7 +86,7 @@
     }
 
     const selectionState = $stateStore.currentSelection;
-    const viewRange = $stateStore.getViewRange();
+    const viewRange = $stateStore.viewRange;
     const [begin, end] = viewRange;
     const invTimeSpan = 1.0 / (end - begin);
     const canvasWidth = canvas.clientWidth;

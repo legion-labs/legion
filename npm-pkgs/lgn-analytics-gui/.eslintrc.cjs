@@ -31,5 +31,6 @@ module.exports = {
     "no-debugger": process.env.NODE_ENV === "production" ? "error" : "off",
     "@typescript-eslint/no-unused-vars": "off",
     eqeqeq: "error",
+    "@typescript-eslint/strict-boolean-expressions": "error",
   },
 };

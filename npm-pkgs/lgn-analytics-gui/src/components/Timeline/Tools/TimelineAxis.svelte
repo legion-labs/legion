@@ -23,7 +23,7 @@
   $: if ($stateStore && svg) {
     const tickCount = Math.ceil($stateStore.canvasWidth / tickSize);
     svg = svg.attr("width", Math.max(0, $stateStore.canvasWidth));
-    x.range([0, $stateStore.canvasWidth]).domain($stateStore.getViewRange());
+    x.range([0, $stateStore.canvasWidth]).domain($stateStore.viewRange);
     ticks.length = 0;
     svg.call(
       d3

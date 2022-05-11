@@ -27,41 +27,32 @@ export class TimelineState {
     this.canvasWidth = canvasWidth;
     this.timelineStart = start;
     this.timelineEnd = end;
-    this.viewRange = this.getViewRange();
+
+    const viewRangeStart =
+      this.timelineStart !== null ? this.timelineStart : this.minMs;
+
+    const viewRangeEnd =
+      this.timelineEnd !== null ? this.timelineEnd : this.maxMs;
+
+    this.viewRange = [viewRangeStart, viewRangeEnd];
   }
 
   getPixelWidthMs(): number {
-    const range = this.getViewRange();
-    const timeSpan = range[1] - range[0];
+    const timeSpan = this.viewRange[1] - this.viewRange[0];
     return this.canvasWidth / timeSpan;
   }
 
   isFullyVisible() {
-    if (!this.viewRange) {
-      return false;
-    }
     return !(
       this.viewRange[0] <= this.minMs && this.viewRange[1] >= this.maxMs
     );
   }
 
   createdWithParameters() {
-    return this.timelineStart && this.timelineEnd;
-  }
-
-  getViewRange(): [number, number] {
-    if (this.viewRange) {
-      return this.viewRange;
-    }
-    let start = this.minMs;
-    if (this.timelineStart) {
-      start = this.timelineStart;
-    }
-    let end = this.maxMs;
-    if (this.timelineEnd) {
-      end = this.timelineEnd;
-    }
-    return [start, end];
+    return (
+      typeof this.timelineStart === "number" &&
+      typeof this.timelineEnd === "number"
+    );
   }
 
   getMaxRange() {
