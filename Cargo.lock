@@ -480,28 +480,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aws-lambda-grpc-test"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "http",
- "http-body",
- "hyper",
- "lambda_http",
- "lambda_runtime",
- "lgn-online",
- "lgn-streaming-proto",
- "lgn-telemetry-sink",
- "lgn-tracing",
- "serde",
- "serde_json",
- "tokio",
- "tonic",
- "tonic-web",
-]
-
-[[package]]
 name = "aws-sdk-dynamodb"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -765,24 +743,6 @@ dependencies = [
  "rustc_version",
  "tracing",
  "zeroize",
-]
-
-[[package]]
-name = "aws_lambda_events"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55d7e5deac5e49330042b4e174dafe84ebf71685bfcd94f285bac7aa31e0aeb1"
-dependencies = [
- "base64 0.13.0",
- "bytes",
- "chrono",
- "http",
- "http-body",
- "http-serde",
- "query_map",
- "serde",
- "serde_derive",
- "serde_json",
 ]
 
 [[package]]
@@ -1069,9 +1029,6 @@ name = "bytes"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "bytes-utils"
@@ -2990,20 +2947,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hdrhistogram"
-version = "7.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31672b7011be2c4f7456c4ddbcb40e7e9a4a9fad8efe49a6ebaf5f307d0109c0"
-dependencies = [
- "base64 0.13.0",
- "byteorder",
- "crossbeam-channel",
- "flate2",
- "nom 7.1.1",
- "num-traits",
-]
-
-[[package]]
 name = "headers"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3489,55 +3432,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b310ccceade8121d7d77fee406160e457c2f4e7c7982d589da3499bc7ea4526"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "lambda_http"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b5c60a2d2d3f8e88dda6e3d999137ea42d685551af04aa0c5910c6478640335"
-dependencies = [
- "aws_lambda_events",
- "base64 0.13.0",
- "bytes",
- "http",
- "http-body",
- "lambda_runtime",
- "query_map",
- "serde",
- "serde_json",
- "serde_urlencoded",
-]
-
-[[package]]
-name = "lambda_runtime"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c73464e59463e91bf179195a308738477df90240173649d5dd2a1f3a2e4a2d2"
-dependencies = [
- "async-stream",
- "bytes",
- "http",
- "hyper",
- "lambda_runtime_api_client",
- "serde",
- "serde_json",
- "tokio",
- "tokio-stream",
- "tower",
- "tracing",
-]
-
-[[package]]
-name = "lambda_runtime_api_client"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e921024b5eb4e2f0800a5d6e25c7ed554562aa62f02cf5f60a48c26c8a678974"
-dependencies = [
- "http",
- "hyper",
- "tokio",
- "tower-service",
 ]
 
 [[package]]
@@ -4609,8 +4503,6 @@ dependencies = [
  "http-serde",
  "hyper",
  "hyper-rustls 0.23.0",
- "lambda_http",
- "lambda_runtime",
  "lgn-config",
  "lgn-tracing",
  "openidconnect",
@@ -4623,8 +4515,6 @@ dependencies = [
  "serde_json",
  "serial_test",
  "simple_asn1",
- "strum",
- "strum_macros",
  "thiserror",
  "tokio",
  "tonic",
@@ -6596,17 +6486,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "query_map"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe3212d819cbdcce67f786cdaf3fe0c2e9d09a6dcd9c9367a1bd344135b8c809"
-dependencies = [
- "form_urlencoded",
- "serde",
- "serde_derive",
-]
-
-[[package]]
 name = "quick-error"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8499,7 +8378,6 @@ checksum = "9a89fd63ad6adf737582df5db40d286574513c69a11dac5214dc3b5603d6713e"
 dependencies = [
  "futures-core",
  "futures-util",
- "hdrhistogram",
  "indexmap",
  "pin-project",
  "pin-project-lite",
