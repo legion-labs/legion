@@ -304,7 +304,7 @@ impl GpuInstanceManager {
                 src_buffer: binary_writer.take(),
                 dst_offset: gpu_data_allocation.va_address(),
             });
-            
+
             self.added_render_elements.push(RenderElement::new(
                 gpu_instance_id,
                 material_id,
