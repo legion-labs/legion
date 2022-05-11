@@ -7,6 +7,9 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
+/** @type {"jsdom"} */
+const testEnvironment = "jsdom";
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,7 +61,7 @@ function htmlPlugin(env) {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(() => ({
   build: {
     rollupOptions: {
       input: {
@@ -73,10 +76,15 @@ export default defineConfig({
     tsconfigPaths({
       extensions: [".ts", ".svelte"],
     }),
-    svelte(),
+    svelte({ hot: !("VITEST" in process.env) }),
     viteTsProto({
       modules: [{ name: "@lgn/proto-telemetry", glob: "*.proto" }],
     }),
     htmlPlugin({ INJECTED_SCRIPT: shouldInjectSpaHack ? githubSpaHack : "" }),
   ],
-});
+  test: {
+    environment: testEnvironment,
+    globals: true,
+    setupFiles: "tests/setup.ts",
+  },
+}));

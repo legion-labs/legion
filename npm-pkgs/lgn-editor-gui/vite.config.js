@@ -37,8 +37,8 @@ const plugins = [
   // }),
 ];
 
-if (process.env.VITEST) {
-  plugins.push(svelte({ hot: false }));
+if ("VITEST" in process.env) {
+  plugins.push(...svelte({ hot: false }));
 }
 
 export default defineConfig(() => {
