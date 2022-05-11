@@ -224,6 +224,10 @@ impl EguiPass {
 
                 cmd_buffer.cmd_bind_vertex_buffer(0, transient_buffer.vertex_buffer_binding());
 
+                let transient_buffer = render_context
+                    .transient_buffer_allocator
+                    .copy_data_slice(&mesh.indices, ResourceUsage::AS_INDEX_BUFFER);
+
                 cmd_buffer.cmd_bind_index_buffer(
                     transient_buffer.index_buffer_binding(IndexType::Uint32),
                 );
