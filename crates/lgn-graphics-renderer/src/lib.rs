@@ -809,7 +809,7 @@ fn render_update(
                                 &render_resources,
                                 &render_managers,
                                 &render_context,
-                                &render_context.device_context,
+                                render_context.device_context,
                                 cmd_buffer,
                             );
 
