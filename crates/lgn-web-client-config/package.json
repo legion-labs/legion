@@ -18,7 +18,7 @@
     "postinstall": "pnpm build"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.6.2",
+    "@napi-rs/cli": "^2.8.0",
     "rimraf": "^3.0.2"
   }
 }
