@@ -60,6 +60,8 @@ enum Commands {
     /// Initializes a workspace and populates it with the latest version of the main branch
     #[clap(name = "init-workspace", alias = "init")]
     InitWorkspace {
+        /// lsc workspace directory
+        workspace_directory: PathBuf,
         /// uri printed at the creation of the repository
         repository_name: RepositoryName,
     },
@@ -330,7 +332,10 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
-        Commands::InitWorkspace { repository_name } => {
+        Commands::InitWorkspace {
+            workspace_directory,
+            repository_name,
+        } => {
             info!("init-workspace");
 
             let config = WorkspaceConfig::new(
@@ -338,7 +343,7 @@ async fn main() -> anyhow::Result<()> {
                 WorkspaceRegistration::new_with_current_user(),
             );
 
-            Workspace::init(repository_index, config, provider)
+            Workspace::init(&workspace_directory, repository_index, config, provider)
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
@@ -476,18 +481,18 @@ async fn main() -> anyhow::Result<()> {
             } else {
                 println!("Reverted files:");
 
-                let _current_dir = std::env::current_dir()
+                let current_dir = std::env::current_dir()
                     .map_other_err("failed to determine current directory")?;
 
-                // for file in &reverted_files {
-                //     println!("   {}", workspace.make_relative_path(&current_dir, file));
-                // }
+                for file in &reverted_files {
+                    println!("   {}", workspace.make_relative_path(&current_dir, file));
+                }
             }
 
             Ok(())
         }
         Commands::Status { staged, unstaged } => {
-            let _current_dir =
+            let current_dir =
                 std::env::current_dir().map_other_err("failed to determine current directory")?;
             let workspace =
                 Workspace::find_in_current_directory(repository_index, provider).await?;
@@ -500,19 +505,18 @@ async fn main() -> anyhow::Result<()> {
             if !staged_changes.is_empty() {
                 println!("\nChanges staged for commit:");
 
-                #[allow(clippy::for_kv_map)]
-                for (_path, change) in &staged_changes {
+                for (path, change) in &staged_changes {
                     if change.change_type().has_modifications() {
                         stdout.set_color(&green())?;
                     } else {
                         stdout.set_color(&yellow())?;
                     }
 
-                    // print!(
-                    //     "\t{:>8}:   {}",
-                    //     change.change_type().to_human_string(),
-                    //     workspace.make_relative_path(&current_dir, path),
-                    // );
+                    print!(
+                        "\t{:>8}:   {}",
+                        change.change_type().to_human_string(),
+                        workspace.make_relative_path(&current_dir, path),
+                    );
 
                     if !change.change_type().has_modifications() {
                         stdout.reset()?;
@@ -530,13 +534,12 @@ async fn main() -> anyhow::Result<()> {
 
                 stdout.set_color(&red())?;
 
-                #[allow(clippy::for_kv_map)]
-                for (_path, _change) in &unstaged_changes {
-                    // println!(
-                    //     "\t{:>8}:   {}",
-                    //     change.change_type().to_human_string(),
-                    //     workspace.make_relative_path(&current_dir, path),
-                    // );
+                for (path, change) in &unstaged_changes {
+                    println!(
+                        "\t{:>8}:   {}",
+                        change.change_type().to_human_string(),
+                        workspace.make_relative_path(&current_dir, path),
+                    );
                 }
 
                 stdout.reset()?;
@@ -609,7 +612,7 @@ async fn main() -> anyhow::Result<()> {
             match workspace.commit(&message, CommitMode::Strict).await {
                 Ok(_) => Ok(()),
                 Err(Error::UnchangedFilesMarkedForEdition { paths }) => {
-                    let _current_dir = std::env::current_dir()
+                    let current_dir = std::env::current_dir()
                         .map_other_err("failed to determine current directory")?;
 
                     println!("The following files are marked for edition but do not have any change staged:");
@@ -622,9 +625,9 @@ async fn main() -> anyhow::Result<()> {
                         binary_name()
                     );
 
-                    for _path in &paths {
+                    for path in &paths {
                         stdout.set_color(&red())?;
-                        // print!("\t{}", workspace.make_relative_path(&current_dir, path));
+                        print!("\t{}", workspace.make_relative_path(&current_dir, path));
                         stdout.reset()?;
                         println!();
                     }
@@ -640,12 +643,12 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn print_changes(
-    _workspace: &Workspace,
+    workspace: &Workspace,
     stdout: &mut StandardStream,
     changes: &BTreeSet<Change>,
 ) -> anyhow::Result<()> {
     if !changes.is_empty() {
-        let _current_dir =
+        let current_dir =
             std::env::current_dir().map_other_err("failed to determine current directory")?;
 
         println!("\nChanges:");
@@ -657,11 +660,11 @@ fn print_changes(
                 stdout.set_color(&yellow())?;
             }
 
-            // print!(
-            //     "\t{:>8}:   {}",
-            //     change.change_type().to_human_string(),
-            //     workspace.make_relative_path(&current_dir, change.canonical_path()),
-            // );
+            print!(
+                "\t{:>8}:   {}",
+                change.change_type().to_human_string(),
+                workspace.make_relative_path(&current_dir, change.canonical_path()),
+            );
 
             if !change.change_type().has_modifications() {
                 stdout.reset()?;

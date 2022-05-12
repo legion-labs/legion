@@ -164,6 +164,7 @@ impl Project {
         }
 
         let workspace = Workspace::init(
+            &resource_dir,
             repository_index,
             WorkspaceConfig::new(
                 repository_name,
@@ -189,7 +190,12 @@ impl Project {
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
 
-        let workspace = Workspace::load(repository_index, source_control_content_provider).await?;
+        let workspace = Workspace::load(
+            &resource_dir,
+            repository_index,
+            source_control_content_provider,
+        )
+        .await?;
 
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),

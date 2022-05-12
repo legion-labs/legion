@@ -11,6 +11,7 @@ macro_rules! init_test_workspace_and_index {
             .create_repository(&repository_name)
             .await
             .unwrap();
+        let workspace_root = tempfile::tempdir().expect("failed to create temp dir");
 
         // Initialize the workspace.
         let config = WorkspaceConfig::new(
@@ -20,11 +21,21 @@ macro_rules! init_test_workspace_and_index {
 
         let provider = Arc::new(Provider::new_in_memory());
 
-        let workspace = Workspace::init(&repository_index, config, Arc::clone(&provider))
-            .await
-            .expect("failed to initialize workspace");
+        let workspace = Workspace::init(
+            &workspace_root.path(),
+            &repository_index,
+            config,
+            Arc::clone(&provider),
+        )
+        .await
+        .expect("failed to initialize workspace");
 
-        (repository_index, workspace, provider, [index_root])
+        (
+            repository_index,
+            workspace,
+            provider,
+            [index_root, workspace_root],
+        )
     }};
 }
 
@@ -51,55 +62,55 @@ macro_rules! cleanup_test_workspace_and_index {
 
 macro_rules! create_file {
     ($workspace:expr, $path:expr, $content:literal) => {{
-        // let file_path = $workspace.root().join($path);
+        let file_path = $workspace.root().join($path);
 
-        // if let Some(parent) = file_path.parent() {
-        //     tokio::fs::create_dir_all(parent)
-        //         .await
-        //         .map_other_err(format!(
-        //             "failed to create parent directories for file `{}`",
-        //             $path
-        //         ))
-        //         .expect("failed to create parent directories");
-        // }
+        if let Some(parent) = file_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_other_err(format!(
+                    "failed to create parent directories for file `{}`",
+                    $path
+                ))
+                .expect("failed to create parent directories");
+        }
 
-        // tokio::fs::write(file_path, $content)
-        //     .await
-        //     .map_other_err(format!("failed to write file `{}`", $path))
-        //     .expect("failed to write file");
+        tokio::fs::write(file_path, $content)
+            .await
+            .map_other_err(format!("failed to write file `{}`", $path))
+            .expect("failed to write file");
     }};
 }
 
 macro_rules! create_dir {
     ($workspace:expr, $path:expr) => {{
-        // let dir_path = $workspace.root().join($path);
+        let dir_path = $workspace.root().join($path);
 
-        // tokio::fs::create_dir_all(dir_path)
-        //     .await
-        //     .map_other_err(format!("failed to create directory `{}`", $path))
-        //     .expect("failed to create directory");
+        tokio::fs::create_dir_all(dir_path)
+            .await
+            .map_other_err(format!("failed to create directory `{}`", $path))
+            .expect("failed to create directory");
     }};
 }
 
 macro_rules! update_file {
     ($workspace:expr, $path:expr, $content:literal) => {{
-        // let file_path = $workspace.root().join($path);
+        let file_path = $workspace.root().join($path);
 
-        // tokio::fs::write(file_path, $content)
-        //     .await
-        //     .map_other_err(format!("failed to write file `{}`", $path))
-        //     .expect("failed to write file");
+        tokio::fs::write(file_path, $content)
+            .await
+            .map_other_err(format!("failed to write file `{}`", $path))
+            .expect("failed to write file");
     }};
 }
 
 macro_rules! delete_file {
     ($workspace:expr, $path:expr) => {{
-        // let file_path = $workspace.root().join($path);
+        let file_path = $workspace.root().join($path);
 
-        // tokio::fs::remove_file(file_path)
-        //     .await
-        //     .map_other_err(format!("failed to remove file `{}`", $path))
-        //     .expect("failed to remove file");
+        tokio::fs::remove_file(file_path)
+            .await
+            .map_other_err(format!("failed to remove file `{}`", $path))
+            .expect("failed to remove file");
     }};
 }
 
