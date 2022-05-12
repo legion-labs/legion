@@ -86,11 +86,11 @@ pub async fn js_init_oauth_client(
 ) -> Result<()> {
     let issuer_url = issuer_url
         .parse()
-        .map_err(|_error| Error::from_reason("Couldn't parse issuer url as Uri".into()))?;
+        .map_err(|_error| Error::from_reason("Couldn't parse issuer url as Uri".to_string()))?;
 
     let redirect_uri = redirect_uri
         .parse()
-        .map_err(|_error| Error::from_reason("Couldn't parse redirect url as Uri".into()))?;
+        .map_err(|_error| Error::from_reason("Couldn't parse redirect url as Uri".to_string()))?;
 
     init_oauth_client(&application, &issuer_url, &client_id, &redirect_uri)
         .await
@@ -147,7 +147,7 @@ pub async fn js_authenticate(
         .map_err(|error| Error::from_reason(format!("Authentication failed: {}", error)))?;
 
     let user_info_value = serde_json::to_value(user_info).map_err(|_error| {
-        Error::from_reason("Couldn't convert user info object to json value".into())
+        Error::from_reason("Couldn't convert user info object to json value".to_string())
     })?;
 
     Ok(user_info_value)
