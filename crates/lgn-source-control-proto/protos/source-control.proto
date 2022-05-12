@@ -11,8 +11,6 @@ service SourceControl {
   rpc ListRepositories(ListRepositoriesRequest) returns (ListRepositoriesResponse) {};
 
   // Index operations.
-  rpc RegisterWorkspace(RegisterWorkspaceRequest) returns (RegisterWorkspaceResponse) {};
-
   rpc GetBranch(GetBranchRequest) returns (GetBranchResponse) {};
   rpc ListBranches(ListBranchesRequest) returns (ListBranchesResponse) {};
   rpc UpdateBranch(UpdateBranchRequest) returns (UpdateBranchResponse) {};
@@ -20,9 +18,6 @@ service SourceControl {
 
   rpc ListCommits(ListCommitsRequest) returns (ListCommitsResponse) {};
   rpc CommitToBranch(CommitToBranchRequest) returns (CommitToBranchResponse) {};
-
-  rpc GetTree(GetTreeRequest) returns (GetTreeResponse) {};
-  rpc SaveTree(SaveTreeRequest) returns (SaveTreeResponse) {};
 
   rpc Lock(LockRequest) returns (LockResponse) {};
   rpc Unlock(UnlockRequest) returns (UnlockResponse) {};
@@ -59,18 +54,6 @@ message ListRepositoriesRequest {}
 
 message ListRepositoriesResponse {
   repeated string repository_names = 1;
-}
-
-message RegisterWorkspaceRequest {
-  string repository_name = 1;
-  WorkspaceRegistration workspace_registration = 2;
-}
-
-message RegisterWorkspaceResponse {}
-
-message WorkspaceRegistration {
-  string id = 1;
-  string owner = 2;
 }
 
 message GetBranchRequest {
@@ -112,9 +95,10 @@ message Commit {
   string owner = 2;
   string message = 3;
   repeated Change changes = 4;
-  string root_tree_id = 5;
-  repeated uint64 parents = 6;
-  google.protobuf.Timestamp timestamp = 7;
+  string main_index_tree_id = 5;
+  string path_index_tree_id = 6;
+  repeated uint64 parents = 7;
+  google.protobuf.Timestamp timestamp = 8;
 }
 
 message Change {
@@ -125,21 +109,6 @@ message Change {
 message ChangeType {
   string old_id = 1;
   string new_id = 2;
-}
-
-message GetTreeRequest {
-  string repository_name = 1;
-  string tree_id = 2;
-}
-
-message GetTreeResponse {
-  Tree tree = 1;
-}
-
-message Tree {
-  string name = 1;
-  string id = 2;
-  repeated Tree children = 3;
 }
 
 message LockRequest {
@@ -173,15 +142,6 @@ message ListLocksRequest {
 
 message ListLocksResponse {
   repeated Lock locks = 1;
-}
-
-message SaveTreeRequest {
-  string repository_name = 1;
-  Tree tree = 2;
-}
-
-message SaveTreeResponse {
-  string tree_id = 1;
 }
 
 message CommitToBranchRequest {

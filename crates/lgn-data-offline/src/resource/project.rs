@@ -72,7 +72,7 @@ pub use lgn_source_control::data_types::Tree;
 /// can be changed freely.
 pub struct Project {
     project_dir: PathBuf,
-    resource_dir: PathBuf,
+    resource_dir: PathBuf, // TODO: remove this
     workspace: Workspace,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
 }
@@ -164,12 +164,8 @@ impl Project {
         }
 
         let workspace = Workspace::init(
-            &resource_dir,
             repository_index,
-            WorkspaceConfig::new(
-                repository_name,
-                WorkspaceRegistration::new_with_current_user(),
-            ),
+            repository_name,
             source_control_content_provider,
         )
         .await?;
@@ -588,6 +584,7 @@ impl Project {
     pub fn resource_dir(&self) -> PathBuf {
         self.resource_dir.clone()
     }
+
     /// Moves a `remote` resources to the list of `local` resources.
     pub async fn checkout(&mut self, _id: ResourceTypeAndId) -> Result<(), Error> {
         // let metadata_path = self.metadata_path(id.id);

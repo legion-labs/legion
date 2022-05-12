@@ -1,44 +1,32 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    path::{Path, PathBuf},
-    str::FromStr,
+    path::Path,
     sync::Arc,
 };
 
 use itertools::Itertools;
 use lgn_content_store::{
     indexing::{
-        self, IndexableResource, ResourceWriter, StaticIndexer, StringPathIndexer, TreeIdentifier,
-        TreeLeafNode, TreeWriter,
+        IndexableResource, ResourceWriter, StaticIndexer, StringPathIndexer, TreeIdentifier,
+        TreeLeafNode,
     },
     Identifier, Provider,
 };
 use lgn_tracing::{debug, warn};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::{
-    make_path_absolute, Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error, Index,
-    ListBranchesQuery, ListCommitsQuery, MapOtherError, RepositoryIndex, RepositoryName, Result,
-    Tree, TreeFilter, WorkspaceRegistration,
+    Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error, Index, ListBranchesQuery,
+    ListCommitsQuery, MapOtherError, RepositoryIndex, RepositoryName, Result,
 };
-
-mod backend;
-mod local_backend;
-
-pub use backend::WorkspaceBackend;
-pub use local_backend::LocalWorkspaceBackend;
 
 /// Represents a workspace.
 pub struct Workspace {
-    root: PathBuf,
     index: Box<dyn Index>,
-    backend: Box<dyn WorkspaceBackend>,
-    registration: WorkspaceRegistration,
     provider: Arc<Provider>,
+    branch_name: String,
     main_index: StaticIndexer,
-    main_index_tree: TreeIdentifier,
     path_index: StringPathIndexer,
-    path_index_tree: TreeIdentifier,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,68 +66,20 @@ impl Workspace {
     ///
     /// The workspace must not already exist.
     pub async fn init(
-        root: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
-        config: WorkspaceConfig,
+        repository_name: RepositoryName,
         provider: Arc<Provider>,
     ) -> Result<Self> {
-        let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
-
-        tokio::fs::create_dir_all(&root)
-            .await
-            .map_other_err(format!(
-                "failed to create root directory `{}`",
-                root.display()
-            ))?;
-
-        let tmp_path = Self::get_tmp_path(&root);
-
-        tokio::fs::create_dir_all(&tmp_path)
-            .await
-            .map_other_err("failed to create tmp directory")?;
-
-        let workspace_config_path = Self::get_workspace_config_path(&root);
-
-        let config_data = serde_json::to_string(&config)
-            .map_other_err("failed to serialize workspace configuration")?;
-
-        tokio::fs::write(workspace_config_path, config_data)
-            .await
-            .map_other_err("failed to write workspace configuration")?;
-
-        let backend = Box::new(LocalWorkspaceBackend::create(&root).await?);
-
-        let index = repository_index
-            .load_repository(&config.repository_name)
-            .await?;
+        let index = repository_index.load_repository(repository_name).await?;
 
         let main_index = StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>());
-        let main_index_tree = provider
-            .write_tree(&indexing::Tree::default())
-            .await
-            .map_other_err("creating main index tree")?;
+        let path_index = StringPathIndexer::default();
 
-        let path_index = StringPathIndexer::new('/');
-        let path_index_tree = provider
-            .write_tree(&indexing::Tree::default())
-            .await
-            .map_other_err("creating main index tree")?;
+        let workspace = Self::new(index, provider, "main", main_index, path_index).await?;
 
-        let workspace = Self::new(
-            root,
-            index,
-            config,
-            backend,
-            provider,
-            main_index,
-            main_index_tree,
-            path_index,
-            path_index_tree,
-        )
-        .await?;
-
-        workspace.register().await?;
-        workspace.initial_checkout("main").await?;
+        workspace
+            .initial_checkout(workspace.branch_name.as_str())
+            .await?;
 
         Ok(workspace)
     }
@@ -150,116 +90,17 @@ impl Workspace {
     ///
     /// To load a workspace from a possible subfolder, use `Workspace::find`.
     pub async fn load(
-        root: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
+        repository_name: RepositoryName,
+        branch_name: &str,
         provider: Arc<Provider>,
     ) -> Result<Self> {
-        let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
-        let workspace_config_path = Self::get_workspace_config_path(&root);
+        let index = repository_index.load_repository(repository_name).await?;
 
-        let config_data = match tokio::fs::read_to_string(workspace_config_path).await {
-            Ok(data) => data,
-            Err(err) => {
-                return match err.kind() {
-                    std::io::ErrorKind::NotFound => Err(Error::not_a_workspace(root)),
-                    _ => Err(Error::Other {
-                        source: err.into(),
-                        context: format!(
-                            "failed to read workspace configuration in `{}`",
-                            root.display()
-                        ),
-                    }),
-                };
-            }
-        };
-
-        let config: WorkspaceConfig = serde_json::from_str(&config_data)
-            .map_other_err("failed to parse workspace configuration")?;
-
-        let backend = Box::new(LocalWorkspaceBackend::connect(&root).await?);
-
-        let index = repository_index
-            .load_repository(&config.repository_name)
-            .await?;
-
-        // TODO, load indices persisted in provider
         let main_index = StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>());
-        let main_index_tree = TreeIdentifier::from_str("0").map_other_err("id construction")?;
+        let path_index = StringPathIndexer::default();
 
-        let path_index = StringPathIndexer::new('/');
-        let path_index_tree = TreeIdentifier::from_str("1").map_other_err("id construction")?;
-
-        Self::new(
-            root,
-            index,
-            config,
-            backend,
-            provider,
-            main_index,
-            main_index_tree,
-            path_index,
-            path_index_tree,
-        )
-        .await
-    }
-
-    /// Find an existing workspace in the specified folder or one of its
-    /// parents, recursively.
-    ///
-    /// If the path is a file, its parent folder is considered for the
-    /// first lookup.
-    ///
-    /// The method stops whenever a workspace is found or when it reaches the
-    /// root folder, whichever comes first.
-    pub async fn find(
-        path: impl AsRef<Path>,
-        repository_index: impl RepositoryIndex,
-        provider: Arc<Provider>,
-    ) -> Result<Self> {
-        let initial_path: &Path =
-            &make_path_absolute(path).map_other_err("failed to make path absolute")?;
-
-        let mut path = match tokio::fs::metadata(initial_path).await {
-            Ok(metadata) => {
-                if metadata.is_dir() {
-                    initial_path
-                } else {
-                    initial_path
-                        .parent()
-                        .ok_or_else(|| Error::not_a_workspace(initial_path))?
-                }
-            }
-            Err(err) => match err.kind() {
-                // If the path doesn't exist, assume we specified a file that
-                // may not exist but still continue the search with its parent
-                // folder if one exists.
-                std::io::ErrorKind::NotFound => initial_path
-                    .parent()
-                    .ok_or_else(|| Error::not_a_workspace(initial_path))?,
-                _ => {
-                    return Err(Error::Other {
-                        source: err.into(),
-                        context: format!("failed to read metadata of `{}`", initial_path.display()),
-                    })
-                }
-            },
-        };
-
-        loop {
-            match Self::load(path, &repository_index, Arc::clone(&provider)).await {
-                Ok(workspace) => return Ok(workspace),
-                Err(err) => match err {
-                    Error::NotAWorkspace { path: _ } => {
-                        if let Some(parent_path) = path.parent() {
-                            path = parent_path;
-                        } else {
-                            return Err(Error::not_a_workspace(initial_path));
-                        }
-                    }
-                    _ => return Err(err),
-                },
-            }
-        }
+        Self::new(index, provider, branch_name, main_index, path_index).await
     }
 
     /// Return the repository name of the workspace.
@@ -272,105 +113,20 @@ impl Workspace {
         &self.provider
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn new(
-        root: PathBuf,
         index: Box<dyn Index>,
-        config: WorkspaceConfig,
-        backend: Box<dyn WorkspaceBackend>,
         provider: Arc<Provider>,
+        branch_name: &str,
         main_index: StaticIndexer,
-        main_index_tree: TreeIdentifier,
         path_index: StringPathIndexer,
-        path_index_tree: TreeIdentifier,
     ) -> Result<Self> {
         Ok(Self {
-            root,
             index,
-            backend,
-            registration: config.registration,
             provider,
+            branch_name: branch_name.to_owned(),
             main_index,
-            main_index_tree,
             path_index,
-            path_index_tree,
         })
-    }
-
-    /// Find an existing workspace in the current directory.
-    ///
-    /// This is a convenience method that calls `Workspace::find` with the
-    /// current working directory.
-    pub async fn find_in_current_directory(
-        repository_index: impl RepositoryIndex,
-        provider: Arc<Provider>,
-    ) -> Result<Self> {
-        Self::find(
-            std::env::current_dir().map_other_err("failed to determine current directory")?,
-            repository_index,
-            provider,
-        )
-        .await
-    }
-
-    pub fn root(&self) -> &Path {
-        &self.root
-    }
-
-    /// Returns the canonical paths designated by the specified paths.
-    ///
-    /// If the path is not absolute, it is assumed to be relative to the workspace root.
-    ///
-    /// If the path points to a file outside the workspace, an error is returned.
-    ///
-    /// If a path to a directory is specified, all the files and subdirectories
-    /// under it are considered.
-    ///
-    /// If the path points to a symbolic link, an error is returned.
-    pub async fn to_canonical_paths(
-        &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
-    ) -> Result<BTreeSet<CanonicalPath>> {
-        let root = tokio::fs::canonicalize(&self.root)
-            .await
-            .map_other_err(format!(
-                "failed to canonicalize root `{}`",
-                self.root.display()
-            ))?;
-
-        futures::future::join_all(
-            paths
-                .into_iter()
-                .map(|path| CanonicalPath::new_from_canonical_root(&root, path)),
-        )
-        .await
-        .into_iter()
-        .collect::<Result<BTreeSet<_>>>()
-    }
-
-    /// Get the tree of files and directories for the disk.
-    pub async fn get_filesystem_tree(
-        &self,
-        inclusion_rules: BTreeSet<CanonicalPath>,
-    ) -> Result<Tree> {
-        let tree_filter = TreeFilter {
-            inclusion_rules,
-            exclusion_rules: BTreeSet::new(),
-        };
-
-        Tree::from_root(&self.provider, &self.root, &tree_filter).await
-    }
-
-    /// Give the current relative path for a given canonical path.
-    pub fn make_relative_path(&self, current_dir: &Path, path: &CanonicalPath) -> String {
-        let abs_path = path.to_path_buf(&self.root);
-
-        match pathdiff::diff_paths(&abs_path, current_dir) {
-            Some(path) => path,
-            None => abs_path,
-        }
-        .display()
-        .to_string()
     }
 
     /// Get the commits chain, starting from the specified commit.
@@ -383,34 +139,6 @@ impl Workspace {
         let current_branch = self.backend.get_current_branch().await?;
 
         self.index.get_commit(current_branch.head).await
-    }
-
-    /// Get the tree of files and directories for the current branch and commit.
-    pub async fn get_current_tree(&self) -> Result<Tree> {
-        let commit = self.get_current_commit().await?;
-
-        self.get_tree_for_commit(&commit, [].into()).await
-    }
-
-    /// Get the tree of files and directories for the specified commit.
-    async fn get_tree_for_commit(
-        &self,
-        commit: &Commit,
-        inclusion_rules: BTreeSet<CanonicalPath>,
-    ) -> Result<Tree> {
-        let tree_filter = TreeFilter {
-            inclusion_rules,
-            exclusion_rules: BTreeSet::new(),
-        };
-
-        self.index
-            .get_tree(&commit.root_tree_id)
-            .await
-            .map_other_err(format!(
-                "failed to get the current tree at commit {}",
-                commit.id
-            ))?
-            .filter(&tree_filter)
     }
 
     /// Get the list of staged changes, regardless of the actual content of the
@@ -1251,10 +979,6 @@ impl Workspace {
         }
     }
 
-    async fn register(&self) -> Result<()> {
-        self.index.register_workspace(&self.registration).await
-    }
-
     async fn initial_checkout(&self, branch_name: &str) -> Result<BTreeSet<Change>> {
         // 1. Read the branch information.
         let branch = self.index.get_branch(branch_name).await?;
@@ -1391,34 +1115,6 @@ impl Workspace {
             ))?;
 
         Ok(tempfile::TempPath::from_path(temp_file_path))
-    }
-
-    fn get_workspace_config_path(root: impl AsRef<Path>) -> PathBuf {
-        root.as_ref().join("workspace.json")
-    }
-
-    fn get_tmp_path(root: impl AsRef<Path>) -> PathBuf {
-        root.as_ref().join("tmp")
-    }
-}
-
-/// Contains the configuration for a workspace.
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct WorkspaceConfig {
-    pub repository_name: RepositoryName,
-    pub registration: WorkspaceRegistration,
-}
-
-impl WorkspaceConfig {
-    /// Instantiate a new `WorkspaceConfig`.
-    ///
-    /// The content-store configuration will by default be taken from the
-    /// `legion.toml`.
-    pub fn new(repository_name: RepositoryName, registration: WorkspaceRegistration) -> Self {
-        Self {
-            repository_name,
-            registration,
-        }
     }
 }
 

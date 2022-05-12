@@ -8,15 +8,14 @@ use tonic::codegen::{Body, StdError};
 use lgn_source_control_proto::{
     source_control_client::SourceControlClient, CommitToBranchRequest, CountLocksRequest,
     CreateRepositoryRequest, DestroyRepositoryRequest, GetBranchRequest, GetLockRequest,
-    GetTreeRequest, InsertBranchRequest, ListBranchesRequest, ListCommitsRequest, ListLocksRequest,
-    ListRepositoriesRequest, LockRequest, RegisterWorkspaceRequest, RepositoryExistsRequest,
-    SaveTreeRequest, UnlockRequest, UpdateBranchRequest,
+    InsertBranchRequest, ListBranchesRequest, ListCommitsRequest, ListLocksRequest,
+    ListRepositoriesRequest, LockRequest, RepositoryExistsRequest, UnlockRequest,
+    UpdateBranchRequest,
 };
 
 use crate::{
     Branch, CanonicalPath, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
-    ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result, Tree,
-    WorkspaceRegistration,
+    ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result,
 };
 
 // Access to a source-control repository index through a gRPC server.
@@ -177,26 +176,6 @@ where
         &self.repository_name
     }
 
-    async fn register_workspace(
-        &self,
-        workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()> {
-        async_span_scope!("register_workspace");
-        self.client
-            .lock()
-            .await
-            .register_workspace(RegisterWorkspaceRequest {
-                repository_name: self.repository_name.to_string(),
-                workspace_registration: Some(workspace_registration.clone().into()),
-            })
-            .await
-            .map_other_err(format!(
-                "failed to register workspace `{}`",
-                workspace_registration.id
-            ))
-            .map(|_| ())
-    }
-
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
         async_span_scope!("GrpcIndexBackend::get_branch");
         let resp = self
@@ -307,37 +286,6 @@ where
             .into_inner();
 
         Ok(CommitId(resp.commit_id))
-    }
-
-    async fn get_tree(&self, id: &str) -> Result<Tree> {
-        async_span_scope!("GrpcIndexBackend::get_tree");
-        let resp = self
-            .client
-            .lock()
-            .await
-            .get_tree(GetTreeRequest {
-                repository_name: self.repository_name.to_string(),
-                tree_id: id.into(),
-            })
-            .await
-            .map_other_err(format!("failed to get tree `{}`", id))?
-            .into_inner();
-
-        resp.tree.unwrap_or_default().try_into()
-    }
-
-    async fn save_tree(&self, tree: &Tree) -> Result<String> {
-        async_span_scope!("GrpcIndexBackend::save_tree");
-        self.client
-            .lock()
-            .await
-            .save_tree(SaveTreeRequest {
-                repository_name: self.repository_name.to_string(),
-                tree: Some(tree.clone().into()),
-            })
-            .await
-            .map_other_err("failed to save tree")
-            .map(|resp| resp.into_inner().tree_id)
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {
