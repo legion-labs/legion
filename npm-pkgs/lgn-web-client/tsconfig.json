@@ -23,6 +23,7 @@
       // and drop jest below
       // "vitest/globals",
       "jest",
+      "@testing-library/jest-dom",
       "vite/client",
       "@sveltejs/kit"
     ],
