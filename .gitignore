@@ -45,3 +45,8 @@ trace-*.json
 
 build/env/install/rust-toolchain.toml
 build/env/install/tools.toml
+
+# Blender
+dccs/blender/__pycache__
+dccs/blender/dependencies
+dccs/blender/generated

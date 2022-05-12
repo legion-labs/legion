@@ -4427,7 +4427,6 @@ dependencies = [
  "serde_json",
  "tbc",
  "typetag",
- "zip",
 ]
 
 [[package]]

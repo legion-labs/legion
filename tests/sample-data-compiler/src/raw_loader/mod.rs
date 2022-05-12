@@ -47,7 +47,7 @@ pub async fn build_offline(
     };
 
     if let Some(raw_dir) = raw_dir {
-        let mut file_paths = find_files(
+        let file_paths = find_files(
             &raw_dir,
             &["ent", "ins", "mat", "psd", "png", "gltf", "glb"],
         );
@@ -102,37 +102,6 @@ pub async fn build_offline(
                 project.commit("cleanup resources").await.unwrap();
             }
         }
-
-        let gltf_folders = file_paths
-            .iter()
-            .filter_map(|v| {
-                let mut v = v.clone();
-                if let Some(extension) = v.extension() {
-                    if extension.eq("gltf") && v.pop() {
-                        Some(v)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<PathBuf>>();
-
-        // hack to only load .png unassociated with .gltf
-        file_paths = file_paths
-            .iter()
-            .filter(|v| {
-                let mut f = (*v).clone();
-                if let Some(extension) = v.extension() {
-                    if f.pop() && !(extension.eq("png") && gltf_folders.contains(&f)) {
-                        return true;
-                    }
-                }
-                false
-            })
-            .cloned()
-            .collect();
 
         let file_paths_guids = file_paths
             .iter()
@@ -542,7 +511,8 @@ async fn load_gltf_resource(
 ) -> Option<ResourceTypeAndId> {
     let handle = resources.new_resource_with_id(resource_id).unwrap();
     let mut gltf_file = handle.instantiate::<GltfFile>(resources).unwrap();
-    *gltf_file = GltfFile::from_path(file);
+    let raw_data = fs::read(file).ok()?;
+    *gltf_file = GltfFile::from_bytes(raw_data);
     handle.apply(gltf_file, resources);
 
     project
