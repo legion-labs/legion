@@ -107,7 +107,7 @@ impl RawFile {
 
         let dir_path = path.join(file_id.to_string());
 
-        fs::create_dir(&dir_path)
+        fs::create_dir_all(&dir_path)
             .map_err(|error| SourceControlError::FileCreation(dir_path.clone(), Box::new(error)))?;
 
         let file_path = dir_path.join(&name);

@@ -158,7 +158,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let runtime_dir = project_dir.join("runtime");
-    std::fs::create_dir(&runtime_dir).unwrap();
+    std::fs::create_dir_all(&runtime_dir).unwrap();
     let runtime_manifest_path = runtime_dir.join("game.manifest");
 
     let mut file = OpenOptions::new()
