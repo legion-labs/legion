@@ -52,12 +52,13 @@ class LgnPullAssetOperator(bpy.types.Operator):
     def execute(self, context):
         with Connection(context) as conn:
             sc_stub = source_control_pb2_grpc.SourceControlStub(conn.channel)
-            selected_asset_name = context.scene.pull_properties.assets[context.scene.pull_properties.assets_index].id
-            response = sc_stub.PullAsset(source_control_pb2.PullAssetRequest(id=selected_asset_name), timeout=conn.timeout)
-            filename = "{}/{}.glb".format(bpy.app.tempdir, selected_asset_name)
+            selected_asset = context.scene.pull_properties.assets[context.scene.pull_properties.assets_index].id
+            response = sc_stub.PullAsset(source_control_pb2.PullAssetRequest(id=selected_asset), timeout=conn.timeout)
+            filename = "{}/{}.glb".format(bpy.app.tempdir, selected_asset)
             with open(filename, "wb") as file:
                 file.write(response.content)
             bpy.ops.import_scene.gltf(filepath=filename)
+            get_preferences(context).imported_asset=selected_asset
         
         return {'FINISHED'}
 

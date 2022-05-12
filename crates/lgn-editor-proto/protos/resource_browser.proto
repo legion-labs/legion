@@ -69,11 +69,12 @@ message CreateResourceResponse {
 }
 
 message ImportResourceRequest {
-  string resource_name = 1;
-  string shared_file_path = 2;
+  string resource_type = 1;
+  string id = 2;
+  uint64 size = 3;
+  bytes content = 4;
 }
 message ImportResourceResponse {
-  string new_id = 1;
 }
 
 message DeleteResourceRequest {

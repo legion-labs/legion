@@ -505,8 +505,9 @@ impl ResourceBrowser for ResourceBrowserRPC {
     /// Import a new resource from an existing local file
     async fn import_resource(
         &self,
-        _request: Request<ImportResourceRequest>,
+        request: Request<ImportResourceRequest>,
     ) -> Result<Response<ImportResourceResponse>, Status> {
+        let request = request.get_ref();
         Err(Status::internal(""))
     }
 

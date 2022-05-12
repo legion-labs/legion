@@ -47,11 +47,32 @@ class LgnPushOperator(bpy.types.Operator):
 
     def draw_finished(self, context):
         self.layout.label(text="Model exported successfully")
-
-    def draw(self, context):
-        layout = self.layout
-        layout.prop(self, "asset_name")
         
+class LgnReexportOperator(bpy.types.Operator):
+    bl_idname = "lgn.reexport_operator"
+    bl_label = "Reexport data to Legion Engine"
+
+    def execute(self, context):
+        filename = "{}/temp.glb".format(bpy.app.tempdir)
+        bpy.ops.export_scene.gltf(filepath = filename, export_selected=True)
+        filesize = os.path.getsize(filename)
+        
+        with Connection(context) as conn:
+            rb_stub = resource_browser_pb2_grpc.ResourceBrowserStub(conn.channel)
+            file = open(filename, "rb")
+            rb_stub.ImportResource(resource_browser_pb2.ImportResourceRequest(
+                resource_type="gltf",
+                id=get_preferences(context).imported_asset,
+                size=filesize,
+                content=file.read()
+            ), timeout=conn.timeout)
+            context.window_manager.popup_menu(LgnReexportOperator.draw_finished)
+        
+        return {'FINISHED'}
+
+    def draw_finished(self, context):
+        self.layout.label(text="Model reexported successfully")
+
 class VIEW3D_PT_export_data(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -64,12 +85,16 @@ class VIEW3D_PT_export_data(bpy.types.Panel):
         box = layout.box()
         for o in selected_objects:
             box.label(text="{name} {type}".format(name = o.name, type = o.type))
-        layout.prop(bpy.context.scene.push_properties, "asset_name")
-        layout.operator("lgn.push_operator")
+        if get_preferences(context).imported_asset:
+            layout.operator("lgn.reexport_operator")
+        else:
+            layout.prop(bpy.context.scene.push_properties, "asset_name")
+            layout.operator("lgn.push_operator")
 
 
 def register():
     bpy.utils.register_class(LgnPushOperator)
+    bpy.utils.register_class(LgnReexportOperator)
     bpy.utils.register_class(Lgn_UL_ObjectsToExport)
     bpy.utils.register_class(VIEW3D_PT_export_data)
     bpy.utils.register_class(PushProperties)
@@ -77,6 +102,7 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(LgnPushOperator)
+    bpy.utils.unregister_class(LgnReexportOperator)
     bpy.utils.unregister_class(Lgn_UL_ObjectsToExport)
     bpy.utils.unregister_class(VIEW3D_PT_export_data)
     bpy.utils.unregister_class(PushProperties)

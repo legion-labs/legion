@@ -34,6 +34,10 @@ class LgnPreferences(bpy.types.AddonPreferences):
         max=3600.0
     )
 
+    imported_asset: bpy.props.StringProperty(
+        name="Imported Asset",
+    )
+
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "server_address")
