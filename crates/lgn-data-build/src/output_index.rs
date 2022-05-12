@@ -129,7 +129,7 @@ impl OutputIndex {
     }
 
     pub(crate) async fn insert_compiled(
-        &mut self,
+        &self,
         compile_path: &ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,
@@ -384,7 +384,7 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let index_path = work_dir.path();
         let index_db = test_database_uri(&index_path, "0.0.1");
-        let mut index = OutputIndex::create_new(index_db).await.unwrap();
+        let index = OutputIndex::create_new(index_db).await.unwrap();
 
         // no dependencies and no references.
         let compile_path = ResourcePathId::from(ResourceTypeAndId {
