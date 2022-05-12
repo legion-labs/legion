@@ -27,14 +27,14 @@ impl LocalWorkspaceBackend {
     const CONFIG_CURRENT_BRANCH: &'static str = "current-branch";
 
     #[span_fn]
-    pub async fn create(lsc_root: PathBuf) -> Result<Self> {
-        let db_uri = Self::db_uri(&lsc_root);
+    pub async fn create(root: &PathBuf) -> Result<Self> {
+        let db_uri = Self::db_uri(root);
 
         sqlx::Any::create_database(&db_uri)
             .await
             .map_other_err("failed to create workspace database")?;
 
-        let mut workspace = Self::connect(lsc_root).await?;
+        let mut workspace = Self::connect(root).await?;
 
         workspace.create_config_table().await?;
         workspace.create_changes_table().await?;
@@ -45,8 +45,8 @@ impl LocalWorkspaceBackend {
     }
 
     #[span_fn]
-    pub async fn connect(lsc_root: PathBuf) -> Result<Self> {
-        let db_uri = Self::db_uri(&lsc_root);
+    pub async fn connect(root: &PathBuf) -> Result<Self> {
+        let db_uri = Self::db_uri(root);
 
         let sql_connection = Mutex::new(
             sqlx::AnyConnection::connect(&db_uri)

@@ -28,8 +28,6 @@ mod local_backend;
 pub use backend::WorkspaceBackend;
 pub use local_backend::LocalWorkspaceBackend;
 
-pub type ResourceId = u128;
-
 /// Represents a workspace.
 pub struct Workspace {
     root: PathBuf,
@@ -75,8 +73,6 @@ impl Staging {
 }
 
 impl Workspace {
-    const LSC_DIR_NAME: &'static str = ".lsc";
-
     /// Create a new workspace pointing at the given directory and using the
     /// given configuration.
     ///
@@ -88,22 +84,21 @@ impl Workspace {
         provider: Arc<Provider>,
     ) -> Result<Self> {
         let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
-        let lsc_directory = Self::get_lsc_directory(&root);
 
-        tokio::fs::create_dir_all(&lsc_directory)
+        tokio::fs::create_dir_all(&root)
             .await
             .map_other_err(format!(
-                "failed to create `{}` directory",
-                Self::LSC_DIR_NAME
+                "failed to create root directory `{}`",
+                root.display()
             ))?;
 
-        let tmp_path = Self::get_tmp_path(&lsc_directory);
+        let tmp_path = Self::get_tmp_path(&root);
 
         tokio::fs::create_dir_all(&tmp_path)
             .await
             .map_other_err("failed to create tmp directory")?;
 
-        let workspace_config_path = Self::get_workspace_config_path(&lsc_directory);
+        let workspace_config_path = Self::get_workspace_config_path(&root);
 
         let config_data = serde_json::to_string(&config)
             .map_other_err("failed to serialize workspace configuration")?;
@@ -112,13 +107,13 @@ impl Workspace {
             .await
             .map_other_err("failed to write workspace configuration")?;
 
-        let backend = Box::new(LocalWorkspaceBackend::create(lsc_directory).await?);
+        let backend = Box::new(LocalWorkspaceBackend::create(&root).await?);
 
         let index = repository_index
             .load_repository(&config.repository_name)
             .await?;
 
-        let main_index = StaticIndexer::new(std::mem::size_of::<ResourceId>());
+        let main_index = StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>());
         let main_index_tree = provider
             .write_tree(&indexing::Tree::default())
             .await
@@ -160,8 +155,7 @@ impl Workspace {
         provider: Arc<Provider>,
     ) -> Result<Self> {
         let root = make_path_absolute(root).map_other_err("failed to make path absolute")?;
-        let lsc_directory = Self::get_lsc_directory(&root);
-        let workspace_config_path = Self::get_workspace_config_path(lsc_directory);
+        let workspace_config_path = Self::get_workspace_config_path(&root);
 
         let config_data = match tokio::fs::read_to_string(workspace_config_path).await {
             Ok(data) => data,
@@ -182,15 +176,14 @@ impl Workspace {
         let config: WorkspaceConfig = serde_json::from_str(&config_data)
             .map_other_err("failed to parse workspace configuration")?;
 
-        let lsc_directory = Self::get_lsc_directory(&root);
-        let backend = Box::new(LocalWorkspaceBackend::connect(lsc_directory).await?);
+        let backend = Box::new(LocalWorkspaceBackend::connect(&root).await?);
 
         let index = repository_index
             .load_repository(&config.repository_name)
             .await?;
 
         // TODO, load indices persisted in provider
-        let main_index = StaticIndexer::new(std::mem::size_of::<ResourceId>());
+        let main_index = StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>());
         let main_index_tree = TreeIdentifier::from_str("0").map_other_err("id construction")?;
 
         let path_index = StringPathIndexer::new('/');
@@ -362,7 +355,7 @@ impl Workspace {
     ) -> Result<Tree> {
         let tree_filter = TreeFilter {
             inclusion_rules,
-            exclusion_rules: [CanonicalPath::new(&format!("/{}", Self::LSC_DIR_NAME))?].into(),
+            exclusion_rules: BTreeSet::new(),
         };
 
         Tree::from_root(&self.provider, &self.root, &tree_filter).await
@@ -432,11 +425,11 @@ impl Workspace {
     /// added, an empty list is returned and call still succeeds.
     pub async fn add_resource(
         &self,
-        id: ResourceId,
+        id: WorkspaceResourceId,
         path: &str,
-        data: &[u8],
+        contents: &[u8],
     ) -> Result<(TreeIdentifier, TreeIdentifier)> {
-        let resource_data = WorkspaceResource { data };
+        let resource_data = WorkspaceResourceContents(contents);
 
         let resource_identifier = self
             .provider
@@ -634,7 +627,7 @@ impl Workspace {
     ///
     /// The list of new files edited is returned. If all the files were already
     /// edited, an empty list is returned and call still succeeds.
-    pub async fn delete_resource(&self, _id: ResourceId) -> Result<()> {
+    pub async fn delete_resource(&self, _id: WorkspaceResourceId) -> Result<()> {
         Ok(())
     }
 
@@ -1379,8 +1372,7 @@ impl Workspace {
     /// Download a blob from the index backend and write it to the local
     /// temporary folder.
     pub async fn download_temporary_file(&self, id: &Identifier) -> Result<tempfile::TempPath> {
-        let temp_file_path =
-            Self::get_tmp_path(Self::get_lsc_directory(&self.root)).join(id.to_string());
+        let temp_file_path = Self::get_tmp_path(&self.root).join(id.to_string());
 
         let mut reader = self
             .provider
@@ -1401,16 +1393,12 @@ impl Workspace {
         Ok(tempfile::TempPath::from_path(temp_file_path))
     }
 
-    fn get_lsc_directory(root: impl AsRef<Path>) -> PathBuf {
-        root.as_ref().join(Self::LSC_DIR_NAME)
+    fn get_workspace_config_path(root: impl AsRef<Path>) -> PathBuf {
+        root.as_ref().join("workspace.json")
     }
 
-    fn get_workspace_config_path(lsc_root: impl AsRef<Path>) -> PathBuf {
-        lsc_root.as_ref().join("workspace.json")
-    }
-
-    fn get_tmp_path(lsc_root: impl AsRef<Path>) -> PathBuf {
-        lsc_root.as_ref().join("tmp")
+    fn get_tmp_path(root: impl AsRef<Path>) -> PathBuf {
+        root.as_ref().join("tmp")
     }
 }
 
@@ -1434,17 +1422,17 @@ impl WorkspaceConfig {
     }
 }
 
-struct WorkspaceResource<'data> {
-    data: &'data [u8],
-}
+pub type WorkspaceResourceId = u128;
 
-impl<'data> IndexableResource for WorkspaceResource<'data> {}
+struct WorkspaceResourceContents<'a>(&'a [u8]);
 
-impl<'data> Serialize for WorkspaceResource<'data> {
+impl<'a> IndexableResource for WorkspaceResourceContents<'a> {}
+
+impl<'a> Serialize for WorkspaceResourceContents<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        serializer.serialize_bytes(self.data)
+        serializer.serialize_bytes(self.0)
     }
 }
