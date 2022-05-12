@@ -328,10 +328,7 @@ impl StaticIndexer {
         if tree.direct_count() < self.min_children_per_layer
             && tree.count >= self.min_children_per_layer
         {
-            // If we get here, we have less children than the minimum required
-            // number but the tree contains enough children that we can merge
-            // them.
-            let mut buckets = BTreeMap::new();
+            let mut children = BTreeMap::new();
 
             for (key, item) in &tree.children {
                 match item {
@@ -344,13 +341,16 @@ impl StaticIndexer {
 
                         for (sub_key, leaf) in sub_tree.children {
                             let local_key = key.join(sub_key);
-                            buckets.insert(local_key, leaf);
+                            children.insert(local_key, leaf);
                         }
+
+                        // The branch is actually removed from the tree as this point.
+                        provider.unwrite(tree_id.as_identifier()).await;
                     }
                 }
             }
 
-            tree.children = buckets.into_iter().collect();
+            tree.children = children.into_iter().collect();
 
             // We could very well end-up with a tree that has too many elements
             // and needs a split-up.
@@ -470,7 +470,7 @@ impl StaticIndexer {
                     item.tree.count += 1;
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
 
                     item.tree.total_size += size_delta;
@@ -481,7 +481,7 @@ impl StaticIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         break Ok(node.into_branch().unwrap());
                     }
@@ -529,7 +529,7 @@ impl StaticIndexer {
 
                     loop {
                         if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                            provider.unwrite(old_node.as_identifier()).await?;
+                            provider.unwrite(old_node.as_identifier()).await;
                         }
 
                         item.tree.total_size += data_size;
@@ -542,7 +542,7 @@ impl StaticIndexer {
                         if let Some(next) = stack.pop() {
                             item = next;
                         } else {
-                            provider.unwrite(root_id.as_identifier()).await?;
+                            provider.unwrite(root_id.as_identifier()).await;
 
                             break Ok((node.into_branch().unwrap(), existing_leaf_node));
                         }
@@ -596,7 +596,7 @@ impl StaticIndexer {
 
                 loop {
                     if let Some(old_node) = item.tree.remove_children(item.key) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
 
                     if !item.tree.is_empty() {
@@ -611,7 +611,7 @@ impl StaticIndexer {
                         // to return.
                         //
                         // This should always return an empty tree.
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         return Ok((
                             provider.write_tree(&Tree::default()).await?,
@@ -633,13 +633,13 @@ impl StaticIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         break Ok((node.into_branch().unwrap(), existing_leaf_node));
                     }
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
                 }
             }
@@ -1034,7 +1034,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_prefix_indexer() {
+    async fn test_static_indexer() {
         let provider = Provider::new_in_memory();
         let idx = StaticIndexer {
             index_key_length: 4,
@@ -1170,15 +1170,13 @@ mod tests {
         //    .unwrap();
         //tree_id.visit(&ct, visitor).await.unwrap();
 
-        // There should be no identifiers left to pop, as we went back to the
-        // original tree.
-        let ids = provider.pop_referenced_identifiers();
-
-        assert_eq!(&ids, &[]);
+        // The only identifier that should be referenced is the root.
+        let ids = provider.referenced().await;
+        assert_eq!(&ids, &[tree_id.as_identifier().clone()]);
     }
 
     #[tokio::test]
-    async fn test_prefix_indexer_range_search() {
+    async fn test_static_indexer_range_search() {
         let provider = Provider::new_in_memory();
         let idx = StaticIndexer {
             index_key_length: 4,

@@ -8,12 +8,14 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use async_recursion::async_recursion;
 use clap::{Parser, Subcommand};
 use console::style;
 use futures::Future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lgn_content_store::{
-    Config, Error, HashRef, Identifier, MonitorAsyncAdapter, TransferCallbacks,
+    indexing::{IndexKeyDisplayFormat, TreeIdentifier, TreeLeafNode, TreeNode, TreeReader},
+    Config, Error, HashRef, Identifier, MonitorAsyncAdapter, Provider, TransferCallbacks,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, LevelFilter};
@@ -50,6 +52,32 @@ enum Commands {
             help = "Show the data of the identifier"
         )]
         show_data: bool,
+    },
+    Tree {
+        #[clap(subcommand)]
+        command: TreeCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum TreeCommands {
+    Show {
+        identifier: TreeIdentifier,
+        #[clap(
+            short = 'r',
+            long = "recursion-level",
+            help = "The recursion level to use",
+            default_value_t = 0
+        )]
+        recursion_level: u32,
+
+        #[clap(
+            short = 'f',
+            long = "display-format",
+            help = "The format to use to display index keys",
+            default_value_t = IndexKeyDisplayFormat::Hex
+        )]
+        display_format: IndexKeyDisplayFormat,
     },
 }
 
@@ -410,7 +438,90 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         }
+        Commands::Tree { command } => match command {
+            TreeCommands::Show {
+                identifier,
+                recursion_level,
+                display_format,
+            } => {
+                let tree = read_tree(
+                    &provider,
+                    "root",
+                    &identifier,
+                    display_format,
+                    recursion_level,
+                )
+                .await;
+                println!("{}", tree);
+            }
+        },
     }
 
     Ok(())
+}
+
+#[async_recursion]
+async fn read_tree(
+    provider: &Provider,
+    name: &str,
+    id: &TreeIdentifier,
+    display_format: IndexKeyDisplayFormat,
+    recursion_level: u32,
+) -> termtree::Tree<String> {
+    match provider.read_tree(id).await {
+        Ok(tree) => {
+            let mut r = termtree::Tree::new(format!(
+                "{} (tree: {}): count: {} - total_size: {}",
+                name,
+                id,
+                tree.count(),
+                tree.total_size()
+            ));
+
+            for (k, n) in tree.children() {
+                let name = k.format(display_format);
+
+                match n {
+                    TreeNode::Branch(id) => {
+                        if recursion_level > 0 {
+                            r.push(
+                                read_tree(provider, &name, id, display_format, recursion_level - 1)
+                                    .await,
+                            );
+                        } else {
+                            r.push(format!("{} (tree: {})", name, id));
+                        }
+                    }
+                    TreeNode::Leaf(n) => match n {
+                        TreeLeafNode::Resource(id) => {
+                            r.push(format!("{} (resource: {})", name, id));
+                        }
+                        TreeLeafNode::TreeRoot(id) => {
+                            let name = format!("{} (subtree)", name);
+                            if recursion_level > 0 {
+                                r.push(
+                                    read_tree(
+                                        provider,
+                                        &name,
+                                        id,
+                                        display_format,
+                                        recursion_level - 1,
+                                    )
+                                    .await,
+                                );
+                            } else {
+                                r.push(format!("{} (tree: {})", name, id));
+                            }
+                        }
+                    },
+                };
+            }
+
+            r
+        }
+        Err(err) => termtree::Tree::new(format!(
+            "{} (tree: {}): failed to read tree: {}",
+            name, id, err,
+        )),
+    }
 }

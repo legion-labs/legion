@@ -6,12 +6,12 @@ use std::{
 use async_recursion::async_recursion;
 use futures::future::join_all;
 use lgn_tracing::{async_span_scope, debug, span_fn};
-use tokio::io::AsyncReadExt;
+use tokio::{io::AsyncReadExt, sync::Mutex};
 
 use crate::{
     Alias, AliasProvider, ContentAsyncRead, ContentAsyncReadWithOriginAndSize, ContentProvider,
     ContentProviderMonitor, ContentReader, ContentReaderExt, ContentWriterExt, Error, HashRef,
-    Identifier, Manifest, MemoryAliasProvider, MemoryContentProvider, Origin, Result,
+    Identifier, Manifest, MemoryAliasProvider, MemoryContentProvider, Origin, RefCounter, Result,
     TransferCallbacks, WithOriginAndSize,
 };
 
@@ -21,6 +21,8 @@ pub struct Provider {
     content_provider: ContentProviderMonitor<Box<dyn ContentProvider>>,
     alias_provider: Box<dyn AliasProvider>,
     chunk_size: usize,
+    fallback: Option<Box<Provider>>,
+    refs: Mutex<RefCounter<Identifier>>,
 }
 
 pub const DEFAULT_CHUNK_SIZE: usize = 1024 * 1024 * 8; // 8MB
@@ -54,6 +56,8 @@ impl Provider {
             content_provider: ContentProviderMonitor::new(Box::new(content_provider)),
             alias_provider: Box::new(alias_provider),
             chunk_size: DEFAULT_CHUNK_SIZE, // 8MB
+            fallback: None,
+            refs: Mutex::new(RefCounter::default()),
         }
     }
 
@@ -91,6 +95,36 @@ impl Provider {
     ) -> &mut Self {
         self.content_provider.set_upload_callbacks(callbacks);
         self
+    }
+
+    /// Set the fallback provider.
+    ///
+    /// The fallback provider is used when the provider cannot find a content or alias.
+    ///
+    /// Writes are never delegated to the fallback provider.
+    ///
+    /// # Returns
+    ///
+    /// The old fallback provider, if any.
+    pub fn set_fallback(&mut self, fallback: Self) -> Option<Self> {
+        std::mem::replace(&mut self.fallback, Some(Box::new(fallback))).map(|provider| *provider)
+    }
+
+    /// Clear the fallback provider.
+    ///
+    /// # Returns
+    ///
+    /// The old fallback provider, if any.
+    pub fn clear_fallback(&mut self) -> Option<Self> {
+        std::mem::replace(&mut self.fallback, None).map(|provider| *provider)
+    }
+
+    /// Get the fallback provider.
+    ///
+    /// # Returns
+    /// The fallback provider, if any.
+    pub fn fallback(&self) -> Option<&Self> {
+        self.fallback.as_ref().map(AsRef::as_ref)
     }
 
     /// Check whether a content exists.
@@ -424,7 +458,7 @@ impl Provider {
     ///
     /// If the content cannot be written, an error is returned.
     pub async fn write(&self, data: &[u8]) -> Result<Identifier> {
-        if data.len() > self.chunk_size {
+        match if data.len() > self.chunk_size {
             // The data is bigger than a chunk: let's chunk it.
             self.write_manifest(data).await
         } else if data.len() > Identifier::SMALL_IDENTIFIER_SIZE {
@@ -433,6 +467,15 @@ impl Provider {
             Ok(Identifier::new_hash_ref(id))
         } else {
             Ok(Identifier::new_data(data))
+        } {
+            Ok(id) => {
+                // The write succeeded: let's increment the reference count for
+                // this id.
+                self.refs.lock().await.inc(&id);
+
+                Ok(id)
+            }
+            Err(err) => Err(err),
         }
     }
 
@@ -441,23 +484,24 @@ impl Provider {
     /// Unwriting doesn't actually delete anything, but in some cases, it
     /// decrements the reference count of the content which can avoid the
     /// content being copied to a more persistent data-store.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the content cannot be unwritten.
-    pub async fn unwrite(&self, _id: &Identifier) -> Result<()> {
-        //TODO: Implement.
-
-        Ok(())
+    pub async fn unwrite(&self, id: &Identifier) {
+        self.refs.lock().await.dec(id);
     }
 
-    /// Pop the list of identifiers whose reference count is strictly positive.
-    ///
-    /// After the call, the reference count of the return identifiers will be set to zero.
-    #[allow(clippy::unused_self)]
-    pub fn pop_referenced_identifiers(&self) -> Vec<Identifier> {
-        //TODO: Implement.
-        vec![]
+    /// Get the list of referenced identifiers.
+    pub async fn referenced(&self) -> Vec<Identifier> {
+        self.refs
+            .lock()
+            .await
+            .referenced()
+            .into_iter()
+            .cloned()
+            .collect()
+    }
+
+    /// Clear the list of referenced identifiers.
+    pub async fn clear_referenced(&self) {
+        self.refs.lock().await.clear();
     }
 
     /// Register the specified alias.

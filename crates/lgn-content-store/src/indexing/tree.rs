@@ -401,6 +401,11 @@ impl Tree {
     pub fn is_empty(&self) -> bool {
         self.children.is_empty()
     }
+
+    /// Returns the children of the tree.
+    pub fn children(&self) -> &Vec<(IndexKey, TreeNode)> {
+        &self.children
+    }
 }
 
 #[async_trait]
