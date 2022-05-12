@@ -334,7 +334,7 @@ impl RenderScript {
                     RenderGraphLoadState::Load,
                 )
                 .write(view_target_id, view_view_id, RenderGraphLoadState::DontCare)
-                .execute(|_, _, _| {
+                .execute(|_, _, _, _| {
                     println!("Combine pass execute");
                 });
             if let Some(ui_buffer_id) = ui_buffer_id {

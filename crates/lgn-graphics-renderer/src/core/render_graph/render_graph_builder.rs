@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use lgn_graphics_api::{CommandBuffer, Texture};
 
 use crate::{
@@ -72,9 +74,28 @@ impl GraphicsPassBuilder {
 
     pub fn execute<F: 'static>(mut self, f: F) -> Self
     where
-        F: Fn(&RenderGraphExecuteContext<'_>, &RenderContext<'_>, &mut CommandBuffer),
+        F: Fn(
+            &RenderGraphExecuteContext<'_>,
+            &RenderContext<'_>,
+            &mut CommandBuffer,
+            &Option<Box<dyn Any>>,
+        ),
     {
         self.node.execute_fn = Some(Box::new(f));
+        self
+    }
+
+    pub fn execute_with_data<F: 'static>(mut self, f: F, user_data: Box<dyn Any>) -> Self
+    where
+        F: Fn(
+            &RenderGraphExecuteContext<'_>,
+            &RenderContext<'_>,
+            &mut CommandBuffer,
+            &Option<Box<dyn Any>>,
+        ),
+    {
+        self.node.execute_fn = Some(Box::new(f));
+        self.node.user_data = Some(user_data);
         self
     }
 }
@@ -112,9 +133,29 @@ impl ComputePassBuilder {
 
     pub fn execute<F: 'static>(mut self, f: F) -> Self
     where
-        F: Fn(&RenderGraphExecuteContext<'_>, &RenderContext<'_>, &mut CommandBuffer),
+        F: Fn(
+            &RenderGraphExecuteContext<'_>,
+            &RenderContext<'_>,
+            &mut CommandBuffer,
+            &Option<Box<dyn Any>>,
+        ),
     {
         self.node.execute_fn = Some(Box::new(f));
+        self.node.user_data = None;
+        self
+    }
+
+    pub fn execute_with_data<F: 'static>(mut self, f: F, user_data: Box<dyn Any>) -> Self
+    where
+        F: Fn(
+            &RenderGraphExecuteContext<'_>,
+            &RenderContext<'_>,
+            &mut CommandBuffer,
+            &Option<Box<dyn Any>>,
+        ),
+    {
+        self.node.execute_fn = Some(Box::new(f));
+        self.node.user_data = Some(user_data);
         self
     }
 }

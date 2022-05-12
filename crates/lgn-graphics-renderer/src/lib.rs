@@ -701,7 +701,7 @@ fn render_update(
 
             cmd_buffer.end();
 
-            let test_render_graph = false;
+            let test_render_graph = true;
             if test_render_graph {
                 render_context
                     .graphics_queue

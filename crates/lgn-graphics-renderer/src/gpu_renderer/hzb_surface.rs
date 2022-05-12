@@ -238,7 +238,7 @@ fn build_hzb_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
         back_stencil_pass_op: StencilOp::default(),
     };
 
-    let resterizer_state = RasterizerState {
+    let rasterizer_state = RasterizerState {
         cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
@@ -253,7 +253,7 @@ fn build_hzb_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
                 vertex_layout: &vertex_layout,
                 blend_state: &BlendState::default_alpha_disabled(),
                 depth_state: &depth_state,
-                rasterizer_state: &resterizer_state,
+                rasterizer_state: &rasterizer_state,
                 color_formats: &[Format::R32_SFLOAT],
                 sample_count: SampleCount::SampleCount1,
                 depth_stencil_format: None,

@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 
 use lgn_graphics_api::{
@@ -242,8 +243,12 @@ pub struct ResourceData {
     pub load_state: RenderGraphLoadState,
 }
 
-pub(crate) type RenderGraphExecuteFn =
-    dyn Fn(&RenderGraphExecuteContext<'_>, &RenderContext<'_>, &mut CommandBuffer);
+pub(crate) type RenderGraphExecuteFn = dyn Fn(
+    &RenderGraphExecuteContext<'_>,
+    &RenderContext<'_>,
+    &mut CommandBuffer,
+    &Option<Box<dyn Any>>,
+);
 
 pub(crate) struct RGNode {
     pub(crate) name: String,
@@ -253,6 +258,7 @@ pub(crate) struct RGNode {
     pub(crate) depth_stencil: Option<ResourceData>,
     pub(crate) children: Vec<RGNode>,
     pub(crate) execute_fn: Option<Box<RenderGraphExecuteFn>>,
+    pub(crate) user_data: Option<Box<dyn Any>>,
 }
 
 impl Default for RGNode {
@@ -265,6 +271,7 @@ impl Default for RGNode {
             depth_stencil: None,
             children: vec![],
             execute_fn: None,
+            user_data: None,
         }
     }
 }
@@ -1266,7 +1273,12 @@ impl RenderGraph {
                     command_buffer,
                     device_context,
                 );
-                (execute_fn)(&execute_context, render_context, command_buffer);
+                (execute_fn)(
+                    &execute_context,
+                    render_context,
+                    command_buffer,
+                    &node.user_data,
+                );
                 self.end_execute(context, node, command_buffer, device_context);
             }
 
