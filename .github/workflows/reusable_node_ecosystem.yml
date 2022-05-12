@@ -38,8 +38,14 @@ jobs:
       - name: Npm build (necessary for subsequent commands...)
         run: pnpm build
 
-      - name: Npm check
-        run: pnpm check
+      - name: Check environment
+        run: env
+
+      - name: List types files
+        run: ls node_modules/
+
+      # - name: Npm check
+      #   run: pnpm check
 
       # - name: Npm test
       #   run: pnpm test
