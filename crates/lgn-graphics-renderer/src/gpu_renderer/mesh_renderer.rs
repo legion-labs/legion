@@ -177,9 +177,9 @@ impl MeshRenderer {
     ) -> Self {
         Self {
             default_layers: vec![
-                RenderLayer::new(allocator, true),
-                RenderLayer::new(allocator, true),
-                RenderLayer::new(allocator, true),
+                RenderLayer::new(allocator, false),
+                RenderLayer::new(allocator, false),
+                RenderLayer::new(allocator, false),
             ],
             culling_buffers: CullingArgBuffers {
                 draw_count: None,

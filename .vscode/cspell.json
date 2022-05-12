@@ -13,6 +13,7 @@
     "Callees",
     "callgraph",
     "calltree",
+    "cgen",
     "chrono",
     "chunker",
     "cname",

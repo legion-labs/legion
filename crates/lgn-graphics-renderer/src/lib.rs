@@ -781,11 +781,6 @@ fn render_update(
                             println!("{}", render_graph);
                             println!("\n\n");
 
-                            // TODO: Questions:
-                            // * Management of textures: pool for now, aliasing later
-                            // * Management of command buffers: one command buffer for all passes for now
-                            // * Multithreaded execution: none for now
-
                             let mut render_graph_context = render_graph.compile();
 
                             println!("\n\n");
