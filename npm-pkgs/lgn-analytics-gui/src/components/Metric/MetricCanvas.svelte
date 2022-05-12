@@ -5,10 +5,11 @@
   import type { Unsubscriber } from "svelte/store";
   import { get } from "svelte/store";
 
-  import { getHttpClientContext } from "@/contexts";
+  import { getDebugContext, getHttpClientContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
+  import TimeRangeDetails from "../Misc/TimeRangeDetails.svelte";
   import { MetricAxisCollection } from "./Lib/MetricAxisCollection";
   import { getMetricColor } from "./Lib/MetricColor";
   import type { MetricSlice } from "./Lib/MetricSlice";
@@ -31,6 +32,7 @@
   const height = outerHeight - margin.top - margin.bottom;
 
   const client = getHttpClientContext();
+  const debug = getDebugContext();
 
   let mainWidth = 0;
   $: width = mainWidth - margin.left - margin.right;
@@ -361,33 +363,37 @@
     {metricStreamer}
   />
 {/if}
+
 <div bind:clientWidth={mainWidth}>
-  <div id="metric-canvas" style="position:relative" />
-  {#if loading}
-    <div>Loading...</div>
-  {:else}
+  <div id="metric-canvas" class="relative" />
+
+  {#if !loading}
     <div style="padding-left:{margin.left}px">
       <MetricLegendGroup {metricStore} />
     </div>
-    <div style="display:inherit;padding-top:40px">
-      <MetricDebugDisplay
-        {width}
-        {mainWidth}
-        {transform}
-        {updateTime}
-        {metricStreamer}
-        {lod}
-        {pixelSizeNs}
-        {deltaMs}
-        {id}
-        {totalMinMs}
-        {currentMinMs}
-        {totalMaxMs}
-        {currentMaxMs}
-        {brushStart}
-        {brushEnd}
-        {metricStore}
-      />
+    <div>
+      <TimeRangeDetails timeRange={[brushStart, brushEnd]} processId={id} />
     </div>
+    {#if $debug}
+      <div style="display:inherit;padding-top:40px">
+        <MetricDebugDisplay
+          {width}
+          {mainWidth}
+          {transform}
+          {updateTime}
+          {metricStreamer}
+          {lod}
+          {pixelSizeNs}
+          {deltaMs}
+          {totalMinMs}
+          {currentMinMs}
+          {totalMaxMs}
+          {currentMaxMs}
+          {brushStart}
+          {brushEnd}
+          {metricStore}
+        />
+      </div>
+    {/if}
   {/if}
 </div>

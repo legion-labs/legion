@@ -4,49 +4,69 @@
   import { formatExecutionTime } from "@/lib/format";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
+  import L10n from "./L10n.svelte";
+
   export let timeRange: [number, number] | undefined;
   export let processId: string;
+
+  let brushStart: number;
+  let brushEnd: number;
+
+  $: if (timeRange) {
+    [brushStart, brushEnd] = timeRange;
+  }
 </script>
 
-<div id="selected-time-range-div">
-  {#if timeRange}
-    <h3>Selected time range</h3>
+{#if !isNaN(brushStart) && !isNaN(brushEnd)}
+  <div class="selected-time-range">
     <div>
-      <span>duration: </span>
-      <span>{formatExecutionTime(timeRange[1] - timeRange[0])}<span /></span>
+      <div class="nav-link">
+        <a
+          href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${brushStart}&${endQueryParam}=${brushEnd}`}
+          use:link
+        >
+          <L10n id="metrics-open-cumulative-call-graph" />
+        </a>
+      </div>
+      <div class="nav-link">
+        <a
+          href={`/timeline/${processId}?${startQueryParam}=${brushStart}&${endQueryParam}=${brushEnd}`}
+          use:link
+        >
+          <L10n id="metrics-open-timeline" />
+        </a>
+      </div>
     </div>
-    <div>
-      <span>beginning: </span>
-      <span>{formatExecutionTime(timeRange[0])}<span /></span>
+    <!-- TODO: Display the following the same way as in the timeline -->
+    <div class="text-sm text-right">
+      <div>
+        <L10n id="metrics-selected-time-range" />
+      </div>
+      <div>
+        <span class="font-bold"
+          ><L10n id="metrics-selected-time-range-duration" />
+        </span>
+        <span>{formatExecutionTime(brushEnd - brushStart)}<span /></span>
+      </div>
+      <div>
+        <span class="font-bold"
+          ><L10n id="metrics-selected-time-range-beginning" />
+        </span>
+        <span>{formatExecutionTime(brushStart)}<span /></span>
+      </div>
+      <div>
+        <span class="font-bold"
+          ><L10n id="metrics-selected-time-range-end" />
+        </span>
+        <span>{formatExecutionTime(brushEnd)}<span /></span>
+      </div>
     </div>
-    <div>
-      <span>end: </span>
-      <span>{formatExecutionTime(timeRange[1])}<span /></span>
-    </div>
-    <div class="nav-link">
-      <a
-        href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${timeRange[0]}&${endQueryParam}=${timeRange[1]}`}
-        use:link
-      >
-        Cumulative Call Graph
-      </a>
-    </div>
-    <div class="nav-link">
-      <a
-        href={`/timeline/${processId}?${startQueryParam}=${timeRange[0]}&${endQueryParam}=${timeRange[1]}`}
-        use:link
-      >
-        Timeline
-      </a>
-    </div>
-  {/if}
-</div>
+  </div>
+{/if}
 
 <style lang="postcss">
-  #selected-time-range-div {
-    display: inline-block;
-    width: 200px;
-    text-align: left;
+  .selected-time-range {
+    @apply flex w-full justify-between;
   }
 
   .nav-link {
