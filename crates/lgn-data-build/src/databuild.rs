@@ -523,12 +523,6 @@ impl DataBuild {
         let mut compiled = HashSet::<petgraph::graph::NodeIndex>::new();
         let mut compiling = HashSet::<ResourcePathId>::new();
 
-        // compile non-source dependencies (exclude source dependencies).
-        //topological_order.retain(|node_index| {
-        //    let compile_node = build_graph.node_weight(*node_index).unwrap();
-        //    compile_node.direct_dependency().is_some()
-        //});
-
         let mut work = vec![];
 
         let to_compile = topological_order.len();
@@ -556,21 +550,21 @@ impl DataBuild {
 
                         all_deps_compiled
                     });
-            println!(
+            /*println!(
                 "ready: {}, pending {}, ongoing: {}, compiled: {}/{}",
                 ready.len(),
                 pending.len(),
                 work.len(),
                 compiled.len(),
                 to_compile
-            );
+            );*/
             topological_order = pending;
 
             let mut new_work = vec![];
             let num_ready = ready.len();
             for compile_node_index in ready {
                 let compile_node = build_graph.node_weight(compile_node_index).unwrap();
-                println!("{:?} is ready", compile_node);
+                //println!("{:?} is ready", compile_node);
                 // compile non-source dependencies.
                 if let Some(direct_dependency) = compile_node.direct_dependency() {
                     let mut n =
@@ -735,14 +729,14 @@ impl DataBuild {
                 }
             }
 
-            println!(
+            /*println!(
                 "new ongoing work: {}, ongoing work: {}, pending: {}, compiled: {}/{}",
                 new_work.len(),
                 work.len() + new_work.len(),
                 topological_order.len(),
                 compiled.len(),
                 to_compile
-            );
+            );*/
             work.extend(new_work);
 
             if work.is_empty() && num_ready > 0 {
@@ -758,7 +752,7 @@ impl DataBuild {
             if let Ok((node_index, resource_infos, resource_references, stats)) = result {
                 let compile_node = build_graph.node_weight(node_index).unwrap();
                 compiling.remove(&compile_node.to_unnamed());
-                println!("completed: {}", compile_node);
+                //println!("completed: {}", compile_node);
                 accumulated_dependencies.extend(resource_infos.iter().map(|res| {
                     CompiledResource {
                         path: res.compiled_path.clone(),
