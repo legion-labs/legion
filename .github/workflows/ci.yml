@@ -17,10 +17,6 @@ jobs:
     name: Image Setup
     uses: ./.github/workflows/reusable_build_env_setup.yml
 
-  image_governance_setup:
-    name: Image Governance Setup
-    uses: ./.github/workflows/reusable_build_governance_env_setup.yml
-
   change_detection:
     name: Change detection
     needs: [base_ref_selection, image_setup]
