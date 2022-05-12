@@ -14,6 +14,7 @@ declare type Fluent = {
   "global-cumulative-call-graph": null;
   "global-log": null;
   "global-timeline": null;
+  "global-metrics": null;
   "global-thread": null;
   "process-list-user": null;
   "process-list-process": null;
@@ -50,4 +51,18 @@ declare type Fluent = {
   };
   "timeline-link-copy-notification-title": null;
   "timeline-link-copy-notification-message": null;
+  "metrics-search-choose-metrics": null;
+  "metrics-search-placeholder": null;
+  "metrics-search-result-number": {
+    variables: "selectedMetricCount" | "selectedMetricCount";
+  };
+  "metrics-search-clear": null;
+  "metrics-recently-used": null;
+  "metrics-all-metrics": null;
+  "metrics-open-cumulative-call-graph": null;
+  "metrics-open-timeline": null;
+  "metrics-selected-time-range": null;
+  "metrics-selected-time-range-duration": null;
+  "metrics-selected-time-range-beginning": null;
+  "metrics-selected-time-range-end": null;
 };

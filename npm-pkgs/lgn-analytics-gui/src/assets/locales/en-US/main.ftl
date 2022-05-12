@@ -14,6 +14,7 @@ global-link-share = Share Link
 global-cumulative-call-graph = Cumulative Call Graph
 global-log = Log
 global-timeline = Timeline
+global-metrics = Metrics
 global-thread = thread
 
 # Process list
@@ -69,3 +70,21 @@ timeline-debug-tooltip =
   Events: { $events }
 timeline-link-copy-notification-title = Copy Succeeded
 timeline-link-copy-notification-message = The link has been copied to your clipboard successfully
+
+# Metrics
+metrics-search-choose-metrics = Choose Metric
+metrics-search-placeholder = Search Metric...
+metrics-search-result-number =
+  {$selectedMetricCount} {$selectedMetricCount ->
+    [one] metric
+    *[other] metrics
+  } selected
+metrics-search-clear = Clear all
+metrics-recently-used = Recently Used
+metrics-all-metrics = All Metrics
+metrics-open-cumulative-call-graph = Open { global-cumulative-call-graph }
+metrics-open-timeline = Open { global-timeline }
+metrics-selected-time-range = Selected time range
+metrics-selected-time-range-duration = Duration:
+metrics-selected-time-range-beginning = Beginning:
+metrics-selected-time-range-end = End:

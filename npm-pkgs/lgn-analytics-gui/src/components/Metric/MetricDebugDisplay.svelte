@@ -1,7 +1,6 @@
 <script lang="ts">
   import { formatExecutionTime } from "@/lib/format";
 
-  import TimeRangeDetails from "../Misc/TimeRangeDetails.svelte";
   import type { MetricStore } from "./Lib/MetricStore";
   import type { MetricStreamer } from "./Lib/MetricStreamer";
 
@@ -20,7 +19,6 @@
   export let brushStart: number;
   export let brushEnd: number;
   export let metricStore: MetricStore;
-  export let id: string;
 </script>
 
 <div class="grid grid-cols-3">
@@ -105,8 +103,5 @@
         {/each}
       </ul>
     {/if}
-  </div>
-  <div>
-    <TimeRangeDetails timeRange={[brushStart, brushEnd]} processId={id} />
   </div>
 </div>

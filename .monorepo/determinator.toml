@@ -24,6 +24,7 @@ globs = [
     "legion.toml",
     "npm-pkgs/**/*",
     "package.json",
+    "dccs/**/*",
     # Ignore *.md documentation
     "*.md",
 ]

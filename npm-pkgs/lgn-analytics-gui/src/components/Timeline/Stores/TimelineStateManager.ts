@@ -292,16 +292,26 @@ export class TimelineStateManager {
     let sentRequest = false;
     for (const block of Object.values(state.blocks)) {
       const lod = computePreferredBlockLod(state.canvasWidth, range, block);
+      if (lod === null) {
+        continue;
+      }
 
-      if (typeof lod === "number" && !(lod in block.lods)) {
-        block.lods[lod] = {
+      let lodInfo;
+      if (lod in block.lods) {
+        lodInfo = block.lods[lod];
+      } else {
+        lodInfo = {
           state: LODState.Missing,
           tracks: [],
           lodId: lod,
         };
+        block.lods[lod] = lodInfo;
+      }
+      if (lodInfo.state === LODState.Missing) {
         sentRequest = true;
         promises.push(this.fetchBlockSpans(block, lod));
       }
+
       if (this.#nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
         break;
       }
@@ -343,17 +353,16 @@ export class TimelineStateManager {
         })
         .then(
           (o) => {
+            this.#nbRequestsInFlight -= 1;
             this.onLodReceived(o);
             return this.fetchDynData();
           },
           (error) => {
             log.error(`Error fetching block spans: ${displayError(error)}`);
+            this.#nbRequestsInFlight -= 1;
             return this.fetchDynData();
           }
         )
-        .finally(() => {
-          this.#nbRequestsInFlight -= 1;
-        })
     );
   }
 
