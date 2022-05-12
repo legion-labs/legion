@@ -11,7 +11,7 @@
   "main": "src/index.ts",
   "scripts": {
     "check": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
-    "lint": "eslint --ext .ts,.svelte src/",
+    "lint": "eslint --ext .ts,.svelte .",
     "lint:fix": "eslint --ext .ts,.svelte --fix .",
     "fmt:check": "prettier --check . --plugin-search-dir=. ./**/*.svelte",
     "fmt": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
@@ -28,6 +28,7 @@
     "@trivago/prettier-plugin-sort-imports": "^3.2.0",
     "@types/color-convert": "^2.0.0",
     "@types/estree": "^0.0.51",
+    "@types/jest": "^27.5.1",
     "@typescript-eslint/eslint-plugin": "^5.23.0",
     "@typescript-eslint/parser": "^5.23.0",
     "autoprefixer": "^10.4.7",

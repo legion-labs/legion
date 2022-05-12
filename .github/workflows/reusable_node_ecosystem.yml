@@ -44,11 +44,11 @@ jobs:
       - name: List types files
         run: ls node_modules/
 
-      # - name: Npm check
-      #   run: pnpm check
+      - name: Npm check
+        run: pnpm check
 
-      # - name: Npm test
-      #   run: pnpm test
+      - name: Npm test
+        run: pnpm test
 
   build:
     name: Build
