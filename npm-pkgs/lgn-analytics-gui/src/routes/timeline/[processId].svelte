@@ -16,10 +16,11 @@
   import TimelineRange from "@/components/Timeline/Tools/TimelineRange.svelte";
   import TimelineSearch from "@/components/Timeline/Tools/TimelineSearch.svelte";
   import { pixelMargin } from "@/components/Timeline/Values/TimelineValues";
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
+
   import { getHttpClientContext, getThreadItemLengthContext } from "@/contexts";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
-  import type { Process } from "@lgn/proto-telemetry/dist/process";
 
   const processId = $page.params.processId;
 
@@ -85,10 +86,13 @@
   });
 
   async function requestProcessLakehouse(processId: string) {
-    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_TIMELINE_JIT_LAKEHOUSE === "true") {
+    if (
+      import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_TIMELINE_JIT_LAKEHOUSE ===
+      "true"
+    ) {
       await client.build_timeline_tables({
         processId,
-      })
+      });
     }
   }
 
