@@ -43,6 +43,10 @@ use super::{
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(INCLUDE_COMMON, "gpu/include/common.hsh");
+embedded_watched_file!(
+    INCLUDE_FULLSCREEN_TRIANGLE,
+    "gpu/include/fullscreen_triangle.hsh"
+);
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
 embedded_watched_file!(INCLUDE_TRANSFORM, "gpu/include/transform.hsh");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");

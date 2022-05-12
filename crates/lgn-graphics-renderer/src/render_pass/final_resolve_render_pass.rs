@@ -1,8 +1,8 @@
 use lgn_graphics_api::{
     AddressMode, BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, CullMode,
     DepthState, DeviceContext, FilterType, Format, GraphicsPipelineDef, LoadOp, MipMapMode,
-    PrimitiveTopology, RasterizerState, ResourceState, ResourceUsage, SampleCount, Sampler,
-    SamplerDef, StencilOp, StoreOp, TextureView, VertexLayout,
+    PrimitiveTopology, RasterizerState, ResourceState, SampleCount, Sampler, SamplerDef, StencilOp,
+    StoreOp, TextureView, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
@@ -71,17 +71,6 @@ impl FinalResolveRenderPass {
                 descriptor_set_handle,
             );
 
-            #[rustfmt::skip]
-            let vertex_data: [f32; 12] = [0.0, 2.0, 0.0, 2.0,
-                                          2.0, 0.0, 2.0, 0.0,
-                                          0.0, 0.0, 0.0, 0.0];
-
-            let sub_allocation = render_context
-                .transient_buffer_allocator()
-                .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
-
-            cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
-
             cmd_buffer.begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: resolve_rtv,
@@ -120,7 +109,7 @@ fn build_final_resolve_pso(pipeline_manager: &PipelineManager) -> PipelineHandle
     };
 
     let resterizer_state = lgn_graphics_api::RasterizerState {
-        cull_mode: CullMode::Front,
+        cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 

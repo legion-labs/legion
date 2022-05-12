@@ -1,22 +1,9 @@
 #include "crate://lgn-graphics-renderer/gpu/pipeline_layout/hzb_pipeline_layout.hlsl"
 
-struct VertexIn {
-    float2 pos : POSITION;
-    float2 uv : TEXCOORD;
-};
+#include "crate://lgn-graphics-renderer/gpu/include/fullscreen_triangle.hsh"
 
-struct VertexOut {  
-    float4 hpos : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
-
-VertexOut main_vs(in VertexIn vertex_in) {
-    VertexOut vertex_out;
-
-    vertex_out.hpos = float4(float2(2.0 * vertex_in.pos.x - 1.0, 1.0 - 2.0 * vertex_in.pos.y), 0.0, 1.0);
-    vertex_out.uv = vertex_in.uv;
-
-    return vertex_out;
+VertexOut main_vs(in uint id : SV_VERTEXID) {
+    return fullscreen_triangle_vertex(id);
 }
 
 float main_ps(in VertexOut vertex_out) : SV_TARGET {
