@@ -136,8 +136,8 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       );
       const endPixels = (endSpan - beginViewRange) * msToPixelsFactor;
       const callWidth = endPixels - beginPixels;
-      // if less than half a pixel, clip it
-      if (callWidth < 0.5) {
+      // should not be necessary with lods - we should fix the lods instead
+      if (callWidth < 0.1) {
         continue;
       }
       ctx.globalAlpha = span.alpha / 255;
