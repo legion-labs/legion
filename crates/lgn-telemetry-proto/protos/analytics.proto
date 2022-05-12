@@ -33,6 +33,7 @@ service PerformanceAnalytics {
   rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
   rpc search_processes(SearchProcessRequest) returns (ProcessListReply);
   rpc list_process_children(ListProcessChildrenRequest) returns (ProcessChildrenReply);
+  rpc build_timeline_tables(BuildTimelineTablesRequest) returns (BuildTimelineTablesReply);
 }
 
 // find_process
@@ -170,3 +171,10 @@ message AsyncSpansReply {
   repeated AsyncSpanTrack tracks = 3;
   map<uint32, ScopeDesc> scopes = 4;
 }
+
+// build_timeline_tables
+message BuildTimelineTablesRequest {
+  string process_id = 1;
+}
+
+message BuildTimelineTablesReply {}
