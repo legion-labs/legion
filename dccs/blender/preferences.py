@@ -17,17 +17,27 @@ class VIEW3D_PT_preferences(bpy.types.Panel):
         layout = self.layout
         lgn_prefs = get_preferences(context)
         layout.prop(lgn_prefs, "server_address")
+        layout.prop(lgn_prefs, "timeout")
 
 class LgnPreferences(bpy.types.AddonPreferences):
     bl_idname = _preferences_id
+    
     server_address: bpy.props.StringProperty(
         name="Server Address",
         default="[::1]:50051"
     )
 
+    timeout: bpy.props.FloatProperty(
+        name="RPC timeout",
+        default=5.0,
+        min=1.0,
+        max=3600.0
+    )
+
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "server_address")
+        layout.prop(self, "timeout")
 
 def register():
     bpy.utils.register_class(VIEW3D_PT_preferences)

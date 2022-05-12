@@ -728,7 +728,7 @@ impl SourceControl for SourceControlRPC {
                 "pull_asset supports GltfFile only at the moment",
             ));
         }
-        let resource = ctx.asset_registry.load_sync::<GltfFile>(id);
+        let resource = ctx.asset_registry.load_async::<GltfFile>(id).await;
         if let Some(gltf_file) = resource.get(&ctx.asset_registry) {
             return Ok(Response::new(PullAssetResponse {
                 size: gltf_file.bytes().len() as u32,

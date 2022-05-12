@@ -1,6 +1,6 @@
 import os
 import bpy
-import sonora.client
+from connection import Connection
 import resource_browser_pb2_grpc
 import resource_browser_pb2
 import source_control_pb2_grpc
@@ -28,20 +28,17 @@ class LgnPushOperator(bpy.types.Operator):
         bpy.ops.export_scene.gltf(filepath = filename, export_selected=True)
         filesize = os.path.getsize(filename)
 
-        server_address = get_preferences(context).server_address
-        print("connecting to " + server_address)
-        
-        with sonora.client.insecure_web_channel(server_address) as channel:
-            sc_stub = source_control_pb2_grpc.SourceControlStub(channel)
-            init_response = sc_stub.InitUploadRawFile(source_control_pb2.InitUploadRawFileRequest(name="{}.glb".format(asset_name), size=filesize))
+        with Connection(context) as conn:
+            sc_stub = source_control_pb2_grpc.SourceControlStub(conn.channel)
+            init_response = sc_stub.InitUploadRawFile(source_control_pb2.InitUploadRawFileRequest(name="{}.glb".format(asset_name), size=filesize), timeout=conn.timeout)
             print("Upload init response: {response}".format(response=init_response))
             if init_response.status == source_control_pb2.QUEUED:
                 file = open(filename, "rb")
-                for upload_response in sc_stub.UploadRawFile(source_control_pb2.UploadRawFileRequest(id=init_response.id, content=file.read())):
+                for upload_response in sc_stub.UploadRawFile(source_control_pb2.UploadRawFileRequest(id=init_response.id, content=file.read()), timeout=conn.timeout):
                     if getattr(upload_response, upload_response.WhichOneof('response')).status == source_control_pb2.DONE:
                         print("Upload response: {response}".format(response=upload_response))
-                        rb_stub = resource_browser_pb2_grpc.ResourceBrowserStub(channel)
-                        rb_stub.CreateResource(resource_browser_pb2.CreateResourceRequest(resource_type="gltf", upload_id=init_response.id, resource_name="{}.glb".format(asset_name)))
+                        rb_stub = resource_browser_pb2_grpc.ResourceBrowserStub(conn.channel)
+                        rb_stub.CreateResource(resource_browser_pb2.CreateResourceRequest(resource_type="gltf", upload_id=init_response.id, resource_name="{}.glb".format(asset_name)), timeout=conn.timeout)
                         context.window_manager.popup_menu(LgnPushOperator.draw_finished)
             else:
                 print("Upload init failed: {response}".format(response=init_response))

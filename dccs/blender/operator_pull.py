@@ -1,7 +1,7 @@
 import os
 import bpy
+from connection import Connection
 from preferences import get_preferences
-import sonora.client
 import resource_browser_pb2
 import resource_browser_pb2_grpc
 import source_control_pb2
@@ -33,12 +33,10 @@ class LgnListAssetsOperator(bpy.types.Operator):
     bl_label = "List LE assets"
 
     def execute(self, context):
-        server_address = get_preferences(context).server_address
-        print("connecting to " + server_address)
-        context.scene.pull_properties.assets.clear()
-        with sonora.client.insecure_web_channel(server_address) as channel:
-            rb_stub = resource_browser_pb2_grpc.ResourceBrowserStub(channel)
-            response = rb_stub.ListAssets(resource_browser_pb2.ListAssetsRequest(asset_types=["0d4207bbf3a2fd08"])) # gltf
+        with Connection(context) as conn:
+            rb_stub = resource_browser_pb2_grpc.ResourceBrowserStub(conn.channel)
+            response = rb_stub.ListAssets(resource_browser_pb2.ListAssetsRequest(asset_types=["0d4207bbf3a2fd08"]), timeout=conn.timeout) # gltf
+            context.scene.pull_properties.assets.clear()
             for asset in response.assets:
                 print("{}".format(asset))
                 prop = context.scene.pull_properties.assets.add()
@@ -52,13 +50,10 @@ class LgnPullAssetOperator(bpy.types.Operator):
     bl_label = "Import asset"
 
     def execute(self, context):
-        server_address = get_preferences(context).server_address
-        print("connecting to " + server_address)
-        
-        with sonora.client.insecure_web_channel(server_address) as channel:
-            sc_stub = source_control_pb2_grpc.SourceControlStub(channel)
+        with Connection(context) as conn:
+            sc_stub = source_control_pb2_grpc.SourceControlStub(conn.channel)
             selected_asset_name = context.scene.pull_properties.assets[context.scene.pull_properties.assets_index].id
-            response = sc_stub.PullAsset(source_control_pb2.PullAssetRequest(id=selected_asset_name))
+            response = sc_stub.PullAsset(source_control_pb2.PullAssetRequest(id=selected_asset_name), timeout=conn.timeout)
             filename = "{}/{}.glb".format(bpy.app.tempdir, selected_asset_name)
             with open(filename, "wb") as file:
                 file.write(response.content)
