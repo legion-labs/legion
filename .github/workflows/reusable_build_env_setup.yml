@@ -13,6 +13,7 @@ on:
 
 env:
   MONOREPO_DOCKER_REGISTRY: 616787818023.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
+  AWS_ACCOUNT_ID: 616787818023
 
 jobs:
   setup_image:
