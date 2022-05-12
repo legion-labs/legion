@@ -12,15 +12,15 @@
   },
   "devDependencies": {
     "rimraf": "^3.0.2",
-    "ts-proto": "^1.110.4",
-    "typescript": "^4.6.3"
+    "ts-proto": "^1.112.1",
+    "typescript": "^4.6.4"
   },
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
     "browser-headers": "^0.4.1",
-    "google-protobuf": "^3.19.4",
+    "google-protobuf": "^3.20.1",
     "long": "^5.2.0",
-    "pnpm": "^6.32.6",
+    "pnpm": "^7.0.1",
     "protobufjs": "^6.11.2"
   }
 }

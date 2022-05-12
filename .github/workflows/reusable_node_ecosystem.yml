@@ -41,9 +41,8 @@ jobs:
       - name: Npm check
         run: pnpm check
 
-      # TODO: Reactivate script when it's fixed
-      # - name: Npm test
-      #   run: pnpm test
+      - name: Npm test
+        run: pnpm test
 
   build:
     name: Build
