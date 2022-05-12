@@ -44,7 +44,6 @@ impl From<RenderGraphTextureDef> for TextureDef {
             mip_count: item.mip_count,
             format: item.format,
             usage_flags: if item.format.has_depth() {
-                // TODO: will depend on read / write and whether the format is depth/stencil
                 ResourceUsage::AS_DEPTH_STENCIL
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_TRANSFERABLE
@@ -63,7 +62,7 @@ impl From<RenderGraphTextureDef> for TextureDef {
 impl From<RenderGraphTextureViewDef> for TextureViewDef {
     fn from(item: RenderGraphTextureViewDef) -> Self {
         Self {
-            gpu_view_type: GPUViewType::ShaderResource, // TODO: will depend on read / write and whether the format is depth/stencil
+            gpu_view_type: GPUViewType::ShaderResource,
             view_dimension: item.view_dimension,
             first_mip: item.first_mip,
             mip_count: item.mip_count,
@@ -118,8 +117,8 @@ impl From<RenderGraphBufferDef> for BufferDef {
     fn from(item: RenderGraphBufferDef) -> Self {
         Self {
             size: item.size,
-            usage_flags: ResourceUsage::AS_SHADER_RESOURCE, // TODO: will depend on read / write
-            create_flags: BufferCreateFlags::empty(), // TODO: do we want to give control on this?
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE,
+            create_flags: BufferCreateFlags::empty(),
             memory_usage: MemoryUsage::GpuOnly,
             always_mapped: false,
         }
@@ -129,7 +128,7 @@ impl From<RenderGraphBufferDef> for BufferDef {
 impl From<RenderGraphBufferViewDef> for BufferViewDef {
     fn from(item: RenderGraphBufferViewDef) -> Self {
         Self {
-            gpu_view_type: GPUViewType::ShaderResource, // TODO: will depend on read / write
+            gpu_view_type: GPUViewType::ShaderResource,
             byte_offset: item.byte_offset,
             element_count: item.element_count,
             element_size: item.element_size,
@@ -1185,7 +1184,7 @@ impl RenderGraph {
 
         for (res_id, lifetime) in context.lifetimes.iter().enumerate() {
             if lifetime.1 == node && !self.injected_resources.iter().any(|r| r.0 == res_id as u32) {
-                // TODO: Deallocate resource
+                // TODO: Deallocate resource to be able to reuse it later in the graph execution
                 println!("  !! Destroy {}", self.resource_names[res_id]);
             }
         }

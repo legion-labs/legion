@@ -210,35 +210,53 @@ impl OpaqueLayerPass {
                     gbuffer_view_id,
                     RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
                 )
-                .render_target(
-                    1,
-                    gbuffer_ids[1],
-                    gbuffer_view_id,
-                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
-                )
-                .render_target(
-                    2,
-                    gbuffer_ids[2],
-                    gbuffer_view_id,
-                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
-                )
-                .render_target(
-                    3,
-                    gbuffer_ids[3],
-                    gbuffer_view_id,
-                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
-                )
+                //                .render_target(
+                //                    1,
+                //                    gbuffer_ids[1],
+                //                    gbuffer_view_id,
+                //                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
+                //                )
+                //                .render_target(
+                //                    2,
+                //                    gbuffer_ids[2],
+                //                    gbuffer_view_id,
+                //                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
+                //                )
+                //                .render_target(
+                //                    3,
+                //                    gbuffer_ids[3],
+                //                    gbuffer_view_id,
+                //                    RenderGraphLoadState::ClearColor(ColorClearValue([0.0; 4])),
+                //                )
                 .depth_stencil(depth_buffer_id, depth_view_id, RenderGraphLoadState::Load)
                 .execute(Self::execute_opaque_layer_pass)
         })
     }
 
     fn execute_opaque_layer_pass(
-        _execute_context: &RenderGraphExecuteContext<'_>,
-        _render_context: &RenderContext<'_>,
-        _command_buffer: &mut CommandBuffer,
+        execute_context: &RenderGraphExecuteContext<'_>,
+        render_context: &RenderContext<'_>,
+        command_buffer: &mut CommandBuffer,
     ) {
+        let static_buffer = execute_context
+            .render_resources
+            .get::<UnifiedStaticBuffer>();
+
+        command_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
+        command_buffer.cmd_bind_vertex_buffers(
+            0,
+            &[execute_context
+                .render_managers
+                .instance_manager
+                .vertex_buffer_binding()],
+        );
+
         println!("OpaqueLayerPass execute");
+        execute_context.render_managers.mesh_renderer.draw(
+            render_context,
+            command_buffer,
+            DefaultLayers::Opaque,
+        );
     }
 }
 

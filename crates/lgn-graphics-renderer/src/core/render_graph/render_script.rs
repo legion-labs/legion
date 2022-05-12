@@ -264,7 +264,7 @@ impl RenderScript {
             extents: view.target.definition().extents,
             array_length: 1,
             mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
+            format: Format::R16G16B16A16_SFLOAT,
         };
 
         // Just to simulate different formats
