@@ -77,9 +77,7 @@ impl Workspace {
 
         let workspace = Self::new(index, provider, "main", main_index, path_index).await?;
 
-        workspace
-            .initial_checkout(workspace.branch_name.as_str())
-            .await?;
+        workspace.initial_checkout().await?;
 
         Ok(workspace)
     }
@@ -136,7 +134,7 @@ impl Workspace {
 
     /// Get the current commit.
     pub async fn get_current_commit(&self) -> Result<Commit> {
-        let current_branch = self.backend.get_current_branch().await?;
+        let current_branch = self.get_current_branch().await?;
 
         self.index.get_commit(current_branch.head).await
     }
@@ -581,7 +579,7 @@ impl Workspace {
     pub async fn commit(&self, message: &str, behavior: CommitMode) -> Result<Commit> {
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
-        let current_branch = self.backend.get_current_branch().await?;
+        let current_branch = self.get_current_branch().await?;
         let mut branch = self.index.get_branch(&current_branch.name).await?;
         let commit = self.index.get_commit(current_branch.head).await?;
 
@@ -780,25 +778,24 @@ impl Workspace {
 
     /// Get the current branch.
     pub async fn get_current_branch(&self) -> Result<Branch> {
-        self.backend.get_current_branch().await
+        self.index.get_branch(self.branch_name.as_str()).await
     }
 
     /// Create a branch with the given name and the current commit as its head.
     ///
     /// The newly created branch will be a descendant of the current branch and
     /// share the same lock domain.
-    pub async fn create_branch(&self, branch_name: &str) -> Result<Branch> {
-        let current_branch = self.backend.get_current_branch().await?;
+    pub async fn create_branch(&mut self, branch_name: &str) -> Result<Branch> {
+        let current_branch = self.get_current_branch().await?;
 
         if branch_name == current_branch.name {
             return Err(Error::already_on_branch(current_branch.name));
         }
 
-        let old_branch = self.index.get_branch(&current_branch.name).await?;
-        let new_branch = old_branch.branch_out(branch_name.to_string());
+        let new_branch = current_branch.branch_out(branch_name.to_owned());
 
         self.index.insert_branch(&new_branch).await?;
-        self.backend.set_current_branch(&new_branch).await?;
+        self.branch_name = new_branch.name.clone();
 
         Ok(new_branch)
     }
@@ -809,12 +806,11 @@ impl Workspace {
     ///
     /// The resulting branch is detached and now uses its own lock domain.
     pub async fn detach_branch(&self) -> Result<Branch> {
-        let mut current_branch = self.backend.get_current_branch().await?;
+        let mut current_branch = self.get_current_branch().await?;
 
         current_branch.detach();
 
         self.index.insert_branch(&current_branch).await?;
-        self.backend.set_current_branch(&current_branch).await?;
 
         Ok(current_branch)
     }
@@ -826,7 +822,7 @@ impl Workspace {
     /// The resulting branch is attached and now uses the same lock domain as
     /// its parent.
     pub async fn attach_branch(&self, branch_name: &str) -> Result<Branch> {
-        let mut current_branch = self.backend.get_current_branch().await?;
+        let mut current_branch = self.get_current_branch().await?;
         let parent_branch = self.index.get_branch(branch_name).await?;
 
         current_branch.attach(&parent_branch);
@@ -851,7 +847,7 @@ impl Workspace {
     ///
     /// Returns the commit id of the new branch as well as the changes.
     pub async fn switch_branch(&self, branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
-        let current_branch = self.backend.get_current_branch().await?;
+        let current_branch = self.get_current_branch().await?;
 
         if branch_name == current_branch.name {
             return Err(Error::already_on_branch(branch_name.to_string()));
@@ -876,13 +872,11 @@ impl Workspace {
     ///
     /// The commit id that the workspace was synced to as well as the changes.
     pub async fn sync(&self) -> Result<(Branch, BTreeSet<Change>)> {
-        let current_branch = self.backend.get_current_branch().await?;
+        let current_branch = self.get_current_branch().await?;
 
-        let branch = self.index.get_branch(&current_branch.name).await?;
+        let changes = self.sync_to(current_branch.head).await?;
 
-        let changes = self.sync_to(branch.head).await?;
-
-        Ok((branch, changes))
+        Ok((current_branch, changes))
     }
 
     /// Sync the current branch with the specified commit.
@@ -891,7 +885,7 @@ impl Workspace {
     ///
     /// The changes.
     pub async fn sync_to(&self, commit_id: CommitId) -> Result<BTreeSet<Change>> {
-        let mut current_branch = self.backend.get_current_branch().await?;
+        let mut current_branch = self.get_current_branch().await?;
 
         if current_branch.head == commit_id {
             return Ok([].into());
@@ -979,9 +973,9 @@ impl Workspace {
         }
     }
 
-    async fn initial_checkout(&self, branch_name: &str) -> Result<BTreeSet<Change>> {
+    async fn initial_checkout(&self) -> Result<BTreeSet<Change>> {
         // 1. Read the branch information.
-        let branch = self.index.get_branch(branch_name).await?;
+        let branch = self.index.get_branch(self.branch_name.as_str()).await?;
 
         // 2. Mark the branch as the current branch in the workspace backend.
         self.backend.set_current_branch(&branch).await?;

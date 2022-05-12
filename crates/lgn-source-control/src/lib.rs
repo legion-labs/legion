@@ -24,5 +24,4 @@ pub use index::*;
 //pub use resolve::*;
 //pub use revert::*;
 pub use config::{Config, GrpcConfig, LocalConfig, RepositoryIndexConfig, SqlConfig};
-pub(crate) use utils::*;
 pub use workspace::*;
