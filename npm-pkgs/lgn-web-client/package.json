@@ -11,7 +11,7 @@
   "main": "src/index.ts",
   "scripts": {
     "check": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
-    "lint": "eslint --ext .ts,.svelte .",
+    "lint": "eslint --ext .ts,.svelte src/",
     "lint:fix": "eslint --ext .ts,.svelte --fix .",
     "fmt:check": "prettier --check . --plugin-search-dir=. ./**/*.svelte",
     "fmt": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
