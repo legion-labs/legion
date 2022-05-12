@@ -292,27 +292,26 @@ export class TimelineStateManager {
     let sentRequest = false;
     for (const block of Object.values(state.blocks)) {
       const lod = computePreferredBlockLod(state.canvasWidth, range, block);
-      if ( lod === null ){
+      if (lod === null) {
         continue;
       }
 
       let lodInfo;
-      if ( lod in block.lods) {
+      if (lod in block.lods) {
         lodInfo = block.lods[lod];
-      }
-      else{
+      } else {
         lodInfo = {
           state: LODState.Missing,
           tracks: [],
           lodId: lod,
         };
-        block.lods[lod] = lodInfo
+        block.lods[lod] = lodInfo;
       }
-      if ( lodInfo.state === LODState.Missing ){
+      if (lodInfo.state === LODState.Missing) {
         sentRequest = true;
         promises.push(this.fetchBlockSpans(block, lod));
       }
-      
+
       if (this.#nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
         break;
       }
