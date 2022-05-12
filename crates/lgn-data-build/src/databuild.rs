@@ -550,21 +550,21 @@ impl DataBuild {
 
                         all_deps_compiled
                     });
-            /*println!(
+            info!(
                 "ready: {}, pending {}, ongoing: {}, compiled: {}/{}",
                 ready.len(),
                 pending.len(),
                 work.len(),
                 compiled.len(),
                 to_compile
-            );*/
+            );
             topological_order = pending;
 
             let mut new_work = vec![];
             let num_ready = ready.len();
             for compile_node_index in ready {
                 let compile_node = build_graph.node_weight(compile_node_index).unwrap();
-                //println!("{:?} is ready", compile_node);
+                info!("{:?} is ready", compile_node);
                 // compile non-source dependencies.
                 if let Some(direct_dependency) = compile_node.direct_dependency() {
                     let mut n =
@@ -729,14 +729,14 @@ impl DataBuild {
                 }
             }
 
-            /*println!(
+            info!(
                 "new ongoing work: {}, ongoing work: {}, pending: {}, compiled: {}/{}",
                 new_work.len(),
                 work.len() + new_work.len(),
                 topological_order.len(),
                 compiled.len(),
                 to_compile
-            );*/
+            );
             work.extend(new_work);
 
             if work.is_empty() && num_ready > 0 {
@@ -752,7 +752,7 @@ impl DataBuild {
             if let Ok((node_index, resource_infos, resource_references, stats)) = result {
                 let compile_node = build_graph.node_weight(node_index).unwrap();
                 compiling.remove(&compile_node.to_unnamed());
-                //println!("completed: {}", compile_node);
+                info!("completed: {}", compile_node);
                 accumulated_dependencies.extend(resource_infos.iter().map(|res| {
                     CompiledResource {
                         path: res.compiled_path.clone(),
@@ -781,180 +781,6 @@ impl DataBuild {
             work = remaining;
         }
 
-        /*for compile_node_index in topological_order {
-            let compile_node = build_graph.node_weight(compile_node_index).unwrap();
-            // compile non-source dependencies.
-            if let Some(direct_dependency) = compile_node.direct_dependency() {
-                let mut n = build_graph.neighbors_directed(compile_node_index, petgraph::Incoming);
-                let direct_dependency_index = n.next().unwrap();
-
-                // only one direct dependency supported now. it's ok for the path
-                // but it needs to be revisited for source (if this ever applies to source).
-                assert!(n.next().is_none());
-
-                assert_eq!(
-                    &direct_dependency,
-                    build_graph.node_weight(direct_dependency_index).unwrap()
-                );
-
-                let transform = compile_node.last_transform().unwrap();
-
-                //  'name' is dropped as we always compile input as a whole.
-                let expected_name = compile_node.name();
-                let compile_node = compile_node.to_unnamed();
-
-                // check if the unnamed ResourcePathId has been already compiled and early out.
-                if let Some(node_index) = compiled_at_node.get(&compile_node) {
-                    node_hash.insert(compile_node_index, *node_hash.get(node_index).unwrap());
-                    continue;
-                }
-
-                compiled_at_node.insert(compile_node.clone(), compile_node_index);
-
-                //
-                // for derived resources the build index will not have dependencies for.
-                // for now derived resources do not inherit dependencies from resources down the
-                // resource path.
-                //
-                // this is compensated by the fact that the compilation output of each node
-                // contributes to `derived dependencies`. we might still want to inherit the
-                // regular dependencies.
-                //
-                // this has to be reevaluated in the future.
-                //
-                let dependencies = source_index
-                    .find_dependencies(&direct_dependency)
-                    .unwrap_or_default();
-
-                let (compiler, compiler_hash) = *compiler_details.get(&transform).unwrap();
-
-                // todo: not sure if transform is the right thing here. resource_path_id better?
-                // transform is already defined by the compiler_hash so it seems redundant.
-                let context_hash = compute_context_hash(transform, compiler_hash, Self::version());
-
-                let source_hash = {
-                    if direct_dependency.is_source() {
-                        //
-                        // todo(kstasik): source_hash computation can include filtering of resource
-                        // types in the future. the same resource can have a
-                        // different source_hash depending on the compiler
-                        // used as compilers can filter dependencies out.
-                        //
-                        source_index.compute_source_hash(compile_node.clone())
-                    } else {
-                        //
-                        // since this is a path-derived resource its hash is equal to the
-                        // checksum of its direct dependency.
-                        // this is because the direct dependency is the only dependency.
-                        // more thought needs to be put into this - this would mean this
-                        // resource should not read any other resources - but right now
-                        // `accumulated_dependencies` allows to read much more.
-                        //
-                        let (dep_context_hash, dep_source_hash) =
-                            node_hash.get(&direct_dependency_index).unwrap();
-
-                        // we can assume there are results of compilation of the `direct_dependency`
-                        let compiled = self
-                            .output_index
-                            .find_compiled(
-                                &direct_dependency.to_unnamed(),
-                                *dep_context_hash,
-                                *dep_source_hash,
-                            )
-                            .await
-                            .unwrap()
-                            .0;
-                        // can we assume there is a result of a requested name?
-                        // probably no, this should return a compile error.
-                        if let Some(source) = compiled
-                            .iter()
-                            .find(|&compiled| compiled.compiled_path == direct_dependency)
-                        {
-                            // this is how we truncate the 128 bit long checksum
-                            // and convert it to a 64 bit source_hash.
-                            AssetHash::from(source.compiled_content_id.default_hash())
-                        } else {
-                            lgn_tracing::error!(
-                                "Failed to find compilation output for: {}",
-                                direct_dependency
-                            );
-                            continue;
-                        }
-                    }
-                };
-
-                node_hash.insert(compile_node_index, (context_hash, source_hash));
-
-                info!("Compiling {} ({:?}) ...", compile_node, expected_name);
-                let start = std::time::Instant::now();
-
-                let (resource_infos, resource_references, stats) = Self::compile_node(
-                    &self.output_index,
-                    &self.data_content_provider,
-                    &self.resource_dir,
-                    &compile_node,
-                    context_hash,
-                    source_hash,
-                    &dependencies,
-                    &accumulated_dependencies,
-                    env,
-                    compiler,
-                    self.compilers.registry(),
-                )
-                .await?;
-
-                info!("Compiled {} ended in {:?}.", compile_node, start.elapsed());
-
-                // update the CAS manifest with new content in order to make new resources
-                // visible to the next compilation node
-                // NOTE: right now all the resources are visible to all compilation nodes.
-                if let Some(manifest) = &intermediate_output {
-                    for r in &resource_infos {
-                        manifest
-                            .insert(r.compiled_path.resource_id(), r.compiled_content_id.clone());
-                    }
-                }
-
-                // registry must be updated to release any resources that are no longer referenced.
-                self.compilers.registry().update();
-
-                // we check if the expected named output was produced.
-                if let Some(expected_name) = expected_name {
-                    if !resource_infos.iter().any(|info| {
-                        info.compiled_path
-                            .name()
-                            .map_or(false, |name| name == expected_name)
-                    }) {
-                        return Err(Error::OutputNotPresent(
-                            compile_node,
-                            expected_name.to_string(),
-                        ));
-                    }
-                }
-
-                accumulated_dependencies.extend(resource_infos.iter().map(|res| {
-                    CompiledResource {
-                        path: res.compiled_path.clone(),
-                        content_id: res.compiled_content_id.clone(),
-                    }
-                }));
-                accumulated_dependencies.sort();
-                accumulated_dependencies.dedup();
-
-                assert_eq!(
-                    compiled_resources
-                        .iter()
-                        .filter(|&info| resource_infos.iter().any(|a| a == info))
-                        .count(),
-                    0,
-                    "duplicate compilation output detected"
-                );
-
-                compiled_resources.extend(resource_infos);
-                compile_stats.extend(stats);
-                compiled_references.extend(resource_references);
-            }
-        }*/
         Ok(CompileOutput {
             resources: compiled_resources,
             references: compiled_references,
