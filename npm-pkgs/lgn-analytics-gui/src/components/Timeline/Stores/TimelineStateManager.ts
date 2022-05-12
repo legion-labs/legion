@@ -161,19 +161,17 @@ export class TimelineStateManager {
         .then(
           (reply) => {
             this.state.addAsyncData(processId, reply, sectionSequenceNumber);
+            this.#nbRequestsInFlight -= 1;
             return this.fetchDynData();
           },
           (error) => {
             log.error(
               `Error in fetch_block_async_spans: ${displayError(error)}`
             );
-
+            this.#nbRequestsInFlight -= 1;
             return this.fetchDynData();
           }
         )
-        .finally(() => {
-          this.#nbRequestsInFlight -= 1;
-        })
     );
   }
 
@@ -248,19 +246,17 @@ export class TimelineStateManager {
               .then(
                 (reply) => {
                   this.state.addAsyncBlockData(process.processId, reply);
+                  this.#nbRequestsInFlight -= 1;
                   return this.fetchDynData();
                 },
                 (error) => {
                   log.error(
                     `Error in fetch_block_async_stats: ${displayError(error)}`
                   );
-
+                  this.#nbRequestsInFlight -= 1;
                   return this.fetchDynData();
                 }
               )
-              .finally(() => {
-                this.#nbRequestsInFlight -= 1;
-              })
           )
         );
       }
