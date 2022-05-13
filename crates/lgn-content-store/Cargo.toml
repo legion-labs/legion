@@ -41,9 +41,9 @@ tree-explorer = ["axum", "clap", "lgn-telemetry-sink"]
 
 [dependencies]
 anyhow = "1.0"
-aws-config = { version = "0.9", optional = true }
-aws-sdk-s3 = { version = "0.9", optional = true }
-aws-sdk-dynamodb = { version = "0.9", optional = true }
+aws-config = { version = "0.11", optional = true }
+aws-sdk-s3 = { version = "0.11", optional = true }
+aws-sdk-dynamodb = { version = "0.11", optional = true }
 async-stream = "0.3"
 async-trait = "0.1"
 async-recursion = "1"
@@ -101,6 +101,16 @@ rand = "0.8"
 tempfile = "3.2"
 testcontainers = "0.12"
 
+[package.metadata.cargo-udeps.ignore]
+normal = [
+    "axum",
+    "clap",
+    "console",
+    "indicatif",
+    "lgn-cli-utils",
+    "lgn-telemetry-sink",
+]
+
 [[package.metadata.monorepo.publish]]
 name = "content-store-srv"
 type = "docker"
@@ -115,13 +125,3 @@ RUN apt-get update && apt-get install -y libssl-dev ca-certificates
 ENTRYPOINT ["{ binaries.content-store-srv }"]
 """
 allow-aws-ecr-creation = true
-
-[package.metadata.cargo-udeps.ignore]
-normal = [
-    "axum",
-    "clap",
-    "console",
-    "indicatif",
-    "lgn-cli-utils",
-    "lgn-telemetry-sink",
-]
