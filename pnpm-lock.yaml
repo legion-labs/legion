@@ -206,6 +206,7 @@ importers:
       '@types/jest': ^27.5.1
       '@types/progressbar.js': ^1.1.2
       '@types/tailwindcss': ^3.0.10
+      '@types/testing-library__jest-dom': ^5.14.3
       '@typescript-eslint/eslint-plugin': ^5.23.0
       '@typescript-eslint/parser': ^5.23.0
       autoprefixer: ^10.4.7
@@ -278,6 +279,7 @@ importers:
       '@types/d3': 7.1.0
       '@types/jest': 27.5.1
       '@types/tailwindcss': 3.0.10
+      '@types/testing-library__jest-dom': 5.14.3
       '@typescript-eslint/eslint-plugin': 5.23.0_17b6d2ce7129f0b36f2c30ae592c16e7
       '@typescript-eslint/parser': 5.23.0_eslint@8.15.0+typescript@4.6.4
       autoprefixer: 10.4.7_postcss@8.4.13
@@ -327,6 +329,7 @@ importers:
       '@trivago/prettier-plugin-sort-imports': ^3.2.0
       '@types/color-convert': ^2.0.0
       '@types/jest': ^27.5.1
+      '@types/testing-library__jest-dom': ^5.14.3
       '@types/uuid': ^8.3.4
       '@typescript-eslint/eslint-plugin': ^5.23.0
       '@typescript-eslint/parser': ^5.23.0
@@ -403,6 +406,7 @@ importers:
       '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.2
       '@types/color-convert': 2.0.0
       '@types/jest': 27.5.1
+      '@types/testing-library__jest-dom': 5.14.3
       '@types/uuid': 8.3.4
       '@typescript-eslint/eslint-plugin': 5.23.0_17b6d2ce7129f0b36f2c30ae592c16e7
       '@typescript-eslint/parser': 5.23.0_eslint@8.15.0+typescript@4.6.4
@@ -446,6 +450,7 @@ importers:
       '@trivago/prettier-plugin-sort-imports': ^3.2.0
       '@types/color-convert': ^2.0.0
       '@types/jest': ^27.5.1
+      '@types/testing-library__jest-dom': ^5.14.3
       '@typescript-eslint/eslint-plugin': ^5.23.0
       '@typescript-eslint/parser': ^5.23.0
       autoprefixer: ^10.4.7
@@ -505,6 +510,7 @@ importers:
       '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.2
       '@types/color-convert': 2.0.0
       '@types/jest': 27.5.1
+      '@types/testing-library__jest-dom': 5.14.3
       '@typescript-eslint/eslint-plugin': 5.23.0_17b6d2ce7129f0b36f2c30ae592c16e7
       '@typescript-eslint/parser': 5.23.0_eslint@8.15.0+typescript@4.6.4
       autoprefixer: 10.4.7_postcss@8.4.13
@@ -549,6 +555,7 @@ importers:
       '@types/color-convert': ^2.0.0
       '@types/estree': ^0.0.51
       '@types/jest': ^27.5.1
+      '@types/testing-library__jest-dom': ^5.14.3
       '@typescript-eslint/eslint-plugin': ^5.23.0
       '@typescript-eslint/parser': ^5.23.0
       autoprefixer: ^10.4.7
@@ -609,6 +616,7 @@ importers:
       '@types/color-convert': 2.0.0
       '@types/estree': 0.0.51
       '@types/jest': 27.5.1
+      '@types/testing-library__jest-dom': 5.14.3
       '@typescript-eslint/eslint-plugin': 5.23.0_17b6d2ce7129f0b36f2c30ae592c16e7
       '@typescript-eslint/parser': 5.23.0_eslint@8.15.0+typescript@4.6.4
       autoprefixer: 10.4.7_postcss@8.4.13

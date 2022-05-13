@@ -29,6 +29,7 @@
     "@types/color-convert": "^2.0.0",
     "@types/estree": "^0.0.51",
     "@types/jest": "^27.5.1",
+    "@types/testing-library__jest-dom": "^5.14.3",
     "@typescript-eslint/eslint-plugin": "^5.23.0",
     "@typescript-eslint/parser": "^5.23.0",
     "autoprefixer": "^10.4.7",
