@@ -25,7 +25,6 @@
       // and drop jest below
       // "vitest/globals",
       "jest",
-      "@types/testing-library__jest-dom",
       "vite/client",
       "@lgn/web-client/src/types/electron",
       "@lgn/web-client/src/types/custom-events"
