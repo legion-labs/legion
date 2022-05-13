@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { link } from "svelte-navigator";
-
   import { formatExecutionTime } from "@/lib/format";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
@@ -23,7 +21,6 @@
       <div class="nav-link">
         <a
           href={`/cumulative-call-graph?process=${processId}&${startQueryParam}=${brushStart}&${endQueryParam}=${brushEnd}`}
-          use:link
         >
           <L10n id="metrics-open-cumulative-call-graph" />
         </a>
@@ -31,7 +28,6 @@
       <div class="nav-link">
         <a
           href={`/timeline/${processId}?${startQueryParam}=${brushStart}&${endQueryParam}=${brushEnd}`}
-          use:link
         >
           <L10n id="metrics-open-timeline" />
         </a>

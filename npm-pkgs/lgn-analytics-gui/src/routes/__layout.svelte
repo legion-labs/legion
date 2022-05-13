@@ -1,3 +1,64 @@
+<script lang="ts" context="module">
+  import { goto } from "$app/navigation";
+  import type { Load } from "@sveltejs/kit";
+
+  import { headlessRun } from "@lgn/web-client";
+  import type { Level } from "@lgn/web-client/src/lib/log";
+  import {
+    ConsoleTransport,
+    NotificationsTransport,
+  } from "@lgn/web-client/src/lib/log/transports";
+  import { createNotificationsStore } from "@lgn/web-client/src/stores/notifications";
+
+  const redirectUri = document.location.origin + "/";
+
+  const notifications = createNotificationsStore<Fluent>();
+
+  export const load: Load = async ({ fetch, url }) => {
+    try {
+      const { dispose, initAuthStatus } = await headlessRun({
+        auth: {
+          fetch,
+          issuerUrl:
+            "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz",
+          redirectUri,
+          clientId: "2kp01gr54dfc7qp1325hibcro3",
+          login: {
+            cookies: {
+              accessToken: "analytics_access_token_v2",
+              refreshToken: "analytics_refresh_token_v2",
+            },
+            scopes: ["email", "openid", "profile"],
+          },
+          redirectFunction(url) {
+            return goto(url.toString(), { replaceState: true });
+          },
+          url,
+        },
+        log: {
+          transports: [
+            new ConsoleTransport({
+              level: import.meta.env
+                .VITE_LEGION_ANALYTICS_CONSOLE_LOG_LEVEL as Level,
+            }),
+            new NotificationsTransport<Fluent>({
+              notificationsStore: notifications,
+              level: import.meta.env
+                .VITE_LEGION_ANALYTICS_NOTIFICATION_LOG_LEVEL as Level,
+            }),
+          ],
+        },
+      });
+
+      return { props: { dispose, initAuthStatus, notifications } };
+    } catch (error) {
+      log.error("Application couldn't start", error);
+
+      return { status: 500 };
+    }
+  };
+</script>
+
 <script lang="ts">
   import { onMount, setContext } from "svelte";
   import { writable } from "svelte/store";
@@ -9,22 +70,15 @@
   import log from "@lgn/web-client/src/lib/log";
   import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
   import { createL10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
+  import accessToken from "@lgn/web-client/src/stores/accessToken";
   import type { NotificationsStore } from "@lgn/web-client/src/stores/notifications";
   import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
   import en from "@/assets/locales/en-US/main.ftl?raw";
   import fr from "@/assets/locales/fr-CA/main.ftl?raw";
-  import CallGraphFlat from "@/components/CallGraphFlat/CallGraphFlat.svelte";
-  import { Route, Router } from "@/lib/navigator";
-  import Health from "@/pages/Health.svelte";
-
-  import Log from "./components/Log/Log.svelte";
-  import MetricsCanvas from "./components/Metric/MetricCanvas.svelte";
-  import Header from "./components/Misc/Header.svelte";
-  import LoadingBar from "./components/Misc/LoadingBar.svelte";
-  import ProcessPage from "./components/Process/ProcessPage.svelte";
-  import TimelineRenderer from "./components/Timeline/Timeline.svelte";
-  import { getThreadItemLength } from "./components/Timeline/Values/TimelineValues";
+  import Header from "@/components/Misc/Header.svelte";
+  import LoadingBar from "@/components/Misc/LoadingBar.svelte";
+  import { getThreadItemLength } from "@/components/Timeline/Values/TimelineValues";
   import {
     debugContextKey,
     httpClientContextKey,
@@ -35,8 +89,10 @@
     themeStorageKey,
     threadItemLengthContextKey,
     threadItemLengthFallback,
-  } from "./constants";
-  import { makeGrpcClient } from "./lib/client";
+  } from "@/constants";
+  import { makeGrpcClient } from "@/lib/client";
+
+  import "../assets/index.css";
 
   export let initAuthStatus: InitAuthStatus | null;
 
@@ -80,7 +136,7 @@
 
   setContext(l10nOrchestratorContextKey, l10n);
 
-  setContext(httpClientContextKey, makeGrpcClient());
+  setContext(httpClientContextKey, makeGrpcClient($accessToken));
 
   setContext(notificationsContextKey, notifications);
 
@@ -123,34 +179,10 @@
 
 <LoadingBar />
 
+<Header />
+
 <div class="pt-2 pb-4 antialiased">
-  <Header />
   <div class="pl-5 pr-5 pt-5 overflow-hidden">
-    <Router>
-      <Route path="/" primary={false}>
-        <ProcessPage />
-      </Route>
-      <Route path="/health">
-        <Health />
-      </Route>
-      <Route path="/log/:id" let:params let:location primary={false}>
-        {#key params.id + location.search}
-          <Log id={params.id} />
-        {/key}
-      </Route>
-      <Route path="/timeline/:id" let:params let:location primary={false}>
-        {#key params.id + location.search}
-          <TimelineRenderer processId={params.id} />
-        {/key}
-      </Route>
-      <Route path="/metrics/:id" let:params primary={false}>
-        {#key params.id}
-          <MetricsCanvas id={params.id} />
-        {/key}
-      </Route>
-      <Route path="/cumulative-call-graph" primary={false}>
-        <CallGraphFlat />
-      </Route>
-    </Router>
+    <slot />
   </div>
 </div>

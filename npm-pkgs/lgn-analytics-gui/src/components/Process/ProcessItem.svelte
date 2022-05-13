@@ -1,6 +1,5 @@
 <script lang="ts">
   import { formatDistance } from "date-fns";
-  import { link } from "svelte-navigator";
 
   import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
@@ -131,7 +130,7 @@
     <div class="flex ml-auto">
       <div class="w-8">
         {#if processInstance.nbLogBlocks > 0}
-          <a href={`/log/${processInstance.processInfo.processId}`} use:link>
+          <a href={`/log/${processInstance.processInfo.processId}`}>
             <i
               title="Log ({processInstance.nbLogBlocks})"
               class="bi bi-card-text"
@@ -141,10 +140,7 @@
       </div>
       <div class="w-8">
         {#if processInstance.nbMetricBlocks > 0}
-          <a
-            href={`/metrics/${processInstance.processInfo.processId}`}
-            use:link
-          >
+          <a href={`/metrics/${processInstance.processInfo.processId}`}>
             <i
               title="Metrics ({processInstance.nbMetricBlocks})"
               class="bi bi-graph-up"
@@ -154,10 +150,7 @@
       </div>
       <div class="w-8">
         {#if processInstance.nbCpuBlocks > 0}
-          <a
-            href={`/timeline/${processInstance.processInfo.processId}`}
-            use:link
-          >
+          <a href={`/timeline/${processInstance.processInfo.processId}`}>
             <i
               title="Timeline ({processInstance.nbCpuBlocks})"
               class="bi bi-body-text"

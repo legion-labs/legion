@@ -5,10 +5,9 @@
   import { debounced } from "@lgn/web-client/src/lib/store";
 
   import L10n from "@/components/Misc/L10n.svelte";
+  import Loader from "@/components/Misc/Loader.svelte";
+  import ProcessItem from "@/components/Process/ProcessItem.svelte";
   import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
-
-  import Loader from "../Misc/Loader.svelte";
-  import ProcessItem from "./ProcessItem.svelte";
 
   type Mode = "default" | "search";
 

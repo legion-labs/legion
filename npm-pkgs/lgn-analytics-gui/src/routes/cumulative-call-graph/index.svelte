@@ -1,19 +1,17 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import { onMount } from "svelte";
-  import { useLocation } from "svelte-navigator";
 
+  import GraphHeader from "@/components/CallGraphFlat/CallGraphFlatHeader.svelte";
+  import GraphNode from "@/components/CallGraphFlat/CallGraphFlatNode.svelte";
+  import Loader from "@/components/Misc/Loader.svelte";
   import { getHttpClientContext } from "@/contexts";
   import { CallGraphParameters } from "@/lib/CallGraph/CallGraphParameters";
   import { getProcessCumulatedCallGraphFlat } from "@/lib/CallGraph/CallGraphStore";
   import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
 
-  import Loader from "../Misc/Loader.svelte";
-  import GraphHeader from "./CallGraphFlatHeader.svelte";
-  import GraphNode from "./CallGraphFlatNode.svelte";
-
   const components: Record<number, GraphNode> = {};
-  const locationStore = useLocation();
   const client = getHttpClientContext();
 
   let beginMsFilter = 0;
@@ -28,7 +26,7 @@
       processId,
       beginMs: beginMsFilter,
       endMs: endMsFilter,
-    } = CallGraphParameters.getGraphParameter($locationStore.search));
+    } = CallGraphParameters.getGraphParameter($page.url.search));
 
     loadingStore.reset(1);
 

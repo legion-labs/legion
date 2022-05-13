@@ -1,7 +1,14 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
-// It's really painful that the type denition doesn't support commonjs
+const path = require("path");
 
+const contentGlobSuffix = "**/*.{svelte,ts}";
+
+const srcContentDir = "./src";
+
+const lgnFrontendContentDir = "./node_modules/@lgn/web-client/src";
+
+// It's really painful that the type denition doesn't support commonjs
 /** @type {any} */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, no-undef
 const plugin_ = require("tailwindcss/plugin");
@@ -72,7 +79,11 @@ const themePlugin = plugin(function ({ addComponents }) {
 // eslint-disable-next-line no-undef
 module.exports = {
   mode: "jit",
-  content: ["index.html", "./src/**/*.{svelte,ts}"],
+  content: [
+    path.join(srcContentDir, contentGlobSuffix),
+    path.join(lgnFrontendContentDir, contentGlobSuffix),
+    path.join(lgnFrontendContentDir, "app.html"),
+  ],
   theme: {
     fontFamily: {
       default: "Inter,Arial,sans-serif",

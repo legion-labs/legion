@@ -1,6 +1,9 @@
+<!-- <script lang="ts" context="module">
+  export const load: Load = async ({ fetch, url }) => {
+</script> -->
 <script lang="ts">
+  import { page } from "$app/stores";
   import { onMount } from "svelte";
-  import { link } from "svelte-navigator";
 
   import type { LogEntry } from "@lgn/proto-telemetry/dist/analytics";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
@@ -12,7 +15,7 @@
 
   const client = getHttpClientContext();
 
-  export let id: string;
+  const processId = $page.params.processId;
 
   let nbEntries = 0;
   let viewRange: [number, number] = [0, 0];
@@ -22,14 +25,14 @@
 
   async function fetchLogEntries() {
     const { process } = await client.find_process({
-      processId: id,
+      processId,
     });
     if (!process) {
-      throw new Error(`Process ${id} not found`);
+      throw new Error(`Process ${processId} not found`);
     }
     processInfo = process;
 
-    const { count } = await client.nb_process_log_entries({ processId: id });
+    const { count } = await client.nb_process_log_entries({ processId });
     nbEntries = count;
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -91,7 +94,7 @@
       </div>
       {#if processInfo.parentProcessId}
         <div class="text-primary">
-          <a href={`/log/${processInfo.parentProcessId}`} use:link>
+          <a href={`/log/${processInfo.parentProcessId}`}>
             <L10n id="log-parent-link" />
           </a>
         </div>
@@ -125,22 +128,20 @@
         <div class="flex space-x-4">
           <span class="nav-link">
             <a
-              href={`/log/${id}?begin=0&end=${Math.min(
+              href={`/log/${processId}?begin=0&end=${Math.min(
                 MAX_NB_ENTRIES_IN_PAGE,
                 nbEntries
               )}`}
-              use:link
             >
               <L10n id="global-pagination-first" />
             </a>
           </span>
           <span class="nav-link">
             <a
-              href={`/log/${id}?begin=${Math.max(
+              href={`/log/${processId}?begin=${Math.max(
                 0,
                 viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
               )}&end=${viewRange[0]}`}
-              use:link
             >
               <L10n id="global-pagination-previous" />
             </a>
@@ -151,20 +152,18 @@
         <div class="flex space-x-4">
           <span class="nav-link">
             <a
-              href={`/log/${id}?begin=${viewRange[1]}&end=${
+              href={`/log/${processId}?begin=${viewRange[1]}&end=${
                 viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
               }`}
-              use:link
             >
               <L10n id="global-pagination-next" />
             </a>
           </span>
           <span class="nav-link">
             <a
-              href={`/log/${id}?begin=${
+              href={`/log/${processId}?begin=${
                 nbEntries - MAX_NB_ENTRIES_IN_PAGE
               }&end=${nbEntries}`}
-              use:link
             >
               <L10n id="global-pagination-last" />
             </a>

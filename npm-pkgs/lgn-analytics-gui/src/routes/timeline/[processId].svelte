@@ -1,27 +1,25 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import { afterUpdate, onMount, tick } from "svelte";
-  import { useLocation } from "svelte-navigator";
   import { get } from "svelte/store";
 
+  import CallGraph from "@/components/CallGraphHierachy/CallGraphHierachy.svelte";
+  import Loader from "@/components/Misc/Loader.svelte";
+  import { TimelineStateManager } from "@/components/Timeline/Stores/TimelineStateManager";
+  import type { TimelineStateStore } from "@/components/Timeline/Stores/TimelineStateStore";
+  import TimelineProcess from "@/components/Timeline/TimelineProcess.svelte";
+  import TimelineAction from "@/components/Timeline/Tools/TimelineAction.svelte";
+  import TimelineAxis from "@/components/Timeline/Tools/TimelineAxis.svelte";
+  import TimelineMinimap from "@/components/Timeline/Tools/TimelineMinimap.svelte";
+  import TimelineRange from "@/components/Timeline/Tools/TimelineRange.svelte";
+  import TimelineSearch from "@/components/Timeline/Tools/TimelineSearch.svelte";
+  import { pixelMargin } from "@/components/Timeline/Values/TimelineValues";
   import { getHttpClientContext, getThreadItemLengthContext } from "@/contexts";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
-  import CallGraph from "../CallGraphHierachy/CallGraphHierachy.svelte";
-  import Loader from "../Misc/Loader.svelte";
-  import { TimelineStateManager } from "./Stores/TimelineStateManager";
-  import type { TimelineStateStore } from "./Stores/TimelineStateStore";
-  import TimelineProcess from "./TimelineProcess.svelte";
-  import TimelineAction from "./Tools/TimelineAction.svelte";
-  import TimelineAxis from "./Tools/TimelineAxis.svelte";
-  import TimelineMinimap from "./Tools/TimelineMinimap.svelte";
-  import TimelineRange from "./Tools/TimelineRange.svelte";
-  import TimelineSearch from "./Tools/TimelineSearch.svelte";
-  import { pixelMargin } from "./Values/TimelineValues";
+  const processId = $page.params.processId;
 
-  export let processId: string;
-
-  const location = useLocation();
   const client = getHttpClientContext();
   const threadItemLength = getThreadItemLengthContext();
 
@@ -49,7 +47,7 @@
 
   onMount(async () => {
     loadingStore.reset(10);
-    const url = new URLSearchParams($location.search);
+    const url = new URLSearchParams($page.url.search);
     const s = url.get(startQueryParam);
     const start = s != null ? Number.parseFloat(s) : null;
     const e = url.get(endQueryParam);
