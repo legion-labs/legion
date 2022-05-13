@@ -1,0 +1,11 @@
+use crate::responses;
+use crate::errors::Result;
+use lgn_api_codegen::Extra;
+
+#[async_trait::async_trait]
+pub trait Api {
+{% for route in api.routes %}
+    {% if let Some(summary) = route.summary %}/// {{ summary }}{% endif %}
+    {% include "signature.rs.jinja" %};
+{% endfor %}
+}
