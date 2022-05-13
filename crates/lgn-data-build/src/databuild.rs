@@ -551,7 +551,7 @@ impl DataBuild {
                         all_deps_compiled
                     });
             info!(
-                "ready: {}, pending {}, ongoing: {}, compiled: {}/{}",
+                "Progress: ready: {}, pending {}, ongoing: {}, done: {}/{}",
                 ready.len(),
                 pending.len(),
                 work.len(),
@@ -564,7 +564,7 @@ impl DataBuild {
             let num_ready = ready.len();
             for compile_node_index in ready {
                 let compile_node = build_graph.node_weight(compile_node_index).unwrap();
-                info!("{:?} is ready", compile_node);
+                info!("Progress: {:?} is ready", compile_node);
                 // compile non-source dependencies.
                 if let Some(direct_dependency) = compile_node.direct_dependency() {
                     let mut n =
@@ -730,7 +730,7 @@ impl DataBuild {
             }
 
             info!(
-                "new ongoing work: {}, ongoing work: {}, pending: {}, compiled: {}/{}",
+                "Progress: new work: {}, total work: {}, pending: {}, done: {}/{}",
                 new_work.len(),
                 work.len() + new_work.len(),
                 topological_order.len(),
@@ -752,7 +752,7 @@ impl DataBuild {
             if let Ok((node_index, resource_infos, resource_references, stats)) = result {
                 let compile_node = build_graph.node_weight(node_index).unwrap();
                 compiling.remove(&compile_node.to_unnamed());
-                info!("completed: {}", compile_node);
+                info!("Progress: done: {}", compile_node);
                 accumulated_dependencies.extend(resource_infos.iter().map(|res| {
                     CompiledResource {
                         path: res.compiled_path.clone(),
