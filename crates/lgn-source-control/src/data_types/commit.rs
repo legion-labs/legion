@@ -44,6 +44,7 @@ pub struct Commit {
 
 impl Commit {
     #[span_fn]
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: CommitId,
         owner: String,

@@ -193,26 +193,6 @@ impl CanonicalPath {
         )
     }
 
-    /// Split a canonical path in two parts from the left, if possible.
-    ///
-    /// If the canonical path cannot be split because it contains only one part, `None` is returned as the second part.
-    pub(crate) fn split_left(&self) -> Option<(&str, Option<Self>)> {
-        if self.is_root() {
-            return None;
-        }
-
-        Some(if self.parts.len() > 1 {
-            (
-                &self.parts[0],
-                Some(Self {
-                    parts: self.parts[1..].to_vec(),
-                }),
-            )
-        } else {
-            (&self.parts[0], None)
-        })
-    }
-
     /// Returns the name of the file or directory designated by the canonical path.
     ///
     /// If the path indicates the root, `None` is returned.
@@ -330,13 +310,6 @@ mod tests {
         assert_eq!(cp("/a/b/c/d").split(), (cp("/a/b/c"), Some("d")));
         assert_eq!(cp("/a").split(), (cp("/"), Some("a")));
         assert_eq!(cp("/").split(), (cp("/"), None));
-    }
-
-    #[test]
-    fn test_canonical_path_split_left() {
-        assert_eq!(cp("/a/b/c/d").split_left(), Some(("a", Some(cp("/b/c/d")))));
-        assert_eq!(cp("/a").split_left(), Some(("a", None)));
-        assert_eq!(cp("/").split_left(), None);
     }
 
     #[test]

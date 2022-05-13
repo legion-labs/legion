@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::DateTime;
-use lgn_content_store::{indexing::TreeIdentifier, Identifier};
+use lgn_content_store::indexing::TreeIdentifier;
 use lgn_tracing::prelude::*;
 use sqlx::{
     any::AnyPoolOptions, error::DatabaseError, migrate::MigrateDatabase, mysql::MySqlDatabaseError,
@@ -382,7 +382,6 @@ impl SqlIndex {
         .await?;
 
         // TODO get empty TreeIdentifier
-        let empty_tree_id = Identifier::empty();
         let empty_tree_id: TreeIdentifier = "AGE".parse().unwrap();
 
         let initial_commit = Commit::new_unique_now(

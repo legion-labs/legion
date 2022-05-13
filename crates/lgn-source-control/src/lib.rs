@@ -12,7 +12,6 @@ pub mod index;
 //pub mod resolve;
 //pub mod revert;
 mod config;
-mod utils;
 pub mod workspace;
 
 pub use data_types::*;

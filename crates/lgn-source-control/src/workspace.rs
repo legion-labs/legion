@@ -1,23 +1,17 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::Path,
-    sync::Arc,
-};
+use std::{collections::BTreeSet, sync::Arc};
 
-use itertools::Itertools;
 use lgn_content_store::{
     indexing::{
         IndexableResource, ResourceWriter, StaticIndexer, StringPathIndexer, TreeIdentifier,
         TreeLeafNode,
     },
-    Identifier, Provider,
+    Provider,
 };
-use lgn_tracing::{debug, warn};
 use serde::Serialize;
 
 use crate::{
-    Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error, Index, ListBranchesQuery,
-    ListCommitsQuery, MapOtherError, RepositoryIndex, RepositoryName, Result,
+    Branch, Change, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
+    MapOtherError, RepositoryIndex, RepositoryName, Result,
 };
 
 /// Represents a workspace.
@@ -139,11 +133,13 @@ impl Workspace {
         self.index.get_commit(current_branch.head).await
     }
 
+    /*
     /// Get the list of staged changes, regardless of the actual content of the
     /// files or their existence on disk or in the current tree.
     pub async fn get_staged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
         self.backend.get_staged_changes().await
     }
+    */
 
     /// Add a resource to the local changes.
     ///
@@ -155,11 +151,13 @@ impl Workspace {
         path: &str,
         contents: &[u8],
     ) -> Result<(TreeIdentifier, TreeIdentifier)> {
-        let resource_data = WorkspaceResourceContents(contents);
+        let commit = self.get_current_commit().await?;
+
+        let resource_contents = WorkspaceResourceContents(contents);
 
         let resource_identifier = self
             .provider
-            .write_resource(&resource_data)
+            .write_resource(&resource_contents)
             .await
             .map_other_err("writing resource contents")?;
 
@@ -167,7 +165,7 @@ impl Workspace {
             .main_index
             .add_leaf(
                 &self.provider,
-                &self.main_index_tree,
+                &commit.main_index_tree_id,
                 &id.into(),
                 TreeLeafNode::Resource(resource_identifier.clone()),
             )
@@ -178,7 +176,7 @@ impl Workspace {
             .path_index
             .add_leaf(
                 &self.provider,
-                &self.path_index_tree,
+                &commit.path_index_tree_id,
                 &path.into(),
                 TreeLeafNode::Resource(resource_identifier),
             )
@@ -188,6 +186,7 @@ impl Workspace {
         Ok((main_id, file_path_id))
     }
 
+    /*
     /// Add files to the local changes.
     ///
     /// The list of new files added is returned. If all the files were already
@@ -284,7 +283,9 @@ impl Workspace {
 
         Ok(changes_to_save.into_iter().map(Into::into).collect())
     }
+    */
 
+    /*
     /// Mark some local files for edition.
     ///
     /// The list of new files edited is returned. If all the files were already
@@ -348,6 +349,7 @@ impl Workspace {
 
         Ok(changes_to_save.into_iter().map(Into::into).collect())
     }
+    */
 
     /// Mark some local files for deletion.
     ///
@@ -357,6 +359,7 @@ impl Workspace {
         Ok(())
     }
 
+    /*
     /// Mark some local files for deletion.
     ///
     /// The list of new files edited is returned. If all the files were already
@@ -438,7 +441,9 @@ impl Workspace {
             .map(Into::into)
             .collect())
     }
+    */
 
+    /*
     /// Returns the status of the workspace, according to the staging
     /// preference.
     pub async fn status(
@@ -457,7 +462,9 @@ impl Workspace {
             Staging::UnstagedOnly => (BTreeMap::new(), self.get_unstaged_changes().await?),
         })
     }
+    */
 
+    /*
     /// Revert local changes to files and unstage them.
     ///
     /// The list of reverted files is returned. If none of the files had changes
@@ -570,13 +577,15 @@ impl Workspace {
             .map(Into::into)
             .collect())
     }
+    */
 
     /// Commit the changes in the workspace.
     ///
     /// # Returns
     ///
     /// The commit id.
-    pub async fn commit(&self, message: &str, behavior: CommitMode) -> Result<Commit> {
+    pub async fn commit(&self, _message: &str, _behavior: CommitMode) -> Result<Commit> {
+        /*
         let fs_tree = self.get_filesystem_tree([].into()).await?;
 
         let current_branch = self.get_current_branch().await?;
@@ -712,8 +721,11 @@ impl Workspace {
         self.backend.clear_pending_branch_merges().await?;
 
         Ok(commit)
+        */
+        Err(Error::Unspecified("todo".to_owned()))
     }
 
+    /*
     /// Get a list of the currently unstaged changes.
     pub async fn get_unstaged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
         let commit = self.get_current_commit().await?;
@@ -726,7 +738,9 @@ impl Workspace {
 
         self.get_unstaged_changes_for_trees(&tree, &fs_tree).await
     }
+    */
 
+    /*
     /// Get a list of the currently unstaged changes.
     pub async fn get_unstaged_changes_for_trees(
         &self,
@@ -775,6 +789,7 @@ impl Workspace {
 
         Ok(result)
     }
+    */
 
     /// Get the current branch.
     pub async fn get_current_branch(&self) -> Result<Branch> {
@@ -828,7 +843,7 @@ impl Workspace {
         current_branch.attach(&parent_branch);
 
         self.index.insert_branch(&current_branch).await?;
-        self.backend.set_current_branch(&current_branch).await?;
+        // self.backend.set_current_branch(&current_branch).await?;
 
         Ok(current_branch)
     }
@@ -846,7 +861,8 @@ impl Workspace {
     /// Switch to a different branch and updates the current files.
     ///
     /// Returns the commit id of the new branch as well as the changes.
-    pub async fn switch_branch(&self, branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
+    pub async fn switch_branch(&self, _branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
+        /*
         let current_branch = self.get_current_branch().await?;
 
         if branch_name == current_branch.name {
@@ -864,6 +880,8 @@ impl Workspace {
         self.backend.set_current_branch(&branch).await?;
 
         Ok((branch, changes))
+        */
+        Err(Error::Unspecified("todo".to_owned()))
     }
 
     /// Sync the current branch to its latest commit.
@@ -884,7 +902,8 @@ impl Workspace {
     /// # Returns
     ///
     /// The changes.
-    pub async fn sync_to(&self, commit_id: CommitId) -> Result<BTreeSet<Change>> {
+    pub async fn sync_to(&self, _commit_id: CommitId) -> Result<BTreeSet<Change>> {
+        /*
         let mut current_branch = self.get_current_branch().await?;
 
         if current_branch.head == commit_id {
@@ -903,26 +922,8 @@ impl Workspace {
         self.backend.set_current_branch(&current_branch).await?;
 
         Ok(changes)
-    }
-
-    async fn make_file_read_only(&self, path: impl AsRef<Path>, readonly: bool) -> Result<()> {
-        let path = path.as_ref();
-
-        let metadata = tokio::fs::metadata(&path)
-            .await
-            .map_other_err(format!("failed to get metadata for {}", path.display()))?;
-
-        let mut permissions = metadata.permissions();
-
-        if permissions.readonly() == readonly {
-            return Ok(());
-        }
-
-        permissions.set_readonly(readonly);
-
-        tokio::fs::set_permissions(&path, permissions)
-            .await
-            .map_other_err(format!("failed to set permissions for {}", path.display()))
+        */
+        Err(Error::Unspecified("todo".to_owned()))
     }
 
     /// Cache a file to the blob storage cache
@@ -930,6 +931,7 @@ impl Workspace {
     /// # Returns
     ///
     /// The hash of the file.
+    /*
     async fn upload_file(&self, canonical_path: &CanonicalPath) -> Result<Identifier> {
         debug!("caching blob for: {}", canonical_path);
 
@@ -942,7 +944,9 @@ impl Workspace {
             .await
             .map_other_err(format!("failed to cache file `{}`", canonical_path))
     }
+    */
 
+    /*
     async fn download_file(
         &self,
         id: &Identifier,
@@ -972,24 +976,26 @@ impl Workspace {
             Err(err) => Err(err).map_other_err("failed to download blob"),
         }
     }
+    */
 
     async fn initial_checkout(&self) -> Result<BTreeSet<Change>> {
         // 1. Read the branch information.
-        let branch = self.index.get_branch(self.branch_name.as_str()).await?;
+        let branch = self.get_current_branch().await?;
 
-        // 2. Mark the branch as the current branch in the workspace backend.
-        self.backend.set_current_branch(&branch).await?;
+        // 2. Read the head commit information.
+        let _commit = self.index.get_commit(branch.head).await?;
 
-        // 3. Read the head commit information.
-        let commit = self.index.get_commit(branch.head).await?;
-
-        // 4. Read the tree.
+        /*
+        // 3. Read the tree.
         let tree = self.index.get_tree(&commit.root_tree_id).await?;
 
-        // 5. Write the files on disk.
+        // 4. Write the files on disk.
         self.sync_tree(&Tree::empty(), &tree).await
+        */
+        Err(Error::Unspecified("todo".to_owned()))
     }
 
+    /*
     async fn sync_tree(&self, from: &Tree, to: &Tree) -> Result<BTreeSet<Change>> {
         let changes_to_apply = from.get_changes_to(to);
 
@@ -1043,7 +1049,7 @@ impl Workspace {
 
                     let mut reader =
                         self.provider
-                            .get_reader(new_id)
+                            .get_reader(&new_id)
                             .await
                             .map_other_err(format!(
                                 "failed to download blob `{}` to {}",
@@ -1074,7 +1080,9 @@ impl Workspace {
 
         Ok(changes_to_apply)
     }
+    */
 
+    /*
     async fn remove_file(&self, path: &CanonicalPath) -> Result<()> {
         let abs_path = path.to_path_buf(&self.root);
 
@@ -1086,7 +1094,9 @@ impl Workspace {
             .await
             .map_other_err(format!("failed to delete file `{}`", path))
     }
+    */
 
+    /*
     /// Download a blob from the index backend and write it to the local
     /// temporary folder.
     pub async fn download_temporary_file(&self, id: &Identifier) -> Result<tempfile::TempPath> {
@@ -1110,6 +1120,7 @@ impl Workspace {
 
         Ok(tempfile::TempPath::from_path(temp_file_path))
     }
+    */
 }
 
 pub type WorkspaceResourceId = u128;
