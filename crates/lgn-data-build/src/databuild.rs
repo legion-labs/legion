@@ -664,7 +664,6 @@ impl DataBuild {
                                     "Failed to find compilation output for: {}",
                                     direct_dependency
                                 );
-                                todo!();
                                 continue;
                             }
                         }
