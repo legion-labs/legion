@@ -84,7 +84,7 @@ impl Indexer {
                     Some(TreeLeafNode::TreeRoot(tree_id)) => tree_id,
                     Some(TreeLeafNode::Resource(_)) => {
                         return Err(Error::CorruptedTree(format!(
-                            "expected a tree, got a resource: {}",
+                            "expected a tree, got a resource: {:?}",
                             index_key[0]
                         )))
                     }

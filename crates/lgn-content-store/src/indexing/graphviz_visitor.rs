@@ -4,18 +4,21 @@ use async_trait::async_trait;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 use super::{
-    tree::TreeIdentifier, IndexKey, Result, Tree, TreeLeafNode, TreeVisitor, TreeVisitorAction,
+    tree::TreeIdentifier, IndexKey, IndexKeyDisplayFormat, Result, Tree, TreeLeafNode, TreeVisitor,
+    TreeVisitorAction,
 };
 
 pub struct GraphvizVisitor<Output> {
     output: Output,
+    display_format: IndexKeyDisplayFormat,
     visited: HashSet<(TreeIdentifier, IndexKey)>,
 }
 
 impl<Output> GraphvizVisitor<Output> {
-    pub fn new(output: Output) -> Self {
+    pub fn new(output: Output, display_format: IndexKeyDisplayFormat) -> Self {
         Self {
             output,
+            display_format,
             visited: HashSet::new(),
         }
     }
@@ -38,9 +41,12 @@ impl GraphvizVisitor<tokio::fs::File> {
     /// # Errors
     ///
     /// Returns an error if the file cannot be opened.
-    pub async fn create(path: impl AsRef<Path>) -> Result<Self> {
+    pub async fn create(
+        path: impl AsRef<Path>,
+        display_format: IndexKeyDisplayFormat,
+    ) -> Result<Self> {
         let file = tokio::fs::File::create(path).await?;
-        Ok(Self::new(file))
+        Ok(Self::new(file, display_format))
     }
 }
 
@@ -86,7 +92,9 @@ where
                 .write_all(
                     format!(
                         "\"{}\" -> \"{}\" [label=\"{}\"]\n",
-                        parent_id, branch_id, local_key,
+                        parent_id,
+                        branch_id,
+                        local_key.format(self.display_format),
                     )
                     .as_bytes(),
                 )
@@ -119,7 +127,9 @@ where
                 .write_all(
                     format!(
                         "\"{}\" -> \"{}\" [label=\"{}\"]\n",
-                        parent_id, leaf, local_key,
+                        parent_id,
+                        leaf,
+                        local_key.format(self.display_format),
                     )
                     .as_bytes(),
                 )

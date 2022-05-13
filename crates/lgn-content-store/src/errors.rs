@@ -27,6 +27,8 @@ pub enum Error {
     Indexing(#[from] crate::indexing::Error),
     #[error("invalid data-space: {0}")]
     InvalidDataSpace(String),
+    #[error("i/o: {0}")]
+    Io(#[from] std::io::Error),
     #[error("unknown error: {0}")]
     Unknown(#[from] anyhow::Error),
 }

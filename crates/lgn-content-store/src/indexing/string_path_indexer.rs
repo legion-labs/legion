@@ -8,8 +8,7 @@ use crate::{indexing::TreeWriter, Provider};
 
 use super::{
     tree::{TreeIdentifier, TreeLeafNode},
-    Error, IndexKey, IndexPath, IndexPathItem, IntoIndexKey, Result, SearchResult, Tree, TreeNode,
-    TreeReader,
+    Error, IndexKey, IndexPath, IndexPathItem, Result, SearchResult, Tree, TreeNode, TreeReader,
 };
 
 /// A `StringPathIndexer` is an indexer that adds resources according to a
@@ -219,7 +218,7 @@ impl StringPathIndexer {
                 Error::IndexTreeLeafNodeAlreadyExists(index_key.clone(), existing_leaf_node),
             ),
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node with the same key already exists: `{}`",
+                "a branch node with the same key already exists: `{:?}`",
                 index_key
             ))),
             SearchResult::NotFound(mut stack) => {
@@ -245,7 +244,7 @@ impl StringPathIndexer {
                     let tree = Tree {
                         count: 1,
                         total_size: size_delta,
-                        children: vec![(local_key.as_bytes().into_index_key(), node)],
+                        children: vec![(local_key.into(), node)],
                     };
 
                     let tree_id = provider.write_tree(&tree).await?;
@@ -257,7 +256,7 @@ impl StringPathIndexer {
                     item.tree.count += 1;
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
 
                     item.tree.total_size += size_delta;
@@ -267,7 +266,7 @@ impl StringPathIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         break Ok(node.into_branch().unwrap());
                     }
@@ -313,7 +312,7 @@ impl StringPathIndexer {
 
                     loop {
                         if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                            provider.unwrite(old_node.as_identifier()).await?;
+                            provider.unwrite(old_node.as_identifier()).await;
                         }
 
                         item.tree.total_size += data_size;
@@ -326,7 +325,7 @@ impl StringPathIndexer {
                         if let Some(next) = stack.pop() {
                             item = next;
                         } else {
-                            provider.unwrite(root_id.as_identifier()).await?;
+                            provider.unwrite(root_id.as_identifier()).await;
 
                             break Ok((node.into_branch().unwrap(), existing_leaf_node));
                         }
@@ -334,7 +333,7 @@ impl StringPathIndexer {
                 }
             }
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node was found at `{}` which can't be replaced",
+                "a branch node was found at `{:?}` which can't be replaced",
                 index_key
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
@@ -376,7 +375,7 @@ impl StringPathIndexer {
 
                 loop {
                     if let Some(old_node) = item.tree.remove_children(item.key) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
 
                     if !item.tree.is_empty() || self.keep_empty_branches {
@@ -391,7 +390,7 @@ impl StringPathIndexer {
                         // to return.
                         //
                         // This should always return an empty tree.
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         return Ok((
                             provider.write_tree(&Tree::default()).await?,
@@ -411,18 +410,18 @@ impl StringPathIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         break Ok((node.into_branch().unwrap(), existing_leaf_node));
                     }
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
                 }
             }
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node was found at `{}` which can't be removed",
+                "a branch node was found at `{:?}` which can't be removed",
                 index_key
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
@@ -569,7 +568,7 @@ mod tests {
     }
 
     #[test]
-    fn test_filesystem_indexer_sanitize() {
+    fn test_string_path_indexer_sanitize() {
         let idx = StringPathIndexer::new('/');
 
         let b = "foo/bar/baz/qux/quux";
@@ -583,7 +582,7 @@ mod tests {
     }
 
     #[test]
-    fn test_filesystem_indexer_split_first() {
+    fn test_string_path_indexer_split_first() {
         let idx = StringPathIndexer::new('/');
 
         let b = "foo/bar/baz/qux/quux";
@@ -594,7 +593,7 @@ mod tests {
     }
 
     #[test]
-    fn test_filesystem_indexer_split_last() {
+    fn test_string_path_indexer_split_last() {
         let idx = StringPathIndexer::new('/');
 
         let b = "foo/bar/baz/qux/quux";
@@ -605,7 +604,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_filesystem_indexer() {
+    async fn test_string_path_indexer() {
         let provider = Provider::new_in_memory();
         let idx = StringPathIndexer::default();
 
@@ -674,10 +673,8 @@ mod tests {
         assert_eq!(tree.count, 0);
         assert_eq!(tree.total_size(), 0);
 
-        // There should be no identifiers left to pop, as we went back to the
-        // original tree.
-        let ids = provider.pop_referenced_identifiers();
-
-        assert_eq!(&ids, &[]);
+        // The only identifier that should be referenced is the root.
+        let ids = provider.referenced().await;
+        assert_eq!(&ids, &[tree_id.as_identifier().clone()]);
     }
 }

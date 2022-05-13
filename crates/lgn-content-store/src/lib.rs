@@ -12,6 +12,7 @@ mod identifier;
 pub mod indexing;
 mod manifest;
 mod provider;
+mod ref_counter;
 
 pub use alias_providers::*;
 pub use config::*;
@@ -22,3 +23,4 @@ pub use grpc_service::{GrpcProviderSet, GrpcService};
 pub use identifier::{Identifier, InvalidIdentifier};
 pub use manifest::{InvalidManifest, Manifest, ManifestFormat};
 pub use provider::Provider;
+pub(crate) use ref_counter::RefCounter;
