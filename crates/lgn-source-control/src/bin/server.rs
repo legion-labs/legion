@@ -14,19 +14,18 @@ use lgn_auth::jwt::RequestAuthorizer;
 use lgn_auth::UserInfo;
 use lgn_source_control::{
     CanonicalPath, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
-    ListLocksQuery, Lock, RepositoryIndex, RepositoryName, Result, SqlRepositoryIndex, Tree,
+    ListLocksQuery, Lock, RepositoryIndex, RepositoryName, Result, SqlRepositoryIndex,
 };
 use lgn_source_control_proto::source_control_server::{SourceControl, SourceControlServer};
 use lgn_source_control_proto::{
     CommitToBranchRequest, CommitToBranchResponse, CountLocksRequest, CountLocksResponse,
     CreateRepositoryRequest, CreateRepositoryResponse, DestroyRepositoryRequest,
     DestroyRepositoryResponse, GetBranchRequest, GetBranchResponse, GetLockRequest,
-    GetLockResponse, GetTreeRequest, GetTreeResponse, InsertBranchRequest, InsertBranchResponse,
-    ListBranchesRequest, ListBranchesResponse, ListCommitsRequest, ListCommitsResponse,
-    ListLocksRequest, ListLocksResponse, ListRepositoriesRequest, ListRepositoriesResponse,
-    LockRequest, LockResponse, RegisterWorkspaceRequest, RegisterWorkspaceResponse,
-    RepositoryExistsRequest, RepositoryExistsResponse, SaveTreeRequest, SaveTreeResponse,
-    UnlockRequest, UnlockResponse, UpdateBranchRequest, UpdateBranchResponse,
+    GetLockResponse, InsertBranchRequest, InsertBranchResponse, ListBranchesRequest,
+    ListBranchesResponse, ListCommitsRequest, ListCommitsResponse, ListLocksRequest,
+    ListLocksResponse, ListRepositoriesRequest, ListRepositoriesResponse, LockRequest,
+    LockResponse, RepositoryExistsRequest, RepositoryExistsResponse, UnlockRequest, UnlockResponse,
+    UpdateBranchRequest, UpdateBranchResponse,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, info, warn, LevelFilter};
@@ -185,26 +184,6 @@ impl SourceControl for Service {
         }))
     }
 
-    async fn register_workspace(
-        &self,
-        request: tonic::Request<RegisterWorkspaceRequest>,
-    ) -> Result<tonic::Response<RegisterWorkspaceResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let workspace_registration = request.workspace_registration.unwrap_or_default().into();
-        let repository_name = request
-            .repository_name
-            .parse()
-            .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
-
-        index
-            .register_workspace(&workspace_registration)
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        Ok(tonic::Response::new(RegisterWorkspaceResponse {}))
-    }
-
     async fn get_branch(
         &self,
         request: tonic::Request<GetBranchRequest>,
@@ -275,28 +254,6 @@ impl SourceControl for Service {
             .collect();
 
         Ok(tonic::Response::new(ListCommitsResponse { commits }))
-    }
-
-    async fn get_tree(
-        &self,
-        request: tonic::Request<GetTreeRequest>,
-    ) -> Result<tonic::Response<GetTreeResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let repository_name = request
-            .repository_name
-            .parse()
-            .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
-
-        let tree = Some(
-            index
-                .get_tree(&request.tree_id)
-                .await
-                .map_err(|e| tonic::Status::unknown(e.to_string()))?
-                .into(),
-        );
-
-        Ok(tonic::Response::new(GetTreeResponse { tree }))
     }
 
     async fn lock(
@@ -372,28 +329,6 @@ impl SourceControl for Service {
             .collect();
 
         Ok(tonic::Response::new(ListLocksResponse { locks }))
-    }
-
-    async fn save_tree(
-        &self,
-        request: tonic::Request<SaveTreeRequest>,
-    ) -> Result<tonic::Response<SaveTreeResponse>, tonic::Status> {
-        let request = request.into_inner();
-        let repository_name = request
-            .repository_name
-            .parse()
-            .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
-
-        let tree: Result<Tree> = request.tree.unwrap_or_default().try_into();
-        let tree = tree.map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        let tree_id = index
-            .save_tree(&tree)
-            .await
-            .map_err(|e| tonic::Status::unknown(e.to_string()))?;
-
-        Ok(tonic::Response::new(SaveTreeResponse { tree_id }))
     }
 
     async fn commit_to_branch(
