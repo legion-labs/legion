@@ -51,7 +51,7 @@ pub async fn build(
 
     let temp_dir = root_folder.join("temp");
     if !temp_dir.exists() {
-        fs::create_dir(&temp_dir).expect("unable to create temp sub-folder");
+        fs::create_dir_all(&temp_dir).expect("unable to create temp sub-folder");
     }
 
     let build_index_dir = temp_dir.clone();
@@ -80,7 +80,7 @@ pub async fn build(
 
     let runtime_dir = root_folder.join("runtime");
     if !runtime_dir.exists() {
-        fs::create_dir(&runtime_dir).expect("unable to create runtime sub-folder");
+        fs::create_dir_all(&runtime_dir).expect("unable to create runtime sub-folder");
     }
 
     let platform = Platform::Windows;
