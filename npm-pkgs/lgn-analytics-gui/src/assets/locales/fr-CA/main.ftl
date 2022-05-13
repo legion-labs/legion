@@ -30,6 +30,23 @@ process-list-search = Rechercher des processus...
 log-process-id = Identifiant du processus :
 log-executable = Nom de l'exécutable :
 log-parent-link = Parent
+log-parent-table-column =
+  {$columnName ->
+    [level] Sévérité
+    [timeMs] Horodatage
+    [target] Cible
+    [msg] Message
+    *[other] Inconnue
+  }
+global-severity-level =
+  {$level ->
+    [0] Error
+    [1] Warn
+    [2] Info
+    [3] Debug
+    [4] Trace
+    *[other] Unknown
+  }
 
 # Timeline
 timeline-open-cumulative-call-graph = Ouvrir le { LOWERCASE(global-cumulative-call-graph) }

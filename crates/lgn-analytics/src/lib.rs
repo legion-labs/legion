@@ -20,6 +20,13 @@ use prost::Message;
 use sqlx::any::AnyRow;
 use sqlx::Row;
 
+pub struct LogEntry {
+    pub level: Level,
+    pub time: i64,
+    pub target: String,
+    pub msg: String,
+}
+
 #[span_fn]
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
     let db_uri = format!("sqlite://{}/telemetry.db3", data_folder.display());
@@ -652,19 +659,7 @@ where
 }
 
 #[span_fn]
-fn format_log_level(level: u32) -> &'static str {
-    match level {
-        1 => "Error",
-        2 => "Warn",
-        3 => "Info",
-        4 => "Debug",
-        5 => "Trace",
-        _ => "Unknown",
-    }
-}
-
-#[span_fn]
-pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
+pub fn log_entry_from_value(val: &Value) -> Result<Option<LogEntry>> {
     if let Value::Object(obj) = val {
         match obj.type_name.as_str() {
             "LogStaticStrEvent" => {
@@ -674,17 +669,23 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let desc = obj
                     .get::<Arc<lgn_tracing_transit::Object>>("desc")
                     .with_context(|| "reading desc from LogStaticStrEvent")?;
-                let level = desc
-                    .get::<u32>("level")
-                    .with_context(|| "reading level from LogStaticStrEvent")?;
+                let level = Level::from_value(
+                    desc.get::<u32>("level")
+                        .with_context(|| "reading level from LogStaticStrEvent")?,
+                )
+                .with_context(|| "converting level to Level enum")?;
                 let target = desc
                     .get::<Arc<String>>("target")
                     .with_context(|| "reading target from LogStaticStrEvent")?;
                 let msg = desc
                     .get::<Arc<String>>("fmt_str")
                     .with_context(|| "reading fmt_str from LogStaticStrEvent")?;
-                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
-                Ok(Some((time, entry)))
+                Ok(Some(LogEntry {
+                    time,
+                    level,
+                    target: target.as_str().to_string(),
+                    msg: msg.as_str().to_string(),
+                }))
             }
             "LogStringEvent" => {
                 let time = obj
@@ -693,33 +694,45 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let desc = obj
                     .get::<Arc<lgn_tracing_transit::Object>>("desc")
                     .with_context(|| "reading desc from LogStringEvent")?;
-                let level = desc
-                    .get::<u32>("level")
-                    .with_context(|| "reading level from LogStringEvent")?;
+                let level = Level::from_value(
+                    desc.get::<u32>("level")
+                        .with_context(|| "reading level from LogStringEvent")?,
+                )
+                .with_context(|| "converting level to Level enum")?;
                 let target = desc
                     .get::<Arc<String>>("target")
                     .with_context(|| "reading target from LogStringEvent")?;
                 let msg = obj
                     .get::<Arc<String>>("msg")
                     .with_context(|| "reading msg from LogStringEvent")?;
-                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
-                Ok(Some((time, entry)))
+                Ok(Some(LogEntry {
+                    time,
+                    level,
+                    target: target.as_str().to_string(),
+                    msg: msg.as_str().to_string(),
+                }))
             }
             "LogStaticStrInteropEvent" | "LogStringInteropEventV2" | "LogStringInteropEventV3" => {
                 let time = obj
                     .get::<i64>("time")
                     .with_context(|| format!("reading time from {}", obj.type_name.as_str()))?;
-                let level = obj
-                    .get::<u32>("level")
-                    .with_context(|| format!("reading level from {}", obj.type_name.as_str()))?;
+                let level =
+                    Level::from_value(obj.get::<u32>("level").with_context(|| {
+                        format!("reading level from {}", obj.type_name.as_str())
+                    })?)
+                    .with_context(|| "converting level to Level enum")?;
                 let target = obj
                     .get::<Arc<String>>("target")
                     .with_context(|| format!("reading target from {}", obj.type_name.as_str()))?;
                 let msg = obj
                     .get::<Arc<String>>("msg")
                     .with_context(|| format!("reading msg from {}", obj.type_name.as_str()))?;
-                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
-                Ok(Some((time, entry)))
+                Ok(Some(LogEntry {
+                    time,
+                    level,
+                    target: target.as_str().to_string(),
+                    msg: msg.as_str().to_string(),
+                }))
             }
             _ => {
                 warn!("unknown log event {:?}", obj);
@@ -733,7 +746,7 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
 
 // find_process_log_entry calls pred(time_ticks,entry_str) with each log entry
 // until pred returns Some(x)
-pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option<Res>>(
+pub async fn find_process_log_entry<Res, Predicate: FnMut(LogEntry) -> Option<Res>>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
@@ -745,10 +758,10 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
             let payload =
                 fetch_block_payload(connection, blob_storage.clone(), b.block_id.clone()).await?;
             parse_block(&stream, &payload, |val| {
-                if let Some((time, msg)) =
+                if let Some(log_entry) =
                     log_entry_from_value(&val).with_context(|| "log_entry_from_value")?
                 {
-                    if let Some(x) = pred(time, msg) {
+                    if let Some(x) = pred(log_entry) {
                         found_entry = Some(x);
                         return Ok(false); //do not continue
                     }
@@ -766,7 +779,7 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
 // for_each_log_entry_in_block calls fun(time_ticks,entry_str) with each log
 // entry until fun returns false mad
 #[span_fn]
-pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
+pub async fn for_each_log_entry_in_block<Predicate: FnMut(LogEntry) -> bool>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     stream: &StreamInfo,
@@ -775,10 +788,10 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, blob_storage, block.block_id.clone()).await?;
     parse_block(stream, &payload, |val| {
-        if let Some((time, msg)) =
+        if let Some(log_entry) =
             log_entry_from_value(&val).with_context(|| "log_entry_from_value")?
         {
-            if !fun(time, msg) {
+            if !fun(log_entry) {
                 return Ok(false); //do not continue
             }
         }
@@ -789,14 +802,14 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
 }
 
 #[span_fn]
-pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
+pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(LogEntry)>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
     mut process_log_entry: ProcessLogEntry,
 ) -> Result<()> {
-    find_process_log_entry(connection, blob_storage, process_id, |time, entry| {
-        process_log_entry(time, entry);
+    find_process_log_entry(connection, blob_storage, process_id, |log_entry| {
+        process_log_entry(log_entry);
         let nothing: Option<()> = None;
         nothing //continue searching
     })

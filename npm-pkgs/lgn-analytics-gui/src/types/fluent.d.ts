@@ -16,6 +16,9 @@ declare type Fluent = {
   "global-timeline": null;
   "global-metrics": null;
   "global-thread": null;
+  "global-severity-level": {
+    variables: "level";
+  };
   "process-list-user": null;
   "process-list-process": null;
   "process-list-computer": null;
@@ -26,6 +29,9 @@ declare type Fluent = {
   "log-process-id": null;
   "log-executable": null;
   "log-parent-link": null;
+  "log-parent-table-column": {
+    variables: "columnName";
+  };
   "timeline-open-cumulative-call-graph": null;
   "timeline-search": null;
   "timeline-table-function": null;

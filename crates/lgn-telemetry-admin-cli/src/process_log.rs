@@ -9,8 +9,11 @@ pub async fn print_process_log(
     blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
 ) -> Result<()> {
-    for_each_process_log_entry(connection, blob_storage, process_id, |_time, entry| {
-        println!("{}", entry);
+    for_each_process_log_entry(connection, blob_storage, process_id, |log_entry| {
+        println!(
+            "[{}][{}] {}",
+            log_entry.level, log_entry.target, log_entry.msg
+        );
     })
     .await?;
     Ok(())

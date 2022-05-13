@@ -14,7 +14,13 @@
 
   const notifications = createNotificationsStore<Fluent>();
 
+  let loaded = false;
+
   export const load: Load = async ({ fetch, url }) => {
+    if (loaded) {
+      return { status: 200 };
+    }
+
     try {
       const { dispose, initAuthStatus } = await headlessRun({
         auth: {
@@ -49,6 +55,8 @@
           ],
         },
       });
+
+      loaded = true;
 
       return { props: { dispose, initAuthStatus, notifications } };
     } catch (error) {

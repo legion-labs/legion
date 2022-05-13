@@ -227,6 +227,7 @@ impl AnalyticsService {
         let inv_tsc_frequency = get_process_tick_length_ms(process); // factor out
         let ts_offset = process.start_ticks;
         let mut entry_index: u64 = 0;
+
         for stream in find_process_log_streams(&mut connection, &process.process_id)
             .await
             .with_context(|| "error in find_process_log_streams")?
@@ -243,14 +244,17 @@ impl AnalyticsService {
                         self.data_lake_blobs.clone(),
                         &stream,
                         &block,
-                        |ts, entry| {
+                        |log_entry| {
                             if entry_index >= end {
                                 return false;
                             }
                             if entry_index >= begin {
-                                let time_ms = (ts - ts_offset) as f64 * inv_tsc_frequency;
+                                let time_ms =
+                                    (log_entry.time - ts_offset) as f64 * inv_tsc_frequency;
                                 entries.push(LogEntry {
-                                    msg: entry,
+                                    level: (log_entry.level as i32 - 1),
+                                    target: log_entry.target,
+                                    msg: log_entry.msg,
                                     time_ms,
                                 });
                             }

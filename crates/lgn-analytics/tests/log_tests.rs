@@ -120,7 +120,7 @@ fn test_parse_log_interops() {
     let stream_info = get_stream_info(&stream);
     let mut nb_log_entries = 0;
     parse_block(&stream_info, &encoded.payload.unwrap(), |val| {
-        if let Some((_time, _msg)) = log_entry_from_value(&val).unwrap() {
+        if log_entry_from_value(&val).unwrap().is_some() {
             nb_log_entries += 1;
         }
         Ok(true)

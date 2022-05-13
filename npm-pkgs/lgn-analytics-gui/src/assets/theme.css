@@ -27,4 +27,10 @@
   --opacity-text: 60%;
   --opacity-placeholder: 38%;
   --opacity-backdrop: 87%;
+
+  --severity-level-error: 255, 97, 87;
+  --severity-level-warn: 251, 145, 1;
+  --severity-level-info: 52, 170, 255;
+  --severity-level-debug: 164, 164, 164;
+  --severity-level-trace: 194, 194, 194;
 }
