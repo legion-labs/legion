@@ -4,13 +4,15 @@ use lgn_graphics_api::{
     Buffer, BufferCreateFlags, BufferDef, BufferView, BufferViewDef, DeviceContext, MemoryUsage,
     ResourceUsage,
 };
+use lgn_graphics_data::Color;
 
 use crate::{
     cgen::{
         cgen_type::{DirectionalLight, LightingData, OmniDirectionalLight, SpotLight},
         descriptor_set::frame_descriptor_set,
     },
-    core::RenderObjectSet,
+    components::{LightComponent, LightType},
+    core::{RenderObject, RenderObjectSet},
     resources::TransientBufferAllocator,
 };
 
@@ -18,7 +20,13 @@ const OMNI_DIRECTIONAL_LIGHT_MAX: u64 = 4096;
 const DIRECTIONAL_LIGHT_MAX: u64 = 4096;
 const SPOT_LIGHT_MAX: u64 = 4096;
 
-pub struct RenderLight {}
+pub struct RenderLight {
+    pub light_type: LightType,
+    pub color: Color,
+    pub radiance: f32,
+    pub enabled: bool,
+    pub picking_id: u32,
+}
 
 type RenderLights = RenderObjectSet<RenderLight>;
 

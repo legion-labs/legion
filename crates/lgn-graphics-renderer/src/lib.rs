@@ -36,6 +36,8 @@ use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
 use lgn_math::Vec2;
 
+use lgn_tasks::{ComputeTaskPool};
+use lgn_tracing::{span_scope_named};
 pub use renderer::*;
 
 mod render_context;
@@ -66,8 +68,7 @@ pub mod shared;
 
 mod renderdoc;
 
-use crate::core::{GpuUploadManager, RenderCommandManager, RenderManagers, RenderResourcesBuilder};
-use crate::features::ModelPlugin;
+use crate::core::{GpuUploadManager, RenderCommandManager, RenderManagers, RenderResourcesBuilder, RenderObjectSet, RenderCommandBuilder, RenderCommandQueuePool, RenderObjectSetAllocator};
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::lighting::RenderLight;
 use crate::render_pass::TmpRenderPass;
@@ -75,7 +76,7 @@ use crate::render_pass::TmpRenderPass;
 use crate::renderdoc::RenderDocManager;
 use crate::{
     components::{
-        reflect_render_objects, ManipulatorComponent, PickedComponent,
+        reflect_light_components, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
     core::render_graph::{
@@ -164,7 +165,8 @@ impl Plugin for RendererPlugin {
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
         let render_command_manager = RenderCommandManager::new();
-        let mut render_commands = render_command_manager.command_builder();
+        let render_command_queue_pool = RenderCommandQueuePool::new();
+        let mut render_commands = RenderCommandBuilder::new(&render_command_queue_pool);
         let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
         let transient_commandbuffer_manager =
             TransientCommandBufferManager::new(NUM_RENDER_FRAMES, &graphics_queue);
@@ -182,7 +184,7 @@ impl Plugin for RendererPlugin {
         );
 
         let mut mesh_manager = MeshManager::new(static_buffer.allocator());
-        mesh_manager.initialize_default_meshes(render_command_manager.command_builder());
+        mesh_manager.initialize_default_meshes(&mut render_commands);
 
         let texture_manager = TextureManager::new(device_context);
 
@@ -199,6 +201,9 @@ impl Plugin for RendererPlugin {
         let light_manager = LightingManager::new(device_context);        
 
         let renderdoc_manager = RenderDocManager::default();
+
+        let render_light_set_allocator = RenderObjectSetAllocator::<RenderLight>::new();
+        let render_light_set = RenderObjectSet::<RenderLight>::new(1024);
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -265,8 +270,6 @@ impl Plugin for RendererPlugin {
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());
         app.add_plugin(PickingPlugin {});
-        app.add_plugin(ModelPlugin::default());
-        
 
         //
         // Events
@@ -296,7 +299,7 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);        
         app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);        
-        app.add_system_to_stage(RenderStage::Prepare, reflect_render_objects::<LightComponent, RenderLight>);
+        app.add_system_to_stage(RenderStage::Prepare, reflect_light_components);
         app.add_system_to_stage(
             RenderStage::Prepare,
             camera_control.exclusive_system().at_start(),
@@ -325,12 +328,13 @@ impl Plugin for RendererPlugin {
             .insert(transient_buffer)
             .insert(descriptor_heap_manager)
             .insert(transient_commandbuffer_manager)
-            .insert(graphics_queue)
+            .insert(graphics_queue.clone())
             .insert(light_manager)
             .insert(renderdoc_manager)
+            .insert(render_light_set)
             .finalize();
 
-        let renderer = Renderer::new(NUM_RENDER_FRAMES, render_resources, gfx_api);
+        let renderer = Renderer::new(NUM_RENDER_FRAMES, render_command_queue_pool, render_resources, graphics_queue, gfx_api);
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
@@ -428,6 +432,7 @@ fn init_manipulation_manager(
     unsafe_code
 )]
 fn render_update(
+    task_pool: Res<'_, ComputeTaskPool>,
     resources: (
         ResMut<'_, Renderer>,        
         ResMut<'_, PipelineManager>,
@@ -450,7 +455,7 @@ fn render_update(
     ),
 ) {
     // resources
-    let renderer = resources.0;    
+    let mut renderer = resources.0;    
     let mut pipeline_manager = resources.1;
     let mut mesh_renderer = resources.2;
     let mesh_manager = resources.3;
@@ -481,28 +486,46 @@ fn render_update(
                 render_commands.push(renderdoc::RenderDocCaptureCommand::default());                
             }
         }
-    }
+    }    
 
-
-    
-
-    let render_resources = renderer.render_resources().clone();
-
-    drop(renderer);
-
-    //
-    // Render thread
-    //
-    {
-        let q_picked_drawables = q_picked_drawables
+    let picked_drawables = q_picked_drawables
             .iter()
             .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
-        let q_manipulator_drawables = q_manipulator_drawables
-            .iter()
-            .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
-        let q_lights = q_lights
-            .iter()
-            .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
+    let manipulator_drawables = q_manipulator_drawables
+        .iter()
+        .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
+    let lights = q_lights
+        .iter()
+        .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
+
+
+    //
+    // Wait for render thread
+    //
+
+    // todo    
+
+    // 
+    // Sync window (safe access to render resources)
+    //
+
+    let render_resources = renderer.render_resources().clone();
+    render_resources.get_mut::<RenderCommandManager>().sync_update(renderer.render_command_queue_pool()  );
+    render_resources.get_mut::<RenderObjectSet<RenderLight>>().sync_update( &mut render_resources.get_mut::<RenderObjectSetAllocator<RenderLight>>()  );
+
+    
+    // objectives: drop all resources/queries
+
+    drop(renderer);    
+    drop(keyboard_input_events);    
+
+    //
+    // Run render thread
+    //
+
+    task_pool.scope( |scope| {
+        scope.spawn( async  { 
+            span_scope_named!("render_thread");       
 
         let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
         let default_camera = CameraComponent::default();
@@ -514,43 +537,47 @@ fn render_update(
 
         let mut render_scope = render_resources.get_mut::<RenderScope>();
         
-        let mut descriptor_heap_manager = render_resources.get_mut::<DescriptorHeapManager>();
-        let gfx_api = render_resources.get::<GfxApiArc>();
-        let device_context = gfx_api.device_context();
+        let mut descriptor_heap_manager = render_resources.get_mut::<DescriptorHeapManager>();        
+        let device_context = render_resources.get::<GfxApiArc>().device_context().clone();
         let static_buffer = render_resources.get::<UnifiedStaticBuffer>();
         let mut transient_buffer = render_resources.get_mut::<TransientBufferManager>();
         let transient_commandbuffer_manager =
         render_resources.get::<TransientCommandBufferManager>();
         
+        //
+        // Begin frame (before commands)
+        //
+
         render_scope.begin_frame();
         descriptor_heap_manager.begin_frame();
         
         device_context.free_gpu_memory();
         device_context.inc_current_cpu_frame();
+
         transient_buffer.begin_frame();
         transient_commandbuffer_manager.begin_frame();
 
-        render_resources
-            .get::<RenderCommandManager>()
-            .apply(&render_resources);
+        render_resources.get_mut::<RenderObjectSet<RenderLight>>().begin_frame();
 
-        let mut transient_buffer_allocator =
-        TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
+        //
+        // Update 
+        //
+        render_resources
+            .get_mut::<RenderCommandManager>()
+            .apply(&render_resources);
+        
+        render_resources.get::<LightingManager>().update();
+        persistent_descriptor_set_manager.update();
+        pipeline_manager.update();
+        
         
         let mut transient_commandbuffer_allocator =
             TransientCommandBufferAllocator::new(&transient_commandbuffer_manager);
-        let descriptor_pool =
-            descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
+        
         let graphics_queue = render_resources.get::<GraphicsQueue>();
-        let light_manager = render_resources.get::<LightingManager>();
-        let mut renderdoc_manager = render_resources.get_mut::<RenderDocManager>();
-
-        //
-        // Update
-        //
-        light_manager.update();
-        persistent_descriptor_set_manager.update();
-        pipeline_manager.update();
+                
+        let mut transient_buffer_allocator =
+        TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
         render_resources.get_mut::<GpuUploadManager>().upload(
             &mut transient_commandbuffer_allocator,
@@ -564,11 +591,15 @@ fn render_update(
 
         crate::egui::egui_plugin::end_frame(&mut egui);
 
+        let mut renderdoc_manager = render_resources.get_mut::<RenderDocManager>();
         renderdoc_manager.start_frame_capture();
 
         {
+            let descriptor_pool =
+            descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
+
             let mut render_context = RenderContext::new(
-                device_context,
+                &device_context,
                 &graphics_queue,
                 &descriptor_pool,
                 &pipeline_manager,
@@ -588,7 +619,7 @@ fn render_update(
             {
                 let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
 
-                light_manager.per_frame_render(
+                render_resources.get::<LightingManager>().per_frame_render(
                     render_context.transient_buffer_allocator,
                     &mut frame_descriptor_set,
                 );
@@ -694,8 +725,8 @@ fn render_update(
                     cmd_buffer,
                     render_surface.as_mut(),
                     &instance_manager,
-                    q_manipulator_drawables.as_slice(),
-                    q_lights.as_slice(),
+                    manipulator_drawables.as_slice(),
+                    lights.as_slice(),
                     &mesh_manager,
                     camera_component,
                     &mesh_renderer,
@@ -714,8 +745,8 @@ fn render_update(
                     &render_context,
                     cmd_buffer,
                     render_surface.as_mut(),
-                    q_picked_drawables.as_slice(),
-                    q_manipulator_drawables.as_slice(),
+                    picked_drawables.as_slice(),
+                    manipulator_drawables.as_slice(),
                     camera_component,
                     &mesh_manager,
                     &model_manager,
@@ -912,8 +943,12 @@ fn render_update(
             mesh_renderer.end_frame();
 
         }
-        renderdoc_manager.end_frame_capture();
-    }
+        
+        renderdoc_manager.end_frame_capture();    
+
+    } );
+    } );
+        
 }
 
 fn default_descriptor_heap_size() -> DescriptorHeapDef {

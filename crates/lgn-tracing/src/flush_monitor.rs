@@ -9,19 +9,21 @@ use crate::dispatch::{flush_log_buffer, flush_metrics_buffer, for_each_thread_st
 //   Thread streams can't be flushed without introducing a synchronization mechanism. Their capacity is reduced so that the calling code will flush them in a safe manner.
 pub struct FlushMonitor {
     last_flush: AtomicI64,
+    flush_period: u32,
 }
 
 impl FlushMonitor {
-    pub fn new() -> Self {
+    pub fn new(flush_period: u32) -> Self {
         Self {
             last_flush: AtomicI64::new(Local::now().timestamp()),
+            flush_period,
         }
     }
 
     pub fn tick(&self) {
         let now = Local::now().timestamp();
         let diff = now - self.last_flush.load(Ordering::Relaxed);
-        if diff > 60 {
+        if diff > i64::from(self.flush_period) {
             if let Some(sink) = get_sink() {
                 if sink.is_busy() {
                     return;
@@ -42,6 +44,7 @@ impl FlushMonitor {
 
 impl Default for FlushMonitor {
     fn default() -> Self {
-        Self::new()
+        // Default is to flush every minute
+        Self::new(60)
     }
 }

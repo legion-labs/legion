@@ -6,7 +6,10 @@ use lgn_graphics_api::{ApiDef, DeviceContext, Fence, FenceStatus, GfxApi};
 
 use lgn_tracing::span_fn;
 
-use crate::core::{RenderCommandBuilder, RenderCommandManager, RenderResources};
+use crate::core::{
+    RenderCommandBuilder, RenderCommandManager, RenderCommandQueuePool, RenderObject,
+    RenderObjectId, RenderObjectSet, RenderObjectSetAllocator, RenderResources,
+};
 
 use crate::GraphicsQueue;
 
@@ -34,20 +37,26 @@ impl std::ops::Deref for GfxApiArc {
 
 pub struct Renderer {
     num_render_frames: u64,
+    command_queue_pool: RenderCommandQueuePool,
     render_resources: RenderResources,
-    _gfx_api: GfxApiArc,
+    graphics_queue: GraphicsQueue,
+    gfx_api: GfxApiArc,
 }
 
 impl Renderer {
     pub fn new(
         num_render_frames: u64,
+        command_queue_pool: RenderCommandQueuePool,
         render_resources: RenderResources,
+        graphics_queue: GraphicsQueue,
         gfx_api: GfxApiArc,
     ) -> Self {
         Self {
             num_render_frames,
+            command_queue_pool,
             render_resources,
-            _gfx_api: gfx_api,
+            graphics_queue,
+            gfx_api,
         }
     }
 
@@ -59,28 +68,33 @@ impl Renderer {
         &self.render_resources
     }
 
-    pub fn device_context(&self) -> DeviceContext {
-        self.render_resources
-            .get::<GfxApiArc>()
-            .device_context()
-            .clone()
+    pub fn device_context(&self) -> &DeviceContext {
+        self.gfx_api.device_context()
+    }
+
+    pub(crate) fn render_command_queue_pool(&mut self) -> &mut RenderCommandQueuePool {
+        &mut self.command_queue_pool
     }
 
     pub fn render_command_builder(&self) -> RenderCommandBuilder {
-        self.render_resources
-            .get::<RenderCommandManager>()
-            .command_builder()
+        RenderCommandBuilder::new(&self.command_queue_pool)
     }
 
-    pub fn graphics_queue(&self) -> GraphicsQueue {
-        let graphics_queue = self.render_resources.get::<GraphicsQueue>();
-        graphics_queue.clone()
+    pub fn graphics_queue(&self) -> &GraphicsQueue {
+        &self.graphics_queue
+    }
+
+    pub fn render_object_set_allocator<R>(&self) -> &RenderObjectSetAllocator<R>
+    where
+        R: RenderObject,
+    {
+        &self.render_resources.get::<RenderObjectSetAllocator<R>>()
     }
 }
 
 impl Drop for Renderer {
     fn drop(&mut self) {
-        self.graphics_queue().queue_mut().wait_for_queue_idle();
+        self.graphics_queue.queue_mut().wait_for_queue_idle();
     }
 }
 

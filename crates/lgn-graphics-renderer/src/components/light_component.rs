@@ -3,8 +3,16 @@ use lgn_graphics_data::Color;
 
 use lgn_transform::components::Transform;
 
-use crate::{core::RenderObjectId, Renderer};
+use crate::{
+    core::{
+        AddRenderObjectCommand, AsRenderObject, RenderObject, RenderObjectId,
+        UpdateRenderObjectCommand,
+    },
+    lighting::RenderLight,
+    Renderer,
+};
 
+#[derive(Clone, Copy)]
 pub enum LightType {
     Omnidirectional,
     Directional,
@@ -34,26 +42,55 @@ impl Default for LightComponent {
     }
 }
 
-#[allow(clippy::needless_pass_by_value, clippy::type_complexity)]
-pub(crate) fn reflect_render_objects<C, R>(
-    mut renderer: Res<'_, Renderer>,
-    q_changes: Query<'_, '_, (Entity, &Transform, &mut C), Or<(Changed<Transform>, Changed<C>)>>,
-    q_removals: RemovedComponents<'_, C>,
-) where
-    C: Component,
-{
-    println!("reflect lights");
+impl AsRenderObject<RenderLight> for LightComponent {
+    fn as_render_object(&self) -> RenderLight {
+        RenderLight {
+            light_type: self.light_type,
+            color: self.color,
+            radiance: self.radiance,
+            enabled: self.enabled,
+            picking_id: self.picking_id,
+        }
+    }
+}
 
-    // let render_commands = renderer.render_command_builder();
+#[allow(clippy::needless_pass_by_value, clippy::type_complexity)]
+pub(crate) fn reflect_light_components(
+    renderer: Res<'_, Renderer>,
+    mut q_changes: Query<
+        '_,
+        '_,
+        (Entity, &Transform, &mut LightComponent),
+        Changed<LightComponent>,
+    >,
+    q_removals: RemovedComponents<'_, LightComponent>,
+) {
+    let mut render_commands = renderer.render_command_builder();
+    let allocator = renderer.render_object_set_allocator::<RenderLight>();
+
+    for (e, xform, mut c) in q_changes.iter_mut() {
+        if c.render_object_id.is_valid() {
+            render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
+                render_object_id: c.render_object_id,
+                data: c.as_render_object(),
+            });
+        } else {
+            c.render_object_id = allocator.alloc();
+            render_commands.push(AddRenderObjectCommand::<RenderLight> {
+                render_object_id: c.render_object_id,
+                data: c.as_render_object(),
+            });
+        };
+    }
 
     // for e in q_removals.iter() {
 
-    //     render_commands.push( RemoveRenderObjectCommand::<RenderLight>::new(    )  )
+    //     render_commands.push(RemoveRenderObjectCommand::<RenderLight>::new());
 
     //     lighting_manager
     //         .light_set()
     //         .remove(lighting_manager.render_object_id_from_entity(e));
-    // }
+    //}
 
     // for (e, transform, lightcomp) in q_changes.iter_mut() {
 

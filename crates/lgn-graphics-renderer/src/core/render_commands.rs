@@ -5,68 +5,73 @@ use lgn_core::{Handle, ObjectPool};
 
 use super::RenderResources;
 
-struct Inner {
-    render_commands_pool: RwLock<ObjectPool<RenderCommandQueue>>,
-}
-
-#[derive(Clone)]
 pub struct RenderCommandManager {
-    inner: Arc<Inner>,
+    queue_pool: RenderCommandQueuePool,
 }
 
 impl RenderCommandManager {
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(Inner {
-                render_commands_pool: RwLock::new(ObjectPool::new()),
-            }),
+            queue_pool: RenderCommandQueuePool::new(),
         }
     }
 
-    pub fn command_builder(&self) -> RenderCommandBuilder {
-        RenderCommandBuilder::new(self)
+    pub fn sync_update(&mut self, new_pool: &mut RenderCommandQueuePool) {
+        std::mem::swap(&mut self.queue_pool, new_pool);
     }
 
-    pub fn apply(&self, render_resources: &RenderResources) {
-        let mut render_commands_pool = self.inner.render_commands_pool.write();
-        for queue in render_commands_pool.iter_mut() {
+    pub fn apply(&mut self, render_resources: &RenderResources) {
+        let mut pool = self.queue_pool.pool.write();
+        for queue in pool.iter_mut() {
             queue.apply(render_resources);
         }
     }
+}
 
-    fn acquire(&self) -> Handle<RenderCommandQueue> {
-        let mut render_commands_pool = self.inner.render_commands_pool.write();
+#[derive(Clone)]
+pub struct RenderCommandQueuePool {
+    pool: Arc<RwLock<ObjectPool<RenderCommandQueue>>>,
+}
+
+impl RenderCommandQueuePool {
+    pub fn new() -> Self {
+        Self {
+            pool: Arc::new(RwLock::new(ObjectPool::new())),
+        }
+    }
+
+    pub fn acquire(&self) -> Handle<RenderCommandQueue> {
+        let mut render_commands_pool = self.pool.write();
         render_commands_pool.acquire_or_create(RenderCommandQueue::new)
     }
 
-    fn release(&self, handle: Handle<RenderCommandQueue>) {
-        let mut render_commands_pool = self.inner.render_commands_pool.write();
+    pub fn release(&self, handle: Handle<RenderCommandQueue>) {
+        let mut render_commands_pool = self.pool.write();
         render_commands_pool.release(handle);
     }
 }
 
 pub struct RenderCommandBuilder {
-    render_command_manager: RenderCommandManager,
-    render_command_queue: Handle<RenderCommandQueue>,
+    safe_pool: RenderCommandQueuePool,
+    queue_handle: Handle<RenderCommandQueue>,
 }
 
 impl RenderCommandBuilder {
-    pub fn new(render_command_manager: &RenderCommandManager) -> Self {
+    pub fn new(safe_pool: &RenderCommandQueuePool) -> Self {
         Self {
-            render_command_manager: render_command_manager.clone(),
-            render_command_queue: render_command_manager.acquire(),
+            safe_pool: safe_pool.clone(),
+            queue_handle: safe_pool.acquire(),
         }
     }
 
     pub fn push<C: RenderCommand>(&mut self, command: C) {
-        self.render_command_queue.push(command);
+        self.queue_handle.push(command);
     }
 }
 
 impl Drop for RenderCommandBuilder {
     fn drop(&mut self) {
-        self.render_command_manager
-            .release(self.render_command_queue.transfer());
+        self.safe_pool.release(self.queue_handle.transfer());
     }
 }
 

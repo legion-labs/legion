@@ -26,7 +26,7 @@ use lgn_input::InputPlugin;
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
-use lgn_tracing::LevelFilter;
+use lgn_tracing::{flush_monitor::FlushMonitor, LevelFilter};
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
@@ -128,11 +128,13 @@ fn main() {
             height: args.height,
             ..WindowDescriptor::default()
         })
+        .insert_resource(FlushMonitor::new(5))
         .add_plugin(WindowPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(GilrsPlugin::default());
+        .add_plugin(GilrsPlugin::default())
+        .add_system_to_stage(CoreStage::Last, tick_flush_monitor);
 
     if args.snapshot {
         app.insert_resource(SnapshotDescriptor {
@@ -383,4 +385,8 @@ fn on_snapshot_app_exit(
             commands.entity(entity).despawn();
         }
     }
+}
+
+fn tick_flush_monitor(flush_monitor: Res<'_, FlushMonitor>) {
+    flush_monitor.tick();
 }

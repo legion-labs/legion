@@ -1,18 +1,52 @@
+use bit_set::BitSet;
 use crossbeam_channel::{Receiver, Sender};
 use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use slab::Slab;
-use std::{cmp::Ordering, sync::Arc};
+use std::{
+    marker::PhantomData,
+    mem::{ManuallyDrop, MaybeUninit},
+    sync::atomic::AtomicI32,
+};
 
-// RenderObjectId
+use super::RenderCommand;
 
+///
+/// RenderObjectId
+///
+pub trait AsRenderObject<R>
+where
+    R: RenderObject,
+{
+    fn as_render_object(&self) -> R;
+}
+
+pub trait RenderObject: 'static + Send {}
+
+impl<T> RenderObject for T where T: 'static + Send {}
+
+///
+/// RenderObjectId
+///
 #[derive(Copy, Eq, PartialEq, Hash, Clone, Debug)]
 pub struct RenderObjectId {
     feature_idx: u32,
     index: u32,
+    generation: u32,
+}
+
+const RENDER_OBJECT_INVALID: RenderObjectId = RenderObjectId {
+    feature_idx: u32::MAX,
+    index: u32::MAX,
+    generation: u32::MAX,
+};
+
+impl RenderObjectId {
+    pub fn is_valid(&self) -> bool {
+        *self != RENDER_OBJECT_INVALID
+    }
 }
 
 impl Ord for RenderObjectId {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.feature_idx
             .cmp(&other.feature_idx)
             .then(self.index.cmp(&other.index))
@@ -20,202 +54,228 @@ impl Ord for RenderObjectId {
 }
 
 impl PartialOrd for RenderObjectId {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Default for RenderObjectId {
     fn default() -> Self {
+        RENDER_OBJECT_INVALID
+    }
+}
+
+///
+/// Slot
+///
+struct Slot<R> {
+    value: MaybeUninit<R>,
+    generation: u32,
+}
+
+impl<R> Default for Slot<R> {
+    fn default() -> Self {
         Self {
-            feature_idx: u32::MAX,
-            index: u32::MAX,
+            value: MaybeUninit::uninit(),
+            generation: 0,
         }
     }
 }
 
-// RenderObjectHandle
-
-struct RenderObjectHandleInner {
-    index: u32,
-    sender: Sender<u32>,
+///
+/// RenderObjectSetAllocator
+///
+pub struct RenderObjectSetAllocator<R> {
+    free_slot_index: AtomicI32, // updated during sync window
+    free_slots: Vec<u32>,       // updated during sync window
+    _phantom: PhantomData<R>,
 }
 
-impl Drop for RenderObjectHandleInner {
-    fn drop(&mut self) {
-        self.sender.send(self.index).unwrap();
+impl<R> RenderObjectSetAllocator<R>
+where
+    R: RenderObject,
+{
+    pub fn new() -> Self {
+        Self {
+            free_slot_index: AtomicI32::new(0),
+            free_slots: Vec::new(),
+            _phantom: PhantomData,
+        }
     }
-}
 
-pub struct RenderObjectHandle {
-    feature_idx: u32,
-    inner: Arc<RenderObjectHandleInner>,
-}
-
-impl std::fmt::Debug for RenderObjectHandle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RenderObjectHandle")
-            .field("feature_idx", &self.feature_idx)
-            .field("index", &self.inner.index)
-            .finish()
-    }
-}
-
-impl RenderObjectHandle {
-    pub fn to_id(&self) -> RenderObjectId {
-        RenderObjectId {
-            index: self.inner.index,
-            feature_idx: self.feature_idx,
+    pub fn alloc(&self) -> RenderObjectId {
+        let prev_free_slot_index = self
+            .free_slot_index
+            .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+        let free_slot_index = prev_free_slot_index - 1;
+        if free_slot_index >= 0 {
+            let free_slot_index = usize::try_from(free_slot_index).unwrap();
+            let free_slot = self.free_slots[free_slot_index];
+            RenderObjectId {
+                feature_idx: 0,
+                index: free_slot,
+                generation: self.slots[free_slot as usize].generation,
+            }
+        } else {
+            let over_len = usize::try_from(-free_slot_index - 1).unwrap();
+            let free_slot = self.slots.len() + over_len;
+            RenderObjectId {
+                feature_idx: 0,
+                index: free_slot as u32,
+                generation: 0,
+            }
         }
     }
 }
 
-// RenderObjectStorage
-
-pub struct RenderObjectStorage<T> {
-    sender: Sender<u32>,
-    receiver: Receiver<u32>,
-    objects: Slab<T>,
+///
+/// RenderObjectSet
+///
+pub struct RenderObjectSet<R> {
+    slots: Vec<Slot<R>>,
+    allocated: BitSet,
+    inserted: BitSet,
+    updated: BitSet,
+    removed: BitSet,
 }
 
-impl<RenderObjectStaticDataT> RenderObjectStorage<RenderObjectStaticDataT> {
-    fn new(capacity: usize) -> Self {
-        let (sender, receiver) = crossbeam_channel::unbounded();
+impl<R> RenderObjectSet<R>
+where
+    R: RenderObject,
+{
+    pub fn new(capacity: usize) -> Self {
         Self {
-            sender,
-            receiver,
-            objects: Slab::with_capacity(capacity),
+            slots: Vec::with_capacity(capacity),
+            allocated: BitSet::with_capacity(capacity),
+            inserted: BitSet::with_capacity(capacity),
+            updated: BitSet::with_capacity(capacity),
+            removed: BitSet::with_capacity(capacity),
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.objects.is_empty()
+        self.slots.is_empty()
     }
 
     pub fn len(&self) -> usize {
-        self.objects.len()
+        self.slots.len()
     }
 
-    fn insert(&mut self, obj: RenderObjectStaticDataT) -> RenderObjectHandle {
-        self.sync();
-        let id = self.objects.insert(obj) as u32;
-        RenderObjectHandle {
-            feature_idx: 0,
-            inner: Arc::new(RenderObjectHandleInner {
-                index: id,
-                sender: self.sender.clone(),
-            }),
+    #[allow(unsafe_code)]
+    pub fn sync_update(&mut self, allocator: &mut RenderObjectSetAllocator<R>) {
+        self.resize_containers(allocator);
+
+        self.removed
+            .iter()
+            .for_each(|slot_index| self.free_slots.push(u32::try_from(slot_index).unwrap()));
+
+        self.free_slot_index.store(
+            i32::try_from(self.free_slots.len()).unwrap(),
+            std::sync::atomic::Ordering::SeqCst,
+        );
+    }
+
+    pub fn begin_frame(&mut self) {
+        self.inserted.clear();
+        self.updated.clear();
+        self.removed.clear();
+    }
+
+    pub fn insert(&mut self, id: RenderObjectId, render_object: R) {
+        let slot_index = id.index as usize;
+        assert!(slot_index < self.slots.len());
+        let slot = &mut self.slots[slot_index];
+        assert!(id.generation == slot.generation);
+        assert!(!self.allocated.contains(slot_index));
+        slot.value = MaybeUninit::new(render_object);
+        self.allocated.insert(slot_index);
+        self.inserted.insert(slot_index);
+        assert!(!self.updated.contains(slot_index));
+        assert!(!self.removed.contains(slot_index));
+    }
+
+    #[allow(unsafe_code)]
+    pub fn update(&mut self, id: RenderObjectId, render_object: R) {
+        let slot_index = id.index as usize;
+        assert!(slot_index < self.slots.len());
+        let slot = &mut self.slots[slot_index];
+        assert!(id.generation == slot.generation);
+        assert!(self.allocated.contains(slot_index));
+        unsafe {
+            slot.value.assume_init_drop();
         }
+        slot.value = MaybeUninit::new(render_object);
+        self.updated.insert(slot_index);
+        assert!(!self.inserted.contains(slot_index));
+        assert!(!self.removed.contains(slot_index));
     }
 
-    pub fn get_from_id(&self, render_object_id: RenderObjectId) -> &RenderObjectStaticDataT {
-        let key = render_object_id.index as usize;
-        self.objects.get(key).unwrap_or_else(|| {
-            panic!(
-                "{} did not contain id {:?}.",
-                std::any::type_name::<Self>(),
-                key
-            )
-        })
+    #[allow(unsafe_code)]
+    pub fn remove(&mut self, id: RenderObjectId) {
+        let slot_index = id.index as usize;
+        assert!(slot_index < self.slots.len());
+        let slot = &mut self.slots[slot_index];
+        assert!(id.generation == slot.generation);
+        unsafe {
+            slot.value.assume_init_drop();
+        }
+        self.allocated.remove(slot_index);
+        self.removed.insert(slot_index);
+        assert!(!self.inserted.contains(slot_index));
+        assert!(!self.updated.contains(slot_index));
     }
 
-    pub fn get_from_handle(&self, handle: &RenderObjectHandle) -> &RenderObjectStaticDataT {
-        let key = handle.inner.index as usize;
-        self.objects.get(key).unwrap_or_else(|| {
-            panic!(
-                "{} did not contain handle {:?}.",
-                std::any::type_name::<Self>(),
-                handle
-            )
-        })
-    }
-
-    pub fn get_from_handle_mut(
-        &mut self,
-        handle: &RenderObjectHandle,
-    ) -> &mut RenderObjectStaticDataT {
-        let key = handle.inner.index as usize;
-        self.objects.get_mut(key).unwrap_or_else(|| {
-            panic!(
-                "{} did not contain handle {:?}.",
-                std::any::type_name::<Self>(),
-                handle
-            )
-        })
-    }
-
-    fn sync(&mut self) {
-        for index in self.receiver.try_iter() {
-            self.objects.remove(index as usize);
+    #[allow(unsafe_code)]
+    fn resize_containers(&mut self, allocator: &RenderObjectSetAllocator<R>) {
+        let free_slot_index = allocator
+            .free_slot_index
+            .load(std::sync::atomic::Ordering::SeqCst);
+        if free_slot_index < 0 {
+            let additionnal_slots = usize::try_from(-free_slot_index).unwrap();
+            let new_len = self.slots.len() + additionnal_slots;
+            self.slots.reserve(additionnal_slots);
+            unsafe {
+                self.slots.set_len(new_len);
+            }
+            self.allocated.reserve_len(new_len);
+            self.updated.reserve_len(new_len);
+            self.removed.reserve_len(new_len);
         }
     }
 }
 
-// RenderObjectSet
-
-pub struct RenderObjectSet<RenderObjectStaticDataT> {
-    storage: Arc<RwLock<RenderObjectStorage<RenderObjectStaticDataT>>>,
+///
+/// AddRenderObjectCommand
+///
+pub struct AddRenderObjectCommand<R> {
+    pub render_object_id: RenderObjectId,
+    pub data: R,
 }
 
-impl<RenderObjectStaticDataT> RenderObjectSet<RenderObjectStaticDataT> {
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            storage: Arc::new(RwLock::new(RenderObjectStorage::new(capacity))),
-        }
-    }
-
-    pub fn insert(&self, obj: RenderObjectStaticDataT) -> RenderObjectHandle {
-        let handle = {
-            let mut storage = self.write();
-            storage.insert(obj)
-        };
-        handle
-    }
-
-    pub fn read(&self) -> RwLockReadGuard<'_, RenderObjectStorage<RenderObjectStaticDataT>> {
-        self.storage.read()
-    }
-
-    fn write(&self) -> RwLockWriteGuard<'_, RenderObjectStorage<RenderObjectStaticDataT>> {
-        self.storage.write()
+impl<R> RenderCommand for AddRenderObjectCommand<R>
+where
+    R: RenderObject,
+{
+    fn execute(self, render_resources: &super::RenderResources) {
+        let mut set = render_resources.get_mut::<RenderObjectSet<R>>();
+        set.insert(self.render_object_id, self.data);
     }
 }
 
-// pub struct RenderObjectBridge<T> {
+///
+/// UpdateRenderObjectCommand
+///
+pub struct UpdateRenderObjectCommand<R> {
+    pub render_object_id: RenderObjectId,
+    pub data: R,
+}
 
-// }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct TestData {
-        value: u8,
-    }
-
-    #[test]
-    fn test_basic_usage() {
-        type MeshRenderObjectSet = RenderObjectSet<TestData>;
-
-        let set = MeshRenderObjectSet::new(1);
-        assert_eq!(set.read().len(), 0);
-
-        let handle = set.insert(TestData { value: 13 });
-        assert_eq!(set.read().len(), 1);
-
-        // Test access by handle
-        {
-            assert_eq!(set.read().get_from_handle(&handle).value, 13);
-        }
-
-        // Test access by id
-        {
-            assert_eq!(set.read().get_from_id(handle.to_id()).value, 13);
-        }
-
-        drop(handle);
-
-        set.write().sync();
-        assert_eq!(set.read().len(), 0);
+impl<R> RenderCommand for UpdateRenderObjectCommand<R>
+where
+    R: RenderObject,
+{
+    fn execute(self, render_resources: &super::RenderResources) {
+        let mut set = render_resources.get_mut::<RenderObjectSet<R>>();
+        set.update(self.render_object_id, self.data);
     }
 }

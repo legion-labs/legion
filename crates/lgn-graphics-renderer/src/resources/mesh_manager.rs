@@ -50,7 +50,7 @@ impl MeshManager {
         }
     }
 
-    pub fn initialize_default_meshes(&mut self, mut render_commands: RenderCommandBuilder) {
+    pub fn initialize_default_meshes(&mut self, render_commands: &mut RenderCommandBuilder) {
         // Keep consistent with DefaultMeshType
         let default_meshes = vec![
             Mesh::new_plane(1.0),
@@ -67,7 +67,7 @@ impl MeshManager {
         ];
 
         for default_mesh in &default_meshes {
-            let mesh_id = self.add_mesh(&mut render_commands, default_mesh);
+            let mesh_id = self.add_mesh(render_commands, default_mesh);
             self.default_mesh_ids.push(mesh_id);
         }
     }
