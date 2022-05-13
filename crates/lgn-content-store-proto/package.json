@@ -8,7 +8,7 @@
   "private": true,
   "packageManager": "pnpm@6.24.1",
   "scripts": {
-    "clean": "rimraf node_modules dist"
+    "clean": "rimraf node_modules"
   },
   "devDependencies": {
     "rimraf": "^3.0.2",

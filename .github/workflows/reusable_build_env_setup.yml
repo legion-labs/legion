@@ -12,12 +12,13 @@ on:
         value: ${{ jobs.setup_image.outputs.image }}
 
 env:
-  MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
+  MONOREPO_DOCKER_REGISTRY: 616787818023.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
+  AWS_ACCOUNT_ID: 616787818023
 
 jobs:
   setup_image:
     name: Setup Image
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     outputs:
       image: ${{ steps.set-image.outputs.image }}
     steps:

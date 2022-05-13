@@ -20,7 +20,9 @@
       // The @testing-library/jest-dom lib relies on @types/jest
       // which global types conflict with vitest, as long as
       // the conflict isn't solved we need to comment this out
+      // and drop jest below
       // "vitest/globals",
+      "jest",
       "vite/client",
       "@sveltejs/kit"
     ],

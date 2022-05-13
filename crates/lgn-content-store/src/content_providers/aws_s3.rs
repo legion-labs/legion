@@ -541,7 +541,7 @@ mod test {
             "lgn-content-store/test_aws_s3_provider/{}",
             uuid::Uuid::new_v4()
         );
-        let aws_s3_url: AwsS3Url = format!("s3://legionlabs-ci-tests/{}", s3_prefix)
+        let aws_s3_url: AwsS3Url = format!("s3://legionlabs-governance-ci-tests/{}", s3_prefix)
             .parse()
             .unwrap();
 
