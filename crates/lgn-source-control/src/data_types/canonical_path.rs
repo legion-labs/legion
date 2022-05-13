@@ -52,16 +52,6 @@ impl CanonicalPath {
         Ok(Self { parts })
     }
 
-    pub(crate) fn new_from_name(name: impl Into<String>) -> Self {
-        let name: String = name.into();
-
-        if name.is_empty() {
-            return Self::root();
-        }
-
-        Self { parts: vec![name] }
-    }
-
     /// Create a canonical path from a path relative to a specified root.
     ///
     /// Only the root must be canonical and the path can be either absolute or
