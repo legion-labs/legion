@@ -26,9 +26,9 @@
     "benchmark": "vite build --mode development -c benchmarks/vite.config.js -l silent && node dist/benchmarks/index.js"
   },
   "devDependencies": {
+    "@lgn/config": "^0.1.0",
     "@lgn/vite-plugin-ts-proto": "workspace:^0.1.0",
     "@lgn/vite-plugin-wasm": "workspace:^0.1.0",
-    "@lgn/web-client-config": "^0.1.0",
     "@sveltejs/adapter-static": "^1.0.0-next.28",
     "@sveltejs/kit": "^1.0.0-next.327",
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.44",
@@ -70,6 +70,7 @@
     "@fluent/langneg": "^0.6.2",
     "@iconify/svelte": "^2.2.1",
     "@improbable-eng/grpc-web": "^0.15.0",
+    "@lgn/auth": "^0.1.0",
     "@lgn/proto-editor": "^0.1.0",
     "@lgn/proto-log-stream": "^0.1.0",
     "@lgn/proto-runtime": "^0.1.0",

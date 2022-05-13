@@ -7,10 +7,12 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use directories::ProjectDirs;
 use lgn_tracing::{debug, warn};
+use openidconnect::AccessToken;
 use tokio::sync::{Mutex, MutexGuard};
 
-use super::{jwt::UnsecureValidation, Authenticator, ClientTokenSet, Error, Result};
-
+use crate::authenticator::{Authenticator, AuthenticatorWithClaims};
+use crate::UserInfo;
+use crate::{jwt::UnsecureValidation, ClientTokenSet, Error, Result};
 /// A `TokenCache` stores authentication tokens and handles their lifetime.
 #[derive(Clone, Debug)]
 pub struct TokenCache<A> {
@@ -36,6 +38,7 @@ where
     pub fn new_with_application_name(authenticator: A, application: &str) -> Self {
         let project_dirs = ProjectDirs::from("com", "legionlabs", application)
             .expect("failed to determine project dirs");
+
         Self::new(authenticator, project_dirs)
     }
 
@@ -104,7 +107,7 @@ where
         client_token_set: ClientTokenSet,
         authenticator: &A,
     ) -> Result<ClientTokenSet> {
-        authenticator
+        let result = authenticator
             .refresh_login(client_token_set)
             .await
             .map(|token_set| {
@@ -113,7 +116,13 @@ where
                 }
 
                 token_set
-            })
+            });
+
+        if result.is_err() {
+            self.delete_cache()?;
+        }
+
+        result
     }
 }
 
@@ -228,5 +237,32 @@ where
         self.delete_cache()?;
 
         authenticator.logout().await
+    }
+}
+
+#[async_trait]
+impl<T> AuthenticatorWithClaims for TokenCache<T>
+where
+    T: AuthenticatorWithClaims + Send + Sync,
+{
+    async fn get_user_info_claims(&self, access_token: &AccessToken) -> Result<UserInfo> {
+        self.authenticator()
+            .await
+            .get_user_info_claims(access_token)
+            .await
+    }
+
+    async fn authenticate(
+        &self,
+        scopes: &[String],
+        extra_params: &Option<HashMap<String, String>>,
+    ) -> Result<UserInfo> {
+        let client_token_set = self
+            .login(scopes, extra_params)
+            .await
+            .map_err(Error::from)?;
+
+        self.get_user_info_claims(&AccessToken::new(client_token_set.access_token))
+            .await
     }
 }

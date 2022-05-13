@@ -7,7 +7,7 @@ use super::{
     BoxedSignatureValidation, SignatureValidation,
     ValidationResult::{self, Unsupported},
 };
-use crate::authentication::{jwt::signature_validation::RsaSignatureValidation, Error, Result};
+use crate::{jwt::signature_validation::RsaSignatureValidation, Error, Result};
 
 pub struct AwsCognitoSignatureValidation {
     keys: HashMap<String, BoxedSignatureValidation>,

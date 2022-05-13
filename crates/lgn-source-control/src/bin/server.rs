@@ -10,8 +10,8 @@ use std::time::Duration;
 
 use clap::Parser;
 use http::{header, Method};
-use lgn_online::authentication::jwt::RequestAuthorizer;
-use lgn_online::authentication::UserInfo;
+use lgn_auth::jwt::RequestAuthorizer;
+use lgn_auth::UserInfo;
 use lgn_source_control::{
     CanonicalPath, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
     ListLocksQuery, Lock, RepositoryIndex, RepositoryName, Result, SqlRepositoryIndex, Tree,

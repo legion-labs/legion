@@ -25,24 +25,24 @@ switch (platform) {
   case 'android':
     switch (arch) {
       case 'arm64':
-        localFileExisted = existsSync(join(__dirname, 'lgn-web-client.android-arm64.node'))
+        localFileExisted = existsSync(join(__dirname, 'lgn-config-node.android-arm64.node'))
         try {
           if (localFileExisted) {
-            nativeBinding = require('./lgn-web-client.android-arm64.node')
+            nativeBinding = require('./lgn-config-node.android-arm64.node')
           } else {
-            nativeBinding = require('@lgn/web-client-native-android-arm64')
+            nativeBinding = require('@lgn/config-android-arm64')
           }
         } catch (e) {
           loadError = e
         }
         break
       case 'arm':
-        localFileExisted = existsSync(join(__dirname, 'lgn-web-client.android-arm-eabi.node'))
+        localFileExisted = existsSync(join(__dirname, 'lgn-config-node.android-arm-eabi.node'))
         try {
           if (localFileExisted) {
-            nativeBinding = require('./lgn-web-client.android-arm-eabi.node')
+            nativeBinding = require('./lgn-config-node.android-arm-eabi.node')
           } else {
-            nativeBinding = require('@lgn/web-client-native-android-arm-eabi')
+            nativeBinding = require('@lgn/config-android-arm-eabi')
           }
         } catch (e) {
           loadError = e
@@ -56,13 +56,13 @@ switch (platform) {
     switch (arch) {
       case 'x64':
         localFileExisted = existsSync(
-          join(__dirname, 'lgn-web-client.win32-x64-msvc.node')
+          join(__dirname, 'lgn-config-node.win32-x64-msvc.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require('./lgn-web-client.win32-x64-msvc.node')
+            nativeBinding = require('./lgn-config-node.win32-x64-msvc.node')
           } else {
-            nativeBinding = require('@lgn/web-client-native-win32-x64-msvc')
+            nativeBinding = require('@lgn/config-win32-x64-msvc')
           }
         } catch (e) {
           loadError = e
@@ -70,13 +70,13 @@ switch (platform) {
         break
       case 'ia32':
         localFileExisted = existsSync(
-          join(__dirname, 'lgn-web-client.win32-ia32-msvc.node')
+          join(__dirname, 'lgn-config-node.win32-ia32-msvc.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require('./lgn-web-client.win32-ia32-msvc.node')
+            nativeBinding = require('./lgn-config-node.win32-ia32-msvc.node')
           } else {
-            nativeBinding = require('@lgn/web-client-native-win32-ia32-msvc')
+            nativeBinding = require('@lgn/config-win32-ia32-msvc')
           }
         } catch (e) {
           loadError = e
@@ -84,13 +84,13 @@ switch (platform) {
         break
       case 'arm64':
         localFileExisted = existsSync(
-          join(__dirname, 'lgn-web-client.win32-arm64-msvc.node')
+          join(__dirname, 'lgn-config-node.win32-arm64-msvc.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require('./lgn-web-client.win32-arm64-msvc.node')
+            nativeBinding = require('./lgn-config-node.win32-arm64-msvc.node')
           } else {
-            nativeBinding = require('@lgn/web-client-native-win32-arm64-msvc')
+            nativeBinding = require('@lgn/config-win32-arm64-msvc')
           }
         } catch (e) {
           loadError = e
@@ -103,12 +103,12 @@ switch (platform) {
   case 'darwin':
     switch (arch) {
       case 'x64':
-        localFileExisted = existsSync(join(__dirname, 'lgn-web-client.darwin-x64.node'))
+        localFileExisted = existsSync(join(__dirname, 'lgn-config-node.darwin-x64.node'))
         try {
           if (localFileExisted) {
-            nativeBinding = require('./lgn-web-client.darwin-x64.node')
+            nativeBinding = require('./lgn-config-node.darwin-x64.node')
           } else {
-            nativeBinding = require('@lgn/web-client-native-darwin-x64')
+            nativeBinding = require('@lgn/config-darwin-x64')
           }
         } catch (e) {
           loadError = e
@@ -116,13 +116,13 @@ switch (platform) {
         break
       case 'arm64':
         localFileExisted = existsSync(
-          join(__dirname, 'lgn-web-client.darwin-arm64.node')
+          join(__dirname, 'lgn-config-node.darwin-arm64.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require('./lgn-web-client.darwin-arm64.node')
+            nativeBinding = require('./lgn-config-node.darwin-arm64.node')
           } else {
-            nativeBinding = require('@lgn/web-client-native-darwin-arm64')
+            nativeBinding = require('@lgn/config-darwin-arm64')
           }
         } catch (e) {
           loadError = e
@@ -136,12 +136,12 @@ switch (platform) {
     if (arch !== 'x64') {
       throw new Error(`Unsupported architecture on FreeBSD: ${arch}`)
     }
-    localFileExisted = existsSync(join(__dirname, 'lgn-web-client.freebsd-x64.node'))
+    localFileExisted = existsSync(join(__dirname, 'lgn-config-node.freebsd-x64.node'))
     try {
       if (localFileExisted) {
-        nativeBinding = require('./lgn-web-client.freebsd-x64.node')
+        nativeBinding = require('./lgn-config-node.freebsd-x64.node')
       } else {
-        nativeBinding = require('@lgn/web-client-native-freebsd-x64')
+        nativeBinding = require('@lgn/config-freebsd-x64')
       }
     } catch (e) {
       loadError = e
@@ -152,26 +152,26 @@ switch (platform) {
       case 'x64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            join(__dirname, 'lgn-web-client.linux-x64-musl.node')
+            join(__dirname, 'lgn-config-node.linux-x64-musl.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require('./lgn-web-client.linux-x64-musl.node')
+              nativeBinding = require('./lgn-config-node.linux-x64-musl.node')
             } else {
-              nativeBinding = require('@lgn/web-client-native-linux-x64-musl')
+              nativeBinding = require('@lgn/config-linux-x64-musl')
             }
           } catch (e) {
             loadError = e
           }
         } else {
           localFileExisted = existsSync(
-            join(__dirname, 'lgn-web-client.linux-x64-gnu.node')
+            join(__dirname, 'lgn-config-node.linux-x64-gnu.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require('./lgn-web-client.linux-x64-gnu.node')
+              nativeBinding = require('./lgn-config-node.linux-x64-gnu.node')
             } else {
-              nativeBinding = require('@lgn/web-client-native-linux-x64-gnu')
+              nativeBinding = require('@lgn/config-linux-x64-gnu')
             }
           } catch (e) {
             loadError = e
@@ -181,26 +181,26 @@ switch (platform) {
       case 'arm64':
         if (isMusl()) {
           localFileExisted = existsSync(
-            join(__dirname, 'lgn-web-client.linux-arm64-musl.node')
+            join(__dirname, 'lgn-config-node.linux-arm64-musl.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require('./lgn-web-client.linux-arm64-musl.node')
+              nativeBinding = require('./lgn-config-node.linux-arm64-musl.node')
             } else {
-              nativeBinding = require('@lgn/web-client-native-linux-arm64-musl')
+              nativeBinding = require('@lgn/config-linux-arm64-musl')
             }
           } catch (e) {
             loadError = e
           }
         } else {
           localFileExisted = existsSync(
-            join(__dirname, 'lgn-web-client.linux-arm64-gnu.node')
+            join(__dirname, 'lgn-config-node.linux-arm64-gnu.node')
           )
           try {
             if (localFileExisted) {
-              nativeBinding = require('./lgn-web-client.linux-arm64-gnu.node')
+              nativeBinding = require('./lgn-config-node.linux-arm64-gnu.node')
             } else {
-              nativeBinding = require('@lgn/web-client-native-linux-arm64-gnu')
+              nativeBinding = require('@lgn/config-linux-arm64-gnu')
             }
           } catch (e) {
             loadError = e
@@ -209,13 +209,13 @@ switch (platform) {
         break
       case 'arm':
         localFileExisted = existsSync(
-          join(__dirname, 'lgn-web-client.linux-arm-gnueabihf.node')
+          join(__dirname, 'lgn-config-node.linux-arm-gnueabihf.node')
         )
         try {
           if (localFileExisted) {
-            nativeBinding = require('./lgn-web-client.linux-arm-gnueabihf.node')
+            nativeBinding = require('./lgn-config-node.linux-arm-gnueabihf.node')
           } else {
-            nativeBinding = require('@lgn/web-client-native-linux-arm-gnueabihf')
+            nativeBinding = require('@lgn/config-linux-arm-gnueabihf')
           }
         } catch (e) {
           loadError = e
@@ -236,8 +236,9 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { initOAuthClient, authenticate, accessToken } = nativeBinding
+const { get, getOr, getAll, loadAll } = nativeBinding
 
-module.exports.initOAuthClient = initOAuthClient
-module.exports.authenticate = authenticate
-module.exports.accessToken = accessToken
+module.exports.get = get
+module.exports.getOr = getOr
+module.exports.getAll = getAll
+module.exports.loadAll = loadAll

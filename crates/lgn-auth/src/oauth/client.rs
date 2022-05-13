@@ -9,17 +9,19 @@ use hyper::{
 };
 use lgn_tracing::{debug, info, warn};
 use openidconnect::{
-    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata, CoreUserInfoClaims},
+    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
     reqwest::async_http_client,
     AccessToken, AccessTokenHash, AuthType, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
     IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, RedirectUrl, RefreshToken, Scope,
-    SubjectIdentifier, TokenResponse,
+    TokenResponse,
 };
 use tokio::sync::{oneshot, Mutex};
 
-use crate::OAuthClientConfig;
-
-use super::{Authenticator, ClientTokenSet, Error, Result, UserInfo};
+use crate::{
+    authenticator::{Authenticator, AuthenticatorWithClaims},
+    OAuthClientConfig,
+};
+use crate::{ClientTokenSet, Error, Result, UserInfo};
 
 const DEFAULT_REDIRECT_URI: &str = "http://localhost:3000";
 
@@ -59,15 +61,21 @@ impl OAuthClient {
         ID: Into<String>,
         Secret: Into<String>,
     {
-        let issuer_url = IssuerUrl::new(issuer_url.into())
-            .map_err(|error| Error::Internal(format!("{}", error)))?;
+        let issuer_url = IssuerUrl::new(issuer_url.into()).map_err(|error| {
+            Error::Internal(format!("couldn't parse the issuer url: {}", error))
+        })?;
 
         let client_id = ClientId::new(client_id.into());
         let client_secret = client_secret.map(|secret| ClientSecret::new(secret.into()));
 
         let provider_metadata = CoreProviderMetadata::discover_async(issuer_url, async_http_client)
             .await
-            .map_err(|error| Error::Internal(format!("{}", error)))?;
+            .map_err(|error| {
+                Error::Internal(format!(
+                    "couldn't retrieve the provider metadata: {}",
+                    error
+                ))
+            })?;
 
         let redirect_uri = RedirectUrl::new(DEFAULT_REDIRECT_URI.to_string()).unwrap();
 
@@ -89,27 +97,15 @@ impl OAuthClient {
     }
 
     pub fn set_redirect_uri(mut self, redirect_uri: &Uri) -> Result<Self> {
-        let redirect_uri = RedirectUrl::new(redirect_uri.to_string())
-            .map_err(|error| Error::Internal(format!("{}", error)))?;
+        let redirect_uri = RedirectUrl::new(redirect_uri.to_string()).map_err(|error| {
+            Error::Internal(format!("couldn't parse the redirect uri: {}", error))
+        })?;
 
         self.client = self.client.set_redirect_uri(redirect_uri.clone());
 
         self.redirect_uri = redirect_uri;
 
         Ok(self)
-    }
-
-    pub async fn user_info(
-        &self,
-        access_token: AccessToken,
-        subject: Option<SubjectIdentifier>,
-    ) -> Result<CoreUserInfoClaims> {
-        self.client
-            .user_info(access_token, subject)
-            .map_err(Error::internal)?
-            .request_async(async_http_client)
-            .await
-            .map_err(Error::internal)
     }
 
     // TODO: Make this more generic
@@ -136,43 +132,6 @@ impl OAuthClient {
         }
 
         url.to_string()
-    }
-
-    /// Get user information from an access token.
-    pub async fn get_user_info(&self, access_token: &str) -> Result<UserInfo> {
-        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
-            .with_native_roots()
-            .https_or_http()
-            .enable_http2()
-            .build();
-
-        let client = hyper::Client::builder().build::<_, hyper::Body>(https_connector);
-
-        let url = self.provider_metadata.userinfo_endpoint().ok_or_else(|| {
-            Error::Internal("userinfo endpoint not provided by the issuer".into())
-        })?;
-
-        let req = hyper::Request::builder()
-            .method(hyper::Method::GET)
-            .uri(url.as_str())
-            .header(
-                hyper::header::AUTHORIZATION,
-                format!("Bearer {}", access_token),
-            )
-            .body(Body::empty())
-            .unwrap();
-
-        let resp = client
-            .request(req)
-            .await
-            .map_err(|e| Error::Internal(format!("failed to execute HTTP request: {}", e)))?;
-
-        let bytes = hyper::body::to_bytes(resp.into_body())
-            .await
-            .map_err(|e| Error::Internal(format!("failed to read HTTP response: {}", e)))?;
-
-        serde_json::from_slice(&bytes)
-            .map_err(|e| Error::Internal(format!("failed to parse JSON user info: {}", e)))
     }
 
     async fn receive_authorization_code(&self) -> Result<(String, String)> {
@@ -236,7 +195,7 @@ impl OAuthClient {
                         let query = req
                             .uri()
                             .query()
-                            .map(|v| url::form_urlencoded::parse(v.as_bytes()).into_owned());
+                            .map(|v| form_urlencoded::parse(v.as_bytes()));
 
                         let mut query = if let Some(query) = query {
                             query
@@ -278,13 +237,13 @@ impl OAuthClient {
                         let tx_params = tx_params.lock().await.take().unwrap();
                         let tx_done = tx_done.lock().await.take().unwrap();
 
-                        let _error = tx_params.send((code, state));
+                        let _error = tx_params.send((code.into_owned(), state.into_owned()));
                         let _error = tx_done.send(());
 
                         info!("authentication succeeded");
 
                         Ok(Response::new(Body::from(include_str!(
-                            "static/authentication_succeeded.html"
+                            "../static/authentication_succeeded.html"
                         ))))
                     }
                 }))
@@ -369,7 +328,7 @@ impl OAuthClient {
                         info!("logout succeeded");
 
                         Ok(Response::new(Body::from(include_str!(
-                            "static/logout_succeeded.html"
+                            "../static/logout_succeeded.html"
                         ))))
                     }
                 }))
@@ -421,7 +380,7 @@ impl Authenticator for OAuthClient {
                 .add_scopes(scopes.iter().cloned().map(Scope::new).collect::<Vec<_>>())
                 .request_async(async_http_client)
                 .await
-                .map_err(Error::internal)?,
+                .map_err(|error| Error::Internal(format!("couldn't fetch token: {}", error)))?,
             None => {
                 let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
 
@@ -462,7 +421,7 @@ impl Authenticator for OAuthClient {
                     .set_pkce_verifier(pkce_verifier)
                     .request_async(async_http_client)
                     .await
-                    .map_err(Error::internal)?;
+                    .map_err(|error| Error::Internal(format!("couldn't get code {}", error)))?;
 
                 let id_token = token_response
                     .id_token()
@@ -470,14 +429,21 @@ impl Authenticator for OAuthClient {
 
                 let claims = id_token
                     .claims(&self.client.id_token_verifier(), &nonce)
-                    .map_err(Error::internal)?;
+                    .map_err(|error| Error::Internal(format!("couldn't get claims {}", error)))?;
 
                 if let Some(expected_access_token_hash) = claims.access_token_hash() {
                     let actual_access_token_hash = AccessTokenHash::from_token(
                         token_response.access_token(),
-                        &id_token.signing_alg().map_err(Error::internal)?,
+                        &id_token.signing_alg().map_err(|error| {
+                            Error::Internal(format!(
+                                "couldn't get the signing algorithm from id token {}",
+                                error
+                            ))
+                        })?,
                     )
-                    .map_err(Error::internal)?;
+                    .map_err(|error| {
+                        Error::Internal(format!("couldn't initialize access token hash {}", error))
+                    })?;
 
                     if actual_access_token_hash != *expected_access_token_hash {
                         return Err(Error::Internal(
@@ -503,7 +469,7 @@ impl Authenticator for OAuthClient {
     /// If the call does not return a new refresh token within the `TokenSet`,
     /// the specified refresh token will be filled in instead.
     ///
-    /// Consumes the [`ClientTokenSet`] entirely.
+    /// Consumes the provided [`ClientTokenSet`].
     async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
         if let Some(refresh_token) = client_token_set.refresh_token {
             let token_response = self
@@ -511,7 +477,7 @@ impl Authenticator for OAuthClient {
                 .exchange_refresh_token(&RefreshToken::new(refresh_token))
                 .request_async(async_http_client)
                 .await
-                .map_err(Error::internal)?;
+                .map_err(|error| Error::Internal(format!("couldn't get token set: {}", error)))?;
 
             let scopes = client_token_set.scopes;
 
@@ -544,5 +510,62 @@ impl Authenticator for OAuthClient {
         } else {
             Ok(())
         }
+    }
+}
+
+#[async_trait]
+impl AuthenticatorWithClaims for OAuthClient {
+    async fn get_user_info_claims(&self, access_token: &AccessToken) -> Result<UserInfo> {
+        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
+            .with_native_roots()
+            .https_or_http()
+            .enable_http2()
+            .build();
+
+        let client = hyper::Client::builder().build::<_, hyper::Body>(https_connector);
+
+        let url = self.provider_metadata.userinfo_endpoint().ok_or_else(|| {
+            Error::Internal("userinfo endpoint not provided by the issuer".into())
+        })?;
+
+        let req = hyper::Request::builder()
+            .method(hyper::Method::GET)
+            .uri(url.as_str())
+            .header(
+                hyper::header::AUTHORIZATION,
+                format!("Bearer {}", access_token.secret()),
+            )
+            .body(Body::empty())
+            .unwrap();
+
+        let resp = client
+            .request(req)
+            .await
+            .map_err(|e| Error::Internal(format!("failed to execute HTTP request: {}", e)))?;
+
+        let bytes = hyper::body::to_bytes(resp.into_body())
+            .await
+            .map_err(|e| Error::Internal(format!("failed to read HTTP response: {}", e)))?;
+
+        serde_json::from_slice(&bytes)
+            .map_err(|e| Error::Internal(format!("failed to parse JSON user info: {}", e)))
+    }
+
+    async fn authenticate(
+        &self,
+        scopes: &[String],
+        extra_params: &Option<HashMap<String, String>>,
+    ) -> Result<UserInfo> {
+        let client_token_set = self
+            .login(scopes, extra_params)
+            .await
+            .map_err(Error::from)?;
+
+        let user_info_claims = self
+            .get_user_info_claims(&AccessToken::new(client_token_set.access_token))
+            .await
+            .map_err(Error::from)?;
+
+        Ok(user_info_claims)
     }
 }

@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::authentication::{Error, Result};
+use crate::{Error, Result};
 
 /// A JWT 'JOSE' header, as defined by RFC 7519.
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -32,7 +32,7 @@ impl FromStr for Header {
     /// # Examples
     ///
     /// ```
-    /// use lgn_online::authentication::jwt::Header;
+    /// use lgn_auth::jwt::Header;
     ///
     /// let header: Header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9".parse().unwrap();
     ///
@@ -60,7 +60,7 @@ impl ToString for Header {
     /// # Examples
     ///
     /// ```
-    /// use lgn_online::authentication::jwt::Header;
+    /// use lgn_auth::jwt::Header;
     ///
     /// let header = Header {
     ///     alg: "HS256".to_string(),

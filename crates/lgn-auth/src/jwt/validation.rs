@@ -7,7 +7,7 @@ use super::{
     Token,
 };
 
-use crate::authentication::{Error, Result};
+use crate::{Error, Result};
 
 pub type UnsecureValidation = Validation<NoSignatureValidation>;
 
@@ -243,7 +243,7 @@ struct Claims {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::authentication::jwt::signature_validation::RsaSignatureValidation;
+    use crate::jwt::signature_validation::RsaSignatureValidation;
 
     #[derive(Deserialize, PartialEq, Eq, Debug, Clone)]
     struct MyClaims {}

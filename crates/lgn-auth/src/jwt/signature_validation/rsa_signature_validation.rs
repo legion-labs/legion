@@ -1,6 +1,6 @@
 use simple_asn1::BigUint;
 
-use crate::authentication::{Error, Result};
+use crate::{Error, Result};
 
 use super::{SignatureValidation, ValidationResult};
 
@@ -50,7 +50,7 @@ impl SignatureValidation for RsaSignatureValidation {
     /// # Example
     ///
     /// ```
-    /// use lgn_online::authentication::jwt::{
+    /// use lgn_auth::jwt::{
     ///     Token,
     ///     signature_validation::{
     ///         RsaSignatureValidation,

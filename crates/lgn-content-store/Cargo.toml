@@ -64,6 +64,7 @@ http-body = "0.4"
 http-serde = "1"
 indicatif = { version = "0.16", optional = true }
 itertools = "0.10"
+lgn-auth = { path = "../lgn-auth", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-content-store-proto = { path = "../lgn-content-store-proto", version = "0.1.0" }

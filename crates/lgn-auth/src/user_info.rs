@@ -8,7 +8,7 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 /// # Example
 ///
 /// ```rust
-/// use lgn_online::authentication::UserInfo;
+/// use lgn_auth::UserInfo;
 ///
 /// // Bare minimum: we the `sub` field.
 /// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo"}"#).unwrap();
@@ -17,6 +17,9 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 /// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo", "email_verified": "true"}"#).unwrap();
 /// let _: UserInfo = serde_json::from_str(r#"{"sub": "foo", "email_verified": true}"#).unwrap();
 /// ```
+// TODO: Ideally we should allow for a node feature that would automatically make the `UserInfo` struct
+// compatible with Napi. Unfortunately it doesn't work well with the ci and it raises lots of errors.
+// #[cfg_attr(feature = "node", napi_derive::napi(object))]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct UserInfo {
     pub sub: String,
@@ -103,7 +106,10 @@ impl UserInfo {
     }
 }
 
-fn deserialize_string_bool<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+/// Cognito's `email_verified` and `phone_number_verified` values are sometimes booleans and sometimes
+/// strings (`"true"`/`"false"`). This function can be used with the `deserialize_with` attribute of Serde
+/// in order to deserialize such attributes.
+pub fn deserialize_string_bool<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
 where
     D: Deserializer<'de>,
 {

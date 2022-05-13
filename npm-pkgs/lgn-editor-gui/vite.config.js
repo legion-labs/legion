@@ -4,8 +4,8 @@ import path from "path";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+import { loadAll } from "@lgn/config";
 import viteTsProto from "@lgn/vite-plugin-ts-proto";
-import { loadAll } from "@lgn/web-client-config";
 
 // import viteWasmPack from "@lgn/vite-plugin-wasm";
 

@@ -1,20 +1,9 @@
-use std::{collections::HashMap, fmt::Debug, ops::Deref, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 use async_trait::async_trait;
+use openidconnect::AccessToken;
 
-mod client_token_set;
-mod errors;
-mod oauth_client;
-mod token_cache;
-mod user_info;
-
-pub mod jwt;
-
-pub use client_token_set::ClientTokenSet;
-pub use errors::{Error, Result};
-pub use oauth_client::OAuthClient;
-pub use token_cache::TokenCache;
-pub use user_info::UserInfo;
+use crate::{ClientTokenSet, Result, UserInfo};
 
 #[async_trait]
 pub trait Authenticator: Debug {
@@ -42,15 +31,15 @@ where
         scopes: &[String],
         extra_params: &Option<HashMap<String, String>>,
     ) -> Result<ClientTokenSet> {
-        self.deref().login(scopes, extra_params).await
+        self.login(scopes, extra_params).await
     }
 
     async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
-        self.deref().refresh_login(client_token_set).await
+        self.refresh_login(client_token_set).await
     }
 
     async fn logout(&self) -> Result<()> {
-        self.deref().logout().await
+        self.logout().await
     }
 }
 
@@ -64,15 +53,15 @@ where
         scopes: &[String],
         extra_params: &Option<HashMap<String, String>>,
     ) -> Result<ClientTokenSet> {
-        self.deref().login(scopes, extra_params).await
+        self.login(scopes, extra_params).await
     }
 
     async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
-        self.deref().refresh_login(client_token_set).await
+        self.refresh_login(client_token_set).await
     }
 
     async fn logout(&self) -> Result<()> {
-        self.deref().logout().await
+        self.logout().await
     }
 }
 
@@ -97,4 +86,17 @@ impl Authenticator for BoxedAuthenticator {
     async fn logout(&self) -> Result<()> {
         self.0.logout().await
     }
+}
+
+#[async_trait]
+pub trait AuthenticatorWithClaims: Authenticator {
+    /// Fetch the user info claims.
+    async fn get_user_info_claims(&self, access_token: &AccessToken) -> Result<UserInfo>;
+
+    /// First calls the `login` method and then fetch the user info claims
+    async fn authenticate(
+        &self,
+        scopes: &[String],
+        extra_params: &Option<HashMap<String, String>>,
+    ) -> Result<UserInfo>;
 }
