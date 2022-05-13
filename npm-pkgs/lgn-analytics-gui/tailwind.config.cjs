@@ -91,6 +91,7 @@ module.exports = {
     extend: {
       borderRadius: {
         DEFAULT: "var(--roundness)",
+        xs: "1px",
       },
       colors: {
         primary: withOpacity("--color-primary"),

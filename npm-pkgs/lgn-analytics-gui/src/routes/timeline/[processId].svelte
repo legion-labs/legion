@@ -4,6 +4,8 @@
   import { get } from "svelte/store";
 
   import CallGraph from "@/components/CallGraphHierachy/CallGraphHierachy.svelte";
+  import DisplayError from "@/components/Misc/DisplayError.svelte";
+  import Layout from "@/components/Misc/Layout.svelte";
   import Loader from "@/components/Misc/Loader.svelte";
   import { TimelineStateManager } from "@/components/Timeline/Stores/TimelineStateManager";
   import type { TimelineStateStore } from "@/components/Timeline/Stores/TimelineStateStore";
@@ -217,73 +219,85 @@
 
 <svelte:window on:keydown={handleKeydown} bind:innerWidth={windowInnerWidth} />
 
-{#if stateStore}
-  <Loader loading={!$stateStore.ready} error={initializationError}>
-    <div slot="body" class="flex flex-col">
-      {#if stateManager?.process && $stateStore.ready}
-        <div class="pb-1 flex flex-1 flex-row items-center justify-between">
-          <TimelineAction
-            {processId}
-            process={stateManager.process}
-            timeRange={$stateStore.currentSelection}
-          />
-          <TimelineSearch bind:searching />
+<Layout>
+  <div slot="content">
+    {#if stateStore}
+      {#if initializationError}
+        <DisplayError error={initializationError} />
+      {:else if !$stateStore.ready}
+        <Loader />
+      {:else}
+        <div class="timeline">
+          {#if stateManager?.process && $stateStore.ready}
+            <div class="pb-1 flex flex-1 flex-row items-center justify-between">
+              <TimelineAction
+                {processId}
+                process={stateManager.process}
+                timeRange={$stateStore.currentSelection}
+              />
+              <TimelineSearch bind:searching />
+            </div>
+          {/if}
+          <div class="main relative flex flex-col">
+            <div
+              class="canvas cursor-pointer basis-auto"
+              bind:this={div}
+              bind:clientHeight={canvasHeight}
+              bind:clientWidth={mainWidth}
+              on:wheel|preventDefault
+              on:scroll={(e) => onScroll(e)}
+              on:mousedown|preventDefault={(e) => onMouseDown(e)}
+              on:mousemove|preventDefault={(e) => onMouseMove(e)}
+              on:mouseleave|preventDefault={(_) => onMouseLeave()}
+              on:mouseup|preventDefault={(e) => onMouseUp(e)}
+            >
+              {#if stateStore}
+                {#each $stateStore.processes as p, index (p.processId)}
+                  <TimelineProcess
+                    process={p}
+                    {index}
+                    {stateStore}
+                    rootStartTime={stateManager.rootStartTime}
+                    on:zoom={(e) => onZoom(e.detail)}
+                  />
+                {/each}
+              {/if}
+            </div>
+            <TimelineMinimap
+              {stateStore}
+              {canvasHeight}
+              {scrollHeight}
+              {scrollTop}
+              on:zoom={(e) => onZoom(e.detail)}
+              on:tick={(e) => onMinimapTick(e.detail)}
+            />
+            <TimelineAxis {stateStore} />
+            <div class="pt-3">
+              <TimelineRange {stateStore} />
+            </div>
+            {#if callGraphBegin && callGraphEnd}
+              <div class="basis-1/5">
+                <CallGraph
+                  begin={callGraphBegin}
+                  end={callGraphEnd}
+                  {processId}
+                  debug={false}
+                  size={250}
+                />
+              </div>
+            {/if}
+          </div>
         </div>
       {/if}
-      <div class="main relative flex flex-col">
-        <div
-          class="canvas cursor-pointer basis-auto"
-          bind:this={div}
-          bind:clientHeight={canvasHeight}
-          bind:clientWidth={mainWidth}
-          on:wheel|preventDefault
-          on:scroll={(e) => onScroll(e)}
-          on:mousedown|preventDefault={(e) => onMouseDown(e)}
-          on:mousemove|preventDefault={(e) => onMouseMove(e)}
-          on:mouseleave|preventDefault={(_) => onMouseLeave()}
-          on:mouseup|preventDefault={(e) => onMouseUp(e)}
-        >
-          {#if stateStore}
-            {#each $stateStore.processes as p, index (p.processId)}
-              <TimelineProcess
-                process={p}
-                {index}
-                {stateStore}
-                rootStartTime={stateManager.rootStartTime}
-                on:zoom={(e) => onZoom(e.detail)}
-              />
-            {/each}
-          {/if}
-        </div>
-        <TimelineMinimap
-          {stateStore}
-          {canvasHeight}
-          {scrollHeight}
-          {scrollTop}
-          on:zoom={(e) => onZoom(e.detail)}
-          on:tick={(e) => onMinimapTick(e.detail)}
-        />
-        <TimelineAxis {stateStore} />
-        <div class="pt-3">
-          <TimelineRange {stateStore} />
-        </div>
-        {#if callGraphBegin && callGraphEnd}
-          <div class="basis-1/5">
-            <CallGraph
-              begin={callGraphBegin}
-              end={callGraphEnd}
-              {processId}
-              debug={false}
-              size={250}
-            />
-          </div>
-        {/if}
-      </div>
-    </div>
-  </Loader>
-{/if}
+    {/if}
+  </div>
+</Layout>
 
 <style lang="postcss">
+  .timeline {
+    @apply flex flex-col pt-4 px-2;
+  }
+
   .main {
     height: calc(100vh - 130px);
   }

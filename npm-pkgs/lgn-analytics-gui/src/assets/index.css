@@ -22,7 +22,7 @@ body {
 }
 
 *::-webkit-scrollbar-track {
-  @apply bg-default;
+  @apply on-surface;
 }
 
 *::-webkit-scrollbar-thumb {

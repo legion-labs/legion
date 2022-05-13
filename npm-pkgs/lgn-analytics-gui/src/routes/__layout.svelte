@@ -76,7 +76,6 @@
 
   import en from "@/assets/locales/en-US/main.ftl?raw";
   import fr from "@/assets/locales/fr-CA/main.ftl?raw";
-  import Header from "@/components/Misc/Header.svelte";
   import LoadingBar from "@/components/Misc/LoadingBar.svelte";
   import { getThreadItemLength } from "@/components/Timeline/Values/TimelineValues";
   import {
@@ -179,10 +178,12 @@
 
 <LoadingBar />
 
-<Header />
-
-<div class="pt-2 pb-4 antialiased">
-  <div class="pl-5 pr-5 pt-5 overflow-hidden">
-    <slot />
-  </div>
+<div class="layout">
+  <slot />
 </div>
+
+<style lang="postcss">
+  .layout {
+    @apply antialiased h-full w-full flex flex-col;
+  }
+</style>

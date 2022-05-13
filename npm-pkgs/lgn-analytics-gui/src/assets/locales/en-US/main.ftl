@@ -29,7 +29,7 @@ process-list-search = Search Process...
 # Log
 log-process-id = Process Id:
 log-executable = Executable:
-log-parent-link = Parent Process Log
+log-parent-link = Parent
 
 # Timeline
 timeline-open-cumulative-call-graph = Open { global-cumulative-call-graph }

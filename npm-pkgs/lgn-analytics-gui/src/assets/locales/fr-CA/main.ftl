@@ -29,7 +29,7 @@ process-list-search = Rechercher des processus...
 # Log
 log-process-id = Identifiant du processus :
 log-executable = Nom de l'exécutable :
-log-parent-link = { global-log } du processus parent
+log-parent-link = Parent
 
 # Timeline
 timeline-open-cumulative-call-graph = Ouvrir le { LOWERCASE(global-cumulative-call-graph) }

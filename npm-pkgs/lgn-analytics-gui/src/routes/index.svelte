@@ -5,6 +5,7 @@
   import { debounced } from "@lgn/web-client/src/lib/store";
 
   import L10n from "@/components/Misc/L10n.svelte";
+  import Layout from "@/components/Misc/Layout.svelte";
   import Loader from "@/components/Misc/Loader.svelte";
   import ProcessItem from "@/components/Process/ProcessItem.svelte";
   import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
@@ -45,50 +46,62 @@
   $: search(mode, cleanSearchValue);
 </script>
 
-<Loader {loading}>
-  <div slot="body" class="headline text-sm">
-    <div class="text-center pb-6">
-      <!-- svelte-ignore a11y-autofocus -->
-      <input
-        autofocus
-        type="text"
-        class="h-8 w-96 placeholder rounded-sm pl-2 surface"
-        placeholder={$t("process-list-search")}
-        bind:value={$searchValue}
-      />
-    </div>
-    <div class="flex flex-col gap-y-2 text-sm">
-      <div class="flex flex-row text-content-60">
-        <div class="w-8" />
-        <div class="w-5/12 xl:w-2/12 truncate hidden md:block">
-          <L10n id="process-list-user" />
-        </div>
-        <div class="w-5/12 xl:w-2/12 truncate">
-          <L10n id="process-list-process" />
-        </div>
-        <div class="w-2/12 truncate hidden xl:block">
-          <L10n id="process-list-computer" />
-        </div>
-        <div class="w-2/12 truncate hidden xl:block">
-          <L10n id="process-list-platform" />
-        </div>
-        <!-- <div class="w-2/12 truncate">Last Activity</div> -->
-        <div class="w-2/12 pl-4">
-          <L10n id="process-list-start-time" />
-        </div>
-        <div class="w-24 ml-auto">
-          <L10n id="process-list-statistics" />
+<Layout>
+  <div slot="header">
+    <!-- svelte-ignore a11y-autofocus -->
+    <input
+      autofocus
+      type="text"
+      class="h-8 w-96 text rounded-xs pl-2 bg-default"
+      placeholder={$t("process-list-search")}
+      bind:value={$searchValue}
+    />
+  </div>
+  <div slot="content">
+    {#if loading}
+      <Loader />
+    {:else}
+      <div class="process-list">
+        <div class="flex flex-col space-y-1">
+          <div class="flex flex-row text-content-60">
+            <div class="w-8" />
+            <div class="w-5/12 xl:w-2/12 truncate hidden md:block">
+              <L10n id="process-list-user" />
+            </div>
+            <div class="w-5/12 xl:w-2/12 truncate">
+              <L10n id="process-list-process" />
+            </div>
+            <div class="w-2/12 truncate hidden xl:block">
+              <L10n id="process-list-computer" />
+            </div>
+            <div class="w-2/12 truncate hidden xl:block">
+              <L10n id="process-list-platform" />
+            </div>
+            <!-- <div class="w-2/12 truncate">Last Activity</div> -->
+            <div class="w-2/12 pl-4">
+              <L10n id="process-list-start-time" />
+            </div>
+            <div class="w-24 ml-auto">
+              <L10n id="process-list-statistics" />
+            </div>
+          </div>
+          {#each processes as processInstance, index (processInstance.processInfo?.processId)}
+            <ProcessItem
+              highlightedPattern={$debouncedSearchValue}
+              {processInstance}
+              depth={0}
+              {index}
+              noFold={mode === "search"}
+            />
+          {/each}
         </div>
       </div>
-      {#each processes as processInstance, index (processInstance.processInfo?.processId)}
-        <ProcessItem
-          highlightedPattern={$debouncedSearchValue}
-          {processInstance}
-          depth={0}
-          {index}
-          noFold={mode === "search"}
-        />
-      {/each}
-    </div>
+    {/if}
   </div>
-</Loader>
+</Layout>
+
+<style lang="postcss">
+  .process-list {
+    @apply flex flex-col pt-4 pb-1 px-2 text-sm;
+  }
+</style>

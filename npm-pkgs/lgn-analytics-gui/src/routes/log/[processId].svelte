@@ -9,7 +9,9 @@
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
   import L10n from "@/components/Misc/L10n.svelte";
+  import Layout from "@/components/Misc/Layout.svelte";
   import { getHttpClientContext } from "@/contexts";
+  import Loader from "@/components/Misc/Loader.svelte";
 
   const MAX_NB_ENTRIES_IN_PAGE = 1000;
 
@@ -21,7 +23,7 @@
   let viewRange: [number, number] = [0, 0];
   let processInfo: Process | null = null;
   let logEntries: LogEntry[] = [];
-  let log: HTMLDivElement | null = null;
+  let loading = true;
 
   async function fetchLogEntries() {
     const { process } = await client.find_process({
@@ -58,7 +60,11 @@
   }
 
   onMount(async () => {
-    await fetchLogEntries();
+    try {
+      await fetchLogEntries();
+    } finally {
+      loading = false;
+    }
   });
 
   function formatTime(ms: number) {
@@ -79,97 +85,99 @@
   }
 </script>
 
-<div class="flex flex-col h-[calc(100vh-5.6rem)] space-y-2">
-  {#if processInfo}
-    <div class="flex flex-row justify-between">
-      <div>
+<Layout>
+  <div
+    class="flex flex-row justify-between items-center pl-4 w-full"
+    slot="sub-header"
+  >
+    {#if processInfo}
+      <div class="flex flex-row space-x-2">
+        {#if processInfo.parentProcessId}
+          <div class="flex flex-row space-x-2 text">
+            <a href={`/log/${processInfo.parentProcessId}`}>
+              <L10n id="log-parent-link" />
+            </a>
+            <div>/</div>
+          </div>
+        {/if}
         <div>
-          <span class="font-bold"><L10n id="log-process-id" /></span>
-          {processInfo.processId}
-        </div>
-        <div>
-          <span class="font-bold"><L10n id="log-executable" /></span>
-          {processInfo.exe}
+          <div>{processInfo.processId} ({processInfo.exe})</div>
         </div>
       </div>
-      {#if processInfo.parentProcessId}
-        <div class="text-primary">
-          <a href={`/log/${processInfo.parentProcessId}`}>
-            <L10n id="log-parent-link" />
-          </a>
-        </div>
-      {/if}
-    </div>
-  {/if}
-
-  {#if logEntries.length}
-    <!-- svelte-ignore a11y-autofocus -->
-    <div
-      class="overflow-y-auto w-100 p-1 rounded-sm background flex-1 outline-none"
-      tabindex={-1}
-      autofocus
-      bind:this={log}
-      on:blur={() => log?.focus()}
-    >
-      {#each logEntries as entry, index (index)}
-        <div class="flex rounded flex-row gap-x-4">
-          <div class="font-bold basis-28 shrink-0">
-            {formatTime(entry.timeMs)}
+      <div>
+        {#if nbEntries > MAX_NB_ENTRIES_IN_PAGE}
+          <div class="text-primary flex space-x-8 self-center">
+            {#if viewRange[0] > 0}
+              <div class="flex space-x-4">
+                <span class="nav-link">
+                  <a
+                    href={`/log/${processId}?begin=0&end=${Math.min(
+                      MAX_NB_ENTRIES_IN_PAGE,
+                      nbEntries
+                    )}`}
+                  >
+                    <L10n id="global-pagination-first" />
+                  </a>
+                </span>
+                <span class="nav-link">
+                  <a
+                    href={`/log/${processId}?begin=${Math.max(
+                      0,
+                      viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
+                    )}&end=${viewRange[0]}`}
+                  >
+                    <L10n id="global-pagination-previous" />
+                  </a>
+                </span>
+              </div>
+            {/if}
+            {#if viewRange[1] < nbEntries}
+              <div class="flex space-x-4">
+                <span class="nav-link">
+                  <a
+                    href={`/log/${processId}?begin=${viewRange[1]}&end=${
+                      viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
+                    }`}
+                  >
+                    <L10n id="global-pagination-next" />
+                  </a>
+                </span>
+                <span class="nav-link">
+                  <a
+                    href={`/log/${processId}?begin=${
+                      nbEntries - MAX_NB_ENTRIES_IN_PAGE
+                    }&end=${nbEntries}`}
+                  >
+                    <L10n id="global-pagination-last" />
+                  </a>
+                </span>
+              </div>
+            {/if}
           </div>
-          <div>{entry.msg}</div>
-        </div>
-      {/each}
-    </div>
-  {/if}
+        {/if}
+      </div>
+    {/if}
+  </div>
+  <div slot="content">
+    {#if loading}
+      <Loader />
+    {:else}
+      <div class="log">
+        {#each logEntries as entry, index (index)}
+          <div class="flex rounded flex-row gap-x-4">
+            <div class="font-bold basis-28 shrink-0">
+              {formatTime(entry.timeMs)}
+            </div>
+            <div>{entry.msg}</div>
+          </div>
+        {/each}
+      </div>
+    {/if}
+  </div>
+</Layout>
 
-  {#if nbEntries > MAX_NB_ENTRIES_IN_PAGE}
-    <div class="text-primary flex space-x-8 self-center">
-      {#if viewRange[0] > 0}
-        <div class="flex space-x-4">
-          <span class="nav-link">
-            <a
-              href={`/log/${processId}?begin=0&end=${Math.min(
-                MAX_NB_ENTRIES_IN_PAGE,
-                nbEntries
-              )}`}
-            >
-              <L10n id="global-pagination-first" />
-            </a>
-          </span>
-          <span class="nav-link">
-            <a
-              href={`/log/${processId}?begin=${Math.max(
-                0,
-                viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
-              )}&end=${viewRange[0]}`}
-            >
-              <L10n id="global-pagination-previous" />
-            </a>
-          </span>
-        </div>
-      {/if}
-      {#if viewRange[1] < nbEntries}
-        <div class="flex space-x-4">
-          <span class="nav-link">
-            <a
-              href={`/log/${processId}?begin=${viewRange[1]}&end=${
-                viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
-              }`}
-            >
-              <L10n id="global-pagination-next" />
-            </a>
-          </span>
-          <span class="nav-link">
-            <a
-              href={`/log/${processId}?begin=${
-                nbEntries - MAX_NB_ENTRIES_IN_PAGE
-              }&end=${nbEntries}`}
-            >
-              <L10n id="global-pagination-last" />
-            </a>
-          </span>
-        </div>
-      {/if}
-    </div>
-  {/if}
-</div>
+<style lang="postcss">
+  .log {
+    @apply flex flex-col space-y-2 pt-4 pb-1 px-2 background;
+  }
+</style>

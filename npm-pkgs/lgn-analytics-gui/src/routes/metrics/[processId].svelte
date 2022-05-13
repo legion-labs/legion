@@ -16,6 +16,7 @@
   import MetricLegendGroup from "@/components/Metric/MetricLegendGroup.svelte";
   import MetricSelection from "@/components/Metric/MetricSelection.svelte";
   import MetricTooltip from "@/components/Metric/MetricTooltip.svelte";
+  import Layout from "@/components/Misc/Layout.svelte";
   import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
   import { getDebugContext, getHttpClientContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
@@ -352,48 +353,58 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-{#if !loading}
-  <MetricSelection {metricStore} />
-  <MetricTooltip
-    bind:this={metricTooltip}
-    {metricStore}
-    xScale={transform.rescaleX(x)}
-    leftMargin={margin.left}
-    {zoomEvent}
-    {metricStreamer}
-  />
-{/if}
-
-<div bind:clientWidth={mainWidth}>
-  <div id="metric-canvas" class="relative" />
-
-  {#if !loading}
-    <div style="padding-left:{margin.left}px">
-      <MetricLegendGroup {metricStore} />
-    </div>
-    <div>
-      <TimeRangeDetails timeRange={[brushStart, brushEnd]} {processId} />
-    </div>
-    {#if $debug}
-      <div style="display:inherit;padding-top:40px">
-        <MetricDebugDisplay
-          {width}
-          {mainWidth}
-          {transform}
-          {updateTime}
-          {metricStreamer}
-          {lod}
-          {pixelSizeNs}
-          {deltaMs}
-          {totalMinMs}
-          {currentMinMs}
-          {totalMaxMs}
-          {currentMaxMs}
-          {brushStart}
-          {brushEnd}
-          {metricStore}
-        />
-      </div>
+<Layout>
+  <div class="metrics" slot="content">
+    {#if !loading}
+      <MetricSelection {metricStore} />
+      <MetricTooltip
+        bind:this={metricTooltip}
+        {metricStore}
+        xScale={transform.rescaleX(x)}
+        leftMargin={margin.left}
+        {zoomEvent}
+        {metricStreamer}
+      />
     {/if}
-  {/if}
-</div>
+
+    <div bind:clientWidth={mainWidth}>
+      <div id="metric-canvas" class="relative" />
+
+      {#if !loading}
+        <div style="padding-left:{margin.left}px">
+          <MetricLegendGroup {metricStore} />
+        </div>
+        <div>
+          <TimeRangeDetails timeRange={[brushStart, brushEnd]} {processId} />
+        </div>
+        {#if $debug}
+          <div style="display:inherit;padding-top:40px">
+            <MetricDebugDisplay
+              {width}
+              {mainWidth}
+              {transform}
+              {updateTime}
+              {metricStreamer}
+              {lod}
+              {pixelSizeNs}
+              {deltaMs}
+              {totalMinMs}
+              {currentMinMs}
+              {totalMaxMs}
+              {currentMaxMs}
+              {brushStart}
+              {brushEnd}
+              {metricStore}
+            />
+          </div>
+        {/if}
+      {/if}
+    </div>
+  </div>
+</Layout>
+
+<style lang="postcss">
+  .metrics {
+    @apply pt-4 px-2;
+  }
+</style>
