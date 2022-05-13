@@ -14,8 +14,7 @@ use lgn_data_runtime::{
     ResourceTypeAndId,
 };
 use lgn_source_control::{
-    CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace, WorkspaceConfig,
-    WorkspaceRegistration,
+    CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
 };
 use lgn_tracing::error;
 use thiserror::Error;
@@ -23,8 +22,6 @@ use thiserror::Error;
 use crate::resource::{metadata::Metadata, ResourcePathName};
 
 // const METADATA_EXT: &str = "meta";
-
-pub use lgn_source_control::data_types::Tree;
 
 /// A source-control-backed state of the project
 ///

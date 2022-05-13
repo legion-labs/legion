@@ -3,13 +3,13 @@
 // crate-specific lint exceptions:
 #![allow(clippy::exit, clippy::wildcard_imports)]
 
-use std::{collections::BTreeSet, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use clap::{Parser, Subcommand};
 use lgn_source_control::*;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::*;
-use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+// use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
 /// Legion Source Control
 #[derive(Parser, Debug)]
@@ -60,8 +60,6 @@ enum Commands {
     /// Initializes a workspace and populates it with the latest version of the main branch
     #[clap(name = "init-workspace", alias = "init")]
     InitWorkspace {
-        /// lsc workspace directory
-        workspace_directory: PathBuf,
         /// uri printed at the creation of the repository
         repository_name: RepositoryName,
     },
@@ -212,33 +210,33 @@ enum Commands {
     },
 }
 
-fn binary_name() -> String {
-    "lsc".to_string()
-}
+// fn binary_name() -> String {
+//     "lsc".to_string()
+// }
 
-fn green() -> ColorSpec {
-    let mut colorspec = ColorSpec::new();
+// fn green() -> ColorSpec {
+//     let mut colorspec = ColorSpec::new();
 
-    colorspec.set_fg(Some(Color::Green)).set_intense(true);
+//     colorspec.set_fg(Some(Color::Green)).set_intense(true);
 
-    colorspec
-}
+//     colorspec
+// }
 
-fn yellow() -> ColorSpec {
-    let mut colorspec = ColorSpec::new();
+// fn yellow() -> ColorSpec {
+//     let mut colorspec = ColorSpec::new();
 
-    colorspec.set_fg(Some(Color::Yellow)).set_intense(true);
+//     colorspec.set_fg(Some(Color::Yellow)).set_intense(true);
 
-    colorspec
-}
+//     colorspec
+// }
 
-fn red() -> ColorSpec {
-    let mut colorspec = ColorSpec::new();
+// fn red() -> ColorSpec {
+//     let mut colorspec = ColorSpec::new();
 
-    colorspec.set_fg(Some(Color::Red));
+//     colorspec.set_fg(Some(Color::Red));
 
-    colorspec
-}
+//     colorspec
+// }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -266,19 +264,19 @@ async fn main() -> anyhow::Result<()> {
     };
 
     span_scope!("lsc::main");
-    let choice = if args.no_color {
-        ColorChoice::Never
-    } else if atty::is(atty::Stream::Stdout) {
-        ColorChoice::Auto
-    } else {
-        ColorChoice::Never
-    };
+    // let choice = if args.no_color {
+    //     ColorChoice::Never
+    // } else if atty::is(atty::Stream::Stdout) {
+    //     ColorChoice::Auto
+    // } else {
+    //     ColorChoice::Never
+    // };
 
     let provider =
         Arc::new(lgn_content_store::Config::load_and_instantiate_persistent_provider().await?);
     let repository_index = Config::load_and_instantiate_repository_index().await?;
 
-    let mut stdout = StandardStream::stdout(choice);
+    //let mut stdout = StandardStream::stdout(choice);
 
     match args.command {
         Commands::CreateRepository { repository_name } => {
@@ -332,22 +330,15 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
-        Commands::InitWorkspace {
-            workspace_directory,
-            repository_name,
-        } => {
+        Commands::InitWorkspace { repository_name } => {
             info!("init-workspace");
 
-            let config = WorkspaceConfig::new(
-                repository_name,
-                WorkspaceRegistration::new_with_current_user(),
-            );
-
-            Workspace::init(&workspace_directory, repository_index, config, provider)
+            Workspace::init(repository_index, repository_name, provider)
                 .await
                 .map_err(Into::into)
                 .map(|_| ())
         }
+        /*
         Commands::Add { paths } => {
             let workspace =
                 Workspace::find_in_current_directory(repository_index, provider).await?;
@@ -378,6 +369,7 @@ async fn main() -> anyhow::Result<()> {
                 .map_err(Into::into)
                 .map(|_| ())
         }
+        */
         Commands::Lock { paths } => {
             info!("lock {:?}", paths);
 
@@ -410,6 +402,7 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
+        /*
         Commands::CreateBranch { branch_name } => {
             let workspace =
                 Workspace::find_in_current_directory(repository_index, provider).await?;
@@ -420,11 +413,13 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
+        */
         Commands::Merge { branch_name } => {
             info!("merge: {}", branch_name);
 
             Ok(())
         }
+        /*
         Commands::Switch { branch_name } => {
             let workspace =
                 Workspace::find_in_current_directory(repository_index, provider).await?;
@@ -435,6 +430,7 @@ async fn main() -> anyhow::Result<()> {
 
             print_changes(&workspace, &mut stdout, &changes)
         }
+        */
         Commands::Detach => {
             info!("detach");
 
@@ -445,6 +441,7 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
+        /*
         Commands::Branches { full } => {
             let workspace =
                 Workspace::find_in_current_directory(repository_index, provider).await?;
@@ -600,11 +597,13 @@ async fn main() -> anyhow::Result<()> {
 
             print_changes(&workspace, &mut stdout, &changes)
         }
+        */
         Commands::ResolvesPending => {
             info!("resolves-pending");
 
             Ok(())
         }
+        /*
         Commands::Commit { message } => {
             let workspace =
                 Workspace::find_in_current_directory(repository_index, provider).await?;
@@ -639,9 +638,12 @@ async fn main() -> anyhow::Result<()> {
                 Err(err) => Err(err.into()),
             }
         }
+        */
+        _ => Err(anyhow::anyhow!("todo")),
     }
 }
 
+/*
 fn print_changes(
     workspace: &Workspace,
     stdout: &mut StandardStream,
@@ -661,9 +663,9 @@ fn print_changes(
             }
 
             print!(
-                "\t{:>8}:   {}",
+                "\t{:>8}:   (todo)",
                 change.change_type().to_human_string(),
-                workspace.make_relative_path(&current_dir, change.canonical_path()),
+                //workspace.make_relative_path(&current_dir, change.canonical_path()),
             );
 
             if !change.change_type().has_modifications() {
@@ -679,3 +681,4 @@ fn print_changes(
 
     Ok(())
 }
+*/
