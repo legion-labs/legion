@@ -1,3 +1,8 @@
+//! Legion `OpenApi` code generator CLI.
+//!
+//! Provides code generation commands.
+//!
+
 use clap::Parser;
 use lgn_api_codegen::generate;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
