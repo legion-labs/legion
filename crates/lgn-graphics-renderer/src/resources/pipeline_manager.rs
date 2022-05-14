@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use lgn_graphics_api::{
     DeviceContext, Pipeline, Shader, ShaderPackage, ShaderStage, ShaderStageDef,
 };
+use std::sync::Arc;
 
 use lgn_graphics_cgen_runtime::{
     CGenCrateID, CGenRegistry, CGenShaderDef, CGenShaderInstance, CGenShaderKey,
@@ -21,6 +20,7 @@ pub struct PipelineHandle(usize);
 struct PipelineInfo {
     crate_id: CGenCrateID,
     key: CGenShaderKey,
+    variant: u32,
     create_pipeline: Box<dyn Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>,
 }
 
@@ -55,23 +55,44 @@ impl PipelineManager {
         }
     }
 
+    pub fn register_pipeline_variant<
+        F: Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static,
+    >(
+        &self,
+        crate_id: CGenCrateID,
+        key: CGenShaderKey,
+        variant: u32,
+        func: F,
+    ) -> PipelineHandle {
+        self.shader_instance(crate_id, key)
+            .expect("Invalid shader key");
+        {
+            {
+                let infos = self.infos.read();
+                for (i, info) in infos.iter().enumerate() {
+                    if info.crate_id == crate_id && info.key == key && variant == info.variant {
+                        return PipelineHandle(i);
+                    }
+                }
+            }
+            let mut infos = self.infos.write();
+            infos.push(PipelineInfo {
+                crate_id,
+                key,
+                variant,
+                create_pipeline: Box::new(func),
+            });
+            PipelineHandle(infos.len() - 1)
+        }
+    }
+
     pub fn register_pipeline<F: Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>(
         &self,
         crate_id: CGenCrateID,
         key: CGenShaderKey,
         func: F,
     ) -> PipelineHandle {
-        self.shader_instance(crate_id, key)
-            .expect("Invalid shader key");
-        {
-            let mut infos = self.infos.write();
-            infos.push(PipelineInfo {
-                crate_id,
-                key,
-                create_pipeline: Box::new(func),
-            });
-            PipelineHandle(infos.len() - 1)
-        }
+        self.register_pipeline_variant(crate_id, key, 0, func)
     }
 
     #[span_fn]

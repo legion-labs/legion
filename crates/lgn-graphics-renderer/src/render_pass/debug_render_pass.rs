@@ -72,12 +72,13 @@ impl DebugRenderPass {
             ..RasterizerState::default()
         };
 
-        let solid_pso_depth_handle = pipeline_manager.register_pipeline(
+        let solid_pso_depth_handle = pipeline_manager.register_pipeline_variant(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::const_color_shader::ID,
                 cgen::shader::const_color_shader::NONE,
             ),
+            0,
             move |device_context, shader| {
                 device_context.create_graphics_pipeline(GraphicsPipelineDef {
                     shader,
@@ -94,12 +95,13 @@ impl DebugRenderPass {
             },
         );
 
-        let wire_pso_depth_handle = pipeline_manager.register_pipeline(
+        let wire_pso_depth_handle = pipeline_manager.register_pipeline_variant(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::const_color_shader::ID,
                 cgen::shader::const_color_shader::NONE,
             ),
+            1,
             move |device_context, shader| {
                 device_context.create_graphics_pipeline(GraphicsPipelineDef {
                     shader,
@@ -116,12 +118,13 @@ impl DebugRenderPass {
             },
         );
 
-        let solid_pso_nodepth_handle = pipeline_manager.register_pipeline(
+        let solid_pso_nodepth_handle = pipeline_manager.register_pipeline_variant(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::const_color_shader::ID,
                 cgen::shader::const_color_shader::NONE,
             ),
+            2,
             move |device_context, shader| {
                 device_context.create_graphics_pipeline(GraphicsPipelineDef {
                     shader,
@@ -138,12 +141,13 @@ impl DebugRenderPass {
             },
         );
 
-        let wire_pso_nodepth_handle = pipeline_manager.register_pipeline(
+        let wire_pso_nodepth_handle = pipeline_manager.register_pipeline_variant(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::const_color_shader::ID,
                 cgen::shader::const_color_shader::NONE,
             ),
+            3,
             move |device_context, shader| {
                 device_context.create_graphics_pipeline(GraphicsPipelineDef {
                     shader,
