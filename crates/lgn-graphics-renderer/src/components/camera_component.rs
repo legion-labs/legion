@@ -183,7 +183,7 @@ impl Default for CameraComponent {
             setup,
             fov_y: Angle::from_radians(std::f32::consts::FRAC_PI_4),
             z_near: 0.01,
-            z_far: 100.0,
+            z_far: 1000.0,
         }
     }
 }
@@ -321,7 +321,8 @@ pub(crate) fn camera_control(
                 );
             }
             for mouse_wheel_event in mouse_wheel_events.iter() {
-                camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
+                camera.speed =
+                    (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 100.0);
             }
         }
         camera.camera_rig.update(time.delta_seconds());
