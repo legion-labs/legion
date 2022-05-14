@@ -739,7 +739,7 @@ fn render_update(
                         array_length: 1,
                         mip_count: 1,
                         format: Format::R8G8B8A8_UNORM,
-                        usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
+                        usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_UNORDERED_ACCESS| ResourceUsage::AS_TRANSFERABLE,
                         resource_flags: ResourceFlags::empty(),
                         memory_usage: MemoryUsage::GpuOnly,
                         tiling: TextureTiling::Optimal,
@@ -775,7 +775,7 @@ fn render_update(
 
                     let config = Config::default();
 
-                    match render_script.build_render_graph(&view, &config) {
+                    match render_script.build_render_graph(&view, &config, render_context.pipeline_manager, render_context.device_context) {
                         Ok(render_graph) => {
                             // Print out the render graph
                             println!("{}", render_graph);
@@ -797,8 +797,7 @@ fn render_update(
                                 &mut render_graph_context,
                                 &render_resources,
                                 &render_managers,
-                                &render_context,
-                                render_context.device_context,
+                                &mut render_context,
                                 cmd_buffer,
                             );
                         }

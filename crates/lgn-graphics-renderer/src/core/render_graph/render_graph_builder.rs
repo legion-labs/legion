@@ -1,16 +1,15 @@
-use std::any::Any;
-
-use lgn_graphics_api::{CommandBuffer, Texture};
+use lgn_graphics_api::{CommandBuffer, DeviceContext, Texture};
 
 use crate::{
     core::render_graph::{
         RGNode, RenderGraph, RenderGraphExecuteContext, RenderGraphResource,
         RenderGraphResourceDef, RenderGraphResourceId, RenderGraphViewDef, RenderGraphViewId,
     },
+    resources::PipelineManager,
     RenderContext,
 };
 
-use super::{RenderGraphLoadState, ResourceData};
+use super::{RenderGraphContext, RenderGraphLoadState, ResourceData};
 
 pub(crate) struct GraphicsPassBuilder {
     node: RGNode,
@@ -18,28 +17,18 @@ pub(crate) struct GraphicsPassBuilder {
 
 impl GraphicsPassBuilder {
     #[allow(dead_code)]
-    pub fn read(
-        mut self,
-        resource: RenderGraphResourceId,
-        view: RenderGraphViewId,
-        resource_state: RenderGraphLoadState,
-    ) -> Self {
+    pub fn read(mut self, view: RenderGraphViewId, resource_state: RenderGraphLoadState) -> Self {
         self.node.read_resources.push(ResourceData {
-            key: (resource, view),
+            key: view,
             load_state: resource_state,
         });
         self
     }
 
     #[allow(dead_code)]
-    pub fn write(
-        mut self,
-        resource: RenderGraphResourceId,
-        view: RenderGraphViewId,
-        resource_state: RenderGraphLoadState,
-    ) -> Self {
+    pub fn write(mut self, view: RenderGraphViewId, resource_state: RenderGraphLoadState) -> Self {
         self.node.write_resources.push(ResourceData {
-            key: (resource, view),
+            key: view,
             load_state: resource_state,
         });
         self
@@ -48,12 +37,11 @@ impl GraphicsPassBuilder {
     pub fn render_target(
         mut self,
         slot: u32,
-        resource: RenderGraphResourceId,
         view: RenderGraphViewId,
         resource_state: RenderGraphLoadState,
     ) -> Self {
         self.node.render_targets[slot as usize] = Some(ResourceData {
-            key: (resource, view),
+            key: view,
             load_state: resource_state,
         });
         self
@@ -61,12 +49,11 @@ impl GraphicsPassBuilder {
 
     pub fn depth_stencil(
         mut self,
-        resource: RenderGraphResourceId,
         view: RenderGraphViewId,
         resource_state: RenderGraphLoadState,
     ) -> Self {
         self.node.depth_stencil = Some(ResourceData {
-            key: (resource, view),
+            key: view,
             load_state: resource_state,
         });
         self
@@ -75,27 +62,13 @@ impl GraphicsPassBuilder {
     pub fn execute<F: 'static>(mut self, f: F) -> Self
     where
         F: Fn(
+            &RenderGraphContext,
             &RenderGraphExecuteContext<'_>,
-            &RenderContext<'_>,
+            &mut RenderContext<'_>,
             &mut CommandBuffer,
-            &Option<Box<dyn Any>>,
         ),
     {
         self.node.execute_fn = Some(Box::new(f));
-        self
-    }
-
-    pub fn execute_with_data<F: 'static>(mut self, f: F, user_data: Box<dyn Any>) -> Self
-    where
-        F: Fn(
-            &RenderGraphExecuteContext<'_>,
-            &RenderContext<'_>,
-            &mut CommandBuffer,
-            &Option<Box<dyn Any>>,
-        ),
-    {
-        self.node.execute_fn = Some(Box::new(f));
-        self.node.user_data = Some(user_data);
         self
     }
 }
@@ -105,27 +78,17 @@ pub(crate) struct ComputePassBuilder {
 }
 
 impl ComputePassBuilder {
-    pub fn read(
-        mut self,
-        resource: RenderGraphResourceId,
-        view: RenderGraphViewId,
-        resource_state: RenderGraphLoadState,
-    ) -> Self {
+    pub fn read(mut self, view: RenderGraphViewId, resource_state: RenderGraphLoadState) -> Self {
         self.node.read_resources.push(ResourceData {
-            key: (resource, view),
+            key: view,
             load_state: resource_state,
         });
         self
     }
 
-    pub fn write(
-        mut self,
-        resource: RenderGraphResourceId,
-        view: RenderGraphViewId,
-        resource_state: RenderGraphLoadState,
-    ) -> Self {
+    pub fn write(mut self, view: RenderGraphViewId, resource_state: RenderGraphLoadState) -> Self {
         self.node.write_resources.push(ResourceData {
-            key: (resource, view),
+            key: view,
             load_state: resource_state,
         });
         self
@@ -134,34 +97,18 @@ impl ComputePassBuilder {
     pub fn execute<F: 'static>(mut self, f: F) -> Self
     where
         F: Fn(
+            &RenderGraphContext,
             &RenderGraphExecuteContext<'_>,
-            &RenderContext<'_>,
+            &mut RenderContext<'_>,
             &mut CommandBuffer,
-            &Option<Box<dyn Any>>,
         ),
     {
         self.node.execute_fn = Some(Box::new(f));
-        self.node.user_data = None;
-        self
-    }
-
-    pub fn execute_with_data<F: 'static>(mut self, f: F, user_data: Box<dyn Any>) -> Self
-    where
-        F: Fn(
-            &RenderGraphExecuteContext<'_>,
-            &RenderContext<'_>,
-            &mut CommandBuffer,
-            &Option<Box<dyn Any>>,
-        ),
-    {
-        self.node.execute_fn = Some(Box::new(f));
-        self.node.user_data = Some(user_data);
         self
     }
 }
 
-#[derive(Default)]
-pub(crate) struct RenderGraphBuilder {
+pub(crate) struct RenderGraphBuilder<'a> {
     pub(crate) current_parent: Option<RGNode>,
     pub(crate) resources: Vec<RenderGraphResourceDef>,
     pub(crate) resource_names: Vec<String>,
@@ -170,9 +117,29 @@ pub(crate) struct RenderGraphBuilder {
     pub(crate) views: Vec<RenderGraphViewDef>,
     pub(crate) next_view_id: RenderGraphViewId,
     pub(crate) top_level_nodes: Vec<RGNode>,
+
+    // Stuff used to initialize pass-specific user data when building render passes.
+    // Should not be stored anywhere, they are made accessible in the execute functions anyways.
+    pub(crate) pipeline_manager: &'a PipelineManager,
+    pub(crate) device_context: &'a DeviceContext,
 }
 
-impl RenderGraphBuilder {
+impl<'a> RenderGraphBuilder<'a> {
+    pub fn new(pipeline_manager: &'a PipelineManager, device_context: &'a DeviceContext) -> Self {
+        RenderGraphBuilder {
+            current_parent: None,
+            resources: vec![],
+            resource_names: vec![],
+            injected_resources: vec![],
+            next_resource_id: 0,
+            views: vec![],
+            next_view_id: 0,
+            top_level_nodes: vec![],
+            pipeline_manager,
+            device_context,
+        }
+    }
+
     pub fn declare_render_target(
         &mut self,
         name: &str,
