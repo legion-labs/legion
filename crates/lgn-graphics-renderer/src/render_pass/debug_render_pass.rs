@@ -23,8 +23,8 @@ use crate::{
 pub struct DebugRenderPass {
     solid_pso_depth_handle: PipelineHandle,
     wire_pso_depth_handle: PipelineHandle,
-    solid_pso_nodepth_handle: PipelineHandle,
-    _wire_pso_nodepth_handle: PipelineHandle,
+    solid_pso_no_depth_handle: PipelineHandle,
+    _wire_pso_no_depth_handle: PipelineHandle,
 }
 
 impl DebugRenderPass {
@@ -72,13 +72,14 @@ impl DebugRenderPass {
             ..RasterizerState::default()
         };
 
+        let mut variant = 0;
         let solid_pso_depth_handle = pipeline_manager.register_pipeline_variant(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::const_color_shader::ID,
                 cgen::shader::const_color_shader::NONE,
             ),
-            0,
+            variant,
             move |device_context, shader| {
                 device_context.create_graphics_pipeline(GraphicsPipelineDef {
                     shader,
@@ -95,13 +96,14 @@ impl DebugRenderPass {
             },
         );
 
+        variant += 1;
         let wire_pso_depth_handle = pipeline_manager.register_pipeline_variant(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::const_color_shader::ID,
                 cgen::shader::const_color_shader::NONE,
             ),
-            1,
+            variant,
             move |device_context, shader| {
                 device_context.create_graphics_pipeline(GraphicsPipelineDef {
                     shader,
@@ -118,13 +120,14 @@ impl DebugRenderPass {
             },
         );
 
-        let solid_pso_nodepth_handle = pipeline_manager.register_pipeline_variant(
+        variant += 1;
+        let solid_pso_no_depth_handle = pipeline_manager.register_pipeline_variant(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::const_color_shader::ID,
                 cgen::shader::const_color_shader::NONE,
             ),
-            2,
+            variant,
             move |device_context, shader| {
                 device_context.create_graphics_pipeline(GraphicsPipelineDef {
                     shader,
@@ -141,13 +144,14 @@ impl DebugRenderPass {
             },
         );
 
-        let wire_pso_nodepth_handle = pipeline_manager.register_pipeline_variant(
+        variant += 1;
+        let wire_pso_no_depth_handle = pipeline_manager.register_pipeline_variant(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 cgen::shader::const_color_shader::ID,
                 cgen::shader::const_color_shader::NONE,
             ),
-            3,
+            variant,
             move |device_context, shader| {
                 device_context.create_graphics_pipeline(GraphicsPipelineDef {
                     shader,
@@ -167,8 +171,8 @@ impl DebugRenderPass {
         Self {
             solid_pso_depth_handle,
             wire_pso_depth_handle,
-            solid_pso_nodepth_handle,
-            _wire_pso_nodepth_handle: wire_pso_nodepth_handle,
+            solid_pso_no_depth_handle,
+            _wire_pso_no_depth_handle: wire_pso_no_depth_handle,
         }
     }
 
@@ -306,7 +310,7 @@ impl DebugRenderPass {
 
                     let pipeline = render_context
                         .pipeline_manager
-                        .get_pipeline(self.solid_pso_nodepth_handle)
+                        .get_pipeline(self.solid_pso_no_depth_handle)
                         .unwrap();
                     cmd_buffer.cmd_bind_pipeline(pipeline);
 

@@ -4,6 +4,7 @@
     "rustdoc::[a-z_]+"
   ],
   "words": [
+    "aabb",
     "alphablended",
     "asft",
     "Avenir",
@@ -92,6 +93,8 @@
     "vulkan",
     "walkdir",
     "webrtc",
+    "Wireframe",
+    "xform",
     "xxhash"
   ]
 }
