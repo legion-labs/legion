@@ -16,7 +16,7 @@ pub struct Mesh {
     pub normals: Option<Vec<Vec3>>,
     pub tangents: Option<Vec<Vec4>>,
     pub tex_coords: Option<Vec<Vec2>>,
-    pub indices: Option<Vec<u16>>,
+    pub indices: Option<Vec<u32>>,
     pub colors: Option<Vec<[u8; 4]>>,
 
     pub material_id: Option<MaterialReferenceType>,
@@ -127,7 +127,7 @@ impl Mesh {
         }
         if let Some(indices) = &self.indices {
             // Convert from byte offset to index offset, byte offset is only needed for uploading data
-            index_offset = offset / 2;
+            index_offset = offset / 4;
             mesh_desc.set_index_offset(index_offset.into());
             mesh_desc.set_index_count((indices.len() as u32).into());
             updater.add_update_jobs(indices, u64::from(offset));
@@ -200,7 +200,7 @@ impl Mesh {
              half_size, -half_size, -half_size,  0.0,  0.0, -1.0, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
         ];
 
-        let mut index_data: Vec<u16> = vec![];
+        let mut index_data: Vec<u32> = vec![];
         index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
         index_data.extend_from_slice(&[4, 5, 6, 4, 6, 7]);
         index_data.extend_from_slice(&[8, 9, 10, 8, 10, 11]);
@@ -250,7 +250,7 @@ impl Mesh {
                    0.0,       top_y,       0.0, normal4.x, normal4.y, normal4.z, 0.0, 0.0, 0.0, 1.0,  0.0,  1.0,
         ];
 
-        let mut index_data: Vec<u16> = vec![];
+        let mut index_data: Vec<u32> = vec![];
         index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
         index_data.extend_from_slice(&[4, 5, 6]);
         index_data.extend_from_slice(&[7, 8, 9]);
@@ -270,13 +270,13 @@ impl Mesh {
              half_size, 0.0, -half_size,  0.0, 1.0, 0.0,  0.0, 0.0, 0.0, 0.0,  1.0,  1.0,
         ];
 
-        let mut index_data: Vec<u16> = vec![];
+        let mut index_data: Vec<u32> = vec![];
         index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
 
         Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
-    fn new_cylinder_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u16>) {
+    fn new_cylinder_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u32>) {
         let mut vertex_data = Vec::<f32>::new();
 
         let inc_angle = (2.0 * std::f32::consts::PI) / steps as f32;
@@ -288,8 +288,8 @@ impl Mesh {
         let top_point = Vec3::new(0.0, length, 0.0);
         let top_normal = UP_VECTOR;
 
-        let mut current_index = 0u16;
-        let mut index_data: Vec<u16> = vec![];
+        let mut current_index = 0u32;
+        let mut index_data: Vec<u32> = vec![];
         for _i in 0..steps {
             let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
             let last_top_point =
@@ -338,7 +338,7 @@ impl Mesh {
         Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
-    fn new_cone_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u16>) {
+    fn new_cone_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u32>) {
         let mut vertex_data = Vec::<f32>::new();
 
         let inc_angle = (2.0 * std::f32::consts::PI) / steps as f32;
@@ -350,7 +350,7 @@ impl Mesh {
         let base_normal = DOWN_VECTOR;
 
         let mut current_index = 0;
-        let mut index_data: Vec<u16> = vec![];
+        let mut index_data: Vec<u32> = vec![];
         for _i in 0..steps {
             let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
 
@@ -391,8 +391,8 @@ impl Mesh {
         let inc_torus_angle = (2.0 * std::f32::consts::PI) / torus_steps as f32;
         let mut cur_torus_angle = 0.0f32;
 
-        let mut current_index = 0u16;
-        let mut index_data: Vec<u16> = vec![];
+        let mut current_index = 0u32;
+        let mut index_data: Vec<u32> = vec![];
 
         for _i in 0..torus_steps {
             let last_torus_rot_normal = Mat4::from_axis_angle(Vec3::Z, cur_torus_angle);
@@ -618,7 +618,7 @@ impl Mesh {
         }
         let mut cone_index_data = cone_index_data
             .iter()
-            .map(|i| i + (arrow_vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE) as u16)
+            .map(|i| i + (arrow_vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE) as u32)
             .collect();
         arrow_vertex_data.append(&mut cone_vertex_data);
         arrow_index_data.append(&mut cone_index_data);
@@ -633,8 +633,8 @@ impl Mesh {
         let v_delta = 1.0 / slices as f32;
         let u_delta = 1.0 / slices as f32;
 
-        let mut current_index = 0u16;
-        let mut index_data: Vec<u16> = vec![];
+        let mut current_index = 0u32;
+        let mut index_data: Vec<u32> = vec![];
 
         for slice in 0..slices {
             let y0 = -radius + slice as f32 * slice_size;
@@ -739,7 +739,7 @@ impl Mesh {
         Self::from_vertex_data(&vertex_data, Some(index_data))
     }
 
-    fn from_vertex_data(vertex_data: &[f32], index_data: Option<Vec<u16>>) -> Self {
+    fn from_vertex_data(vertex_data: &[f32], index_data: Option<Vec<u32>>) -> Self {
         let mut positions = Vec::new();
         let mut normals = Vec::new();
         let mut colors = Vec::new();

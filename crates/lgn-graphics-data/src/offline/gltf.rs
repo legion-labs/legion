@@ -52,7 +52,7 @@ impl GltfFile {
                 let mut normals: Vec<Vec3> = Vec::new();
                 let mut tangents: Vec<Vec4> = Vec::new();
                 let mut tex_coords: Vec<Vec2> = Vec::new();
-                let mut indices: Vec<u16> = Vec::new();
+                let mut indices: Vec<u32> = Vec::new();
 
                 let reader = primitive.reader(|buffer| Some(&self.buffers[buffer.index()]));
                 if let Some(iter) = reader.read_positions() {
@@ -92,18 +92,18 @@ impl GltfFile {
                     match indices_option {
                         ReadIndices::U8(iter) => {
                             for idx in iter {
-                                indices.push(u16::from(idx));
+                                indices.push(u32::from(idx));
                             }
                         }
                         ReadIndices::U16(iter) => {
                             for idx in iter {
-                                indices.push(idx);
+                                indices.push(u32::from(idx));
                             }
                         }
                         ReadIndices::U32(iter) => {
                             for idx in iter {
                                 // TODO - will panic if does not fit in 16bits
-                                indices.push(idx as u16);
+                                indices.push(idx);
                             }
                         }
                     }
