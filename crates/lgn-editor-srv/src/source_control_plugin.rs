@@ -219,8 +219,8 @@ pub(crate) struct RawFilesStreamerConfig {
 impl Default for RawFilesStreamerConfig {
     fn default() -> Self {
         Self {
-            // 50mb
-            max_size: 50_000_000,
+            // 5b
+            max_size: 5_000_000_000,
             // 10mb
             max_chunk_size: 10_000_000,
             // 10mb
