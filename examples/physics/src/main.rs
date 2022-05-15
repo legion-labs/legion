@@ -23,6 +23,10 @@ use lgn_data_runtime::{
 };
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
+use lgn_graphics_data::{
+    offline::{Light, Transform, Visual},
+    LightType,
+};
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::{Quat, Vec3};
 use lgn_physics::{
@@ -30,10 +34,6 @@ use lgn_physics::{
     RigidActorType,
 };
 use lgn_tracing::LevelFilter;
-use sample_data::{
-    offline::{Light, Transform, Visual},
-    LightType,
-};
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
 enum CompilersSource {
@@ -435,7 +435,7 @@ async fn create_offline_entity(
     components: Vec<Box<dyn Component>>,
     children: Vec<ResourcePathId>,
 ) -> ResourcePathId {
-    let kind = sample_data::offline::Entity::TYPE;
+    let kind = lgn_graphics_data::offline::Entity::TYPE;
     let id = resource_id
         .parse::<ResourceId>()
         .expect("invalid ResourceId format");
@@ -454,7 +454,7 @@ async fn create_offline_entity(
     };
 
     let mut entity = handle
-        .instantiate::<sample_data::offline::Entity>(resources)
+        .instantiate::<lgn_graphics_data::offline::Entity>(resources)
         .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
@@ -472,7 +472,7 @@ async fn create_offline_entity(
         project
             .add_resource_with_id(
                 name,
-                sample_data::offline::Entity::TYPENAME,
+                lgn_graphics_data::offline::Entity::TYPENAME,
                 kind,
                 id,
                 handle,
@@ -483,7 +483,7 @@ async fn create_offline_entity(
     }
 
     let path: ResourcePathId = type_id.into();
-    path.push(sample_data::runtime::Entity::TYPE)
+    path.push(lgn_graphics_data::runtime::Entity::TYPE)
 }
 
 async fn create_offline_model(

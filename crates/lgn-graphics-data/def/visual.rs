@@ -1,8 +1,8 @@
-use lgn_graphics_data::Color;
+use crate::Color;
 
 #[component()]
 struct Visual {
-    #[legion(resource_type = lgn_graphics_data::runtime::Model)]
+    #[legion(resource_type = crate::runtime::Model)]
     pub renderable_geometry: Option<ResourcePathId>,
 
     #[legion(default=(255,0,0))]

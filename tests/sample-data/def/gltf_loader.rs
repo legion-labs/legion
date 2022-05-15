@@ -3,6 +3,9 @@
 // Instead, materials and textures import should be triggered by importing the models that depend on it
 #[component()]
 struct GltfLoader {
+    #[legion(resource_type = lgn_graphics_data::runtime::Entity)]
+    pub entities: Vec<ResourcePathId>,
+
     #[legion(resource_type = lgn_graphics_data::runtime::Model)]
     pub models: Vec<ResourcePathId>,
 

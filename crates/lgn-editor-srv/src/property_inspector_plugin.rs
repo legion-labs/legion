@@ -327,8 +327,20 @@ impl PropertyInspector for PropertyInspectorRPC {
                             let mut gltf_loader = GltfLoader::default();
 
                             if let Some(gltf) = handle.get::<GltfFile>(&ctx.asset_registry) {
+                                let entities = gltf.gather_entities(gltf_resource_id);
                                 let models = gltf.gather_models(gltf_resource_id);
                                 let materials = gltf.gather_materials(gltf_resource_id);
+
+                                for (_entity, name) in &entities {
+                                    gltf_loader.entities.push(
+                                        ResourcePathId::from(gltf_resource_id)
+                                            .push_named(
+                                                lgn_graphics_data::offline::Entity::TYPE,
+                                                name,
+                                            )
+                                            .push(lgn_graphics_data::runtime::Entity::TYPE),
+                                    );
+                                }
 
                                 for (model, name) in &models {
                                     gltf_loader.models.push(
@@ -371,10 +383,9 @@ impl PropertyInspector for PropertyInspectorRPC {
 
                             if let Ok(entity_handle) = ctx.get_or_load(resource_id).await {
                                 if let Some(mut entity) = entity_handle
-                                    .instantiate::<sample_data::offline::Entity>(
-                                        &ctx.asset_registry,
-                                    )
-                                {
+                                    .instantiate::<lgn_graphics_data::offline::Entity>(
+                                    &ctx.asset_registry,
+                                ) {
                                     entity
                                         .components
                                         .retain(|component| !component.is::<GltfLoader>());

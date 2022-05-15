@@ -1,4 +1,4 @@
-use lgn_graphics_data::Color;
+use crate::Color;
 use lgn_math::prelude::*;
 
 enum LightType {

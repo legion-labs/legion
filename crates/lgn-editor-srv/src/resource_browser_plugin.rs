@@ -89,10 +89,10 @@ impl IndexSnapshot {
                 let res_id = ResourceTypeAndId { kind, id };
 
                 let mut parent_id = raw_name.extract_parent_info().0;
-                if parent_id.is_none() && kind == sample_data::offline::Entity::TYPE {
+                if parent_id.is_none() && kind == lgn_graphics_data::offline::Entity::TYPE {
                     if let Ok(handle) = ctx.get_or_load(res_id).await {
                         if let Some(entity) =
-                            handle.get::<sample_data::offline::Entity>(&ctx.asset_registry)
+                            handle.get::<lgn_graphics_data::offline::Entity>(&ctx.asset_registry)
                         {
                             if let Some(parent) = &entity.parent {
                                 parent_id = Some(parent.source_resource()); // Some(parent.resource_id());
@@ -212,7 +212,7 @@ impl ResourceBrowserPlugin {
                             // Send OpenScene regardless of the compilation results
                             event_writer.send(SceneMessage::OpenScene(
                                 ResourcePathId::from(resource_id)
-                                    .push(sample_data::runtime::Entity::TYPE)
+                                    .push(lgn_graphics_data::runtime::Entity::TYPE)
                                     .resource_id(),
                             ));
 
@@ -258,7 +258,7 @@ fn template_entity(
         "components",
         None,
         Some(
-            serde_json::json!({ "Transform": sample_data::offline::Transform::default() })
+            serde_json::json!({ "Transform": lgn_graphics_data::offline::Transform::default() })
                 .to_string(),
         ),
     ));
@@ -277,11 +277,11 @@ fn update_entity_parenting(
     clear_children: bool,
 ) -> Transaction {
     let mut current_path: ResourcePathId = entity_id.into();
-    current_path = current_path.push(sample_data::runtime::Entity::TYPE);
+    current_path = current_path.push(lgn_graphics_data::runtime::Entity::TYPE);
 
     // Remove entity from old_parent
     if let Some(old_parent) = old_parent {
-        if old_parent.kind == sample_data::offline::Entity::TYPE {
+        if old_parent.kind == lgn_graphics_data::offline::Entity::TYPE {
             transaction = transaction.add_operation(ArrayOperation::delete_value(
                 old_parent,
                 "children",
@@ -292,7 +292,7 @@ fn update_entity_parenting(
 
     // Add entity to new parent and update 'Parent' property
     if let Some(new_parent) = new_parent {
-        if new_parent.kind == sample_data::offline::Entity::TYPE {
+        if new_parent.kind == lgn_graphics_data::offline::Entity::TYPE {
             transaction = transaction.add_operation(ArrayOperation::insert_element(
                 new_parent,
                 "children",
@@ -301,7 +301,7 @@ fn update_entity_parenting(
             ));
 
             let mut parent_path: ResourcePathId = new_parent.into();
-            parent_path = parent_path.push(sample_data::runtime::Entity::TYPE);
+            parent_path = parent_path.push(lgn_graphics_data::runtime::Entity::TYPE);
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 entity_id,
                 &[("parent", json!(parent_path).to_string())],
@@ -522,7 +522,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let index_snapshot = {
             let mut transaction_manager = self.transaction_manager.lock().await;
             transaction_manager
-                .load_all_resource_type(&[sample_data::offline::Entity::TYPE])
+                .load_all_resource_type(&[lgn_graphics_data::offline::Entity::TYPE])
                 .await;
 
             let mut ctx = LockContext::new(&transaction_manager).await;
@@ -550,13 +550,13 @@ impl ResourceBrowser for ResourceBrowserRPC {
 
             // TEMP: Until with have children discovery, handle the 'children' property of Entity manually
             // If we have a parent_resource that's not getting deleted as well, update its 'children' to remove the current entry
-            if resource_id.kind == sample_data::offline::Entity::TYPE {
+            if resource_id.kind == lgn_graphics_data::offline::Entity::TYPE {
                 if let Some(parent_path_id) = index_snapshot.entity_to_parent.get(resource_id) {
                     if !delete_queue.contains(parent_path_id)
-                        && parent_path_id.kind == sample_data::offline::Entity::TYPE
+                        && parent_path_id.kind == lgn_graphics_data::offline::Entity::TYPE
                     {
                         let mut child: ResourcePathId = (*resource_id).into();
-                        child = child.push(sample_data::runtime::Entity::TYPE);
+                        child = child.push(lgn_graphics_data::runtime::Entity::TYPE);
 
                         transaction = transaction.add_operation(ArrayOperation::delete_value(
                             *parent_path_id,
@@ -644,7 +644,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
                         children
                             .iter()
                             .copied()
-                            .filter(|r| r.kind == sample_data::offline::Entity::TYPE),
+                            .filter(|r| r.kind == lgn_graphics_data::offline::Entity::TYPE),
                     );
                 }
                 clone_queue.push(current_id);
@@ -673,7 +673,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 parent,
             ));
 
-            if clone_res_id.kind == sample_data::offline::Entity::TYPE {
+            if clone_res_id.kind == lgn_graphics_data::offline::Entity::TYPE {
                 transaction =
                     update_entity_parenting(clone_res_id, parent, None, transaction, true);
             }
@@ -741,7 +741,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
             new_path = ResourcePathName::new(format!("/!{}", new_parent));
         }
 
-        let old_parent = if resource_id.kind == sample_data::offline::Entity::TYPE {
+        let old_parent = if resource_id.kind == lgn_graphics_data::offline::Entity::TYPE {
             index_snapshot.entity_to_parent.get(&resource_id).copied()
         } else {
             None
@@ -779,7 +779,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let request = request.get_ref();
         let mut resource_id = parse_resource_id(request.id.as_str())?;
 
-        if resource_id.kind != sample_data::offline::Entity::TYPE {
+        if resource_id.kind != lgn_graphics_data::offline::Entity::TYPE {
             return Err(Status::internal(format!(
                 "Expected Entity in OpenScene. Resource {} is a {}",
                 resource_id,
@@ -795,9 +795,9 @@ impl ResourceBrowser for ResourceBrowserRPC {
             .map_err(|err| Status::internal(err.to_string()))?;
 
         // Get runtime entity id
-        if resource_id.kind == sample_data::offline::Entity::TYPE {
+        if resource_id.kind == lgn_graphics_data::offline::Entity::TYPE {
             resource_id = ResourcePathId::from(resource_id)
-                .push(sample_data::runtime::Entity::TYPE)
+                .push(lgn_graphics_data::runtime::Entity::TYPE)
                 .resource_id();
         }
         if let Err(err) = self
@@ -822,9 +822,9 @@ impl ResourceBrowser for ResourceBrowserRPC {
         transaction_manager.remove_scene(resource_id).await;
 
         // Get runtime entity id
-        if resource_id.kind == sample_data::offline::Entity::TYPE {
+        if resource_id.kind == lgn_graphics_data::offline::Entity::TYPE {
             resource_id = ResourcePathId::from(resource_id)
-                .push(sample_data::runtime::Entity::TYPE)
+                .push(lgn_graphics_data::runtime::Entity::TYPE)
                 .resource_id();
         }
         lgn_tracing::info!("Closing scene: {:?}", resource_id);
@@ -860,7 +860,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let request = request.get_ref();
         let resource_id = parse_resource_id(request.resource_id.as_str())?;
 
-        if resource_id.kind != sample_data::offline::Entity::TYPE {
+        if resource_id.kind != lgn_graphics_data::offline::Entity::TYPE {
             return Err(Status::internal(format!(
                 "Expected Entity in GetRuntimeSceneInfo. Resource {} is a {}",
                 resource_id,
@@ -869,7 +869,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         }
 
         let asset_id = ResourcePathId::from(resource_id)
-            .push(sample_data::runtime::Entity::TYPE)
+            .push(lgn_graphics_data::runtime::Entity::TYPE)
             .resource_id();
 
         let manifest_id = {

@@ -140,7 +140,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             response
                 .resource_types
                 .iter()
-                .filter(|res_type| res_type.as_str() == sample_data::offline::Entity::TYPENAME)
+                .filter(|res_type| res_type.as_str() == lgn_graphics_data::offline::Entity::TYPENAME)
                 .count()
                 == 1
         );
@@ -148,7 +148,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         // Create new resource
         let root_entity_id = resource_browser
             .create_resource(Request::new(CreateResourceRequest {
-                resource_type: sample_data::offline::Entity::TYPENAME.into(),
+                resource_type: lgn_graphics_data::offline::Entity::TYPENAME.into(),
                 resource_name: Some("root_entity_".into()),
                 parent_resource_id: None,
                 init_values: vec![InitPropertyValue {
@@ -195,7 +195,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             for i in 0..3u16 {
                 let child_id = resource_browser
                     .create_resource(Request::new(CreateResourceRequest {
-                        resource_type: sample_data::offline::Entity::TYPENAME.into(),
+                        resource_type: lgn_graphics_data::offline::Entity::TYPENAME.into(),
                         resource_name: Some("child".into()),
                         parent_resource_id: Some(root_entity_id.to_string()),
                         init_values: vec![InitPropertyValue {
@@ -222,7 +222,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
 
                 let sub_child_id = resource_browser
                     .create_resource(Request::new(CreateResourceRequest {
-                        resource_type: sample_data::offline::Entity::TYPENAME.into(),
+                        resource_type: lgn_graphics_data::offline::Entity::TYPENAME.into(),
                         resource_name: Some("subchild".into()),
                         parent_resource_id: Some(child_id.clone()),
                         init_values: Vec::new(),

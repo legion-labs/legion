@@ -607,7 +607,7 @@ impl SourceControl for SourceControlRPC {
 
         let transaction_manager = self.transaction_manager.lock().await;
         for resource_id in resource_to_build {
-            if resource_id.kind == sample_data::offline::Entity::TYPE {
+            if resource_id.kind == lgn_graphics_data::offline::Entity::TYPE {
                 {
                     let mut ctx = LockContext::new(&transaction_manager).await;
                     if let Err(err) = ctx.reload(resource_id).await {
@@ -646,7 +646,9 @@ impl SourceControl for SourceControlRPC {
                 ctx.project
                     .deleted_resource_info(resource_id)
                     .await
-                    .unwrap_or_else(|_err| ("(error)".into(), sample_data::offline::Entity::TYPE))
+                    .unwrap_or_else(|_err| {
+                        ("(error)".into(), lgn_graphics_data::offline::Entity::TYPE)
+                    })
             } else {
                 let path = ctx
                     .project
@@ -656,7 +658,7 @@ impl SourceControl for SourceControlRPC {
                 let kind = ctx
                     .project
                     .resource_type(resource_id)
-                    .unwrap_or(sample_data::offline::Entity::TYPE); // Hack, figure out a way to get type for deleted resources
+                    .unwrap_or(lgn_graphics_data::offline::Entity::TYPE); // Hack, figure out a way to get type for deleted resources
                 (path, kind)
             };
 

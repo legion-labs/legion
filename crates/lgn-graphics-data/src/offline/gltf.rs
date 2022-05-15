@@ -1,7 +1,7 @@
 use std::{io, str::FromStr};
 
 use crate::{
-    offline::{Material, Mesh, Model},
+    offline::{Entity, Material, Mesh, Model, Transform, Visual},
     offline_texture::{Texture, TextureType},
     Color,
 };
@@ -22,7 +22,6 @@ use lgn_data_runtime::{
 #[derive(Default, Clone)]
 pub struct GltfFile {
     bytes: Vec<u8>,
-
     document: Option<Document>,
     buffers: Vec<gltf::buffer::Data>,
     images: Vec<gltf::image::Data>,
@@ -41,6 +40,60 @@ impl GltfFile {
 
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
+    }
+
+    pub fn gather_entities(&self, resource_id: ResourceTypeAndId) -> Vec<(Entity, String)> {
+        let mut entities = Vec::new();
+        let mut root_entity = Entity {
+            children: vec![],
+            parent: None,
+            components: vec![],
+        };
+        let root_entity_name = "0";
+        let root_resource_path_id = ResourcePathId::from(resource_id)
+            .push_named(crate::offline::Model::TYPE, root_entity_name)
+            .push(crate::runtime::Model::TYPE);
+        let mut idx: u32 = 1;
+        for node in self.document.as_ref().unwrap().nodes() {
+            let mut entity = Entity {
+                children: vec![],
+                parent: None,
+                components: vec![],
+            };
+            let (position, rotation, scale) = node.transform().decomposed();
+            entity.components.push(Box::new(Transform {
+                position: Vec3::new(position[0], position[1], -position[2]),
+                rotation: lgn_math::Quat::from_xyzw(
+                    rotation[0],
+                    rotation[1],
+                    -rotation[2],
+                    -rotation[3],
+                ),
+                scale: scale.into(),
+            }));
+            if let Some(mesh) = node.mesh() {
+                let visual = Box::new(Visual {
+                    renderable_geometry: Some(
+                        ResourcePathId::from(resource_id)
+                            .push_named(crate::offline::Model::TYPE, mesh.name().unwrap())
+                            .push(crate::runtime::Model::TYPE),
+                    ),
+                    color_blend: 0.0,
+                    ..Visual::default()
+                });
+                entity.components.push(visual);
+            }
+            let entity_name = idx.to_string();
+            root_entity.children.push(
+                ResourcePathId::from(resource_id)
+                    .push_named(crate::offline::Entity::TYPE, entity_name.as_str())
+                    .push(crate::runtime::Entity::TYPE),
+            );
+            entities.push((entity, entity_name));
+            idx += 1;
+        }
+        entities.push((root_entity, String::from(root_entity_name)));
+        entities
     }
 
     pub fn gather_models(&self, resource_id: ResourceTypeAndId) -> Vec<(Model, String)> {
@@ -113,7 +166,7 @@ impl GltfFile {
                 }
 
                 let mut indices = Some(indices);
-                if tangents.is_empty() && !normals.is_empty() {
+                if tangents.is_empty() && (!normals.is_empty() && !tex_coords.is_empty()) {
                     tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices)
                         .iter()
                         .map(|v| v.extend(-1.0))

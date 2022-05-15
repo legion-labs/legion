@@ -34,9 +34,9 @@ impl SceneInstance {
         let mut queue = vec![resource_id];
 
         while let Some(resource_id) = queue.pop() {
-            let runtime_entity = asset_registry
-                .get_untyped(resource_id)
-                .and_then(|handle| handle.get::<sample_data::runtime::Entity>(asset_registry));
+            let runtime_entity = asset_registry.get_untyped(resource_id).and_then(|handle| {
+                handle.get::<lgn_graphics_data::runtime::Entity>(asset_registry)
+            });
 
             if runtime_entity.is_none() {
                 warn!(
@@ -92,7 +92,7 @@ impl SceneInstance {
                 .rev()
                 .filter_map(|child_ref| {
                     let child_res_id = child_ref.id();
-                    if child_res_id.kind == sample_data::runtime::Entity::TYPE {
+                    if child_res_id.kind == lgn_graphics_data::runtime::Entity::TYPE {
                         queue.push(child_res_id);
                         Some(
                             self.asset_to_entity_map
@@ -118,7 +118,9 @@ impl SceneInstance {
             let mut entity_name: Option<String> = None;
 
             for component in &runtime_entity.components {
-                if let Some(transform) = component.downcast_ref::<runtime_data::Transform>() {
+                if let Some(transform) =
+                    component.downcast_ref::<lgn_graphics_data::runtime::Transform>()
+                {
                     local_transform = Some(Transform {
                         translation: transform.position,
                         rotation: transform.rotation,
@@ -130,7 +132,9 @@ impl SceneInstance {
                     entity.insert(script.clone());
                 } else if let Some(name) = component.downcast_ref::<runtime_data::Name>() {
                     entity_name = Some(name.name.clone());
-                } else if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
+                } else if let Some(visual) =
+                    component.downcast_ref::<lgn_graphics_data::runtime::Visual>()
+                {
                     entity.insert(VisualComponent::new(
                         visual
                             .renderable_geometry
@@ -147,12 +151,16 @@ impl SceneInstance {
                     entity.insert(nav_mesh.clone());
                 } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
                     entity.insert(view.clone());
-                } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
+                } else if let Some(light) =
+                    component.downcast_ref::<lgn_graphics_data::runtime::Light>()
+                {
                     entity.insert(LightComponent {
                         light_type: match light.light_type {
-                            sample_data::LightType::Omnidirectional => LightType::Omnidirectional,
-                            sample_data::LightType::Directional => LightType::Directional,
-                            sample_data::LightType::Spotlight => LightType::Spotlight {
+                            lgn_graphics_data::LightType::Omnidirectional => {
+                                LightType::Omnidirectional
+                            }
+                            lgn_graphics_data::LightType::Directional => LightType::Directional,
+                            lgn_graphics_data::LightType::Spotlight => LightType::Spotlight {
                                 cone_angle: light.cone_angle,
                             },
                             _ => unreachable!("Unrecognized light type"),
