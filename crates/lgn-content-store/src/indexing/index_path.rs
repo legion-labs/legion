@@ -21,6 +21,10 @@ pub(crate) struct IndexPathItem<'k> {
 pub(crate) struct IndexPath<'k>(SmallVec<[IndexPathItem<'k>; 8]>);
 
 impl<'k> IndexPath<'k> {
+    pub fn new(v: impl Into<SmallVec<[IndexPathItem<'k>; 8]>>) -> Self {
+        Self(v.into())
+    }
+
     pub fn push(&mut self, item: IndexPathItem<'k>) {
         self.0.push(item);
     }
@@ -31,6 +35,12 @@ impl<'k> IndexPath<'k> {
 
     pub fn last_mut(&mut self) -> Option<&mut IndexPathItem<'k>> {
         self.0.last_mut()
+    }
+}
+
+impl<'k> From<IndexPathItem<'k>> for IndexPath<'k> {
+    fn from(item: IndexPathItem<'k>) -> Self {
+        Self::new(vec![item])
     }
 }
 

@@ -108,6 +108,15 @@ impl IndexKey {
                 .unwrap_or_else(|_| "<invalid utf-8>".to_string()),
         }
     }
+
+    // Check if the index key has the specified prefix.
+    pub fn has_prefix(&self, other: &Self) -> bool {
+        if self.len() < other.len() {
+            false
+        } else {
+            &self.0[..other.0.len()] == other.0.as_slice()
+        }
+    }
 }
 
 impl Debug for IndexKey {
