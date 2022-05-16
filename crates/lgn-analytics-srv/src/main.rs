@@ -93,7 +93,10 @@ pub async fn connect_to_local_data_lake(
         .connect(&db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
-    let lakehouse = Arc::new(LocalJitLakehouse::new(pool.clone()));
+    let lakehouse = Arc::new(LocalJitLakehouse::new(
+        pool.clone(),
+        data_lake_blobs.clone(),
+    ));
     Ok(AnalyticsService::new(
         pool,
         data_lake_blobs,

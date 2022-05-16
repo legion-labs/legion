@@ -1,5 +1,6 @@
 use lgn_telemetry_proto::telemetry::Process as ProcessInfo;
 
+#[derive(Debug, Clone)]
 pub struct ConvertTicks {
     ts_offset: i64,
     inv_tsc_frequency: f64,
