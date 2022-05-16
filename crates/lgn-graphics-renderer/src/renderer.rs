@@ -62,7 +62,7 @@ impl Renderer {
         let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
         let device_context = api.device_context();
 
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 512 * 1024 * 1024, false);
+        let static_buffer = UnifiedStaticBuffer::new(device_context, 1836 * 1024 * 1024, false);
 
         let omnidirectional_lights_data =
             OmniDirectionalLightsStaticBuffer::new(UniformGPUData::<OmniDirectionalLight>::new(
