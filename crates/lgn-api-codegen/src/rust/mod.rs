@@ -1,7 +1,7 @@
 mod filters;
 
 use super::{
-    api::{Api, Model},
+    api::{Api, Model, Type},
     Generator,
 };
 use crate::Result;

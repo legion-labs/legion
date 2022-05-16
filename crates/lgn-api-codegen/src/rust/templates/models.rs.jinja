@@ -1,3 +1,5 @@
+use lgn_api_codegen::ByteArray;
+
 {% for model in api.models %}
     {% match model %}
         {% when Model::Enum with (enum_) %}
