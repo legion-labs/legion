@@ -10,10 +10,6 @@ pub enum Error {
     Internal(String),
     #[error("reqwest: {0}")]
     Reqwest(#[from] reqwest::Error),
-    #[error("base64 decode: {0}")]
-    Base64Decode(#[from] base64::DecodeError),
-    #[error("utf8 decode: {0}")]
-    Utf8Decode(#[from] std::string::FromUtf8Error),
     #[error("invalid header: {0}")]
     InvalidHeader(String),
     #[error("missing header: {0}")]
@@ -32,14 +28,6 @@ impl IntoResponse for Error {
             Self::Reqwest(err) => {
                 error!("Reqwest error: {:?}", err);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-            Self::Base64Decode(err) => {
-                error!("Base64 decode error: {:?}", err);
-                StatusCode::BAD_REQUEST.into_response()
-            }
-            Self::Utf8Decode(err) => {
-                error!("Utf8 decode error: {:?}", err);
-                StatusCode::BAD_REQUEST.into_response()
             }
             Self::InvalidHeader(err) => {
                 error!("Invalid header: {}", err);
