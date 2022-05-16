@@ -191,21 +191,12 @@
 </div>
 
 <style lang="postcss">
-<<<<<<< HEAD
   .root {
     @apply flex flex-col justify-between;
   }
 
   .root.with-indent {
     @apply pl-1;
-=======
-  .property-root {
-    @apply flex flex-col justify-between;
-  }
-
-  .property-header {
-    @apply flex flex-row items-center justify-between pl-0 h-8 font-semibold rounded-sm cursor-pointer bg-surface-900;
->>>>>>> 39a41746 (item-even)
   }
 
   .optional {
