@@ -386,6 +386,9 @@ impl PropertyInspector for PropertyInspectorRPC {
                                     .instantiate::<lgn_graphics_data::offline::Entity>(
                                     &ctx.asset_registry,
                                 ) {
+                                    for child_entity in gltf_loader.entities.clone() {
+                                        entity.children.push(child_entity);
+                                    }
                                     entity
                                         .components
                                         .retain(|component| !component.is::<GltfLoader>());

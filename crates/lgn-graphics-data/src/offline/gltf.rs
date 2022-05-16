@@ -44,16 +44,7 @@ impl GltfFile {
 
     pub fn gather_entities(&self, resource_id: ResourceTypeAndId) -> Vec<(Entity, String)> {
         let mut entities = Vec::new();
-        let mut root_entity = Entity {
-            children: vec![],
-            parent: None,
-            components: vec![],
-        };
-        let root_entity_name = "0";
-        let root_resource_path_id = ResourcePathId::from(resource_id)
-            .push_named(crate::offline::Model::TYPE, root_entity_name)
-            .push(crate::runtime::Model::TYPE);
-        let mut idx: u32 = 1;
+        let mut idx: u32 = 0;
         for node in self.document.as_ref().unwrap().nodes() {
             let mut entity = Entity {
                 children: vec![],
@@ -84,15 +75,9 @@ impl GltfFile {
                 entity.components.push(visual);
             }
             let entity_name = idx.to_string();
-            root_entity.children.push(
-                ResourcePathId::from(resource_id)
-                    .push_named(crate::offline::Entity::TYPE, entity_name.as_str())
-                    .push(crate::runtime::Entity::TYPE),
-            );
             entities.push((entity, entity_name));
             idx += 1;
         }
-        entities.push((root_entity, String::from(root_entity_name)));
         entities
     }
 

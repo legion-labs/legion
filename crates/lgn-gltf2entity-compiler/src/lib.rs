@@ -77,11 +77,15 @@ impl Compiler for Gltf2EntityCompiler {
                     })?;
                 let entity_rpid = context.target_unnamed.new_named(&name);
                 compiled_resources.push((entity_rpid.clone(), compiled_asset));
-                //for mesh in model.meshes {
-                //    if let Some(material_rpid) = mesh.material {
-                //        resource_references.push((model_rpid.clone(), material_rpid));
-                //    }
-                //}
+                for component in &entity.components {
+                    if let Some(visual) =
+                        component.downcast_ref::<lgn_graphics_data::offline::Visual>()
+                    {
+                        if let Some(model_rpid) = visual.renderable_geometry.clone() {
+                            resource_references.push((entity_rpid.clone(), model_rpid));
+                        }
+                    }
+                }
             }
             compiled_resources
         };
