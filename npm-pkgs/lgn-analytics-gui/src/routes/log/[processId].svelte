@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from "$app/stores";
+  import { onMount } from "svelte";
 
   import type { LogEntry } from "@lgn/proto-telemetry/dist/log";
   import { Level } from "@lgn/proto-telemetry/dist/log";
@@ -8,11 +9,12 @@
   import L10n from "@/components/Misc/L10n.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
   import Loader from "@/components/Misc/Loader.svelte";
+  import Pagination from "@/components/Misc/Pagination.svelte";
   import Table from "@/components/Misc/Table.svelte";
   import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatProcessName } from "@/lib/format";
 
-  const MAX_NB_ENTRIES_IN_PAGE = 1000;
+  const MAX_NB_ENTRIES_IN_PAGE = 1_000;
 
   const client = getHttpClientContext();
 
@@ -20,55 +22,89 @@
 
   const processId = $page.params.processId;
 
-  let nbEntries = 0;
-  let viewRange: [number, number] = [0, 0];
+  let nbEntries: number | null = null;
+  let beginRange: number | null = null;
+  let endRange: number | null = null;
   let processInfo: Process | null = null;
   let logEntries: LogEntry[] = [];
   let loading = true;
 
-  async function fetchLogEntries(urlParams: URLSearchParams) {
+  onMount(async () => {
     loading = true;
-    const { process } = await client.find_process({
-      processId,
-    });
-    if (!process) {
-      throw new Error(`Process ${processId} not found`);
+
+    try {
+      const { count } = await client.nb_process_log_entries({ processId });
+
+      nbEntries = count;
+
+      const { process } = await client.find_process({
+        processId,
+      });
+
+      if (!process) {
+        throw new Error(`Process ${processId} not found`);
+      }
+
+      processInfo = process;
+
+      const viewRange = getViewRange(nbEntries, $page.url.searchParams);
+
+      beginRange = viewRange[0];
+
+      endRange = viewRange[1];
+
+      fetchLogEntries(beginRange, endRange);
+    } finally {
+      loading = false;
     }
-    processInfo = process;
+  });
 
-    const { count } = await client.nb_process_log_entries({ processId });
-    nbEntries = count;
-
+  function getViewRange(
+    nbEntries: number,
+    urlSearchParams: URLSearchParams
+  ): [number, number] {
     let begin = 0;
-    const beginParam = urlParams.get("begin");
+    const beginParam = urlSearchParams.get("begin");
     if (beginParam) {
       begin = Number.parseFloat(beginParam);
     }
 
-    let end = Math.min(count, MAX_NB_ENTRIES_IN_PAGE);
-    const endParam = urlParams.get("end");
+    let end = Math.min(nbEntries, MAX_NB_ENTRIES_IN_PAGE);
+    const endParam = urlSearchParams.get("end");
     if (endParam) {
       end = Number.parseFloat(endParam);
     }
 
+    return [begin, end];
+  }
+
+  async function fetchLogEntries(beginRange: number, endRange: number) {
+    if (!processInfo) {
+      return;
+    }
+
+    loading = true;
+
     try {
-      const reply = await client.list_process_log_entries({
-        process,
-        begin,
-        end,
+      const response = await client.list_process_log_entries({
+        process: processInfo,
+        begin: beginRange,
+        end: endRange,
       });
-      viewRange = [reply.begin, reply.end];
-      logEntries = reply.entries;
+
+      beginRange = response.begin;
+      endRange = response.end;
+      logEntries = response.entries;
     } finally {
       loading = false;
     }
   }
 
   function formatTime(ms: number) {
-    const seconds = ms / 1000;
+    const seconds = ms / 1_000;
     const secondsWhole = Math.floor(seconds);
     const secondsStr = String(secondsWhole % 60).padStart(2, "0");
-    const secondsFraction = String(Math.round(ms % 1000)).padStart(3, "0");
+    const secondsFraction = String(Math.round(ms % 1_000)).padStart(3, "0");
     const minutes = secondsWhole / 60;
     const minutesWhole = Math.floor(minutes);
     const minutesStr = String(minutesWhole).padStart(2, "0");
@@ -81,7 +117,6 @@
     );
   }
 
-  // TODO: Use theme colors
   function levelToColorCssVar(level: Level) {
     switch (level) {
       case Level.ERROR: {
@@ -106,7 +141,21 @@
     }
   }
 
-  $: fetchLogEntries($page.url.searchParams);
+  function buildPaginationHref(begin: number, end: number) {
+    return `/log/${processId}?begin=${begin}&end=${end}`;
+  }
+
+  $: if (nbEntries !== null) {
+    const viewRange = getViewRange(nbEntries, $page.url.searchParams);
+
+    beginRange = viewRange[0];
+
+    endRange = viewRange[1];
+  }
+
+  $: if (beginRange !== null && endRange !== null) {
+    fetchLogEntries(beginRange, endRange);
+  }
 
   $: processDescription = processInfo
     ? `${processInfo.exe} (${processInfo.processId})`
@@ -134,60 +183,17 @@
           <div title={processDescription}>{formattedProcessName}</div>
         </div>
       </div>
-      {#if !loading}
-        <div class="pr-4">
-          {#if nbEntries > MAX_NB_ENTRIES_IN_PAGE}
-            <div class="text-primary flex space-x-8 self-center">
-              {#if viewRange[0] > 0}
-                <div class="flex space-x-4">
-                  <span class="nav-link">
-                    <a
-                      href={`/log/${processId}?begin=0&end=${Math.min(
-                        MAX_NB_ENTRIES_IN_PAGE,
-                        nbEntries
-                      )}`}
-                    >
-                      <L10n id="global-pagination-first" />
-                    </a>
-                  </span>
-                  <span class="nav-link">
-                    <a
-                      href={`/log/${processId}?begin=${Math.max(
-                        0,
-                        viewRange[0] - MAX_NB_ENTRIES_IN_PAGE
-                      )}&end=${viewRange[0]}`}
-                    >
-                      <L10n id="global-pagination-previous" />
-                    </a>
-                  </span>
-                </div>
-              {/if}
-              {#if viewRange[1] < nbEntries}
-                <div class="flex space-x-4">
-                  <span class="nav-link">
-                    <a
-                      href={`/log/${processId}?begin=${viewRange[1]}&end=${
-                        viewRange[1] + MAX_NB_ENTRIES_IN_PAGE
-                      }`}
-                    >
-                      <L10n id="global-pagination-next" />
-                    </a>
-                  </span>
-                  <span class="nav-link">
-                    <a
-                      href={`/log/${processId}?begin=${
-                        nbEntries - MAX_NB_ENTRIES_IN_PAGE
-                      }&end=${nbEntries}`}
-                    >
-                      <L10n id="global-pagination-last" />
-                    </a>
-                  </span>
-                </div>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      {/if}
+      <div class="flex items-center h-full">
+        {#if nbEntries !== null && nbEntries > MAX_NB_ENTRIES_IN_PAGE}
+          <Pagination
+            begin={beginRange || 0}
+            end={endRange || MAX_NB_ENTRIES_IN_PAGE}
+            entriesPerPage={nbEntries}
+            maxEntriesPerPage={MAX_NB_ENTRIES_IN_PAGE}
+            buildHref={buildPaginationHref}
+          />
+        {/if}
+      </div>
     {/if}
   </div>
   <div slot="content">
@@ -212,18 +218,15 @@
           <div slot="cell" class="table-cell" let:columnName let:value>
             {#if columnName === "level"}
               <div
-                class="flex flex-row space-x-1 items-center self-start truncate"
+                class="truncate"
                 title={$t("global-severity-level", { level: value })}
                 style={`color:rgb(var(${levelToColorCssVar(value)}));`}
               >
                 <L10n id="global-severity-level" variables={{ level: value }} />
               </div>
             {:else if columnName === "timeMs"}
-              <div
-                class="truncate flex justify-end w-full"
-                title={formatTime(value)}
-              >
-                <div>
+              <div class="flex justify-end w-full" title={formatTime(value)}>
+                <div dir="rtl" class="truncate">
                   {formatTime(value)}
                 </div>
               </div>
@@ -242,6 +245,10 @@
 </Layout>
 
 <style lang="postcss">
+  :global body {
+    overflow-y: scroll;
+  }
+
   .log {
     @apply flex flex-col background;
   }

@@ -19,9 +19,7 @@
     </div>
   {/if}
 
-  <div>
-    <slot class="overflow-auto" name="content" />
-  </div>
+  <slot class="overflow-auto" name="content" />
 </div>
 
 <style lang="postcss">
