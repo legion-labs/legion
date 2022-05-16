@@ -93,7 +93,7 @@ impl UnifiedStaticBuffer {
         IndexBufferBinding {
             buffer: &self.buffer,
             byte_offset: 0,
-            index_type: IndexType::Uint32,
+            index_type: IndexType::Uint16,
         }
     }
 }
