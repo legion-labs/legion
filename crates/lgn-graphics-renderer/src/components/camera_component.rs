@@ -44,7 +44,7 @@ impl CameraComponent {
 
     pub fn build_projection(&self, width: f32, height: f32) -> Mat4 {
         let aspect_ratio = width / height;
-        Mat4::perspective_lh(self.fov_y.radians(), aspect_ratio, self.z_near, self.z_far)
+        Mat4::perspective_infinite_reverse_lh(self.fov_y.radians(), aspect_ratio, self.z_near)
     }
 
     pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
