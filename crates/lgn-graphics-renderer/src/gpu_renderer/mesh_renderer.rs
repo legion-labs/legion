@@ -674,7 +674,7 @@ impl MeshRenderer {
                     depth_store_op: StoreOp::Store,
                     stencil_store_op: StoreOp::DontCare,
                     clear_value: DepthStencilClearValue {
-                        depth: 1.0,
+                        depth: 0.0,
                         stencil: 0,
                     },
                 }),
@@ -759,7 +759,7 @@ impl MeshRenderer {
                     depth_store_op: StoreOp::Store,
                     stencil_store_op: StoreOp::DontCare,
                     clear_value: DepthStencilClearValue {
-                        depth: 1.0,
+                        depth: 0.0,
                         stencil: 0,
                     },
                 }),
@@ -800,10 +800,7 @@ impl MeshRenderer {
                     stencil_load_op: LoadOp::DontCare,
                     depth_store_op: StoreOp::Store,
                     stencil_store_op: StoreOp::DontCare,
-                    clear_value: DepthStencilClearValue {
-                        depth: 1.0,
-                        stencil: 0,
-                    },
+                    clear_value: DepthStencilClearValue::default(),
                 }),
             );
 
@@ -935,7 +932,7 @@ fn build_depth_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     let depth_state = DepthState {
         depth_test_enable: true,
         depth_write_enable: true,
-        depth_compare_op: CompareOp::Less,
+        depth_compare_op: CompareOp::GreaterOrEqual,
         stencil_test_enable: false,
         stencil_read_mask: 0xFF,
         stencil_write_mask: 0xFF,
