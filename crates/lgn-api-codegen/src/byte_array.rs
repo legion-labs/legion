@@ -30,6 +30,18 @@ impl From<Vec<u8>> for ByteArray {
     }
 }
 
+impl From<ByteArray> for Vec<u8> {
+    fn from(v: ByteArray) -> Self {
+        v.0
+    }
+}
+
+impl AsRef<[u8]> for ByteArray {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
 impl std::ops::Deref for ByteArray {
     type Target = Vec<u8>;
     fn deref(&self) -> &Vec<u8> {
