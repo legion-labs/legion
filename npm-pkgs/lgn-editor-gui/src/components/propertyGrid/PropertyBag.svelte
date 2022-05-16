@@ -117,11 +117,15 @@
     parentProperty.subProperties.splice(subPropertyIndex, 1);
     parentProperty.subProperties = parentProperty.subProperties;
   }
+
+  function beautifyComponentName(name: string) {
+    return name.replace("[", "").replace("]", "");
+  }
 </script>
 
 <svelte:window on:prompt-answer={removeComponent} />
 
-<div class="root" class:with-indent={level > 1}>
+<div class="flex flex-col justify-between root">
   {#if property.name}
     <div
       on:click={(_) => propertyGridStore.switchCollapse(propertyBagKey)}

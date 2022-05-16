@@ -59,6 +59,7 @@
       {property}
       bind:parentProperty
       {pathParts}
+      {level}
       {index}
     />
   {/if}

@@ -22,12 +22,29 @@
 
   /** The property index (only used in vectors) */
   export let index: number;
+
+  export let level: number;
+
+  function beautifyPropertyName(name: string) {
+    const split = name.split("_");
+
+    for (let i = 0; i < split.length; i++) {
+      split[i] = split[i][0].toUpperCase() + split[i].slice(1, split[i].length);
+    }
+
+    return split.join(" ");
+  }
 </script>
 
-<div class="root">
+<div
+  class="flex flex-row h-8 space-x-1 justify-between"
+  style="padding-left:{level / 4}rem"
+  class:bg-surface-700={index % 2 === 0}
+  class:bg-surface-800={index % 2 !== 0}
+>
   {#if property.name}
-    <div class="property-name" title={property.name}>
-      <div class="truncate">{property.name}</div>
+    <div class="flex w-full flex-grow m-auto min-w-0" title={property.name}>
+      <div class="truncate">{beautifyPropertyName(property.name)}</div>
     </div>
   {/if}
   <div class="property-input-container">
@@ -45,14 +62,6 @@
 </div>
 
 <style lang="postcss">
-  .root {
-    @apply flex flex-row py-0.5 pl-1 space-x-1 justify-between;
-  }
-
-  .property-name {
-    @apply flex w-full flex-grow text-lg min-w-0 border-b-[0.5px] border-dashed border-gray-400;
-  }
-
   .property-input-container {
     @apply flex w-[10rem] flex-shrink-0 flex-grow-0;
   }

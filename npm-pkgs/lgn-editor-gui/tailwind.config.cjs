@@ -30,6 +30,13 @@ module.exports = {
       default: "Inter,Arial,sans-serif",
     },
     extend: {
+      backgroundColor: {
+        surface: {
+          700: "var(--color-background-700)",
+          800: "var(--color-background-800)",
+          900: "var(--color-background-900)",
+        },
+      },
       colors: {
         white: "#eeeeee",
         black: "#181818",
