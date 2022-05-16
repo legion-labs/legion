@@ -187,7 +187,7 @@
 
 <style lang="postcss">
   .root {
-    @apply flex flex-row h-full w-full items-center;
+    @apply flex items-center;
   }
 
   .boolean-property {

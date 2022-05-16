@@ -37,14 +37,14 @@
 </script>
 
 <div
-  class="flex flex-row h-8 space-x-1 justify-between"
+  class="property-unit-root"
   style="padding-left:{level / 4}rem"
   class:bg-surface-700={index % 2 === 0}
   class:bg-surface-800={index % 2 !== 0}
 >
   {#if property.name}
-    <div class="flex w-full flex-grow m-auto min-w-0" title={property.name}>
-      <div class="truncate">{beautifyPropertyName(property.name)}</div>
+    <div class="property-name" title={property.name}>
+      {beautifyPropertyName(property.name)}
     </div>
   {/if}
   <div class="property-input-container">
@@ -62,8 +62,16 @@
 </div>
 
 <style lang="postcss">
+  .property-unit-root {
+    @apply flex flex-row justify-between h-9 pr-2;
+  }
+
+  .property-name {
+    @apply my-auto truncate;
+  }
+
   .property-input-container {
-    @apply flex w-[10rem] flex-shrink-0 flex-grow-0;
+    @apply flex w-[10rem] flex-shrink-0 flex-grow-[0.5];
   }
 
   .property-input {

@@ -35,6 +35,13 @@ module.exports = {
           700: "var(--color-background-700)",
           800: "var(--color-background-800)",
           900: "var(--color-background-900)",
+          max: "var(--color-background-max)",
+        },
+        vector: {
+          x: "var(--color-vector-x)",
+          y: "var(--color-vector-y)",
+          z: "var(--color-vector-z)",
+          w: "var(--color-vector-w)",
         },
       },
       colors: {
