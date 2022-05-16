@@ -37,6 +37,11 @@ module.exports = {
           900: "var(--color-background-900)",
           max: "var(--color-background-max)",
         },
+        list: {
+          "item-even": "var(--list-item-bg-even)",
+          "item-odd": "var(--list-item-bg-odd)",
+          header: "var(--list-item-bg-header)",
+        },
         vector: {
           x: "var(--color-vector-x)",
           y: "var(--color-vector-y)",
