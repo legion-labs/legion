@@ -198,37 +198,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "animation-rebuild-data"
-version = "0.1.0"
-dependencies = [
-    "anyhow",
-    "clap 3.1.18",
-    "generic-data",
-    "lgn-animation",
-    "lgn-app",
-    "lgn-compiler-runtime-entity",
-    "lgn-compiler-runtime-model",
-    "lgn-content-store",
-    "lgn-data-build",
-    "lgn-data-compiler",
-    "lgn-data-compiler-remote",
-    "lgn-data-offline",
-    "lgn-data-runtime",
-    "lgn-data-transaction",
-    "lgn-ecs",
-    "lgn-graphics-data",
-    "lgn-graphics-renderer",
-    "lgn-math",
-    "lgn-physics",
-    "lgn-source-control",
-    "lgn-telemetry-sink",
-    "lgn-tracing",
-    "sample-data",
-    "serde_json",
-    "tokio",
-]
-
-[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2010,7 +1979,7 @@ dependencies = ["libloading"]
 name = "dolly"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72ca62af80028e899eae554918f89106ae480104b1de01965b454601e1ad87de"
+checksum = "13a956e7201e6d83f09cdd044314a385d51cb66262dafc7e3db2a5012f0fff7b"
 dependencies = ["glam"]
 
 [[package]]
@@ -2088,7 +2057,8 @@ dependencies = [
     "lgn-grpc",
     "lgn-hierarchy",
     "lgn-input",
-    "lgn-log",
+    "lgn-log-stream",
+    "lgn-log-stream-proto",
     "lgn-math",
     "lgn-mp4",
     "lgn-online",
@@ -2196,19 +2166,6 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = ["atty", "humantime", "log", "regex", "termcolor"]
-
-[[package]]
-name = "epaint"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adfd9296f7f92902e41c0e8e5deca6d2fb29f289c86d03a01ea01bd7498316c2"
-dependencies = [
-    "ab_glyph",
-    "ahash",
-    "atomic_refcell",
-    "emath 0.16.0",
-    "nohash-hasher",
-]
 
 [[package]]
 name = "epaint"
@@ -2846,7 +2803,7 @@ dependencies = ["crypto-mac 0.11.1", "digest 0.9.0"]
 name = "http"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75f43d41e26995c17e71ee126451dd3941010b0514a81a9d11f3b341debc2399"
+checksum = "ff8670570af52249509a86f5e3e18a08c60b177071826898fde8997cf5f6bfbb"
 dependencies = ["bytes", "fnv", "itoa 1.0.2"]
 
 [[package]]
@@ -4154,18 +4111,15 @@ dependencies = [
     "chrono",
     "clap 3.1.18",
     "http",
-    "http-serde",
     "hyper",
     "lazy_static",
     "lgn-api-codegen",
     "lgn-auth",
     "lgn-cli-utils",
-    "lgn-config",
     "lgn-online",
     "lgn-telemetry-sink",
     "lgn-tracing",
     "log",
-    "lru_time_cache",
     "reqwest",
     "serde",
     "serde_json",
@@ -4358,23 +4312,21 @@ dependencies = [
 name = "lgn-log"
 version = "0.1.0"
 dependencies = [
-    "async-trait",
-    "axum",
-    "http",
-    "hyper",
-    "lgn-api-codegen",
     "lgn-app",
     "lgn-async",
     "lgn-ecs",
-    "lgn-governance",
     "lgn-grpc",
-    "lgn-online",
+    "lgn-log-stream-proto",
     "lgn-tracing",
-    "serde",
-    "serde_json",
-    "serde_qs",
     "tokio",
+    "tokio-stream",
+    "tonic",
 ]
+
+[[package]]
+name = "lgn-log-stream-proto"
+version = "0.1.0"
+dependencies = ["base64 0.13.0", "prost", "tokio", "tonic", "tonic-build"]
 
 [[package]]
 name = "lgn-macro-utils"
@@ -4543,6 +4495,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-runtime-proto"
+version = "0.1.0"
+dependencies = ["base64 0.13.0", "prost", "tokio", "tonic", "tonic-build"]
+
+[[package]]
 name = "lgn-scene-plugin"
 version = "0.1.0"
 dependencies = [
@@ -4652,7 +4609,6 @@ dependencies = [
     "termcolor",
     "thiserror",
     "tokio",
-    "tokio-stream",
     "tokio-util 0.6.10",
     "tonic",
     "tonic-web",
@@ -4979,12 +4935,6 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8015d95cb7b2ddd3c0d32ca38283ceb1eea09b4713ee380bceb942d85a244228"
 dependencies = ["hashbrown 0.11.2"]
-
-[[package]]
-name = "lru_time_cache"
-version = "0.11.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9106e1d747ffd48e6be5bb2d97fa706ed25b144fbee4d5c02eae110cd8d6badd"
 
 [[package]]
 name = "lz4"
@@ -6585,16 +6535,11 @@ dependencies = ["rune"]
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
-    "async-trait",
-    "axum",
     "clap 3.1.18",
     "crossbeam-channel",
     "generic-data",
-    "http",
-    "hyper",
     "instant",
     "lgn-animation",
-    "lgn-api-codegen",
     "lgn-app",
     "lgn-asset-registry",
     "lgn-async",
@@ -6604,16 +6549,17 @@ dependencies = [
     "lgn-data-runtime",
     "lgn-ecs",
     "lgn-gilrs",
-    "lgn-governance",
     "lgn-graphics-data",
     "lgn-graphics-renderer",
     "lgn-grpc",
     "lgn-hierarchy",
     "lgn-input",
-    "lgn-log",
+    "lgn-log-stream",
+    "lgn-log-stream-proto",
     "lgn-online",
     "lgn-physics",
     "lgn-presenter-window",
+    "lgn-runtime-proto",
     "lgn-scene-plugin",
     "lgn-scripting",
     "lgn-scripting-data",
@@ -6626,8 +6572,8 @@ dependencies = [
     "lgn-winit",
     "sample-data",
     "serde",
-    "serde_qs",
     "tokio",
+    "tonic",
 ]
 
 [[package]]
