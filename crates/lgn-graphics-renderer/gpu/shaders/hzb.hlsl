@@ -8,5 +8,5 @@ VertexOut main_vs(in uint id : SV_VERTEXID) {
 
 float main_ps(in VertexOut vertex_out) : SV_TARGET {
     float4 source = depth_texture.Gather(depth_sampler, vertex_out.uv);
-    return max(max(source.r, source.g), max(source.b, source.a));
+    return min(min(source.r, source.g), min(source.b, source.a));
 }
