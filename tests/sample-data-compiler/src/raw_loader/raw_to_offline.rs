@@ -102,7 +102,7 @@ fn lookup_asset_path(
 
 // ----- Entity conversions -----
 
-impl FromRaw<raw_data::Entity> for offline_data::Entity {
+impl FromRaw<raw_data::Entity> for lgn_graphics_data::offline::Entity {
     fn from_raw(
         raw: raw_data::Entity,
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -114,7 +114,7 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
             .collect();
         let parent = match raw.parent {
             Some(parent) => lookup_asset_path(references, &parent)
-                .map(|res| res.push(sample_data::runtime::Entity::TYPE)),
+                .map(|res| res.push(lgn_graphics_data::runtime::Entity::TYPE)),
             None => None,
         };
         let mut components: Vec<Box<dyn Component>> =
@@ -122,10 +122,14 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
         for component in raw.components {
             match component {
                 raw_data::Component::Transform(raw) => {
-                    components.push(Box::new(Into::<offline_data::Transform>::into(raw)));
+                    components.push(Box::new(
+                        Into::<lgn_graphics_data::offline::Transform>::into(raw),
+                    ));
                 }
                 raw_data::Component::Visual(raw) => {
-                    components.push(Box::new(offline_data::Visual::from_raw(raw, references)));
+                    components.push(Box::new(lgn_graphics_data::offline::Visual::from_raw(
+                        raw, references,
+                    )));
                 }
                 raw_data::Component::GlobalIllumination(raw) => {
                     components.push(Box::new(Into::<offline_data::GlobalIllumination>::into(
@@ -139,7 +143,9 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                     components.push(Box::new(Into::<offline_data::View>::into(raw)));
                 }
                 raw_data::Component::Light(raw) => {
-                    components.push(Box::new(Into::<offline_data::Light>::into(raw)));
+                    components.push(Box::new(Into::<lgn_graphics_data::offline::Light>::into(
+                        raw,
+                    )));
                 }
                 raw_data::Component::GltfLoader(raw) => {
                     components.push(Box::new(offline_data::GltfLoader::from_raw(
@@ -157,7 +163,7 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
     }
 }
 
-impl From<raw_data::Transform> for offline_data::Transform {
+impl From<raw_data::Transform> for lgn_graphics_data::offline::Transform {
     fn from(raw: raw_data::Transform) -> Self {
         Self {
             position: raw.position,
@@ -167,7 +173,7 @@ impl From<raw_data::Transform> for offline_data::Transform {
     }
 }
 
-impl FromRaw<raw_data::Visual> for offline_data::Visual {
+impl FromRaw<raw_data::Visual> for lgn_graphics_data::offline::Visual {
     fn from_raw(
         raw: raw_data::Visual,
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -192,7 +198,7 @@ impl FromRaw<raw_data::Visual> for offline_data::Visual {
     }
 }
 
-impl From<raw_data::GIContribution> for sample_data::GIContribution {
+impl From<raw_data::GIContribution> for lgn_graphics_data::GIContribution {
     fn from(raw: raw_data::GIContribution) -> Self {
         match raw {
             raw_data::GIContribution::Default => Self::Default,
@@ -253,7 +259,7 @@ impl From<raw_data::ProjectionType> for sample_data::ProjectionType {
     }
 }
 
-impl From<raw_data::Light> for offline_data::Light {
+impl From<raw_data::Light> for lgn_graphics_data::offline::Light {
     fn from(raw: raw_data::Light) -> Self {
         Self {
             light_type: raw.light_type,
@@ -275,6 +281,12 @@ impl FromRaw<raw_data::GltfLoader> for offline_data::GltfLoader {
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
+            entities: raw
+                .entities
+                .iter()
+                .filter_map(|entity| lookup_asset_path(references, entity))
+                .collect(),
+
             models: raw
                 .models
                 .iter()

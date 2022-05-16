@@ -91,7 +91,7 @@ impl ScenePlugin {
         for asset_loaded_event in asset_loaded_events.iter() {
             match asset_loaded_event {
                 AssetRegistryEvent::AssetLoaded(handle)
-                    if handle.id().kind == sample_data::runtime::Entity::TYPE =>
+                    if handle.id().kind == lgn_graphics_data::runtime::Entity::TYPE =>
                 {
                     active_scenes
                         .iter_mut()

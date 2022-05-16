@@ -23,6 +23,7 @@ lgn-data-compiler = { path = "../lgn-data-compiler" }
 lgn-compiler-material = { path = "../lgn-material-compiler" }
 lgn-compiler-png2tex = { path = "../lgn-png2tex-compiler" }
 lgn-compiler-psd2tex = { path = "../lgn-psd2tex-compiler" }
+lgn-compiler-gltf2entity = { path = "../lgn-gltf2entity-compiler" }
 lgn-compiler-gltf2model = { path = "../lgn-gltf2model-compiler" }
 lgn-compiler-gltf2mat = { path = "../lgn-gltf2mat-compiler" }
 lgn-compiler-gltf2tex = { path = "../lgn-gltf2tex-compiler" }

@@ -183,7 +183,7 @@ impl Default for CameraComponent {
             setup,
             fov_y: Angle::from_radians(std::f32::consts::FRAC_PI_4),
             z_near: 0.01,
-            z_far: 1000.0,
+            z_far: 10000.0,
         }
     }
 }

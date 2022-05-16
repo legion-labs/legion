@@ -3663,6 +3663,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-compiler-gltf2entity"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "lgn-data-compiler",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-graphics-data",
+ "tokio",
+]
+
+[[package]]
 name = "lgn-compiler-gltf2mat"
 version = "0.1.0"
 dependencies = [
@@ -3753,8 +3765,8 @@ dependencies = [
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
+ "lgn-graphics-data",
  "lgn-tracing",
- "sample-data",
  "tokio",
 ]
 
@@ -5047,6 +5059,7 @@ name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "lgn-compiler-gltf2entity",
  "lgn-compiler-gltf2mat",
  "lgn-compiler-gltf2model",
  "lgn-compiler-gltf2tex",

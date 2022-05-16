@@ -18,6 +18,7 @@
             scale: (1, 1, 1),
         )),
         GltfLoader((
+            entities: [],
             models: [
                 "runtime_model(offline_model(models/helmet/FlightHelmet.gltf, 'FlightHelmet'))",
             ],
@@ -59,6 +60,8 @@
                 "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, '16_Roughness'), 'Roughness')",
                 "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, '16_Metalness'), 'Metalness')",
                 "runtime_texture(offline_texture(models/helmet/FlightHelmet.gltf, '17'), 'Albedo')",
+
+                "runtime_texture(offline_texture(models/city/Layout_01.gltf, '0'), 'Normal')",
             ],
         )),
          

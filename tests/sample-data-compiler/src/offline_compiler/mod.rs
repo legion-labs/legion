@@ -23,7 +23,9 @@ use sample_data::runtime as runtime_data;
 pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
     let offline_type = path.content_type();
     match offline_type {
-        offline_data::Entity::TYPE => path.push(runtime_data::Entity::TYPE),
+        lgn_graphics_data::offline::Entity::TYPE => {
+            path.push(lgn_graphics_data::runtime::Entity::TYPE)
+        }
         offline_data::Instance::TYPE => path.push(runtime_data::Instance::TYPE),
         lgn_graphics_data::offline::Model::TYPE => {
             path.push(lgn_graphics_data::runtime::Model::TYPE)
@@ -116,7 +118,7 @@ pub async fn build(
         let filter = |p: &ResourcePathId| {
             matches!(
                 p.content_type(),
-                runtime_data::Entity::TYPE
+                lgn_graphics_data::runtime::Entity::TYPE
                     | runtime_data::Instance::TYPE
                     | lgn_graphics_data::runtime_texture::Texture::TYPE
                     | lgn_graphics_data::runtime::Material::TYPE

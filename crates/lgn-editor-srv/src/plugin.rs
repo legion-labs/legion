@@ -83,7 +83,7 @@ impl EditorPlugin {
                 .iter()
                 .map(|offline_id| {
                     ResourcePathId::from(*offline_id)
-                        .push(sample_data::runtime::Entity::TYPE)
+                        .push(lgn_graphics_data::runtime::Entity::TYPE)
                         .resource_id()
                 })
                 .flat_map(|runtime_id| {

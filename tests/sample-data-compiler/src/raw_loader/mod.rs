@@ -128,7 +128,7 @@ pub async fn build_offline(
             let resource_id = *resource_ids.get(resource_name).unwrap();
             match path.extension().unwrap().to_str().unwrap() {
                 "ent" => {
-                    load_ron_resource::<raw_data::Entity, offline_data::Entity>(
+                    load_ron_resource::<raw_data::Entity, lgn_graphics_data::offline::Entity>(
                         resource_id,
                         path,
                         &resource_ids,
@@ -140,7 +140,7 @@ pub async fn build_offline(
                     let handle = project
                         .load_resource(resource_id, &resources)
                         .unwrap()
-                        .typed::<offline_data::Entity>();
+                        .typed::<lgn_graphics_data::offline::Entity>();
 
                     if let Some(entity) = handle.instantiate(&resources) {
                         if let Some(parent_id) = &entity.parent {
@@ -245,7 +245,10 @@ async fn setup_project(
 
 fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
     match ext {
-        "ent" => (offline_data::Entity::TYPENAME, offline_data::Entity::TYPE),
+        "ent" => (
+            lgn_graphics_data::offline::Entity::TYPENAME,
+            lgn_graphics_data::offline::Entity::TYPE,
+        ),
         "ins" => (
             offline_data::Instance::TYPENAME,
             offline_data::Instance::TYPE,
@@ -262,7 +265,7 @@ fn ext_to_resource_kind(ext: &str) -> (&str, ResourceType) {
             lgn_graphics_data::offline_png::PngFile::TYPENAME,
             lgn_graphics_data::offline_png::PngFile::TYPE,
         ),
-        "gltf" => (
+        "gltf" | "glb" => (
             lgn_graphics_data::offline_gltf::GltfFile::TYPENAME,
             lgn_graphics_data::offline_gltf::GltfFile::TYPE,
         ),
@@ -514,7 +517,6 @@ async fn load_gltf_resource(
     let raw_data = fs::read(file).ok()?;
     *gltf_file = GltfFile::from_bytes(raw_data);
     handle.apply(gltf_file, resources);
-
     project
         .save_resource(resource_id, handle, resources)
         .await

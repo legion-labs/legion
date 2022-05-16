@@ -29,7 +29,7 @@ async fn test_property_inspector() -> anyhow::Result<()> {
 
         let new_id = {
             let new_id = ResourceTypeAndId {
-                kind: sample_data::offline::Entity::TYPE,
+                kind: lgn_graphics_data::offline::Entity::TYPE,
                 id: ResourceId::new(),
             };
 
