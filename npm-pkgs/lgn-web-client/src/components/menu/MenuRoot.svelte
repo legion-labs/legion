@@ -9,9 +9,9 @@
 
 <div
   class="menu"
-  class:bg-gray-400={$menuContext === desc}
+  class:bg-gray-400={$menuContext.current === desc}
   on:mouseenter={() => menuContext.mouseEnter(desc)}
-  on:click|capture={() => menuContext.onClick(desc)}
+  on:click|capture={() => menuContext.onRootClick(desc)}
 >
   <div class="menu-title">
     {desc.title}
@@ -19,7 +19,7 @@
   <div
     class="menu-dropdown"
     class:electron={window.isElectron}
-    class:hidden={$menuContext !== desc}
+    class:hidden={$menuContext.current !== desc}
   >
     <div class="menu-dropdown-items">
       {#if desc.children}

@@ -3,33 +3,43 @@ import type { MenuItemDescription } from "./MenuItemDescription";
 
 export type MenuContextStore = ReturnType<typeof getMenuContextStore>;
 
-// export type MenuContext = {
-//   open: boolean;
-//   current?: MenuItemDescription | null;
-// };
+export type MenuContext = {
+  open: boolean;
+  current?: MenuItemDescription | null;
+};
 
 export function getMenuContextStore() {
-  const { subscribe, set } = writable<MenuItemDescription | null>(null);
+  const { subscribe, update } = writable<MenuContext>({ open: false });
 
-  // const updateState = (action: (state: MenuItemDescription | null) => void) => {
-  //   update((s) => {
-  //     action(s);
+  const updateState = (action: (state: MenuContext) => void) => {
+    update((s) => {
+      action(s);
 
-  //     return s;
-  //   });
-  // };
+      return s;
+    });
+  };
 
-  const onClick = (item: MenuItemDescription) => {
-    set(item);
+  const onRootClick = (item: MenuItemDescription) => {
+    updateState((s) => {
+      s.open = true;
+      s.current = item;
+    });
   };
 
   const mouseEnter = (item: MenuItemDescription) => {
-    set(item);
+    updateState((s) => {
+      if (s.open) {
+        s.current = item;
+      }
+    });
   };
 
   const close = () => {
-    set(null);
+    updateState((s) => {
+      s.open = false;
+      s.current = null;
+    });
   };
 
-  return { subscribe, mouseEnter, onClick, close };
+  return { subscribe, mouseEnter, onRootClick, close };
 }
