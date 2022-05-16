@@ -1,0 +1,107 @@
+<script lang="ts">
+  import { writable } from "svelte/store";
+
+  import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
+  import { debounced } from "@lgn/web-client/src/lib/store";
+
+  import L10n from "@/components/Misc/L10n.svelte";
+  import Layout from "@/components/Misc/Layout.svelte";
+  import Loader from "@/components/Misc/Loader.svelte";
+  import ProcessItem from "@/components/Process/ProcessItem.svelte";
+  import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
+
+  type Mode = "default" | "search";
+
+  const { t } = getL10nOrchestratorContext();
+
+  const client = getHttpClientContext();
+
+  const searchValue = writable("");
+
+  const debouncedSearchValue = debounced(searchValue, 300);
+
+  $: cleanSearchValue = $debouncedSearchValue.trim();
+
+  let processes: ProcessInstance[] = [];
+  let loading = true;
+  let mode: Mode = "default";
+
+  async function search(mode: Mode, search: string) {
+    try {
+      const response =
+        mode === "search"
+          ? await client.search_processes({
+              search,
+            })
+          : await client.list_recent_processes({ parentProcessId: undefined });
+
+      processes = response.processes;
+    } finally {
+      loading = false;
+    }
+  }
+
+  $: mode = cleanSearchValue ? "search" : "default";
+
+  $: search(mode, cleanSearchValue);
+</script>
+
+<Layout>
+  <div slot="header">
+    <!-- svelte-ignore a11y-autofocus -->
+    <input
+      autofocus
+      type="text"
+      class="h-8 w-96 text rounded-xs pl-2 bg-default"
+      placeholder={$t("process-list-search")}
+      bind:value={$searchValue}
+    />
+  </div>
+  <div slot="content">
+    {#if loading}
+      <Loader />
+    {:else}
+      <div class="process-list">
+        <div class="flex flex-col space-y-1">
+          <div class="flex flex-row text-content-60">
+            <div class="w-8" />
+            <div class="w-5/12 xl:w-2/12 truncate hidden md:block">
+              <L10n id="process-list-user" />
+            </div>
+            <div class="w-5/12 xl:w-2/12 truncate">
+              <L10n id="process-list-process" />
+            </div>
+            <div class="w-2/12 truncate hidden xl:block">
+              <L10n id="process-list-computer" />
+            </div>
+            <div class="w-2/12 truncate hidden xl:block">
+              <L10n id="process-list-platform" />
+            </div>
+            <!-- <div class="w-2/12 truncate">Last Activity</div> -->
+            <div class="w-2/12 pl-4">
+              <L10n id="process-list-start-time" />
+            </div>
+            <div class="w-24 ml-auto">
+              <L10n id="process-list-statistics" />
+            </div>
+          </div>
+          {#each processes as processInstance, index (processInstance.processInfo?.processId)}
+            <ProcessItem
+              highlightedPattern={$debouncedSearchValue}
+              {processInstance}
+              depth={0}
+              {index}
+              noFold={mode === "search"}
+            />
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </div>
+</Layout>
+
+<style lang="postcss">
+  .process-list {
+    @apply flex flex-col pt-4 pb-1 px-2 text-sm;
+  }
+</style>

@@ -10,9 +10,9 @@
   "packageManager": "pnpm@6.24.1",
   "scripts": {
     "start:desktop": "cross-env LOAD_DEV_URL=true concurrently --names \"vite,electron\" \"vite dev\" \"electron src/electron/main.cjs\" --kill-others",
-    "start:browser": "vite dev",
+    "start:browser": "svelte-kit dev",
     "start": "pnpm start:browser",
-    "build": "vite build",
+    "build": "svelte-kit build && copyfiles -f src/404.html dist/ && replace-in-file dist/index.html --configFile=githubPagesHackInjection.cjs --quiet",
     "check": "pnpm lint && pnpm fmt:check && pnpm svelte:check",
     "lint": "eslint --ext .ts,.svelte .",
     "lint:fix": "eslint --ext .ts,.svelte --fix .",
@@ -25,6 +25,8 @@
   },
   "devDependencies": {
     "@lgn/vite-plugin-ts-proto": "workspace:^0.1.0",
+    "@sveltejs/adapter-static": "^1.0.0-next.28",
+    "@sveltejs/kit": "^1.0.0-next.327",
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.44",
     "@swc/core": "^1.2.182",
     "@testing-library/jest-dom": "^5.16.4",
@@ -40,6 +42,7 @@
     "@typescript-eslint/parser": "^5.23.0",
     "autoprefixer": "^10.4.7",
     "concurrently": "^7.1.0",
+    "copyfiles": "^2.4.1",
     "cross-env": "^7.0.3",
     "eslint": "^8.15.0",
     "eslint-config-prettier": "^8.5.0",
@@ -51,6 +54,7 @@
     "prettier": "2.6.2",
     "prettier-plugin-svelte": "^2.7.0",
     "puppeteer": "^14.0.0",
+    "replace-in-file": "^6.3.2",
     "rimraf": "^3.0.2",
     "svelte": "^3.48.0",
     "svelte-check": "^2.7.0",
@@ -81,7 +85,6 @@
     "protobufjs": "^6.11.2",
     "semaphore-async-await": "^1.5.1",
     "svelte-loading-spinners": "^0.1.7",
-    "svelte-navigator": "^3.1.5",
     "uuid-random": "^1.3.2"
   }
 }

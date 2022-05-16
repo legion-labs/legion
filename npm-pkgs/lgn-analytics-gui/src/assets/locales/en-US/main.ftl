@@ -16,6 +16,15 @@ global-log = Log
 global-timeline = Timeline
 global-metrics = Metrics
 global-thread = thread
+global-severity-level =
+  {$level ->
+    [0] Error
+    [1] Warn
+    [2] Info
+    [3] Debug
+    [4] Trace
+    *[other] Unknown
+  }
 
 # Process list
 process-list-user = User
@@ -29,7 +38,15 @@ process-list-search = Search Process...
 # Log
 log-process-id = Process Id:
 log-executable = Executable:
-log-parent-link = Parent Process Log
+log-parent-link = Parent
+log-parent-table-column =
+  {$columnName ->
+    [level] Severity
+    [timeMs] Time Stamp
+    [target] Target
+    [msg] Message
+    *[other] Unknown
+  }
 
 # Timeline
 timeline-open-cumulative-call-graph = Open { global-cumulative-call-graph }

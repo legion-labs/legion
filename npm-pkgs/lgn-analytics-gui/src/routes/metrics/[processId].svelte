@@ -1,27 +1,28 @@
 <script lang="ts">
+  import { page } from "$app/stores";
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
   import type { Unsubscriber } from "svelte/store";
   import { get } from "svelte/store";
 
+  import { MetricAxisCollection } from "@/components/Metric/Lib/MetricAxisCollection";
+  import { getMetricColor } from "@/components/Metric/Lib/MetricColor";
+  import type { MetricSlice } from "@/components/Metric/Lib/MetricSlice";
+  import type { MetricState } from "@/components/Metric/Lib/MetricState";
+  import type { MetricStore } from "@/components/Metric/Lib/MetricStore";
+  import { MetricStreamer } from "@/components/Metric/Lib/MetricStreamer";
+  import MetricDebugDisplay from "@/components/Metric/MetricDebugDisplay.svelte";
+  import MetricLegendGroup from "@/components/Metric/MetricLegendGroup.svelte";
+  import MetricSelection from "@/components/Metric/MetricSelection.svelte";
+  import MetricTooltip from "@/components/Metric/MetricTooltip.svelte";
+  import Layout from "@/components/Misc/Layout.svelte";
+  import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
   import { getDebugContext, getHttpClientContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
-  import TimeRangeDetails from "../Misc/TimeRangeDetails.svelte";
-  import { MetricAxisCollection } from "./Lib/MetricAxisCollection";
-  import { getMetricColor } from "./Lib/MetricColor";
-  import type { MetricSlice } from "./Lib/MetricSlice";
-  import type { MetricState } from "./Lib/MetricState";
-  import type { MetricStore } from "./Lib/MetricStore";
-  import { MetricStreamer } from "./Lib/MetricStreamer";
-  import MetricDebugDisplay from "./MetricDebugDisplay.svelte";
-  import MetricLegendGroup from "./MetricLegendGroup.svelte";
-  import MetricSelection from "./MetricSelection.svelte";
-  import MetricTooltip from "./MetricTooltip.svelte";
-
-  export let id: string;
+  const processId = $page.params.processId;
 
   let metricStreamer: MetricStreamer;
   let axisCollection: MetricAxisCollection;
@@ -128,7 +129,7 @@
   }
 
   async function fetchMetrics() {
-    metricStreamer = new MetricStreamer(client, id);
+    metricStreamer = new MetricStreamer(client, processId);
     metricStore = metricStreamer.metricStore;
     await metricStreamer.initialize();
 
@@ -352,48 +353,58 @@
 
 <svelte:window on:keydown={handleKeydown} />
 
-{#if !loading}
-  <MetricSelection {metricStore} />
-  <MetricTooltip
-    bind:this={metricTooltip}
-    {metricStore}
-    xScale={transform.rescaleX(x)}
-    leftMargin={margin.left}
-    {zoomEvent}
-    {metricStreamer}
-  />
-{/if}
-
-<div bind:clientWidth={mainWidth}>
-  <div id="metric-canvas" class="relative" />
-
-  {#if !loading}
-    <div style="padding-left:{margin.left}px">
-      <MetricLegendGroup {metricStore} />
-    </div>
-    <div>
-      <TimeRangeDetails timeRange={[brushStart, brushEnd]} processId={id} />
-    </div>
-    {#if $debug}
-      <div style="display:inherit;padding-top:40px">
-        <MetricDebugDisplay
-          {width}
-          {mainWidth}
-          {transform}
-          {updateTime}
-          {metricStreamer}
-          {lod}
-          {pixelSizeNs}
-          {deltaMs}
-          {totalMinMs}
-          {currentMinMs}
-          {totalMaxMs}
-          {currentMaxMs}
-          {brushStart}
-          {brushEnd}
-          {metricStore}
-        />
-      </div>
+<Layout>
+  <div class="metrics" slot="content">
+    {#if !loading}
+      <MetricSelection {metricStore} />
+      <MetricTooltip
+        bind:this={metricTooltip}
+        {metricStore}
+        xScale={transform.rescaleX(x)}
+        leftMargin={margin.left}
+        {zoomEvent}
+        {metricStreamer}
+      />
     {/if}
-  {/if}
-</div>
+
+    <div bind:clientWidth={mainWidth}>
+      <div id="metric-canvas" class="relative" />
+
+      {#if !loading}
+        <div style="padding-left:{margin.left}px">
+          <MetricLegendGroup {metricStore} />
+        </div>
+        <div>
+          <TimeRangeDetails timeRange={[brushStart, brushEnd]} {processId} />
+        </div>
+        {#if $debug}
+          <div style="display:inherit;padding-top:40px">
+            <MetricDebugDisplay
+              {width}
+              {mainWidth}
+              {transform}
+              {updateTime}
+              {metricStreamer}
+              {lod}
+              {pixelSizeNs}
+              {deltaMs}
+              {totalMinMs}
+              {currentMinMs}
+              {totalMaxMs}
+              {currentMaxMs}
+              {brushStart}
+              {brushEnd}
+              {metricStore}
+            />
+          </div>
+        {/if}
+      {/if}
+    </div>
+  </div>
+</Layout>
+
+<style lang="postcss">
+  .metrics {
+    @apply pt-4 px-2;
+  }
+</style>

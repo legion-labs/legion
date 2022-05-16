@@ -1,6 +1,7 @@
 import getPkce from "oauth-pkce";
 
 import userInfo from "../orchestrators/userInfo";
+import accessToken from "../stores/accessToken";
 import type { NonEmptyArray } from "./array";
 import { getCookie, setCookie } from "./cookie";
 import { displayError } from "./errors";
@@ -672,6 +673,7 @@ export async function initAuth({
   // At that point this request should not fail
   try {
     await userInfo.run(() => authClient.userInfo());
+    accessToken.set(authClient.accessToken);
   } catch (error) {
     log.warn(
       log.json`An error occured while trying to get the user info ${error}`

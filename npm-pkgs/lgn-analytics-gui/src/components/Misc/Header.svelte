@@ -1,11 +1,9 @@
 <script lang="ts">
-  import { link } from "svelte-navigator";
-
   import { userInfo } from "@lgn/web-client/src/orchestrators/userInfo";
 
+  import iconPath from "@/assets/icons/128x128.png";
   import { getL10nOrchestratorContext } from "@/contexts";
 
-  import iconPath from "../../../icons/128x128.png";
   import User from "../Process/User.svelte";
 
   const { locale } = getL10nOrchestratorContext();
@@ -21,18 +19,31 @@
   $: user = $userInfo?.name;
 </script>
 
-<div class="w-full flex justify-between pl-6 pt-4 pr-4">
+<div class="header">
   <div class="flex items-center gap-3">
-    <a href="/" use:link on:click={toggleLocale}>
+    <a
+      href="/"
+      on:click={toggleLocale}
+      class="flex flex-row items-center space-x-1"
+    >
       <img src={iconPath} alt="logo" style="height:24px" class="inline" />
-      <span class="font-bold text-xl headline">
-        <a href="/" use:link>Legion Performance Analytics</a>
+      <span class="font-medium text-xl headline">
+        <a href="/">Analytics</a>
       </span>
     </a>
   </div>
+  {#if $$slots.default}
+    <slot />
+  {/if}
   {#if user}
     <div class="flex justify-between items-center">
       <User {user} />
     </div>
   {/if}
 </div>
+
+<style lang="postcss">
+  .header {
+    @apply on-surface h-14 w-full flex justify-between items-center px-4 border-b border-black;
+  }
+</style>
