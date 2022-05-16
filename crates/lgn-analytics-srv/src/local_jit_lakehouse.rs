@@ -1,24 +1,39 @@
-use std::sync::Arc;
+use std::path::Path;
+use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     call_tree::CallTreeBuilder, jit_lakehouse::JitLakehouse,
     thread_block_processor::parse_thread_block,
 };
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::{prelude::*, time::ConvertTicks};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_tracing::prelude::*;
+use parquet::file::properties::WriterProperties;
+use parquet::file::writer::FileWriter;
+use parquet::file::writer::SerializedFileWriter;
+use parquet::schema::parser::parse_message_type;
+use tokio::fs;
 
 pub struct LocalJitLakehouse {
     pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
+    tables_path: PathBuf,
 }
 
 impl LocalJitLakehouse {
-    pub fn new(pool: sqlx::any::AnyPool, blob_storage: Arc<dyn BlobStorage>) -> Self {
-        Self { pool, blob_storage }
+    pub fn new(
+        pool: sqlx::any::AnyPool,
+        blob_storage: Arc<dyn BlobStorage>,
+        tables_path: PathBuf,
+    ) -> Self {
+        Self {
+            pool,
+            blob_storage,
+            tables_path,
+        }
     }
 }
 
@@ -115,6 +130,61 @@ fn make_rows_from_tree(tree: &CallTreeNode, next_id: &mut u64, table: &mut SpanT
     }
 }
 
+async fn make_span_table(
+    connection: &mut sqlx::AnyConnection,
+    blob_storage: Arc<dyn BlobStorage>,
+    process_id: &str,
+    convert_ticks: &ConvertTicks,
+) -> Result<SpanTable> {
+    let mut next_id = 1;
+    let mut table = SpanTable::new();
+    let streams = find_process_thread_streams(connection, process_id).await?;
+    for stream in streams {
+        let blocks = find_stream_blocks(connection, &stream.stream_id).await?;
+        for block in blocks {
+            let mut builder =
+                CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks.clone());
+            parse_thread_block(
+                connection,
+                blob_storage.clone(),
+                &stream,
+                block.block_id.clone(),
+                &mut builder,
+            )
+            .await?;
+            let processed = builder.finish();
+            if let Some(root) = processed.call_tree_root {
+                make_rows_from_tree(&root, &mut next_id, &mut table);
+            }
+        }
+    }
+    Ok(table)
+}
+
+async fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
+    let message_type = "
+  message schema {
+    REQUIRED INT32 hash;
+    REQUIRED INT32 depth;
+  }
+";
+    let schema =
+        Arc::new(parse_message_type(message_type).with_context(|| "parsing spans schema")?);
+    let props = Arc::new(WriterProperties::builder().build());
+    let file = std::fs::File::create(file_path)
+        .with_context(|| format!("creating file {}", file_path.display()))?;
+    let mut writer = SerializedFileWriter::new(file, schema, props).unwrap();
+    let mut row_group_writer = writer.next_row_group().unwrap();
+    if let Some(mut col_writer) = row_group_writer.next_column().unwrap() {
+        // ... write values to a column writer
+        col_writer.write_batch( &spans.hashes, None, None );
+        row_group_writer.close_column(col_writer).unwrap();
+    }
+    writer.close_row_group(row_group_writer).unwrap();
+    writer.close().unwrap();
+    Ok(())
+}
+
 #[async_trait]
 impl JitLakehouse for LocalJitLakehouse {
     async fn build_timeline_tables(&self, process_id: &str) -> Result<()> {
@@ -122,29 +192,20 @@ impl JitLakehouse for LocalJitLakehouse {
         let process = find_process(&mut connection, process_id).await?;
         let convert_ticks = ConvertTicks::new(&process);
         warn!("build_timeline_tables {:?}", process);
-        let mut next_id = 1;
-        let mut table = SpanTable::new();
-        let streams = find_process_thread_streams(&mut connection, process_id).await?;
-        for stream in streams {
-            let blocks = find_stream_blocks(&mut connection, &stream.stream_id).await?;
-            for block in blocks {
-                let mut builder =
-                    CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks.clone());
-                parse_thread_block(
-                    &mut connection,
-                    self.blob_storage.clone(),
-                    &stream,
-                    block.block_id.clone(),
-                    &mut builder,
-                )
-                .await?;
-                let processed = builder.finish();
-                if let Some(root) = processed.call_tree_root {
-                    make_rows_from_tree(&root, &mut next_id, &mut table);
-                }
-            }
-        }
+        let table = make_span_table(
+            &mut connection,
+            self.blob_storage.clone(),
+            process_id,
+            &convert_ticks,
+        )
+        .await?;
+        let spans_table_path = self.tables_path.join(process_id).join("spans");
+        fs::create_dir_all(&spans_table_path)
+            .await
+            .with_context(|| format!("creating folder {}", spans_table_path.display()))?;
         warn!("table: {:?}", table);
+        warn!("path: {}", spans_table_path.display());
+        write_parquet(&spans_table_path.join("spans.parquet"), &table).await?;
         Ok(())
     }
 }

@@ -85,7 +85,7 @@ pub async fn connect_to_local_data_lake(
     let blocks_folder = data_lake_path.join("blobs");
     let data_lake_blobs = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
     let cache_blobs = Arc::new(Lz4BlobStorageAdapter::new(
-        LocalBlobStorage::new(cache_path).await?,
+        LocalBlobStorage::new(cache_path.clone()).await?,
     ));
     let db_path = data_lake_path.join("telemetry.db3");
     let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace('\\', "/"));
@@ -96,6 +96,7 @@ pub async fn connect_to_local_data_lake(
     let lakehouse = Arc::new(LocalJitLakehouse::new(
         pool.clone(),
         data_lake_blobs.clone(),
+        cache_path.join("tables"),
     ));
     Ok(AnalyticsService::new(
         pool,
