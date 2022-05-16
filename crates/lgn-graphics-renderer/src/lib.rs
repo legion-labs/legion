@@ -521,7 +521,7 @@ fn render_update(
         // Update
         //
         persistent_descriptor_set_manager.update();
-        pipeline_manager.update();
+        pipeline_manager.update(device_context);
 
         render_resources.get_mut::<GpuUploadManager>().upload(
             &mut transient_commandbuffer_allocator,

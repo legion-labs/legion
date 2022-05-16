@@ -5,7 +5,7 @@ struct VertexIn {
     float2 uv : TEXCOORD;
 };
 
-struct VertexOut {  
+struct VertexOut {
     float4 hpos : SV_POSITION;
     float2 uv : TEXCOORD;
 };

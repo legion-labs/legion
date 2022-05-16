@@ -3,7 +3,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_graphics_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
-    resources::{PipelineHandle, PipelineManager},
+    resources::{PipelineDef, PipelineHandle, PipelineManager},
     RenderContext,
 };
 use lgn_tracing::span_fn;
@@ -26,30 +26,31 @@ impl OffscreenHelper {
     ) -> Self {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::display_mapper_shader::ID,
-                cgen::shader::display_mapper_shader::NONE,
-            ),
-            |device_context, shader| {
-                device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &VertexLayout::default(),
-                    blend_state: &BlendState::default(),
-                    depth_state: &DepthState::default(),
-                    rasterizer_state: &RasterizerState {
-                        cull_mode: CullMode::Back,
-                        ..RasterizerState::default()
-                    },
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                    color_formats: &[Format::R8G8B8A8_UNORM],
-                    depth_stencil_format: None,
-                    sample_count: SampleCount::SampleCount1,
-                })
-            },
-        );
+        let shader = pipeline_manager
+            .create_shader(
+                cgen::CRATE_ID,
+                CGenShaderKey::make(
+                    cgen::shader::display_mapper_shader::ID,
+                    cgen::shader::display_mapper_shader::NONE,
+                ),
+            )
+            .unwrap();
+        let pipeline_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader,
+                root_signature: root_signature.clone(),
+                vertex_layout: VertexLayout::default(),
+                blend_state: BlendState::default(),
+                depth_state: DepthState::default(),
+                rasterizer_state: RasterizerState {
+                    cull_mode: CullMode::Back,
+                    ..RasterizerState::default()
+                },
+                primitive_topology: PrimitiveTopology::TriangleList,
+                color_formats: vec![Format::R8G8B8A8_UNORM],
+                depth_stencil_format: None,
+                sample_count: SampleCount::SampleCount1,
+            }));
 
         let bilinear_sampler = device_context.create_sampler(SamplerDef {
             min_filter: FilterType::Linear,

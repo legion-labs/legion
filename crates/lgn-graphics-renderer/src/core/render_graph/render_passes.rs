@@ -16,7 +16,7 @@ use crate::{
         RenderGraphTextureDef, RenderGraphTextureViewDef, RenderGraphViewDef, RenderGraphViewId,
     },
     gpu_renderer::DefaultLayers,
-    resources::{PipelineHandle, PipelineManager, UnifiedStaticBuffer},
+    resources::{PipelineDef, PipelineHandle, PipelineManager, UnifiedStaticBuffer},
     RenderContext,
 };
 
@@ -146,24 +146,24 @@ impl GpuCullingPass {
             ..RasterizerState::default()
         };
 
-        pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(cgen::shader::hzb_shader::ID, cgen::shader::hzb_shader::NONE),
-            move |device_context, shader| {
-                device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_disabled(),
-                    depth_state: &depth_state,
-                    rasterizer_state: &rasterizer_state,
-                    color_formats: &[Format::R32_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: None,
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-            },
-        )
+        let shader = pipeline_manager
+            .create_shader(
+                cgen::CRATE_ID,
+                CGenShaderKey::make(cgen::shader::hzb_shader::ID, cgen::shader::hzb_shader::NONE),
+            )
+            .unwrap();
+        pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+            shader,
+            root_signature: root_signature.clone(),
+            vertex_layout,
+            blend_state: BlendState::default_alpha_disabled(),
+            depth_state,
+            rasterizer_state,
+            color_formats: vec![Format::R32_SFLOAT],
+            sample_count: SampleCount::SampleCount1,
+            depth_stencil_format: None,
+            primitive_topology: PrimitiveTopology::TriangleList,
+        }))
     }
 
     #[allow(clippy::unused_self)]

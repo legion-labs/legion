@@ -1,5 +1,6 @@
 use lgn_graphics_api::{
-    DeviceContext, Pipeline, Shader, ShaderPackage, ShaderStage, ShaderStageDef,
+    ComputePipelineDef, DeviceContext, GraphicsPipelineDef, Pipeline, Shader, ShaderPackage,
+    ShaderStage, ShaderStageDef,
 };
 use std::sync::Arc;
 
@@ -17,11 +18,15 @@ use strum::{EnumCount, IntoEnumIterator};
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct PipelineHandle(usize);
 
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone, PartialEq)]
+pub enum PipelineDef {
+    Graphics(GraphicsPipelineDef),
+    Compute(ComputePipelineDef),
+}
+
 struct PipelineInfo {
-    crate_id: CGenCrateID,
-    key: CGenShaderKey,
-    variant: u32,
-    create_pipeline: Box<dyn Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>,
+    pipeline_def: PipelineDef,
 }
 
 pub struct PipelineManager {
@@ -55,48 +60,22 @@ impl PipelineManager {
         }
     }
 
-    pub fn register_pipeline_variant<
-        F: Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static,
-    >(
-        &self,
-        crate_id: CGenCrateID,
-        key: CGenShaderKey,
-        variant: u32,
-        func: F,
-    ) -> PipelineHandle {
-        self.shader_instance(crate_id, key)
-            .expect("Invalid shader key");
+    pub fn register_pipeline(&self, pipeline_def: PipelineDef) -> PipelineHandle {
         {
-            {
-                let infos = self.infos.read();
-                for (i, info) in infos.iter().enumerate() {
-                    if info.crate_id == crate_id && info.key == key && variant == info.variant {
-                        return PipelineHandle(i);
-                    }
+            let infos = self.infos.read();
+            for (i, info) in infos.iter().enumerate() {
+                if pipeline_def == info.pipeline_def {
+                    return PipelineHandle(i);
                 }
             }
-            let mut infos = self.infos.write();
-            infos.push(PipelineInfo {
-                crate_id,
-                key,
-                variant,
-                create_pipeline: Box::new(func),
-            });
-            PipelineHandle(infos.len() - 1)
         }
-    }
-
-    pub fn register_pipeline<F: Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>(
-        &self,
-        crate_id: CGenCrateID,
-        key: CGenShaderKey,
-        func: F,
-    ) -> PipelineHandle {
-        self.register_pipeline_variant(crate_id, key, 0, func)
+        let mut infos = self.infos.write();
+        infos.push(PipelineInfo { pipeline_def });
+        PipelineHandle(infos.len() - 1)
     }
 
     #[span_fn]
-    pub fn update(&mut self) {
+    pub fn update(&mut self, device_context: &DeviceContext) {
         let infos = self.infos.read();
 
         self.pipelines.resize(infos.len(), None);
@@ -104,17 +83,21 @@ impl PipelineManager {
         for i in 0..self.pipelines.len() {
             if self.pipelines[i].is_none() {
                 let info = &infos[i];
-                let shader = self.create_shader(info.crate_id, info.key);
-                if let Some(shader) = shader {
-                    let pipeline = (info.create_pipeline)(&self.device_context, &shader);
-                    self.pipelines[i] = Some(pipeline);
-                }
+                let pipeline = match &info.pipeline_def {
+                    PipelineDef::Graphics(graphics_pipeline_def) => {
+                        device_context.create_graphics_pipeline(graphics_pipeline_def.clone())
+                    }
+                    PipelineDef::Compute(compute_pipeline_def) => {
+                        device_context.create_compute_pipeline(compute_pipeline_def.clone())
+                    }
+                };
+                self.pipelines[i] = Some(pipeline);
             }
         }
     }
 
     #[span_fn]
-    fn create_shader(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<Shader> {
+    pub fn create_shader(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<Shader> {
         // get the instance
         let shader_instance = self.shader_instance(crate_id, key).unwrap();
 
