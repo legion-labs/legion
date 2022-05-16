@@ -3866,6 +3866,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-animation"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "lgn-app",
+ "lgn-core",
+ "lgn-data-codegen",
+ "lgn-data-model",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "lgn-graphics-data",
+ "lgn-graphics-renderer",
+ "lgn-math",
+ "lgn-tracing",
+ "lgn-transform",
+]
+
+[[package]]
 name = "lgn-api-codegen"
 version = "0.1.0"
 dependencies = [
@@ -7571,6 +7589,7 @@ dependencies = [
  "crossbeam-channel",
  "generic-data",
  "instant",
+ "lgn-animation",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
