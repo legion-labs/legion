@@ -8,7 +8,7 @@ use crate::egui::Egui;
 
 use crate::RenderContext;
 
-use crate::resources::{PipelineHandle, PipelineManager};
+use crate::resources::{PipelineDef, PipelineHandle, PipelineManager};
 
 pub struct EguiPass {
     pipeline_handle: PipelineHandle,
@@ -44,27 +44,28 @@ impl EguiPass {
             rate: VertexAttributeRate::Vertex,
         });
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::egui_shader::ID,
-                cgen::shader::egui_shader::TOTO,
-            ),
-            move |device_context, shader| {
-                device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_enabled(),
-                    depth_state: &DepthState::default(),
-                    rasterizer_state: &RasterizerState::default(),
-                    color_formats: &[Format::R16G16B16A16_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: None,
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-            },
-        );
+        let shader = pipeline_manager
+            .create_shader(
+                cgen::CRATE_ID,
+                CGenShaderKey::make(
+                    cgen::shader::egui_shader::ID,
+                    cgen::shader::egui_shader::TOTO,
+                ),
+            )
+            .unwrap();
+        let pipeline_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader,
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: DepthState::default(),
+                rasterizer_state: RasterizerState::default(),
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: None,
+                primitive_topology: PrimitiveTopology::TriangleList,
+            }));
 
         // Create sampler
         let sampler_def = SamplerDef {

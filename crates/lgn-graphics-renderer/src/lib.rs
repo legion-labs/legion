@@ -521,7 +521,7 @@ fn render_update(
         // Update
         //
         persistent_descriptor_set_manager.update();
-        pipeline_manager.update();
+        pipeline_manager.update(device_context);
 
         render_resources.get_mut::<GpuUploadManager>().upload(
             &mut transient_commandbuffer_allocator,
@@ -701,7 +701,7 @@ fn render_update(
 
             cmd_buffer.end();
 
-            let test_render_graph = false;
+            let test_render_graph = true;
             if test_render_graph {
                 render_context
                     .graphics_queue

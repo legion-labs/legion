@@ -29,8 +29,8 @@ use crate::{
     egui::egui_plugin::Egui,
     labels::RenderStage,
     resources::{
-        GpuBufferWithReadback, MaterialId, PipelineHandle, PipelineManager, ReadbackBuffer,
-        UnifiedStaticBufferAllocator,
+        GpuBufferWithReadback, MaterialId, PipelineDef, PipelineHandle, PipelineManager,
+        ReadbackBuffer, UnifiedStaticBufferAllocator,
     },
     RenderContext, Renderer,
 };
@@ -946,32 +946,32 @@ fn build_depth_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
         back_stencil_pass_op: StencilOp::default(),
     };
 
-    let resterizer_state = RasterizerState {
+    let rasterizer_state = RasterizerState {
         cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(
-            cgen::shader::depth_shader::ID,
-            cgen::shader::depth_shader::NONE,
-        ),
-        move |device_context, shader| {
-            device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                shader,
-                root_signature,
-                vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default_alpha_disabled(),
-                depth_state: &depth_state,
-                rasterizer_state: &resterizer_state,
-                color_formats: &[],
-                sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: Some(Format::D32_SFLOAT),
-                primitive_topology: PrimitiveTopology::TriangleList,
-            })
-        },
-    )
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::depth_shader::ID,
+                cgen::shader::depth_shader::NONE,
+            ),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout,
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state,
+        color_formats: vec![],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: Some(Format::D32_SFLOAT),
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }
 
 fn build_temp_pso(pipeline_manager: &PipelineManager, need_depth_write: bool) -> PipelineHandle {
@@ -1010,32 +1010,32 @@ fn build_temp_pso(pipeline_manager: &PipelineManager, need_depth_write: bool) ->
         back_stencil_pass_op: StencilOp::default(),
     };
 
-    let resterizer_state = RasterizerState {
+    let rasterizer_state = RasterizerState {
         cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(
-            cgen::shader::default_shader::ID,
-            cgen::shader::default_shader::NONE,
-        ),
-        move |device_context, shader| {
-            device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                shader,
-                root_signature,
-                vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default_alpha_disabled(),
-                depth_state: &depth_state,
-                rasterizer_state: &resterizer_state,
-                color_formats: &[Format::R16G16B16A16_SFLOAT],
-                sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: Some(Format::D32_SFLOAT),
-                primitive_topology: PrimitiveTopology::TriangleList,
-            })
-        },
-    )
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::default_shader::ID,
+                cgen::shader::default_shader::NONE,
+            ),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout,
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state,
+        color_formats: vec![Format::R16G16B16A16_SFLOAT],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: Some(Format::D32_SFLOAT),
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }
 
 fn build_picking_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
@@ -1069,55 +1069,58 @@ fn build_picking_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
         back_stencil_fail_op: StencilOp::default(),
         back_stencil_pass_op: StencilOp::default(),
     };
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(shader::picking_shader::ID, shader::picking_shader::NONE),
-        move |device_context, shader| {
-            device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                shader,
-                root_signature,
-                vertex_layout: &vertex_layout,
-                blend_state: &BlendState::default_alpha_disabled(),
-                depth_state: &depth_state,
-                rasterizer_state: &RasterizerState::default(),
-                color_formats: &[Format::R16G16B16A16_SFLOAT],
-                sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: None,
-                primitive_topology: PrimitiveTopology::TriangleList,
-            })
-        },
-    )
+
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(shader::picking_shader::ID, shader::picking_shader::NONE),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout,
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state: RasterizerState::default(),
+        color_formats: vec![Format::R16G16B16A16_SFLOAT],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: None,
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }
 
 fn build_culling_psos(pipeline_manager: &PipelineManager) -> (PipelineHandle, PipelineHandle) {
     let root_signature = cgen::pipeline_layout::CullingPipelineLayout::root_signature();
 
-    (
-        pipeline_manager.register_pipeline(
+    let shader_first_pass = pipeline_manager
+        .create_shader(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 shader::culling_shader::ID,
                 shader::culling_shader::FIRST_PASS,
             ),
-            move |device_context, shader| {
-                device_context.create_compute_pipeline(ComputePipelineDef {
-                    shader,
-                    root_signature,
-                })
-            },
-        ),
-        pipeline_manager.register_pipeline(
+        )
+        .unwrap();
+
+    let shader_second_pass = pipeline_manager
+        .create_shader(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 shader::culling_shader::ID,
                 shader::culling_shader::SECOND_PASS,
             ),
-            move |device_context, shader| {
-                device_context.create_compute_pipeline(ComputePipelineDef {
-                    shader,
-                    root_signature,
-                })
-            },
-        ),
+        )
+        .unwrap();
+
+    (
+        pipeline_manager.register_pipeline(PipelineDef::Compute(ComputePipelineDef {
+            shader: shader_first_pass,
+            root_signature: root_signature.clone(),
+        })),
+        pipeline_manager.register_pipeline(PipelineDef::Compute(ComputePipelineDef {
+            shader: shader_second_pass,
+            root_signature: root_signature.clone(),
+        })),
     )
 }

@@ -8,12 +8,12 @@ pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct PushConstantIndex(pub(crate) u32);
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq)]
 pub struct PushConstantDef {
     pub size: u32,
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct RootSignatureDef {
     pub descriptor_set_layouts: Vec<DescriptorSetLayout>,
     pub push_constant_def: Option<PushConstantDef>,
@@ -26,6 +26,13 @@ pub(crate) struct RootSignatureInner {
     pub(crate) backend_root_signature: BackendRootSignature,
 }
 
+impl PartialEq for RootSignatureInner {
+    fn eq(&self, other: &Self) -> bool {
+        self.definition == other.definition
+            && self.backend_root_signature == other.backend_root_signature
+    }
+}
+
 impl Drop for RootSignatureInner {
     fn drop(&mut self) {
         self.backend_root_signature.destroy(&self.device_context);
@@ -35,6 +42,12 @@ impl Drop for RootSignatureInner {
 #[derive(Debug, Clone)]
 pub struct RootSignature {
     pub(crate) inner: Drc<RootSignatureInner>,
+}
+
+impl PartialEq for RootSignature {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.eq(&other.inner)
+    }
 }
 
 impl RootSignature {
