@@ -8,7 +8,7 @@ use lgn_tracing::span_fn;
 
 use crate::core::{
     RenderCommandBuilder, RenderCommandManager, RenderCommandQueuePool, RenderObject,
-    RenderObjectId, RenderObjectSet, RenderObjectSetAllocator, RenderResources,
+    RenderObjectId, RenderObjectSet, RenderObjectSetAllocator, RenderResources, ResourceHandle,
 };
 
 use crate::GraphicsQueue;
@@ -84,11 +84,11 @@ impl Renderer {
         &self.graphics_queue
     }
 
-    pub fn render_object_set_allocator<R>(&self) -> &RenderObjectSetAllocator<R>
+    pub fn render_object_set_allocator<R>(&self) -> ResourceHandle<'_, RenderObjectSetAllocator<R>>
     where
         R: RenderObject,
     {
-        &self.render_resources.get::<RenderObjectSetAllocator<R>>()
+        self.render_resources.get::<RenderObjectSetAllocator<R>>()
     }
 }
 

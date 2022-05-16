@@ -12,7 +12,7 @@ use crate::{
         descriptor_set::frame_descriptor_set,
     },
     components::{LightComponent, LightType},
-    core::{RenderObject, RenderObjectSet},
+    core::{RenderObject, RenderObjectSet, RenderResources},
     resources::TransientBufferAllocator,
 };
 
@@ -28,11 +28,10 @@ pub struct RenderLight {
     pub picking_id: u32,
 }
 
-type RenderLights = RenderObjectSet<RenderLight>;
+type RenderLightSet = RenderObjectSet<RenderLight>;
 
 pub struct LightingManager {
-    pub render_lights: RenderLights,
-
+    // pub render_lights: RenderLightSet,
     pub omnidirectional_light_buffer: Buffer,
     pub omnidirectional_light_bufferview: BufferView,
     pub directional_light_buffer: Buffer,
@@ -99,8 +98,7 @@ impl LightingManager {
         );
 
         Self {
-            render_lights: RenderLights::new(256),
-
+            // render_lights: RenderLightSet::new(256),
             omnidirectional_light_buffer: omnidirectional_lights_buffer,
             omnidirectional_light_bufferview: omnidirectional_lights_bufferview,
             directional_light_buffer: directional_lights_buffer,
@@ -118,7 +116,11 @@ impl LightingManager {
         }
     }
 
-    pub fn update(&self) {}
+    pub fn frame_update(&self, render_resources: &RenderResources) {
+        let light_set = render_resources.get::<RenderLightSet>();
+
+        for i in light_set.inserted_or_changed() {}
+    }
 
     fn gpu_data(&self) -> LightingData {
         let mut lighting_data = LightingData::default();

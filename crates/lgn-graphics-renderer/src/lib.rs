@@ -332,6 +332,7 @@ impl Plugin for RendererPlugin {
             .insert(light_manager)
             .insert(renderdoc_manager)
             .insert(render_light_set)
+            .insert(render_light_set_allocator)
             .finalize();
 
         let renderer = Renderer::new(NUM_RENDER_FRAMES, render_command_queue_pool, render_resources, graphics_queue, gfx_api);
@@ -566,7 +567,7 @@ fn render_update(
             .get_mut::<RenderCommandManager>()
             .apply(&render_resources);
         
-        render_resources.get::<LightingManager>().update();
+        render_resources.get::<LightingManager>().frame_update();
         persistent_descriptor_set_manager.update();
         pipeline_manager.update();
         

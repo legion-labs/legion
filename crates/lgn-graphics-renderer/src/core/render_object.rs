@@ -86,8 +86,9 @@ impl<R> Default for Slot<R> {
 /// RenderObjectSetAllocator
 ///
 pub struct RenderObjectSetAllocator<R> {
-    free_slot_index: AtomicI32, // updated during sync window
-    free_slots: Vec<u32>,       // updated during sync window
+    free_slot_index: AtomicI32,      // updated during sync window
+    free_slots: Vec<RenderObjectId>, // updated during sync window
+    slots_len: usize,
     _phantom: PhantomData<R>,
 }
 
@@ -99,6 +100,7 @@ where
         Self {
             free_slot_index: AtomicI32::new(0),
             free_slots: Vec::new(),
+            slots_len: 0,
             _phantom: PhantomData,
         }
     }
@@ -110,15 +112,10 @@ where
         let free_slot_index = prev_free_slot_index - 1;
         if free_slot_index >= 0 {
             let free_slot_index = usize::try_from(free_slot_index).unwrap();
-            let free_slot = self.free_slots[free_slot_index];
-            RenderObjectId {
-                feature_idx: 0,
-                index: free_slot,
-                generation: self.slots[free_slot as usize].generation,
-            }
+            self.free_slots[free_slot_index]
         } else {
             let over_len = usize::try_from(-free_slot_index - 1).unwrap();
-            let free_slot = self.slots.len() + over_len;
+            let free_slot = self.slots_len + over_len;
             RenderObjectId {
                 feature_idx: 0,
                 index: free_slot as u32,
@@ -163,16 +160,43 @@ where
 
     #[allow(unsafe_code)]
     pub fn sync_update(&mut self, allocator: &mut RenderObjectSetAllocator<R>) {
-        self.resize_containers(allocator);
+        let free_slot_index = allocator
+            .free_slot_index
+            .load(std::sync::atomic::Ordering::SeqCst);
 
-        self.removed
-            .iter()
-            .for_each(|slot_index| self.free_slots.push(u32::try_from(slot_index).unwrap()));
+        if free_slot_index < 0 {
+            let additionnal_slots = usize::try_from(-free_slot_index).unwrap();
+            let new_len = self.slots.len() + additionnal_slots;
+            self.slots.reserve(additionnal_slots);
+            unsafe {
+                self.slots.set_len(new_len);
+            }
+            self.allocated.reserve_len(new_len);
+            self.updated.reserve_len(new_len);
+            self.removed.reserve_len(new_len);
+            allocator.free_slots.clear();
+        } else {
+            allocator.free_slots.resize(
+                usize::try_from(free_slot_index).unwrap(),
+                RenderObjectId::default(),
+            );
+        }
 
-        self.free_slot_index.store(
-            i32::try_from(self.free_slots.len()).unwrap(),
+        self.removed.iter().for_each(|slot_index| {
+            let index = u32::try_from(slot_index).unwrap();
+            allocator.free_slots.push(RenderObjectId {
+                feature_idx: 0,
+                index,
+                generation: self.slots[slot_index].generation,
+            });
+        });
+
+        allocator.free_slot_index.store(
+            i32::try_from(allocator.free_slots.len()).unwrap(),
             std::sync::atomic::Ordering::SeqCst,
         );
+
+        allocator.slots_len = self.slots.len();
     }
 
     pub fn begin_frame(&mut self) {
@@ -221,26 +245,9 @@ where
         }
         self.allocated.remove(slot_index);
         self.removed.insert(slot_index);
+        slot.generation += 1;
         assert!(!self.inserted.contains(slot_index));
         assert!(!self.updated.contains(slot_index));
-    }
-
-    #[allow(unsafe_code)]
-    fn resize_containers(&mut self, allocator: &RenderObjectSetAllocator<R>) {
-        let free_slot_index = allocator
-            .free_slot_index
-            .load(std::sync::atomic::Ordering::SeqCst);
-        if free_slot_index < 0 {
-            let additionnal_slots = usize::try_from(-free_slot_index).unwrap();
-            let new_len = self.slots.len() + additionnal_slots;
-            self.slots.reserve(additionnal_slots);
-            unsafe {
-                self.slots.set_len(new_len);
-            }
-            self.allocated.reserve_len(new_len);
-            self.updated.reserve_len(new_len);
-            self.removed.reserve_len(new_len);
-        }
     }
 }
 
