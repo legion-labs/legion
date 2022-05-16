@@ -5,7 +5,7 @@
 #include "crate://lgn-graphics-renderer/gpu/include/mesh.hsh"
 #include "crate://lgn-graphics-renderer/gpu/include/transform.hsh"
 
-float aabb_max_z(float4 aabb, float2 view_port, float debug_index) {
+float aabb_min_z(float4 aabb, float2 view_port, float debug_index) {
     float4 aabb_vp = min(aabb * view_port.xyxy, view_port.xyxy);
     float2 size = aabb_vp.zw - aabb_vp.xy;
     float lod = clamp(ceil(log2(max(size.x, size.y))) - 1, 0, push_constant.hzb_max_lod);
@@ -18,14 +18,14 @@ float aabb_max_z(float4 aabb, float2 view_port, float debug_index) {
     culling_debug[debug_index].iaabb = iaabb;
     culling_debug[debug_index].lod = lod;
 
-    float max_z = 0;
+    float min_z = 1.0f;
     for (uint i = iaabb.y; i <= iaabb.w; i++) {
         for (uint j = iaabb.x; j <= iaabb.z; j++) {
-            float depth = 1.0 - hzb_texture.Load(uint3(j, i, lod));     // "1.0 - " is because we use reverse Z buffer.
-            max_z = max(max_z, depth);
+            float depth = hzb_texture.Load(uint3(j, i, lod));
+            min_z = min(min_z, depth);
         }
     }
-    return max_z;
+    return min_z;
 }
 
 [numthreads(256, 1, 1)]
@@ -74,14 +74,14 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             float4 aabb = clamp(float4(min_proj.xy / min_proj.w, max_proj.xy / max_proj.w), -1.0, 1.0) * 0.5 + 0.5;
 
             uint debug_index = dt_id.x;
-            float max_z = aabb_max_z(aabb, push_constant.hzb_pixel_extents, debug_index);
+            float min_z = aabb_min_z(aabb, push_constant.hzb_pixel_extents, debug_index);
             float depth = closest_proj.z / closest_proj.w;
 
             culling_debug[debug_index].gpu_instance = instance_data.gpu_instance_id;
             culling_debug[debug_index].depth = depth;
-            culling_debug[debug_index].max_z = max_z;
+            culling_debug[debug_index].min_z = min_z;
 
-            if (depth < 1.0 && depth > max_z) {
+            if (depth > 0.0f && depth < min_z) {
                 culled = true;
 
             #if FIRST_PASS
