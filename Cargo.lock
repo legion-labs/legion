@@ -7970,6 +7970,7 @@ dependencies = [
  "json",
  "lgn-analytics",
  "lgn-blob-storage",
+ "lgn-telemetry-proto",
  "lgn-telemetry-sink",
  "lgn-test-utils",
  "lgn-tracing",

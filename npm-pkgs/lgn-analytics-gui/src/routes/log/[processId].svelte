@@ -214,23 +214,18 @@
               <div
                 class="flex flex-row space-x-1 items-center self-start truncate"
                 title={$t("global-severity-level", { level: value })}
+                style={`color:rgb(var(${levelToColorCssVar(value)}));`}
               >
-                <div
-                  class="h-3 w-3 flex-shrink-0"
-                  style={`background-color:rgb(var(${levelToColorCssVar(
-                    value
-                  )}));`}
-                />
-                <div class="truncate">
-                  <L10n
-                    id="global-severity-level"
-                    variables={{ level: value }}
-                  />
-                </div>
+                <L10n id="global-severity-level" variables={{ level: value }} />
               </div>
             {:else if columnName === "timeMs"}
-              <div class="truncate" title={formatTime(value)}>
-                {formatTime(value)}
+              <div
+                class="truncate flex justify-end w-full"
+                title={formatTime(value)}
+              >
+                <div>
+                  {formatTime(value)}
+                </div>
               </div>
             {:else if columnName === "target"}
               <div dir="rtl" class="truncate" title={value}>

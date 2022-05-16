@@ -20,7 +20,6 @@ use lgn_telemetry_proto::analytics::ListProcessStreamsRequest;
 use lgn_telemetry_proto::analytics::ListStreamBlocksReply;
 use lgn_telemetry_proto::analytics::ListStreamBlocksRequest;
 use lgn_telemetry_proto::analytics::ListStreamsReply;
-use lgn_telemetry_proto::analytics::LogEntry;
 use lgn_telemetry_proto::analytics::MetricBlockData;
 use lgn_telemetry_proto::analytics::MetricBlockManifest;
 use lgn_telemetry_proto::analytics::MetricBlockManifestRequest;
@@ -224,8 +223,6 @@ impl AnalyticsService {
     ) -> Result<ProcessLogReply> {
         let mut connection = self.pool.acquire().await?;
         let mut entries = vec![];
-        let inv_tsc_frequency = get_process_tick_length_ms(process); // factor out
-        let ts_offset = process.start_ticks;
         let mut entry_index: u64 = 0;
 
         for stream in find_process_log_streams(&mut connection, &process.process_id)
@@ -242,6 +239,7 @@ impl AnalyticsService {
                     for_each_log_entry_in_block(
                         &mut connection,
                         self.data_lake_blobs.clone(),
+                        process,
                         &stream,
                         &block,
                         |log_entry| {
@@ -249,14 +247,7 @@ impl AnalyticsService {
                                 return false;
                             }
                             if entry_index >= begin {
-                                let time_ms =
-                                    (log_entry.time - ts_offset) as f64 * inv_tsc_frequency;
-                                entries.push(LogEntry {
-                                    level: (log_entry.level as i32 - 1),
-                                    target: log_entry.target,
-                                    msg: log_entry.msg,
-                                    time_ms,
-                                });
+                                entries.push(log_entry);
                             }
                             entry_index += 1;
 

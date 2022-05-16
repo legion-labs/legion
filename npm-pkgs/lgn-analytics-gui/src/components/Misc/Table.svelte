@@ -40,7 +40,13 @@
             role="cell"
             style={`width: ${width}`}
           >
-            <slot name="cell" columnName={column} {item} value={item[column]} />
+            <slot
+              name="cell"
+              columnName={column}
+              {item}
+              value={item[column]}
+              {index}
+            />
           </div>
         {/each}
       </div>

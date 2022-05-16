@@ -1,5 +1,6 @@
 use lgn_analytics::log_entry_from_value;
 use lgn_analytics::parse_block;
+use lgn_telemetry_proto::telemetry::Process as ProcessInfo;
 use lgn_telemetry_sink::stream_block::StreamBlock;
 use lgn_telemetry_sink::stream_info::get_stream_info;
 use lgn_telemetry_sink::TelemetryGuard;
@@ -119,8 +120,9 @@ fn test_parse_log_interops() {
     assert_eq!(encoded.nb_objects, 2);
     let stream_info = get_stream_info(&stream);
     let mut nb_log_entries = 0;
+    let process = ProcessInfo::default();
     parse_block(&stream_info, &encoded.payload.unwrap(), |val| {
-        if log_entry_from_value(&val).unwrap().is_some() {
+        if log_entry_from_value(&process, &val).unwrap().is_some() {
             nb_log_entries += 1;
         }
         Ok(true)
