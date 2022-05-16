@@ -49,7 +49,7 @@ pub async fn build(
 ) {
     let root_folder = root_folder.as_ref();
 
-    let temp_dir = root_folder.join("temp");
+    let temp_dir = std::env::current_dir().unwrap().join("target/build_db");
     if !temp_dir.exists() {
         fs::create_dir_all(&temp_dir).expect("unable to create temp sub-folder");
     }
