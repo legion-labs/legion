@@ -27,7 +27,6 @@
     defaultLayoutConfig,
   } from "@/components/layout/LayoutConfig";
   import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
-  import SceneExplorer from "@/components/SceneExplorer.svelte";
   import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
   import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
 
@@ -85,12 +84,6 @@
           },
         },
         {
-          title: "Scene Explorer",
-          action: () => {
-            layout.addComponent(SceneExplorer.name);
-          },
-        },
-        {
           title: "Resource Browser",
           action: () => {
             layout.addComponent(ResourceBrowser.name);
@@ -107,6 +100,7 @@
   ];
 
   let layout: Layout;
+  const enableOld = false;
 </script>
 
 <div class="root">
@@ -118,62 +112,64 @@
         componentMap={appComponentMap}
         bind:this={layout}
       />
-      <div class="secondary-contents">
-        <div class="scene-explorer">
+      {#if enableOld}
+        <div class="secondary-contents">
+          <div class="scene-explorer">
+            <!-- TODO: Move this into a dedicated component DynamicTile -->
+            <Tile id={sceneExplorerTileId} {workspace}>
+              <div class="h-full w-full" slot="default" let:tile>
+                {#if tile?.panel?.type === "populatedPanel"}
+                  <DynamicPanel panel={tile.panel} />
+                {:else}
+                  <EmptyPanel>
+                    <div class="empty-panel">
+                      <em>No open scenes</em>
+                    </div>
+                  </EmptyPanel>
+                {/if}
+              </div>
+            </Tile>
+          </div>
+          <div class="h-separator" />
+          <div class="resource-browser">
+            <ResourceBrowser />
+          </div>
+        </div>
+        <div class="v-separator" />
+        <div class="main-content">
           <!-- TODO: Move this into a dedicated component DynamicTile -->
-          <Tile id={sceneExplorerTileId} {workspace}>
+          <Tile id={viewportTileId} {workspace}>
             <div class="h-full w-full" slot="default" let:tile>
               {#if tile?.panel?.type === "populatedPanel"}
                 <DynamicPanel panel={tile.panel} />
               {:else}
                 <EmptyPanel>
                   <div class="empty-panel">
-                    <em>No open scenes</em>
+                    <em>No open videos</em>
                   </div>
                 </EmptyPanel>
               {/if}
             </div>
           </Tile>
-        </div>
-        <div class="h-separator" />
-        <div class="resource-browser">
-          <ResourceBrowser />
-        </div>
-      </div>
-      <div class="v-separator" />
-      <div class="main-content">
-        <!-- TODO: Move this into a dedicated component DynamicTile -->
-        <Tile id={viewportTileId} {workspace}>
-          <div class="h-full w-full" slot="default" let:tile>
-            {#if tile?.panel?.type === "populatedPanel"}
-              <DynamicPanel panel={tile.panel} />
-            {:else}
-              <EmptyPanel>
-                <div class="empty-panel">
-                  <em>No open videos</em>
-                </div>
-              </EmptyPanel>
-            {/if}
+          <div class="h-separator" />
+          <div class="extra-panel">
+            <ExtraPanel />
           </div>
-        </Tile>
-        <div class="h-separator" />
-        <div class="extra-panel">
-          <ExtraPanel />
         </div>
-      </div>
-      <div class="v-separator" />
-      <div class="secondary-contents">
-        <div class="property-grid">
-          <Panel tabs={["Property Grid"]}>
-            <div slot="tab" let:tab>
-              {tab}
-            </div>
-            <div class="property-grid-content" slot="content">
-              <PropertyGrid />
-            </div>
-          </Panel>
+        <div class="v-separator" />
+        <div class="secondary-contents">
+          <div class="property-grid">
+            <Panel tabs={["Property Grid"]}>
+              <div slot="tab" let:tab>
+                {tab}
+              </div>
+              <div class="property-grid-content" slot="content">
+                <PropertyGrid />
+              </div>
+            </Panel>
+          </div>
         </div>
-      </div>
+      {/if}
     </div>
   </div>
   <StatusBar {syncFromMain} stagedResources={$stagedResources || []} />

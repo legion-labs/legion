@@ -49,7 +49,6 @@
   }
 
   export function addComponent(
-    // Could be typed/constrained using a component map
     componentType: string,
     componentState?: object,
     title?: string

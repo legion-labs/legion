@@ -36,7 +36,7 @@
 
 <style>
   .menu {
-    @apply hidden sm:flex items-center cursor-pointer z-40 hover:bg-gray-500;
+    @apply hidden sm:flex items-center cursor-pointer z-[10000] hover:bg-gray-500;
   }
 
   .menu-title {

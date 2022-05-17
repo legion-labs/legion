@@ -18,6 +18,11 @@ export const AppComponentMap: Record<string, typeof SvelteComponentDev> = {
   Log: Log,
 };
 
+// import { allActiveScenes } from "@/orchestrators/allActiveScenes";
+// Cant be const anymore !
+// Needs the active scenes to open the scene explorer accordingly !
+// Or be reactive !
+// With changes in scenes tick the layout !
 export const defaultLayoutConfig: LayoutConfig = {
   settings: {
     showPopoutIcon: false,
@@ -37,10 +42,12 @@ export const defaultLayoutConfig: LayoutConfig = {
             content: [
               {
                 type: "component",
-                title: "Test2",
-                componentType: "Orange",
-                minWidth: 5,
-                minHeight: 100,
+                title: "Scene Explorer",
+                componentType: "SceneExplorer",
+                componentState: {
+                  activeScenes: [],
+                },
+                width: 8,
               },
               {
                 type: "stack",
@@ -91,7 +98,7 @@ export const defaultLayoutConfig: LayoutConfig = {
         type: "component",
         componentType: "PropertyGrid",
         title: "Property Grid",
-        width: 25,
+        width: 8,
       },
     ],
   },
