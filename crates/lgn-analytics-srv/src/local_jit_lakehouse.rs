@@ -176,26 +176,41 @@ fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
     let props = Arc::new(WriterProperties::builder().build());
     let file = std::fs::File::create(file_path)
         .with_context(|| format!("creating file {}", file_path.display()))?;
-    let mut writer = SerializedFileWriter::new(file, schema, props).unwrap();
-    let mut row_group_writer = writer.next_row_group().unwrap();
-    if let Some(mut col_writer) = row_group_writer.next_column().unwrap() {
+    let mut writer = SerializedFileWriter::new(file, schema, props)
+        .with_context(|| "creating parquet writer")?;
+    let mut row_group_writer = writer
+        .next_row_group()
+        .with_context(|| "creating row group writer")?;
+    if let Some(mut col_writer) = row_group_writer
+        .next_column()
+        .with_context(|| "creating column writer")?
+    {
         if let ColumnWriter::Int32ColumnWriter(writer_impl) = &mut col_writer {
             writer_impl
                 .write_batch(&spans.hashes.values, None, None)
                 .with_context(|| "writing hash batch")?;
         }
-        row_group_writer.close_column(col_writer).unwrap();
+        row_group_writer
+            .close_column(col_writer)
+            .with_context(|| "closing column")?;
     }
-    if let Some(mut col_writer) = row_group_writer.next_column().unwrap() {
+    if let Some(mut col_writer) = row_group_writer
+        .next_column()
+        .with_context(|| "creating column writer")?
+    {
         if let ColumnWriter::Int32ColumnWriter(writer_impl) = &mut col_writer {
             writer_impl
                 .write_batch(&spans.depths.values, None, None)
                 .with_context(|| "writing depth batch")?;
         }
-        row_group_writer.close_column(col_writer).unwrap();
+        row_group_writer
+            .close_column(col_writer)
+            .with_context(|| "closing column")?;
     }
-    writer.close_row_group(row_group_writer).unwrap();
-    writer.close().unwrap();
+    writer
+        .close_row_group(row_group_writer)
+        .with_context(|| "closing row group")?;
+    writer.close().with_context(|| "closing parquet writer")?;
     Ok(())
 }
 
