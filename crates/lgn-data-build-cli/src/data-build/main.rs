@@ -105,7 +105,7 @@ async fn main() -> Result<(), String> {
             .create_with_project(
                 &project_dir,
                 repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
@@ -153,7 +153,7 @@ async fn main() -> Result<(), String> {
             let project = Project::open(
                 &project_dir,
                 repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
             )

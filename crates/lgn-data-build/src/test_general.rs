@@ -60,7 +60,7 @@ mod tests {
         .create_with_project(
             &project_dir,
             repository_index,
-            repository_name,
+            &repository_name,
             branch_name,
             source_control_content_provider,
         )
@@ -99,7 +99,7 @@ mod tests {
             .create_with_project(
                 project_dir,
                 repository_index,
-                project.repository_name().clone(),
+                project.repository_name(),
                 project.branch_name(),
                 source_control_content_provider,
             )

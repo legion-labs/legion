@@ -47,7 +47,7 @@ impl Service {
 
     async fn get_index_for_repository(
         &self,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
     ) -> Result<Box<dyn Index>, tonic::Status> {
         self.repository_index
             .load_repository(&repository_name)
@@ -193,7 +193,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         let branch = match index.get_branch(&request.branch_name).await {
             Ok(branch) => Some(branch.into()),
@@ -213,7 +213,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         let query = ListBranchesQuery {
             lock_domain_id: Some(request.lock_domain_id.as_str()).filter(|s| !s.is_empty()),
@@ -238,7 +238,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         let query = ListCommitsQuery {
             commit_ids: request.commit_ids.into_iter().map(CommitId).collect(),
@@ -265,7 +265,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         let lock: Result<Lock> = request.lock.unwrap_or_default().try_into();
         let lock = lock.map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -287,7 +287,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         let lock = match index
             .get_lock(
@@ -314,7 +314,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         let query = ListLocksQuery {
             lock_domain_ids: request.lock_domain_ids.iter().map(String::as_str).collect(),
@@ -340,7 +340,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         let commit: Result<Commit> = request.commit.unwrap_or_default().try_into();
         let commit = commit.map_err(|e| tonic::Status::unknown(e.to_string()))?;
@@ -364,7 +364,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         index
             .update_branch(&request.branch.unwrap_or_default().into())
@@ -383,7 +383,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         index
             .insert_branch(&request.branch.unwrap_or_default().into())
@@ -402,7 +402,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         index
             .unlock(
@@ -425,7 +425,7 @@ impl SourceControl for Service {
             .repository_name
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
-        let index = self.get_index_for_repository(repository_name).await?;
+        let index = self.get_index_for_repository(&repository_name).await?;
 
         let query = ListLocksQuery {
             lock_domain_ids: request.lock_domain_ids.iter().map(String::as_str).collect(),

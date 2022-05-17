@@ -333,7 +333,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::InitWorkspace { repository_name } => {
             info!("init-workspace");
 
-            Workspace::init(repository_index, repository_name, provider)
+            Workspace::init(repository_index, &repository_name, provider)
                 .await
                 .map_err(Into::into)
                 .map(|_| ())

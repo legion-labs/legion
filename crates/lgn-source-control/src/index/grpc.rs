@@ -58,10 +58,7 @@ where
                 repository_name: repository_name.to_string(),
             })
             .await
-            .map_other_err(format!(
-                "failed to create repository `{}`",
-                &repository_name
-            ))?
+            .map_other_err(format!("failed to create repository `{}`", repository_name))?
             .into_inner();
 
         if resp.already_exists {

@@ -112,7 +112,7 @@ mod tests {
         resource_id: ResourceTypeAndId,
         project_dir: &Path,
         repository_index: impl RepositoryIndex,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
         branch_name: &str,
         source_control_content_provider: Arc<Provider>,
     ) {
@@ -205,7 +205,7 @@ mod tests {
                 .create_with_project(
                     &project_dir,
                     &repository_index,
-                    repository_name,
+                    &repository_name,
                     &branch_name,
                     Arc::clone(&source_control_content_provider),
                 )
@@ -244,7 +244,7 @@ mod tests {
             let mut project = Project::open(
                 &project_dir,
                 &repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
@@ -272,7 +272,7 @@ mod tests {
             let project = Project::open(
                 project_dir,
                 &repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
@@ -432,7 +432,7 @@ mod tests {
         .create_with_project(
             project_dir,
             &repository_index,
-            repository_name,
+            &repository_name,
             &branch_name,
             source_control_content_provider,
         )
@@ -531,7 +531,7 @@ mod tests {
         .create_with_project(
             &project_dir,
             &repository_index,
-            repository_name,
+            &repository_name,
             &branch_name,
             Arc::clone(&source_control_content_provider),
         )
@@ -589,7 +589,7 @@ mod tests {
                 root_resource,
                 &project_dir,
                 &repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
@@ -617,7 +617,7 @@ mod tests {
                 resource_e,
                 &project_dir,
                 &repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 source_control_content_provider,
             )
@@ -695,7 +695,7 @@ mod tests {
         .create_with_project(
             &project_dir,
             &repository_index,
-            repository_name,
+            &repository_name,
             &branch_name,
             Arc::clone(&source_control_content_provider),
         )
@@ -806,7 +806,7 @@ mod tests {
             let mut project = Project::open(
                 &project_dir,
                 &repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
@@ -856,7 +856,7 @@ mod tests {
             let mut project = Project::open(
                 project_dir,
                 &repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
@@ -1004,7 +1004,7 @@ mod tests {
         .create_with_project(
             &project_dir,
             &repository_index,
-            repository_name,
+            &repository_name,
             &branch_name,
             source_control_content_provider,
         )
@@ -1120,7 +1120,7 @@ mod tests {
         .create_with_project(
             project_dir,
             repository_index,
-            repository_name,
+            &repository_name,
             &branch_name,
             source_control_content_provider,
         )

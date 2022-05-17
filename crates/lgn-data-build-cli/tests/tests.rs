@@ -52,7 +52,7 @@ async fn build_device() {
         let mut project = Project::create(
             project_dir,
             &repository_index,
-            repository_name.clone(),
+            &repository_name,
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -109,7 +109,7 @@ async fn build_device() {
     .create_with_project(
         project_dir,
         &repository_index,
-        repository_name.clone(),
+        &repository_name,
         &branch_name,
         Arc::clone(&source_control_content_provider),
     )
@@ -183,7 +183,7 @@ async fn build_device() {
         let mut project = Project::open(
             project_dir,
             &repository_index,
-            repository_name.clone(),
+            &repository_name,
             &branch_name,
             Arc::clone(&source_control_content_provider),
         )
@@ -261,7 +261,7 @@ async fn no_intermediate_resource() {
             let mut project = Project::create(
                 project_dir,
                 &repository_index,
-                repository_name.clone(),
+                &repository_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -298,7 +298,7 @@ async fn no_intermediate_resource() {
         .create_with_project(
             project_dir,
             &repository_index,
-            repository_name,
+            &repository_name,
             &branch_name,
             Arc::clone(&source_control_content_provider),
         )
@@ -384,7 +384,7 @@ async fn with_intermediate_resource() {
             let mut project = Project::create(
                 project_dir,
                 &repository_index,
-                repository_name.clone(),
+                &repository_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -421,7 +421,7 @@ async fn with_intermediate_resource() {
         .create_with_project(
             project_dir,
             &repository_index,
-            repository_name,
+            &repository_name,
             &branch_name,
             Arc::clone(&source_control_content_provider),
         )

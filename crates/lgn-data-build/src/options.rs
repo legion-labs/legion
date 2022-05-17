@@ -154,7 +154,7 @@ impl DataBuildOptions {
         self,
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
         branch_name: &str,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<(DataBuild, Project), Error> {

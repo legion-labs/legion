@@ -84,6 +84,7 @@ async fn main() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "sample-data".parse().unwrap();
+    let branch_name = "main";
 
     // Ensure the repository exists.
     let _index = repository_index.ensure_repository(&repository_name).await;
@@ -103,7 +104,8 @@ async fn main() {
     raw_loader::build_offline(
         &absolute_root,
         &repository_index,
-        repository_name,
+        &repository_name,
+        branch_name,
         Arc::clone(&source_control_content_provider),
         true,
     )
@@ -114,6 +116,8 @@ async fn main() {
         &absolute_root,
         &ResourcePathName::from(&args.resource),
         repository_index,
+        &repository_name,
+        branch_name,
         Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )

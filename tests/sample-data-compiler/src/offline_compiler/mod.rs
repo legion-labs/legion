@@ -13,7 +13,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{ResourceDescriptor, ResourcePathId};
-use lgn_source_control::RepositoryIndex;
+use lgn_source_control::{RepositoryIndex, RepositoryName};
 use lgn_tracing::info;
 use sample_data::offline as offline_data;
 use sample_data::runtime as runtime_data;
@@ -44,6 +44,8 @@ pub async fn build(
     root_folder: impl AsRef<Path>,
     resource_name: &ResourcePathName,
     repository_index: impl RepositoryIndex,
+    repository_name: &RepositoryName,
+    branch_name: &str,
     source_control_content_provider: Arc<Provider>,
     data_content_provider: Arc<Provider>,
 ) {
@@ -62,6 +64,8 @@ pub async fn build(
     let project = Project::open(
         root_folder,
         repository_index,
+        repository_name,
+        branch_name,
         Arc::clone(&source_control_content_provider),
     )
     .await
@@ -72,7 +76,7 @@ pub async fn build(
         CompilerRegistryOptions::local_compilers(exe_path),
         Arc::clone(&data_content_provider),
     )
-    .open_or_create(&project)
+    .open_or_create()
     .await
     .expect("new build index");
 

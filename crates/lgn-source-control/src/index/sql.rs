@@ -330,7 +330,7 @@ impl SqlIndex {
             .await
             .map_other_err("failed to acquire SQL connection")?;
 
-        let repository_id = Self::get_repository_id(&mut conn, repository_name.clone()).await?;
+        let repository_id = Self::get_repository_id(&mut conn, repository_name).await?;
 
         Ok(Self {
             driver,
@@ -527,7 +527,7 @@ impl SqlIndex {
     #[span_fn]
     async fn get_repository_id(
         conn: &mut sqlx::pool::PoolConnection<sqlx::Any>,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
     ) -> Result<i64> {
         match sqlx::query(&format!(
             "SELECT id
@@ -540,7 +540,9 @@ impl SqlIndex {
         .await
         {
             Ok(row) => Ok(row.get::<i64, _>("id")),
-            Err(sqlx::Error::RowNotFound) => Err(Error::repository_does_not_exist(repository_name)),
+            Err(sqlx::Error::RowNotFound) => {
+                Err(Error::repository_does_not_exist(repository_name.clone()))
+            }
             Err(err) => {
                 Err(err).map_other_err(format!("failed to fetch repository `{}`", repository_name))
             }

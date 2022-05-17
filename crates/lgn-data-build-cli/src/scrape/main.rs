@@ -384,7 +384,7 @@ async fn main() -> Result<(), String> {
 
                 let (mut build, project) = config
                     .open(
-                        repository_name,
+                        &repository_name,
                         &branch_name,
                         Arc::clone(&source_control_content_provider),
                         Arc::clone(&data_content_provider),
@@ -434,7 +434,7 @@ async fn main() -> Result<(), String> {
             let project = Project::open(
                 proj_file,
                 repository_index,
-                repository_name,
+                &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
@@ -505,7 +505,7 @@ async fn main() -> Result<(), String> {
 
                 let (mut build, project) = config
                     .open(
-                        repository_name,
+                        &repository_name,
                         &branch_name,
                         Arc::clone(&source_control_content_provider),
                         Arc::clone(&data_content_provider),

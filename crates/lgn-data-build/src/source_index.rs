@@ -421,7 +421,7 @@ mod tests {
     // use lgn_data_offline::resource::{Project, ResourcePathName};
     use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
 
-    use crate::source_index::{SourceContent, SourceIndex};
+    use crate::source_index::SourceContent;
 
     #[tokio::test]
     async fn pathid_records() {
@@ -520,9 +520,11 @@ mod tests {
         assert_eq!(source_index.resources[2].dependencies.len(), 1);
     }
 
+    /*
     fn current_checksum(index: &SourceIndex) -> String {
         index.current.as_ref().map(|(id, _)| id.clone()).unwrap()
     }
+    */
 
     /*
     #[tokio::test]

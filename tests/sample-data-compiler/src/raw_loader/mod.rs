@@ -31,7 +31,8 @@ use self::raw_to_offline::FromRaw;
 pub async fn build_offline(
     root_folder: impl AsRef<Path>,
     repository_index: impl RepositoryIndex,
-    repository_name: RepositoryName,
+    repository_name: &RepositoryName,
+    branch_name: &str,
     source_control_content_provider: Arc<Provider>,
     incremental: bool,
 ) {
@@ -87,6 +88,7 @@ pub async fn build_offline(
             root_folder.as_ref(),
             repository_index,
             repository_name,
+            branch_name,
             source_control_content_provider,
         )
         .await;
@@ -207,13 +209,16 @@ pub async fn build_offline(
 async fn setup_project(
     root_folder: &Path,
     repository_index: impl RepositoryIndex,
-    repository_name: RepositoryName,
+    repository_name: &RepositoryName,
+    branch_name: &str,
     source_control_content_provider: Arc<Provider>,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
     let project = if let Ok(project) = Project::open(
         root_folder,
         &repository_index,
+        repository_name,
+        branch_name,
         Arc::clone(&source_control_content_provider),
     )
     .await

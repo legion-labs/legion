@@ -50,6 +50,7 @@ pub struct ResourceRegistrySettings {
     pub(crate) root_folder: PathBuf,
     pub(crate) source_control_repository_index: Box<dyn lgn_source_control::RepositoryIndex>,
     pub(crate) source_control_repository_name: RepositoryName,
+    pub(crate) source_control_branch_name: String,
     pub(crate) build_output_db_addr: String,
     pub(crate) compilation_mode: CompilationMode,
 }
@@ -59,6 +60,7 @@ impl ResourceRegistrySettings {
         root_folder: impl AsRef<Path>,
         source_control_repository_index: Box<dyn lgn_source_control::RepositoryIndex>,
         source_control_repository_name: RepositoryName,
+        source_control_branch_name: String,
         build_output_db_addr: String,
         compilation_mode: CompilationMode,
     ) -> Self {
@@ -66,6 +68,7 @@ impl ResourceRegistrySettings {
             root_folder: root_folder.as_ref().to_owned(),
             source_control_repository_index,
             source_control_repository_name,
+            source_control_branch_name,
             build_output_db_addr,
             compilation_mode,
         }

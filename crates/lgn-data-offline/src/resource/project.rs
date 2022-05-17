@@ -140,7 +140,7 @@ impl Project {
         Self::create(
             project_dir,
             repository_index,
-            repository_name,
+            &repository_name,
             source_control_content_provider,
         )
         .await
@@ -151,7 +151,7 @@ impl Project {
     pub async fn create(
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
         let workspace = Workspace::init(
@@ -172,7 +172,7 @@ impl Project {
     pub async fn open(
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
         branch_name: &str,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {

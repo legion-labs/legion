@@ -61,7 +61,7 @@ impl Workspace {
     /// The workspace must not already exist.
     pub async fn init(
         repository_index: impl RepositoryIndex,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
         provider: Arc<Provider>,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
@@ -83,7 +83,7 @@ impl Workspace {
     /// To load a workspace from a possible subfolder, use `Workspace::find`.
     pub async fn load(
         repository_index: impl RepositoryIndex,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
         branch_name: &str,
         provider: Arc<Provider>,
     ) -> Result<Self> {

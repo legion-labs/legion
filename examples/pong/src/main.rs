@@ -4,6 +4,8 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+use clap::{ArgEnum, Parser};
+use lgn_source_control::RepositoryName;
 use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
 
 use clap::{ArgEnum, Parser};

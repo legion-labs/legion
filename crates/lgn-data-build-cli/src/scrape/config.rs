@@ -39,7 +39,7 @@ impl Config {
 
     pub async fn open(
         &self,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
         branch_name: &str,
         source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,

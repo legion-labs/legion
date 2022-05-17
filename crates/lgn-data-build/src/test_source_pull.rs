@@ -60,13 +60,14 @@ mod tests {
         ) = setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
-        let resource = {
+        let (resource, repository_name, branch_name) = {
             let mut project = Project::create_with_remote_mock(
                 &project_dir,
                 Arc::clone(&source_control_content_provider),
             )
             .await
             .expect("failed to create a project");
+
             let id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
@@ -79,7 +80,11 @@ mod tests {
                 )
                 .await
                 .unwrap();
-            ResourcePathId::from(id)
+
+            let repository_name = project.repository_name().clone();
+            let branch_name = project.branch_name().to_owned();
+
+            (ResourcePathId::from(id), repository_name, branch_name)
         };
 
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
@@ -90,6 +95,8 @@ mod tests {
         .create_with_project(
             project_dir,
             repository_index,
+            &repository_name,
+            &branch_name,
             source_control_content_provider,
         )
         .await
@@ -115,7 +122,7 @@ mod tests {
         ) = setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
-        let (child_id, parent_id) = {
+        let (child_id, parent_id, repository_name, branch_name) = {
             let mut project = Project::create_with_remote_mock(
                 &project_dir,
                 Arc::clone(&source_control_content_provider),
@@ -156,9 +163,15 @@ mod tests {
                 )
                 .await
                 .unwrap();
+
+            let repository_name = project.repository_name().clone();
+            let branch_name = project.branch_name().to_owned();
+
             (
                 ResourcePathId::from(child_id),
                 ResourcePathId::from(parent_id),
+                repository_name,
+                branch_name,
             )
         };
 
@@ -170,6 +183,8 @@ mod tests {
         .create_with_project(
             project_dir,
             repository_index,
+            &repository_name,
+            &branch_name,
             source_control_content_provider,
         )
         .await
