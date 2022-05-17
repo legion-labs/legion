@@ -1,13 +1,16 @@
 import type { LayoutConfig } from "golden-layout";
 import PropertyGrid from "../propertyGrid/PropertyGrid.svelte";
 import OrangeSvelte from "./Orange.svelte";
+import type { SvelteComponentDev } from "svelte/internal";
+import ResourceBrowser from "../ResourceBrowser.svelte";
+import SceneExplorer from "../SceneExplorer.svelte";
 
-export const LayoutComponentMap = {
+export const AppComponentMap: Record<string, typeof SvelteComponentDev> = {
   PropertyGrid: PropertyGrid,
+  ResourceBrowser: ResourceBrowser,
+  SceneExplorer: SceneExplorer,
   Orange: OrangeSvelte,
 };
-
-export type EditorComponents = keyof typeof LayoutComponentMap;
 
 export const layoutConfig: LayoutConfig = {
   settings: {

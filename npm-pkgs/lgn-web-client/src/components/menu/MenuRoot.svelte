@@ -1,4 +1,5 @@
 <script lang="ts">
+  import clickOutside from "../../actions/clickOutside";
   import type { MenuContextStore } from "./lib/MenuContextStore";
   import type { MenuItemDescription } from "./lib/MenuItemDescription";
   import MenuItem from "./MenuItem.svelte";
@@ -10,6 +11,8 @@
 <div
   class="menu"
   class:bg-gray-400={$menuContext.current === desc}
+  use:clickOutside
+  on:click-outside={menuContext.close}
   on:mouseenter={() => menuContext.mouseEnter(desc)}
   on:click|capture={() => menuContext.onRootClick(desc)}
 >

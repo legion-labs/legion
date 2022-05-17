@@ -6,7 +6,7 @@
   import userInfo from "../orchestrators/userInfo";
   import type { DevSettingsValue } from "../stores/devSettings";
   import BrandLogo from "./BrandLogo.svelte";
-  import { mainMenuItemDescriptions } from "./menu/lib/MenuItemDescription";
+  import type { MenuItemDescription } from "./menu/lib/MenuItemDescription";
   import MenuBar from "./menu/MenuBar.svelte";
 
   const { data: userInfoData } = userInfo;
@@ -14,6 +14,8 @@
   export let documentTitle: string | null = null;
 
   export let devSettings: DevSettingsValue | null = null;
+
+  export let mainMenuItemDescriptions: MenuItemDescription[];
 
   let topBarHandle: HTMLDivElement | undefined;
 

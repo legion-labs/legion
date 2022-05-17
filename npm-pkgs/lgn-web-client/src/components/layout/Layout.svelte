@@ -7,12 +7,14 @@
     ResolvedComponentItemConfig,
     VirtualLayout,
   } from "golden-layout";
-  import { layoutConfig, type EditorComponents } from "./LayoutConfig";
+  import type { LayoutConfig } from "golden-layout";
+  import type { JsonValue } from "type-fest";
+  import type { SvelteComponentDev } from "svelte/internal";
 
   type LayoutComponent = {
+    type: string;
     container: ComponentContainer;
     visible: boolean;
-    type: EditorComponents;
     zIndex: string;
     rect: {
       height: number;
@@ -21,6 +23,9 @@
       top: number;
     };
   };
+
+  export let layoutConfig: LayoutConfig;
+  export let componentMap: Record<string, typeof SvelteComponentDev>;
 
   let height: number;
   let width: number;
@@ -36,6 +41,23 @@
     layout?.setSize(
       layout.container.offsetWidth,
       layout.container.offsetHeight
+    );
+  }
+
+  function cleanSvelteComponentProxyName(name: string) {
+    return name.replace("Proxy<", "").replace(">", "");
+  }
+
+  export function addComponent(
+    // Could be typed/constrained using a component map
+    componentType: string,
+    componentState?: JsonValue,
+    title?: string
+  ) {
+    return layout.addComponent(
+      cleanSvelteComponentProxyName(componentType),
+      componentState,
+      title
     );
   }
 
@@ -69,8 +91,6 @@
     container: ComponentContainer,
     itemConfig: ResolvedComponentItemConfig
   ) {
-    console.log(itemConfig);
-
     container.virtualRectingRequiredEvent = (c, width, height) => {
       const layoutComponent = getComponentByContainerReference(c);
 
@@ -88,7 +108,6 @@
       const layoutComponent = getComponentByContainerReference(c);
 
       if (layoutComponent) {
-        console.log(dz);
         layoutComponent.zIndex = dz;
         refreshComponents();
       }
@@ -140,7 +159,7 @@
       style:width={`${c.rect.width}px`}
       style:height={`${c.rect.height}px`}
     >
-      <slot type={c.type} />
+      <svelte:component this={componentMap[c.type]} />
     </div>
   {/each}
 </div>

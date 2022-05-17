@@ -7,7 +7,10 @@
 
   function onClick() {
     menuContext.close();
-    desc.action;
+
+    if (desc.action) {
+      desc.action();
+    }
   }
 </script>
 

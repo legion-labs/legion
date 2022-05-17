@@ -21,8 +21,12 @@ export function getMenuContextStore() {
 
   const onRootClick = (item: MenuItemDescription) => {
     updateState((s) => {
-      s.open = true;
-      s.current = item;
+      if (s.open) {
+        close();
+      } else {
+        s.open = true;
+        s.current = item;
+      }
     });
   };
 

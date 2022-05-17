@@ -4,6 +4,8 @@
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
+  import Layout from "@lgn/web-client/src/components/layout/Layout.svelte";
+
   import { EmptyPanel, Panel } from "@lgn/web-client/src/components/panel";
 
   import DynamicPanel from "@/components/DynamicPanel.svelte";
@@ -20,8 +22,13 @@
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
-  import { LayoutComponentMap } from "@/components/layout/LayoutConfig";
-  import Layout from "@/components/layout/Layout.svelte";
+  import {
+    AppComponentMap,
+    layoutConfig,
+  } from "@/components/layout/LayoutConfig";
+  import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
+  import SceneExplorer from "@/components/SceneExplorer.svelte";
+  import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
 
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
@@ -41,15 +48,57 @@
 
     return fetchAllResources();
   }
+
+  const mainMenuItemDescriptions: MenuItemDescription[] = [
+    {
+      title: "Window",
+      children: [
+        {
+          title: "Editor",
+          action: () => {
+            return;
+          },
+        },
+        {
+          title: "Property Grid",
+          action: () => {
+            layout.addComponent(PropertyGrid.name);
+          },
+        },
+        {
+          title: "Scene Explorer",
+          action: () => {
+            layout.addComponent(SceneExplorer.name);
+          },
+        },
+        {
+          title: "Resource Browser",
+          action: () => {
+            layout.addComponent(ResourceBrowser.name);
+          },
+        },
+        {
+          title: "Local Changes",
+          action: () => {
+            layout.addComponent(LocalChanges.name);
+          },
+        },
+      ],
+    },
+  ];
+
+  let layout: Layout;
 </script>
 
 <div class="root">
-  <TopBar devSettings={$devSettings} />
+  <TopBar devSettings={$devSettings} {mainMenuItemDescriptions} />
   <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
-      <Layout let:type>
-        <svelte:component this={LayoutComponentMap[type]} />
-      </Layout>
+      <Layout
+        {layoutConfig}
+        componentMap={AppComponentMap}
+        bind:this={layout}
+      />
       <div class="secondary-contents">
         <div class="scene-explorer">
           <!-- TODO: Move this into a dedicated component DynamicTile -->
