@@ -16,10 +16,10 @@ use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::Provider;
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId, ResourceType,
-    ResourceTypeAndId,
+    AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId, ResourcePathId,
+    ResourceType, ResourceTypeAndId,
 };
-use lgn_graphics_data::{offline_gltf::GltfFile, offline_psd::PsdFile};
+use lgn_graphics_data::{offline::Transform, offline_gltf::GltfFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
 use lgn_tracing::{error, info};
 use lgn_utils::DefaultHasher;
@@ -516,6 +516,127 @@ async fn load_gltf_resource(
     let mut gltf_file = handle.instantiate::<GltfFile>(resources).unwrap();
     let raw_data = fs::read(file).ok()?;
     *gltf_file = GltfFile::from_bytes(raw_data);
+
+    {
+        let root_name = String::from("Root");
+
+        let root_id = ResourceTypeAndId {
+            kind: lgn_graphics_data::offline::Entity::TYPE,
+            id: {
+                let mut hasher = DefaultHasher::new();
+                resource_id.hash(&mut hasher);
+                root_name.hash(&mut hasher);
+                let id = hasher.finish();
+                ResourceId::from_raw((id as u128) | (id as u128) << 64)
+            },
+        };
+
+        let root_handle = resources.new_resource_with_id(root_id).unwrap();
+        let mut root_entity = root_handle
+            .instantiate::<lgn_graphics_data::offline::Entity>(resources)
+            .unwrap();
+
+        root_entity.components.push(Box::new(offline_data::Name {
+            name: root_name.clone(),
+        }));
+        root_entity.components.push(Box::new(Transform::default()));
+
+        for (mut child, child_name) in gltf_file.gather_entities(resource_id) {
+            // Calculate a determinisic Id
+            let child_id = ResourceTypeAndId {
+                kind: lgn_graphics_data::offline::Entity::TYPE,
+                id: {
+                    let mut hasher = DefaultHasher::new();
+                    resource_id.hash(&mut hasher);
+                    child_name.hash(&mut hasher);
+                    let id = hasher.finish();
+                    ResourceId::from_raw((id as u128) | (id as u128) << 64)
+                },
+            };
+
+            child.parent =
+                Some(ResourcePathId::from(root_id).push(lgn_graphics_data::runtime::Entity::TYPE));
+
+            child.components.push(Box::new(sample_data::offline::Name {
+                name: child_name.to_string(),
+            }));
+
+            root_entity.children.push(
+                ResourcePathId::from(child_id).push(lgn_graphics_data::runtime::Entity::TYPE),
+            );
+
+            let child_handle = resources.new_resource_with_id(child_id).unwrap();
+            let mut child_entity = child_handle
+                .instantiate::<lgn_graphics_data::offline::Entity>(resources)
+                .unwrap();
+
+            *child_entity = child;
+            child_handle.apply(child_entity, resources);
+
+            if project.exists(child_id.id).await {
+                project.delete_resource(child_id.id).await.unwrap();
+            }
+
+            project
+                .add_resource_with_id(
+                    ResourcePathName::new(format!("/!{}/{}", root_id, child_name)),
+                    child_id.kind.as_pretty(),
+                    child_id.kind,
+                    child_id.id,
+                    child_handle,
+                    resources,
+                )
+                .await
+                .unwrap();
+        }
+
+        let models = gltf_file.gather_models(resource_id);
+        let materials = gltf_file.gather_materials(resource_id);
+        let mut gltf_loader = offline_data::GltfLoader::default();
+        for (model, name) in &models {
+            gltf_loader.models.push(
+                ResourcePathId::from(resource_id)
+                    .push_named(lgn_graphics_data::offline::Model::TYPE, name)
+                    .push(lgn_graphics_data::runtime::Model::TYPE),
+            );
+            gltf_loader
+                .materials
+                .extend(model.meshes.iter().filter_map(|m| m.material.clone()));
+        }
+
+        for (material, _) in &materials {
+            if let Some(t) = &material.albedo {
+                gltf_loader.textures.push(t.clone());
+            }
+            if let Some(t) = &material.normal {
+                gltf_loader.textures.push(t.clone());
+            }
+            if let Some(t) = &material.roughness {
+                gltf_loader.textures.push(t.clone());
+            }
+            if let Some(t) = &material.metalness {
+                gltf_loader.textures.push(t.clone());
+            }
+        }
+        root_entity.components.push(Box::new(gltf_loader));
+        root_handle.apply(root_entity, resources);
+
+        if project.exists(root_id.id).await {
+            project.delete_resource(root_id.id).await.unwrap();
+        }
+        project
+            .add_resource_with_id(
+                ResourcePathName::new(format!("/!{}/{}", resource_id, root_name)),
+                root_id.kind.as_pretty(),
+                root_id.kind,
+                root_id.id,
+                root_handle,
+                resources,
+            )
+            .await
+            .unwrap();
+    }
+
     handle.apply(gltf_file, resources);
     project
         .save_resource(resource_id, handle, resources)

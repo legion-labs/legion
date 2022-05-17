@@ -74,7 +74,7 @@ impl GltfFile {
                 });
                 entity.components.push(visual);
             }
-            let entity_name = idx.to_string();
+            let entity_name = node.name().map_or(idx.to_string(), |v| v.into());
             entities.push((entity, entity_name));
             idx += 1;
         }
