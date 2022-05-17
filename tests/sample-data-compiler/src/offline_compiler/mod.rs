@@ -46,7 +46,7 @@ pub async fn build(
     repository_index: impl RepositoryIndex,
     repository_name: &RepositoryName,
     branch_name: &str,
-    source_control_content_provider: Arc<Provider>,
+    source_control_content_provider: Provider,
     data_content_provider: Arc<Provider>,
 ) {
     let root_folder = root_folder.as_ref();
@@ -66,7 +66,7 @@ pub async fn build(
         repository_index,
         repository_name,
         branch_name,
-        Arc::clone(&source_control_content_provider),
+        source_control_content_provider,
     )
     .await
     .unwrap();

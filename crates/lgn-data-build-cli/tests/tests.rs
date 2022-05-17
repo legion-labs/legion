@@ -34,11 +34,10 @@ async fn build_device() {
         .create_repository(&repository_name)
         .await
         .unwrap();
-    let source_control_content_provider = Arc::new(
+    let source_control_content_provider =
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
-            .unwrap(),
-    );
+            .unwrap();
     let data_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
@@ -48,15 +47,16 @@ async fn build_device() {
     let initial_content = "foo";
 
     // create project that contains test resource.
-    let (source_id, branch_name) = {
-        let mut project = Project::create(
-            project_dir,
-            &repository_index,
-            &repository_name,
-            Arc::clone(&source_control_content_provider),
-        )
-        .await
-        .expect("new project");
+    let mut project = Project::create(
+        project_dir,
+        &repository_index,
+        &repository_name,
+        source_control_content_provider,
+    )
+    .await
+    .expect("new project");
+
+    let source_id = {
         let resources = AssetRegistryOptions::new()
             .add_processor::<refs_resource::TestResource>()
             .create()
@@ -71,7 +71,7 @@ async fn build_device() {
         edit.content = initial_content.to_string();
         resource.apply(edit, &resources);
 
-        let resource_id = project
+        project
             .add_resource(
                 ResourcePathName::new("test_source"),
                 refs_resource::TestResource::TYPENAME,
@@ -80,11 +80,7 @@ async fn build_device() {
                 &resources,
             )
             .await
-            .expect("adding the resource");
-
-        let branch_name = project.branch_name().to_owned();
-
-        (resource_id, branch_name)
+            .expect("adding the resource")
     };
 
     let target_dir = {
@@ -101,18 +97,12 @@ async fn build_device() {
     };
 
     // create build index.
-    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+    let mut build = DataBuildOptions::new_with_sqlite_output(
         &output_dir,
         CompilerRegistryOptions::local_compilers(target_dir),
         Arc::clone(&data_content_provider),
     )
-    .create_with_project(
-        project_dir,
-        &repository_index,
-        &repository_name,
-        &branch_name,
-        Arc::clone(&source_control_content_provider),
-    )
+    .create(&project)
     .await
     .expect("new build index");
     build.source_pull(&project).await.expect("successful pull");
@@ -180,15 +170,6 @@ async fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-        let mut project = Project::open(
-            project_dir,
-            &repository_index,
-            &repository_name,
-            &branch_name,
-            Arc::clone(&source_control_content_provider),
-        )
-        .await
-        .expect("new project");
         let resources = AssetRegistryOptions::new()
             .add_processor::<refs_resource::TestResource>()
             .create()
@@ -244,11 +225,10 @@ async fn no_intermediate_resource() {
         .create_repository(&repository_name)
         .await
         .unwrap();
-    let source_control_content_provider = Arc::new(
+    let source_control_content_provider =
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
-            .unwrap(),
-    );
+            .unwrap();
     let data_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
@@ -257,15 +237,16 @@ async fn no_intermediate_resource() {
 
     // create project that contains test resource.
     let resource_id = {
-        let (resource_id, branch_name) = {
-            let mut project = Project::create(
-                project_dir,
-                &repository_index,
-                &repository_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("new project");
+        let mut project = Project::create(
+            project_dir,
+            &repository_index,
+            &repository_name,
+            source_control_content_provider,
+        )
+        .await
+        .expect("new project");
+
+        let resource_id = {
             let resources = AssetRegistryOptions::new()
                 .add_processor::<refs_resource::TestResource>()
                 .create()
@@ -275,7 +256,7 @@ async fn no_intermediate_resource() {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("new resource");
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     refs_resource::TestResource::TYPENAME,
@@ -284,24 +265,15 @@ async fn no_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource");
-
-            let branch_name = project.branch_name().to_owned();
-
-            (resource_id, branch_name)
+                .expect("adding the resource")
         };
-        let (mut build, project) = DataBuildOptions::new(
+
+        let mut build = DataBuildOptions::new(
             DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version()),
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
-        .create_with_project(
-            project_dir,
-            &repository_index,
-            &repository_name,
-            &branch_name,
-            Arc::clone(&source_control_content_provider),
-        )
+        .create(&project)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -367,11 +339,10 @@ async fn with_intermediate_resource() {
         .await
         .unwrap();
 
-    let source_control_content_provider = Arc::new(
+    let source_control_content_provider =
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
-            .unwrap(),
-    );
+            .unwrap();
     let data_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
@@ -380,15 +351,16 @@ async fn with_intermediate_resource() {
 
     // create project that contains test resource.
     let resource_id = {
-        let (resource_id, branch_name) = {
-            let mut project = Project::create(
-                project_dir,
-                &repository_index,
-                &repository_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("new project");
+        let mut project = Project::create(
+            project_dir,
+            &repository_index,
+            &repository_name,
+            source_control_content_provider,
+        )
+        .await
+        .expect("new project");
+
+        let resource_id = {
             let resources = AssetRegistryOptions::new()
                 .add_processor::<text_resource::TextResource>()
                 .create()
@@ -398,7 +370,7 @@ async fn with_intermediate_resource() {
                 .new_resource(text_resource::TextResource::TYPE)
                 .expect("new resource");
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     text_resource::TextResource::TYPENAME,
@@ -407,24 +379,15 @@ async fn with_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource");
-
-            let branch_name = project.branch_name().to_owned();
-
-            (resource_id, branch_name)
+                .expect("adding the resource")
         };
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
             Arc::clone(&data_content_provider),
         )
-        .create_with_project(
-            project_dir,
-            &repository_index,
-            &repository_name,
-            &branch_name,
-            Arc::clone(&source_control_content_provider),
-        )
+        .create(&project)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");

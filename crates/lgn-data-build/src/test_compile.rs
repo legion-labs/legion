@@ -21,7 +21,6 @@ mod tests {
         AssetLoader, AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
         ResourceProcessor, ResourceTypeAndId,
     };
-    use lgn_source_control::{LocalRepositoryIndex, RepositoryIndex, RepositoryName};
     use multitext_resource::MultiTextResource;
     use tempfile::TempDir;
     use text_resource::{TextResource, TextResourceProc};
@@ -29,29 +28,17 @@ mod tests {
     use crate::databuild::CompileOutput;
     use crate::DataBuildOptions;
 
-    pub(crate) async fn setup_dir(
-        work_dir: &TempDir,
-    ) -> (
-        PathBuf,
-        PathBuf,
-        LocalRepositoryIndex,
-        Arc<Provider>,
-        Arc<Provider>,
-    ) {
+    pub(crate) fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf, Provider, Arc<Provider>) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
         std::fs::create_dir_all(&output_dir).unwrap();
 
-        let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
-            .await
-            .unwrap();
-        let source_control_content_provider = Arc::new(Provider::new_in_memory());
+        let source_control_content_provider = Provider::new_in_memory();
         let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (
             project_dir.to_owned(),
             output_dir,
-            repository_index,
             source_control_content_provider,
             data_content_provider,
         )
@@ -108,23 +95,7 @@ mod tests {
             .unwrap()
     }
 
-    async fn change_resource(
-        resource_id: ResourceTypeAndId,
-        project_dir: &Path,
-        repository_index: impl RepositoryIndex,
-        repository_name: &RepositoryName,
-        branch_name: &str,
-        source_control_content_provider: Arc<Provider>,
-    ) {
-        let mut project = Project::open(
-            project_dir,
-            repository_index,
-            repository_name,
-            branch_name,
-            source_control_content_provider,
-        )
-        .await
-        .expect("failed to open project");
+    async fn change_resource(project: &mut Project, resource_id: ResourceTypeAndId) {
         let resources = setup_registry().await;
 
         let handle = project
@@ -152,23 +123,16 @@ mod tests {
     #[tokio::test]
     async fn compile_change_no_deps() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let (resource_id, resource_handle, repository_name, branch_name) = {
-            let mut project = Project::create_with_remote_mock(
-                &project_dir,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+                .await
+                .expect("failed to create a project");
 
+        let (resource_id, resource_handle) = {
             let resource_handle = resources
                 .new_resource(refs_resource::TestResource::TYPE)
                 .unwrap()
@@ -184,10 +148,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            let repository_name = project.repository_name().clone();
-            let branch_name = project.branch_name().to_owned();
-
-            (resource_id, resource_handle, repository_name, branch_name)
+            (resource_id, resource_handle)
         };
 
         let config = DataBuildOptions::new_with_sqlite_output(
@@ -201,16 +162,7 @@ mod tests {
 
         // compile the resource..
         let original_checksum = {
-            let (mut build, project) = config
-                .create_with_project(
-                    &project_dir,
-                    &repository_index,
-                    &repository_name,
-                    &branch_name,
-                    Arc::clone(&source_control_content_provider),
-                )
-                .await
-                .expect("to create index");
+            let mut build = config.create(&project).await.expect("to create index");
             build
                 .source_pull(&project)
                 .await
@@ -241,16 +193,6 @@ mod tests {
 
         // ..change resource..
         {
-            let mut project = Project::open(
-                &project_dir,
-                &repository_index,
-                &repository_name,
-                &branch_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to open project");
-
             let mut edit = resource_handle.instantiate(&resources).unwrap();
             edit.content = String::from("new content");
             resource_handle.apply(edit, &resources);
@@ -268,16 +210,6 @@ mod tests {
                 CompilerRegistryOptions::local_compilers(target_dir()),
                 Arc::clone(&data_content_provider),
             );
-
-            let project = Project::open(
-                project_dir,
-                &repository_index,
-                &repository_name,
-                &branch_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to open project");
 
             let mut build = config.open().await.expect("to open index");
             build
@@ -327,8 +259,8 @@ mod tests {
     //
     async fn setup_project(
         project_dir: impl AsRef<Path>,
-        source_control_content_provider: Arc<Provider>,
-    ) -> ([ResourceTypeAndId; 5], RepositoryName, String) {
+        source_control_content_provider: Provider,
+    ) -> (Project, [ResourceTypeAndId; 5]) {
         let mut project =
             Project::create_with_remote_mock(project_dir.as_ref(), source_control_content_provider)
                 .await
@@ -368,38 +300,24 @@ mod tests {
         )
         .await;
 
-        let repository_name = project.repository_name().clone();
-        let branch_name = project.branch_name().to_owned();
-
-        (
-            [res_a, res_b, res_c, res_d, res_e],
-            repository_name,
-            branch_name,
-        )
+        (project, [res_a, res_b, res_c, res_d, res_e])
     }
 
     #[tokio::test]
     async fn intermediate_resource() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir);
         let resources = setup_registry().await;
 
         let source_magic_value = String::from("47");
 
-        let (source_id, repository_name, branch_name) = {
-            let mut project = Project::create_with_remote_mock(
-                &project_dir,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+                .await
+                .expect("failed to create a project");
 
+        let source_id = {
             let resource_handle = resources
                 .new_resource(text_resource::TextResource::TYPE)
                 .unwrap()
@@ -407,7 +325,7 @@ mod tests {
             let mut edit = resource_handle.instantiate(&resources).unwrap();
             edit.content = source_magic_value.clone();
             resource_handle.apply(edit, &resources);
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     text_resource::TextResource::TYPENAME,
@@ -416,26 +334,15 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
-
-            let repository_name = project.repository_name().clone();
-            let branch_name = project.branch_name().to_owned();
-
-            (resource_id, repository_name, branch_name)
+                .unwrap()
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
             Arc::clone(&data_content_provider),
         )
-        .create_with_project(
-            project_dir,
-            &repository_index,
-            &repository_name,
-            &branch_name,
-            source_control_content_provider,
-        )
+        .create(&project)
         .await
         .expect("new build index");
 
@@ -511,30 +418,19 @@ mod tests {
     #[tokio::test]
     async fn unnamed_cache_use() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir);
 
-        let (resource_list, repository_name, branch_name) =
-            setup_project(&project_dir, Arc::clone(&source_control_content_provider)).await;
+        let (mut project, resource_list) =
+            setup_project(&project_dir, source_control_content_provider).await;
         let root_resource = resource_list[0];
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
             data_content_provider,
         )
-        .create_with_project(
-            &project_dir,
-            &repository_index,
-            &repository_name,
-            &branch_name,
-            Arc::clone(&source_control_content_provider),
-        )
+        .create(&project)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -585,15 +481,7 @@ mod tests {
 
         // change root resource, one resource re-compiled.
         {
-            change_resource(
-                root_resource,
-                &project_dir,
-                &repository_index,
-                &repository_name,
-                &branch_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await;
+            change_resource(&mut project, root_resource).await;
             build.source_pull(&project).await.expect("to pull changes");
 
             let CompileOutput {
@@ -613,15 +501,7 @@ mod tests {
         // change resource E - which invalides 4 resources in total (E included).
         {
             let resource_e = resource_list[4];
-            change_resource(
-                resource_e,
-                &project_dir,
-                &repository_index,
-                &repository_name,
-                &branch_name,
-                source_control_content_provider,
-            )
-            .await;
+            change_resource(&mut project, resource_e).await;
             build.source_pull(&project).await.expect("to pull changes");
 
             let CompileOutput {
@@ -643,25 +523,18 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     async fn named_path_cache_use() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir);
         let resources = setup_registry().await;
 
         let magic_list = vec![String::from("47"), String::from("198")];
 
-        let (source_id, repository_name, branch_name) = {
-            let mut project = Project::create_with_remote_mock(
-                &project_dir,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+                .await
+                .expect("failed to create a project");
 
+        let source_id = {
             let resource_handle = resources
                 .new_resource(multitext_resource::MultiTextResource::TYPE)
                 .unwrap()
@@ -670,7 +543,7 @@ mod tests {
             edit.text_list = magic_list.clone();
             resource_handle.apply(edit, &resources);
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     multitext_resource::MultiTextResource::TYPENAME,
@@ -679,26 +552,15 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
-
-            let repository_name = project.repository_name().clone();
-            let branch_name = project.branch_name().to_owned();
-
-            (resource_id, repository_name, branch_name)
+                .unwrap()
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
             Arc::clone(&data_content_provider),
         )
-        .create_with_project(
-            &project_dir,
-            &repository_index,
-            &repository_name,
-            &branch_name,
-            Arc::clone(&source_control_content_provider),
-        )
+        .create(&project)
         .await
         .expect("new build index");
 
@@ -803,15 +665,6 @@ mod tests {
 
         // change "text_1" of source resource multitext resource..
         {
-            let mut project = Project::open(
-                &project_dir,
-                &repository_index,
-                &repository_name,
-                &branch_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to open project");
             let resources = setup_registry().await;
 
             let handle = project
@@ -853,15 +706,6 @@ mod tests {
 
         // change "text_0" and "text_1" of source resource multitext resource..
         {
-            let mut project = Project::open(
-                project_dir,
-                &repository_index,
-                &repository_name,
-                &branch_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to open project");
             let resources = setup_registry().await;
 
             let handle = project
@@ -930,23 +774,16 @@ mod tests {
     #[tokio::test]
     async fn link() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let (parent_id, repository_name, branch_name) = {
-            let mut project = Project::create_with_remote_mock(
-                &project_dir,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("new project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+                .await
+                .expect("new project");
 
+        let parent_id = {
             let child_handle = resources
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("valid resource")
@@ -979,7 +816,7 @@ mod tests {
                 vec![ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE)];
             parent_handle.apply(parent, &resources);
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPENAME,
@@ -988,26 +825,15 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
-
-            let repository_name = project.repository_name().clone();
-            let branch_name = project.branch_name().to_owned();
-
-            (resource_id, repository_name, branch_name)
+                .unwrap()
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
             data_content_provider,
         )
-        .create_with_project(
-            &project_dir,
-            &repository_index,
-            &repository_name,
-            &branch_name,
-            source_control_content_provider,
-        )
+        .create(&project)
         .await
         .expect("to create index");
 
@@ -1056,23 +882,17 @@ mod tests {
     #[tokio::test]
     async fn verify_manifest() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir);
         let resources = setup_registry().await;
 
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+                .await
+                .expect("new project");
+
         // child_id <- test(child_id) <- parent_id = test(parent_id)
-        let (parent_resource, repository_name, branch_name) = {
-            let mut project = Project::create_with_remote_mock(
-                &project_dir,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("new project");
+        let parent_resource = {
             let child_id = project
                 .add_resource(
                     ResourcePathName::new("child"),
@@ -1095,7 +915,7 @@ mod tests {
                 .push(ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE));
             child_handle.apply(edit, &resources);
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPENAME,
@@ -1104,26 +924,15 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
-
-            let repository_name = project.repository_name().clone();
-            let branch_name = project.branch_name().to_owned();
-
-            (resource_id, repository_name, branch_name)
+                .unwrap()
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
             CompilerRegistryOptions::local_compilers(target_dir()),
             Arc::clone(&data_content_provider),
         )
-        .create_with_project(
-            project_dir,
-            repository_index,
-            &repository_name,
-            &branch_name,
-            source_control_content_provider,
-        )
+        .create(&project)
         .await
         .expect("to create index");
 

@@ -41,7 +41,7 @@ impl Config {
         &self,
         repository_name: &RepositoryName,
         branch_name: &str,
-        source_control_content_provider: Arc<Provider>,
+        source_control_content_provider: Provider,
         data_content_provider: Arc<Provider>,
         repository_index: impl RepositoryIndex,
     ) -> Result<(DataBuild, Project), String> {
@@ -50,7 +50,7 @@ impl Config {
             repository_index,
             repository_name,
             branch_name,
-            Arc::clone(&source_control_content_provider),
+            source_control_content_provider,
         )
         .await
         .map_err(|e| e.to_string())?;

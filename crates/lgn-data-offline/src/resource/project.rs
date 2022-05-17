@@ -5,7 +5,6 @@ use std::{
     // io::Seek,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
 };
 
 use lgn_content_store::Provider;
@@ -129,7 +128,7 @@ impl Project {
     /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
     pub async fn create_with_remote_mock(
         project_dir: impl AsRef<Path>,
-        source_control_content_provider: Arc<Provider>,
+        source_control_content_provider: Provider,
     ) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
         let repository_index = LocalRepositoryIndex::new(remote_dir).await?;
@@ -152,7 +151,7 @@ impl Project {
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        source_control_content_provider: Arc<Provider>,
+        source_control_content_provider: Provider,
     ) -> Result<Self, Error> {
         let workspace = Workspace::init(
             repository_index,
@@ -174,7 +173,7 @@ impl Project {
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
         branch_name: &str,
-        source_control_content_provider: Arc<Provider>,
+        source_control_content_provider: Provider,
     ) -> Result<Self, Error> {
         let workspace = Workspace::load(
             repository_index,
@@ -291,6 +290,7 @@ impl Project {
 
     /// Checks if a resource is part of the project.
     pub async fn exists(&self, id: ResourceId) -> bool {
+        //        self.workspace.exists(id)
         self.resource_list().await.iter().any(|v| v == &id)
     }
 
@@ -1017,7 +1017,7 @@ mod tests {
     #[tokio::test]
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Provider::new_in_memory();
         let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
@@ -1029,7 +1029,7 @@ mod tests {
     #[tokio::test]
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Provider::new_in_memory();
         let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
@@ -1084,7 +1084,7 @@ mod tests {
     #[tokio::test]
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Provider::new_in_memory();
         let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
@@ -1129,7 +1129,7 @@ mod tests {
     #[tokio::test]
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Provider::new_in_memory();
         let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
@@ -1166,7 +1166,7 @@ mod tests {
     #[tokio::test]
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Provider::new_in_memory();
         let mut project = Project::create_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");

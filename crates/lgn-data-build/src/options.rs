@@ -156,7 +156,7 @@ impl DataBuildOptions {
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
         branch_name: &str,
-        source_control_content_provider: Arc<Provider>,
+        source_control_content_provider: Provider,
     ) -> Result<(DataBuild, Project), Error> {
         let project = Project::open(
             project_dir,

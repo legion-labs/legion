@@ -56,11 +56,10 @@ impl ResourceRegistryPlugin {
         let selection_manager = world.resource::<Arc<SelectionManager>>();
 
         let transaction_manager = async_rt.block_on(async move {
-            let source_control_content_provider = Arc::new(
+            let source_control_content_provider =
                 lgn_content_store::Config::load_and_instantiate_persistent_provider()
                     .await
-                    .unwrap(),
-            );
+                    .unwrap();
             let data_content_provider = Arc::new(
                 lgn_content_store::Config::load_and_instantiate_volatile_provider()
                     .await
@@ -73,7 +72,7 @@ impl ResourceRegistryPlugin {
                     &settings.source_control_repository_index,
                     &settings.source_control_repository_name,
                     &settings.source_control_branch_name,
-                    Arc::clone(&source_control_content_provider),
+                    source_control_content_provider,
                 )
                 .await
                 {

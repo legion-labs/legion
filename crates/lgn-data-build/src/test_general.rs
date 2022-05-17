@@ -16,7 +16,7 @@ mod tests {
         PathBuf,
         PathBuf,
         LocalRepositoryIndex,
-        Arc<Provider>,
+        Provider,
         Arc<Provider>,
     ) {
         let project_dir = work_dir.path();
@@ -26,7 +26,7 @@ mod tests {
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
             .unwrap();
-        let source_control_content_provider = Arc::new(Provider::new_in_memory());
+        let source_control_content_provider = Provider::new_in_memory();
         let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (
@@ -75,17 +75,15 @@ mod tests {
         let (
             project_dir,
             output_dir,
-            repository_index,
+            _repository_index,
             source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
-        let project = Project::create_with_remote_mock(
-            &project_dir,
-            Arc::clone(&source_control_content_provider),
-        )
-        .await
-        .expect("failed to create a project");
+        let project =
+            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+                .await
+                .expect("failed to create a project");
 
         let db_uri =
             DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version());
@@ -96,13 +94,7 @@ mod tests {
                 data_content_provider,
                 CompilerRegistryOptions::default(),
             )
-            .create_with_project(
-                project_dir,
-                repository_index,
-                project.repository_name(),
-                project.branch_name(),
-                source_control_content_provider,
-            )
+            .create(&project)
             .await
             .expect("valid data build index");
         }

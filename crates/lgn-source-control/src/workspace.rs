@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::collections::BTreeSet;
 
 use lgn_content_store::{
     indexing::{
@@ -17,7 +17,7 @@ use crate::{
 /// Represents a workspace.
 pub struct Workspace {
     index: Box<dyn Index>,
-    provider: Arc<Provider>,
+    provider: Provider,
     branch_name: String,
     main_index: StaticIndexer,
     path_index: StringPathIndexer,
@@ -62,14 +62,11 @@ impl Workspace {
     pub async fn init(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        provider: Arc<Provider>,
+        provider: Provider,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
 
-        let main_index = StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>());
-        let path_index = StringPathIndexer::default();
-
-        let workspace = Self::new(index, provider, "main", main_index, path_index).await?;
+        let workspace = Self::new(index, provider, "main").await?;
 
         workspace.initial_checkout().await?;
 
@@ -85,14 +82,11 @@ impl Workspace {
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
         branch_name: &str,
-        provider: Arc<Provider>,
+        provider: Provider,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
 
-        let main_index = StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>());
-        let path_index = StringPathIndexer::default();
-
-        Self::new(index, provider, branch_name, main_index, path_index).await
+        Self::new(index, provider, branch_name).await
     }
 
     /// Return the repository name of the workspace.
@@ -105,24 +99,22 @@ impl Workspace {
         self.branch_name.as_str()
     }
 
+    /*
     /// Return the provider of the workspace.
     pub fn provider(&self) -> &Arc<Provider> {
         &self.provider
     }
+    */
 
-    async fn new(
-        index: Box<dyn Index>,
-        provider: Arc<Provider>,
-        branch_name: &str,
-        main_index: StaticIndexer,
-        path_index: StringPathIndexer,
-    ) -> Result<Self> {
+    async fn new(index: Box<dyn Index>, provider: Provider, branch_name: &str) -> Result<Self> {
+        let provider = provider.begin_transaction_in_memory();
+
         Ok(Self {
             index,
             provider,
             branch_name: branch_name.to_owned(),
-            main_index,
-            path_index,
+            main_index: StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>()),
+            path_index: StringPathIndexer::default(),
         })
     }
 

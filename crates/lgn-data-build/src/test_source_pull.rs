@@ -8,34 +8,21 @@ mod tests {
     use lgn_data_runtime::{
         AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
     };
-    use lgn_source_control::LocalRepositoryIndex;
     use tempfile::TempDir;
 
     use crate::DataBuildOptions;
 
-    pub(crate) async fn setup_dir(
-        work_dir: &TempDir,
-    ) -> (
-        PathBuf,
-        PathBuf,
-        LocalRepositoryIndex,
-        Arc<Provider>,
-        Arc<Provider>,
-    ) {
+    pub(crate) fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf, Provider, Arc<Provider>) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
         std::fs::create_dir_all(&output_dir).unwrap();
 
-        let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
-            .await
-            .unwrap();
-        let source_control_content_provider = Arc::new(Provider::new_in_memory());
+        let source_control_content_provider = Provider::new_in_memory();
         let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (
             project_dir.to_owned(),
             output_dir,
-            repository_index,
             source_control_content_provider,
             data_content_provider,
         )
@@ -51,24 +38,17 @@ mod tests {
     #[tokio::test]
     async fn no_dependencies() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let (resource, repository_name, branch_name) = {
-            let mut project = Project::create_with_remote_mock(
-                &project_dir,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+                .await
+                .expect("failed to create a project");
 
-            let id = project
+        let resource = ResourcePathId::from(
+            project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     refs_resource::TestResource::TYPENAME,
@@ -79,26 +59,15 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
+                .unwrap(),
+        );
 
-            let repository_name = project.repository_name().clone();
-            let branch_name = project.branch_name().to_owned();
-
-            (ResourcePathId::from(id), repository_name, branch_name)
-        };
-
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
             data_content_provider,
         )
-        .create_with_project(
-            project_dir,
-            repository_index,
-            &repository_name,
-            &branch_name,
-            source_control_content_provider,
-        )
+        .create(&project)
         .await
         .expect("data build");
 
@@ -113,22 +82,16 @@ mod tests {
     #[tokio::test]
     async fn with_dependency() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let (child_id, parent_id, repository_name, branch_name) = {
-            let mut project = Project::create_with_remote_mock(
-                &project_dir,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("failed to create a project");
+        let mut project =
+            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+                .await
+                .expect("failed to create a project");
+
+        let (child_id, parent_id) = {
             let child_id = project
                 .add_resource(
                     ResourcePathName::new("child"),
@@ -164,29 +127,18 @@ mod tests {
                 .await
                 .unwrap();
 
-            let repository_name = project.repository_name().clone();
-            let branch_name = project.branch_name().to_owned();
-
             (
                 ResourcePathId::from(child_id),
                 ResourcePathId::from(parent_id),
-                repository_name,
-                branch_name,
             )
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
             data_content_provider,
         )
-        .create_with_project(
-            project_dir,
-            repository_index,
-            &repository_name,
-            &branch_name,
-            source_control_content_provider,
-        )
+        .create(&project)
         .await
         .expect("data build");
 
