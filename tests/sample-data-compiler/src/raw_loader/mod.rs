@@ -35,7 +35,7 @@ pub async fn build_offline(
     branch_name: &str,
     source_control_content_provider: Provider,
     incremental: bool,
-) {
+) -> Project {
     let raw_dir = {
         if let Ok(entries) = root_folder.as_ref().read_dir() {
             let mut raw_dir = entries
@@ -46,6 +46,15 @@ pub async fn build_offline(
             None
         }
     };
+
+    let (mut project, resources) = setup_project(
+        root_folder.as_ref(),
+        repository_index,
+        repository_name,
+        branch_name,
+        source_control_content_provider,
+    )
+    .await;
 
     if let Some(raw_dir) = raw_dir {
         let file_paths = find_files(
@@ -74,7 +83,7 @@ pub async fn build_offline(
         if let Some(generated_checksum) = generated_checksum {
             if generated_checksum == raw_checksum {
                 info!("Skipping Project Generation");
-                return;
+                return project;
             }
         }
 
@@ -83,15 +92,6 @@ pub async fn build_offline(
 
             std::fs::remove_file(root_folder.as_ref().join("VERSION")).unwrap_or_default();
         }
-
-        let (mut project, resources) = setup_project(
-            root_folder.as_ref(),
-            repository_index,
-            repository_name,
-            branch_name,
-            source_control_content_provider,
-        )
-        .await;
 
         // cleanup data from source control before we generate new data.
         if !incremental {
@@ -204,6 +204,8 @@ pub async fn build_offline(
             root_folder.as_ref().display()
         );
     }
+
+    project
 }
 
 async fn setup_project(
@@ -214,7 +216,7 @@ async fn setup_project(
     source_control_content_provider: Provider,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
-    let project = if let Ok(project) = Project::open(
+    let project = Project::open(
         root_folder,
         &repository_index,
         repository_name,
@@ -222,18 +224,19 @@ async fn setup_project(
         source_control_content_provider,
     )
     .await
-    {
-        Ok(project)
-    } else {
-        Project::create(
-            root_folder,
-            repository_index,
-            repository_name,
-            source_control_content_provider,
-        )
-        .await
-    }
     .unwrap();
+    // {
+    //     Ok(project)
+    // } else {
+    //     Project::create(
+    //         root_folder,
+    //         repository_index,
+    //         repository_name,
+    //         source_control_content_provider,
+    //     )
+    //     .await
+    // }
+    // .unwrap();
 
     let mut registry = AssetRegistryOptions::new()
         .add_processor::<lgn_graphics_data::offline_texture::Texture>()

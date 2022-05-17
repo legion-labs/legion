@@ -66,30 +66,30 @@ impl ResourceRegistryPlugin {
                     .unwrap(),
             );
 
-            let project = {
-                if let Ok(project) = Project::open(
-                    &project_dir,
-                    &settings.source_control_repository_index,
-                    &settings.source_control_repository_name,
-                    &settings.source_control_branch_name,
-                    source_control_content_provider,
-                )
-                .await
-                {
-                    project
-                } else {
-                    let mut project = Project::create(
-                        &project_dir,
-                        &settings.source_control_repository_index,
-                        &settings.source_control_repository_name,
-                        source_control_content_provider,
-                    )
-                    .await
-                    .expect("cannot create project");
-                    project.sync_latest().await.unwrap();
-                    project
-                }
-            };
+            let project = Project::open(
+                &project_dir,
+                &settings.source_control_repository_index,
+                &settings.source_control_repository_name,
+                &settings.source_control_branch_name,
+                source_control_content_provider,
+            )
+            .await
+            .unwrap();
+            //     {
+            //         project
+            //     } else {
+            //         let mut project = Project::create(
+            //             &project_dir,
+            //             &settings.source_control_repository_index,
+            //             &settings.source_control_repository_name,
+            //             source_control_content_provider,
+            //         )
+            //         .await
+            //         .expect("cannot create project");
+            //         project.sync_latest().await.unwrap();
+            //         project
+            //     }
+            // };
 
             let mut compiler_dir = std::env::current_exe().expect("cannot access current_exe");
             compiler_dir.pop(); // pop the .exe name

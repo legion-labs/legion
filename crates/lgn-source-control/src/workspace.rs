@@ -66,7 +66,7 @@ impl Workspace {
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
 
-        let workspace = Self::new(index, provider, "main").await?;
+        let workspace = Self::new(index, provider, "main");
 
         workspace.initial_checkout().await?;
 
@@ -86,7 +86,7 @@ impl Workspace {
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
 
-        Self::new(index, provider, branch_name).await
+        Ok(Self::new(index, provider, branch_name))
     }
 
     /// Return the repository name of the workspace.
@@ -106,16 +106,16 @@ impl Workspace {
     }
     */
 
-    async fn new(index: Box<dyn Index>, provider: Provider, branch_name: &str) -> Result<Self> {
+    fn new(index: Box<dyn Index>, provider: Provider, branch_name: &str) -> Self {
         let provider = provider.begin_transaction_in_memory();
 
-        Ok(Self {
+        Self {
             index,
             provider,
             branch_name: branch_name.to_owned(),
             main_index: StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>()),
             path_index: StringPathIndexer::default(),
-        })
+        }
     }
 
     /// Get the commits chain, starting from the specified commit.

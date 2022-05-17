@@ -89,11 +89,10 @@ async fn main() {
     // Ensure the repository exists.
     let _index = repository_index.ensure_repository(&repository_name).await;
 
-    let source_control_content_provider = Arc::new(
+    let source_control_content_provider =
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
-            .unwrap(),
-    );
+            .unwrap();
     let data_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
@@ -101,24 +100,21 @@ async fn main() {
     );
 
     // generate contents of offline folder, from raw RON content
-    raw_loader::build_offline(
+    let project = raw_loader::build_offline(
         &absolute_root,
         &repository_index,
         &repository_name,
         branch_name,
-        Arc::clone(&source_control_content_provider),
+        source_control_content_provider,
         true,
     )
     .await;
 
     // compile offline resources to runtime assets
     offline_compiler::build(
+        &project,
         &absolute_root,
         &ResourcePathName::from(&args.resource),
-        repository_index,
-        &repository_name,
-        branch_name,
-        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .await;
