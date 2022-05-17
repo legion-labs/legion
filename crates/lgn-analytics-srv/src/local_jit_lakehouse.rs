@@ -11,6 +11,7 @@ use lgn_analytics::{prelude::*, time::ConvertTicks};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_tracing::prelude::*;
+use parquet::column::writer::ColumnWriter;
 use parquet::file::properties::WriterProperties;
 use parquet::file::writer::FileWriter;
 use parquet::file::writer::SerializedFileWriter;
@@ -54,8 +55,8 @@ impl<T> Column<T> {
 
 #[derive(Debug)]
 struct SpanTable {
-    hashes: Column<u32>,
-    depths: Column<u32>,
+    hashes: Column<i32>,
+    depths: Column<i32>,
     begins: Column<f64>,
     ends: Column<f64>,
     ids: Column<u64>,
@@ -75,8 +76,8 @@ impl SpanTable {
     }
 
     pub fn append(&mut self, row: &SpanRow) {
-        self.hashes.append(row.hash);
-        self.depths.append(row.depth);
+        self.hashes.append(row.hash as i32);
+        self.depths.append(row.depth as i32);
         self.begins.append(row.begin_ms);
         self.ends.append(row.end_ms);
         self.ids.append(row.id);
@@ -176,8 +177,19 @@ async fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
     let mut writer = SerializedFileWriter::new(file, schema, props).unwrap();
     let mut row_group_writer = writer.next_row_group().unwrap();
     if let Some(mut col_writer) = row_group_writer.next_column().unwrap() {
-        // ... write values to a column writer
-        col_writer.write_batch( &spans.hashes, None, None );
+        if let ColumnWriter::Int32ColumnWriter(writer_impl) = &mut col_writer {
+            writer_impl
+                .write_batch(&spans.hashes.values, None, None)
+                .with_context(|| "writing hash batch")?;
+        }
+        row_group_writer.close_column(col_writer).unwrap();
+    }
+    if let Some(mut col_writer) = row_group_writer.next_column().unwrap() {
+        if let ColumnWriter::Int32ColumnWriter(writer_impl) = &mut col_writer {
+            writer_impl
+                .write_batch(&spans.depths.values, None, None)
+                .with_context(|| "writing depth batch")?;
+        }
         row_group_writer.close_column(col_writer).unwrap();
     }
     writer.close_row_group(row_group_writer).unwrap();
@@ -206,6 +218,7 @@ impl JitLakehouse for LocalJitLakehouse {
         warn!("table: {:?}", table);
         warn!("path: {}", spans_table_path.display());
         write_parquet(&spans_table_path.join("spans.parquet"), &table).await?;
+        warn!("done");
         Ok(())
     }
 }
