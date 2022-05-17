@@ -52,7 +52,7 @@
     </div>
     {#if user}
       <div class="flex justify-between items-center">
-        <User {user} nameOnly />
+        <User {user} iconOnly />
       </div>
     {/if}
   </div>
