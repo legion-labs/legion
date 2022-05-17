@@ -21,6 +21,7 @@ mod cumulative_call_graph;
 mod cumulative_call_graph_handler;
 mod cumulative_call_graph_node;
 mod health_check_service;
+mod log_entry;
 mod metrics;
 mod scope;
 mod thread_block_processor;

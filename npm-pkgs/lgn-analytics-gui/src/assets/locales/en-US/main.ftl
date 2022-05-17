@@ -47,6 +47,8 @@ log-parent-table-column =
     [msg] Message
     *[other] Unknown
   }
+log-search = Search Log Entries...
+
 
 # Timeline
 timeline-open-cumulative-call-graph = Open { global-cumulative-call-graph }
