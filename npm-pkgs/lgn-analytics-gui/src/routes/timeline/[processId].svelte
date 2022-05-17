@@ -3,6 +3,8 @@
   import { afterUpdate, onMount, tick } from "svelte";
   import { get } from "svelte/store";
 
+  import type { Process } from "@lgn/proto-telemetry/dist/process";
+
   import CallGraph from "@/components/CallGraphHierachy/CallGraphHierachy.svelte";
   import DisplayError from "@/components/Misc/DisplayError.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
@@ -16,8 +18,6 @@
   import TimelineRange from "@/components/Timeline/Tools/TimelineRange.svelte";
   import TimelineSearch from "@/components/Timeline/Tools/TimelineSearch.svelte";
   import { pixelMargin } from "@/components/Timeline/Values/TimelineValues";
-  import type { Process } from "@lgn/proto-telemetry/dist/process";
-
   import { getHttpClientContext, getThreadItemLengthContext } from "@/contexts";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
