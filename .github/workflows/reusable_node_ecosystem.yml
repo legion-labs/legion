@@ -5,7 +5,10 @@ on:
       image:
         required: true
         type: string
-      deploy:
+      deploy_editor:
+        required: true
+        type: boolean
+      deploy_analytics:
         required: true
         type: boolean
     secrets:
@@ -83,31 +86,44 @@ jobs:
           path: ./npm-pkgs/lgn-editor-gui/dist
           retention-days: 5
 
-  deploy:
+  deploy_editor:
     name: Deployment
     needs: [build]
-    if: ${{ inputs.deploy }}
+    if: ${{ inputs.deploy_editor }}
     runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        include:
-          - app: analytics
-            deploy_key: analytics-deploy-key
-
-          - app: editor
-            deploy_key: editor-deploy-key
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: ${{ matrix.app }}
-          path: ./${{ matrix.app }}
+          name: editor
+          path: ./editor
 
       - name: Deploy Analytics
         uses: peaceiris/actions-gh-pages@v3
         with:
-          deploy_key: ${{ secrets[matrix.deploy_key] }}
-          external_repository: legion-labs/${{ matrix.app }}.legionengine.com
+          deploy_key: ${{ secrets.editor-deploy-key }}
+          external_repository: legion-labs/editor.legionengine.com
           publish_branch: main
-          publish_dir: ./${{ matrix.app }}
+          publish_dir: ./editor
           force_orphan: true
-          cname: ${{ matrix.app }}.legionengine.com
+          cname: editor.legionengine.com
+
+  deploy_analytics:
+    name: Deployment
+    needs: [build]
+    if: ${{ inputs.deploy_analytics }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: analytics
+          path: ./analytics
+
+      - name: Deploy Analytics
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          deploy_key: ${{ secrets.analytics-deploy-key }}
+          external_repository: legion-labs/analytics.legionengine.com
+          publish_branch: main
+          publish_dir: ./analytics
+          force_orphan: true
+          cname: analytics.legionengine.com
