@@ -1,4 +1,4 @@
-use crate::api::{Parameter, Type};
+use crate::api::{Parameter, Path, Type};
 pub use crate::filters::*;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -39,21 +39,21 @@ pub fn fmt_field(name: &str) -> ::askama::Result<String> {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn fmt_axum_path(path: &str) -> ::askama::Result<String> {
+pub fn fmt_axum_path(path: &Path) -> ::askama::Result<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"\{(?P<p>[^/]+)\}").unwrap();
     }
 
-    Ok(RE.replace_all(path, ":$p").to_string())
+    Ok(RE.replace_all(path.0.as_str(), ":$p").to_string())
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn fmt_rust_path(path: &str) -> ::askama::Result<String> {
+pub fn fmt_rust_path(path: &Path) -> ::askama::Result<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"\{([^/]+)\}").unwrap();
     }
 
-    Ok(RE.replace_all(path, "{}").to_string())
+    Ok(RE.replace_all(path.0.as_str(), "{}").to_string())
 }
 
 #[allow(clippy::unnecessary_wraps)]
@@ -142,24 +142,36 @@ mod tests {
 
     #[test]
     fn test_fmt_axum_path() {
-        assert_eq!(fmt_axum_path("/v1/users/{id}").unwrap(), "/v1/users/:id");
-        assert_eq!(fmt_axum_path("/v1/users/:id").unwrap(), "/v1/users/:id");
         assert_eq!(
-            fmt_axum_path("/v1/users/{my-id}").unwrap(),
+            fmt_axum_path(&"/v1/users/{id}".into()).unwrap(),
+            "/v1/users/:id"
+        );
+        assert_eq!(
+            fmt_axum_path(&"/v1/users/:id".into()).unwrap(),
+            "/v1/users/:id"
+        );
+        assert_eq!(
+            fmt_axum_path(&"/v1/users/{my-id}".into()).unwrap(),
             "/v1/users/:my-id"
         );
         assert_eq!(
-            fmt_axum_path("/v1/users/{id}/{name}").unwrap(),
+            fmt_axum_path(&"/v1/users/{id}/{name}".into()).unwrap(),
             "/v1/users/:id/:name"
         );
     }
 
     #[test]
     fn test_fmt_rust_path() {
-        assert_eq!(fmt_rust_path("/v1/users/{id}").unwrap(), "/v1/users/{}");
-        assert_eq!(fmt_rust_path("/v1/users/{my-id}").unwrap(), "/v1/users/{}");
         assert_eq!(
-            fmt_rust_path("/v1/users/{id}/{name}").unwrap(),
+            fmt_rust_path(&"/v1/users/{id}".into()).unwrap(),
+            "/v1/users/{}"
+        );
+        assert_eq!(
+            fmt_rust_path(&"/v1/users/{my-id}".into()).unwrap(),
+            "/v1/users/{}"
+        );
+        assert_eq!(
+            fmt_rust_path(&"/v1/users/{id}/{name}".into()).unwrap(),
             "/v1/users/{}/{}"
         );
     }

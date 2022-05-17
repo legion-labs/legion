@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use indexmap::IndexMap;
 
 use super::api::{
@@ -29,7 +31,7 @@ impl<'a> Visitor<'a> {
                 description: oas.info.description.clone(),
                 version: oas.info.version.clone(),
                 models: Vec::new(),
-                routes: Vec::new(),
+                paths: HashMap::new(),
             },
         }
     }
@@ -62,6 +64,7 @@ impl<'a> Visitor<'a> {
 
     fn visit_paths(&mut self) -> Result<()> {
         for (path, path_item_ref) in &self.oas.paths.paths {
+            self.api.paths.insert(path.as_str().into(), Vec::new());
             let path = OpenAPIPath::from(path.as_str());
 
             let path_item = match path_item_ref {
@@ -260,7 +263,6 @@ impl<'a> Visitor<'a> {
 
         let route = Route {
             name: operation_name.clone(),
-            path: path.to_string(),
             method,
             summary: operation.summary.clone(),
             request_body,
@@ -268,7 +270,11 @@ impl<'a> Visitor<'a> {
             responses,
         };
 
-        self.api.routes.push(route);
+        self.api
+            .paths
+            .get_mut(&path.to_string().as_str().into())
+            .unwrap()
+            .push(route);
         Ok(())
     }
 
@@ -927,7 +933,6 @@ mod tests {
 
         let expected_route = Route {
             name: "findPetsByTags".to_string(),
-            path: "/pets".to_string(),
             method: Method::Get,
             summary: Some("Finds pets by tags.".to_string()),
             request_body: None,
@@ -952,8 +957,8 @@ mod tests {
         assert_eq!(api.models.len(), 1);
         assert!(api.models.contains(&expected_struct));
 
-        assert_eq!(api.routes.len(), 1);
-        assert!(api.routes.contains(&expected_route));
+        assert_eq!(api.paths.len(), 1);
+        assert_eq!(api.paths.get(&"/pets".into()), Some(&vec![expected_route]));
     }
 
     #[test]
@@ -1021,7 +1026,6 @@ mod tests {
 
         let expected_route = Route {
             name: "addPet".to_string(),
-            path: "/pets".to_string(),
             method: Method::Post,
             summary: None,
             request_body: Some(RequestBody {
@@ -1043,8 +1047,8 @@ mod tests {
         assert!(api.models.contains(&expected_struct));
         assert!(api.models.contains(&expected_inner_struct));
 
-        assert_eq!(api.routes.len(), 1);
-        assert!(api.routes.contains(&expected_route));
+        assert_eq!(api.paths.len(), 1);
+        assert_eq!(api.paths.get(&"/pets".into()), Some(&vec![expected_route]));
     }
 
     #[test]
@@ -1108,7 +1112,6 @@ mod tests {
 
         let expected_route = Route {
             name: "addPet".to_string(),
-            path: "/pets".to_string(),
             method: Method::Post,
             summary: Some("Add a new pet to the store.".to_string()),
             request_body: Some(RequestBody {
@@ -1138,7 +1141,7 @@ mod tests {
         assert_eq!(api.models.len(), 1);
         assert!(api.models.contains(&expected_struct));
 
-        assert_eq!(api.routes.len(), 1);
-        assert!(api.routes.contains(&expected_route));
+        assert_eq!(api.paths.len(), 1);
+        assert_eq!(api.paths.get(&"/pets".into()), Some(&vec![expected_route]));
     }
 }

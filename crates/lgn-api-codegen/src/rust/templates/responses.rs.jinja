@@ -6,62 +6,64 @@ use axum::{
     Json,
 };
 
-{% for route in api.routes %}
-    {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
-    
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub enum {{ enum_name }} {
-        {%- for (status_code, response) in route.responses -%}
-            /// {{ response.description }}
-            {% if let Some(type_) = response.type_ -%}
-                {{ status_code }}({{ type_|fmt_type }}),
-            {%- else -%}
-                {{ status_code }},
-            {%- endif -%}
-        {%- endfor -%}
-    }
-
-    impl {{ enum_name }} {
-        pub(crate) fn into_response(self) -> Response {
-            match self {
-                {% for (status_code, response) in route.responses %}
-                    {%- if let Some(type_) = response.type_ -%}
-                        {{ enum_name }}::{{ status_code }}(inner) => {
-                            (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), Json(inner)).into_response()
-                    },
-                    {%- else -%}
-                        {{ enum_name }}::{{ status_code }} => {
-                            StatusCode::from_u16({{ status_code.as_u16() }}).unwrap().into_response()
-                    },
-                    {%- endif -%}                     
-                {% endfor %}
-            }
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
+        
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+        pub enum {{ enum_name }} {
+            {%- for (status_code, response) in route.responses -%}
+                /// {{ response.description }}
+                {% if let Some(type_) = response.type_ -%}
+                    {{ status_code }}({{ type_|fmt_type }}),
+                {%- else -%}
+                    {{ status_code }},
+                {%- endif -%}
+            {%- endfor -%}
         }
 
-        pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
-            {% if route.responses.is_empty() %}
-                Err(Error::Internal(format!(
-                    "unexpected status code: {}",
-                    response.status().as_u16()
-                )))
-            {% else %}
-                match response.status().as_u16() {
+        impl {{ enum_name }} {
+            pub(crate) fn into_response(self) -> Response {
+                match self {
                     {% for (status_code, response) in route.responses %}
-                        {{ status_code.as_u16() }} => 
-                            Ok(Self::{{ status_code }}
-                                {%- if let Some(type_) = response.type_ -%}
-                                (response.json().await?)
-                                {%- endif -%}
-                            ),              
-                    {%- endfor -%}
-                    status => Err(Error::Internal(format!(
-                        "unexpected status code: {}",
-                        status
-                    ))),
+                        {%- if let Some(type_) = response.type_ -%}
+                            {{ enum_name }}::{{ status_code }}(inner) => {
+                                (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), Json(inner)).into_response()
+                        },
+                        {%- else -%}
+                            {{ enum_name }}::{{ status_code }} => {
+                                StatusCode::from_u16({{ status_code.as_u16() }}).unwrap().into_response()
+                        },
+                        {%- endif -%}                     
+                    {% endfor %}
                 }
-            {% endif %}
+            }
 
-            
-        } 
-    }
+            pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
+                {% if route.responses.is_empty() %}
+                    Err(Error::Internal(format!(
+                        "unexpected status code: {}",
+                        response.status().as_u16()
+                    )))
+                {% else %}
+                    match response.status().as_u16() {
+                        {% for (status_code, response) in route.responses %}
+                            {{ status_code.as_u16() }} => 
+                                Ok(Self::{{ status_code }}
+                                    {%- if let Some(type_) = response.type_ -%}
+                                    (response.json().await?)
+                                    {%- endif -%}
+                                ),              
+                        {%- endfor -%}
+                        status => Err(Error::Internal(format!(
+                            "unexpected status code: {}",
+                            status
+                        ))),
+                    }
+                {% endif %}
+
+                
+            } 
+        }
+    {% endfor %}
 {% endfor %}

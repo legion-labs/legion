@@ -4,8 +4,10 @@ use lgn_api_codegen::{ByteArray, Extra};
 
 #[async_trait::async_trait]
 pub trait Api {
-{% for route in api.routes %}
-    {% if let Some(summary) = route.summary %}/// {{ summary }}{% endif %}
-    {% include "signature.rs.jinja" %};
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% if let Some(summary) = route.summary %}/// {{ summary }}{% endif %}
+        {% include "signature.rs.jinja" %};
+    {% endfor %}
 {% endfor %}
 }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{Error, Result};
 use convert_case::{Case, Casing};
 use indexmap::IndexMap;
@@ -8,7 +10,7 @@ pub struct Api {
     pub description: Option<String>,
     pub version: String,
     pub models: Vec<Model>,
-    pub routes: Vec<Route>,
+    pub paths: HashMap<Path, Vec<Route>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -64,10 +66,18 @@ pub struct Field {
     pub required: bool,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+pub struct Path(pub String);
+
+impl From<&str> for Path {
+    fn from(path: &str) -> Self {
+        Path(path.to_string())
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct Route {
     pub name: String,
-    pub path: String,
     pub method: Method,
     pub summary: Option<String>,
     pub request_body: Option<RequestBody>,
