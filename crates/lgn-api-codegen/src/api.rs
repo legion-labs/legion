@@ -71,7 +71,7 @@ pub struct Path(pub String);
 
 impl From<&str> for Path {
     fn from(path: &str) -> Self {
-        Path(path.to_string())
+        Self(path.to_string())
     }
 }
 
