@@ -23,12 +23,13 @@
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
   import {
-    AppComponentMap,
-    layoutConfig,
+    AppComponentMap as appComponentMap,
+    defaultLayoutConfig,
   } from "@/components/layout/LayoutConfig";
   import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
   import SceneExplorer from "@/components/SceneExplorer.svelte";
   import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
+  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
 
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
@@ -56,7 +57,25 @@
         {
           title: "Editor",
           action: () => {
-            return;
+            layout.addComponent(
+              RemoteWindow.name,
+              {
+                serverType: "editor",
+              },
+              "Editor"
+            );
+          },
+        },
+        {
+          title: "Runtime",
+          action: () => {
+            layout.addComponent(
+              RemoteWindow.name,
+              {
+                serverType: "runtime",
+              },
+              "Runtime"
+            );
           },
         },
         {
@@ -95,8 +114,8 @@
   <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
       <Layout
-        {layoutConfig}
-        componentMap={AppComponentMap}
+        layoutConfig={defaultLayoutConfig}
+        componentMap={appComponentMap}
         bind:this={layout}
       />
       <div class="secondary-contents">
@@ -122,7 +141,6 @@
         </div>
       </div>
       <div class="v-separator" />
-
       <div class="main-content">
         <!-- TODO: Move this into a dedicated component DynamicTile -->
         <Tile id={viewportTileId} {workspace}>

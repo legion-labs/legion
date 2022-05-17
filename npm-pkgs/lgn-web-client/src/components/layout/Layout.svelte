@@ -8,11 +8,11 @@
     VirtualLayout,
   } from "golden-layout";
   import type { LayoutConfig } from "golden-layout";
-  import type { JsonValue } from "type-fest";
   import type { SvelteComponentDev } from "svelte/internal";
 
   type LayoutComponent = {
     type: string;
+    state: object;
     container: ComponentContainer;
     visible: boolean;
     zIndex: string;
@@ -51,7 +51,7 @@
   export function addComponent(
     // Could be typed/constrained using a component map
     componentType: string,
-    componentState?: JsonValue,
+    componentState?: object,
     title?: string
   ) {
     return layout.addComponent(
@@ -125,6 +125,8 @@
     layoutComponents = [
       ...layoutComponents,
       {
+        rect: {},
+        state: itemConfig.componentState,
         type: ResolvedComponentItemConfig.resolveComponentTypeName(itemConfig),
         visible: true,
         container: container,
@@ -159,14 +161,13 @@
       style:width={`${c.rect.width}px`}
       style:height={`${c.rect.height}px`}
     >
-      <svelte:component this={componentMap[c.type]} />
+      <svelte:component this={componentMap[c.type]} {...c.state} />
     </div>
   {/each}
 </div>
 
-<style>
+<style lang="postcss">
   .layout {
-    background-color: fuchsia;
     position: relative;
     width: 100%;
     height: 100%;
@@ -182,6 +183,7 @@
   }
 
   .component {
+    @apply bg-gray-700;
     overflow: auto;
     position: absolute;
   }
