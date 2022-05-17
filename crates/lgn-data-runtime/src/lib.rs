@@ -87,6 +87,12 @@ pub use lgn_data_runtime_macros::resource;
 mod resourcepathid;
 pub use resourcepathid::*;
 
+mod metadata;
+pub use metadata::*;
+
+mod path_name;
+pub use self::path_name::*;
+
 #[cfg(test)]
 mod test_asset;
 

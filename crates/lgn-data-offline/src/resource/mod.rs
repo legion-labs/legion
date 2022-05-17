@@ -8,11 +8,6 @@ mod project;
 
 pub use self::project::*;
 
-mod metadata;
-
-mod path_name;
-pub use self::path_name::*;
-
 mod resource_handles;
 pub use self::resource_handles::*;
 

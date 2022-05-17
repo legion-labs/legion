@@ -21,6 +21,12 @@ macro_rules! implement_raw_resource {
             fn clone_dyn(&self) -> Box<dyn lgn_data_runtime::Resource> {
                 Box::new(self.clone())
             }
+            fn get_meta(&self) -> &lgn_data_runtime::Metadata {
+                &self.meta
+            }
+            fn get_meta_mut(&mut self) -> &mut lgn_data_runtime::Metadata {
+                &self.meta
+            }
         }
 
         impl lgn_data_model::TypeReflection for $type_id {

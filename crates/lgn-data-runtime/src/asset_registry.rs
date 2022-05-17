@@ -13,8 +13,8 @@ use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
     manifest::Manifest,
     vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, OfflineResource, Resource,
-    ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor, ResourceProcessorError,
-    ResourceType, ResourceTypeAndId,
+    ResourceDescriptor, ResourceId, ResourceProcessor, ResourceProcessorError, ResourceType,
+    ResourceTypeAndId,
 };
 
 /// Error type for Asset Registry
@@ -593,20 +593,22 @@ impl AssetRegistry {
         kind: ResourceType,
         handle: impl AsRef<HandleUntyped>,
         writer: &mut dyn std::io::Write,
-    ) -> Result<(usize, Vec<ResourcePathId>), AssetRegistryError> {
+    ) -> Result<(), AssetRegistryError> {
         let mut guard = self.write_inner();
         let inner: &mut Inner = &mut guard;
 
         if let Some(processor) = self.processors.write().unwrap().get_mut(&kind) {
+            let id = handle.as_ref().id();
             let resource = inner
                 .assets
-                .get(&handle.as_ref().id())
-                .ok_or_else(|| AssetRegistryError::ResourceNotFound(handle.as_ref().id()))?
-                .as_ref();
+                .get_mut(&id)
+                .ok_or_else(|| AssetRegistryError::ResourceNotFound(id))?
+                .as_mut();
 
             let build_deps = processor.extract_build_dependencies(&*resource);
-            let written = processor.write_resource(&*resource, writer)?;
-            Ok((written, build_deps))
+            resource.get_meta_mut().dependencies = build_deps;
+            processor.write_resource(&*resource, writer)?;
+            Ok(())
         } else {
             Err(AssetRegistryError::ProcessorNotFound(kind))
         }

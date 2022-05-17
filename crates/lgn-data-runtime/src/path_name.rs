@@ -1,7 +1,8 @@
 use std::{fmt, hash::Hash, ops::Add, str::FromStr};
 
-use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Serialize};
+
+use crate::ResourceTypeAndId;
 
 /// Identifier of a resource.
 ///

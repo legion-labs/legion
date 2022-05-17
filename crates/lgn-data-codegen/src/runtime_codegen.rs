@@ -59,6 +59,12 @@ pub(crate) fn generate(struct_info: &StructMetaInfo) -> TokenStream {
             fn clone_dyn(&self) -> Box<dyn lgn_data_runtime::Resource> {
                 Box::new(self.clone())
             }
+            fn get_meta(&self) -> &lgn_data_runtime::Metadata {
+                &self.meta
+            }
+            fn get_meta_mut(&mut self) -> &mut lgn_data_runtime::Metadata {
+                &self.meta
+            }
         }
 
         impl #life_time lgn_data_runtime::Asset for #runtime_identifier #life_time {
