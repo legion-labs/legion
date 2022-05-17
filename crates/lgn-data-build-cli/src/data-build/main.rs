@@ -31,6 +31,10 @@ enum Commands {
         /// Source project path.
         #[clap(long)]
         project: PathBuf,
+        /// Name of the source control repository.
+        repository_name: String,
+        /// Name of the source control branch.
+        branch_name: String,
     },
     /// Compile input resource
     #[clap(name = "compile")]
@@ -40,6 +44,10 @@ enum Commands {
         /// Source project path.
         #[clap(long = "project")]
         project: PathBuf,
+        /// Name of the source control repository.
+        repository_name: String,
+        /// Name of the source control branch.
+        branch_name: String,
         /// Build index file.
         #[clap(long = "output")]
         build_output: String,
@@ -82,7 +90,13 @@ async fn main() -> Result<(), String> {
         Commands::Create {
             build_output,
             project: project_dir,
+            repository_name,
+            branch_name,
         } => {
+            let repository_name = repository_name
+                .parse()
+                .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
+
             let (mut build, project) = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
                 Arc::clone(&data_content_provider),
@@ -91,6 +105,8 @@ async fn main() -> Result<(), String> {
             .create_with_project(
                 &project_dir,
                 repository_index,
+                repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -103,12 +119,17 @@ async fn main() -> Result<(), String> {
         Commands::Compile {
             resource,
             project: project_dir,
+            repository_name,
+            branch_name,
             build_output,
             runtime_flag,
             target,
             platform,
             locale,
         } => {
+            let repository_name = repository_name
+                .parse()
+                .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
             let target = target
                 .parse()
                 .map_err(|_e| format!("Invalid Target '{}'", target))?;
@@ -132,6 +153,8 @@ async fn main() -> Result<(), String> {
             let project = Project::open(
                 &project_dir,
                 repository_index,
+                repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -142,7 +165,7 @@ async fn main() -> Result<(), String> {
                 Arc::clone(&data_content_provider),
                 compilers,
             )
-            .open(&project)
+            .open()
             .await
             .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 

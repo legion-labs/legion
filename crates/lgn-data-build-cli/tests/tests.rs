@@ -48,11 +48,11 @@ async fn build_device() {
     let initial_content = "foo";
 
     // create project that contains test resource.
-    let source_id = {
+    let (source_id, branch_name) = {
         let mut project = Project::create(
             project_dir,
             &repository_index,
-            repository_name,
+            repository_name.clone(),
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -71,7 +71,7 @@ async fn build_device() {
         edit.content = initial_content.to_string();
         resource.apply(edit, &resources);
 
-        project
+        let resource_id = project
             .add_resource(
                 ResourcePathName::new("test_source"),
                 refs_resource::TestResource::TYPENAME,
@@ -80,7 +80,11 @@ async fn build_device() {
                 &resources,
             )
             .await
-            .expect("adding the resource")
+            .expect("adding the resource");
+
+        let branch_name = project.branch_name().to_owned();
+
+        (resource_id, branch_name)
     };
 
     let target_dir = {
@@ -105,6 +109,8 @@ async fn build_device() {
     .create_with_project(
         project_dir,
         &repository_index,
+        repository_name.clone(),
+        &branch_name,
         Arc::clone(&source_control_content_provider),
     )
     .await
@@ -177,6 +183,8 @@ async fn build_device() {
         let mut project = Project::open(
             project_dir,
             &repository_index,
+            repository_name.clone(),
+            &branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -249,11 +257,11 @@ async fn no_intermediate_resource() {
 
     // create project that contains test resource.
     let resource_id = {
-        let resource_id = {
+        let (resource_id, branch_name) = {
             let mut project = Project::create(
                 project_dir,
                 &repository_index,
-                repository_name,
+                repository_name.clone(),
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -267,7 +275,7 @@ async fn no_intermediate_resource() {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("new resource");
 
-            project
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     refs_resource::TestResource::TYPENAME,
@@ -276,7 +284,11 @@ async fn no_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource")
+                .expect("adding the resource");
+
+            let branch_name = project.branch_name().to_owned();
+
+            (resource_id, branch_name)
         };
         let (mut build, project) = DataBuildOptions::new(
             DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version()),
@@ -286,6 +298,8 @@ async fn no_intermediate_resource() {
         .create_with_project(
             project_dir,
             &repository_index,
+            repository_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -366,11 +380,11 @@ async fn with_intermediate_resource() {
 
     // create project that contains test resource.
     let resource_id = {
-        let resource_id = {
+        let (resource_id, branch_name) = {
             let mut project = Project::create(
                 project_dir,
                 &repository_index,
-                repository_name,
+                repository_name.clone(),
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -384,7 +398,7 @@ async fn with_intermediate_resource() {
                 .new_resource(text_resource::TextResource::TYPE)
                 .expect("new resource");
 
-            project
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     text_resource::TextResource::TYPENAME,
@@ -393,7 +407,11 @@ async fn with_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource")
+                .expect("adding the resource");
+
+            let branch_name = project.branch_name().to_owned();
+
+            (resource_id, branch_name)
         };
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
@@ -403,6 +421,8 @@ async fn with_intermediate_resource() {
         .create_with_project(
             project_dir,
             &repository_index,
+            repository_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await

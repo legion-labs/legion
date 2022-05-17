@@ -191,19 +191,15 @@
 
 use std::{
     collections::BTreeMap,
-    fs::File,
-    io::Read,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
 
-use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{Parser, Subcommand};
-use lgn_content_store::{Identifier, Provider};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_offline::resource::{Project, ResourcePathName};
-use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{ResourcePathId, ResourceType, ResourceTypeAndId};
 
 mod config;
 use config::Config;
@@ -232,26 +228,40 @@ enum Commands {
     Explain {
         /// Id to explain
         id: String,
+        /// Name of the source control repository
+        repository_name: String,
+        /// Name of the source control branch.
+        branch_name: String,
     },
     /// Parse project index for source resource information
     #[clap(name = "source")]
     Source {
         /// Path to directory containing the project
         path: Option<PathBuf>,
+        /// Name of the source control repository
+        repository_name: String,
+        /// Name of the source control branch.
+        branch_name: String,
         #[clap(subcommand)]
         command: SourceCommands,
     },
+    /*
     /// Parse asset file, or folder, to extract asset meta-data
     #[clap(name = "asset")]
     Asset {
         /// Path to single asset file, or directory containing several asset files
         path: PathBuf,
     },
+    */
     /// Print Graphviz representation of a build graph in DOT format
     #[clap(name = "graph")]
     Graph {
         /// Compile path (either ResourcePathId or ResourceId) to print the graph of
         id: String,
+        /// Name of the source control repository
+        repository_name: String,
+        /// Name of the source control branch.
+        branch_name: String,
     },
     /// Creates a configuration file containing paths to relevant locations
     #[clap(name = "configure")]
@@ -362,10 +372,20 @@ async fn main() -> Result<(), String> {
                 }
             }
         }
-        Commands::Explain { id } => {
+        Commands::Explain {
+            id,
+            repository_name,
+            branch_name,
+        } => {
             if let Some(config) = config {
+                let repository_name = repository_name
+                    .parse()
+                    .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
+
                 let (mut build, project) = config
                     .open(
+                        repository_name,
+                        &branch_name,
                         Arc::clone(&source_control_content_provider),
                         Arc::clone(&data_content_provider),
                         repository_index,
@@ -384,7 +404,7 @@ async fn main() -> Result<(), String> {
 
                     if let Some(rid) = build_rid {
                         rid
-                    } else if let Ok(rid) = ResourcePathId::from_str(&id) {
+                    } else if let Ok(rid) = id.parse() {
                         rid
                     } else {
                         return Err(format!("Failed to parse ResourcePathId: '{}'", id));
@@ -400,11 +420,22 @@ async fn main() -> Result<(), String> {
                 );
             }
         }
-        Commands::Source { path, command } => {
+        Commands::Source {
+            path,
+            repository_name,
+            branch_name,
+            command,
+        } => {
+            let repository_name = repository_name
+                .parse()
+                .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
+
             let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
             let project = Project::open(
                 proj_file,
                 repository_index,
+                repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -436,6 +467,7 @@ async fn main() -> Result<(), String> {
                 }
             }
         }
+        /*
         Commands::Asset { path } => {
             if path.is_file() {
                 parse_asset_file(
@@ -460,10 +492,21 @@ async fn main() -> Result<(), String> {
                 }
             }
         }
-        Commands::Graph { id } => {
+        */
+        Commands::Graph {
+            id,
+            repository_name,
+            branch_name,
+        } => {
             if let Some(config) = config {
+                let repository_name = repository_name
+                    .parse()
+                    .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
+
                 let (mut build, project) = config
                     .open(
+                        repository_name,
+                        &branch_name,
                         Arc::clone(&source_control_content_provider),
                         Arc::clone(&data_content_provider),
                         repository_index,
@@ -482,7 +525,7 @@ async fn main() -> Result<(), String> {
                             .map_err(|e| format!("Path Id lookup failed {}", e))?
                             .ok_or(format!("ResourceId '{}' not found", resource_id))?
                     } else {
-                        ResourcePathId::from_str(&id)
+                        id.parse()
                             .map_err(|_e| format!("Invalid ResourcePathId '{}'", id))?
                     }
                 };
@@ -654,11 +697,12 @@ fn all_declared_resources(source: &Path) -> Vec<(String, ResourceType)> {
         return vec![];
     }
     proc_macro2::fallback::force(); // prevent panic, if panic = abort is set
-    let tokens = proc_macro2::TokenStream::from_str(&src).expect("Tokenize source file");
+    let tokens = src.parse().expect("Tokenize source file");
     let ast: syn::File = syn::parse2(tokens).expect("Unable to parse file");
     find_resource_attribs(&ast.items)
 }
 
+/*
 // Reads an asset file, and prints out its header information.
 #[allow(unsafe_code)]
 async fn parse_asset_file(
@@ -758,6 +802,7 @@ async fn parse_asset_file(
     let nbytes = f.read_u64::<LittleEndian>().expect("valid data");
     println!("\tasset content size: {}", nbytes);
 }
+*/
 
 fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Config) -> String {
     let mut output_text = String::new();

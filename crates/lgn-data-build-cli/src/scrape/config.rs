@@ -39,6 +39,8 @@ impl Config {
 
     pub async fn open(
         &self,
+        repository_name: RepositoryName,
+        branch_name: &str,
         source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,
         repository_index: impl RepositoryIndex,
@@ -46,6 +48,8 @@ impl Config {
         let project = Project::open(
             &self.project,
             repository_index,
+            repository_name,
+            branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -60,7 +64,7 @@ impl Config {
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
-        .open(&project)
+        .open()
         .await
         .map_err(|e| e.to_string())?;
 

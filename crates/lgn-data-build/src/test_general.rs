@@ -5,7 +5,7 @@ mod tests {
     use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_offline::resource::Project;
-    use lgn_source_control::LocalRepositoryIndex;
+    use lgn_source_control::{LocalRepositoryIndex, RepositoryName};
     use tempfile::TempDir;
 
     use crate::{databuild::DataBuild, output_index::OutputIndex, DataBuildOptions};
@@ -49,6 +49,9 @@ mod tests {
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
+        let repository_name: RepositoryName = "default".parse().unwrap();
+        let branch_name = "main";
+
         let build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
@@ -57,6 +60,8 @@ mod tests {
         .create_with_project(
             &project_dir,
             repository_index,
+            repository_name,
+            branch_name,
             source_control_content_provider,
         )
         .await;
