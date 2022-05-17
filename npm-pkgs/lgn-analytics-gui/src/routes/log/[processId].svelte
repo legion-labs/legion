@@ -190,7 +190,7 @@
         >
           <div
             slot="header"
-            class="table-header"
+            class="header"
             let:columnName
             title={$t("log-parent-table-column", { columnName })}
           >
@@ -198,7 +198,7 @@
               <L10n id="log-parent-table-column" variables={{ columnName }} />
             </div>
           </div>
-          <div slot="cell" class="table-cell" let:columnName let:value>
+          <div slot="cell" class="cell" let:columnName let:value>
             {#if columnName === "level"}
               <div
                 class="truncate"
@@ -218,7 +218,9 @@
                 {value}
               </div>
             {:else}
-              {value}
+              <div class="break-words w-full">
+                {value}
+              </div>
             {/if}
           </div>
         </Table>
@@ -232,12 +234,11 @@
     @apply flex flex-col background;
   }
 
-  .table-header {
+  .header {
     @apply flex flex-row items-center h-full headline text-base;
   }
 
-  .table-cell {
-    /* TODO: Use proper color */
+  .cell {
     @apply flex flex-row h-full py-0.5 headline;
   }
 </style>
