@@ -57,9 +57,7 @@ async fn main() -> anyhow::Result<()> {
         std::fs::remove_dir_all(&project_dir)
             .unwrap_or_else(|_| panic!("Cannot delete {}", project_dir.display()));
     }
-
-    let build_dir = project_dir.join("temp");
-    std::fs::create_dir_all(&build_dir).unwrap();
+    std::fs::create_dir_all(&project_dir).unwrap();
 
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
         .await

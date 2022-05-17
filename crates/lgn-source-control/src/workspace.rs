@@ -983,7 +983,7 @@ impl Workspace {
     }
     */
 
-    async fn initial_checkout(&self) -> Result<BTreeSet<Change>> {
+    async fn initial_checkout(&self) -> Result<()> {
         // 1. Read the branch information.
         let branch = self.get_current_branch().await?;
 
@@ -997,7 +997,8 @@ impl Workspace {
         // 4. Write the files on disk.
         self.sync_tree(&Tree::empty(), &tree).await
         */
-        Err(Error::Unspecified("todo".to_owned()))
+
+        Ok(())
     }
 
     /*
