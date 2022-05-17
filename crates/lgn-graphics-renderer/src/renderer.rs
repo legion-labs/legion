@@ -84,7 +84,7 @@ impl Renderer {
         &self.graphics_queue
     }
 
-    pub fn render_object_allocator<F, R>(&self, func: F)
+    pub fn allocate_render_object<F, R>(&self, func: F)
     where
         F: FnOnce(&mut RenderObjectAllocator<'_, R>),
         R: RenderObject,

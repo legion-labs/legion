@@ -12,7 +12,7 @@ use crate::{
         descriptor_set::frame_descriptor_set,
     },
     components::LightType,
-    core::RenderObjects,
+    core::{RenderObjectQuery, RenderObjects},
     resources::TransientBufferAllocator,
 };
 
@@ -20,6 +20,7 @@ const OMNI_DIRECTIONAL_LIGHT_MAX: u64 = 4096;
 const DIRECTIONAL_LIGHT_MAX: u64 = 4096;
 const SPOT_LIGHT_MAX: u64 = 4096;
 
+#[derive(Debug)]
 pub struct RenderLight {
     pub light_type: LightType,
     pub color: Color,
@@ -28,7 +29,15 @@ pub struct RenderLight {
     pub picking_id: u32,
 }
 
-// type RenderLightSet = RenderObjectSet<RenderLight>;
+impl Drop for RenderLight {
+    fn drop(&mut self) {
+        todo!()
+    }
+}
+
+pub struct RenderLightTestData {
+    foo: u32,
+}
 
 pub struct LightingManager {
     // pub render_lights: RenderLightSet,
@@ -117,6 +126,18 @@ impl LightingManager {
     }
 
     pub fn frame_update(&self, render_objects: &RenderObjects) {
+        let q = RenderObjectQuery::<RenderLight>::new(render_objects);
+
+        q.for_each(|index, render_light| {
+            dbg!(index);
+            dbg!(render_light);
+        });
+
+        // render_objects.for_each_ready::<RenderLight>(|x| {});
+        //
+        // render_objects.for_each_ready::<(&RenderLight, &mut RenderLightTestData)) >(|x| {});
+        // render_objects.for_each_ready::<(&RenderLight, &RenderLightTestData)) >(|x| {});
+
         // let light_set = render_resources.get::<RenderLightSet>();
 
         // for i in light_set.inserted_or_changed() {}

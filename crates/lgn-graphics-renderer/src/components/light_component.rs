@@ -12,7 +12,7 @@ use crate::{
     Renderer,
 };
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum LightType {
     Omnidirectional,
     Directional,
@@ -66,7 +66,7 @@ pub(crate) fn reflect_light_components(
     q_removals: RemovedComponents<'_, LightComponent>,
 ) {
     let mut render_commands = renderer.render_command_builder();
-    renderer.render_object_allocator(|allocator: &mut RenderObjectAllocator<'_, RenderLight>| {
+    renderer.allocate_render_object(|allocator: &mut RenderObjectAllocator<'_, RenderLight>| {
         for (e, xform, mut c) in q_changes.iter_mut() {
             if let Some(render_object_id) = c.render_object_id {
                 render_commands.push(UpdateRenderObjectCommand::<RenderLight> {

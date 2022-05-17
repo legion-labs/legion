@@ -13,7 +13,7 @@ mod cgen {
 }
 
 use crate::core::RenderObjects;
-use crate::lighting::RenderLight;
+use crate::lighting::{RenderLight, RenderLightTestData};
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
@@ -38,8 +38,8 @@ use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
 use lgn_math::Vec2;
 
-use lgn_tasks::{ComputeTaskPool};
-use lgn_tracing::{span_scope_named};
+use lgn_tasks::ComputeTaskPool;
+use lgn_tracing::span_scope_named;
 pub use renderer::*;
 
 mod render_context;
@@ -70,7 +70,10 @@ pub mod shared;
 
 mod renderdoc;
 
-use crate::core::{GpuUploadManager, RenderCommandManager, RenderManagers, RenderResourcesBuilder,  RenderCommandBuilder, RenderCommandQueuePool, RenderObjectsBuilder};
+use crate::core::{
+    GpuUploadManager, RenderCommandBuilder, RenderCommandManager, RenderCommandQueuePool,
+    RenderManagers, RenderObjectsBuilder, RenderResourcesBuilder,
+};
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
 use crate::renderdoc::RenderDocManager;
@@ -190,7 +193,7 @@ impl Plugin for RendererPlugin {
 
         let material_manager = MaterialManager::new(static_buffer.allocator());
 
-        let shared_resources_manager = SharedResourcesManager::new(            
+        let shared_resources_manager = SharedResourcesManager::new(
             &mut render_commands,
             device_context,
             &mut persistent_descriptor_set_manager,
@@ -198,12 +201,14 @@ impl Plugin for RendererPlugin {
 
         let mesh_renderer = MeshRenderer::new(device_context, static_buffer.allocator());
 
-        let light_manager = LightingManager::new(device_context);        
+        let light_manager = LightingManager::new(device_context);
 
         let renderdoc_manager = RenderDocManager::default();
 
-        let render_objects = RenderObjectsBuilder::default().
-        add_primary_type::<RenderLight>().finalize();
+        let render_objects = RenderObjectsBuilder::default()
+            .add_primary_table::<RenderLight>()
+            .add_secondary_table::<RenderLight, RenderLightTestData>()
+            .finalize();
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -297,8 +302,8 @@ impl Plugin for RendererPlugin {
         //
         // Stage Prepare
         //
-        app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);        
-        app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);        
+        app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
+        app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
         app.add_system_to_stage(RenderStage::Prepare, reflect_light_components);
         app.add_system_to_stage(
             RenderStage::Prepare,
@@ -331,10 +336,16 @@ impl Plugin for RendererPlugin {
             .insert(graphics_queue.clone())
             .insert(light_manager)
             .insert(renderdoc_manager)
-            .insert(render_objects)            
+            .insert(render_objects)
             .finalize();
 
-        let renderer = Renderer::new(NUM_RENDER_FRAMES, render_command_queue_pool, render_resources, graphics_queue, gfx_api);
+        let renderer = Renderer::new(
+            NUM_RENDER_FRAMES,
+            render_command_queue_pool,
+            render_resources,
+            graphics_queue,
+            gfx_api,
+        );
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
@@ -434,14 +445,14 @@ fn init_manipulation_manager(
 fn render_update(
     task_pool: Res<'_, ComputeTaskPool>,
     resources: (
-        ResMut<'_, Renderer>,        
+        ResMut<'_, Renderer>,
         ResMut<'_, PipelineManager>,
         ResMut<'_, MeshRenderer>,
         Res<'_, MeshManager>,
         Res<'_, PickingManager>,
         Res<'_, GpuInstanceManager>,
         ResMut<'_, Egui>,
-        ResMut<'_, DebugDisplay>,        
+        ResMut<'_, DebugDisplay>,
         ResMut<'_, PersistentDescriptorSetManager>,
         Res<'_, ModelManager>,
         EventReader<'_, '_, KeyboardInput>,
@@ -455,14 +466,14 @@ fn render_update(
     ),
 ) {
     // resources
-    let mut renderer = resources.0;    
+    let mut renderer = resources.0;
     let mut pipeline_manager = resources.1;
     let mut mesh_renderer = resources.2;
     let mesh_manager = resources.3;
     let picking_manager = resources.4;
     let instance_manager = resources.5;
     let mut egui = resources.6;
-    let mut debug_display = resources.7;    
+    let mut debug_display = resources.7;
     let mut persistent_descriptor_set_manager = resources.8;
     let model_manager = resources.9;
     let mut keyboard_input_events = resources.10;
@@ -483,14 +494,14 @@ fn render_update(
     for keyboard_input_event in keyboard_input_events.iter() {
         if let Some(key_code) = keyboard_input_event.key_code {
             if key_code == KeyCode::C && keyboard_input_event.state.is_pressed() {
-                render_commands.push(renderdoc::RenderDocCaptureCommand::default());                
+                render_commands.push(renderdoc::RenderDocCaptureCommand::default());
             }
         }
-    }    
+    }
 
     let picked_drawables = q_picked_drawables
-            .iter()
-            .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
+        .iter()
+        .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
     let manipulator_drawables = q_manipulator_drawables
         .iter()
         .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
@@ -498,28 +509,28 @@ fn render_update(
         .iter()
         .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
 
-
     //
     // Wait for render thread
     //
 
-    // todo    
+    // todo
 
-    // 
+    //
     // Sync window (safe access to render resources)
     //
 
     let render_resources = renderer.render_resources().clone();
-    
-    render_resources.get_mut::<RenderCommandManager>().sync_update(renderer.render_command_queue_pool()  );
+
+    render_resources
+        .get_mut::<RenderCommandManager>()
+        .sync_update(renderer.render_command_queue_pool());
     // render_resources.get_mut::<RenderObjectSet<RenderLight>>().sync_update( &mut render_resources.get_mut::<RenderObjectSetAllocator<RenderLight>>()  );
     render_resources.get_mut::<RenderObjects>().sync_update();
 
-    
     // objectives: drop all resources/queries
 
-    drop(renderer);    
-    drop(keyboard_input_events);    
+    drop(renderer);
+    drop(keyboard_input_events);
 
     //
     // Run render thread
@@ -951,7 +962,6 @@ fn render_update(
 
     } );
     } );
-        
 }
 
 fn default_descriptor_heap_size() -> DescriptorHeapDef {

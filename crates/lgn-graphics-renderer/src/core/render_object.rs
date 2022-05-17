@@ -76,19 +76,17 @@ struct RenderObjectStorage {
     item_layout: Layout,
     capacity: usize,
     data: NonNull<u8>,
+    drop_fn: unsafe fn(*mut u8),
 }
 
 impl RenderObjectStorage {
-    fn new(item_layout: Layout) -> Self {
-        Self {
+    fn new(item_layout: Layout, drop_fn: unsafe fn(*mut u8), initial_capacity: usize) -> Self {
+        let mut result = Self {
             item_layout,
             capacity: 0,
             data: NonNull::dangling(),
-        }
-    }
-
-    fn with_capacity(item_layout: Layout, initial_capacity: usize) -> Self {
-        let mut result = Self::new(item_layout);
+            drop_fn,
+        };
         result.resize(initial_capacity);
         result
     }
@@ -112,22 +110,52 @@ impl RenderObjectStorage {
         }
     }
 
-    fn set_value(&mut self, index: usize, value: *const u8) {
-        todo!();
+    #[allow(unsafe_code)]
+    fn insert_value(&mut self, index: usize, value: *const u8) {
+        let byte_offset = index * self.aligned_size();
+        unsafe {
+            std::ptr::copy_nonoverlapping(
+                value,
+                self.data.as_ptr().add(byte_offset),
+                self.item_layout.size(),
+            );
+        }
     }
 
+    fn update_value(&mut self, index: usize, value: *const u8) {
+        self.remove_value(index);
+        self.insert_value(index, value);
+    }
+
+    #[allow(unsafe_code)]
+    fn remove_value(&mut self, index: usize) {
+        let drop_fn = self.drop_fn;
+        unsafe {
+            drop_fn(self.get_value_mut(index));
+        }
+    }
+
+    #[allow(unsafe_code)]
     fn get_value(&self, index: usize) -> *const u8 {
-        todo!();
+        let byte_offset = index * self.aligned_size();
+        unsafe { self.data.as_ptr().add(byte_offset) as *const u8 }
     }
 
+    #[allow(unsafe_code)]
     fn get_value_mut(&mut self, index: usize) -> *mut u8 {
-        todo!();
+        let byte_offset = index * self.aligned_size();
+        unsafe { self.data.as_ptr().add(byte_offset) }
+    }
+
+    fn aligned_size(&self) -> usize {
+        let align = self.item_layout.align();
+        let size = self.item_layout.size();
+        (size + align - 1) & !(align - 1)
     }
 
     fn array_layout(&self, capacity: usize) -> Layout {
         let align = self.item_layout.align();
-        let size = self.item_layout.size();
-        let aligned_size = (size + align - 1) & !(align - 1);
+        let aligned_size = self.aligned_size();
         Layout::from_size_align(aligned_size * capacity, align).unwrap()
     }
 }
@@ -193,38 +221,26 @@ impl RenderObjectSetAllocator {
 /// RenderObjectSet
 ///
 struct RenderObjectSet {
+    len: usize,
     storage: RenderObjectStorage,
     generations: Vec<u32>,
     allocated: BitSet,
     inserted: BitSet,
     updated: BitSet,
     removed: BitSet,
-    len: usize,
-    capacity: usize,
-    drop_fn: unsafe fn(*mut u8),
 }
 
 impl RenderObjectSet {
     fn new(item_layout: Layout, capacity: usize, drop_fn: unsafe fn(*mut u8)) -> Self {
         Self {
-            storage: RenderObjectStorage::with_capacity(item_layout, capacity),
+            len: 0,
+            storage: RenderObjectStorage::new(item_layout, drop_fn, capacity),
             generations: Vec::with_capacity(capacity),
             allocated: BitSet::with_capacity(capacity),
             inserted: BitSet::with_capacity(capacity),
             updated: BitSet::with_capacity(capacity),
             removed: BitSet::with_capacity(capacity),
-            len: 0,
-            capacity,
-            drop_fn,
         }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    fn len(&self) -> usize {
-        self.len
     }
 
     fn begin_frame(&mut self) {
@@ -233,12 +249,21 @@ impl RenderObjectSet {
         self.removed.clear();
     }
 
+    fn resize(&mut self, new_len: usize) {
+        self.storage.resize(new_len);
+        self.generations.resize(new_len, 0);
+        self.allocated.reserve_len_exact(new_len);
+        self.updated.reserve_len_exact(new_len);
+        self.removed.reserve_len_exact(new_len);
+        self.len = new_len;
+    }
+
     fn insert(&mut self, id: RenderObjectId, render_object: *const u8) {
         let slot_index = id.index as usize;
         assert!(slot_index < self.len);
         assert!(id.generation == self.generations[slot_index]);
         assert!(!self.allocated.contains(slot_index));
-        self.storage.set_value(slot_index, render_object);
+        self.storage.insert_value(slot_index, render_object);
         self.allocated.insert(slot_index);
         self.inserted.insert(slot_index);
         assert!(!self.updated.contains(slot_index));
@@ -251,11 +276,7 @@ impl RenderObjectSet {
         assert!(slot_index < self.len);
         assert!(id.generation == self.generations[slot_index]);
         assert!(self.allocated.contains(slot_index));
-        let drop_fn = self.drop_fn;
-        unsafe {
-            drop_fn(self.storage.get_value_mut(slot_index));
-        }
-        self.storage.set_value(slot_index, render_object);
+        self.storage.update_value(slot_index, render_object);
         self.updated.insert(slot_index);
         assert!(!self.inserted.contains(slot_index));
         assert!(!self.removed.contains(slot_index));
@@ -266,10 +287,7 @@ impl RenderObjectSet {
         let slot_index = id.index as usize;
         assert!(slot_index < self.len);
         assert!(id.generation == self.generations[slot_index]);
-        let drop_fn = self.drop_fn;
-        unsafe {
-            drop_fn(self.storage.get_value_mut(slot_index));
-        }
+        self.storage.remove_value(slot_index);
         self.allocated.remove(slot_index);
         self.removed.insert(slot_index);
         self.generations[slot_index] += 1;
@@ -302,30 +320,30 @@ where
 
 #[derive(Default)]
 pub struct RenderObjectsBuilder {
-    primary_types: HashMap<RenderObjectKey, PrimaryTable>,
+    primary_tables: HashMap<RenderObjectKey, PrimaryTable>,
     secondary_tables: HashMap<RenderObjectKey, SecondaryTable>,
 }
 
 impl RenderObjectsBuilder {
     #[must_use]
     #[allow(unsafe_code)]
-    pub fn add_primary_type<R>(mut self) -> Self
+    pub fn add_primary_table<P>(mut self) -> Self
     where
-        R: RenderObject,
+        P: RenderObject,
     {
-        unsafe fn drop_func<R>(x: *mut u8) {
-            x.cast::<R>().drop_in_place();
+        unsafe fn drop_func<T>(x: *mut u8) {
+            x.cast::<T>().drop_in_place();
         }
 
-        let key = RenderObjectKey::new::<R>();
-        self.primary_types.insert(
+        let key = RenderObjectKey::new::<P>();
+        self.primary_tables.insert(
             key,
             PrimaryTable {
                 key,
                 set: AtomicRefCell::new(RenderObjectSet::new(
-                    Layout::new::<R>(),
+                    Layout::new::<P>(),
                     256,
-                    drop_func::<R>,
+                    drop_func::<P>,
                 )),
                 allocator: AtomicRefCell::new(RenderObjectSetAllocator::new(key)),
             },
@@ -333,9 +351,41 @@ impl RenderObjectsBuilder {
         self
     }
 
+    #[must_use]
+    #[allow(unsafe_code)]
+    pub fn add_secondary_table<P, S>(mut self) -> Self
+    where
+        P: RenderObject,
+        S: RenderObject,
+    {
+        unsafe fn drop_func<T>(x: *mut u8) {
+            x.cast::<T>().drop_in_place();
+        }
+
+        let primary_key = RenderObjectKey::new::<P>();
+        let secondary_key = RenderObjectKey::new::<S>();
+
+        assert!(self.primary_tables.contains_key(&primary_key));
+
+        self.secondary_tables.insert(
+            secondary_key,
+            SecondaryTable {
+                key: secondary_key,
+                primary_key,
+                storage: AtomicRefCell::new(RenderObjectStorage::new(
+                    Layout::new::<S>(),
+                    drop_func::<S>,
+                    256,
+                )),
+            },
+        );
+
+        self
+    }
+
     pub fn finalize(self) -> RenderObjects {
         RenderObjects {
-            primary_tables: self.primary_types,
+            primary_tables: self.primary_tables,
             secondary_tables: self.secondary_tables,
         }
     }
@@ -364,11 +414,7 @@ impl PrimaryTable {
         if free_slot_index < 0 {
             let additionnal_slots = usize::try_from(-free_slot_index).unwrap();
             let new_len = set.len + additionnal_slots;
-            set.storage.resize(new_len);
-            set.generations.resize(new_len, 0);
-            set.allocated.reserve_len(new_len);
-            set.updated.reserve_len(new_len);
-            set.removed.reserve_len(new_len);
+            set.resize(new_len);
             allocator.free_slots.clear();
         } else {
             allocator
@@ -406,8 +452,82 @@ impl PrimaryTable {
 struct SecondaryTable {
     key: RenderObjectKey,
     primary_key: RenderObjectKey,
-    storage: RenderObjectSet,
+    storage: AtomicRefCell<RenderObjectStorage>,
 }
+
+//
+//
+//
+
+pub struct RenderObjectQuery<'a, R> {
+    render_objects: &'a RenderObjects,
+    phantom: PhantomData<R>,
+}
+
+impl<'a, R> RenderObjectQuery<'a, R>
+where
+    R: RenderObject,
+{
+    pub fn new(render_objects: &'a RenderObjects) -> Self {
+        Self {
+            render_objects,
+            phantom: PhantomData,
+        }
+    }
+
+    #[allow(unsafe_code)]
+    pub fn for_each<F>(mut self, f: F)
+    where
+        F: Fn(usize, &R),
+    {
+        let primary_table = self.render_objects.primary_table::<R>();
+        let set = primary_table.set.borrow();
+        unsafe {
+            for index in &set.allocated {
+                f(index, &*(set.storage.get_value(index) as *const R));
+            }
+        }
+    }
+}
+
+//
+//
+//
+
+// struct RenderObjectIterator<'a, R> {
+//     // set: AtomicRef<'a, RenderObjectSet>,
+// // cur: Iter<u32>,
+// // phantom: PhantomData<R>,
+// }
+
+// impl<'a, R> RenderObjectIterator<'a, R>
+// where
+//     R: RenderObject,
+// {
+//     fn new(set: AtomicRef<'a, RenderObjectSet>) -> Self {
+//         Self {
+//             set,
+//             cur: set.allocated.iter(),
+//             phantom: PhantomData,
+//         }
+//     }
+// }
+
+// impl<'a, R> Iterator for RenderObjectIterator<'a, R>
+// where
+//     R: RenderObject,
+// {
+//     type Item = &'a R;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         let index = self.cur.next();
+//         todo!()
+//     }
+// }
+
+//
+// RenderObjects
+//
 
 pub struct RenderObjects {
     primary_tables: HashMap<RenderObjectKey, PrimaryTable>,
@@ -446,17 +566,26 @@ impl RenderObjects {
         }
     }
 
+    fn primary_table<R>(&self) -> &PrimaryTable
+    where
+        R: RenderObject,
+    {
+        let render_object_key = RenderObjectKey::new::<R>();
+        self.primary_tables.get(&render_object_key).unwrap()
+    }
+
     fn insert<R>(&self, render_object_id: RenderObjectId, data: R)
     where
         R: RenderObject,
     {
         let render_object_key = RenderObjectKey::new::<R>();
         assert_eq!(render_object_id.render_object_key, render_object_key);
-        let primary_table = self.primary_tables.get(&render_object_key).unwrap();
+        let primary_table = self.primary_table::<R>();
         primary_table
             .set
             .borrow_mut()
             .insert(render_object_id, &data as *const R as *const u8);
+        std::mem::forget(data);
     }
 
     fn update<R>(&self, render_object_id: RenderObjectId, data: R)
@@ -465,11 +594,12 @@ impl RenderObjects {
     {
         let render_object_key = RenderObjectKey::new::<R>();
         assert_eq!(render_object_id.render_object_key, render_object_key);
-        let primary_table = self.primary_tables.get(&render_object_key).unwrap();
+        let primary_table = self.primary_table::<R>();
         primary_table
             .set
             .borrow_mut()
             .update(render_object_id, &data as *const R as *const u8);
+        std::mem::forget(data);
     }
 
     fn remove(&self, render_object_id: RenderObjectId) {
