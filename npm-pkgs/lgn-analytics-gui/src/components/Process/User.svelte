@@ -1,5 +1,7 @@
 <script lang="ts">
   export let user: string;
+
+  export let nameOnly = false;
 </script>
 
 <div class="flex gap-2 items-center select-none">
@@ -8,9 +10,11 @@
   >
     <span class="capitalize">{user.charAt(0)}</span>
   </div>
-  <div class="capitalize">
-    <slot {user}>
-      {user}
-    </slot>
-  </div>
+  {#if !nameOnly}
+    <div class="capitalize">
+      <slot {user}>
+        {user}
+      </slot>
+    </div>
+  {/if}
 </div>

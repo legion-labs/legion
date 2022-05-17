@@ -6,13 +6,14 @@
 
   import User from "../Process/User.svelte";
 
-  const { locale } = getL10nOrchestratorContext();
+  const { availableLocales, locale } = getL10nOrchestratorContext();
 
-  function toggleLocale(event: MouseEvent) {
-    if (event.ctrlKey && event.shiftKey) {
-      event.preventDefault();
+  const en = "en-US";
+  const fr = "fr-CA";
 
-      $locale = $locale === "fr-CA" ? "en-US" : "fr-CA";
+  function setLocale(newLocale: string) {
+    if ($availableLocales.includes(newLocale)) {
+      $locale = newLocale;
     }
   }
 
@@ -21,11 +22,7 @@
 
 <div class="header">
   <div class="flex items-center gap-3">
-    <a
-      href="/"
-      on:click={toggleLocale}
-      class="flex flex-row items-center space-x-1"
-    >
+    <a href="/" class="flex flex-row items-center space-x-1">
       <img src={iconPath} alt="logo" style="height:24px" class="inline" />
       <span class="font-medium text-xl headline">
         <a href="/">Analytics</a>
@@ -35,11 +32,30 @@
   {#if $$slots.default}
     <slot />
   {/if}
-  {#if user}
-    <div class="flex justify-between items-center">
-      <User {user} />
+  <div class="flex space-x-2">
+    <div class="uppercase flex space-x-1 text-sm">
+      <div
+        class:text-primary={$locale === en}
+        class:cursor-pointer={$locale !== en}
+        on:click={() => setLocale(en)}
+      >
+        en
+      </div>
+      <div>/</div>
+      <div
+        class:text-primary={$locale === fr}
+        class:cursor-pointer={$locale !== fr}
+        on:click={() => setLocale(fr)}
+      >
+        fr
+      </div>
     </div>
-  {/if}
+    {#if user}
+      <div class="flex justify-between items-center">
+        <User {user} nameOnly />
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style lang="postcss">
