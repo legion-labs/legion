@@ -7,7 +7,7 @@ use lgn_content_store::Provider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::AssetRegistry;
-use lgn_source_control::RepositoryIndex;
+use lgn_source_control::{RepositoryIndex, RepositoryName};
 
 use crate::{DataBuild, Error};
 
@@ -154,11 +154,15 @@ impl DataBuildOptions {
         self,
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
+        repository_name: RepositoryName,
+        branch_name: &str,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<(DataBuild, Project), Error> {
         let project = Project::open(
             project_dir,
             repository_index,
+            repository_name,
+            branch_name,
             source_control_content_provider,
         )
         .await
@@ -170,15 +174,15 @@ impl DataBuildOptions {
     /// Opens the existing build index.
     ///
     /// If the build index does not exist it creates one.
-    pub async fn open_or_create(self, project: &Project) -> Result<DataBuild, Error> {
-        DataBuild::open_or_create(self, project).await
+    pub async fn open_or_create(self) -> Result<DataBuild, Error> {
+        DataBuild::open_or_create(self).await
     }
 
     /// Opens existing build index.
     ///
     /// The content store must exist for this to work.
-    pub async fn open(self, project: &Project) -> Result<DataBuild, Error> {
-        DataBuild::open(self, project).await
+    pub async fn open(self) -> Result<DataBuild, Error> {
+        DataBuild::open(self).await
     }
 
     /// Create new build index for a specified project.

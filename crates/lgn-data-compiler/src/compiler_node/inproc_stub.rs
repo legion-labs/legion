@@ -54,7 +54,6 @@ impl CompilerStub for InProcessCompilerStub {
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
         provider: &Provider,
-        _project_dir: &Path,
         runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {

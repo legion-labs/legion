@@ -57,14 +57,8 @@ async fn compile_atoi() {
         assert!(exe_path.exists());
 
         let compile_path = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
-        let command = CompilerCompileCmd::new(
-            &exe_path,
-            &compile_path,
-            &[],
-            &[],
-            &resource_dir,
-            &common::test_env(),
-        );
+        let command =
+            CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
 
         let result = command.execute().await.expect("compile result");
         println!("{:?}", result);
@@ -130,14 +124,8 @@ async fn compile_intermediate() {
         let exe_path = common::compiler_exe("test-reverse");
         assert!(exe_path.exists());
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let command = CompilerCompileCmd::new(
-            &exe_path,
-            &compile_path,
-            &[],
-            &[],
-            &resource_dir,
-            &common::test_env(),
-        );
+        let command =
+            CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
 
         let result = command.execute().await.expect("compile result");
 
@@ -156,7 +144,6 @@ async fn compile_intermediate() {
             &compile_path,
             &[],
             &[intermediate_info],
-            &resource_dir,
             &common::test_env(),
         );
 
@@ -228,14 +215,8 @@ async fn compile_multi_resource() {
         let exe_path = common::compiler_exe("test-split");
         assert!(exe_path.exists());
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let command = CompilerCompileCmd::new(
-            &exe_path,
-            &compile_path,
-            &[],
-            &[],
-            &resource_dir,
-            &common::test_env(),
-        );
+        let command =
+            CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
 
         let result = command.execute().await.expect("compile result");
 
@@ -315,14 +296,8 @@ async fn compile_base64() {
         assert!(exe_path.exists());
 
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let command = CompilerCompileCmd::new(
-            &exe_path,
-            &compile_path,
-            &[],
-            &[],
-            &resource_dir,
-            &common::test_env(),
-        );
+        let command =
+            CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
 
         let result = command.execute().await.expect("compile result");
         println!("{:?}", result);

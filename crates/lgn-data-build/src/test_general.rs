@@ -75,7 +75,7 @@ mod tests {
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
-        let _project = Project::create_with_remote_mock(
+        let project = Project::create_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )
@@ -94,6 +94,8 @@ mod tests {
             .create_with_project(
                 project_dir,
                 repository_index,
+                project.repository_name().clone(),
+                project.branch_name(),
                 source_control_content_provider,
             )
             .await

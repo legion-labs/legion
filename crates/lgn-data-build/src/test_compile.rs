@@ -21,7 +21,7 @@ mod tests {
         AssetLoader, AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
         ResourceProcessor, ResourceTypeAndId,
     };
-    use lgn_source_control::{LocalRepositoryIndex, RepositoryIndex};
+    use lgn_source_control::{LocalRepositoryIndex, RepositoryIndex, RepositoryName};
     use multitext_resource::MultiTextResource;
     use tempfile::TempDir;
     use text_resource::{TextResource, TextResourceProc};
@@ -112,11 +112,15 @@ mod tests {
         resource_id: ResourceTypeAndId,
         project_dir: &Path,
         repository_index: impl RepositoryIndex,
+        repository_name: RepositoryName,
+        branch_name: &str,
         source_control_content_provider: Arc<Provider>,
     ) {
         let mut project = Project::open(
             project_dir,
             repository_index,
+            repository_name,
+            branch_name,
             source_control_content_provider,
         )
         .await
@@ -157,7 +161,7 @@ mod tests {
         ) = setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
-        let (resource_id, resource_handle) = {
+        let (resource_id, resource_handle, repository_name, branch_name) = {
             let mut project = Project::create_with_remote_mock(
                 &project_dir,
                 Arc::clone(&source_control_content_provider),
@@ -179,7 +183,11 @@ mod tests {
                 )
                 .await
                 .unwrap();
-            (resource_id, resource_handle)
+
+            let repository_name = project.repository_name().clone();
+            let branch_name = project.branch_name().to_owned();
+
+            (resource_id, resource_handle, repository_name, branch_name)
         };
 
         let config = DataBuildOptions::new_with_sqlite_output(
@@ -197,6 +205,8 @@ mod tests {
                 .create_with_project(
                     &project_dir,
                     &repository_index,
+                    repository_name,
+                    &branch_name,
                     Arc::clone(&source_control_content_provider),
                 )
                 .await
@@ -234,6 +244,8 @@ mod tests {
             let mut project = Project::open(
                 &project_dir,
                 &repository_index,
+                repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -260,12 +272,14 @@ mod tests {
             let project = Project::open(
                 project_dir,
                 &repository_index,
+                repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
             .expect("failed to open project");
 
-            let mut build = config.open(&project).await.expect("to open index");
+            let mut build = config.open().await.expect("to open index");
             build
                 .source_pull(&project)
                 .await
@@ -314,7 +328,7 @@ mod tests {
     async fn setup_project(
         project_dir: impl AsRef<Path>,
         source_control_content_provider: Arc<Provider>,
-    ) -> [ResourceTypeAndId; 5] {
+    ) -> ([ResourceTypeAndId; 5], RepositoryName, String) {
         let mut project =
             Project::create_with_remote_mock(project_dir.as_ref(), source_control_content_provider)
                 .await
@@ -353,7 +367,15 @@ mod tests {
             &resources,
         )
         .await;
-        [res_a, res_b, res_c, res_d, res_e]
+
+        let repository_name = project.repository_name().clone();
+        let branch_name = project.branch_name().to_owned();
+
+        (
+            [res_a, res_b, res_c, res_d, res_e],
+            repository_name,
+            branch_name,
+        )
     }
 
     #[tokio::test]
@@ -370,7 +392,7 @@ mod tests {
 
         let source_magic_value = String::from("47");
 
-        let source_id = {
+        let (source_id, repository_name, branch_name) = {
             let mut project = Project::create_with_remote_mock(
                 &project_dir,
                 Arc::clone(&source_control_content_provider),
@@ -385,7 +407,7 @@ mod tests {
             let mut edit = resource_handle.instantiate(&resources).unwrap();
             edit.content = source_magic_value.clone();
             resource_handle.apply(edit, &resources);
-            project
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     text_resource::TextResource::TYPENAME,
@@ -394,7 +416,12 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            let repository_name = project.repository_name().clone();
+            let branch_name = project.branch_name().to_owned();
+
+            (resource_id, repository_name, branch_name)
         };
 
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
@@ -405,6 +432,8 @@ mod tests {
         .create_with_project(
             project_dir,
             &repository_index,
+            repository_name,
+            &branch_name,
             source_control_content_provider,
         )
         .await
@@ -490,7 +519,7 @@ mod tests {
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
-        let resource_list =
+        let (resource_list, repository_name, branch_name) =
             setup_project(&project_dir, Arc::clone(&source_control_content_provider)).await;
         let root_resource = resource_list[0];
 
@@ -502,6 +531,8 @@ mod tests {
         .create_with_project(
             &project_dir,
             &repository_index,
+            repository_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -558,6 +589,8 @@ mod tests {
                 root_resource,
                 &project_dir,
                 &repository_index,
+                repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await;
@@ -584,6 +617,8 @@ mod tests {
                 resource_e,
                 &project_dir,
                 &repository_index,
+                repository_name,
+                &branch_name,
                 source_control_content_provider,
             )
             .await;
@@ -619,7 +654,7 @@ mod tests {
 
         let magic_list = vec![String::from("47"), String::from("198")];
 
-        let source_id = {
+        let (source_id, repository_name, branch_name) = {
             let mut project = Project::create_with_remote_mock(
                 &project_dir,
                 Arc::clone(&source_control_content_provider),
@@ -634,7 +669,8 @@ mod tests {
             let mut edit = resource_handle.instantiate(&resources).unwrap();
             edit.text_list = magic_list.clone();
             resource_handle.apply(edit, &resources);
-            project
+
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     multitext_resource::MultiTextResource::TYPENAME,
@@ -643,7 +679,12 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            let repository_name = project.repository_name().clone();
+            let branch_name = project.branch_name().to_owned();
+
+            (resource_id, repository_name, branch_name)
         };
 
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
@@ -654,6 +695,8 @@ mod tests {
         .create_with_project(
             &project_dir,
             &repository_index,
+            repository_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -763,6 +806,8 @@ mod tests {
             let mut project = Project::open(
                 &project_dir,
                 &repository_index,
+                repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -811,6 +856,8 @@ mod tests {
             let mut project = Project::open(
                 project_dir,
                 &repository_index,
+                repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -892,7 +939,7 @@ mod tests {
         ) = setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
-        let parent_id = {
+        let (parent_id, repository_name, branch_name) = {
             let mut project = Project::create_with_remote_mock(
                 &project_dir,
                 Arc::clone(&source_control_content_provider),
@@ -931,7 +978,8 @@ mod tests {
             parent.build_deps =
                 vec![ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE)];
             parent_handle.apply(parent, &resources);
-            project
+
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPENAME,
@@ -940,7 +988,12 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            let repository_name = project.repository_name().clone();
+            let branch_name = project.branch_name().to_owned();
+
+            (resource_id, repository_name, branch_name)
         };
 
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
@@ -951,6 +1004,8 @@ mod tests {
         .create_with_project(
             &project_dir,
             &repository_index,
+            repository_name,
+            &branch_name,
             source_control_content_provider,
         )
         .await
@@ -1011,7 +1066,7 @@ mod tests {
         let resources = setup_registry().await;
 
         // child_id <- test(child_id) <- parent_id = test(parent_id)
-        let parent_resource = {
+        let (parent_resource, repository_name, branch_name) = {
             let mut project = Project::create_with_remote_mock(
                 &project_dir,
                 Arc::clone(&source_control_content_provider),
@@ -1040,7 +1095,7 @@ mod tests {
                 .push(ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE));
             child_handle.apply(edit, &resources);
 
-            project
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPENAME,
@@ -1049,7 +1104,12 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            let repository_name = project.repository_name().clone();
+            let branch_name = project.branch_name().to_owned();
+
+            (resource_id, repository_name, branch_name)
         };
 
         let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
@@ -1060,6 +1120,8 @@ mod tests {
         .create_with_project(
             project_dir,
             repository_index,
+            repository_name,
+            &branch_name,
             source_control_content_provider,
         )
         .await

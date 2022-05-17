@@ -115,29 +115,81 @@ fn compute_context_hash(
 pub struct DataBuild {
     source_index: SourceIndex,
     output_index: OutputIndex,
-    resource_dir: PathBuf,
     runtime_manifest_id: SharedTreeIdentifier,
     data_content_provider: Arc<Provider>,
     compilers: CompilerNode,
 }
 
 impl DataBuild {
-    pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let output_index = OutputIndex::create_new(config.output_db_addr.clone()).await?;
+    async fn default_asset_registry(
+        data_provider: Arc<Provider>,
+        compilers: &CompilerRegistry,
+        manifest: Option<Manifest>,
+    ) -> Result<Arc<AssetRegistry>, Error> {
+        let manifest = manifest.unwrap_or_default();
 
-        Self::new_with_output_index(config, output_index, project).await
+        let mut options = AssetRegistryOptions::new().add_device_cas(data_provider, manifest);
+
+        options = compilers.init_all(options).await;
+
+        Ok(options.create().await)
     }
 
-    pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let output_index = OutputIndex::open(config.output_db_addr.clone()).await?;
+    pub(crate) async fn new(config: DataBuildOptions, _project: &Project) -> Result<Self, Error> {
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
 
-        Self::new_with_output_index(config, output_index, project).await
+        let output_index = OutputIndex::create_new(config.output_db_addr).await?;
+
+        let compilers = config.compiler_options.create().await;
+        let registry = match config.registry {
+            Some(r) => Ok(r),
+            None => {
+                Self::default_asset_registry(
+                    Arc::clone(&config.data_content_provider),
+                    &compilers,
+                    config.manifest,
+                )
+                .await
+            }
+        }?;
+
+        Ok(Self {
+            source_index,
+            output_index,
+            data_content_provider: Arc::clone(&config.data_content_provider),
+            compilers: CompilerNode::new(compilers, registry),
+        })
     }
 
-    pub(crate) async fn open_or_create(
-        config: DataBuildOptions,
-        project: &Project,
-    ) -> Result<Self, Error> {
+    pub(crate) async fn open(config: DataBuildOptions) -> Result<Self, Error> {
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
+        let output_index = OutputIndex::open(config.output_db_addr).await?;
+
+        let compilers = config.compiler_options.create().await;
+        let registry = match config.registry {
+            Some(t) => Ok(t),
+            None => {
+                Self::default_asset_registry(
+                    Arc::clone(&config.data_content_provider),
+                    &compilers,
+                    config.manifest,
+                )
+                .await
+            }
+        }?;
+
+        Ok(Self {
+            source_index,
+            output_index,
+
+            data_content_provider: Arc::clone(&config.data_content_provider),
+            compilers: CompilerNode::new(compilers, registry),
+        })
+    }
+
+    pub(crate) async fn open_or_create(config: DataBuildOptions) -> Result<Self, Error> {
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
+
         let output_index = match OutputIndex::open(config.output_db_addr.clone()).await {
             Ok(output_index) => Ok(output_index),
             Err(Error::NotFound(_)) => OutputIndex::create_new(config.output_db_addr.clone()).await,
@@ -160,24 +212,18 @@ impl DataBuild {
         let registry = match config.registry {
             Some(r) => r,
             None => {
-                // setup default asset registry
-                let mut options = AssetRegistryOptions::new()
-                    .add_device_cas(
-                        Arc::clone(&config.data_content_provider),
-                        runtime_manifest_id.clone(),
-                    )
-                    .add_device_dir(&project.resource_dir());
-
-                options = compilers.init_all(options).await;
-
-                options.create().await
+                Self::default_asset_registry(
+                    Arc::clone(&config.data_content_provider),
+                    &compilers,
+                    config.manifest,
+                )
+                .await
             }
         };
 
         Ok(Self {
             source_index,
             output_index,
-            resource_dir: project.resource_dir(),
             runtime_manifest_id,
             data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
@@ -201,10 +247,13 @@ impl DataBuild {
 
     /// Updates the build database with information about resources from
     /// provided resource database.
-    pub async fn source_pull(&mut self, project: &Project) -> Result<(), Error> {
+    pub async fn source_pull(&mut self, _project: &Project) -> Result<(), Error> {
+        /*
         self.source_index
             .source_pull(project, Self::version())
             .await
+        */
+        Err(Error::NotFound("todo".to_owned()))
     }
 
     /// Compile `compile_path` resource and all its dependencies in the build
@@ -261,7 +310,6 @@ impl DataBuild {
     async fn compile_node(
         output_index: &OutputIndex,
         data_provider: &Provider,
-        project_dir: &Path,
         runtime_manifest_id: &SharedTreeIdentifier,
         compile_node: &ResourcePathId,
         context_hash: AssetHash,
@@ -311,7 +359,6 @@ impl DataBuild {
                         derived_deps,
                         resources,
                         data_provider,
-                        project_dir,
                         runtime_manifest_id,
                         env,
                     )

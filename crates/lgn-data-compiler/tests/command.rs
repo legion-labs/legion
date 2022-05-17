@@ -84,14 +84,7 @@ async fn command_compile() {
     assert!(exe_path.exists());
 
     let compile_path = ResourcePathId::from(source).push(refs_asset::RefsAsset::TYPE);
-    let command = CompilerCompileCmd::new(
-        &exe_path,
-        &compile_path,
-        &[],
-        &[],
-        &resource_dir,
-        &common::test_env(),
-    );
+    let command = CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
 
     let result = command.execute().await.expect("compile result");
 

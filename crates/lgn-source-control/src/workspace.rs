@@ -100,6 +100,11 @@ impl Workspace {
         self.index.repository_name()
     }
 
+    /// Returns the name of the source control branch that is active in the workspace.
+    pub fn branch_name(&self) -> &str {
+        self.branch_name.as_str()
+    }
+
     /// Return the provider of the workspace.
     pub fn provider(&self) -> &Arc<Provider> {
         &self.provider

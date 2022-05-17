@@ -78,7 +78,7 @@ use std::{
     env,
     ffi::OsString,
     io::{stdout, Write},
-    path::{PathBuf, StripPrefixError},
+    path::StripPrefixError,
     str::FromStr,
     sync::Arc,
 };
@@ -99,8 +99,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     compiler_cmd::{
         CompilerHashCmdOutput, CompilerInfoCmdOutput, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
-        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
-        COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
+        COMMAND_ARG_PLATFORM, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET, COMMAND_ARG_TRANSFORM,
+        COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
     compiler_node::{CompilerNode, CompilerRegistry, CompilerRegistryOptions},
     CompiledResource, CompiledResources, Locale, Platform, Target,
@@ -458,7 +458,6 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
             resource: resource_path,
             src_deps,
             der_deps,
-            resource_dir,
             target,
             platform,
             locale,
@@ -508,8 +507,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     .ok_or(CompilerError::CompilerNotFound(transform))?;
 
                 let registry = AssetRegistryOptions::new()
-                    .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone())
-                    .add_device_dir(&resource_dir); // todo: filter dependencies only
+                    .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone()); // todo: filter dependencies only
 
                 compiler.init(registry).await.create().await
             };
@@ -528,7 +526,6 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &derived_deps,
                     shell.registry(),
                     &data_provider,
-                    &resource_dir,
                     &runtime_manifest_id,
                     &env,
                 )
@@ -585,9 +582,6 @@ enum Commands {
         /// Derived dependencies.
         #[clap(long = COMMAND_ARG_DER_DEPS, multiple_values=true)]
         der_deps: Vec<String>,
-        /// Resource directory.
-        #[clap(long = COMMAND_ARG_RESOURCE_DIR)]
-        resource_dir: PathBuf,
         /// Build target (Game, Server, etc).
         #[clap(long = COMMAND_ARG_TARGET)]
         target: String,

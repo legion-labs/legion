@@ -1,17 +1,17 @@
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
     hash::{Hash, Hasher},
-    path::PathBuf,
-    str::FromStr,
+    // path::PathBuf,
+    // str::FromStr,
     sync::Arc,
 };
 
-use hex::ToHex;
+// use hex::ToHex;
 use lgn_content_store::Provider;
-use lgn_data_offline::resource::{Project, Tree};
-use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceTypeAndId};
+// use lgn_data_offline::resource::Project;
+use lgn_data_runtime::{/*ResourceId,*/ ResourcePathId, ResourceTypeAndId};
 use lgn_tracing::span_scope;
-use lgn_utils::{DefaultHasher, DefaultHasher256};
+use lgn_utils::DefaultHasher;
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -19,7 +19,7 @@ use serde_with::DisplayFromStr;
 
 use crate::{output_index::AssetHash, Error};
 
-pub const LGN_DATA_BUILD: &str = "data-build";
+//pub const LGN_DATA_BUILD: &str = "data-build";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourceInfo {
@@ -30,6 +30,7 @@ struct ResourceInfo {
 }
 
 impl ResourceInfo {
+    #[allow(dead_code)]
     // sort contents so serialization is deterministic
     fn pre_serialize(&mut self) {
         self.dependencies.sort();
@@ -46,6 +47,7 @@ pub(crate) struct SourceContent {
 }
 
 impl SourceContent {
+    #[allow(dead_code)]
     fn new(version: &str) -> Self {
         Self {
             version: version.to_owned(),
@@ -62,6 +64,7 @@ impl SourceContent {
         }
     }
 
+    #[allow(dead_code)]
     fn write(&mut self) -> Result<Vec<u8>, Error> {
         self.pre_serialize();
         let mut buffer = vec![];
@@ -69,10 +72,12 @@ impl SourceContent {
         Ok(buffer)
     }
 
+    #[allow(dead_code)]
     fn read(buffer: &[u8]) -> Result<Self, Error> {
         serde_json::from_reader(buffer).map_err(|e| Error::Io(e.into()))
     }
 
+    #[allow(dead_code)]
     pub fn record_pathid(&mut self, id: &ResourcePathId) {
         self.pathid_mapping.insert(id.resource_id(), id.clone());
     }
@@ -129,6 +134,7 @@ impl SourceContent {
         AssetHash::from(hasher.finish())
     }
 
+    #[allow(dead_code)]
     pub(crate) fn update_resource(
         &mut self,
         id: ResourcePathId,
@@ -273,6 +279,7 @@ impl SourceIndex {
         self.current.as_ref().map(|(_, index)| index)
     }
 
+    /*
     #[async_recursion::async_recursion]
     async fn source_pull_tree(
         &self,
@@ -372,7 +379,9 @@ impl SourceIndex {
             Ok((content, uploads))
         }
     }
+    */
 
+    /*
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<(), Error> {
         let tree = project.tree().await?;
 
@@ -400,18 +409,17 @@ impl SourceIndex {
         self.current = Some((root_checksum, source_index));
         Ok(())
     }
+    */
 }
 
 #[cfg(test)]
 mod tests {
 
-    use std::sync::Arc;
+    // use std::sync::Arc;
 
-    use lgn_content_store::Provider;
-    use lgn_data_offline::resource::{Project, ResourcePathName};
-    use lgn_data_runtime::{
-        AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId,
-    };
+    // use lgn_content_store::Provider;
+    // use lgn_data_offline::resource::{Project, ResourcePathName};
+    use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
 
     use crate::source_index::{SourceContent, SourceIndex};
 
@@ -516,6 +524,7 @@ mod tests {
         index.current.as_ref().map(|(id, _)| id.clone()).unwrap()
     }
 
+    /*
     #[tokio::test]
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
@@ -625,4 +634,5 @@ mod tests {
             assert_eq!(current_checksum(&source_index), first_entry_checksum);
         }
     }
+    */
 }

@@ -50,7 +50,7 @@ impl fmt::Debug for CompilerNode {
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, sync::Arc};
+    use std::sync::Arc;
 
     use async_trait::async_trait;
     use lgn_content_store::{
@@ -175,7 +175,6 @@ mod tests {
             kind: ResourceType::new(b"input"),
             id: ResourceId::new(),
         };
-        let proj_dir = PathBuf::from(".");
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
         let data_content_provider = Arc::new(Provider::new_in_memory());
@@ -195,7 +194,6 @@ mod tests {
                     &[],
                     registry,
                     &data_content_provider,
-                    &proj_dir,
                     &runtime_manifest_id,
                     &env,
                 )

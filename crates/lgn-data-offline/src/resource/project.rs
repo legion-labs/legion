@@ -69,7 +69,6 @@ use crate::resource::{metadata::Metadata, ResourcePathName};
 /// can be changed freely.
 pub struct Project {
     project_dir: PathBuf,
-    resource_dir: PathBuf, // TODO: remove this
     workspace: Workspace,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
 }
@@ -107,6 +106,7 @@ pub enum ChangeType {
     /// Resource has been modified.
     Edit,
 }
+
 impl<'a> From<&'a lgn_source_control::ChangeType> for ChangeType {
     fn from(change_type: &lgn_source_control::ChangeType) -> Self {
         match change_type {
@@ -154,12 +154,6 @@ impl Project {
         repository_name: RepositoryName,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
-        let resource_dir = project_dir.as_ref().join("offline");
-        if !resource_dir.exists() {
-            std::fs::create_dir_all(&resource_dir)
-                .map_err(|e| Error::Io(resource_dir.clone(), e))?;
-        }
-
         let workspace = Workspace::init(
             repository_index,
             repository_name,
@@ -169,7 +163,6 @@ impl Project {
 
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
-            resource_dir,
             workspace,
             deleted_pending: HashMap::new(),
         })
@@ -179,25 +172,26 @@ impl Project {
     pub async fn open(
         project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
+        repository_name: RepositoryName,
+        branch_name: &str,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
-        let resource_dir = project_dir.as_ref().join("offline");
-
         let workspace = Workspace::load(
-            &resource_dir,
             repository_index,
+            repository_name,
+            branch_name,
             source_control_content_provider,
         )
         .await?;
 
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
-            resource_dir,
             workspace,
             deleted_pending: HashMap::new(),
         })
     }
 
+    /*
     /// Return the list of stages resources
     pub async fn get_staged_changes(&self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
         let local_changes = self.workspace.get_staged_changes().await?;
@@ -216,9 +210,11 @@ impl Project {
 
         Ok(changes)
     }
+    */
 
     /// Return the list of local resources
     pub async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
+        /*
         let local_changes = self.workspace.get_staged_changes().await?;
 
         let changes = local_changes
@@ -229,19 +225,24 @@ impl Project {
             .collect::<Vec<_>>();
 
         Ok(changes)
+        */
+        Err(Error::FileNotFound("todo".to_owned()))
     }
 
     async fn remote_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let tree = self.workspace.get_current_tree().await?;
+        /*
+            let tree = self.workspace.get_current_tree().await?;
 
-        let files = tree
-            .files()
-            .map(|(path, _)| PathBuf::from(path.to_string()))
-            .filter(|path| path.extension().is_none())
-            .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
-            .collect::<Vec<_>>();
+            let files = tree
+                .files()
+                .map(|(path, _)| PathBuf::from(path.to_string()))
+                .filter(|path| path.extension().is_none())
+                .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
+                .collect::<Vec<_>>();
 
-        Ok(files)
+            Ok(files)
+        */
+        Err(Error::FileNotFound("todo".to_owned()))
     }
 
     /// Returns an iterator on the list of resources.
@@ -577,9 +578,21 @@ impl Project {
         Ok(meta.type_name)
     }
 
+    /*
     /// Returns the root directory where resources are located.
     pub fn resource_dir(&self) -> PathBuf {
         self.resource_dir.clone()
+    }
+    */
+
+    /// Returns the name of the repository that is used by the source control provider in the active workspace
+    pub fn repository_name(&self) -> &RepositoryName {
+        self.workspace.repository_name()
+    }
+
+    /// Returns the name of the branch, associated with the source control provider in the active workspace
+    pub fn branch_name(&self) -> &str {
+        self.workspace.branch_name()
     }
 
     /// Moves a `remote` resources to the list of `local` resources.
@@ -693,6 +706,7 @@ impl Project {
     }
 
     /// Returns the current state of the workspace that includes staged changes.
+    /*
     pub async fn tree(&self) -> Result<Tree, Error> {
         let remote = self
             .workspace
@@ -711,11 +725,15 @@ impl Project {
             .map_err(Error::SourceControl)?;
         Ok(local)
     }
+    */
 
     /// Returns the checksum of the root project directory at the current state.
     pub async fn root_checksum(&self) -> Result<String, Error> {
+        /*
         let tree = self.tree().await?;
         Ok(tree.id())
+        */
+        Err(Error::FileNotFound("todo".to_owned()))
     }
 }
 
