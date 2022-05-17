@@ -16,9 +16,12 @@ where
 {
     router
     {% for (path, routes) in api.paths %}
-        {%- for route in routes %}
-            .route("{{ path|fmt_axum_path }}", routing::{{ route.method|lower }}({{ route.name|snake_case }}::<T>))
-        {%- endfor -%}
+        .route("{{ path|fmt_axum_path }}", 
+            {% for route in routes -%}
+                {% if loop.first %}routing::{% else %}.{% endif -%}
+                {{ route.method|lower }}({{ route.name|snake_case }}::<T>)
+            {%- endfor -%}
+        )
     {%- endfor -%}
         .layer(Extension(api))
 }
