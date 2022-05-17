@@ -324,6 +324,8 @@ pub(crate) fn camera_control(
                 camera_driver.pitch_degrees = camera_driver.pitch_degrees.clamp(-80.0, 80.0);
             }
             for mouse_wheel_event in mouse_wheel_events.iter() {
+                // Different signs on Line and Pixel is correct. Line returns positive values when scrolling up
+                // and pixels return negative values
                 let speed_change = match mouse_wheel_event.unit {
                     MouseScrollUnit::Line => mouse_wheel_event.y * 0.1,
                     // Last time I tested one segment of a wheel would yield 250 pixels,
