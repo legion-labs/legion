@@ -71,6 +71,18 @@ impl TextureViewDef {
         }
     }
 
+    pub fn as_uav_for_mip(_texture: &TextureDef, mip_index: u32) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::UnorderedAccess,
+            view_dimension: ViewDimension::_2D,
+            first_mip: mip_index,
+            mip_count: 1,
+            plane_slice: PlaneSlice::Default,
+            first_array_slice: 0,
+            array_size: 1,
+        }
+    }
+
     pub fn verify(&self, texture_def: &TextureDef) {
         match self.view_dimension {
             ViewDimension::_2D | ViewDimension::_2DArray => {

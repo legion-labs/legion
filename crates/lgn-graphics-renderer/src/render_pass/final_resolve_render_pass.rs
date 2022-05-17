@@ -9,7 +9,7 @@ use lgn_graphics_cgen_runtime::CGenShaderKey;
 use crate::{
     cgen,
     components::RenderSurface,
-    resources::{PipelineHandle, PipelineManager},
+    resources::{PipelineDef, PipelineHandle, PipelineManager},
     RenderContext,
 };
 
@@ -116,30 +116,30 @@ fn build_final_resolve_pso(pipeline_manager: &PipelineManager) -> PipelineHandle
         back_stencil_pass_op: StencilOp::default(),
     };
 
-    let resterizer_state = lgn_graphics_api::RasterizerState {
+    let rasterizer_state = lgn_graphics_api::RasterizerState {
         cull_mode: CullMode::Front,
         ..RasterizerState::default()
     };
 
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(
-            cgen::shader::final_resolve_shader::ID,
-            cgen::shader::final_resolve_shader::NONE,
-        ),
-        move |device_context, shader| {
-            device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                shader,
-                root_signature,
-                vertex_layout: &VertexLayout::default(),
-                blend_state: &BlendState::default_alpha_disabled(),
-                depth_state: &depth_state,
-                rasterizer_state: &resterizer_state,
-                color_formats: &[Format::B8G8R8A8_UNORM],
-                sample_count: SampleCount::SampleCount1,
-                depth_stencil_format: None,
-                primitive_topology: PrimitiveTopology::TriangleList,
-            })
-        },
-    )
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::final_resolve_shader::ID,
+                cgen::shader::final_resolve_shader::NONE,
+            ),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout: VertexLayout::default(),
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state,
+        color_formats: vec![Format::B8G8R8A8_UNORM],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: None,
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }

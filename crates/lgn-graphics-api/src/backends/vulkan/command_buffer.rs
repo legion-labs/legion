@@ -543,6 +543,10 @@ impl CommandBuffer {
         group_count_y: u32,
         group_count_z: u32,
     ) {
+        assert!(
+            group_count_x != 0 && group_count_y != 0 && group_count_z != 0,
+            "None of the group counts should be 0, since this would launch 0 thread groups."
+        );
         unsafe {
             self.device_context.vk_device().cmd_dispatch(
                 self.backend_command_buffer.vk_command_buffer,

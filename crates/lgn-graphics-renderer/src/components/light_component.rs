@@ -68,19 +68,19 @@ pub(crate) fn reflect_light_components(
     let mut render_commands = renderer.render_command_builder();
     renderer.allocate_render_object(|allocator: &mut RenderObjectAllocator<'_, RenderLight>| {
         for (e, xform, mut c) in q_changes.iter_mut() {
-            if let Some(render_object_id) = c.render_object_id {
-                render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
-                    render_object_id,
-                    data: c.as_render_object(),
-                });
-            } else {
-                let render_object_id = allocator.alloc();
-                c.render_object_id = Some(render_object_id);
-                render_commands.push(InsertRenderObjectCommand::<RenderLight> {
-                    render_object_id,
-                    data: c.as_render_object(),
-                });
-            };
+            // if let Some(render_object_id) = c.render_object_id {
+            //     render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
+            //         render_object_id,
+            //         data: c.as_render_object(),
+            //     });
+            // } else {
+            //     let render_object_id = allocator.alloc();
+            //     c.render_object_id = Some(render_object_id);
+            //     render_commands.push(InsertRenderObjectCommand::<RenderLight> {
+            //         render_object_id,
+            //         data: c.as_render_object(),
+            //     });
+            // };
         }
     });
 

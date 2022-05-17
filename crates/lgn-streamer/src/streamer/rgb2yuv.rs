@@ -2,7 +2,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_graphics_renderer::{
     components::RenderSurface,
-    resources::{PipelineHandle, PipelineManager},
+    resources::{PipelineDef, PipelineHandle, PipelineManager},
     RenderContext,
 };
 use lgn_tracing::span_fn;
@@ -113,19 +113,20 @@ impl RgbToYuvConverter {
     ) -> Self {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::rgb2yuv_shader::ID,
-                cgen::shader::rgb2yuv_shader::NONE,
-            ),
-            |device_context, shader| {
-                device_context.create_compute_pipeline(ComputePipelineDef {
-                    shader,
-                    root_signature,
-                })
-            },
-        );
+        let shader = pipeline_manager
+            .create_shader(
+                cgen::CRATE_ID,
+                CGenShaderKey::make(
+                    cgen::shader::rgb2yuv_shader::ID,
+                    cgen::shader::rgb2yuv_shader::NONE,
+                ),
+            )
+            .unwrap();
+        let pipeline_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Compute(ComputePipelineDef {
+                shader,
+                root_signature: root_signature.clone(),
+            }));
 
         ////////////////////////////////////////////////////////////////////////////////
 

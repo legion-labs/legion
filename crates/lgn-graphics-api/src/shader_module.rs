@@ -18,6 +18,12 @@ pub struct ShaderModule {
     pub(crate) inner: Drc<ShaderModuleInner>,
 }
 
+impl PartialEq for ShaderModule {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.backend_shader_module == other.inner.backend_shader_module
+    }
+}
+
 impl ShaderModule {
     pub fn new(device_context: &DeviceContext, data: ShaderModuleDef<'_>) -> GfxResult<Self> {
         let backend_shader_module = BackendShaderModule::new(device_context, data)?;

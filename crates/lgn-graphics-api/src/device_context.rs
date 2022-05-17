@@ -256,17 +256,11 @@ impl DeviceContext {
         DescriptorHeap::new(self, descriptor_heap_def)
     }
 
-    pub fn create_graphics_pipeline(
-        &self,
-        graphics_pipeline_def: GraphicsPipelineDef<'_>,
-    ) -> Pipeline {
+    pub fn create_graphics_pipeline(&self, graphics_pipeline_def: GraphicsPipelineDef) -> Pipeline {
         Pipeline::new_graphics_pipeline(self, graphics_pipeline_def)
     }
 
-    pub fn create_compute_pipeline(
-        &self,
-        compute_pipeline_def: ComputePipelineDef<'_>,
-    ) -> Pipeline {
+    pub fn create_compute_pipeline(&self, compute_pipeline_def: ComputePipelineDef) -> Pipeline {
         Pipeline::new_compute_pipeline(self, compute_pipeline_def)
     }
 

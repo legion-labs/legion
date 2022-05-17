@@ -11,7 +11,7 @@ pub(crate) struct DynamicDescriptorIndex(pub(crate) u32);
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct PushConstantIndex(pub(crate) u32);
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct VulkanRootSignature {
     vk_pipeline_layout: vk::PipelineLayout,
 }

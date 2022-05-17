@@ -1,5 +1,3 @@
-#![allow(unsafe_code)]
-
 use std::sync::Arc;
 
 use lgn_graphics_api::{ApiDef, DeviceContext, Fence, FenceStatus, GfxApi};
@@ -19,6 +17,7 @@ pub struct GfxApiArc {
 }
 
 impl GfxApiArc {
+    #[allow(unsafe_code)]
     pub fn new(api_def: ApiDef) -> Self {
         let gfx_api = unsafe { GfxApi::new(api_def).unwrap() };
         Self {
@@ -144,5 +143,9 @@ impl RenderScope {
         graphics_queue
             .queue_mut()
             .submit(&[], &[], &[], Some(frame_fence));
+    }
+
+    pub(crate) fn frame_idx(&self) -> u64 {
+        self.frame_idx
     }
 }

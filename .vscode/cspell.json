@@ -4,6 +4,7 @@
     "rustdoc::[a-z_]+"
   ],
   "words": [
+    "aabb",
     "alphablended",
     "asft",
     "Avenir",
@@ -13,6 +14,7 @@
     "Callees",
     "callgraph",
     "calltree",
+    "cgen",
     "chrono",
     "chunker",
     "cname",
@@ -91,6 +93,8 @@
     "vulkan",
     "walkdir",
     "webrtc",
+    "Wireframe",
+    "xform",
     "xxhash"
   ]
 }

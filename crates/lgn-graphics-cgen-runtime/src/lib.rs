@@ -356,137 +356,230 @@ impl CGenDescriptorDef {
                 DescriptorRef::Undefined
                 | DescriptorRef::TransientBufferView(_)
                 | DescriptorRef::BufferView(_)
-                | DescriptorRef::TextureView(_) => false,
+                | DescriptorRef::TextureView(_) => {
+                    panic!("Descriptor {}: expected Sampler", self.name)
+                }
             },
             ShaderResourceType::ConstantBuffer => {
                 let view_definition = Self::get_buffer_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::ConstantBuffer
+                    if view_definition.gpu_view_type == GPUViewType::ConstantBuffer {
+                        true
+                    } else {
+                        panic!(
+                            "Descriptor {}: expected view with type ConstantBuffer",
+                            self.name
+                        );
+                    }
                 } else {
-                    false
+                    panic!("Descriptor {}: expected view of type BufferView", self.name);
                 }
             }
             ShaderResourceType::StructuredBuffer => {
                 let view_definition = Self::get_buffer_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::ShaderResource
+                    if view_definition.gpu_view_type == GPUViewType::ShaderResource
                         && !view_definition
                             .buffer_view_flags
                             .intersects(BufferViewFlags::RAW_BUFFER)
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type ShaderResource and buffer flags not containing RAW_BUFFER", self.name);
+                    }
                 } else {
-                    false
+                    panic!("Descriptor {}: expected view of type BufferView", self.name);
                 }
             }
             ShaderResourceType::ByteAddressBuffer => {
                 let view_definition = Self::get_buffer_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::ShaderResource
+                    if view_definition.gpu_view_type == GPUViewType::ShaderResource
                         && view_definition
                             .buffer_view_flags
                             .intersects(BufferViewFlags::RAW_BUFFER)
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type ShaderResource and buffer flags containing RAW_BUFFER", self.name);
+                    }
                 } else {
-                    false
+                    panic!("Descriptor {}: expected view of type BufferView", self.name);
                 }
             }
 
             ShaderResourceType::RWStructuredBuffer => {
                 let view_definition = Self::get_buffer_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::UnorderedAccess
+                    if view_definition.gpu_view_type == GPUViewType::UnorderedAccess
                         && !view_definition
                             .buffer_view_flags
                             .intersects(BufferViewFlags::RAW_BUFFER)
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type UnorderedAccess and buffer flags not containing RAW_BUFFER", self.name);
+                    }
                 } else {
-                    false
+                    panic!("Descriptor {}: expected view of type BufferView", self.name);
                 }
             }
             ShaderResourceType::RWByteAddressBuffer => {
                 let view_definition = Self::get_buffer_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::UnorderedAccess
+                    if view_definition.gpu_view_type == GPUViewType::UnorderedAccess
                         && view_definition
                             .buffer_view_flags
                             .intersects(BufferViewFlags::RAW_BUFFER)
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type UnorderedAccess and buffer flags containing RAW_BUFFER", self.name);
+                    }
                 } else {
-                    false
+                    panic!("Descriptor {}: expected view of type BufferView", self.name);
                 }
             }
             ShaderResourceType::Texture2D => {
                 let view_definition = Self::get_texture_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::ShaderResource
+                    if view_definition.gpu_view_type == GPUViewType::ShaderResource
                         && view_definition.view_dimension == ViewDimension::_2D
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type ShaderResource and view dimension 2D", self.name);
+                    }
                 } else {
-                    false
+                    panic!(
+                        "Descriptor {}: expected view of type TextureView",
+                        self.name
+                    );
                 }
             }
 
             ShaderResourceType::Texture2DArray => {
                 let view_definition = Self::get_texture_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::ShaderResource
+                    if view_definition.gpu_view_type == GPUViewType::ShaderResource
                         && view_definition.view_dimension == ViewDimension::_2DArray
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type ShaderResource and view dimension 2DArray", self.name);
+                    }
                 } else {
-                    false
+                    panic!(
+                        "Descriptor {}: expected view of type TextureView",
+                        self.name
+                    );
                 }
             }
 
             ShaderResourceType::Texture3D => {
                 let view_definition = Self::get_texture_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::ShaderResource
+                    if view_definition.gpu_view_type == GPUViewType::ShaderResource
                         && view_definition.view_dimension == ViewDimension::_3D
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type ShaderResource and view dimension 3D", self.name);
+                    }
                 } else {
-                    false
+                    panic!(
+                        "Descriptor {}: expected view of type TextureView",
+                        self.name
+                    );
                 }
             }
 
             ShaderResourceType::TextureCube => {
                 let view_definition = Self::get_texture_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::ShaderResource
+                    if view_definition.gpu_view_type == GPUViewType::ShaderResource
                         && view_definition.view_dimension == ViewDimension::Cube
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type ShaderResource and view dimension Cube", self.name);
+                    }
                 } else {
-                    false
+                    panic!(
+                        "Descriptor {}: expected view of type TextureView",
+                        self.name
+                    );
                 }
             }
 
             ShaderResourceType::TextureCubeArray => {
                 let view_definition = Self::get_texture_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::ShaderResource
+                    if view_definition.gpu_view_type == GPUViewType::ShaderResource
                         && view_definition.view_dimension == ViewDimension::CubeArray
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type ShaderResource and view dimension CubeArray", self.name);
+                    }
                 } else {
-                    false
+                    panic!(
+                        "Descriptor {}: expected view of type TextureView",
+                        self.name
+                    );
                 }
             }
             ShaderResourceType::RWTexture2D => {
                 let view_definition = Self::get_texture_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::UnorderedAccess
+                    if view_definition.gpu_view_type == GPUViewType::UnorderedAccess
                         && view_definition.view_dimension == ViewDimension::_2D
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type UnorderedAccess and view dimension 2D", self.name);
+                    }
                 } else {
-                    false
+                    panic!(
+                        "Descriptor {}: expected view of type TextureView",
+                        self.name
+                    );
                 }
             }
 
             ShaderResourceType::RWTexture2DArray => {
                 let view_definition = Self::get_texture_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::UnorderedAccess
+                    if view_definition.gpu_view_type == GPUViewType::UnorderedAccess
                         && view_definition.view_dimension == ViewDimension::_2DArray
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type UnorderedAccess and view dimension 2DArray", self.name);
+                    }
                 } else {
-                    false
+                    panic!(
+                        "Descriptor {}: expected view of type TextureView",
+                        self.name
+                    );
                 }
             }
 
             ShaderResourceType::RWTexture3D => {
                 let view_definition = Self::get_texture_view_def(descriptor_ref);
                 if let Some(view_definition) = view_definition {
-                    view_definition.gpu_view_type == GPUViewType::UnorderedAccess
+                    if view_definition.gpu_view_type == GPUViewType::UnorderedAccess
                         && view_definition.view_dimension == ViewDimension::_3D
+                    {
+                        true
+                    } else {
+                        panic!("Descriptor {}: expected view of type UnorderedAccess and view dimension 3D", self.name);
+                    }
                 } else {
-                    false
+                    panic!(
+                        "Descriptor {}: expected view of type TextureView",
+                        self.name
+                    );
                 }
             }
         }

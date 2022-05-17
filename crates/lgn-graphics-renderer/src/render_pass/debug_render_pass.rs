@@ -15,7 +15,8 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     picking::ManipulatorManager,
     resources::{
-        DefaultMeshType, MeshManager, MeshMetaData, ModelManager, PipelineHandle, PipelineManager,
+        DefaultMeshType, MeshManager, MeshMetaData, ModelManager, PipelineDef, PipelineHandle,
+        PipelineManager,
     },
     RenderContext,
 };
@@ -23,8 +24,8 @@ use crate::{
 pub struct DebugRenderPass {
     solid_pso_depth_handle: PipelineHandle,
     wire_pso_depth_handle: PipelineHandle,
-    solid_pso_nodepth_handle: PipelineHandle,
-    _wire_pso_nodepth_handle: PipelineHandle,
+    solid_pso_no_depth_handle: PipelineHandle,
+    _wire_pso_no_depth_handle: PipelineHandle,
 }
 
 impl DebugRenderPass {
@@ -72,99 +73,76 @@ impl DebugRenderPass {
             ..RasterizerState::default()
         };
 
-        let solid_pso_depth_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::const_color_shader::ID,
-                cgen::shader::const_color_shader::NONE,
-            ),
-            move |device_context, shader| {
-                device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_enabled(),
-                    depth_state: &depth_state_enabled,
-                    rasterizer_state: &RasterizerState::default(),
-                    color_formats: &[Format::R16G16B16A16_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: Some(Format::D32_SFLOAT),
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-            },
-        );
+        let shader = pipeline_manager
+            .create_shader(
+                cgen::CRATE_ID,
+                CGenShaderKey::make(
+                    cgen::shader::const_color_shader::ID,
+                    cgen::shader::const_color_shader::NONE,
+                ),
+            )
+            .unwrap();
+        let solid_pso_depth_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader: shader.clone(),
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: depth_state_enabled,
+                rasterizer_state: RasterizerState::default(),
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
+                primitive_topology: PrimitiveTopology::TriangleList,
+            }));
 
-        let wire_pso_depth_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::const_color_shader::ID,
-                cgen::shader::const_color_shader::NONE,
-            ),
-            move |device_context, shader| {
-                device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_enabled(),
-                    depth_state: &depth_state_enabled,
-                    rasterizer_state: &wire_frame_state,
-                    color_formats: &[Format::R16G16B16A16_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: Some(Format::D32_SFLOAT),
-                    primitive_topology: PrimitiveTopology::LineList,
-                })
-            },
-        );
+        let wire_pso_depth_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader: shader.clone(),
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: depth_state_enabled,
+                rasterizer_state: wire_frame_state,
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
+                primitive_topology: PrimitiveTopology::LineList,
+            }));
 
-        let solid_pso_nodepth_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::const_color_shader::ID,
-                cgen::shader::const_color_shader::NONE,
-            ),
-            move |device_context, shader| {
-                device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_enabled(),
-                    depth_state: &depth_state_disabled,
-                    rasterizer_state: &RasterizerState::default(),
-                    color_formats: &[Format::R16G16B16A16_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: Some(Format::D32_SFLOAT),
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-            },
-        );
+        let solid_pso_no_depth_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader: shader.clone(),
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: depth_state_disabled,
+                rasterizer_state: RasterizerState::default(),
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
+                primitive_topology: PrimitiveTopology::TriangleList,
+            }));
 
-        let wire_pso_nodepth_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::const_color_shader::ID,
-                cgen::shader::const_color_shader::NONE,
-            ),
-            move |device_context, shader| {
-                device_context.create_graphics_pipeline(GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_enabled(),
-                    depth_state: &depth_state_disabled,
-                    rasterizer_state: &wire_frame_state,
-                    color_formats: &[Format::R16G16B16A16_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: Some(Format::D32_SFLOAT),
-                    primitive_topology: PrimitiveTopology::LineList,
-                })
-            },
-        );
+        let wire_pso_no_depth_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader,
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: depth_state_disabled,
+                rasterizer_state: wire_frame_state,
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
+                primitive_topology: PrimitiveTopology::LineList,
+            }));
 
         Self {
             solid_pso_depth_handle,
             wire_pso_depth_handle,
-            solid_pso_nodepth_handle,
-            _wire_pso_nodepth_handle: wire_pso_nodepth_handle,
+            solid_pso_no_depth_handle,
+            _wire_pso_no_depth_handle: wire_pso_no_depth_handle,
         }
     }
 
@@ -302,7 +280,7 @@ impl DebugRenderPass {
 
                     let pipeline = render_context
                         .pipeline_manager
-                        .get_pipeline(self.solid_pso_nodepth_handle)
+                        .get_pipeline(self.solid_pso_no_depth_handle)
                         .unwrap();
                     cmd_buffer.cmd_bind_pipeline(pipeline);
 

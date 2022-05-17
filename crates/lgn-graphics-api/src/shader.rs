@@ -3,7 +3,7 @@ use std::{hash::Hash, marker::PhantomData};
 use crate::{deferred_drop::Drc, DeviceContext, ShaderModule, ShaderStage, ShaderStageFlags};
 
 /// Describes a single stage within a shader
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct ShaderStageDef {
     pub entry_point: String,
     pub shader_stage: ShaderStage,
@@ -49,6 +49,12 @@ pub(crate) struct ShaderInner {
 #[derive(Clone)]
 pub struct Shader {
     inner: Drc<ShaderInner>,
+}
+
+impl PartialEq for Shader {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.stage_flags == other.inner.stage_flags && self.inner.stages == other.inner.stages
+    }
 }
 
 impl Shader {
