@@ -1,16 +1,6 @@
 (
     name: "Sample 1",
     children: [
-        "runtime_entity(world/sample_1/ground.ent)",
-        "runtime_entity(world/sample_1/directional_light.ent)",
-        "runtime_entity(world/sample_1/helmet/helmet_root.ent)",
-        "runtime_instance(world/sample_1/cube_1.ent.ins)",
-        "runtime_instance(world/sample_1/cube_2.ent.ins)",
-        "runtime_instance(world/sample_1/cube_3.ent.ins)",
-        "runtime_instance(world/sample_1/cube_group_1.ent.ins)",
-        "runtime_entity(world/sample_1/debug_cube_0.ent)",
-        "runtime_entity(world/sample_1/debug_cube_1.ent)",
-        "runtime_entity(world/sample_1/debug_cube_2.ent)",
     ],
     parent: None,
     components: [
@@ -25,6 +15,6 @@
             layer_config: [
                 (),
             ],
-        )),
+        ))
     ],
 )
