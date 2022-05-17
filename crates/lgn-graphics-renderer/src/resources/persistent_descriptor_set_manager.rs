@@ -90,7 +90,7 @@ impl PersistentDescriptorSetManager {
         &self.descriptor_set
     }
 
-    pub fn update(&mut self) {
+    pub fn frame_update(&mut self) {
         self.render_frame = (self.render_frame + 1) % self.num_render_frames as u64;
         self.bindless_index_allocator
             .release_indexes(&self.removed_indices[self.render_frame as usize]);

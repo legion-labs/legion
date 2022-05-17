@@ -12,6 +12,8 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
+use crate::core::RenderObjects;
+use crate::lighting::RenderLight;
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
@@ -68,11 +70,9 @@ pub mod shared;
 
 mod renderdoc;
 
-use crate::core::{GpuUploadManager, RenderCommandManager, RenderManagers, RenderResourcesBuilder, RenderObjectSet, RenderCommandBuilder, RenderCommandQueuePool, RenderObjectSetAllocator};
+use crate::core::{GpuUploadManager, RenderCommandManager, RenderManagers, RenderResourcesBuilder,  RenderCommandBuilder, RenderCommandQueuePool, RenderObjectsBuilder};
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
-use crate::lighting::RenderLight;
 use crate::render_pass::TmpRenderPass;
-
 use crate::renderdoc::RenderDocManager;
 use crate::{
     components::{
@@ -202,8 +202,8 @@ impl Plugin for RendererPlugin {
 
         let renderdoc_manager = RenderDocManager::default();
 
-        let render_light_set_allocator = RenderObjectSetAllocator::<RenderLight>::new();
-        let render_light_set = RenderObjectSet::<RenderLight>::new(1024);
+        let render_objects = RenderObjectsBuilder::default().
+        add_primary_type::<RenderLight>().finalize();
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -331,8 +331,7 @@ impl Plugin for RendererPlugin {
             .insert(graphics_queue.clone())
             .insert(light_manager)
             .insert(renderdoc_manager)
-            .insert(render_light_set)
-            .insert(render_light_set_allocator)
+            .insert(render_objects)            
             .finalize();
 
         let renderer = Renderer::new(NUM_RENDER_FRAMES, render_command_queue_pool, render_resources, graphics_queue, gfx_api);
@@ -511,8 +510,10 @@ fn render_update(
     //
 
     let render_resources = renderer.render_resources().clone();
+    
     render_resources.get_mut::<RenderCommandManager>().sync_update(renderer.render_command_queue_pool()  );
-    render_resources.get_mut::<RenderObjectSet<RenderLight>>().sync_update( &mut render_resources.get_mut::<RenderObjectSetAllocator<RenderLight>>()  );
+    // render_resources.get_mut::<RenderObjectSet<RenderLight>>().sync_update( &mut render_resources.get_mut::<RenderObjectSetAllocator<RenderLight>>()  );
+    render_resources.get_mut::<RenderObjects>().sync_update();
 
     
     // objectives: drop all resources/queries
@@ -558,7 +559,7 @@ fn render_update(
         transient_buffer.begin_frame();
         transient_commandbuffer_manager.begin_frame();
 
-        render_resources.get_mut::<RenderObjectSet<RenderLight>>().begin_frame();
+        render_resources.get::<RenderObjects>().begin_frame();
 
         //
         // Update 
@@ -567,9 +568,10 @@ fn render_update(
             .get_mut::<RenderCommandManager>()
             .apply(&render_resources);
         
-        render_resources.get::<LightingManager>().frame_update();
-        persistent_descriptor_set_manager.update();
-        pipeline_manager.update();
+        let render_objects = render_resources.get::<RenderObjects>();
+        render_resources.get::<LightingManager>().frame_update(&render_objects);
+        persistent_descriptor_set_manager.frame_update();
+        pipeline_manager.frame_update();
         
         
         let mut transient_commandbuffer_allocator =

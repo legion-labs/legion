@@ -75,7 +75,7 @@ impl PipelineManager {
     }
 
     #[span_fn]
-    pub fn update(&mut self) {
+    pub fn frame_update(&mut self) {
         let infos = self.infos.read();
 
         self.pipelines.resize(infos.len(), None);

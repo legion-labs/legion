@@ -85,35 +85,34 @@ impl RenderResources {
     }
 
     pub fn get<T: 'static>(&self) -> ResourceHandle<'_, T> {
+        self.try_get().unwrap()
+    }
+
+    pub fn try_get<T: 'static>(&self) -> Option<ResourceHandle<'_, T>> {
         let resource_id = ResourceId::new::<T>();
-        let atomic_ref = self
-            .inner
-            .resource_map
-            .0
-            .get(&resource_id)
-            .unwrap()
-            .borrow();
-        let atomic_ref = AtomicRef::map(atomic_ref, std::convert::AsRef::as_ref);
-        ResourceHandle {
-            atomic_ref,
+        self.get_cell(&resource_id).map(|x| ResourceHandle {
+            atomic_ref: AtomicRef::map(x.borrow(), std::convert::AsRef::as_ref),
             phantom: PhantomData,
-        }
+        })
     }
 
     pub fn get_mut<T: 'static>(&self) -> ResourceHandleMut<'_, T> {
+        self.try_mut().unwrap()
+    }
+
+    pub fn try_mut<T: 'static>(&self) -> Option<ResourceHandleMut<'_, T>> {
         let resource_id = ResourceId::new::<T>();
-        let atomic_ref = self
-            .inner
-            .resource_map
-            .0
-            .get(&resource_id)
-            .unwrap()
-            .borrow_mut();
-        let atomic_ref = AtomicRefMut::map(atomic_ref, std::convert::AsMut::as_mut);
-        ResourceHandleMut {
-            atomic_ref_mut: atomic_ref,
+        self.get_cell(&resource_id).map(|x| ResourceHandleMut {
+            atomic_ref_mut: AtomicRefMut::map(x.borrow_mut(), std::convert::AsMut::as_mut),
             phantom: PhantomData,
-        }
+        })
+    }
+
+    fn get_cell(
+        &self,
+        resource_id: &ResourceId,
+    ) -> Option<&AtomicRefCell<Box<dyn RenderResource>>> {
+        self.inner.resource_map.0.get(resource_id)
     }
 }
 

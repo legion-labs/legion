@@ -11,8 +11,8 @@ use crate::{
         cgen_type::{DirectionalLight, LightingData, OmniDirectionalLight, SpotLight},
         descriptor_set::frame_descriptor_set,
     },
-    components::{LightComponent, LightType},
-    core::{RenderObject, RenderObjectSet, RenderResources},
+    components::LightType,
+    core::RenderObjects,
     resources::TransientBufferAllocator,
 };
 
@@ -28,7 +28,7 @@ pub struct RenderLight {
     pub picking_id: u32,
 }
 
-type RenderLightSet = RenderObjectSet<RenderLight>;
+// type RenderLightSet = RenderObjectSet<RenderLight>;
 
 pub struct LightingManager {
     // pub render_lights: RenderLightSet,
@@ -116,10 +116,10 @@ impl LightingManager {
         }
     }
 
-    pub fn frame_update(&self, render_resources: &RenderResources) {
-        let light_set = render_resources.get::<RenderLightSet>();
+    pub fn frame_update(&self, render_objects: &RenderObjects) {
+        // let light_set = render_resources.get::<RenderLightSet>();
 
-        for i in light_set.inserted_or_changed() {}
+        // for i in light_set.inserted_or_changed() {}
     }
 
     fn gpu_data(&self) -> LightingData {

@@ -5,7 +5,7 @@ use lgn_transform::components::Transform;
 
 use crate::{
     core::{
-        AddRenderObjectCommand, AsRenderObject, RenderObject, RenderObjectId,
+        AsRenderObject, InsertRenderObjectCommand, RenderObjectAllocator, RenderObjectId,
         UpdateRenderObjectCommand,
     },
     lighting::RenderLight,
@@ -26,7 +26,7 @@ pub struct LightComponent {
     pub radiance: f32,
     pub enabled: bool,
     pub picking_id: u32,
-    pub render_object_id: RenderObjectId,
+    pub render_object_id: Option<RenderObjectId>,
 }
 
 impl Default for LightComponent {
@@ -37,7 +37,7 @@ impl Default for LightComponent {
             radiance: 40.0,
             enabled: true,
             picking_id: 0,
-            render_object_id: RenderObjectId::default(),
+            render_object_id: None,
         }
     }
 }
@@ -66,22 +66,23 @@ pub(crate) fn reflect_light_components(
     q_removals: RemovedComponents<'_, LightComponent>,
 ) {
     let mut render_commands = renderer.render_command_builder();
-    let allocator = renderer.render_object_set_allocator::<RenderLight>();
-
-    for (e, xform, mut c) in q_changes.iter_mut() {
-        if c.render_object_id.is_valid() {
-            render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
-                render_object_id: c.render_object_id,
-                data: c.as_render_object(),
-            });
-        } else {
-            c.render_object_id = allocator.alloc();
-            render_commands.push(AddRenderObjectCommand::<RenderLight> {
-                render_object_id: c.render_object_id,
-                data: c.as_render_object(),
-            });
-        };
-    }
+    renderer.render_object_allocator(|allocator: &mut RenderObjectAllocator<'_, RenderLight>| {
+        for (e, xform, mut c) in q_changes.iter_mut() {
+            if let Some(render_object_id) = c.render_object_id {
+                render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
+                    render_object_id,
+                    data: c.as_render_object(),
+                });
+            } else {
+                let render_object_id = allocator.alloc();
+                c.render_object_id = Some(render_object_id);
+                render_commands.push(InsertRenderObjectCommand::<RenderLight> {
+                    render_object_id,
+                    data: c.as_render_object(),
+                });
+            };
+        }
+    });
 
     // for e in q_removals.iter() {
 
