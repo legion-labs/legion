@@ -71,7 +71,7 @@
   }
 
   .entry {
-    @apply flex flex-row w-full h-full space-x-1;
+    @apply flex flex-row w-full h-full space-x-1 overflow-clip;
   }
 
   .entry-icon {

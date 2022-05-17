@@ -25,37 +25,8 @@ on:
 # less in the workflow (hard to debug, iterate, etc.)
 
 jobs:
-  check:
-    name: Checks and tests
-    runs-on: [self-hosted, linux, governance-common, build]
-    container:
-      image: ${{ inputs.image }}
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          lfs: true
-
-      - name: Npm install
-        run: pnpm install --unsafe-perm
-
-      - name: Npm build (necessary for subsequent commands...)
-        run: pnpm build
-
-      - name: Check environment
-        run: env
-
-      - name: List types files
-        run: ls node_modules/
-
-      - name: Npm check
-        run: pnpm check
-
-      - name: Npm test
-        run: pnpm test
-
   build:
     name: Build
-    needs: [check]
     runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
