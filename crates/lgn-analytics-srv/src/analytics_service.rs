@@ -54,6 +54,7 @@ use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
+use crate::log_entry::Searchable;
 use crate::metrics::MetricHandler;
 
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -220,10 +221,28 @@ impl AnalyticsService {
         process: &lgn_telemetry_sink::ProcessInfo,
         begin: u64,
         end: u64,
+        search: String,
     ) -> Result<ProcessLogReply> {
         let mut connection = self.pool.acquire().await?;
         let mut entries = vec![];
         let mut entry_index: u64 = 0;
+
+        let needles = if search.is_empty() {
+            None
+        } else {
+            Some(
+                search
+                    .split(' ')
+                    .filter_map(|part| {
+                        if part.is_empty() {
+                            None
+                        } else {
+                            Some(part.to_lowercase())
+                        }
+                    })
+                    .collect::<Vec<String>>(),
+            )
+        };
 
         for stream in find_process_log_streams(&mut connection, &process.process_id)
             .await
@@ -246,9 +265,17 @@ impl AnalyticsService {
                             if entry_index >= end {
                                 return false;
                             }
+
+                            if let Some(ref needles) = needles {
+                                if !log_entry.matches(needles) {
+                                    return false;
+                                }
+                            }
+
                             if entry_index >= begin {
                                 entries.push(log_entry);
                             }
+
                             entry_index += 1;
 
                             true
@@ -660,6 +687,7 @@ impl PerformanceAnalytics for AnalyticsService {
                 &inner_request.process.unwrap(),
                 inner_request.begin,
                 inner_request.end,
+                inner_request.search,
             )
             .await
         {

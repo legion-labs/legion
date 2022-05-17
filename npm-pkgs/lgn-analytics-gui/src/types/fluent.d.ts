@@ -32,6 +32,7 @@ declare type Fluent = {
   "log-parent-table-column": {
     variables: "columnName";
   };
+  "log-search": null;
   "timeline-open-cumulative-call-graph": null;
   "timeline-search": null;
   "timeline-table-function": null;

@@ -1,10 +1,16 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { onMount } from "svelte";
+  import { onDestroy } from "svelte";
 
   import type { LogEntry } from "@lgn/proto-telemetry/dist/log";
   import { Level } from "@lgn/proto-telemetry/dist/log";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
+  import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import { debounce } from "@lgn/web-client/src/lib/event";
+  import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
+  import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
   import L10n from "@/components/Misc/L10n.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
@@ -22,82 +28,69 @@
 
   const processId = $page.params.processId;
 
-  let nbEntries: number | null = null;
-  let beginRange: number | null = null;
-  let endRange: number | null = null;
-  let processInfo: Process | null = null;
-  let logEntries: LogEntry[] = [];
-  let loading = true;
+  const processInfoStore = createAsyncStoreOrchestrator<Process>();
+  const logEntriesStore = createAsyncStoreOrchestrator<LogEntry[]>();
+  const nbEntrieStore = createAsyncStoreOrchestrator<number>();
+
+  const { data: processInfo, loading: processInfoLoading } = processInfoStore;
+  const { data: logEntries, loading: logEntriesLoading } = logEntriesStore;
+  const { data: nbEntries, loading: nbEntriesLoading } = nbEntrieStore;
 
   onMount(async () => {
-    loading = true;
+    await Promise.all([
+      nbEntrieStore.run(async () => {
+        const { count } = await client.nb_process_log_entries({ processId });
 
-    try {
-      const { count } = await client.nb_process_log_entries({ processId });
+        return count;
+      }),
 
-      nbEntries = count;
+      processInfoStore.run(async () => {
+        const { process } = await client.find_process({
+          processId,
+        });
 
-      const { process } = await client.find_process({
-        processId,
-      });
+        if (!process) {
+          throw new Error(`Process ${processId} not found`);
+        }
 
-      if (!process) {
-        throw new Error(`Process ${processId} not found`);
-      }
-
-      processInfo = process;
-
-      const viewRange = getViewRange(nbEntries, $page.url.searchParams);
-
-      beginRange = viewRange[0];
-
-      endRange = viewRange[1];
-
-      fetchLogEntries(beginRange, endRange);
-    } finally {
-      loading = false;
-    }
+        return process;
+      }),
+    ]);
   });
 
-  function getViewRange(
+  onDestroy(() => {
+    debouncedInput.clear();
+  });
+
+  const debouncedInput = debounce((event) => {
+    if (event.target instanceof HTMLInputElement) {
+      const cleanValue = event.target.value.trim();
+
+      goto(
+        `/log/${processId}${cleanValue.length ? `?search=${cleanValue}` : ""}`,
+        { keepfocus: true }
+      );
+    }
+  }, 300);
+
+  async function fetchLogEntries(
+    process: Process,
     nbEntries: number,
-    urlSearchParams: URLSearchParams
-  ): [number, number] {
-    let begin = 0;
-    const beginParam = urlSearchParams.get("begin");
-    if (beginParam) {
-      begin = Number.parseFloat(beginParam);
-    }
+    beginRange: number | null,
+    endRange: number | null,
+    search: string
+  ) {
+    const response = await client.list_process_log_entries({
+      process,
+      begin: beginRange ?? 0,
+      end: endRange ?? Math.min(nbEntries, MAX_NB_ENTRIES_IN_PAGE),
+      search: search.length ? search : undefined,
+    });
 
-    let end = Math.min(nbEntries, MAX_NB_ENTRIES_IN_PAGE);
-    const endParam = urlSearchParams.get("end");
-    if (endParam) {
-      end = Number.parseFloat(endParam);
-    }
+    beginRange = response.begin;
+    endRange = response.end;
 
-    return [begin, end];
-  }
-
-  async function fetchLogEntries(beginRange: number, endRange: number) {
-    if (!processInfo) {
-      return;
-    }
-
-    loading = true;
-
-    try {
-      const response = await client.list_process_log_entries({
-        process: processInfo,
-        begin: beginRange,
-        end: endRange,
-      });
-
-      beginRange = response.begin;
-      endRange = response.end;
-      logEntries = response.entries;
-    } finally {
-      loading = false;
-    }
+    return response.entries;
   }
 
   function levelToColorCssVar(level: Level) {
@@ -128,35 +121,77 @@
     return `/log/${processId}?begin=${begin}&end=${end}`;
   }
 
-  $: if (nbEntries !== null) {
-    const viewRange = getViewRange(nbEntries, $page.url.searchParams);
+  // URL Params
+  $: beginParam = $page.url.searchParams.get("begin");
 
-    beginRange = viewRange[0];
+  $: endParam = $page.url.searchParams.get("end");
 
-    endRange = viewRange[1];
+  $: searchParam = $page.url.searchParams.get("search") || "";
+
+  // View range
+  $: beginRange =
+    beginParam !== null && !isNaN(+beginParam) ? +beginParam : null;
+
+  $: endRange = endParam !== null && !isNaN(+endParam) ? +endParam : null;
+
+  // Search related stores
+  $: searchValue = searchParam;
+
+  // Fetch the log on params change
+  $: if ($processInfo !== null && $nbEntries !== null) {
+    logEntriesStore.run(() =>
+      fetchLogEntries(
+        $processInfo!,
+        $nbEntries!,
+        beginRange,
+        endRange,
+        searchParam
+      )
+    );
   }
 
-  $: if (beginRange !== null && endRange !== null) {
-    fetchLogEntries(beginRange, endRange);
-  }
-
-  $: processDescription = processInfo
-    ? `${processInfo.exe} (${processInfo.processId})`
+  // UI related derived states
+  $: processDescription = $processInfo
+    ? `${$processInfo.exe} (${$processInfo.processId})`
     : null;
 
-  $: formattedProcessName = processInfo ? formatProcessName(processInfo) : null;
+  $: formattedProcessName = $processInfo
+    ? formatProcessName($processInfo)
+    : null;
+
+  $: searchPattern = searchParam
+    .split(" ")
+    .reduce(
+      (acc, part) =>
+        part.length ? [...acc, stringToSafeRegExp(part, "gi")] : acc,
+      [] as RegExp[]
+    );
+
+  $: formattedTimes =
+    $logEntries?.map(({ timeMs }) => formatTime(timeMs)) ?? [];
+
+  $: loading = $processInfoLoading || $nbEntriesLoading || $logEntriesLoading;
 </script>
 
 <Layout>
+  <div slot="header">
+    <input
+      type="text"
+      class="h-8 w-96 text rounded-xs pl-2 bg-default"
+      placeholder={$t("log-search")}
+      on:keyup={debouncedInput}
+      bind:value={searchValue}
+    />
+  </div>
   <div
     class="flex flex-row justify-between items-center pl-4 w-full"
     slot="sub-header"
   >
-    {#if processInfo}
+    {#if $processInfo}
       <div class="flex flex-row space-x-2">
-        {#if processInfo.parentProcessId}
+        {#if $processInfo.parentProcessId}
           <div class="flex flex-row space-x-2 text">
-            <a href={`/log/${processInfo.parentProcessId}`}>
+            <a href={`/log/${$processInfo.parentProcessId}`}>
               <L10n id="log-parent-link" />
             </a>
             <div>/</div>
@@ -167,11 +202,11 @@
         </div>
       </div>
       <div class="flex items-center h-full">
-        {#if nbEntries !== null && nbEntries > MAX_NB_ENTRIES_IN_PAGE}
+        {#if !searchPattern.length && $nbEntries !== null && $nbEntries > MAX_NB_ENTRIES_IN_PAGE}
           <Pagination
             begin={beginRange || 0}
             end={endRange || MAX_NB_ENTRIES_IN_PAGE}
-            entriesPerPage={nbEntries}
+            entriesPerPage={$nbEntries}
             maxEntriesPerPage={MAX_NB_ENTRIES_IN_PAGE}
             buildHref={buildPaginationHref}
           />
@@ -186,7 +221,7 @@
       <div class="log">
         <Table
           columns={{ level: "7%", timeMs: "8%", target: "10%", msg: "75%" }}
-          items={logEntries}
+          items={$logEntries || []}
         >
           <div
             slot="header"
@@ -198,7 +233,7 @@
               <L10n id="log-parent-table-column" variables={{ columnName }} />
             </div>
           </div>
-          <div slot="cell" class="cell" let:columnName let:value>
+          <div slot="cell" class="cell" let:columnName let:value let:index>
             {#if columnName === "level"}
               <div
                 class="truncate"
@@ -208,18 +243,29 @@
                 <L10n id="global-severity-level" variables={{ level: value }} />
               </div>
             {:else if columnName === "timeMs"}
-              <div class="flex justify-end w-full" title={formatTime(value)}>
+              <div
+                class="flex justify-end w-full"
+                title={formattedTimes[index]}
+              >
                 <div dir="rtl" class="truncate">
-                  {formatTime(value)}
+                  {formattedTimes[index]}
                 </div>
               </div>
             {:else if columnName === "target"}
               <div dir="rtl" class="truncate" title={value}>
-                {value}
+                {#if searchPattern.length}
+                  <HighlightedText pattern={searchPattern} text={value} />
+                {:else}
+                  {value}
+                {/if}
               </div>
             {:else}
               <div class="break-words w-full">
-                {value}
+                {#if searchPattern.length}
+                  <HighlightedText pattern={searchPattern} text={value} />
+                {:else}
+                  {value}
+                {/if}
               </div>
             {/if}
           </div>

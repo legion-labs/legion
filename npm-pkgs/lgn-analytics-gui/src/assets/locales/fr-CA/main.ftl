@@ -47,6 +47,7 @@ global-severity-level =
     [4] Trace
     *[other] Unknown
   }
+log-search = Rechercher dans le journal...
 
 # Timeline
 timeline-open-cumulative-call-graph = Ouvrir le { LOWERCASE(global-cumulative-call-graph) }

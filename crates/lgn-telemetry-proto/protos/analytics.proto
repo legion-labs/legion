@@ -113,6 +113,7 @@ message ProcessLogRequest {
   telemetry.Process process = 1;
   uint64 begin = 2;  // included
   uint64 end = 3;    // excluded
+  string search = 4;
 }
 
 message ProcessLogReply {
