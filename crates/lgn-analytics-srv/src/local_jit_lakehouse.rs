@@ -75,6 +75,7 @@ impl SpanTable {
         }
     }
 
+    #[allow(clippy::cast_possible_wrap)]
     pub fn append(&mut self, row: &SpanRow) {
         self.hashes.append(row.hash as i32);
         self.depths.append(row.depth as i32);
@@ -162,7 +163,8 @@ async fn make_span_table(
     Ok(table)
 }
 
-async fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
+#[span_fn]
+fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
     let message_type = "
   message schema {
     REQUIRED INT32 hash;
@@ -199,11 +201,11 @@ async fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
 
 #[async_trait]
 impl JitLakehouse for LocalJitLakehouse {
+    #[span_fn]
     async fn build_timeline_tables(&self, process_id: &str) -> Result<()> {
         let mut connection = self.pool.acquire().await?;
         let process = find_process(&mut connection, process_id).await?;
         let convert_ticks = ConvertTicks::new(&process);
-        warn!("build_timeline_tables {:?}", process);
         let table = make_span_table(
             &mut connection,
             self.blob_storage.clone(),
@@ -215,10 +217,7 @@ impl JitLakehouse for LocalJitLakehouse {
         fs::create_dir_all(&spans_table_path)
             .await
             .with_context(|| format!("creating folder {}", spans_table_path.display()))?;
-        warn!("table: {:?}", table);
-        warn!("path: {}", spans_table_path.display());
-        write_parquet(&spans_table_path.join("spans.parquet"), &table).await?;
-        warn!("done");
+        write_parquet(&spans_table_path.join("spans.parquet"), &table)?;
         Ok(())
     }
 }
