@@ -147,7 +147,7 @@
               {
                 id: "runtime-main",
                 type: "video",
-                label: "Runtime",
+                label: "Native Runtime",
                 payloadId: videoRuntimeTabPayloadId,
               },
             ]),

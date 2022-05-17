@@ -61,11 +61,6 @@
       {#if tab.type === "video"}
         <span>{tab.label}</span>
         <!-- TODO: Move out -->
-        {#if desiredResolution}
-          <span>
-            - {desiredResolution.width}x{desiredResolution.height}
-          </span>
-        {/if}
       {:else if tab.type === "script"}
         {tab.label}
       {:else if tab.type === "sceneExplorer"}
@@ -85,10 +80,7 @@
       <!-- TODO: Use ViewportTab -->
       {#if payload.serverType === "editor" || payload.serverType === "runtime"}
         {#key payload.serverType}
-          <RemoteWindow
-            serverType={payload.serverType}
-            bind:desiredResolution
-          />
+          <RemoteWindow serverType="editor" bind:desiredResolution />
         {/key}
       {/if}
     {:else if activeTab.type === "script" && payload?.type === "script"}

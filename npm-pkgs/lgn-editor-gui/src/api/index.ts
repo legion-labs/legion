@@ -35,7 +35,7 @@ import type {
 } from "../lib/propertyGrid";
 
 const defaultEditorServerURL = "http://[::1]:50051";
-const defaultRuntimeServerURL = "http://[::1]:50052";
+const defaultRuntimeServerURL = "http://[::1]:50051";
 
 let resourceBrowserClient: ResourceBrowserClientImpl;
 

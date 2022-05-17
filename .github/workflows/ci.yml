@@ -26,18 +26,6 @@ jobs:
       base_ref: ${{ needs.base_ref_selection.outputs.base_ref }}
       image: ${{ needs.image_setup.outputs.image }}
 
-  rust:
-    name: Rust ecosystem
-    if: ${{ fromJSON(needs.change_detection.outputs.cargo_pkgs) }}
-    needs: [change_detection, image_setup]
-    uses: ./.github/workflows/reusable_rust_ecosystem.yml
-    with:
-      image: ${{ needs.image_setup.outputs.image }}
-      pkgs_arg: ${{ needs.change_detection.outputs.cargo_pkgs_args }}
-      deploy: ${{ github.ref == 'refs/heads/main' }}
-    secrets:
-      docs-deploy-key: ${{ secrets.DOCS_DEPLOY_KEY }}
-
   node:
     name: Node ecosystem
     if: ${{ fromJSON(needs.change_detection.outputs.npm_pkgs) }}
