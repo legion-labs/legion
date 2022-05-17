@@ -1,3 +1,5 @@
+use bytes::Bytes;
+use reqwest::Body;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -21,6 +23,18 @@ impl<'de> Deserialize<'de> for ByteArray {
         base64::decode_config(&s, base64::URL_SAFE_NO_PAD)
             .map(ByteArray)
             .map_err(D::Error::custom)
+    }
+}
+
+impl From<ByteArray> for Body {
+    fn from(byte_array: ByteArray) -> Self {
+        byte_array.0.into()
+    }
+}
+
+impl From<Bytes> for ByteArray {
+    fn from(bytes: Bytes) -> Self {
+        Self(bytes.to_vec())
     }
 }
 

@@ -32,7 +32,7 @@ impl IntoResponse for Error {
             Self::InvalidHeader(err) => {
                 error!("Invalid header: {}", err);
                 StatusCode::BAD_REQUEST.into_response()
-            }
+            }            
             Self::MissingHeader(err) => {
                 error!("Missing header: {}", err);
                 StatusCode::BAD_REQUEST.into_response()

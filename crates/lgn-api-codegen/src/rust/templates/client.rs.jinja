@@ -1,5 +1,5 @@
 use crate::{api, errors::{Error, Result}, params, responses};
-use http::HeaderValue;
+use http::{header::CONTENT_TYPE, HeaderValue};
 use lgn_api_codegen::{ByteArray, Extra};
 
 pub struct Client {
@@ -30,17 +30,23 @@ impl api::Api for Client {
                 {% endfor -%}
             );
 
+            let mut headers = extra.headers;
+            {% if let Some(request_body) = route.request_body %}
+                headers.insert(
+                    CONTENT_TYPE,
+                    HeaderValue::from_static("{{ request_body.content_type }}"),
+                );
+            {% endif %}
+
             {% if !route.parameters.query.is_empty() -%}
                 let query = params::{{ route.name|pascal_case }}Query { 
                     {% for parameter in route.parameters.query -%}
                         {{ parameter.name|snake_case }},
                     {% endfor -%}
-                 };
-                
+                 };                
             {% endif %}
 
             {% if !route.parameters.header.is_empty() -%}
-                let mut headers = extra.headers;
                 {%- for parameter in route.parameters.header -%}
                     {% let param_name = "{}"|format(parameter.name|snake_case) %}
                     {% if parameter.required -%}
@@ -61,8 +67,6 @@ impl api::Api for Client {
                         }
                     {% endif -%}                
                 {% endfor %}
-            {% else %}
-                let headers = extra.headers;
             {% endif -%}
 
             let resp = self
@@ -72,8 +76,13 @@ impl api::Api for Client {
                 {% if !route.parameters.query.is_empty() -%}
                     .query(&query)
                 {% endif -%}
-                {% if route.request_body.is_some() -%}
-                    .json(&body)
+                {% if let Some(request_body) = route.request_body %}
+                    {% match request_body.content_type %}
+                        {% when ContentType::Json %}
+                            .json(&body)
+                        {% when ContentType::Bytes %}
+                            .body(body)
+                    {% endmatch %}
                 {% endif -%}
                 .send()
                 .await?;

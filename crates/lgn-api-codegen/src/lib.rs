@@ -41,11 +41,11 @@ pub fn generate(
     generator.generate(&api, output_dir.as_ref())
 }
 
-pub(crate) trait Generator<'a> {
-    fn generate(&self, api: &'a Api, output_dir: &Path) -> Result<()>;
+pub(crate) trait Generator {
+    fn generate(&self, api: &Api, output_dir: &Path) -> Result<()>;
 }
 
-fn load_generator_for_language(language: &str) -> Result<Box<dyn Generator<'_>>> {
+fn load_generator_for_language(language: &str) -> Result<Box<dyn Generator>> {
     Ok(match language {
         "rust" => Box::new(RustGenerator::default()),
         _ => return Err(Error::Unsupported(format!("language: {}", language))),
