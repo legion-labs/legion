@@ -138,6 +138,17 @@ impl Workspace {
     }
     */
 
+    pub async fn resource_exists(&self, id: WorkspaceResourceId) -> Result<bool> {
+        let commit = self.get_current_commit().await?;
+
+        Ok(self
+            .main_index
+            .get_leaf(&self.provider, &commit.main_index_tree_id, &id.into())
+            .await
+            .map_other_err("reading main index")?
+            .is_some())
+    }
+
     /// Add a resource to the local changes.
     ///
     /// The list of new resources added is returned. If all the resources were already

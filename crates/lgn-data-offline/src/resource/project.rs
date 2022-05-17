@@ -290,8 +290,7 @@ impl Project {
 
     /// Checks if a resource is part of the project.
     pub async fn exists(&self, id: ResourceId) -> bool {
-        //        self.workspace.exists(id)
-        self.resource_list().await.iter().any(|v| v == &id)
+        self.workspace.resource_exists(id.as_raw()).await.unwrap()
     }
 
     /// From a specific `ResourcePathName`, validate that the resource doesn't already exists
