@@ -75,6 +75,7 @@ pub struct Project {
     resource_dir: PathBuf,
     workspace: Workspace,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
+    cache: std::sync::RwLock<HashMap<ResourceId, ResourcePathName>>,
 }
 
 #[derive(Error, Debug)]
@@ -181,6 +182,7 @@ impl Project {
             resource_dir,
             workspace,
             deleted_pending: HashMap::new(),
+            cache: std::sync::RwLock::new(HashMap::new()),
         })
     }
 
@@ -204,6 +206,7 @@ impl Project {
             resource_dir,
             workspace,
             deleted_pending: HashMap::new(),
+            cache: std::sync::RwLock::new(HashMap::new()),
         })
     }
 
@@ -537,6 +540,10 @@ impl Project {
 
     /// Returns the name of the resource from its `.meta` file.
     pub fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
+        if let Some(name) = self.cache.read().unwrap().get(&id) {
+            return Ok(name.clone());
+        }
+
         let meta = self.read_meta(id)?;
         if let Some((resource_id, suffix)) = meta
             .name
@@ -547,10 +554,12 @@ impl Project {
             if let Ok(type_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id) {
                 if let Ok(mut parent_path) = self.resource_name(type_id.id) {
                     parent_path.push(suffix);
+                    self.cache.write().unwrap().insert(id, parent_path.clone());
                     return Ok(parent_path);
                 }
             }
         }
+        self.cache.write().unwrap().insert(id, meta.name.clone());
         Ok(meta.name)
     }
 

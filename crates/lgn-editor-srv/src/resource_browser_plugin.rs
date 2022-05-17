@@ -353,7 +353,6 @@ impl ResourceBrowser for ResourceBrowserRPC {
             .resource_list()
             .await
             .into_iter()
-            .take(100)
             .filter_map(|resource_id| {
                 let path: String = ctx
                     .project
