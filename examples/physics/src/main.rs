@@ -4,6 +4,8 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+use clap::{ArgEnum, Parser};
+use lgn_source_control::RepositoryName;
 use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
 
 use clap::{ArgEnum, Parser};
@@ -91,13 +93,14 @@ async fn main() -> anyhow::Result<()> {
     let mut project = Project::create(
         absolute_project_dir,
         &repository_index,
-        repository_name,
+        &repository_name,
         Arc::clone(&source_control_content_provider),
     )
     .await
     .expect("failed to create a project");
 
-    let mut asset_registry = AssetRegistryOptions::new().add_device_dir(project.resource_dir());
+    let mut asset_registry = AssetRegistryOptions::new()
+        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
@@ -139,9 +142,7 @@ async fn main() -> anyhow::Result<()> {
     )
     .asset_registry(asset_registry.clone());
 
-    let runtime_manifest_id =
-        SharedTreeIdentifier::new(empty_tree_id(&data_content_provider).await.unwrap());
-    let mut build_manager = BuildManager::new(data_build, &project, runtime_manifest_id.clone())
+    let mut build_manager = BuildManager::new(data_build, Manifest::default(), Manifest::default())
         .await
         .unwrap();
 
