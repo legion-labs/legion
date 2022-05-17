@@ -19,13 +19,12 @@ use lgn_ecs::{
 };
 use lgn_editor_proto::source_control::{
     source_control_server::{SourceControl, SourceControlServer},
-    staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
-    CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
-    GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
-    InitUploadRawFileResponse, PullAssetRequest, PullAssetResponse, ResourceDescription,
-    RevertResourcesRequest, RevertResourcesResponse, StagedResource, SyncLatestResponse,
-    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
-    UploadStatus,
+    upload_raw_file_response, CancelUploadRawFileRequest, CancelUploadRawFileResponse,
+    CommitStagedResourcesRequest, CommitStagedResourcesResponse, GetStagedResourcesRequest,
+    GetStagedResourcesResponse, InitUploadRawFileRequest, InitUploadRawFileResponse,
+    PullAssetRequest, PullAssetResponse, RevertResourcesRequest, RevertResourcesResponse,
+    SyncLatestResponse, SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest,
+    UploadRawFileResponse, UploadStatus,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
@@ -632,6 +631,7 @@ impl SourceControl for SourceControlRPC {
         &self,
         _request: Request<GetStagedResourcesRequest>,
     ) -> Result<Response<GetStagedResourcesResponse>, Status> {
+        /*
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
         let changes = ctx
@@ -679,6 +679,8 @@ impl SourceControl for SourceControlRPC {
         }
 
         Ok(Response::new(GetStagedResourcesResponse { entries }))
+        */
+        Err(Status::internal("todo".to_string()))
     }
 
     async fn revert_resources(
