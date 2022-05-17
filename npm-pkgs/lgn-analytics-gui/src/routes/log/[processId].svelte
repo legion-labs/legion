@@ -228,10 +228,6 @@
 </Layout>
 
 <style lang="postcss">
-  :global body {
-    overflow-y: scroll;
-  }
-
   .log {
     @apply flex flex-col background;
   }
