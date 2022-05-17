@@ -3,8 +3,6 @@
   import { afterUpdate, onMount, tick } from "svelte";
   import { get } from "svelte/store";
 
-  import type { Process } from "@lgn/proto-telemetry/dist/process";
-
   import CallGraph from "@/components/CallGraphHierachy/CallGraphHierachy.svelte";
   import DisplayError from "@/components/Misc/DisplayError.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
