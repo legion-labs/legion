@@ -240,9 +240,9 @@ checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "arrow"
-version = "13.0.0"
+version = "14.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c6bee230122beb516ead31935a61f683715f987c6f003eff44ad6986624105a"
+checksum = "0612b6a634de6c3f5e63fdaa6932f7bc598f92de0462ac6e69b0aebd77e093aa"
 dependencies = [
  "bitflags",
  "chrono",
@@ -6284,14 +6284,15 @@ dependencies = [
 
 [[package]]
 name = "parquet"
-version = "13.0.0"
+version = "14.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c6d737baed48775e87a69aa262f1fa2f1d6bd074dedbe9cac244b9aabf2a0b4"
+checksum = "ba1185ee1da5091e40b86519265a44d2704e3916ff867059c915141cab14d413"
 dependencies = [
  "arrow",
  "base64 0.13.0",
  "brotli",
  "byteorder",
+ "bytes",
  "chrono",
  "flate2",
  "lz4",
