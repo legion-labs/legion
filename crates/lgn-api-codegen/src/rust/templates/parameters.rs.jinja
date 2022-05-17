@@ -1,12 +1,15 @@
-{% for route in api.routes %}    
-    {% if !route.parameters.query.is_empty() -%}
-        #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-        pub struct {{ route.name|pascal_case }}Query {
-            {% for parameter in route.parameters.query -%}
-                #[serde(rename = "{{ parameter.name }}")]
-                pub {% include "parameter.rs.jinja" %}                 
-            {% endfor -%}
-            
-        }        
-    {% endif %}
+
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}    
+        {% if !route.parameters.query.is_empty() -%}
+            #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+            pub struct {{ route.name|pascal_case }}Query {
+                {% for parameter in route.parameters.query -%}
+                    #[serde(rename = "{{ parameter.name }}")]
+                    pub {% include "parameter.rs.jinja" %}                 
+                {% endfor -%}
+                
+            }        
+        {% endif %}
+    {% endfor %}
 {% endfor %}

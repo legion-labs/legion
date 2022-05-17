@@ -17,12 +17,13 @@ impl Client {
 
 #[async_trait::async_trait]
 impl api::Api for Client {
-    {% for route in api.routes %}
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
 
         {% include "signature.rs.jinja" %}{
             let uri = format!(
-                "{}{{ route.path|fmt_rust_path }}", 
+                "{}{{ path|fmt_rust_path }}", 
                 self.base_uri
                 {% for parameter in route.parameters.path -%}
                     , {{ parameter.name|snake_case }}
@@ -80,4 +81,5 @@ impl api::Api for Client {
             responses::{{ enum_name }}::from_reqwest(resp).await
         }
     {% endfor %}
+{% endfor %}
 }
