@@ -12,7 +12,7 @@
   import Pagination from "@/components/Misc/Pagination.svelte";
   import Table from "@/components/Misc/Table.svelte";
   import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
-  import { formatProcessName } from "@/lib/format";
+  import { formatProcessName, formatTime } from "@/lib/format";
 
   const MAX_NB_ENTRIES_IN_PAGE = 1_000;
 
@@ -98,23 +98,6 @@
     } finally {
       loading = false;
     }
-  }
-
-  function formatTime(ms: number) {
-    const seconds = ms / 1_000;
-    const secondsWhole = Math.floor(seconds);
-    const secondsStr = String(secondsWhole % 60).padStart(2, "0");
-    const secondsFraction = String(Math.round(ms % 1_000)).padStart(3, "0");
-    const minutes = secondsWhole / 60;
-    const minutesWhole = Math.floor(minutes);
-    const minutesStr = String(minutesWhole).padStart(2, "0");
-    const hours = minutesWhole / 60;
-    const hoursWhole = Math.floor(hours);
-    const hoursStr = String(hoursWhole).padStart(2, "0");
-
-    return (
-      hoursStr + ":" + minutesStr + ":" + secondsStr + "." + secondsFraction
-    );
   }
 
   function levelToColorCssVar(level: Level) {
