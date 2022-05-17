@@ -2,13 +2,11 @@
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { onMount } from "svelte";
-  import { onDestroy } from "svelte";
 
   import type { LogEntry } from "@lgn/proto-telemetry/dist/log";
   import { Level } from "@lgn/proto-telemetry/dist/log";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
-  import { debounce } from "@lgn/web-client/src/lib/event";
   import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
   import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
@@ -16,6 +14,7 @@
   import Layout from "@/components/Misc/Layout.svelte";
   import Loader from "@/components/Misc/Loader.svelte";
   import Pagination from "@/components/Misc/Pagination.svelte";
+  import SearchInput from "@/components/Misc/SearchInput.svelte";
   import Table from "@/components/Misc/Table.svelte";
   import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatProcessName, formatTime } from "@/lib/format";
@@ -58,39 +57,32 @@
     ]);
   });
 
-  onDestroy(() => {
-    debouncedInput.clear();
-  });
+  function redirectSearch({ detail: value }: CustomEvent<string>) {
+    goto(`/log/${processId}${value.length ? `?search=${value}` : ""}`, {
+      keepfocus: true,
+    });
+  }
 
-  const debouncedInput = debounce((event) => {
-    if (event.target instanceof HTMLInputElement) {
-      const cleanValue = event.target.value.trim();
-
-      goto(
-        `/log/${processId}${cleanValue.length ? `?search=${cleanValue}` : ""}`,
-        { keepfocus: true }
-      );
-    }
-  }, 300);
-
-  async function fetchLogEntries(
+  function fetchLogEntries(
     process: Process,
     nbEntries: number,
     beginRange: number | null,
     endRange: number | null,
     search: string
   ) {
-    const response = await client.list_process_log_entries({
-      process,
-      begin: beginRange ?? 0,
-      end: endRange ?? Math.min(nbEntries, MAX_NB_ENTRIES_IN_PAGE),
-      search: search.length ? search : undefined,
+    return logEntriesStore.run(async () => {
+      const response = await client.list_process_log_entries({
+        process,
+        begin: beginRange ?? 0,
+        end: endRange ?? Math.min(nbEntries, MAX_NB_ENTRIES_IN_PAGE),
+        search: search.length ? search : undefined,
+      });
+
+      beginRange = response.begin;
+      endRange = response.end;
+
+      return response.entries;
     });
-
-    beginRange = response.begin;
-    endRange = response.end;
-
-    return response.entries;
   }
 
   function levelToColorCssVar(level: Level) {
@@ -137,16 +129,16 @@
   // Search related stores
   $: searchValue = searchParam;
 
+  $: cleanSearchParam = searchParam.trim();
+
   // Fetch the log on params change
   $: if ($processInfo !== null && $nbEntries !== null) {
-    logEntriesStore.run(() =>
-      fetchLogEntries(
-        $processInfo!,
-        $nbEntries!,
-        beginRange,
-        endRange,
-        searchParam
-      )
+    fetchLogEntries(
+      $processInfo!,
+      $nbEntries!,
+      beginRange,
+      endRange,
+      cleanSearchParam
     );
   }
 
@@ -159,7 +151,7 @@
     ? formatProcessName($processInfo)
     : null;
 
-  $: searchPattern = searchParam
+  $: searchPattern = cleanSearchParam
     .split(" ")
     .reduce(
       (acc, part) =>
@@ -175,11 +167,10 @@
 
 <Layout>
   <div slot="header">
-    <input
-      type="text"
-      class="h-8 w-96 text rounded-xs pl-2 bg-default"
+    <SearchInput
       placeholder={$t("log-search")}
-      on:keyup={debouncedInput}
+      on:clear={() => goto(`/log/${processId}`)}
+      on:debouncedInput={redirectSearch}
       bind:value={searchValue}
     />
   </div>

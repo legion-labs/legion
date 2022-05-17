@@ -1,64 +1,66 @@
 <script lang="ts">
-  import { writable } from "svelte/store";
+  import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
 
   import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
-  import { debounced } from "@lgn/web-client/src/lib/store";
+  import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
   import L10n from "@/components/Misc/L10n.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
   import Loader from "@/components/Misc/Loader.svelte";
+  import SearchInput from "@/components/Misc/SearchInput.svelte";
   import ProcessItem from "@/components/Process/ProcessItem.svelte";
   import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
-
-  type Mode = "default" | "search";
 
   const { t } = getL10nOrchestratorContext();
 
   const client = getHttpClientContext();
 
-  const searchValue = writable("");
+  const processesStore = createAsyncStoreOrchestrator<ProcessInstance[]>();
 
-  const debouncedSearchValue = debounced(searchValue, 300);
+  const { data: processes, loading } = processesStore;
 
-  $: cleanSearchValue = $debouncedSearchValue.trim();
-
-  let processes: ProcessInstance[] = [];
-  let loading = true;
-  let mode: Mode = "default";
-
-  async function search(mode: Mode, search: string) {
-    try {
-      const response =
-        mode === "search"
-          ? await client.search_processes({
-              search,
-            })
-          : await client.list_recent_processes({ parentProcessId: undefined });
-
-      processes = response.processes;
-    } finally {
-      loading = false;
-    }
+  function redirectSearch({ detail: value }: CustomEvent<string>) {
+    goto(`/${value.length ? `?search=${value}` : ""}`, {
+      keepfocus: true,
+    });
   }
 
-  $: mode = cleanSearchValue ? "search" : "default";
+  function search(search: string) {
+    return processesStore.run(async () => {
+      const response = search.length
+        ? await client.search_processes({
+            search,
+          })
+        : await client.list_recent_processes({ parentProcessId: undefined });
 
-  $: search(mode, cleanSearchValue);
+      return response.processes;
+    });
+  }
+
+  $: searchParam = $page.url.searchParams.get("search") || "";
+
+  $: searchValue = searchParam;
+
+  $: cleanSearchParam = searchParam.trim();
+
+  $: search(cleanSearchParam);
 </script>
 
 <Layout>
   <div slot="header">
-    <!-- svelte-ignore a11y-autofocus -->
-    <input
-      autofocus
-      type="text"
-      class="h-8 w-96 text rounded-xs pl-2 bg-default"
-      placeholder={$t("process-list-search")}
-      bind:value={$searchValue}
-    />
+    <div class="flex flex-row space-x-0.5">
+      <SearchInput
+        autofocus
+        placeholder={$t("process-list-search")}
+        on:clear={() => goto("/")}
+        on:debouncedInput={redirectSearch}
+        bind:value={searchValue}
+      />
+    </div>
   </div>
   <div slot="content">
-    {#if loading}
+    {#if $loading}
       <Loader />
     {:else}
       <div class="process-list">
@@ -85,13 +87,13 @@
               <L10n id="process-list-statistics" />
             </div>
           </div>
-          {#each processes as processInstance, index (processInstance.processInfo?.processId)}
+          {#each $processes || [] as processInstance, index (processInstance.processInfo?.processId)}
             <ProcessItem
-              highlightedPattern={$debouncedSearchValue}
+              highlightedPattern={searchParam}
               {processInstance}
               depth={0}
               {index}
-              noFold={mode === "search"}
+              noFold={cleanSearchParam.length > 0}
             />
           {/each}
         </div>
