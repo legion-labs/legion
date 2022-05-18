@@ -4,7 +4,6 @@
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
-  import { Panel, PanelHeader } from "@lgn/web-client/src/components/panel";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { readFile } from "@lgn/web-client/src/lib/files";
   import log from "@lgn/web-client/src/lib/log";
@@ -63,6 +62,7 @@
   import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
   import CreateResourceModal from "./resources/CreateResourceModal.svelte";
   import ResourceFilter from "./resources/ResourceFilter.svelte";
+  import Loader from "@lgn/web-client/src/components/Loader.svelte";
 
   const createResourceModalId = Symbol.for("create-resource-modal");
 
@@ -586,74 +586,79 @@
   on:prompt-answer={removeResourceProperty}
 />
 
-<Panel {loading} tabs={["Resource Browser"]}>
+<!-- <Panel {loading} tabs={["Resource Browser"]}>
   <div slot="tab" let:tab>{tab}</div>
-
   <div
     slot="content"
     class="content"
     use:contextMenu={resourceBrowserPanelContextMenuId}
   >
-    <PanelHeader>
-      <ResourceFilter on:filter={filter} />
-    </PanelHeader>
-    <div class="hierarchy-tree">
-      {#if !$resourceEntries.isEmpty()}
-        <HierarchyTree
-          id="resource-browser"
-          renamable
-          reorderable
-          deletable
-          draggable={resourceDragAndDropType}
-          displayedEntries={filteredResourceEntries || $resourceEntries}
-          on:select={selectResource}
-          on:nameEdited={saveEditedResourceProperty}
-          on:moved={moveEntry}
-          on:removeRequest={() =>
-            openRemoveResourcePrompt("request-resource-remove-keyboard")}
-          bind:entries={$resourceEntries}
-          bind:currentlyRenameEntry={$currentlyRenameResourceEntry}
-          bind:highlightedEntry={$currentResourceDescriptionEntry}
-          bind:this={resourceHierarchyTree}
+    <PanelHeader> -->
+<!-- </PanelHeader> -->
+<div class="header">
+  {#if loading}
+    <div><Loader /></div>
+  {/if}
+  <ResourceFilter on:filter={filter} />
+</div>
+<div class="hierarchy-tree" use:contextMenu={resourceBrowserPanelContextMenuId}>
+  {#if !$resourceEntries.isEmpty()}
+    <HierarchyTree
+      id="resource-browser"
+      renamable
+      reorderable
+      deletable
+      draggable={resourceDragAndDropType}
+      displayedEntries={filteredResourceEntries || $resourceEntries}
+      on:select={selectResource}
+      on:nameEdited={saveEditedResourceProperty}
+      on:moved={moveEntry}
+      on:removeRequest={() =>
+        openRemoveResourcePrompt("request-resource-remove-keyboard")}
+      bind:entries={$resourceEntries}
+      bind:currentlyRenameEntry={$currentlyRenameResourceEntry}
+      bind:highlightedEntry={$currentResourceDescriptionEntry}
+      bind:this={resourceHierarchyTree}
+    >
+      <div
+        class="entry"
+        slot="entry"
+        use:contextMenu={resourceBrowserItemContextMenuId}
+        let:entry
+        let:isHighlighted
+      >
+        <div
+          class="entry-icon"
+          class:text-gray-400={!isHighlighted}
+          class:text-orange-700={isHighlighted}
         >
-          <div
-            class="entry"
-            slot="entry"
-            use:contextMenu={resourceBrowserItemContextMenuId}
-            let:entry
-            let:isHighlighted
-          >
-            <div
-              class="entry-icon"
-              class:text-gray-400={!isHighlighted}
-              class:text-orange-700={isHighlighted}
-            >
-              <Icon class="w-full h-full" icon={iconFor(entry)} />
-            </div>
-            <div
-              class="entry-name"
-              title={isEntry(entry) ? entry.item.path : null}
-            >
-              {#if $resourceEntriesfilters.name}
-                <HighlightedText
-                  text={entry.name}
-                  pattern={$resourceEntriesfilters.name}
-                />
-              {:else}
-                {entry.name}
-              {/if}
-            </div>
-          </div>
-        </HierarchyTree>
-      {/if}
-    </div>
-  </div>
-</Panel>
+          <Icon class="w-full h-full" icon={iconFor(entry)} />
+        </div>
+        <div class="entry-name" title={isEntry(entry) ? entry.item.path : null}>
+          {#if $resourceEntriesfilters.name}
+            <HighlightedText
+              text={entry.name}
+              pattern={$resourceEntriesfilters.name}
+            />
+          {:else}
+            {entry.name}
+          {/if}
+        </div>
+      </div>
+    </HierarchyTree>
+  {/if}
+</div>
 
+<!-- </div>
+</Panel> -->
 <style lang="postcss">
-  .content {
-    @apply h-full flex flex-col;
+  .header {
+    @apply w-full bg-gray-500 bg-opacity-100 border-b border-gray-800 sticky top-0 z-10;
   }
+
+  /* .content {
+    @apply h-full flex flex-col;
+  } */
 
   .hierarchy-tree {
     @apply flex-1 overflow-auto;

@@ -18,18 +18,14 @@ export const AppComponentMap: Record<string, typeof SvelteComponentDev> = {
   Log: Log,
 };
 
-// import { allActiveScenes } from "@/orchestrators/allActiveScenes";
-// Cant be const anymore !
-// Needs the active scenes to open the scene explorer accordingly !
-// Or be reactive !
-// With changes in scenes tick the layout !
 export const defaultLayoutConfig: LayoutConfig = {
   settings: {
     showPopoutIcon: false,
+    tabControlOffset: 30,
   },
   dimensions: {
     minItemHeight: 100,
-    minItemWidth: 100,
+    minItemWidth: 200,
   },
   root: {
     type: "row",
@@ -41,15 +37,6 @@ export const defaultLayoutConfig: LayoutConfig = {
             type: "row",
             content: [
               {
-                type: "component",
-                title: "Scene Explorer",
-                componentType: "SceneExplorer",
-                componentState: {
-                  activeScenes: [],
-                },
-                width: 8,
-              },
-              {
                 type: "stack",
                 content: [
                   {
@@ -57,7 +44,9 @@ export const defaultLayoutConfig: LayoutConfig = {
                     title: "Editor",
                     componentType: "RemoteWindow",
                     componentState: {
-                      serverType: "editor",
+                      state: {
+                        serverType: "editor",
+                      },
                     },
                   },
                   {
@@ -65,7 +54,9 @@ export const defaultLayoutConfig: LayoutConfig = {
                     title: "Runtime",
                     componentType: "RemoteWindow",
                     componentState: {
-                      serverType: "runtime",
+                      state: {
+                        serverType: "runtime",
+                      },
                     },
                   },
                 ],
@@ -98,7 +89,7 @@ export const defaultLayoutConfig: LayoutConfig = {
         type: "component",
         componentType: "PropertyGrid",
         title: "Property Grid",
-        width: 8,
+        width: 10,
       },
     ],
   },

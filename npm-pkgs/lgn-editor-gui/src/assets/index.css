@@ -61,7 +61,12 @@ input[type="color"]::-webkit-color-swatch {
   @apply border-none;
 }
 
-
 .lm_header .lm_tab.lm_active.lm_focused {
   @apply bg-gray-700 !important;
+  border-bottom: 2px solid !important;
+  @apply border-orange-600 !important;
+}
+
+.lm_header .lm_tab .lm_title {
+  white-space: nowrap;
 }

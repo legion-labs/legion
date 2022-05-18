@@ -249,10 +249,6 @@
             })) as NonEmptyArray<TabType>,
             { activeTabIndex: allActiveScenes.length - 1 }
           );
-
-          allActiveScenes.forEach((s) => {
-            console.log(s);
-          });
         }
       }
     );

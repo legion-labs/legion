@@ -29,6 +29,13 @@
   import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
   import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
   import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
+  import {
+    allActiveScenes,
+    fetchAllActiveScenes,
+  } from "@/orchestrators/allActiveScenes";
+  import SceneExplorer from "@/components/SceneExplorer.svelte";
+  import { fileName } from "@/lib/path";
+  import { closeScene } from "@/api";
 
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
@@ -39,6 +46,25 @@
   onMount(() => {
     refetchResources().catch(() => {
       // TODO: Handle errors
+    });
+
+    return allActiveScenes.subscribe((scenes) => {
+      scenes?.forEach((s) => {
+        layout.addComponent(
+          SceneExplorer.name,
+          {
+            state: {
+              activeScenes: s.scenes,
+            },
+            onDestroyed: async () => {
+              await closeScene({ id: s.rootScene.id });
+              await fetchAllActiveScenes();
+            },
+          },
+          fileName(s.rootScene.path) ?? "undefined",
+          s.rootScene.id
+        );
+      });
     });
   });
 
@@ -59,7 +85,9 @@
             layout.addComponent(
               RemoteWindow.name,
               {
-                serverType: "editor",
+                state: {
+                  serverType: "editor",
+                },
               },
               "Editor"
             );
@@ -71,7 +99,9 @@
             layout.addComponent(
               RemoteWindow.name,
               {
-                serverType: "runtime",
+                state: {
+                  serverType: "runtime",
+                },
               },
               "Runtime"
             );

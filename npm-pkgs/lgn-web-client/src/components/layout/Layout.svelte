@@ -1,9 +1,17 @@
+<script lang="ts" context="module">
+  export type ComponentLayoutState = {
+    state: object;
+    onDestroyed?: () => void;
+  };
+</script>
+
 <script lang="ts">
   import "golden-layout/dist/css/goldenlayout-base.css";
   import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css";
   import { onMount } from "svelte";
   import {
     ComponentContainer,
+    ComponentItemConfig,
     ResolvedComponentItemConfig,
     VirtualLayout,
   } from "golden-layout";
@@ -12,7 +20,8 @@
 
   type LayoutComponent = {
     type: string;
-    state: object;
+    id: string;
+    layoutState: ComponentLayoutState;
     container: ComponentContainer;
     visible: boolean;
     zIndex: string;
@@ -50,14 +59,25 @@
 
   export function addComponent(
     componentType: string,
-    componentState?: object,
-    title?: string
+    componentState?: ComponentLayoutState,
+    title?: string,
+    id?: string
   ) {
-    return layout.addComponent(
-      cleanSvelteComponentProxyName(componentType),
+    // Poor man's way to optionally ensure unicity per id which currently allows to avoid opening <SceneExplorer> duplicates.
+    // A better system would check if a given component is allowed to be created multiple times (singleton or singleton-by-key).
+    if (id && layoutComponents.find((l) => l.id === id)) {
+      return;
+    }
+
+    const config: ComponentItemConfig = {
+      type: "component",
+      componentType: cleanSvelteComponentProxyName(componentType),
       componentState,
-      title
-    );
+      title,
+      id,
+    };
+
+    return layout.addItemAtLocation(config);
   }
 
   function initializeLayout(divElement: HTMLDivElement) {
@@ -125,12 +145,23 @@
       ...layoutComponents,
       {
         rect: {},
-        state: itemConfig.componentState,
+        id: itemConfig.id,
+        layoutState: itemConfig.componentState,
         type: ResolvedComponentItemConfig.resolveComponentTypeName(itemConfig),
         visible: true,
-        container: container,
+        container,
       } as LayoutComponent,
     ];
+
+    const state = itemConfig.componentState as ComponentLayoutState;
+
+    if (state.onDestroyed) {
+      container.on("destroy", () => {
+        if (state.onDestroyed) {
+          state.onDestroyed();
+        }
+      });
+    }
 
     return {
       virtual: true,
@@ -160,7 +191,7 @@
       style:width={`${c.rect.width}px`}
       style:height={`${c.rect.height}px`}
     >
-      <svelte:component this={componentMap[c.type]} {...c.state} />
+      <svelte:component this={componentMap[c.type]} {...c.layoutState.state} />
     </div>
   {/each}
 </div>
