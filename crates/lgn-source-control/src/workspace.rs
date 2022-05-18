@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, fmt::Formatter};
 
 use lgn_content_store::{
     indexing::{
@@ -1069,11 +1069,28 @@ struct WorkspaceResourceReader(Vec<u8>);
 
 impl IndexableResource for WorkspaceResourceReader {}
 
+struct WorkspaceResourceReaderVisitor;
+
+impl<'de> serde::de::Visitor<'de> for WorkspaceResourceReaderVisitor {
+    type Value = WorkspaceResourceReader;
+
+    fn expecting(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a byte array")
+    }
+
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(WorkspaceResourceReader(v.to_vec()))
+    }
+}
+
 impl<'de> serde::Deserialize<'de> for WorkspaceResourceReader {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(Self(Vec::<u8>::deserialize(deserializer)?))
+        deserializer.deserialize_bytes(WorkspaceResourceReaderVisitor)
     }
 }
