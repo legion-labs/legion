@@ -36,8 +36,8 @@ pub struct Commit {
     pub owner: String,
     pub message: String,
     pub changes: BTreeSet<Change>,
-    pub main_index_tree_id: Option<TreeIdentifier>,
-    pub path_index_tree_id: Option<TreeIdentifier>,
+    pub main_index_tree_id: TreeIdentifier,
+    pub path_index_tree_id: TreeIdentifier,
     pub parents: BTreeSet<CommitId>,
     pub timestamp: DateTime<Utc>,
 }
@@ -50,8 +50,8 @@ impl Commit {
         owner: String,
         message: String,
         changes: BTreeSet<Change>,
-        main_index_tree_id: Option<TreeIdentifier>,
-        path_index_tree_id: Option<TreeIdentifier>,
+        main_index_tree_id: TreeIdentifier,
+        path_index_tree_id: TreeIdentifier,
         parents: BTreeSet<CommitId>,
         timestamp: DateTime<Utc>,
     ) -> Self {
@@ -74,8 +74,8 @@ impl Commit {
         owner: String,
         message: impl Into<String>,
         changes: BTreeSet<Change>,
-        main_index_tree_id: Option<TreeIdentifier>,
-        path_index_tree_id: Option<TreeIdentifier>,
+        main_index_tree_id: TreeIdentifier,
+        path_index_tree_id: TreeIdentifier,
         parents: BTreeSet<CommitId>,
     ) -> Self {
         let id = CommitId(0);
@@ -98,22 +98,13 @@ impl From<Commit> for lgn_source_control_proto::Commit {
     fn from(commit: Commit) -> Self {
         let timestamp: SystemTime = commit.timestamp.into();
 
-        let main_index_tree_id = match commit.main_index_tree_id {
-            Some(id) => id.to_string(),
-            None => String::new(),
-        };
-        let path_index_tree_id = match commit.path_index_tree_id {
-            Some(id) => id.to_string(),
-            None => String::new(),
-        };
-
         Self {
             id: commit.id.0,
             owner: commit.owner,
             message: commit.message,
             changes: commit.changes.into_iter().map(Into::into).collect(),
-            main_index_tree_id,
-            path_index_tree_id,
+            main_index_tree_id: commit.main_index_tree_id.to_string(),
+            path_index_tree_id: commit.path_index_tree_id.to_string(),
             parents: commit.parents.into_iter().map(|id| id.0).collect(),
             timestamp: Some(timestamp.into()),
         }
@@ -136,24 +127,13 @@ impl TryFrom<lgn_source_control_proto::Commit> for Commit {
             .map(TryInto::try_into)
             .collect::<Result<BTreeSet<Change>>>()?;
 
-        let main_index_tree_id = if commit.main_index_tree_id.is_empty() {
-            None
-        } else {
-            Some(commit.main_index_tree_id.parse().unwrap())
-        };
-        let path_index_tree_id = if commit.path_index_tree_id.is_empty() {
-            None
-        } else {
-            Some(commit.path_index_tree_id.parse().unwrap())
-        };
-
         Ok(Self {
             id: CommitId(commit.id),
             owner: commit.owner,
             message: commit.message,
             changes,
-            main_index_tree_id,
-            path_index_tree_id,
+            main_index_tree_id: commit.main_index_tree_id.parse().unwrap(),
+            path_index_tree_id: commit.path_index_tree_id.parse().unwrap(),
             parents: commit.parents.into_iter().map(CommitId).collect(),
             timestamp,
         })
@@ -192,8 +172,8 @@ mod tests {
                 owner: "owner".to_owned(),
                 message: "message".to_owned(),
                 changes: BTreeSet::new(),
-                main_index_tree_id: Some(MAIN_INDEX_TREE_ID.parse().unwrap()),
-                path_index_tree_id: Some(PATH_INDEX_TREE_ID.parse().unwrap()),
+                main_index_tree_id: MAIN_INDEX_TREE_ID.parse().unwrap(),
+                path_index_tree_id: PATH_INDEX_TREE_ID.parse().unwrap(),
                 parents: vec![CommitId(43)].into_iter().collect(),
                 timestamp: now,
             }
@@ -210,8 +190,8 @@ mod tests {
             owner: "owner".to_owned(),
             message: "message".to_owned(),
             changes: BTreeSet::new(),
-            main_index_tree_id: Some(MAIN_INDEX_TREE_ID.parse().unwrap()),
-            path_index_tree_id: Some(PATH_INDEX_TREE_ID.parse().unwrap()),
+            main_index_tree_id: MAIN_INDEX_TREE_ID.parse().unwrap(),
+            path_index_tree_id: PATH_INDEX_TREE_ID.parse().unwrap(),
             parents: vec![CommitId(43)].into_iter().collect(),
             timestamp: now,
         };

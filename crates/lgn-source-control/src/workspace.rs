@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use lgn_content_store::{
     indexing::{
-        IndexableResource, ResourceWriter, StaticIndexer, StringPathIndexer, Tree, TreeIdentifier,
-        TreeLeafNode, TreeWriter,
+        IndexableResource, ResourceIdentifier, ResourceWriter, StaticIndexer, StringPathIndexer,
+        Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
     },
     Provider,
 };
@@ -21,7 +21,9 @@ pub struct Workspace {
     transaction: Provider,
     branch_name: String,
     main_index: StaticIndexer,
+    main_index_tree_id: TreeIdentifier,
     path_index: StringPathIndexer,
+    path_index_tree_id: TreeIdentifier,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,9 +67,7 @@ impl Workspace {
         repository_name: &RepositoryName,
         provider: Provider,
     ) -> Result<Self> {
-        let index = repository_index.load_repository(repository_name).await?;
-
-        let workspace = Self::new(index, provider, "main");
+        let workspace = Self::new(repository_index, repository_name, provider, "main").await?;
 
         workspace.initial_checkout().await?;
 
@@ -85,9 +85,7 @@ impl Workspace {
         branch_name: &str,
         provider: Provider,
     ) -> Result<Self> {
-        let index = repository_index.load_repository(repository_name).await?;
-
-        Ok(Self::new(index, provider, branch_name))
+        Self::new(repository_index, repository_name, provider, branch_name).await
     }
 
     /// Return the repository name of the workspace.
@@ -100,21 +98,25 @@ impl Workspace {
         self.branch_name.as_str()
     }
 
-    /*
-    /// Return the provider of the workspace.
-    pub fn provider(&self) -> &Arc<Provider> {
-        &self.provider
-    }
-    */
+    async fn new(
+        repository_index: impl RepositoryIndex,
+        repository_name: &RepositoryName,
+        provider: Provider,
+        branch_name: &str,
+    ) -> Result<Self> {
+        let index = repository_index.load_repository(repository_name).await?;
+        let branch = index.get_branch(branch_name).await?;
+        let commit = index.get_commit(branch.head).await?;
 
-    fn new(index: Box<dyn Index>, provider: Provider, branch_name: &str) -> Self {
-        Self {
+        Ok(Self {
             index,
             transaction: provider.begin_transaction_in_memory(),
             branch_name: branch_name.to_owned(),
             main_index: StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>()),
             path_index: StringPathIndexer::default(),
-        }
+            main_index_tree_id: commit.main_index_tree_id,
+            path_index_tree_id: commit.path_index_tree_id,
+        })
     }
 
     /// Get the commits chain, starting from the specified commit.
@@ -126,19 +128,7 @@ impl Workspace {
     pub async fn get_current_commit(&self) -> Result<Commit> {
         let current_branch = self.get_current_branch().await?;
 
-        let mut commit = self.index.get_commit(current_branch.head).await?;
-
-        if commit.main_index_tree_id.is_none() || commit.path_index_tree_id.is_none() {
-            let empty_tree_id = self.transaction.write_tree(&Tree::default()).await.unwrap();
-            if commit.main_index_tree_id.is_none() {
-                commit.main_index_tree_id = Some(empty_tree_id.clone());
-            }
-            if commit.path_index_tree_id.is_none() {
-                commit.path_index_tree_id = Some(empty_tree_id);
-            }
-        }
-
-        Ok(commit)
+        self.index.get_commit(current_branch.head).await
     }
 
     /*
@@ -150,15 +140,9 @@ impl Workspace {
     */
 
     pub async fn resource_exists(&self, id: WorkspaceResourceId) -> Result<bool> {
-        let commit = self.get_current_commit().await?;
-
         Ok(self
             .main_index
-            .get_leaf(
-                &self.transaction,
-                &commit.main_index_tree_id.unwrap(),
-                &id.into(),
-            )
+            .get_leaf(&self.transaction, &self.main_index_tree_id, &id.into())
             .await
             .map_other_err("reading main index")?
             .is_some())
@@ -169,13 +153,11 @@ impl Workspace {
     /// The list of new resources added is returned. If all the resources were already
     /// added, an empty list is returned and call still succeeds.
     pub async fn add_resource(
-        &self,
+        &mut self,
         id: WorkspaceResourceId,
         path: &str,
         contents: &[u8],
-    ) -> Result<(TreeIdentifier, TreeIdentifier)> {
-        let commit = self.get_current_commit().await?;
-
+    ) -> Result<ResourceIdentifier> {
         let resource_contents = WorkspaceResourceContents(contents);
 
         let resource_identifier = self
@@ -184,29 +166,29 @@ impl Workspace {
             .await
             .map_other_err("writing resource contents")?;
 
-        let main_id = self
+        self.main_index_tree_id = self
             .main_index
             .add_leaf(
                 &self.transaction,
-                &commit.main_index_tree_id.unwrap(),
+                &self.main_index_tree_id,
                 &id.into(),
                 TreeLeafNode::Resource(resource_identifier.clone()),
             )
             .await
             .map_other_err("adding resource to main index")?;
 
-        let file_path_id = self
+        self.path_index_tree_id = self
             .path_index
             .add_leaf(
                 &self.transaction,
-                &commit.path_index_tree_id.unwrap(),
+                &self.path_index_tree_id,
                 &path.into(),
-                TreeLeafNode::Resource(resource_identifier),
+                TreeLeafNode::Resource(resource_identifier.clone()),
             )
             .await
             .map_other_err("adding resource to main index")?;
 
-        Ok((main_id, file_path_id))
+        Ok(resource_identifier)
     }
 
     /*
@@ -630,8 +612,8 @@ impl Workspace {
             whoami::username(),
             message,
             commit.changes.clone(),
-            commit.main_index_tree_id,
-            commit.path_index_tree_id,
+            self.main_index_tree_id.clone(),
+            self.path_index_tree_id.clone(),
             BTreeSet::from([commit.id]),
         );
 
@@ -898,7 +880,10 @@ impl Workspace {
     */
 
     async fn initial_checkout(&self) -> Result<()> {
-        // 1. Read the head commit information.
+        // 1. Write initial empty indices to content store
+        self.transaction.write_tree(&Tree::default()).await.unwrap();
+
+        // 2. Read the head commit information.
         let _commit = self.get_current_commit().await?;
 
         Ok(())
