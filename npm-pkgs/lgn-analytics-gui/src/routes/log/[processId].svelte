@@ -50,6 +50,7 @@
       }`,
       {
         keepfocus: true,
+        replaceState: $page.url.searchParams.has("search"),
       }
     );
   }
