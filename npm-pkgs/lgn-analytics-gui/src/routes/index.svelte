@@ -25,6 +25,7 @@
   }: CustomEvent<{ encodedValue: string }>) {
     goto(`/${encodedValue.length ? `?search=${encodedValue}` : ""}`, {
       keepfocus: true,
+      replaceState: $page.url.searchParams.has("search"),
     });
   }
 
