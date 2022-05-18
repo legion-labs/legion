@@ -26,8 +26,8 @@ pub(crate) use search_result::SearchResult;
 pub use static_indexer::StaticIndexer;
 pub use string_path_indexer::StringPathIndexer;
 pub use tree::{
-    Tree, TreeIdentifier, TreeLeafNode, TreeNode, TreeReader, TreeVisitor, TreeVisitorAction,
-    TreeWriter,
+    tree_diff, tree_leaves, tree_visit, Tree, TreeBranchInfo, TreeDiffSide, TreeIdentifier,
+    TreeLeafInfo, TreeLeafNode, TreeNode, TreeReader, TreeVisitor, TreeVisitorAction, TreeWriter,
 };
 
 pub(crate) use index_path::{IndexPath, IndexPathItem};

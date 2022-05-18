@@ -651,47 +651,6 @@ impl StaticIndexer {
         }
     }
 
-    /// Returns a stream that iterates over all leaves in the specified tree.
-    ///
-    /// # Warning
-    ///
-    /// This method will iterate over the entire tree. If used on a real, large
-    /// tree it could actually take a very long time to end. Think twice before
-    /// using it.
-    pub fn all_leaves<'s>(
-        provider: &'s Provider,
-        root_id: &'s TreeIdentifier,
-    ) -> impl Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's {
-        let mut trees = VecDeque::new();
-
-        stream! {
-            let root = provider.read_tree(root_id).await.unwrap();
-            trees.push_back((IndexKey::default(), root));
-
-            while let Some((prefix, current_tree)) = trees.pop_front() {
-                for (key, node) in current_tree.children {
-                    let new_prefix = prefix.join(key);
-
-                    match node {
-                        TreeNode::Leaf(entry) => {
-                            yield (new_prefix, Ok(entry));
-                        },
-                        TreeNode::Branch(id) => {
-                            match provider.read_tree(&id).await {
-                                Ok(tree) => {
-                                    trees.push_back((new_prefix, tree));
-                                },
-                                Err(err) => {
-                                    yield (new_prefix, Err(err));
-                                },
-                            };
-                        },
-                    }
-                }
-            }
-        }
-    }
-
     /// Returns a list of all leaves in the specified range.
     ///
     /// # Warning
