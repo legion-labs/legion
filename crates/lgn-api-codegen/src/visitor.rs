@@ -7,7 +7,7 @@ use super::api::{
     Type,
 };
 use crate::{
-    api::Parameters,
+    api::{Content, Parameters},
     openapi_ext::{OpenAPIExt, OpenAPIPath},
     Error, Result,
 };
@@ -189,8 +189,10 @@ impl<'a> Visitor<'a> {
                 Some(RequestBody {
                     description: request_body.description.clone(),
                     required: request_body.required,
-                    content_type: media_type.as_str().try_into()?,
-                    type_,
+                    content: Content {
+                        content_type: media_type.as_str().try_into()?,
+                        type_,
+                    },
                 })
             }
             None => None,
@@ -252,11 +254,15 @@ impl<'a> Visitor<'a> {
                 status_code,
                 Response {
                     description: response.description.clone(),
-                    content_type: match media_type {
-                        Some(media_type) => Some(media_type.as_str().try_into()?),
+                    content: match media_type {
+                        Some(media_type) => Some(Content {
+                            content_type: media_type.as_str().try_into()?,
+                            type_: type_.ok_or(Error::Invalid(
+                                "content should have a schema".to_string(),
+                            ))?,
+                        }),
                         None => None,
                     },
-                    type_,
                 },
             );
         }
@@ -500,7 +506,7 @@ impl<'a> Visitor<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::api::ContentType;
+    use crate::api::{Content, ContentType};
     use crate::Error;
     use indexmap::IndexMap;
 
@@ -978,8 +984,10 @@ mod tests {
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
-                    content_type: Some(ContentType::Json),
-                    type_: Some(Type::Array(Box::new(Type::Struct("Pet".to_string())))),
+                    content: Some(Content {
+                        content_type: ContentType::Json,
+                        type_: Type::Array(Box::new(Type::Struct("Pet".to_string()))),
+                    }),
                 },
             )]),
         };
@@ -1061,16 +1069,17 @@ mod tests {
             request_body: Some(RequestBody {
                 description: None,
                 required: false,
-                content_type: ContentType::Json,
-                type_: Type::Struct("AddPetBody".to_string()),
+                content: Content {
+                    content_type: ContentType::Json,
+                    type_: Type::Struct("AddPetBody".to_string()),
+                },
             }),
             parameters: Parameters::default(),
             responses: IndexMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
-                    content_type: None,
-                    type_: None,
+                    content: None,
                 },
             )]),
         };
@@ -1149,8 +1158,10 @@ mod tests {
             request_body: Some(RequestBody {
                 description: None,
                 required: false,
-                content_type: ContentType::Json,
-                type_: Type::Struct("Pet".to_string()),
+                content: Content {
+                    content_type: ContentType::Json,
+                    type_: Type::Struct("Pet".to_string()),
+                },
             }),
             parameters: Parameters::default(),
             responses: IndexMap::from([
@@ -1158,16 +1169,17 @@ mod tests {
                     http::StatusCode::OK.into(),
                     Response {
                         description: "Successful".to_string(),
-                        content_type: Some(ContentType::Json),
-                        type_: Some(Type::Struct("Pet".to_string())),
+                        content: Some(Content {
+                            content_type: ContentType::Json,
+                            type_: Type::Struct("Pet".to_string()),
+                        }),
                     },
                 ),
                 (
                     http::StatusCode::METHOD_NOT_ALLOWED.into(),
                     Response {
                         description: "Invalid input".to_string(),
-                        content_type: None,
-                        type_: None,
+                        content: None,
                     },
                 ),
             ]),

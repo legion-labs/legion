@@ -14,8 +14,8 @@ use axum::{
         pub enum {{ enum_name }} {
             {%- for (status_code, response) in route.responses -%}
                 /// {{ response.description }}
-                {% if let Some(type_) = response.type_ -%}
-                    {{ status_code }}({{ type_|fmt_type }}),
+                {% if let Some(content) = response.content -%}
+                    {{ status_code }}({{ content.type_|fmt_type }}),
                 {%- else -%}
                     {{ status_code }},
                 {%- endif -%}
@@ -26,9 +26,15 @@ use axum::{
             pub(crate) fn into_response(self) -> Response {
                 match self {
                     {% for (status_code, response) in route.responses %}
-                        {%- if let Some(type_) = response.type_ -%}
+                        {%- if let Some(content) = response.content -%}
                             {{ enum_name }}::{{ status_code }}(inner) => {
-                                (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), Json(inner)).into_response()
+                                {% match content.content_type -%}
+                                    {% when ContentType::Json -%}
+                                        let inner = Json(inner);
+                                    {% when ContentType::Bytes -%}
+                                        let inner: Vec<u8> = inner.into();
+                                {% endmatch -%}
+                                (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), inner).into_response()
                         },
                         {%- else -%}
                             {{ enum_name }}::{{ status_code }} => {
@@ -50,8 +56,13 @@ use axum::{
                         {% for (status_code, response) in route.responses %}
                             {{ status_code.as_u16() }} => 
                                 Ok(Self::{{ status_code }}
-                                    {%- if let Some(type_) = response.type_ -%}
-                                    (response.json().await?)
+                                    {%- if let Some(content) = response.content -%}
+                                        {% match content.content_type %}
+                                            {% when ContentType::Json %}
+                                                (response.json().await?)
+                                            {% when ContentType::Bytes %}
+                                                (response.bytes().await?.into())
+                                        {% endmatch %}
                                     {%- endif -%}
                                 ),              
                         {%- endfor -%}

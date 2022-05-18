@@ -14,9 +14,9 @@ async fn {{ route.name|snake_case }}(
     {% endfor -%}
     {% if let Some(request_body) = route.request_body -%}
         {%- if request_body.required -%}
-            body: {{ request_body.type_|fmt_type }},    
+            body: {{ request_body.content.type_|fmt_type }},
         {%- else -%}
-            body: Option<{{ request_body.type_|fmt_type }}>,
+            body: Option<{{ request_body.content.type_|fmt_type }}>,
         {%- endif -%}
     {% endif -%}
     extra: Extra,

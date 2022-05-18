@@ -124,8 +124,13 @@ impl StatusCode {
 #[derive(Debug, PartialEq)]
 pub struct Response {
     pub description: String,
-    pub content_type: Option<ContentType>,
-    pub type_: Option<Type>,
+    pub content: Option<Content>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Content {
+    pub content_type: ContentType,
+    pub type_: Type,
 }
 
 #[derive(Debug, PartialEq)]
@@ -203,9 +208,8 @@ impl std::str::FromStr for Method {
 #[derive(Debug, PartialEq)]
 pub struct RequestBody {
     pub description: Option<String>,
-    pub content_type: ContentType,
-    pub type_: Type,
     pub required: bool,
+    pub content: Content,
 }
 
 #[derive(Debug, Clone, PartialEq)]
