@@ -744,12 +744,12 @@ fn render_update(
                 &mesh_renderer,
             );
 
-            TmpRenderPass::render(
-                &render_context,
-                cmd_buffer,
-                render_surface.as_mut(),
-                &mesh_renderer,
-            );
+            // TmpRenderPass::render(
+            //     &render_context,
+            //     cmd_buffer,
+            //     render_surface.as_mut(),
+            //     &mesh_renderer,
+            // );
 
             let debug_renderpass = render_surface.debug_renderpass();
             let debug_renderpass = debug_renderpass.write();

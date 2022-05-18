@@ -140,7 +140,7 @@ impl TransientBuffer {
             resource_usage
         };
 
-        let required_alignment = if resource_usage.intersects(ResourceUsage::AS_CONST_BUFFER) {
+        let mut required_alignment = if resource_usage.intersects(ResourceUsage::AS_CONST_BUFFER) {
             self.device_context
                 .device_info()
                 .min_uniform_buffer_offset_alignment
@@ -149,6 +149,8 @@ impl TransientBuffer {
                 .device_info()
                 .min_storage_buffer_offset_alignment
         };
+
+        required_alignment = 256;
 
         let aligned_offset = lgn_utils::memory::round_size_up_to_alignment_u64(
             self.byte_offset,

@@ -137,7 +137,7 @@ impl GpuBufferWithReadback {
             &[],
         );
 
-        cmd_buffer.cmd_fill_buffer(self.buffer(), 0, !0, 0);
+        cmd_buffer.cmd_fill_buffer(self.buffer(), 0, self.buffer().definition().size, 0);
 
         cmd_buffer.cmd_resource_barrier(
             &[BufferBarrier {

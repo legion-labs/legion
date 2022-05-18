@@ -317,6 +317,7 @@ impl CommandBuffer {
     }
 
     pub fn cmd_fill_buffer(&mut self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
+        assert!(size <= dst_buffer.definition().size);
         self.backend_cmd_fill_buffer(dst_buffer, offset, size, data);
     }
 

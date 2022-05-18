@@ -103,16 +103,13 @@ fn main() {
             .unwrap_or("(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)")
             .parse::<ResourceTypeAndId>()
             .ok();
-
         let project_folder =
             lgn_config::get_or("editor_srv.project_dir", PathBuf::from("tests/sample-data"))
                 .unwrap();
-
         let asset_registry_settings = AssetRegistrySettings::new(
             Some(project_folder.join("runtime").join("game.manifest")),
             root_asset.into_iter().collect::<Vec<_>>(),
         );
-
         app.insert_resource(asset_registry_settings)
             .add_plugin(lgn_async::AsyncPlugin::default())
             .add_plugin(AssetRegistryPlugin::default())
@@ -155,15 +152,14 @@ fn main() {
         .add_system(on_render_surface_created_for_window.exclusive_system());
     }
 
-    // if args.use_asset_registry {
-    // } else if args.setup_name.eq("light_test") {
-    //     app.add_startup_system(init_light_test);
-    // } else if args.meta_cube_size != 0 {
-    //     app.add_plugin(MetaCubePlugin::new(args.meta_cube_size));
-    // } else {
-    //     app.add_startup_system(init_scene);
-    // }
-    app.add_startup_system(init_scene);
+    if args.use_asset_registry {
+    } else if args.setup_name.eq("light_test") {
+        app.add_startup_system(init_light_test);
+    } else if args.meta_cube_size != 0 {
+        app.add_plugin(MetaCubePlugin::new(args.meta_cube_size));
+    } else {
+        app.add_startup_system(init_scene);
+    }
 
     app.run();
 }
@@ -328,52 +324,52 @@ fn init_light_test(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelM
 }
 
 fn init_scene(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
-    // commands
-    //     .spawn()
-    //     .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-    //         -0.5, -0.1, 0.0,
-    //     )))
-    //     .insert(VisualComponent::new(
-    //         Some(*model_manager.default_model_id(DefaultMeshType::Plane)),
-    //         (255, 0, 0).into(),
-    //         1.0,
-    //     ));
+    commands
+        .spawn()
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            -0.5, -0.1, 0.0,
+        )))
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Plane)),
+            (255, 0, 0).into(),
+            1.0,
+        ));
 
-    // commands
-    //     .spawn()
-    //     .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-    //         0.0, 0.0, 0.0,
-    //     )))
-    //     .insert(VisualComponent::new(
-    //         Some(*model_manager.default_model_id(DefaultMeshType::Cube)),
-    //         (0, 255, 0).into(),
-    //         1.0,
-    //     ));
+    commands
+        .spawn()
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.0, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Cube)),
+            (0, 255, 0).into(),
+            1.0,
+        ));
 
-    // commands
-    //     .spawn()
-    //     .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-    //         0.5, 0.0, 0.0,
-    //     )))
-    //     .insert(VisualComponent::new(
-    //         Some(*model_manager.default_model_id(DefaultMeshType::Pyramid)),
-    //         (0, 0, 255).into(),
-    //         1.0,
-    //     ));
+    commands
+        .spawn()
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            0.5, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Pyramid)),
+            (0, 0, 255).into(),
+            1.0,
+        ));
 
-    // // omnidirectional light
-    // commands
-    //     .spawn()
-    //     .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-    //         1.0, 1.0, 0.0,
-    //     )))
-    //     .insert(LightComponent {
-    //         light_type: LightType::Omnidirectional,
-    //         radiance: 10.0,
-    //         color: Color::new(127, 127, 127, 255),
-    //         enabled: true,
-    //         ..LightComponent::default()
-    //     });
+    // omnidirectional light
+    commands
+        .spawn()
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            1.0, 1.0, 0.0,
+        )))
+        .insert(LightComponent {
+            light_type: LightType::Omnidirectional,
+            radiance: 10.0,
+            color: Color::new(127, 127, 127, 255),
+            enabled: true,
+            ..LightComponent::default()
+        });
 }
 
 fn on_snapshot_app_exit(

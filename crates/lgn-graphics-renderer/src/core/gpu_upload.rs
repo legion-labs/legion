@@ -144,8 +144,9 @@ impl GpuUploadManager {
                             transient_alloc.buffer(),
                             &texture,
                             &CmdCopyBufferToTextureParams {
+                                buffer_offset: transient_alloc.byte_offset(),
+                                array_layer: 0,
                                 mip_level: mip_level as u8,
-                                ..CmdCopyBufferToTextureParams::default()
                             },
                         );
                     }
@@ -167,6 +168,10 @@ impl GpuUploadManager {
         graphics_queue
             .queue_mut()
             .submit(&[cmd_buffer], &[], &[], None);
+
+        println!("before");
+        graphics_queue.queue_mut().wait_for_queue_idle();
+        println!("after");
 
         transient_commandbuffer_allocator.release(cmd_buffer_handle);
     }

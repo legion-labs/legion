@@ -45,8 +45,12 @@ embedded_watched_file!(INCLUDE_COMMON, "gpu/include/common.hsh");
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
 embedded_watched_file!(INCLUDE_TRANSFORM, "gpu/include/transform.hsh");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
-struct IndirectDispatch(bool);
-struct GatherPerfStats(bool);
+
+#[derive(Clone, Copy)]
+struct GpuCullingOptions {
+    indirect_dispatch: bool,
+    gather_perf_stats: bool,
+}
 
 pub(crate) enum DefaultLayers {
     Depth = 0,
@@ -312,7 +316,7 @@ impl MeshRenderer {
         let readback = self
             .culling_buffers
             .stats_buffer
-            .begin_readback(&device_context);
+            .begin_readback(device_context);
 
         readback.read_gpu_data(
             0,
@@ -326,7 +330,7 @@ impl MeshRenderer {
 
         if count_buffer_size != 0 {
             create_or_replace_buffer(
-                &device_context,
+                device_context,
                 &mut self.culling_buffers.draw_count,
                 std::mem::size_of::<u32>() as u64,
                 count_buffer_size,
@@ -340,10 +344,10 @@ impl MeshRenderer {
 
         if indirect_arg_buffer_size != 0 {
             create_or_replace_buffer(
-                &device_context,
+                device_context,
                 &mut self.culling_buffers.draw_args,
-                std::mem::size_of::<u32>() as u64,
-                indirect_arg_buffer_size * 5,
+                5 * std::mem::size_of::<u32>() as u64,
+                indirect_arg_buffer_size,
                 ResourceUsage::AS_INDIRECT_BUFFER
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
@@ -352,7 +356,7 @@ impl MeshRenderer {
         }
 
         create_or_replace_buffer(
-            &device_context,
+            device_context,
             &mut self.culling_buffers.culled_count,
             std::mem::size_of::<u32>() as u64,
             1,
@@ -364,7 +368,7 @@ impl MeshRenderer {
         );
 
         create_or_replace_buffer(
-            &device_context,
+            device_context,
             &mut self.culling_buffers.tmp_culled_count,
             std::mem::size_of::<u32>() as u64,
             1,
@@ -376,7 +380,7 @@ impl MeshRenderer {
         );
 
         create_or_replace_buffer(
-            &device_context,
+            device_context,
             &mut self.culling_buffers.culled_args,
             std::mem::size_of::<(u32, u32, u32)>() as u64,
             1,
@@ -388,7 +392,7 @@ impl MeshRenderer {
         );
 
         create_or_replace_buffer(
-            &device_context,
+            device_context,
             &mut self.culling_buffers.tmp_culled_args,
             std::mem::size_of::<(u32, u32, u32)>() as u64,
             1,
@@ -401,7 +405,7 @@ impl MeshRenderer {
 
         if !self.gpu_instance_data.is_empty() {
             create_or_replace_buffer(
-                &device_context,
+                device_context,
                 &mut self.culling_buffers.culled_instances,
                 std::mem::size_of::<GpuInstanceData>() as u64,
                 self.gpu_instance_data.len() as u64,
@@ -412,7 +416,7 @@ impl MeshRenderer {
             );
 
             create_or_replace_buffer(
-                &device_context,
+                device_context,
                 &mut self.culling_buffers.culling_debug,
                 std::mem::size_of::<CullingDebugData>() as u64,
                 self.gpu_instance_data.len() as u64,
@@ -423,7 +427,7 @@ impl MeshRenderer {
             );
 
             create_or_replace_buffer(
-                &device_context,
+                device_context,
                 &mut self.culling_buffers.tmp_culled_instances,
                 std::mem::size_of::<GpuInstanceData>() as u64,
                 self.gpu_instance_data.len() as u64,
@@ -440,7 +444,7 @@ impl MeshRenderer {
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut CommandBuffer,
         culling_buffers: &CullingArgBuffers,
-        culling_options: &(IndirectDispatch, GatherPerfStats),
+        culling_options: GpuCullingOptions,
         culling_args: (u32, u32, u32, Vec2),
         input_buffers: (
             TransientBufferView,
@@ -449,8 +453,8 @@ impl MeshRenderer {
         ),
     ) {
         cmd_buffer.with_label("Cull", |cmd_buffer| {
-            let indirect_dispatch = culling_options.0 .0;
-            let gather_perf_stats = culling_options.1 .0;
+            let indirect_dispatch = culling_options.indirect_dispatch;
+            let gather_perf_stats = culling_options.gather_perf_stats;
 
             let draw_count = culling_buffers.draw_count.as_ref().unwrap();
             let draw_args = culling_buffers.draw_args.as_ref().unwrap();
@@ -555,7 +559,12 @@ impl MeshRenderer {
                     self.depth_count_buffer_count * std::mem::size_of::<u32>() as u64;
                 cmd_buffer.cmd_fill_buffer(&draw_count.buffer, 0, depth_count_size, 0);
             } else {
-                cmd_buffer.cmd_fill_buffer(&draw_count.buffer, 0, !0, 0);
+                cmd_buffer.cmd_fill_buffer(
+                    &draw_count.buffer,
+                    0,
+                    draw_count.buffer.definition().size,
+                    0,
+                );
                 cmd_buffer.cmd_fill_buffer(&culled_count.buffer, 0, 4, 0);
                 cmd_buffer.cmd_fill_buffer(&culled_args.buffer, 0, 4, 0);
             }
@@ -597,7 +606,7 @@ impl MeshRenderer {
 
             let mut options = CullingOptions::empty();
             if gather_perf_stats {
-                options |= CullingOptions::GATHER_PERF_STATS;
+                // options |= CullingOptions::GATHER_PERF_STATS;
             }
 
             let mut culling_constant_data = cgen::cgen_type::CullingPushConstantData::default();
@@ -738,7 +747,10 @@ impl MeshRenderer {
                 render_context,
                 cmd_buffer,
                 &self.culling_buffers,
-                &(IndirectDispatch(false), GatherPerfStats(true)),
+                GpuCullingOptions {
+                    indirect_dispatch: false,
+                    gather_perf_stats: true,
+                },
                 (
                     0,
                     render_pass_data.len() as u32,
@@ -779,7 +791,10 @@ impl MeshRenderer {
                 render_context,
                 cmd_buffer,
                 &self.culling_buffers,
-                &(IndirectDispatch(true), GatherPerfStats(true)),
+                GpuCullingOptions {
+                    indirect_dispatch: true,
+                    gather_perf_stats: true,
+                },
                 (
                     0,
                     render_pass_data.len() as u32,

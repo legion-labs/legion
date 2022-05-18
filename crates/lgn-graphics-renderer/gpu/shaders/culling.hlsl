@@ -112,15 +112,16 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
                 uint count_offset = static_buffer.Load<uint>(offset_va);
                 uint indirect_arg_offset = static_buffer.Load<uint>(offset_va + 4);
 
-                uint element_offset = 0;
-                InterlockedAdd(draw_count[count_offset], 1, element_offset);
-                uint inirect_offset = (indirect_arg_offset + element_offset) * 5;
+                uint prev_draw_count = 0;
+                InterlockedAdd(draw_count[count_offset], 1, prev_draw_count);
+                
+                uint indirect_offset = (indirect_arg_offset + prev_draw_count) * 5;
 
-                draw_args[inirect_offset + 0] = mesh_desc.index_count;
-                draw_args[inirect_offset + 1] = 1;
-                draw_args[inirect_offset + 2] = (addresses.mesh_description_va + mesh_desc.index_offset) / 2;
-                draw_args[inirect_offset + 3] = 0;
-                draw_args[inirect_offset + 4] = instance_data.gpu_instance_id;
+                draw_args[indirect_offset + 0] =  mesh_desc.index_count;
+                draw_args[indirect_offset + 1] = 1;
+                draw_args[indirect_offset + 2] = (addresses.mesh_description_va + mesh_desc.index_offset) / 2;
+                draw_args[indirect_offset + 3] = 0;
+                draw_args[indirect_offset + 4] = instance_data.gpu_instance_id;
             }
         }
     }
