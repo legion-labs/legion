@@ -49,13 +49,6 @@ pub async fn build(
 ) {
     let root_folder = root_folder.as_ref();
 
-    let temp_dir = std::env::current_dir().unwrap().join("target/build_db");
-    if !temp_dir.exists() {
-        fs::create_dir_all(&temp_dir).expect("unable to create temp sub-folder");
-    }
-
-    let build_index_dir = temp_dir.clone();
-
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
 

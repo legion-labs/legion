@@ -25,9 +25,6 @@ enum Commands {
     /// Create build index at a specified location
     #[clap(name = "create")]
     Create {
-        /// Path to build output database.
-        #[clap(long = "output")]
-        build_output: String,
         /// Source project path.
         #[clap(long)]
         project: PathBuf,
@@ -40,9 +37,6 @@ enum Commands {
         /// Source project path.
         #[clap(long = "project")]
         project: PathBuf,
-        /// Build index file.
-        #[clap(long = "output")]
-        build_output: String,
         /// Accept ResourceId as the compilation input and output a runtime manifest.
         #[clap(long = "rt")]
         runtime_flag: bool,
@@ -79,7 +73,6 @@ async fn main() -> Result<(), String> {
 
     match args.command {
         Commands::Create {
-            build_output,
             project: project_dir,
         } => {
             let (mut build, project) = DataBuildOptions::new(
@@ -101,7 +94,6 @@ async fn main() -> Result<(), String> {
         Commands::Compile {
             resource,
             project: project_dir,
-            build_output,
             runtime_flag,
             target,
             platform,

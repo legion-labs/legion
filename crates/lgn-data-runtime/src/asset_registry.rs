@@ -171,7 +171,6 @@ impl AssetRegistryOptions {
         provider: Arc<Provider>,
         manifest: Manifest,
         build_bin: impl AsRef<Path>,
-        output_db_addr: String,
         project: impl AsRef<Path>,
         force_recompile: bool,
     ) -> Self {
@@ -179,7 +178,6 @@ impl AssetRegistryOptions {
             manifest,
             provider,
             build_bin,
-            output_db_addr,
             project,
             force_recompile,
         )));

@@ -15,17 +15,6 @@ server_addr = "[::1]:50001"
 # The scene to load.
 scene = "/world/sample_1.ent"
 
-# The address to database hosting build results.
-#
-# Two kinds of paths are supported:
-# - An address to a mysql instance (i.e.: "mysql://user:pass@127.0.0.1:6603/")
-# - Directory path for local sqlite database. (i.e.: "tests/sample-data/temp/")
-#
-# If a relative directory path is given, it is relative to the project root.
-#
-# Default:
-#build_output_database_address = "temp"
-
 # The way data compilation is performed. Possible values:
 #
 # "InProcess" - (default) compilers run in editor-srv process.

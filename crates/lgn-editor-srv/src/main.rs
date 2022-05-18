@@ -75,9 +75,6 @@ struct Args {
     /// Enable a testing code path
     #[clap(long)]
     test: Option<String>,
-    /// Build output database address.
-    #[clap(long)]
-    build_output_database_address: Option<String>,
     /// The compilation mode of the editor.
     #[clap(long)]
     compilers: Option<CompilationMode>,
@@ -95,9 +92,6 @@ struct Config {
     /// The scene.
     scene: Option<String>,
 
-    #[serde(default = "Config::default_build_output_database_address")]
-    build_output_database_address: String,
-
     /// The streamer configuration.
     #[serde(default)]
     streamer: lgn_streamer::Config,
@@ -114,10 +108,6 @@ impl Config {
     fn default_listen_endpoint() -> SocketAddr {
         "[::1]:50051".parse().unwrap()
     }
-
-    fn default_build_output_database_address() -> String {
-        "target/build_db".to_string()
-    }
 }
 
 impl Default for Config {
@@ -126,7 +116,6 @@ impl Default for Config {
             listen_endpoint: Self::default_listen_endpoint(),
             project_root: None,
             scene: None,
-            build_output_database_address: Self::default_build_output_database_address(),
             streamer: lgn_streamer::Config::default(),
             enable_aws_ec2_nat_public_ipv4_auto_discovery: false,
             compilers: CompilationMode::default(),
@@ -196,38 +185,6 @@ fn main() {
 
     info!("Repository name: {}", repository_name);
 
-    let build_output_database_address = args
-        .build_output_database_address
-        .unwrap_or(config.build_output_database_address);
-
-    let build_output_database_address = if build_output_database_address.starts_with("mysql:") {
-        info!("Using MySQL database for build output.");
-
-        build_output_database_address
-    } else {
-        info!("Using SQLite database for build output.");
-
-        let path = PathBuf::from_str(&build_output_database_address)
-            .expect("unable to parse build output database address as path");
-
-        let path = if path.is_relative() {
-            cwd.join(path)
-        } else {
-            path
-        };
-        if !path.exists() {
-            std::fs::create_dir_all(&path).expect("failed to create the output directory");
-        }
-        path.to_str()
-            .expect("unable to convert build output database address to string")
-            .to_owned()
-    };
-
-    info!(
-        "Build output database address: {}",
-        build_output_database_address
-    );
-
     let compilation_mode = args.compilers.unwrap_or(config.compilers);
 
     info!("Compilation Mode: {}", compilation_mode);
@@ -276,7 +233,6 @@ fn main() {
             project_root,
             source_control_repository_index,
             repository_name,
-            build_output_database_address,
             compilation_mode,
         ))
         .add_plugin(ResourceRegistryPlugin::default())

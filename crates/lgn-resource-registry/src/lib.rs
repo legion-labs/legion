@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
-use lgn_data_build::{DataBuild, DataBuildOptions};
+use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};

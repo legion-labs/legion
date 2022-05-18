@@ -18,7 +18,6 @@ pub(crate) struct BuildDevice {
     manifest: Manifest,
     provider: Arc<Provider>,
     databuild_bin: PathBuf,
-    output_db_addr: String,
     project: PathBuf,
     force_recompile: bool,
 }
@@ -28,7 +27,6 @@ impl BuildDevice {
         manifest: Manifest,
         provider: Arc<Provider>,
         build_bin: impl AsRef<Path>,
-        output_db_addr: String,
         project: impl AsRef<Path>,
         force_recompile: bool,
     ) -> Self {
@@ -36,7 +34,6 @@ impl BuildDevice {
             manifest,
             provider,
             databuild_bin: build_bin.as_ref().to_owned(),
-            output_db_addr,
             project: project.as_ref().to_owned(),
             force_recompile,
         }
@@ -67,12 +64,7 @@ impl Device for BuildDevice {
 
 impl BuildDevice {
     fn build_resource(&self, resource_id: ResourceTypeAndId) -> io::Result<Manifest> {
-        let mut command = build_command(
-            &self.databuild_bin,
-            resource_id,
-            &self.output_db_addr,
-            &self.project,
-        );
+        let mut command = build_command(&self.databuild_bin, resource_id, &self.project);
 
         info!("Running DataBuild for ResourceId: {}", resource_id);
         info!("{:?}", command);
@@ -121,7 +113,6 @@ impl BuildDevice {
 fn build_command(
     databuild_path: impl AsRef<Path>,
     resource_id: ResourceTypeAndId,
-    output_db_addr: &str,
     project: impl AsRef<Path>,
 ) -> std::process::Command {
     let target = "game";
@@ -134,7 +125,6 @@ fn build_command(
     command.arg(format!("--target={}", target));
     command.arg(format!("--platform={}", platform));
     command.arg(format!("--locale={}", locale));
-    command.arg(format!("--output={}", output_db_addr));
     command.arg(format!("--project={}", project.as_ref().to_str().unwrap()));
     command
 }
