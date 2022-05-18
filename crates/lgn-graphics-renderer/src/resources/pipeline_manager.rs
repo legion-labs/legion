@@ -69,10 +69,10 @@ impl PipelineManager {
                 }
             }
         }
-            let mut infos = self.infos.write();
+        let mut infos = self.infos.write();
         infos.push(PipelineInfo { pipeline_def });
-            PipelineHandle(infos.len() - 1)
-        }
+        PipelineHandle(infos.len() - 1)
+    }
 
     #[span_fn]
     pub fn frame_update(&mut self, device_context: &DeviceContext) {
@@ -91,10 +91,10 @@ impl PipelineManager {
                         device_context.create_compute_pipeline(compute_pipeline_def.clone())
                     }
                 };
-                    self.pipelines[i] = Some(pipeline);
-                }
+                self.pipelines[i] = Some(pipeline);
             }
         }
+    }
 
     #[span_fn]
     pub fn create_shader(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<Shader> {

@@ -500,14 +500,14 @@ fn render_update(
     }
 
     let picked_drawables = q_picked_drawables
-            .iter()
-            .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
+        .iter()
+        .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
     let manipulator_drawables = q_manipulator_drawables
-            .iter()
-            .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
+        .iter()
+        .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
     let lights = q_lights
-            .iter()
-            .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
+        .iter()
+        .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
 
     //
     // Wait for render thread
@@ -537,8 +537,8 @@ fn render_update(
     //
 
     task_pool.scope( |scope| {
-        scope.spawn( async  { 
-            span_scope_named!("render_thread");       
+        scope.spawn(  async move {
+        span_scope_named!("render_thread");       
 
         let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
         let default_camera = CameraComponent::default();
@@ -549,21 +549,20 @@ fn render_update(
         };
 
         let mut render_scope = render_resources.get_mut::<RenderScope>();
-        
-        let mut descriptor_heap_manager = render_resources.get_mut::<DescriptorHeapManager>();        
+        let mut descriptor_heap_manager = render_resources.get_mut::<DescriptorHeapManager>();
         let device_context = render_resources.get::<GfxApiArc>().device_context().clone();
         let static_buffer = render_resources.get::<UnifiedStaticBuffer>();
         let mut transient_buffer = render_resources.get_mut::<TransientBufferManager>();
         let transient_commandbuffer_manager =
         render_resources.get::<TransientCommandBufferManager>();
-        
+
         //
         // Begin frame (before commands)
         //
 
         render_scope.begin_frame();
         descriptor_heap_manager.begin_frame();
-        
+
         device_context.free_gpu_memory();
         device_context.inc_current_cpu_frame();
 
@@ -578,18 +577,17 @@ fn render_update(
         render_resources
             .get_mut::<RenderCommandManager>()
             .apply(&render_resources);
-        
+
         let render_objects = render_resources.get::<RenderObjects>();
         render_resources.get::<LightingManager>().frame_update(&render_objects);
         persistent_descriptor_set_manager.frame_update();
         pipeline_manager.frame_update(&device_context);
-        
-        
+
         let mut transient_commandbuffer_allocator =
             TransientCommandBufferAllocator::new(&transient_commandbuffer_manager);
-        
+
         let graphics_queue = render_resources.get::<GraphicsQueue>();
-                
+
         let mut transient_buffer_allocator =
         TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
@@ -939,12 +937,12 @@ fn render_update(
         transient_commandbuffer_manager.end_frame();
         mesh_renderer.end_frame();
 
-    }
-        
-        renderdoc_manager.end_frame_capture();    
+        }
 
-    } );
-    } );
+        renderdoc_manager.end_frame_capture();
+
+    });
+    });
 }
 
 fn default_descriptor_heap_size() -> DescriptorHeapDef {
