@@ -47,7 +47,46 @@ impl Display for IndexKeyDisplayFormat {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+struct CompositeIndexKey {
+    #[serde(rename = "f")]
+    first: IndexKey,
+    #[serde(rename = "s")]
+    second: IndexKey,
+}
+
 impl IndexKey {
+    /// Compose an index key from two other index keys.
+    ///
+    /// This is useful when dealing with composite indexes.
+    pub fn compose(first: impl Into<Self>, second: impl Into<Self>) -> Self {
+        rmp_serde::to_vec(&CompositeIndexKey {
+            first: first.into(),
+            second: second.into(),
+        })
+        .unwrap()
+        .into()
+    }
+
+    /// Compose this index key with another index key.
+    #[must_use]
+    pub fn compose_with(self, other: Self) -> Self {
+        Self::compose(self, other)
+    }
+
+    /// Decompose an index key into two other index keys.
+    ///
+    /// # Errors
+    ///
+    /// If the index key is not a composite index key, `Error::InvalidIndexKey` will be returned.
+    pub fn decompose(&self) -> Result<(Self, Self)> {
+        rmp_serde::from_slice(&self.0)
+            .map_err(|err| {
+                Error::InvalidIndexKey(format!("failed to decompose index key: {}", err))
+            })
+            .map(|CompositeIndexKey { first, second }| (first, second))
+    }
+
     /// Instanciates a new index key from its hexadecimal representation.
     ///
     /// # Errors
@@ -334,5 +373,17 @@ mod tests {
             b"hello".into_index_key().to_utf8_string().unwrap(),
             "hello".to_string(),
         );
+    }
+
+    #[test]
+    fn test_composite_index_key() {
+        let first = "first".into_index_key();
+        let second = "second".into_index_key();
+        let key = first.compose_with(second);
+
+        let (first, second) = key.decompose().unwrap();
+
+        assert_eq!(first, "first".into_index_key());
+        assert_eq!(second, "second".into_index_key());
     }
 }

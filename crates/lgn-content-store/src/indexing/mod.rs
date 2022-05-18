@@ -1,5 +1,6 @@
 //! Indexing facilities backed by the content-store.
 
+mod composite_indexer;
 mod errors;
 mod graphviz_visitor;
 mod index_key;
@@ -15,6 +16,7 @@ use std::{ops::RangeBounds, pin::Pin};
 
 use async_stream::stream;
 use async_trait::async_trait;
+pub use composite_indexer::CompositeIndexer;
 pub use errors::{Error, Result};
 pub use graphviz_visitor::GraphvizVisitor;
 pub use index_key::{IndexKey, IndexKeyBound, IndexKeyDisplayFormat};
