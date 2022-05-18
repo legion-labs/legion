@@ -25,9 +25,9 @@ May 2022
 
 - One protocol
   * Structured events
-  * time series are not general enough
+  * Time series are not general enough
 - One data lake
-  * no loose files
+  * No loose files
 - One UI
   * High performance web user interface
   * Tight integration between the logs, metrics & traces
@@ -37,22 +37,22 @@ May 2022
 ## Designed for scale
 
 - High event density: 40 ns overhead / event
-  * platform-specific memory layout
-  * the protocol is the memory layout
+  * Platform-specific memory layout
+  * The protocol is the memory layout
 - Store everything: event batch stored in S3
-  * shallow metadata index in SQL database
+  * Shallow metadata index in SQL database
 - Distributed ingestion
-  * optimized & stateless
+  * Optimized & stateless
 
 ---
 # Legion Performance Analytics
 ## Analytics is the new profiling
 
 - Designed for iterating in development
-  * data available as soon as it is sent
-  * no nightly indexing job
+  * Data available as soon as it is sent
+  * No nightly indexing job
 - Faster reaction time
-  * know the bugs *before* they become problems
+  * Know the bugs *before* they become problems
 - Understand the issue without reproducing it
 - Spend time on the worst issues, not the first one you find
 
