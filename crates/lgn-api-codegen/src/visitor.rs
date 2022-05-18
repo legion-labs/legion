@@ -500,9 +500,9 @@ impl<'a> Visitor<'a> {
 
 #[cfg(test)]
 mod tests {
-    use indexmap::IndexMap;
-
     use crate::api::ContentType;
+    use crate::Error;
+    use indexmap::IndexMap;
 
     use super::*;
 
@@ -1178,5 +1178,32 @@ mod tests {
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(api.paths.get(&"/pets".into()), Some(&vec![expected_route]));
+    }
+
+    #[test]
+    fn test_unsupported_content_type() {
+        let paths = serde_yaml::from_str::<openapiv3::Paths>(
+            r#"
+            /pets:
+              post:
+                operationId: addPet
+                responses:
+                  '200':
+                    description: Successful
+                requestBody:
+                  content:
+                    test/test:
+                      schema:
+                        type: string
+            "#,
+        )
+        .unwrap();
+
+        let oas = openapiv3::OpenAPI {
+            paths,
+            ..openapiv3::OpenAPI::default()
+        };
+        let result = visit(&oas);
+        assert!(result.is_err());
     }
 }
