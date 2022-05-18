@@ -16,6 +16,7 @@ use lgn_telemetry_proto::analytics::CumulativeCallGraphBlock;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphComputedBlock;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
+use lgn_telemetry_proto::analytics::Level;
 use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
 use lgn_telemetry_proto::analytics::ListProcessStreamsRequest;
 use lgn_telemetry_proto::analytics::ListStreamBlocksReply;
@@ -227,16 +228,15 @@ impl AnalyticsService {
         process: &lgn_telemetry_sink::ProcessInfo,
         begin: u64,
         end: u64,
-        search: String,
+        search: &Option<String>,
+        level_threshold: Option<Level>,
     ) -> Result<ProcessLogReply> {
         let mut connection = self.pool.acquire().await?;
         let mut entries = vec![];
         let mut entry_index: u64 = 0;
 
-        let needles = if search.is_empty() {
-            None
-        } else {
-            Some(
+        let needles = match search {
+            Some(search) if !search.is_empty() => Some(
                 search
                     .split(' ')
                     .filter_map(|part| {
@@ -247,7 +247,8 @@ impl AnalyticsService {
                         }
                     })
                     .collect::<Vec<String>>(),
-            )
+            ),
+            _ => None,
         };
 
         for stream in find_process_log_streams(&mut connection, &process.process_id)
@@ -273,15 +274,20 @@ impl AnalyticsService {
                             }
 
                             if entry_index >= begin {
-                                if let Some(ref needles) = needles {
-                                    if log_entry.matches(needles) {
-                                        entries.push(log_entry);
-                                        entry_index += 1;
-                                    }
-                                } else {
+                                let valid_content = needles
+                                    .as_ref()
+                                    .map_or(true, |needles| log_entry.matches(needles.as_ref()));
+
+                                let valid_level = level_threshold.map_or(true, |level_threshold| {
+                                    log_entry.matches(level_threshold)
+                                });
+
+                                if valid_content && valid_level {
                                     entries.push(log_entry);
                                     entry_index += 1;
                                 }
+                            } else {
+                                entry_index += 1;
                             }
 
                             true
@@ -693,18 +699,23 @@ impl PerformanceAnalytics for AnalyticsService {
         async_span_scope!("AnalyticsService::list_process_log_entries");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
-        if inner_request.process.is_none() {
-            error!("Missing process in list_process_log_entries");
-            return Err(Status::internal(String::from(
-                "Missing process in list_process_log_entries",
-            )));
-        }
+        let process = match inner_request.process {
+            Some(process) => process,
+            None => {
+                error!("Missing process in list_process_log_entries");
+                return Err(Status::internal(String::from(
+                    "Missing process in list_process_log_entries",
+                )));
+            }
+        };
+
         match self
             .process_log_impl(
-                &inner_request.process.unwrap(),
+                &process,
                 inner_request.begin,
                 inner_request.end,
-                inner_request.search,
+                &inner_request.search,
+                inner_request.level_threshold.and_then(Level::from_i32),
             )
             .await
         {

@@ -7,6 +7,11 @@
   import type { Process } from "@lgn/proto-telemetry/dist/process";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
   import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
+  import {
+    deleteSearchParam,
+    setSearchParams,
+    updateSearchParams,
+  } from "@lgn/web-client/src/lib/navigation";
   import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
   import L10n from "@/components/Misc/L10n.svelte";
@@ -14,6 +19,7 @@
   import Loader from "@/components/Misc/Loader.svelte";
   import Pagination from "@/components/Misc/Pagination.svelte";
   import SearchInput from "@/components/Misc/SearchInput.svelte";
+  import SelectInput from "@/components/Misc/SelectInput.svelte";
   import Table from "@/components/Misc/Table.svelte";
   import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatProcessName, formatTime } from "@/lib/format";
@@ -31,6 +37,14 @@
     { name: "msg" as const, width: "75%" },
   ];
 
+  const levelThresholdOptions = [
+    { label: "Error", value: "0" },
+    { label: "Warn", value: "1" },
+    { label: "Info", value: "2" },
+    { label: "Debug", value: "3" },
+    { label: "Trace", value: "4" },
+  ];
+
   const processStore = createAsyncStoreOrchestrator<{
     process: Process;
     nbEntries: number;
@@ -40,20 +54,6 @@
 
   const { data: processInfo, loading: processInfoLoading } = processStore;
   const { data: logEntries, loading: logEntriesLoading } = logEntriesStore;
-
-  function redirectSearch({
-    detail: { encodedValue },
-  }: CustomEvent<{ encodedValue: string }>) {
-    goto(
-      `/log/${processId}${
-        encodedValue.length ? `?search=${encodedValue}` : ""
-      }`,
-      {
-        keepfocus: true,
-        replaceState: $page.url.searchParams.has("search"),
-      }
-    );
-  }
 
   function fetchProcessInfo(processId: string) {
     return processStore.run(async () => {
@@ -78,7 +78,8 @@
     nbEntries: number,
     beginRange: number | null,
     endRange: number | null,
-    search: string
+    search: string,
+    levelThreshold: number | null
   ) {
     return logEntriesStore.run(async () => {
       const cleanSearch = search.trim();
@@ -88,6 +89,7 @@
         begin: beginRange ?? 0,
         end: endRange ?? Math.min(nbEntries, MAX_NB_ENTRIES_IN_PAGE),
         search: cleanSearch.length ? cleanSearch : undefined,
+        levelThreshold: levelThreshold ?? undefined,
       });
 
       beginRange = response.begin;
@@ -122,7 +124,50 @@
   }
 
   function buildPaginationHref(begin: number, end: number) {
-    return `/log/${processId}?begin=${begin}&end=${end}`;
+    return setSearchParams($page, {
+      begin: begin.toString(),
+      end: end.toString(),
+    });
+  }
+
+  function redirectSearch({
+    detail: { encodedValue },
+  }: CustomEvent<{ encodedValue: string }>) {
+    goto(
+      updateSearchParams($page, ({ begin, end, search, ...params }) => ({
+        ...params,
+        ...(encodedValue.length ? { search: encodedValue } : {}),
+      })),
+      {
+        keepfocus: true,
+        replaceState: $page.url.searchParams.has("search"),
+      }
+    );
+  }
+
+  function redirectLevelThreshold({ detail: value }: CustomEvent<string>) {
+    goto(
+      updateSearchParams($page, (allParams) => {
+        const { begin, end, "level-threshold": _, ...params } = allParams;
+
+        return {
+          ...params,
+          ...(value.length ? { "level-threshold": value } : {}),
+        };
+      }),
+      {
+        keepfocus: true,
+        replaceState: $page.url.searchParams.has("level-threshold"),
+      }
+    );
+  }
+
+  function clearLevelThreshold() {
+    goto(deleteSearchParam($page, "level-threshold"));
+  }
+
+  function clearSearch() {
+    goto(deleteSearchParam($page, "search"));
   }
 
   $: processId = $page.params.processId;
@@ -132,7 +177,14 @@
 
   $: endParam = $page.url.searchParams.get("end");
 
+  $: levelThresholdParam = $page.url.searchParams.get("level-threshold");
+
   $: searchParam = $page.url.searchParams.get("search") || "";
+
+  $: levelThreshold =
+    levelThresholdParam !== null && !isNaN(+levelThresholdParam)
+      ? +levelThresholdParam
+      : null;
 
   // View range
   $: beginRange =
@@ -155,7 +207,8 @@
       $processInfo.nbEntries,
       beginRange,
       endRange,
-      searchParam
+      searchParam,
+      levelThreshold
     );
   }
 
@@ -177,14 +230,27 @@
   $: formattedTimes =
     $logEntries?.map(({ timeMs }) => formatTime(timeMs)) ?? [];
 
+  $: displayPagination =
+    levelThreshold === null &&
+    !searchPattern.length &&
+    $processInfo &&
+    $processInfo.nbEntries !== null &&
+    $processInfo.nbEntries > MAX_NB_ENTRIES_IN_PAGE;
+
   $: loading = $processInfoLoading || $logEntriesLoading;
 </script>
 
 <Layout>
-  <div slot="header">
+  <div slot="header" class="flex space-x-1">
+    <SelectInput
+      options={levelThresholdOptions}
+      value={levelThresholdParam || ""}
+      on:clear={clearLevelThreshold}
+      on:change={redirectLevelThreshold}
+    />
     <SearchInput
       placeholder={$t("log-search")}
-      on:clear={() => goto(`/log/${processId}`)}
+      on:clear={clearSearch}
       on:debouncedInput={redirectSearch}
       bind:value={searchValue}
     />
@@ -208,7 +274,7 @@
         </div>
       </div>
       <div class="flex items-center h-full">
-        {#if !searchPattern.length && $processInfo.nbEntries !== null && $processInfo.nbEntries > MAX_NB_ENTRIES_IN_PAGE}
+        {#if displayPagination}
           <Pagination
             begin={beginRange || 0}
             end={endRange || MAX_NB_ENTRIES_IN_PAGE}

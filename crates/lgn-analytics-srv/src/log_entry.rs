@@ -1,15 +1,18 @@
-use lgn_telemetry_proto::analytics::LogEntry;
+use lgn_telemetry_proto::analytics::{Level, LogEntry};
 
 pub(crate) trait Searchable<Needle> {
     fn matches(&self, needle: Needle) -> bool;
 }
 
-impl<'a, Needles> Searchable<Needles> for LogEntry
-where
-    Needles: 'a + AsRef<[String]>,
-{
-    fn matches(&self, needle: Needles) -> bool {
-        for needle in needle.as_ref() {
+impl Searchable<Level> for LogEntry {
+    fn matches(&self, level: Level) -> bool {
+        self.level() <= level
+    }
+}
+
+impl<'a> Searchable<&'a [String]> for LogEntry {
+    fn matches(&self, needles: &'a [String]) -> bool {
+        for needle in needles {
             if self.target.to_lowercase().contains(needle)
                 || self.msg.to_lowercase().contains(needle)
             {
