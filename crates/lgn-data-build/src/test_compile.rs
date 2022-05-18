@@ -100,6 +100,7 @@ mod tests {
 
         let handle = project
             .load_resource(resource_id, &resources)
+            .await
             .expect("to load resource")
             .typed::<refs_resource::TestResource>();
 
@@ -669,6 +670,7 @@ mod tests {
 
             let handle = project
                 .load_resource(source_id, &resources)
+                .await
                 .expect("to load resource")
                 .typed::<multitext_resource::MultiTextResource>();
 
@@ -710,6 +712,7 @@ mod tests {
 
             let handle = project
                 .load_resource(source_id, &resources)
+                .await
                 .expect("to load resource")
                 .typed::<multitext_resource::MultiTextResource>();
 

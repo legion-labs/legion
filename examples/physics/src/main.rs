@@ -413,6 +413,7 @@ async fn create_offline_entity(
     let handle = if exists {
         project
             .load_resource(type_id, resources)
+            .await
             .expect("failed to load resource")
     } else {
         resources
@@ -471,6 +472,7 @@ async fn create_offline_model(
     let handle = if exists {
         project
             .load_resource(type_id, resources)
+            .await
             .expect("failed to load resource")
     } else {
         resources

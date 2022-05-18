@@ -462,21 +462,17 @@ impl Project {
 
     /// Loads a resource of a given id.
     #[allow(clippy::unused_self)]
-    pub fn load_resource(
+    pub async fn load_resource(
         &self,
-        _type_id: ResourceTypeAndId,
-        _resources: &AssetRegistry,
+        type_id: ResourceTypeAndId,
+        resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
-        // let resource_path = self.resource_path(type_id.id);
-
-        // let mut resource_file =
-        //     File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
-        // let handle = resources
-        //     .deserialize_resource(type_id, &mut resource_file)
-        //     .map_err(|e| Error::ResourceRegistry(type_id, e))?;
-        // Ok(handle)
-
-        Err(Error::FileNotFound("not implemented".to_owned()))
+        self.workspace
+            .load_resource(type_id.id.as_raw(), |reader| {
+                resources.deserialize_resource(type_id, reader)
+            })
+            .await?
+            .map_err(|e| Error::ResourceRegistry(type_id, e))
     }
 
     /// Returns information about a given resource from its `.meta` file.
@@ -1044,7 +1040,7 @@ mod tests {
 
         // modify before commit
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).await.unwrap();
             let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             content.content = 8;
             handle.apply(content, &resources);
@@ -1062,7 +1058,7 @@ mod tests {
 
         // modify resource
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).await.unwrap();
             let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             assert_eq!(content.content, 8);
             content.content = 9;
@@ -1098,7 +1094,7 @@ mod tests {
 
         // modify resource
         let original_content = {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).await.unwrap();
             let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             let previous_value = content.content;
             content.content = 9;
@@ -1112,7 +1108,7 @@ mod tests {
         };
 
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).await.unwrap();
             let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             content.content = original_content;
             handle.apply(content, &resources);

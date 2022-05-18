@@ -141,6 +141,7 @@ pub async fn build_offline(
 
                     let handle = project
                         .load_resource(resource_id, &resources)
+                        .await
                         .unwrap()
                         .typed::<offline_data::Entity>();
 
@@ -480,6 +481,7 @@ async fn load_psd_resource(
 
     let resource = project
         .load_resource(resource_id, resources)
+        .await
         .unwrap()
         .typed::<PsdFile>();
 

@@ -2,13 +2,12 @@ use std::collections::BTreeSet;
 
 use lgn_content_store::{
     indexing::{
-        IndexableResource, ResourceIdentifier, ResourceWriter, StaticIndexer, StringPathIndexer,
-        Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
+        IndexableResource, ResourceIdentifier, ResourceReader, ResourceWriter, StaticIndexer,
+        StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
     },
     Provider,
 };
 use lgn_tracing::error;
-use serde::Serialize;
 
 use crate::{
     Branch, Change, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
@@ -139,13 +138,47 @@ impl Workspace {
     }
     */
 
-    pub async fn resource_exists(&self, id: WorkspaceResourceId) -> Result<bool> {
-        Ok(self
+    async fn get_resource_identifier(
+        &self,
+        id: WorkspaceResourceId,
+    ) -> Result<Option<ResourceIdentifier>> {
+        let leaf_node = self
             .main_index
             .get_leaf(&self.transaction, &self.main_index_tree_id, &id.into())
             .await
-            .map_other_err("reading main index")?
-            .is_some())
+            .map_other_err("reading main index")?;
+
+        match leaf_node {
+            Some(leaf_node) => match leaf_node {
+                TreeLeafNode::Resource(resource_id) => Ok(Some(resource_id)),
+                TreeLeafNode::TreeRoot(tree_id) => Err(Error::CorruptedIndex { tree_id }),
+            },
+            None => Ok(None),
+        }
+    }
+
+    pub async fn resource_exists(&self, id: WorkspaceResourceId) -> Result<bool> {
+        let resource_id = self.get_resource_identifier(id).await?;
+        Ok(resource_id.is_some())
+    }
+
+    pub async fn load_resource<F, R>(&self, id: WorkspaceResourceId, f: F) -> Result<R>
+    where
+        F: FnOnce(&mut dyn std::io::Read) -> R,
+    {
+        if let Some(resource_id) = self.get_resource_identifier(id).await? {
+            let resource = self
+                .transaction
+                .read_resource::<WorkspaceResourceReader>(&resource_id)
+                .await
+                .map_other_err("reading resource")?;
+
+            let mut cursor = std::io::Cursor::new(resource.0);
+
+            Ok(f(&mut cursor))
+        } else {
+            Err(Error::ResourceNotFound { id })
+        }
     }
 
     /// Add a resource to the local changes.
@@ -158,7 +191,7 @@ impl Workspace {
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
-        let resource_contents = WorkspaceResourceContents(contents);
+        let resource_contents = WorkspaceResourceWriter(contents);
 
         let resource_identifier = self
             .transaction
@@ -1019,15 +1052,28 @@ impl Workspace {
 
 pub type WorkspaceResourceId = u128;
 
-struct WorkspaceResourceContents<'a>(&'a [u8]);
+struct WorkspaceResourceWriter<'a>(&'a [u8]);
 
-impl<'a> IndexableResource for WorkspaceResourceContents<'a> {}
+impl<'a> IndexableResource for WorkspaceResourceWriter<'a> {}
 
-impl<'a> Serialize for WorkspaceResourceContents<'a> {
+impl<'a> serde::Serialize for WorkspaceResourceWriter<'a> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         serializer.serialize_bytes(self.0)
+    }
+}
+
+struct WorkspaceResourceReader(Vec<u8>);
+
+impl IndexableResource for WorkspaceResourceReader {}
+
+impl<'de> serde::Deserialize<'de> for WorkspaceResourceReader {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(Self(Vec::<u8>::deserialize(deserializer)?))
     }
 }

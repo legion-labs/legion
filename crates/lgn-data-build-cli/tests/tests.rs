@@ -177,6 +177,7 @@ async fn build_device() {
 
         let resource = project
             .load_resource(source_id, &resources)
+            .await
             .expect("existing resource")
             .typed::<refs_resource::TestResource>();
 

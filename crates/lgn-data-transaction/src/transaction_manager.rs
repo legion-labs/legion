@@ -190,6 +190,7 @@ impl TransactionManager {
                     let start = std::time::Instant::now();
                     project
                         .load_resource(type_id, &self.asset_registry)
+                        .await
                         .map_or_else(
                             |err| {
                                 warn!("Failed to load {}: {}", type_id, err);
