@@ -28,10 +28,10 @@ use axum::{
                     {% for (status_code, response) in route.responses %}
                         {%- if let Some(content) = response.content -%}
                             {{ enum_name }}::{{ status_code }}(inner) => {
-                                {% match content.content_type -%}
-                                    {% when ContentType::Json -%}
+                                {% match content.media_type -%}
+                                    {% when MediaType::Json -%}
                                         let inner = Json(inner);
-                                    {% when ContentType::Bytes -%}
+                                    {% when MediaType::Bytes -%}
                                         let inner: Vec<u8> = inner.into();
                                 {% endmatch -%}
                                 (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), inner).into_response()
@@ -57,10 +57,10 @@ use axum::{
                             {{ status_code.as_u16() }} => 
                                 Ok(Self::{{ status_code }}
                                     {%- if let Some(content) = response.content -%}
-                                        {% match content.content_type %}
-                                            {% when ContentType::Json %}
+                                        {% match content.media_type %}
+                                            {% when MediaType::Json %}
                                                 (response.json().await?)
-                                            {% when ContentType::Bytes %}
+                                            {% when MediaType::Bytes %}
                                                 (response.bytes().await?.into())
                                         {% endmatch %}
                                     {%- endif -%}

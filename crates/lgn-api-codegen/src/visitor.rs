@@ -180,7 +180,7 @@ impl<'a> Visitor<'a> {
                     }
                     _ => {
                         return Err(Error::Unsupported(format!(
-                            "multiple content type on request body: {} {}",
+                            "multiple media type on request body: {} {}",
                             path, method
                         )));
                     }
@@ -190,7 +190,7 @@ impl<'a> Visitor<'a> {
                     description: request_body.description.clone(),
                     required: request_body.required,
                     content: Content {
-                        content_type: media_type.as_str().try_into()?,
+                        media_type: media_type.as_str().try_into()?,
                         type_,
                     },
                 })
@@ -232,7 +232,7 @@ impl<'a> Visitor<'a> {
                 }
                 _ => {
                     return Err(Error::Unsupported(format!(
-                        "multiple content type on response: {} {}",
+                        "multiple media type on response: {} {}",
                         path, method
                     )));
                 }
@@ -256,7 +256,7 @@ impl<'a> Visitor<'a> {
                     description: response.description.clone(),
                     content: match media_type {
                         Some(media_type) => Some(Content {
-                            content_type: media_type.as_str().try_into()?,
+                            media_type: media_type.as_str().try_into()?,
                             type_: type_.ok_or_else(|| {
                                 Error::Invalid("content should have a schema".to_string())
                             })?,
@@ -506,7 +506,7 @@ impl<'a> Visitor<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{Content, ContentType};
+    use crate::api::{Content, MediaType};
     use indexmap::IndexMap;
 
     use super::*;
@@ -984,7 +984,7 @@ mod tests {
                 Response {
                     description: "Successful".to_string(),
                     content: Some(Content {
-                        content_type: ContentType::Json,
+                        media_type: MediaType::Json,
                         type_: Type::Array(Box::new(Type::Struct("Pet".to_string()))),
                     }),
                 },
@@ -1069,7 +1069,7 @@ mod tests {
                 description: None,
                 required: false,
                 content: Content {
-                    content_type: ContentType::Json,
+                    media_type: MediaType::Json,
                     type_: Type::Struct("AddPetBody".to_string()),
                 },
             }),
@@ -1158,7 +1158,7 @@ mod tests {
                 description: None,
                 required: false,
                 content: Content {
-                    content_type: ContentType::Json,
+                    media_type: MediaType::Json,
                     type_: Type::Struct("Pet".to_string()),
                 },
             }),
@@ -1169,7 +1169,7 @@ mod tests {
                     Response {
                         description: "Successful".to_string(),
                         content: Some(Content {
-                            content_type: ContentType::Json,
+                            media_type: MediaType::Json,
                             type_: Type::Struct("Pet".to_string()),
                         }),
                     },
@@ -1192,7 +1192,7 @@ mod tests {
     }
 
     #[test]
-    fn test_unsupported_content_type() {
+    fn test_unsupported_media_type() {
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
             r#"
             /pets:

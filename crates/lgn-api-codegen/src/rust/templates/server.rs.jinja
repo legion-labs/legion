@@ -37,14 +37,14 @@ where
                 Query(query): Query<params::{{ route.name|pascal_case }}Query>,
             {% endif -%}
             {% if let Some(request_body) = route.request_body -%}
-                {% match request_body.content.content_type -%}
-                    {% when ContentType::Json -%}
+                {% match request_body.content.media_type -%}
+                    {% when MediaType::Json -%}
                         {%- if request_body.required -%}
                             Json(body): Json<{{ request_body.content.type_|fmt_type }}>,
                         {%- else -%}
                             Json(body): Json<Option<{{ request_body.content.type_|fmt_type }}>>,
                         {%- endif -%}
-                    {% when ContentType::Bytes -%}
+                    {% when MediaType::Bytes -%}
                         body: Bytes,
                 {% endmatch -%}
             {% endif -%}
@@ -86,10 +86,10 @@ where
                     {{ parameter.name|snake_case }}, 
                 {%- endfor -%}
                 {%- if let Some(request_body) = route.request_body -%}
-                    {% match request_body.content.content_type -%}
-                        {% when ContentType::Json -%}
+                    {% match request_body.content.media_type -%}
+                        {% when MediaType::Json -%}
                             body,
-                        {% when ContentType::Bytes -%}
+                        {% when MediaType::Bytes -%}
                             body.into(),
                     {% endmatch -%}
                 {%- endif -%}

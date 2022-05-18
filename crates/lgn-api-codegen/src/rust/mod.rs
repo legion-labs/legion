@@ -1,7 +1,7 @@
 mod filters;
 
 use crate::{
-    api::{Api, ContentType, Model},
+    api::{Api, MediaType, Model},
     Generator, Result,
 };
 use askama::Template;

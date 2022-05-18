@@ -129,29 +129,29 @@ pub struct Response {
 
 #[derive(Debug, PartialEq)]
 pub struct Content {
-    pub content_type: ContentType,
+    pub media_type: MediaType,
     pub type_: Type,
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ContentType {
+pub enum MediaType {
     Bytes,
     Json,
 }
 
-impl TryFrom<&str> for ContentType {
+impl TryFrom<&str> for MediaType {
     type Error = Error;
 
     fn try_from(s: &str) -> Result<Self> {
         match s {
             "application/octet-stream" => Ok(Self::Bytes),
             "application/json" => Ok(Self::Json),
-            _ => Err(Error::Invalid(format!("content type: {}", s))),
+            _ => Err(Error::Invalid(format!("media type: {}", s))),
         }
     }
 }
 
-impl std::fmt::Display for ContentType {
+impl std::fmt::Display for MediaType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Self::Bytes => "application/octet-stream",
