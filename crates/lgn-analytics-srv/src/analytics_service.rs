@@ -272,17 +272,17 @@ impl AnalyticsService {
                                 return false;
                             }
 
-                            if let Some(ref needles) = needles {
-                                if !log_entry.matches(needles) {
-                                    return false;
+                            if entry_index >= begin {
+                                if let Some(ref needles) = needles {
+                                    if log_entry.matches(needles) {
+                                        entries.push(log_entry);
+                                        entry_index += 1;
+                                    }
+                                } else {
+                                    entries.push(log_entry);
+                                    entry_index += 1;
                                 }
                             }
-
-                            if entry_index >= begin {
-                                entries.push(log_entry);
-                            }
-
-                            entry_index += 1;
 
                             true
                         },
