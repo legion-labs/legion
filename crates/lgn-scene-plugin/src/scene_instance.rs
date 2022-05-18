@@ -208,9 +208,9 @@ impl SceneInstance {
                     let runtime_animation_data = AnimationClip::new(animation_data);
                     entity.insert(runtime_animation_data);
                 } else if let Some(anim_graph) =
-                    component.downcast_ref::<lgn_animation::runtime::EditorGraphDefinition2>()
+                    component.downcast_ref::<lgn_animation::runtime::EditorGraphDefinition>()
                 {
-                    let runtime_anim_graph: GraphDefinition2 = GraphDefinition2::new(anim_graph);
+                    let runtime_anim_graph: GraphDefinition = GraphDefinition::new(anim_graph);
                     entity.insert(runtime_anim_graph);
                 } else {
                     error!(

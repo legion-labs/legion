@@ -991,7 +991,7 @@ async fn create_offline_data(
                 color: (0x20, 0xFF, 0xFF).into(),
                 ..Visual::default()
             }),
-            Box::new(EditorGraphDefinition2 {
+            Box::new(EditorGraphDefinition {
                 states: vec![
                     AnimationClipNode {
                         id: 1,
@@ -1013,7 +1013,6 @@ async fn create_offline_data(
                     },
                 ],
             }),
-            // Box::new(*waving_anim),
         ],
         vec![],
     )

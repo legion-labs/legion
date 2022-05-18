@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use lgn_transform::components::Transform;
 
 use crate::animation_graph_events::SampledEventRange;
@@ -36,15 +37,15 @@ pub trait GraphNode {
     fn mark_node_active();
     fn initialize_internal();
     fn shutdown_internal();
-    const settings: Settings;
-    const last_update_id: u32;
-    const initialization_count: u32 = 0;
+    const SETTINGS: Settings;
+    const LAST_UPDATE_ID: u32;
+    const INITIALIZATION_COUNT: u32 = 0;
 }
 
 pub struct GraphPoseNodeResult {
     task_idx: i8,
     root_motion_delta: Transform,
-    sampled_event_range: SampledEventRange, // TODO SampledEventRange
+    sampled_event_range: SampledEventRange,
 }
 
 pub struct PoseNode {
