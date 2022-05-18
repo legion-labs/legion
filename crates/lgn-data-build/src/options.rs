@@ -5,9 +5,7 @@ use std::{
 
 use lgn_content_store::Provider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::Project;
-use lgn_data_runtime::AssetRegistry;
-use lgn_source_control::{RepositoryIndex, RepositoryName};
+use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
 
 use crate::{DataBuild, Error};
 
@@ -146,31 +144,6 @@ impl DataBuildOptions {
         self
     }
 
-    /// Create new build index for a specified project.
-    ///
-    /// `project_dir` must be either an absolute path or path relative to
-    /// `buildindex_dir`.
-    pub async fn create_with_project(
-        self,
-        project_dir: impl AsRef<Path>,
-        repository_index: impl RepositoryIndex,
-        repository_name: &RepositoryName,
-        branch_name: &str,
-        source_control_content_provider: Provider,
-    ) -> Result<(DataBuild, Project), Error> {
-        let project = Project::open(
-            project_dir,
-            repository_index,
-            repository_name,
-            branch_name,
-            source_control_content_provider,
-        )
-        .await
-        .map_err(Error::from)?;
-        let build = DataBuild::new(self, &project).await?;
-        Ok((build, project))
-    }
-
     /// Opens the existing build index.
     ///
     /// If the build index does not exist it creates one.
@@ -186,7 +159,7 @@ impl DataBuildOptions {
     }
 
     /// Create new build index for a specified project.
-    pub async fn create(self, project: &Project) -> Result<DataBuild, Error> {
-        DataBuild::new(self, project).await
+    pub async fn create(self) -> Result<DataBuild, Error> {
+        DataBuild::new(self).await
     }
 }

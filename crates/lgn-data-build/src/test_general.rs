@@ -52,13 +52,8 @@ mod tests {
         let repository_name: RepositoryName = "default".parse().unwrap();
         let branch_name = "main";
 
-        let build = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::default(),
-            data_content_provider,
-        )
-        .create_with_project(
-            &project_dir,
+        let project = Project::open(
+            project_dir,
             repository_index,
             &repository_name,
             branch_name,
@@ -66,7 +61,15 @@ mod tests {
         )
         .await;
 
-        assert!(build.is_err());
+        let build = DataBuildOptions::new_with_sqlite_output(
+            &output_dir,
+            CompilerRegistryOptions::default(),
+            data_content_provider,
+        )
+        .create()
+        .await;
+
+        assert!(project.is_err() || build.is_err());
     }
 
     #[tokio::test]
@@ -76,14 +79,9 @@ mod tests {
             project_dir,
             output_dir,
             _repository_index,
-            source_control_content_provider,
+            _source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
-
-        let project =
-            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
-                .await
-                .expect("failed to create a project");
 
         let db_uri =
             DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version());
@@ -94,7 +92,7 @@ mod tests {
                 data_content_provider,
                 CompilerRegistryOptions::default(),
             )
-            .create(&project)
+            .create()
             .await
             .expect("valid data build index");
         }

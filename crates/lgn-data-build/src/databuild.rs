@@ -135,7 +135,7 @@ impl DataBuild {
         Ok(options.create().await)
     }
 
-    pub(crate) async fn new(config: DataBuildOptions, _project: &Project) -> Result<Self, Error> {
+    pub(crate) async fn new(config: DataBuildOptions) -> Result<Self, Error> {
         let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
 
         let output_index = OutputIndex::create_new(config.output_db_addr).await?;
@@ -248,12 +248,10 @@ impl DataBuild {
     /// Updates the build database with information about resources from
     /// provided resource database.
     pub async fn source_pull(&mut self, _project: &Project) -> Result<(), Error> {
-        /*
-        self.source_index
-            .source_pull(project, Self::version())
-            .await
-        */
-        Err(Error::NotFound("todo".to_owned()))
+        // self.source_index
+        //     .source_pull(project, Self::version())
+        //     .await
+        Ok(())
     }
 
     /// Compile `compile_path` resource and all its dependencies in the build

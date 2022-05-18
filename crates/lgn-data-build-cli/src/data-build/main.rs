@@ -96,18 +96,22 @@ async fn main() -> Result<(), String> {
                 .parse()
                 .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
 
-            let (mut build, project) = DataBuildOptions::new(
-                DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
-                Arc::clone(&data_content_provider),
-                CompilerRegistryOptions::default(),
-            )
-            .create_with_project(
-                &project_dir,
+            let project = Project::open(
+                project_dir,
                 repository_index,
                 &repository_name,
                 &branch_name,
                 source_control_content_provider,
             )
+            .await
+            .map_err(|e| format!("failed to open project {}", e))?;
+
+            let mut build = DataBuildOptions::new(
+                DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
+                Arc::clone(&data_content_provider),
+                CompilerRegistryOptions::default(),
+            )
+            .create()
             .await
             .map_err(|e| format!("failed creating build index {}", e))?;
 
