@@ -1,10 +1,12 @@
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use crate::{indexing::TreeWriter, Provider};
 
 use super::{
     tree::{TreeIdentifier, TreeLeafNode},
-    Error, IndexKey, IndexPath, IndexPathItem, Result, SearchResult, Tree, TreeNode, TreeReader,
+    BasicIndexer, Error, IndexKey, IndexPath, IndexPathItem, RecursiveIndexer, Result,
+    SearchResult, Tree, TreeNode, TreeReader,
 };
 
 /// A `StringPathIndexer` is an indexer that adds resources according to a
@@ -160,41 +162,25 @@ impl StringPathIndexer {
             }
         })
     }
+}
 
-    /// Get a leaf or branch node from the tree.
-    ///
-    /// This function will return `None` if the tree does not contain a leaf
-    /// with the specified key.
-    ///
-    /// # Errors
-    ///
-    /// If the specified index key is invalid or the tree is corrupted, an error
-    /// will be returned.
-    pub async fn get(
+#[async_trait]
+impl BasicIndexer for StringPathIndexer {
+    async fn get_leaf(
         &self,
         provider: &Provider,
         root_id: &TreeIdentifier,
         index_key: &IndexKey,
-    ) -> Result<Option<TreeNode>> {
+    ) -> Result<Option<TreeLeafNode>> {
         let root = provider.read_tree(root_id).await?;
 
-        Ok(self.search(provider, &root, index_key).await?.into())
+        match self.search(provider, &root, index_key).await? {
+            SearchResult::Leaf(_, leaf) => Ok(Some(leaf)),
+            SearchResult::Branch(..) | SearchResult::NotFound(..) => Ok(None),
+        }
     }
 
-    /// Add a non-existing leaf to the tree.
-    ///
-    /// # Cost
-    ///
-    /// Adding a leaf is generally fast.
-    ///
-    /// # Errors
-    ///
-    /// If the leaf at the specified index key already exists, this function
-    /// will return `Error::IndexTreeLeafNodeAlreadyExists`.
-    ///
-    /// If the specified index key is invalid or the tree is corrupted, an error
-    /// will be returned.
-    pub async fn add_leaf<'call>(
+    async fn add_leaf<'call>(
         &self,
         provider: &Provider,
         root_id: &TreeIdentifier,
@@ -265,24 +251,7 @@ impl StringPathIndexer {
         }
     }
 
-    /// Replace an existing leaf in the tree.
-    ///
-    /// # Returns
-    ///
-    /// The new tree and the old leaf replaced by the new one.
-    ///
-    /// # Cost
-    ///
-    /// Replacing a leaf is generally fast.
-    ///
-    /// # Errors
-    ///
-    /// If the leaf at the specified index key does not exist, this function
-    /// will return `Error::IndexTreeLeafNodeNotFound`.
-    ///
-    /// If the specified index key is invalid or the tree is corrupted, an error
-    /// will be returned.
-    pub async fn replace_leaf<'call>(
+    async fn replace_leaf<'call>(
         &self,
         provider: &Provider,
         root_id: &TreeIdentifier,
@@ -330,28 +299,7 @@ impl StringPathIndexer {
         }
     }
 
-    /// Remove an existing leaf from the tree.
-    ///
-    /// # Returns
-    ///
-    /// The new tree and the old removed leaf.
-    ///
-    /// # Cost
-    ///
-    /// Removing a leaf is generally fast.
-    ///
-    /// If the removal of the leaf causes a parent tree to be empty and the
-    /// indexer is configured to remove empty branches, the parent itself
-    /// will be removed, recursively.
-    ///
-    /// # Errors
-    ///
-    /// If the leaf at the specified index key does not exist, this function
-    /// will return `Error::IndexTreeLeafNodeNotFound`.
-    ///
-    /// If the specified index key is invalid or the tree is corrupted, an error
-    /// will be returned.
-    pub async fn remove_leaf<'call>(
+    async fn remove_leaf<'call>(
         &self,
         provider: &Provider,
         root_id: &TreeIdentifier,
@@ -416,6 +364,20 @@ impl StringPathIndexer {
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
         }
+    }
+}
+
+#[async_trait]
+impl RecursiveIndexer for StringPathIndexer {
+    async fn get(
+        &self,
+        provider: &Provider,
+        root_id: &TreeIdentifier,
+        index_key: &IndexKey,
+    ) -> Result<Option<TreeNode>> {
+        let root = provider.read_tree(root_id).await?;
+
+        Ok(self.search(provider, &root, index_key).await?.into())
     }
 }
 
@@ -572,10 +534,12 @@ mod tests {
         let (tree_id, _) = add_leaf!(idx, provider, tree_id, "/vegetables/tomato.txt", "tomato");
 
         // Uncomment this to generate GraphViz output for the above tree.
-        //let visitor = crate::indexing::GraphvizVisitor::create("tree.dot")
+        //crate::indexing::GraphvizVisitor::create("tree.dot")
+        //    .await
+        //    .unwrap()
+        //    .visit(&ct, &tree_id)
         //    .await
         //    .unwrap();
-        //tree_id.visit(&provider, visitor).await.unwrap();
 
         let tree = read_tree!(provider, tree_id);
         assert_eq!(tree.count, 4);

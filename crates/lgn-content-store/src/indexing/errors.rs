@@ -17,6 +17,8 @@ pub enum Error {
     IndexTreeLeafNodeAlreadyExists(IndexKey, TreeLeafNode),
     #[error("the index tree leaf node wasn't found at `{0:?}`")]
     IndexTreeLeafNodeNotFound(IndexKey),
+    #[error("the index tree node wasn't found at `{0:?}`")]
+    IndexTreeNodeNotFound(IndexKey),
     #[error("invalid tree identifier: {0}")]
     InvalidTreeIdentifier(crate::InvalidIdentifier),
     #[error("invalid index identifier: {0}")]

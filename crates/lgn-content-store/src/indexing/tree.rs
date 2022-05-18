@@ -30,7 +30,7 @@ impl TreeIdentifier {
 /// This method will iterate over the entire tree. If used on a real, large
 /// tree it could actually take a very long time to end. Think twice before
 /// using it.
-pub fn tree_leaves<'s>(
+pub(crate) fn tree_leaves<'s>(
     provider: &'s Provider,
     tree_id: &'s TreeIdentifier,
     base_key: IndexKey,
@@ -69,76 +69,6 @@ pub fn tree_leaves<'s>(
             }
         }
     }
-}
-
-/// Visit all nodes in the tree, from root to leaves.
-///
-/// The order of visit is not guaranteed, but it is guaranteed that parent
-/// nodes will be fully visited before their children.
-///
-/// As a direct consequence, the first visited node will be the root node.
-///
-/// # Errors
-///
-/// If the tree is corrupted, an error will be returned.
-///
-/// If the visitor returns an error, the iteration will stop and the error
-/// will be returned.
-pub async fn tree_visit<Visitor: TreeVisitor + Send>(
-    provider: &Provider,
-    tree_id: &TreeIdentifier,
-    mut visitor: Visitor,
-) -> Result<Visitor> {
-    let root = provider.read_tree(tree_id).await?;
-
-    if visitor.visit_root(tree_id, &root).await? == TreeVisitorAction::Continue {
-        let mut stack: VecDeque<_> = vec![(tree_id.clone(), root, IndexKey::default())].into();
-
-        while let Some(parent) = stack.pop_front() {
-            for (local_key, node) in parent.1.children {
-                let parent_id = &parent.0;
-                let local_key = &local_key;
-                let key = parent.2.join(local_key);
-
-                match node {
-                    TreeNode::Branch(branch_id) => {
-                        let branch_id = &branch_id;
-                        let branch = provider.read_tree(branch_id).await?;
-
-                        if visitor
-                            .visit_branch(TreeBranchInfo {
-                                parent_id,
-                                key: &key,
-                                local_key,
-                                branch_id,
-                                branch: &branch,
-                            })
-                            .await?
-                            == TreeVisitorAction::Continue
-                        {
-                            stack.push_back((branch_id.clone(), branch, key));
-                        }
-                    }
-                    TreeNode::Leaf(leaf_node) => {
-                        let leaf_node = &leaf_node;
-
-                        visitor
-                            .visit_leaf(TreeLeafInfo {
-                                parent_id,
-                                key: &key,
-                                local_key,
-                                leaf_node,
-                            })
-                            .await?;
-                    }
-                }
-            }
-        }
-    }
-
-    visitor.visit_done(tree_id).await?;
-
-    Ok(visitor)
 }
 
 /// Compare two trees for differences.
@@ -745,7 +675,7 @@ pub struct TreeLeafInfo<'a> {
 }
 
 #[async_trait]
-pub trait TreeVisitor {
+pub trait TreeVisitor: Sized {
     async fn visit_root(
         &mut self,
         _root_id: &TreeIdentifier,
@@ -764,6 +694,71 @@ pub trait TreeVisitor {
 
     async fn visit_done(&mut self, _root_id: &TreeIdentifier) -> Result<()> {
         Ok(())
+    }
+
+    /// Visit all nodes in the tree, from root to leaves.
+    ///
+    /// The order of visit is not guaranteed, but it is guaranteed that parent
+    /// nodes will be fully visited before their children.
+    ///
+    /// As a direct consequence, the first visited node will be the root node.
+    ///
+    /// # Errors
+    ///
+    /// If the tree is corrupted, an error will be returned.
+    ///
+    /// If the visitor returns an error, the iteration will stop and the error
+    /// will be returned.
+    async fn visit(mut self, provider: &Provider, tree_id: &TreeIdentifier) -> Result<Self> {
+        let root = provider.read_tree(tree_id).await?;
+
+        if self.visit_root(tree_id, &root).await? == TreeVisitorAction::Continue {
+            let mut stack: VecDeque<_> = vec![(tree_id.clone(), root, IndexKey::default())].into();
+
+            while let Some(parent) = stack.pop_front() {
+                for (local_key, node) in parent.1.children {
+                    let parent_id = &parent.0;
+                    let local_key = &local_key;
+                    let key = parent.2.join(local_key);
+
+                    match node {
+                        TreeNode::Branch(branch_id) => {
+                            let branch_id = &branch_id;
+                            let branch = provider.read_tree(branch_id).await?;
+
+                            if self
+                                .visit_branch(TreeBranchInfo {
+                                    parent_id,
+                                    key: &key,
+                                    local_key,
+                                    branch_id,
+                                    branch: &branch,
+                                })
+                                .await?
+                                == TreeVisitorAction::Continue
+                            {
+                                stack.push_back((branch_id.clone(), branch, key));
+                            }
+                        }
+                        TreeNode::Leaf(leaf_node) => {
+                            let leaf_node = &leaf_node;
+
+                            self.visit_leaf(TreeLeafInfo {
+                                parent_id,
+                                key: &key,
+                                local_key,
+                                leaf_node,
+                            })
+                            .await?;
+                        }
+                    }
+                }
+            }
+        }
+
+        self.visit_done(tree_id).await?;
+
+        Ok(self)
     }
 }
 

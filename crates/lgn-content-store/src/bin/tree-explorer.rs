@@ -10,8 +10,8 @@ use clap::Parser;
 use http::StatusCode;
 use lgn_content_store::{
     indexing::{
-        tree_visit, IndexKey, IndexKeyDisplayFormat, IndexableResource, JsonVisitor,
-        ResourceWriter, StaticIndexer, Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
+        BasicIndexer, IndexKey, IndexKeyDisplayFormat, IndexableResource, JsonVisitor,
+        ResourceWriter, StaticIndexer, Tree, TreeIdentifier, TreeLeafNode, TreeVisitor, TreeWriter,
     },
     Provider, Result,
 };
@@ -162,18 +162,15 @@ async fn add_node(
         })?;
 
     Ok(Json(
-        tree_visit(
-            &state.provider,
-            &tree_id,
-            JsonVisitor::new(state.display_format),
-        )
-        .await
-        .map_err(|err| {
-            error!("failed to visit tree: {}", err);
+        JsonVisitor::new(state.display_format)
+            .visit(&state.provider, &tree_id)
+            .await
+            .map_err(|err| {
+                error!("failed to visit tree: {}", err);
 
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .into_result(),
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .into_result(),
     ))
 }
 
@@ -181,17 +178,14 @@ async fn graph(state: Arc<State>) -> Result<Json<impl Serialize>, StatusCode> {
     let tree_id = state.tree_id.lock().await.clone();
 
     Ok(Json(
-        tree_visit(
-            &state.provider,
-            &tree_id,
-            JsonVisitor::new(state.display_format),
-        )
-        .await
-        .map_err(|err| {
-            error!("failed to visit tree: {}", err);
+        JsonVisitor::new(state.display_format)
+            .visit(&state.provider, &tree_id)
+            .await
+            .map_err(|err| {
+                error!("failed to visit tree: {}", err);
 
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .into_result(),
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .into_result(),
     ))
 }
