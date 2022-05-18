@@ -17,7 +17,7 @@ use lgn_online::codegen::ByteArray;
             #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
             pub struct {{ struct_.name }} {
                 {% for field in struct_.fields %}
-                    {%- if let Some(description) = field.description -%}/// {{ description }}{%- endif -%}
+                    {% if let Some(description) = field.description -%}/// {{ description }}{%- endif %}
                     #[serde(rename = "{{ field.name }}")]
                     {%- if field.required -%}
                     pub {{ field.name|fmt_field }}: {{ field.type_|fmt_type }},    

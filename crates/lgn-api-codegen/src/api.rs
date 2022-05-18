@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{Error, Result};
+use crate::{visitor, Error, Result};
 use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 
@@ -11,6 +11,14 @@ pub struct Api {
     pub version: String,
     pub models: Vec<Model>,
     pub paths: HashMap<Path, Vec<Route>>,
+}
+
+impl TryFrom<&openapiv3::OpenAPI> for Api {
+    type Error = Error;
+
+    fn try_from(openapi: &openapiv3::OpenAPI) -> Result<Self> {
+        visitor::visit(openapi)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
