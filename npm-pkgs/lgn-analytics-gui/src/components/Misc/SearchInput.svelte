@@ -7,8 +7,7 @@
   type Id = $$Generic<keyof Fluent>;
 
   const dispatch = createEventDispatcher<{
-    /** Debounced input will send the cleaned search value */
-    debouncedInput: string;
+    debouncedInput: { value: string; encodedValue: string };
     clear: undefined;
   }>();
 
@@ -22,9 +21,10 @@
 
   const debouncedInput = debounce((event) => {
     if (event.target instanceof HTMLInputElement) {
-      const cleanValue = event.target.value.trim();
-
-      dispatch("debouncedInput", cleanValue);
+      dispatch("debouncedInput", {
+        value: event.target.value,
+        encodedValue: encodeURIComponent(event.target.value),
+      });
     }
   }, debounceMs);
 

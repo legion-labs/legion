@@ -24,9 +24,9 @@
   $: platform = getPlatform(process?.distro);
 </script>
 
-<div class="flex gap-2 items-center">
+<div class="flex gap-2 items-center" title={platform}>
   <i class="bi bi-pc placeholder" />
-  <span class="capitalize">
+  <span class="capitalize truncate">
     <L10n id="global-platform" variables={{ platform }} />
   </span>
 </div>

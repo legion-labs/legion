@@ -18,19 +18,23 @@ global-metrics = Mesures
 global-thread = unité
 
 # Process list
-process-list-user = Utilisateur
-process-list-process = Processus
-process-list-computer = Machine
-process-list-platform = Plateforme
-process-list-start-time = Débuté à
-process-list-statistics = Statistiques
 process-list-search = Rechercher des processus...
+process-list-table-column =
+  {$columnName ->
+    [user] Utilisateur
+    [process] Processus
+    [computer] Machine
+    [platform] Plateforme
+    [start-time] Débuté à
+    [statistics] Statistiques
+    *[other] Unknown
+  }
 
 # Log
 log-process-id = Identifiant du processus :
 log-executable = Nom de l'exécutable :
 log-parent-link = Parent
-log-parent-table-column =
+log-table-column =
   {$columnName ->
     [level] Sévérité
     [timeMs] Horodatage

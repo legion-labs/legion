@@ -19,17 +19,14 @@ declare type Fluent = {
   "global-severity-level": {
     variables: "level";
   };
-  "process-list-user": null;
-  "process-list-process": null;
-  "process-list-computer": null;
-  "process-list-platform": null;
-  "process-list-start-time": null;
-  "process-list-statistics": null;
   "process-list-search": null;
+  "process-list-table-column": {
+    variables: "columnName";
+  };
   "log-process-id": null;
   "log-executable": null;
   "log-parent-link": null;
-  "log-parent-table-column": {
+  "log-table-column": {
     variables: "columnName";
   };
   "log-search": null;

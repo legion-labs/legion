@@ -27,19 +27,23 @@ global-severity-level =
   }
 
 # Process list
-process-list-user = User
-process-list-process = Process
-process-list-computer = Computer
-process-list-platform = Plateform
-process-list-start-time = Start Time
-process-list-statistics = Statistics
 process-list-search = Search Process...
+process-list-table-column =
+  {$columnName ->
+    [user] User
+    [process] Process
+    [computer] Computer
+    [platform] Plateform
+    [start-time] Start Time
+    [statistics] Statistics
+    *[other] Unknown
+  }
 
 # Log
 log-process-id = Process Id:
 log-executable = Executable:
 log-parent-link = Parent
-log-parent-table-column =
+log-table-column =
   {$columnName ->
     [level] Severity
     [timeMs] Time Stamp

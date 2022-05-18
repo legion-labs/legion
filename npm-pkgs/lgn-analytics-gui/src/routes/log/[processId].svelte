@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import { onMount } from "svelte";
 
   import type { LogEntry } from "@lgn/proto-telemetry/dist/log";
   import { Level } from "@lgn/proto-telemetry/dist/log";
@@ -25,41 +24,51 @@
 
   const { t } = getL10nOrchestratorContext();
 
-  const processId = $page.params.processId;
+  const columns = [
+    { name: "level" as const, width: "7%" },
+    { name: "timeMs" as const, width: "8%" },
+    { name: "target" as const, width: "10%" },
+    { name: "msg" as const, width: "75%" },
+  ];
 
-  const processInfoStore = createAsyncStoreOrchestrator<Process>();
+  const processStore = createAsyncStoreOrchestrator<{
+    process: Process;
+    nbEntries: number;
+  }>();
+
   const logEntriesStore = createAsyncStoreOrchestrator<LogEntry[]>();
-  const nbEntrieStore = createAsyncStoreOrchestrator<number>();
 
-  const { data: processInfo, loading: processInfoLoading } = processInfoStore;
+  const { data: processInfo, loading: processInfoLoading } = processStore;
   const { data: logEntries, loading: logEntriesLoading } = logEntriesStore;
-  const { data: nbEntries, loading: nbEntriesLoading } = nbEntrieStore;
 
-  onMount(async () => {
-    await Promise.all([
-      nbEntrieStore.run(async () => {
-        const { count } = await client.nb_process_log_entries({ processId });
+  function redirectSearch({
+    detail: { encodedValue },
+  }: CustomEvent<{ encodedValue: string }>) {
+    goto(
+      `/log/${processId}${
+        encodedValue.length ? `?search=${encodedValue}` : ""
+      }`,
+      {
+        keepfocus: true,
+      }
+    );
+  }
 
-        return count;
-      }),
+  function fetchProcessInfo(processId: string) {
+    return processStore.run(async () => {
+      const { count: nbEntries } = await client.nb_process_log_entries({
+        processId,
+      });
 
-      processInfoStore.run(async () => {
-        const { process } = await client.find_process({
-          processId,
-        });
+      const { process } = await client.find_process({
+        processId,
+      });
 
-        if (!process) {
-          throw new Error(`Process ${processId} not found`);
-        }
+      if (!process) {
+        throw new Error(`Process ${processId} not found`);
+      }
 
-        return process;
-      }),
-    ]);
-  });
-
-  function redirectSearch({ detail: value }: CustomEvent<string>) {
-    goto(`/log/${processId}${value.length ? `?search=${value}` : ""}`, {
-      keepfocus: true,
+      return { process, nbEntries };
     });
   }
 
@@ -71,11 +80,13 @@
     search: string
   ) {
     return logEntriesStore.run(async () => {
+      const cleanSearch = search.trim();
+
       const response = await client.list_process_log_entries({
         process,
         begin: beginRange ?? 0,
         end: endRange ?? Math.min(nbEntries, MAX_NB_ENTRIES_IN_PAGE),
-        search: search.length ? search : undefined,
+        search: cleanSearch.length ? cleanSearch : undefined,
       });
 
       beginRange = response.begin;
@@ -113,6 +124,8 @@
     return `/log/${processId}?begin=${begin}&end=${end}`;
   }
 
+  $: processId = $page.params.processId;
+
   // URL Params
   $: beginParam = $page.url.searchParams.get("begin");
 
@@ -129,40 +142,41 @@
   // Search related stores
   $: searchValue = searchParam;
 
-  $: cleanSearchParam = searchParam.trim();
+  // Fetch the process info on process id change
+  $: if (processId !== null) {
+    fetchProcessInfo(processId);
+  }
 
   // Fetch the log on params change
-  $: if ($processInfo !== null && $nbEntries !== null) {
+  $: if ($processInfo !== null) {
     fetchLogEntries(
-      $processInfo!,
-      $nbEntries!,
+      $processInfo.process,
+      $processInfo.nbEntries,
       beginRange,
       endRange,
-      cleanSearchParam
+      searchParam
     );
   }
 
   // UI related derived states
   $: processDescription = $processInfo
-    ? `${$processInfo.exe} (${$processInfo.processId})`
+    ? `${$processInfo.process.exe} (${$processInfo.process.processId})`
     : null;
 
   $: formattedProcessName = $processInfo
-    ? formatProcessName($processInfo)
+    ? formatProcessName($processInfo.process)
     : null;
 
-  $: searchPattern = cleanSearchParam
+  $: searchPattern = searchParam
+    .trim()
     .split(" ")
-    .reduce(
-      (acc, part) =>
-        part.length ? [...acc, stringToSafeRegExp(part, "gi")] : acc,
-      [] as RegExp[]
-    );
+    .filter(Boolean)
+    .map((part) => stringToSafeRegExp(part, "gi"));
 
   $: formattedTimes =
     $logEntries?.map(({ timeMs }) => formatTime(timeMs)) ?? [];
 
-  $: loading = $processInfoLoading || $nbEntriesLoading || $logEntriesLoading;
+  $: loading = $processInfoLoading || $logEntriesLoading;
 </script>
 
 <Layout>
@@ -180,9 +194,9 @@
   >
     {#if $processInfo}
       <div class="flex flex-row space-x-2">
-        {#if $processInfo.parentProcessId}
+        {#if $processInfo.process.parentProcessId}
           <div class="flex flex-row space-x-2 text">
-            <a href={`/log/${$processInfo.parentProcessId}`}>
+            <a href={`/log/${$processInfo.process.parentProcessId}`}>
               <L10n id="log-parent-link" />
             </a>
             <div>/</div>
@@ -193,11 +207,11 @@
         </div>
       </div>
       <div class="flex items-center h-full">
-        {#if !searchPattern.length && $nbEntries !== null && $nbEntries > MAX_NB_ENTRIES_IN_PAGE}
+        {#if !searchPattern.length && $processInfo.nbEntries !== null && $processInfo.nbEntries > MAX_NB_ENTRIES_IN_PAGE}
           <Pagination
             begin={beginRange || 0}
             end={endRange || MAX_NB_ENTRIES_IN_PAGE}
-            entriesPerPage={$nbEntries}
+            entriesPerPage={$processInfo.nbEntries}
             maxEntriesPerPage={MAX_NB_ENTRIES_IN_PAGE}
             buildHref={buildPaginationHref}
           />
@@ -210,28 +224,30 @@
       <Loader />
     {:else}
       <div class="log">
-        <Table
-          columns={{ level: "7%", timeMs: "8%", target: "10%", msg: "75%" }}
-          items={$logEntries || []}
-        >
+        <Table {columns} items={$logEntries || []} sticky={6}>
           <div
             slot="header"
             class="header"
             let:columnName
-            title={$t("log-parent-table-column", { columnName })}
+            title={$t("log-table-column", { columnName })}
           >
             <div class="truncate">
-              <L10n id="log-parent-table-column" variables={{ columnName }} />
+              <L10n id="log-table-column" variables={{ columnName }} />
             </div>
           </div>
-          <div slot="cell" class="cell" let:columnName let:value let:index>
+          <div slot="cell" class="cell" let:columnName let:item let:index>
             {#if columnName === "level"}
               <div
                 class="truncate"
-                title={$t("global-severity-level", { level: value })}
-                style={`color:rgb(var(${levelToColorCssVar(value)}));`}
+                title={$t("global-severity-level", { level: item[columnName] })}
+                style={`color:rgb(var(${levelToColorCssVar(
+                  item[columnName]
+                )}));`}
               >
-                <L10n id="global-severity-level" variables={{ level: value }} />
+                <L10n
+                  id="global-severity-level"
+                  variables={{ level: item[columnName] }}
+                />
               </div>
             {:else if columnName === "timeMs"}
               <div
@@ -243,19 +259,25 @@
                 </div>
               </div>
             {:else if columnName === "target"}
-              <div dir="rtl" class="truncate" title={value}>
+              <div dir="rtl" class="truncate" title={item[columnName]}>
                 {#if searchPattern.length}
-                  <HighlightedText pattern={searchPattern} text={value} />
+                  <HighlightedText
+                    pattern={searchPattern}
+                    text={item[columnName]}
+                  />
                 {:else}
-                  {value}
+                  {item[columnName]}
                 {/if}
               </div>
             {:else}
               <div class="break-words w-full">
                 {#if searchPattern.length}
-                  <HighlightedText pattern={searchPattern} text={value} />
+                  <HighlightedText
+                    pattern={searchPattern}
+                    text={item[columnName]}
+                  />
                 {:else}
-                  {value}
+                  {item[columnName]}
                 {/if}
               </div>
             {/if}

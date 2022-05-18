@@ -4,14 +4,14 @@
   export let iconOnly = false;
 </script>
 
-<div class="flex gap-2 items-center select-none">
+<div class="flex gap-2 items-center select-none" title={user}>
   <div
-    class="w-5 h-5 flex justify-center items-center rounded-full text-xs text-white bg-orange-700"
+    class="w-5 h-5 flex justify-center items-center rounded-full text-xs text-white bg-orange-700 flex-shrink-0"
   >
-    <span class="capitalize" title={user}>{user.charAt(0)}</span>
+    <span class="capitalize">{user.charAt(0)}</span>
   </div>
   {#if !iconOnly}
-    <div class="capitalize">
+    <div class="capitalize truncate">
       <slot {user}>
         {user}
       </slot>
