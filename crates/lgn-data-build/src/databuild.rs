@@ -131,7 +131,7 @@ impl DataBuild {
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
 
-        let output_index = OutputIndex::create_new(config.output_db_addr).await?;
+        let output_index = OutputIndex::new(Arc::clone(&config.data_content_provider)).await;
 
         let compilers = config.compiler_options.create().await;
         let registry = match config.registry {
@@ -158,7 +158,7 @@ impl DataBuild {
 
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
-        let output_index = OutputIndex::open(config.output_db_addr).await?;
+        let output_index = OutputIndex::new(Arc::clone(&config.data_content_provider)).await;
 
         let compilers = config.compiler_options.create().await;
         let registry = match config.registry {
@@ -189,11 +189,7 @@ impl DataBuild {
     ) -> Result<Self, Error> {
         let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
 
-        let output_index = match OutputIndex::open(config.output_db_addr.clone()).await {
-            Ok(output_index) => Ok(output_index),
-            Err(Error::NotFound(_)) => OutputIndex::create_new(config.output_db_addr.clone()).await,
-            Err(e) => Err(e),
-        }?;
+        let output_index = OutputIndex::new(Arc::clone(&config.data_content_provider)).await;
 
         let compilers = config.compiler_options.create().await;
         let registry = match config.registry {
@@ -230,7 +226,7 @@ impl DataBuild {
                 return Ok(Some(id));
             }
         }
-        self.output_index.lookup_pathid(id).await
+        self.output_index.find_pathid(id).await
     }
 
     /// Updates the build database with information about resources from
@@ -268,7 +264,7 @@ impl DataBuild {
         env: &CompilationEnv,
         intermediate_output: Option<&Manifest>,
     ) -> Result<CompiledResources, Error> {
-        self.output_index.record_pathid(&compile_path).await?;
+        self.output_index.insert_pathid(&compile_path).await?;
         let mut result = CompiledResources::default();
 
         let start = std::time::Instant::now();

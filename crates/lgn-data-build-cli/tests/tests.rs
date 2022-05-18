@@ -97,10 +97,9 @@ async fn build_device() {
     };
 
     // create build index.
-    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-        &output_dir,
-        CompilerRegistryOptions::local_compilers(target_dir),
+    let (mut build, project) = DataBuildOptions::new(
         Arc::clone(&data_content_provider),
+        CompilerRegistryOptions::local_compilers(target_dir),
     )
     .create_with_project(
         project_dir,
@@ -148,7 +147,6 @@ async fn build_device() {
             Arc::clone(&data_content_provider),
             manifest,
             DATABUILD_EXE,
-            DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
             project_dir,
             true,
         )
@@ -279,7 +277,6 @@ async fn no_intermediate_resource() {
                 .expect("adding the resource")
         };
         let (mut build, project) = DataBuildOptions::new(
-            DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version()),
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
@@ -395,10 +392,9 @@ async fn with_intermediate_resource() {
                 .await
                 .expect("adding the resource")
         };
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::default(),
+        let (mut build, project) = DataBuildOptions::new(
             Arc::clone(&data_content_provider),
+            CompilerRegistryOptions::default(),
         )
         .create_with_project(
             project_dir,

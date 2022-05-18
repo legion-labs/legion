@@ -201,7 +201,6 @@ use std::{
 use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{Parser, Subcommand};
 use lgn_content_store::{Identifier, Provider};
-use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId};
 
@@ -262,9 +261,6 @@ enum Commands {
         /// Path to project index to be able to resolve ResourcePathName
         #[clap(long)]
         project: Option<PathBuf>,
-        /// Path to build index to be able to resolve ResourcePathId
-        #[clap(long = "output")]
-        build_output: Option<String>,
     },
 }
 
@@ -310,8 +306,6 @@ enum SourceCommands {
 #[tokio::main]
 async fn main() -> Result<(), String> {
     let args = Cli::parse();
-
-    let cwd = std::env::current_dir().unwrap();
 
     //
     // try opening the configuration file first.
@@ -494,11 +488,7 @@ async fn main() -> Result<(), String> {
                 );
             }
         }
-        Commands::Configure {
-            code_path,
-            project,
-            build_output,
-        } => {
+        Commands::Configure { code_path, project } => {
             let config_path = Config::default_path();
             let workspace_dir = Config::workspace_dir();
 
@@ -515,17 +505,6 @@ async fn main() -> Result<(), String> {
                 }
             };
 
-            let build_output = build_output.unwrap_or_else(|| {
-                workspace_dir
-                    .join("tests/sample-data/temp/")
-                    .to_str()
-                    .unwrap()
-                    .to_owned()
-            });
-
-            let output_db_addr =
-                DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version());
-
             let type_map = {
                 let mut t = BTreeMap::<ResourceType, String>::new();
                 for dir in &code_paths {
@@ -539,7 +518,6 @@ async fn main() -> Result<(), String> {
             let config = Config {
                 code_paths,
                 project: project_dir,
-                output_db_addr,
                 type_map,
             };
 
@@ -550,7 +528,6 @@ async fn main() -> Result<(), String> {
             println!("Configuration '{:?}' created!", config_path);
             println!("\tCode Paths: {:?}.", config.code_paths);
             println!("\tProject: {:?}.", config.project);
-            println!("\tOutput Db Address: {:?}.", config.output_db_addr);
             println!("\tResource Type Count: {}.", config.type_map.len());
         }
     }

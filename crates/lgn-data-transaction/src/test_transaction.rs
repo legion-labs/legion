@@ -160,10 +160,9 @@ async fn test_transaction_system() -> Result<(), Error> {
     let compilers =
         CompilerRegistryOptions::default().add_compiler(&lgn_compiler_testentity::COMPILER_INFO);
 
-    let options = DataBuildOptions::new_with_sqlite_output(
-        &build_dir,
-        compilers,
+    let options = DataBuildOptions::new(
         Arc::clone(&data_content_provider),
+        compilers,
     )
     .asset_registry(asset_registry.clone());
 

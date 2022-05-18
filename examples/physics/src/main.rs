@@ -130,19 +130,8 @@ async fn main() -> anyhow::Result<()> {
         ),
     };
 
-    let absolute_build_dir = {
-        if !build_dir.is_absolute() {
-            std::env::current_dir().unwrap().join(&build_dir)
-        } else {
-            build_dir.clone()
-        }
-    };
-    let data_build = DataBuildOptions::new_with_sqlite_output(
-        &absolute_build_dir,
-        compilers,
-        Arc::clone(&data_content_provider),
-    )
-    .asset_registry(asset_registry.clone());
+    let data_build = DataBuildOptions::new(Arc::clone(&data_content_provider), compilers)
+        .asset_registry(asset_registry.clone());
 
     let mut build_manager = BuildManager::new(
         data_build,

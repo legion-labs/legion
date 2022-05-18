@@ -67,10 +67,9 @@ pub async fn build(
     .await
     .unwrap();
 
-    let mut build = DataBuildOptions::new_with_sqlite_output(
-        build_index_dir,
-        CompilerRegistryOptions::local_compilers(exe_path),
+    let mut build = DataBuildOptions::new(
         Arc::clone(&data_content_provider),
+        CompilerRegistryOptions::local_compilers(exe_path),
     )
     .open_or_create(&project)
     .await

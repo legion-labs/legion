@@ -4,7 +4,7 @@
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use clap::{Parser, Subcommand};
-use lgn_data_build::{DataBuild, DataBuildOptions};
+use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
@@ -63,7 +63,6 @@ enum Commands {
 async fn main() -> Result<(), String> {
     let args = Cli::parse();
 
-    let cwd = std::env::current_dir().unwrap();
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
         .await
         .map_err(|e| format!("failed creating repository index {}", e))?;
@@ -84,7 +83,6 @@ async fn main() -> Result<(), String> {
             project: project_dir,
         } => {
             let (mut build, project) = DataBuildOptions::new(
-                DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
                 Arc::clone(&data_content_provider),
                 CompilerRegistryOptions::default(),
             )
@@ -135,14 +133,10 @@ async fn main() -> Result<(), String> {
             .await
             .map_err(|e| e.to_string())?;
 
-            let mut build = DataBuildOptions::new(
-                DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
-                Arc::clone(&data_content_provider),
-                compilers,
-            )
-            .open(&project)
-            .await
-            .map_err(|e| format!("Failed to open build index: '{}'", e))?;
+            let mut build = DataBuildOptions::new(Arc::clone(&data_content_provider), compilers)
+                .open(&project)
+                .await
+                .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 
             //
             // for now, each time we build we make sure we have a fresh input data indexed

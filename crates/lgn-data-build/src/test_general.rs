@@ -49,17 +49,14 @@ mod tests {
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
-        let build = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::default(),
-            data_content_provider,
-        )
-        .create_with_project(
-            &project_dir,
-            repository_index,
-            source_control_content_provider,
-        )
-        .await;
+        let build =
+            DataBuildOptions::new(data_content_provider, CompilerRegistryOptions::default())
+                .create_with_project(
+                    &project_dir,
+                    repository_index,
+                    source_control_content_provider,
+                )
+                .await;
 
         assert!(build.is_err());
     }
@@ -82,13 +79,9 @@ mod tests {
         .await
         .expect("failed to create a project");
 
-        let db_uri =
-            DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version());
-
         {
             let _build = DataBuildOptions::new(
-                db_uri.clone(),
-                data_content_provider,
+                Arc::clone(&data_content_provider),
                 CompilerRegistryOptions::default(),
             )
             .create_with_project(
@@ -100,8 +93,6 @@ mod tests {
             .expect("valid data build index");
         }
 
-        let _index = OutputIndex::open(db_uri)
-            .await
-            .expect("failed to open build index file");
+        let _index = OutputIndex::new(Arc::clone(&data_content_provider)).await;
     }
 }

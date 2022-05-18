@@ -1,7 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{path::Path, sync::Arc};
 
 use lgn_content_store::Provider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
@@ -36,94 +33,23 @@ use crate::{DataBuild, Error};
 /// ```
 pub struct DataBuildOptions {
     pub(crate) data_content_provider: Arc<Provider>,
-    pub(crate) output_db_addr: String,
     pub(crate) compiler_options: CompilerRegistryOptions,
     pub(crate) registry: Option<Arc<AssetRegistry>>,
     pub(crate) manifest: Option<Manifest>,
 }
 
 impl DataBuildOptions {
-    /// Creates a new data build options.
-    pub fn new_with_sqlite_output(
-        output_dir: impl AsRef<Path>,
-        compiler_options: CompilerRegistryOptions,
-        data_content_provider: Arc<Provider>,
-    ) -> Self {
-        assert!(output_dir.as_ref().is_absolute());
-        let output_db_addr = Self::output_db_path(
-            output_dir.as_ref().to_str().unwrap(),
-            "unused",
-            DataBuild::version(),
-        );
-
-        Self {
-            data_content_provider,
-            output_db_addr,
-            compiler_options,
-            registry: None,
-            manifest: None,
-        }
-    }
-
     /// Create new instance of `DataBuildOptions` with the mandatory options.
     pub fn new(
-        output_db_addr: String,
         data_content_provider: Arc<Provider>,
         compiler_options: CompilerRegistryOptions,
     ) -> Self {
         Self {
             data_content_provider,
-            output_db_addr,
             compiler_options,
             registry: None,
             manifest: None,
         }
-    }
-
-    const OUTPUT_NAME_PREFIX: &'static str = "build_output-";
-
-    /// Construct output database path from:
-    /// * a mysql:// path
-    /// * an absolute directory or a directory relative to `cwd`.
-    ///
-    /// The function return `path` if it already contains database name in it.
-    pub fn output_db_path(path: &str, cwd: impl AsRef<Path>, version: &str) -> String {
-        if path.contains(Self::OUTPUT_NAME_PREFIX) {
-            return path.to_owned();
-        }
-
-        if path.starts_with("mysql://") {
-            let mut output = path.to_owned();
-            output.push_str(Self::OUTPUT_NAME_PREFIX);
-            output.push_str(version);
-            output
-        } else {
-            Self::output_db_path_dir(PathBuf::from(path), cwd, version)
-        }
-    }
-
-    /// Construct output database path from an absolute directory or directory relative to `cwd`.
-    pub fn output_db_path_dir(
-        path: impl AsRef<Path>,
-        cwd: impl AsRef<Path>,
-        version: &str,
-    ) -> String {
-        let mut output = "sqlite://".to_string();
-        let path = if path.as_ref().is_absolute() {
-            path.as_ref().to_owned()
-        } else {
-            cwd.as_ref().join(path)
-        };
-        output.push_str(
-            &path
-                .join(Self::OUTPUT_NAME_PREFIX)
-                .to_str()
-                .unwrap()
-                .replace('\\', "/"),
-        );
-        output.push_str(version);
-        output.push_str(".db3");
-        output
     }
 
     /// Set asset registry used by data compilers. If it is not set `DataBuild` will use
@@ -138,21 +64,6 @@ impl DataBuildOptions {
     #[must_use]
     pub fn manifest(mut self, manifest: Manifest) -> Self {
         self.manifest = Some(manifest);
-        self
-    }
-
-    /// Set the build output database path.
-    /// `build_output_db_addr` can be:
-    /// * myslq:// path
-    /// * absolute directory path or directory path relative to `cwd`
-    #[must_use]
-    pub fn output_database(
-        mut self,
-        build_output_db_addr: &str,
-        cwd: impl AsRef<Path>,
-        version: &str,
-    ) -> Self {
-        self.output_db_addr = Self::output_db_path(build_output_db_addr, cwd, version);
         self
     }
 

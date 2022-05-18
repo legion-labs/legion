@@ -102,16 +102,9 @@ impl ResourceRegistryPlugin {
                 }
             };
 
-            let build_options = DataBuildOptions::new(
-                DataBuildOptions::output_db_path(
-                    &settings.build_output_db_addr,
-                    project_dir.as_path(),
-                    DataBuild::version(),
-                ),
-                Arc::clone(&data_content_provider),
-                compilers,
-            )
-            .manifest(intermediate_manifest.clone());
+            let build_options =
+                DataBuildOptions::new(Arc::clone(&data_content_provider), compilers)
+                    .manifest(intermediate_manifest.clone());
 
             let build_manager = BuildManager::new(
                 build_options,

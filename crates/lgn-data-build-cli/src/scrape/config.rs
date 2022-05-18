@@ -16,7 +16,6 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub code_paths: Vec<PathBuf>,
     pub project: PathBuf,
-    pub output_db_addr: String,
     pub type_map: BTreeMap<ResourceType, String>,
 }
 
@@ -54,11 +53,6 @@ impl Config {
         .map_err(|e| e.to_string())?;
 
         let build = DataBuildOptions::new(
-            DataBuildOptions::output_db_path(
-                &self.output_db_addr,
-                Self::workspace_dir(),
-                DataBuild::version(),
-            ),
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )

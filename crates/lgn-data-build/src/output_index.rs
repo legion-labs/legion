@@ -1,13 +1,14 @@
-use std::str::FromStr;
+use std::sync::Arc;
 
+use lgn_content_store::indexing::StaticIndexer;
 use lgn_content_store::Identifier;
+use lgn_content_store::Provider;
+
+use crate::Error;
 use lgn_data_compiler::CompiledResource;
 use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use sqlx::{migrate::MigrateDatabase, Executor, Row};
-
-use crate::Error;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub(crate) struct CompiledResourceInfo {
@@ -56,11 +57,13 @@ struct LinkedResource {
 
 #[derive(Debug)]
 pub(crate) struct OutputIndex {
-    database: sqlx::AnyPool,
+    provider: Arc<Provider>,
+    index: StaticIndexer,
 }
 
 impl OutputIndex {
-    pub(crate) async fn create_new(db_uri: String) -> Result<Self, Error> {
+    pub(crate) async fn new(provider: Arc<Provider>) -> Self {
+        /*
         let database = {
             sqlx::Any::create_database(&db_uri)
                 .await
@@ -90,7 +93,7 @@ impl OutputIndex {
                     source_hash BIGINT,
                     checksum VARCHAR(255));
                 CREATE TABLE pathid_mapping(
-                    resource_id VARCHAR(255), 
+                    resource_id VARCHAR(255),
                     resource_path_id VARCHAR(255));";
 
             connection
@@ -100,32 +103,10 @@ impl OutputIndex {
 
             connection
         };
-        Ok(Self { database })
-    }
+        */
+        let index = StaticIndexer::new(std::mem::size_of::<AssetHash>());
 
-    async fn load(db_uri: String) -> Result<Self, Error> {
-        let database = {
-            sqlx::any::AnyPoolOptions::new()
-                .max_connections(10)
-                .connect(&db_uri)
-                .await
-                .map_err(Error::Database)?
-        };
-
-        Ok(Self { database })
-    }
-
-    pub(crate) async fn open(db_uri: String) -> Result<Self, Error> {
-        if !sqlx::Any::database_exists(&db_uri)
-            .await
-            .map_err(Error::Database)?
-        {
-            return Err(Error::NotFound(db_uri));
-        }
-
-        let output_index = Self::load(db_uri).await?;
-
-        Ok(output_index)
+        Self { provider, index }
     }
 
     pub(crate) async fn insert_compiled(
@@ -136,6 +117,7 @@ impl OutputIndex {
         compiled_resources: &[CompiledResource],
         compiled_references: &[(ResourcePathId, ResourcePathId)],
     ) -> Result<(), Error> {
+        /*
         // For now we assume there is not concurrent compilation
         // so there is no way to compile the same resources twice.
         // Once we support it we will have to make sure the result of the compilation
@@ -177,6 +159,7 @@ impl OutputIndex {
                     .map_err(Error::Database)?;
             }
         }
+        */
 
         Ok(())
     }
@@ -187,8 +170,9 @@ impl OutputIndex {
         context_hash: AssetHash,
         source_hash: AssetHash,
     ) -> Option<(Vec<CompiledResourceInfo>, Vec<CompiledResourceReference>)> {
+        /*
         let statement = sqlx::query_as(
-            "SELECT compiled_path, compiled_checksum 
+            "SELECT compiled_path, compiled_checksum
             FROM compiled_output
             WHERE compile_path = ? AND context_hash = ? AND source_hash = ?",
         )
@@ -238,6 +222,9 @@ impl OutputIndex {
                 .collect::<Vec<_>>()
         };
         Some((compiled, references))
+        */
+
+        None
     }
 
     pub(crate) async fn find_linked(
@@ -246,7 +233,7 @@ impl OutputIndex {
         context_hash: AssetHash,
         source_hash: AssetHash,
     ) -> Result<Option<Identifier>, Error> {
-        let output = {
+        /*let output = {
             let statement = sqlx::query_as(
                 "SELECT checksum
                     FROM linked_output
@@ -263,8 +250,9 @@ impl OutputIndex {
 
             result.map(|(checksum,)| Identifier::from_str(&checksum).unwrap())
         };
-
         Ok(output)
+        */
+        Err(Error::NotFound("Function not implemented".to_string()))
     }
 
     pub(crate) async fn insert_linked(
@@ -274,7 +262,7 @@ impl OutputIndex {
         source_hash: AssetHash,
         content_id: Identifier,
     ) -> Result<(), Error> {
-        let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?);")
+        /*let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?);")
             .bind(id.to_string())
             .bind(context_hash.into_i64())
             .bind(source_hash.into_i64())
@@ -284,11 +272,13 @@ impl OutputIndex {
             .execute(query)
             .await
             .map_err(Error::Database)?;
+        */
 
         Ok(())
     }
 
-    pub async fn record_pathid(&mut self, id: &ResourcePathId) -> Result<(), Error> {
+    pub async fn insert_pathid(&mut self, id: &ResourcePathId) -> Result<(), Error> {
+        /*
         let query = sqlx::query("INSERT into pathid_mapping VALUES(?, ?);")
             .bind(id.resource_id().to_string())
             .bind(id.to_string());
@@ -297,14 +287,16 @@ impl OutputIndex {
             .execute(query)
             .await
             .map_err(Error::Database)?;
+        */
 
         Ok(())
     }
 
-    pub async fn lookup_pathid(
+    pub async fn find_pathid(
         &self,
         id: ResourceTypeAndId,
     ) -> Result<Option<ResourcePathId>, Error> {
+        /*
         let output = {
             let statement = sqlx::query(
                 "SELECT resource_path_id
@@ -325,66 +317,34 @@ impl OutputIndex {
                 None
             }
         };
+        */
 
-        Ok(output)
+        Err(Error::NotFound("Function not implemented".to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use std::{path::Path, str::FromStr};
+    use std::{str::FromStr, sync::Arc};
 
-    use lgn_content_store::Identifier;
+    use lgn_content_store::{Identifier, Provider};
     use lgn_data_compiler::CompiledResource;
     use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
     use text_resource::TextResource;
 
     use crate::output_index::{AssetHash, OutputIndex};
 
-    fn test_database_uri(buildindex_dir: impl AsRef<Path>, version: &str) -> String {
-        let db_path = buildindex_dir
-            .as_ref()
-            .join(format!("output-{}.db3", version));
-        format!("sqlite://{}", db_path.to_str().unwrap().replace('\\', "/"))
-    }
-
     #[tokio::test]
-    async fn version_check() {
-        let work_dir = tempfile::tempdir().unwrap();
-
-        let buildindex_dir = work_dir.path();
-        {
-            let _output_index =
-                OutputIndex::create_new(test_database_uri(&buildindex_dir, "0.0.1"))
-                    .await
-                    .unwrap();
-        }
-        assert!(
-            OutputIndex::open(test_database_uri(&buildindex_dir, "0.0.2"))
-                .await
-                .is_err()
-        );
-    }
-
-    #[tokio::test]
-    async fn create_open() {
-        let work_dir = tempfile::tempdir().unwrap();
-        let index_path = work_dir.path();
-        let index_db = test_database_uri(&index_path, "0.0.1");
-        {
-            let _index = OutputIndex::create_new(index_db.clone()).await.unwrap();
-        }
-
-        let _opened = OutputIndex::open(index_db).await.unwrap();
+    async fn new_index() {
+        let provider = Arc::new(Provider::new_in_memory());
+        let _output_index = OutputIndex::new(Arc::clone(&provider)).await;
     }
 
     #[tokio::test]
     async fn outputs() {
-        let work_dir = tempfile::tempdir().unwrap();
-        let index_path = work_dir.path();
-        let index_db = test_database_uri(&index_path, "0.0.1");
-        let mut index = OutputIndex::create_new(index_db).await.unwrap();
+        let provider = Arc::new(Provider::new_in_memory());
+        let mut index = OutputIndex::new(provider).await;
 
         // no dependencies and no references.
         let compile_path = ResourcePathId::from(ResourceTypeAndId {

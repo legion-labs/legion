@@ -15,16 +15,8 @@ mod tests {
 
     pub(crate) async fn setup_dir(
         work_dir: &TempDir,
-    ) -> (
-        PathBuf,
-        PathBuf,
-        LocalRepositoryIndex,
-        Arc<Provider>,
-        Arc<Provider>,
-    ) {
+    ) -> (PathBuf, LocalRepositoryIndex, Arc<Provider>, Arc<Provider>) {
         let project_dir = work_dir.path();
-        let output_dir = project_dir.join("temp");
-        std::fs::create_dir_all(&output_dir).unwrap();
 
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
@@ -34,7 +26,6 @@ mod tests {
 
         (
             project_dir.to_owned(),
-            output_dir,
             repository_index,
             source_control_content_provider,
             data_content_provider,
@@ -51,13 +42,8 @@ mod tests {
     #[tokio::test]
     async fn no_dependencies() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, repository_index, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let resource = {
@@ -82,18 +68,15 @@ mod tests {
             ResourcePathId::from(id)
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::default(),
-            data_content_provider,
-        )
-        .create_with_project(
-            project_dir,
-            repository_index,
-            source_control_content_provider,
-        )
-        .await
-        .expect("data build");
+        let (mut build, project) =
+            DataBuildOptions::new(data_content_provider, CompilerRegistryOptions::default())
+                .create_with_project(
+                    project_dir,
+                    repository_index,
+                    source_control_content_provider,
+                )
+                .await
+                .expect("data build");
 
         build.source_pull(&project).await.unwrap();
 
@@ -106,13 +89,8 @@ mod tests {
     #[tokio::test]
     async fn with_dependency() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, repository_index, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let (child_id, parent_id) = {
@@ -162,18 +140,15 @@ mod tests {
             )
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::default(),
-            data_content_provider,
-        )
-        .create_with_project(
-            project_dir,
-            repository_index,
-            source_control_content_provider,
-        )
-        .await
-        .expect("data build");
+        let (mut build, project) =
+            DataBuildOptions::new(data_content_provider, CompilerRegistryOptions::default())
+                .create_with_project(
+                    project_dir,
+                    repository_index,
+                    source_control_content_provider,
+                )
+                .await
+                .expect("data build");
 
         build.source_pull(&project).await.unwrap();
 

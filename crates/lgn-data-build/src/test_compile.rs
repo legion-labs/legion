@@ -24,16 +24,8 @@ mod tests {
 
     pub(crate) async fn setup_dir(
         work_dir: &TempDir,
-    ) -> (
-        PathBuf,
-        PathBuf,
-        LocalRepositoryIndex,
-        Arc<Provider>,
-        Arc<Provider>,
-    ) {
+    ) -> (PathBuf, LocalRepositoryIndex, Arc<Provider>, Arc<Provider>) {
         let project_dir = work_dir.path();
-        let output_dir = project_dir.join("temp");
-        std::fs::create_dir_all(&output_dir).unwrap();
 
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
@@ -43,7 +35,6 @@ mod tests {
 
         (
             project_dir.to_owned(),
-            output_dir,
             repository_index,
             source_control_content_provider,
             data_content_provider,
@@ -141,13 +132,8 @@ mod tests {
     #[tokio::test]
     async fn compile_change_no_deps() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, repository_index, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let (resource_id, resource_handle) = {
@@ -175,10 +161,9 @@ mod tests {
             (resource_id, resource_handle)
         };
 
-        let config = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+        let config = DataBuildOptions::new(
             Arc::clone(&data_content_provider),
+            CompilerRegistryOptions::local_compilers(target_dir()),
         );
 
         let source = ResourcePathId::from(resource_id);
@@ -244,10 +229,9 @@ mod tests {
 
         // ..re-compile changed resource..
         let modified_checksum = {
-            let config = DataBuildOptions::new_with_sqlite_output(
-                output_dir,
-                CompilerRegistryOptions::local_compilers(target_dir()),
+            let config = DataBuildOptions::new(
                 Arc::clone(&data_content_provider),
+                CompilerRegistryOptions::local_compilers(target_dir()),
             );
 
             let project = Project::open(
@@ -352,13 +336,8 @@ mod tests {
     #[tokio::test]
     async fn intermediate_resource() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, repository_index, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let source_magic_value = String::from("47");
@@ -390,10 +369,9 @@ mod tests {
                 .unwrap()
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-            output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+        let (mut build, project) = DataBuildOptions::new(
             Arc::clone(&data_content_provider),
+            CompilerRegistryOptions::local_compilers(target_dir()),
         )
         .create_with_project(
             project_dir,
@@ -469,22 +447,16 @@ mod tests {
     #[tokio::test]
     async fn unnamed_cache_use() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, repository_index, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir).await;
 
         let resource_list =
             setup_project(&project_dir, Arc::clone(&source_control_content_provider)).await;
         let root_resource = resource_list[0];
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+        let (mut build, project) = DataBuildOptions::new(
             data_content_provider,
+            CompilerRegistryOptions::local_compilers(target_dir()),
         )
         .create_with_project(
             &project_dir,
@@ -595,13 +567,8 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     async fn named_path_cache_use() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, repository_index, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let magic_list = vec![String::from("47"), String::from("198")];
@@ -633,10 +600,9 @@ mod tests {
                 .unwrap()
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-            output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+        let (mut build, project) = DataBuildOptions::new(
             Arc::clone(&data_content_provider),
+            CompilerRegistryOptions::local_compilers(target_dir()),
         )
         .create_with_project(
             &project_dir,
@@ -867,13 +833,8 @@ mod tests {
     #[tokio::test]
     async fn link() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, repository_index, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let parent_id = {
@@ -927,10 +888,9 @@ mod tests {
                 .unwrap()
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-            output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+        let (mut build, project) = DataBuildOptions::new(
             data_content_provider,
+            CompilerRegistryOptions::local_compilers(target_dir()),
         )
         .create_with_project(
             &project_dir,
@@ -985,13 +945,8 @@ mod tests {
     #[tokio::test]
     async fn verify_manifest() {
         let work_dir = tempfile::tempdir().unwrap();
-        let (
-            project_dir,
-            output_dir,
-            repository_index,
-            source_control_content_provider,
-            data_content_provider,
-        ) = setup_dir(&work_dir).await;
+        let (project_dir, repository_index, source_control_content_provider, data_content_provider) =
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         // child_id <- test(child_id) <- parent_id = test(parent_id)
@@ -1036,10 +991,9 @@ mod tests {
                 .unwrap()
         };
 
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
-            output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+        let (mut build, project) = DataBuildOptions::new(
             Arc::clone(&data_content_provider),
+            CompilerRegistryOptions::local_compilers(target_dir()),
         )
         .create_with_project(
             project_dir,
