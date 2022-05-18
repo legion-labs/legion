@@ -269,8 +269,8 @@ May 2022
 ## May 2022
 - Unreal telemetry module (MAD)
 - Review regulatory requirements (Liem)
-- Infra visibility & alterting UAT (ingestion + analytics)(Liem)
 - Auth flow polish (Kevin)
+- l10n/i18n (Kevin)
 - Logs (dual mode)  (Kevin)
   * Paging when not filtering
   * n-first results when there is a filter
@@ -280,8 +280,8 @@ May 2022
 # Roadmap
 ## Juin 2022
 - Lakehouse-backed timeline (continued) (MAD)
+- Infra visibility & alterting UAT (ingestion + analytics)(Liem)
 - Backups data lake (Liem)
-- l10n/i18n (Kevin)
 - API key refactor (Julien)
 - IAM permissions cleanup for ingestion & analytics (Julien)
 - TSC frequency calibration (MAD)
