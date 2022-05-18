@@ -24,6 +24,7 @@ pub enum Type {
     DateTime,
     Date,
     Bytes,
+    Binary,
     Array(Box<Type>),
     HashSet(Box<Type>),
     Struct(String),
@@ -123,7 +124,40 @@ impl StatusCode {
 #[derive(Debug, PartialEq)]
 pub struct Response {
     pub description: String,
-    pub type_: Option<Type>,
+    pub content: Option<Content>,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Content {
+    pub media_type: MediaType,
+    pub type_: Type,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum MediaType {
+    Bytes,
+    Json,
+}
+
+impl TryFrom<&str> for MediaType {
+    type Error = Error;
+
+    fn try_from(s: &str) -> Result<Self> {
+        match s {
+            "application/octet-stream" => Ok(Self::Bytes),
+            "application/json" => Ok(Self::Json),
+            _ => Err(Error::Invalid(format!("media type: {}", s))),
+        }
+    }
+}
+
+impl std::fmt::Display for MediaType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Bytes => "application/octet-stream",
+            Self::Json => "application/json",
+        })
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -174,8 +208,8 @@ impl std::str::FromStr for Method {
 #[derive(Debug, PartialEq)]
 pub struct RequestBody {
     pub description: Option<String>,
-    pub type_: Type,
     pub required: bool,
+    pub content: Content,
 }
 
 #[derive(Debug, Clone, PartialEq)]

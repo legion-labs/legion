@@ -1,10 +1,9 @@
 mod filters;
 
-use super::{
-    api::{Api, Model},
-    Generator,
+use crate::{
+    api::{Api, MediaType, Model},
+    Generator, Result,
 };
-use crate::Result;
 use askama::Template;
 use rust_format::{Formatter, RustFmt};
 use std::path::Path;
@@ -18,8 +17,8 @@ pub struct RustTemplate<'a> {
 #[derive(Default)]
 pub struct RustGenerator {}
 
-impl<'a> Generator<'a> for RustGenerator {
-    fn generate(&self, api: &'a Api, output_dir: &Path) -> Result<()> {
+impl Generator for RustGenerator {
+    fn generate(&self, api: &Api, output_dir: &Path) -> Result<()> {
         let content = RustTemplate { api }.render()?;
         let content = RustFmt::default().format_str(&content)?;
 

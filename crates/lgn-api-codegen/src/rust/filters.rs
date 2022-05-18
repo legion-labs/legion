@@ -20,7 +20,7 @@ pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
         Type::Boolean => "bool".to_string(),
         Type::Float32 => "f32".to_string(),
         Type::Float64 => "f64".to_string(),
-        Type::Bytes => "ByteArray".to_string(),
+        Type::Bytes | Type::Binary => "ByteArray".to_string(),
         Type::DateTime => "chrono::DateTime::<chrono::Utc>".to_string(),
         Type::Date => "chrono::Date::<chrono::Utc>".to_string(),
         Type::Array(inner) => format!("Vec<{}>", fmt_type(inner).unwrap()),

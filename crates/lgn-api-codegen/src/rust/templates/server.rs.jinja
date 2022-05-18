@@ -2,7 +2,7 @@ use crate::{api};
 use crate::params;
 use crate::errors::{Error, Result};
 use axum::{
-    extract::Json, extract::Path, extract::Query, http::HeaderMap, response::{IntoResponse, Response}, routing, Extension, Router,
+    body::Bytes, extract::Json, extract::Path, extract::Query, http::HeaderMap, response::{IntoResponse, Response}, routing, Extension, Router,
 };
 use http::header::HeaderName;
 use lgn_api_codegen::{ByteArray, Extra};
@@ -37,11 +37,16 @@ where
                 Query(query): Query<params::{{ route.name|pascal_case }}Query>,
             {% endif -%}
             {% if let Some(request_body) = route.request_body -%}
-                {%- if request_body.required -%}
-                    Json(body): Json<{{ request_body.type_|fmt_type }}>,    
-                {%- else -%}
-                    Json(body): Json<Option<{{ request_body.type_|fmt_type }}>>,
-                {%- endif -%}
+                {% match request_body.content.media_type -%}
+                    {% when MediaType::Json -%}
+                        {%- if request_body.required -%}
+                            Json(body): Json<{{ request_body.content.type_|fmt_type }}>,
+                        {%- else -%}
+                            Json(body): Json<Option<{{ request_body.content.type_|fmt_type }}>>,
+                        {%- endif -%}
+                    {% when MediaType::Bytes -%}
+                        body: Bytes,
+                {% endmatch -%}
             {% endif -%}
             headers: HeaderMap,
         ) -> Response
@@ -81,7 +86,12 @@ where
                     {{ parameter.name|snake_case }}, 
                 {%- endfor -%}
                 {%- if let Some(request_body) = route.request_body -%}
-                    body,
+                    {% match request_body.content.media_type -%}
+                        {% when MediaType::Json -%}
+                            body,
+                        {% when MediaType::Bytes -%}
+                            body.into(),
+                    {% endmatch -%}
                 {%- endif -%}
                 Extra{ headers },
             ).await;

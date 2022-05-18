@@ -7,7 +7,7 @@ use super::api::{
     Type,
 };
 use crate::{
-    api::Parameters,
+    api::{Content, Parameters},
     openapi_ext::{OpenAPIExt, OpenAPIPath},
     Error, Result,
 };
@@ -155,19 +155,13 @@ impl<'a> Visitor<'a> {
                     }
                 };
 
-                let type_ = match request_body.content.len() {
+                let (type_, media_type) = match request_body.content.len() {
                     0 => return Err(Error::Invalid(format!("schema: {}", path))),
                     1 => {
                         let (media_type, media_type_data) =
                             request_body.content.iter().next().unwrap();
-                        if media_type != "application/json" {
-                            return Err(Error::Unsupported(format!(
-                                "media type: {:?}",
-                                media_type
-                            )));
-                        }
 
-                        match &media_type_data.schema {
+                        let type_ = match &media_type_data.schema {
                             Some(schema_ref) => match &schema_ref {
                                 openapiv3::ReferenceOr::Item(schema) => {
                                     // Use the operation id and the body suffix to generate the type name.
@@ -180,11 +174,13 @@ impl<'a> Visitor<'a> {
                                 }
                             },
                             None => return Err(Error::Invalid(format!("schema: {}", path))),
-                        }
+                        };
+
+                        (type_, media_type)
                     }
                     _ => {
                         return Err(Error::Unsupported(format!(
-                            "multiple content type on request body: {} {}",
+                            "multiple media type on request body: {} {}",
                             path, method
                         )));
                     }
@@ -193,7 +189,10 @@ impl<'a> Visitor<'a> {
                 Some(RequestBody {
                     description: request_body.description.clone(),
                     required: request_body.required,
-                    type_,
+                    content: Content {
+                        media_type: media_type.as_str().try_into()?,
+                        type_,
+                    },
                 })
             }
             None => None,
@@ -209,15 +208,12 @@ impl<'a> Visitor<'a> {
                 }
             };
 
-            let type_ = match response.content.len() {
-                0 => None,
+            let (media_type, type_) = match response.content.len() {
+                0 => (None, None),
                 1 => {
                     let (media_type, media_type_data) = response.content.iter().next().unwrap();
-                    if media_type != "application/json" {
-                        return Err(Error::Unsupported(format!("media type: {:?}", media_type)));
-                    }
 
-                    match &media_type_data.schema {
+                    let type_ = match &media_type_data.schema {
                         Some(schema_ref) => Some(match &schema_ref {
                             openapiv3::ReferenceOr::Item(schema) => {
                                 // Use the operation id and the response suffix to generate the type name.
@@ -230,11 +226,13 @@ impl<'a> Visitor<'a> {
                             }
                         }),
                         None => None,
-                    }
+                    };
+
+                    (Some(media_type), type_)
                 }
                 _ => {
                     return Err(Error::Unsupported(format!(
-                        "multiple content type on response: {} {}",
+                        "multiple media type on response: {} {}",
                         path, method
                     )));
                 }
@@ -256,7 +254,15 @@ impl<'a> Visitor<'a> {
                 status_code,
                 Response {
                     description: response.description.clone(),
-                    type_,
+                    content: match media_type {
+                        Some(media_type) => Some(Content {
+                            media_type: media_type.as_str().try_into()?,
+                            type_: type_.ok_or_else(|| {
+                                Error::Invalid("content should have a schema".to_string())
+                            })?,
+                        }),
+                        None => None,
+                    },
                 },
             );
         }
@@ -473,9 +479,12 @@ impl<'a> Visitor<'a> {
         Ok(match &string_type.format {
             openapiv3::VariantOrUnknownOrEmpty::Item(format) => match format {
                 openapiv3::StringFormat::Byte => Type::Bytes,
+                openapiv3::StringFormat::Binary => Type::Binary,
                 openapiv3::StringFormat::Date => Type::Date,
                 openapiv3::StringFormat::DateTime => Type::DateTime,
-                _ => return Err(Error::Unsupported(format!("format: {:?}", format))),
+                openapiv3::StringFormat::Password => {
+                    return Err(Error::Unsupported(format!("format: {:?}", format)))
+                }
             },
             _ => Type::String,
         })
@@ -497,6 +506,7 @@ impl<'a> Visitor<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::api::{Content, MediaType};
     use indexmap::IndexMap;
 
     use super::*;
@@ -597,6 +607,20 @@ mod tests {
             "#,
         )
         .unwrap();
+        let str_bytes = serde_yaml::from_str::<openapiv3::StringType>(
+            r#"
+            type: string
+            format: byte
+            "#,
+        )
+        .unwrap();
+        let str_binary = serde_yaml::from_str::<openapiv3::StringType>(
+            r#"
+            type: string
+            format: binary
+            "#,
+        )
+        .unwrap();
 
         let data = openapiv3::SchemaData::default();
         let oas = openapiv3::OpenAPI::default();
@@ -615,6 +639,16 @@ mod tests {
             v.resolve_string(&"my_str_date_time".into(), &data, &str_date_time)
                 .unwrap(),
             Type::DateTime
+        );
+        assert_eq!(
+            v.resolve_string(&"my_str_bytes".into(), &data, &str_bytes)
+                .unwrap(),
+            Type::Bytes
+        );
+        assert_eq!(
+            v.resolve_string(&"my_str_binary".into(), &data, &str_binary)
+                .unwrap(),
+            Type::Binary
         );
     }
 
@@ -949,7 +983,10 @@ mod tests {
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
-                    type_: Some(Type::Array(Box::new(Type::Struct("Pet".to_string())))),
+                    content: Some(Content {
+                        media_type: MediaType::Json,
+                        type_: Type::Array(Box::new(Type::Struct("Pet".to_string()))),
+                    }),
                 },
             )]),
         };
@@ -1031,14 +1068,17 @@ mod tests {
             request_body: Some(RequestBody {
                 description: None,
                 required: false,
-                type_: Type::Struct("AddPetBody".to_string()),
+                content: Content {
+                    media_type: MediaType::Json,
+                    type_: Type::Struct("AddPetBody".to_string()),
+                },
             }),
             parameters: Parameters::default(),
             responses: IndexMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
-                    type_: None,
+                    content: None,
                 },
             )]),
         };
@@ -1117,7 +1157,10 @@ mod tests {
             request_body: Some(RequestBody {
                 description: None,
                 required: false,
-                type_: Type::Struct("Pet".to_string()),
+                content: Content {
+                    media_type: MediaType::Json,
+                    type_: Type::Struct("Pet".to_string()),
+                },
             }),
             parameters: Parameters::default(),
             responses: IndexMap::from([
@@ -1125,14 +1168,17 @@ mod tests {
                     http::StatusCode::OK.into(),
                     Response {
                         description: "Successful".to_string(),
-                        type_: Some(Type::Struct("Pet".to_string())),
+                        content: Some(Content {
+                            media_type: MediaType::Json,
+                            type_: Type::Struct("Pet".to_string()),
+                        }),
                     },
                 ),
                 (
                     http::StatusCode::METHOD_NOT_ALLOWED.into(),
                     Response {
                         description: "Invalid input".to_string(),
-                        type_: None,
+                        content: None,
                     },
                 ),
             ]),
@@ -1143,5 +1189,32 @@ mod tests {
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(api.paths.get(&"/pets".into()), Some(&vec![expected_route]));
+    }
+
+    #[test]
+    fn test_unsupported_media_type() {
+        let paths = serde_yaml::from_str::<openapiv3::Paths>(
+            r#"
+            /pets:
+              post:
+                operationId: addPet
+                responses:
+                  '200':
+                    description: Successful
+                requestBody:
+                  content:
+                    test/test:
+                      schema:
+                        type: string
+            "#,
+        )
+        .unwrap();
+
+        let oas = openapiv3::OpenAPI {
+            paths,
+            ..openapiv3::OpenAPI::default()
+        };
+        let result = visit(&oas);
+        assert!(result.is_err());
     }
 }
