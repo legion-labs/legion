@@ -27,3 +27,21 @@ struct AnimationTrack {
     bone_ids: Vec<i32>,
     parent_indices: Vec<i32>,
 }
+
+#[component]
+pub struct Connection {
+    parent_node_id: u32,
+    child_node_id: u32,
+}
+
+#[component]
+pub struct AnimationClipNode {
+    id: i32,
+    track: AnimationTrack,
+}
+
+#[component]
+pub struct EditorGraphDefinition {
+    states: Vec<AnimationClipNode>,
+    connections: Vec<Connection>,
+}
