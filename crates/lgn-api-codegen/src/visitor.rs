@@ -257,9 +257,9 @@ impl<'a> Visitor<'a> {
                     content: match media_type {
                         Some(media_type) => Some(Content {
                             content_type: media_type.as_str().try_into()?,
-                            type_: type_.ok_or(Error::Invalid(
-                                "content should have a schema".to_string(),
-                            ))?,
+                            type_: type_.ok_or_else(|| {
+                                Error::Invalid("content should have a schema".to_string())
+                            })?,
                         }),
                         None => None,
                     },
@@ -507,7 +507,6 @@ impl<'a> Visitor<'a> {
 #[cfg(test)]
 mod tests {
     use crate::api::{Content, ContentType};
-    use crate::Error;
     use indexmap::IndexMap;
 
     use super::*;
