@@ -65,6 +65,8 @@
     );
     stateStore = stateManager.state;
 
+    await requestProcessLakehouse(processId);
+
     try {
       await stateManager.init();
     } catch (error) {
@@ -80,6 +82,17 @@
       initializationError = `Process does not have any block data. Please refresh the page to try again.`;
     }
   });
+
+  async function requestProcessLakehouse(processId: string) {
+    if (
+      import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_TIMELINE_JIT_LAKEHOUSE ===
+      "true"
+    ) {
+      await client.build_timeline_tables({
+        processId,
+      });
+    }
+  }
 
   async function onZoom(event: WheelEvent) {
     stateStore.wheelZoom(event);

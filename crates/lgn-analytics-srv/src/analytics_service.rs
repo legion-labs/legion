@@ -1,4 +1,3 @@
-use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
 use anyhow::Context;
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
@@ -11,6 +10,8 @@ use lgn_telemetry_proto::analytics::AsyncSpansRequest;
 use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
 use lgn_telemetry_proto::analytics::BlockAsyncStatsRequest;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
+use lgn_telemetry_proto::analytics::BuildTimelineTablesReply;
+use lgn_telemetry_proto::analytics::BuildTimelineTablesRequest;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphBlock;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphComputedBlock;
 use lgn_telemetry_proto::analytics::FindProcessReply;
@@ -54,6 +55,8 @@ use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
+use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
+use crate::jit_lakehouse::JitLakehouse;
 use crate::log_entry::Searchable;
 use crate::metrics::MetricHandler;
 
@@ -86,6 +89,7 @@ pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
     data_lake_blobs: Arc<dyn BlobStorage>,
     cache: Arc<DiskCache>,
+    jit_lakehouse: Arc<dyn JitLakehouse>,
     call_trees: Arc<CallTreeStore>,
     flush_monitor: FlushMonitor,
 }
@@ -96,11 +100,13 @@ impl AnalyticsService {
         pool: sqlx::AnyPool,
         data_lake_blobs: Arc<dyn BlobStorage>,
         cache_blobs: Arc<dyn BlobStorage>,
+        jit_lakehouse: Arc<dyn JitLakehouse>,
     ) -> Self {
         Self {
             pool: pool.clone(),
             data_lake_blobs: data_lake_blobs.clone(),
             cache: Arc::new(DiskCache::new(cache_blobs.clone())),
+            jit_lakehouse,
             call_trees: Arc::new(CallTreeStore::new(pool, data_lake_blobs, cache_blobs)),
             flush_monitor: FlushMonitor::new(),
         }
@@ -372,6 +378,17 @@ impl AnalyticsService {
             request.block_ids,
         )
         .await
+    }
+
+    #[span_fn]
+    async fn build_timeline_tables_impl(
+        &self,
+        request: BuildTimelineTablesRequest,
+    ) -> Result<BuildTimelineTablesReply> {
+        self.jit_lakehouse
+            .build_timeline_tables(&request.process_id)
+            .await?;
+        Ok(BuildTimelineTablesReply {})
     }
 }
 
@@ -849,6 +866,25 @@ impl PerformanceAnalytics for AnalyticsService {
                 error!("Error in fetch_fetch_async_spans: {:?}", e);
                 Err(Status::internal(format!(
                     "Error in fetch_async_spans: {}",
+                    e
+                )))
+            }
+        }
+    }
+
+    async fn build_timeline_tables(
+        &self,
+        request: Request<BuildTimelineTablesRequest>,
+    ) -> Result<Response<BuildTimelineTablesReply>, Status> {
+        self.flush_monitor.tick();
+        async_span_scope!("AnalyticsService::build_timeline_tables");
+        let inner_request = request.into_inner();
+        match self.build_timeline_tables_impl(inner_request).await {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => {
+                error!("Error in build_timeline_tables: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in build_timeline_tables: {}",
                     e
                 )))
             }
