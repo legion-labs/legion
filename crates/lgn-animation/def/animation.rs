@@ -1,9 +1,8 @@
-// TODO: Voir comment le import dans la lib
+use lgn_math::prelude::Vec3;
 
-// use lgn_math::prelude::{Quat, Vec3};
-
-// #[component]
-// struct CompressedData {
-//     #[legion(default = Vec3::new(0.0, 0.0, 0.0))]
-//     data: Vec, // TODO
-// }
+#[component]
+struct AnimationComponent {
+    #[legion(default = Vec3::ONE)]
+    track_data: Vec3,
+    // track_compression_settings: Vec<TrackCompressionSettings>,
+}

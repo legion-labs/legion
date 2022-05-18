@@ -1,26 +1,31 @@
-use crate::animation_graph_component::AnimationGraphComponent;
+#![allow(dead_code)]
 
-pub trait AnimationSystem {
-    fn register_component() {
-        /* */
-    }
+// use crate::animation_graph_component::AnimationGraphComponent;
+use lgn_ecs::prelude::{Entity, Query};
 
-    fn unregister_component() {
-        /* */
-    }
+// pub struct AnimationSystem {
+//     // const anim_players: Vec<AnimationClipPlayerComponent>;
+//     anim_graphs: Vec<AnimationGraphComponent>,
+//     // const mesh_components: Vec<SkeletalMeshComponents>; // TODO: find in our source code!
+// }
 
-    fn update() {
-        /* */
-    }
+pub(crate) fn register_component() {
+    /* */
+}
 
-    fn update_anim_players() {
-        /* */
-    }
+pub(crate) fn unregister_component() {
+    /* */
+}
 
-    fn update_anim_graphs() {
-        /* */
-    }
-    // const anim_players: Vec<AnimationClipPlayerComponent>;
-    const anim_graphs: Vec<AnimationGraphComponent>;
-    // const mesh_components: Vec<SkeletalMeshComponents>; // TODO: find in our source code!
+pub(crate) fn update(animations: Query<'_, '_, (Entity, &crate::runtime::AnimationComponent)>) {
+    for (entity, animations) in animations.iter() {}
+    drop(animations);
+}
+
+pub(crate) fn update_anim_players() {
+    /* */
+}
+
+pub(crate) fn update_anim_graphs() {
+    /* */
 }

@@ -201,6 +201,10 @@ impl SceneInstance {
                     component.downcast_ref::<lgn_graphics_data::runtime::CameraSetup>()
                 {
                     entity.insert(camera_setup.clone());
+                } else if let Some(animation_data) =
+                    component.downcast_ref::<lgn_animation::runtime::AnimationComponent>()
+                {
+                    entity.insert(animation_data.clone());
                 } else {
                     error!(
                         "Unhandle component type {} in entity {}",

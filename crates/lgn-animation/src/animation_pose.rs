@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use lgn_transform::components::Transform;
 
 use crate::animation_skeleton::Skeleton;

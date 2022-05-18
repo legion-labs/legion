@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::animation_skeleton::Skeleton;
 
 pub struct GraphDataSet {

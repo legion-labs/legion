@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use lgn_transform::components::Transform;
 
 pub struct Skeleton {
@@ -29,7 +31,7 @@ impl Skeleton {
         /* */
     }
 
-    fn get_first_child_bone_index(boneIdx: i32) {
+    fn get_first_child_bone_index() {
         /* */
     }
 
@@ -45,7 +47,7 @@ impl Skeleton {
         /* */
     }
 
-    fn get_bone_global_transform(idx: i32) {
+    fn get_bone_global_transform() {
         /* */
     }
 }
