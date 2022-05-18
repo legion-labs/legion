@@ -7,6 +7,7 @@ use lgn_content_store::{
     },
     Provider,
 };
+use lgn_tracing::error;
 use serde::Serialize;
 
 use crate::{
@@ -17,7 +18,7 @@ use crate::{
 /// Represents a workspace.
 pub struct Workspace {
     index: Box<dyn Index>,
-    provider: Provider,
+    transaction: Provider,
     branch_name: String,
     main_index: StaticIndexer,
     path_index: StringPathIndexer,
@@ -107,11 +108,9 @@ impl Workspace {
     */
 
     fn new(index: Box<dyn Index>, provider: Provider, branch_name: &str) -> Self {
-        let provider = provider.begin_transaction_in_memory();
-
         Self {
             index,
-            provider,
+            transaction: provider.begin_transaction_in_memory(),
             branch_name: branch_name.to_owned(),
             main_index: StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>()),
             path_index: StringPathIndexer::default(),
@@ -130,7 +129,7 @@ impl Workspace {
         let mut commit = self.index.get_commit(current_branch.head).await?;
 
         if commit.main_index_tree_id.is_none() || commit.path_index_tree_id.is_none() {
-            let empty_tree_id = self.provider.write_tree(&Tree::default()).await.unwrap();
+            let empty_tree_id = self.transaction.write_tree(&Tree::default()).await.unwrap();
             if commit.main_index_tree_id.is_none() {
                 commit.main_index_tree_id = Some(empty_tree_id.clone());
             }
@@ -152,26 +151,17 @@ impl Workspace {
 
     pub async fn resource_exists(&self, id: WorkspaceResourceId) -> Result<bool> {
         let commit = self.get_current_commit().await?;
+
         Ok(self
             .main_index
             .get_leaf(
-                &self.provider,
+                &self.transaction,
                 &commit.main_index_tree_id.unwrap(),
                 &id.into(),
             )
             .await
             .map_other_err("reading main index")?
             .is_some())
-
-        // Ok(match commit.main_index_tree_id {
-        //     Some(tree_id) => self
-        //         .main_index
-        //         .get_leaf(&self.provider, &tree_id, &id.into())
-        //         .await
-        //         .map_other_err("reading main index")?
-        //         .is_some(),
-        //     None => false,
-        // })
     }
 
     /// Add a resource to the local changes.
@@ -189,7 +179,7 @@ impl Workspace {
         let resource_contents = WorkspaceResourceContents(contents);
 
         let resource_identifier = self
-            .provider
+            .transaction
             .write_resource(&resource_contents)
             .await
             .map_other_err("writing resource contents")?;
@@ -197,7 +187,7 @@ impl Workspace {
         let main_id = self
             .main_index
             .add_leaf(
-                &self.provider,
+                &self.transaction,
                 &commit.main_index_tree_id.unwrap(),
                 &id.into(),
                 TreeLeafNode::Resource(resource_identifier.clone()),
@@ -208,7 +198,7 @@ impl Workspace {
         let file_path_id = self
             .path_index
             .add_leaf(
-                &self.provider,
+                &self.transaction,
                 &commit.path_index_tree_id.unwrap(),
                 &path.into(),
                 TreeLeafNode::Resource(resource_identifier),
@@ -617,9 +607,15 @@ impl Workspace {
     /// # Returns
     ///
     /// The commit id.
-    pub async fn commit(&self, _message: &str, _behavior: CommitMode) -> Result<Commit> {
-        /*
-        let fs_tree = self.get_filesystem_tree([].into()).await?;
+    pub async fn commit(&mut self, message: &str, _behavior: CommitMode) -> Result<Commit> {
+        let transaction = std::mem::replace(&mut self.transaction, Provider::new_in_memory());
+        let provider = match transaction.commit_transaction().await {
+            Ok(provider) => provider,
+            Err((provider, e)) => {
+                error!("failed to commit to content-store: {}", e);
+                provider
+            }
+        };
 
         let current_branch = self.get_current_branch().await?;
         let mut branch = self.index.get_branch(&current_branch.name).await?;
@@ -630,132 +626,22 @@ impl Workspace {
             return Err(Error::stale_branch(branch));
         }
 
-        let staged_changes = self.get_staged_changes().await?;
+        let mut commit = Commit::new_unique_now(
+            whoami::username(),
+            message,
+            commit.changes.clone(),
+            commit.main_index_tree_id,
+            commit.path_index_tree_id,
+            BTreeSet::from([commit.id]),
+        );
 
-        //for change in &staged_changes {
-        //    assert_not_locked(workspace, &abs_path).await?;
-        //}
+        commit.id = self.index.commit_to_branch(&commit, &branch).await?;
 
-        if matches!(behavior, CommitMode::Strict) {
-            let unchanged_files_marked_for_edition: BTreeSet<_> = staged_changes
-                .iter()
-                .filter_map(|(path, change)| {
-                    if change.change_type().has_modifications() {
-                        None
-                    } else {
-                        Some(path.clone())
-                    }
-                })
-                .collect();
+        branch.head = commit.id;
 
-            if !unchanged_files_marked_for_edition.is_empty() {
-                return Err(Error::unchanged_files_marked_for_edition(
-                    unchanged_files_marked_for_edition,
-                ));
-            }
-        }
-
-        let tree = self
-            .get_tree_for_commit(&commit, [].into())
-            .await?
-            .with_changes(staged_changes.values())?;
-        let tree_id = tree.id();
-
-        let empty_commit = commit.root_tree_id == tree_id;
-
-        if empty_commit && matches!(behavior, CommitMode::Strict) {
-            return Err(Error::EmptyCommitNotAllowed);
-        }
-
-        // Let's update the new tree already.
-        self.index
-            .save_tree(&tree)
-            .await
-            .map_other_err("failed to save tree")?;
-
-        let mut parent_commits = BTreeSet::from([current_branch.head]);
-
-        for pending_branch_merge in self.backend.read_pending_branch_merges().await? {
-            parent_commits.insert(pending_branch_merge.head);
-        }
-
-        let staged_changes = staged_changes.into_values().collect::<BTreeSet<_>>();
-
-        let commit = if !empty_commit {
-            let mut commit = Commit::new_unique_now(
-                whoami::username(),
-                message,
-                staged_changes.clone(),
-                tree_id,
-                parent_commits,
-            );
-
-            commit.id = self.index.commit_to_branch(&commit, &branch).await?;
-
-            branch.head = commit.id;
-
-            self.backend.set_current_branch(&branch).await?;
-            commit
-        } else {
-            commit
-        };
-
-        let mut changes_to_save = Vec::new();
-
-        // For all the changes that we commited, we make the files read-only
-        // again and release locks, unless said files have unstaged changes on
-        // disk.
-        for change in &staged_changes {
-            match change.change_type() {
-                ChangeType::Add { new_id: new_info }
-                | ChangeType::Edit {
-                    new_id: new_info, ..
-                } => {
-                    if let Some(node) = fs_tree.find(change.canonical_path())? {
-                        if node.cs_id() == new_info {
-                            if let Err(err) = self
-                                .make_file_read_only(
-                                    change.canonical_path().to_path_buf(&self.root),
-                                    true,
-                                )
-                                .await
-                            {
-                                warn!(
-                                    "failed to make file `{}` read only: {}",
-                                    change.canonical_path(),
-                                    err
-                                );
-                            }
-                        } else {
-                            // The file has some unstaged changes: we will need
-                            // to mark it for edition at the end of the commit.
-                            changes_to_save.push(Change::new(
-                                change.canonical_path().clone(),
-                                ChangeType::Edit {
-                                    old_id: new_info.clone(),
-                                    new_id: new_info.clone(),
-                                },
-                            ));
-                        }
-                    }
-                }
-                ChangeType::Delete { .. } => {}
-            }
-        }
-
-        self.backend
-            .clear_staged_changes(&staged_changes.into_iter().collect::<Vec<_>>())
-            .await?;
-
-        self.backend
-            .save_staged_changes(changes_to_save.as_slice())
-            .await?;
-
-        self.backend.clear_pending_branch_merges().await?;
+        self.transaction = provider.begin_transaction_in_memory();
 
         Ok(commit)
-        */
-        Err(Error::Unspecified("todo".to_owned()))
     }
 
     /*
