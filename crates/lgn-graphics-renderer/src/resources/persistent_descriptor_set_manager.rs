@@ -18,6 +18,9 @@ pub struct PersistentDescriptorSetManager {
     render_frame_capacity: usize,
     bindless_index_allocator: IndexAllocator,
     removed_indices: Vec<Vec<u32>>,
+
+    material_textures_index: u32,
+    material_samplers_index: u32,
 }
 
 impl PersistentDescriptorSetManager {
@@ -39,6 +42,13 @@ impl PersistentDescriptorSetManager {
             BINDLESS_TEXTURE_ARRAY_LEN
         );
 
+        let material_textures_index = layout
+            .find_descriptor_index_by_name("material_textures")
+            .unwrap();
+        let material_samplers_index = layout
+            .find_descriptor_index_by_name("material_samplers")
+            .unwrap();
+
         let def = DescriptorHeapDef::from_descriptor_set_layout_def(layout.definition(), 1);
         let persistent_partition =
             DescriptorHeapPartition::new(descriptor_heap_manager.descriptor_heap(), false, &def)
@@ -53,6 +63,8 @@ impl PersistentDescriptorSetManager {
             removed_indices: (0..render_frame_capacity)
                 .map(|_| Vec::new())
                 .collect::<Vec<_>>(),
+            material_textures_index,
+            material_samplers_index,
         }
     }
 
@@ -84,6 +96,14 @@ impl PersistentDescriptorSetManager {
         );
 
         index
+    }
+
+    pub fn set_sampler(&mut self) {
+        let mut writer = DescriptorSetWriter::new(
+            &self.device_context,
+            self.descriptor_set.handle(),
+            self.descriptor_set.layout(),
+        );
     }
 
     pub fn unset_bindless_texture(&mut self, index: u32) {

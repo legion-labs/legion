@@ -1,3 +1,30 @@
+pub enum MagFilter {
+    Nearest,
+    Linear,
+}
+
+pub enum MinFilter {
+    Nearest,
+    Linear,
+    NearestMipmapNearest,
+    LinearMipmapNearest,
+    NearestMipmapLinear,
+    LinearMipmapLinear,
+}
+
+pub enum WrappingMode {
+    ClampToEdge,
+    MirroredRepeat,
+    Repeat,
+}
+
+pub struct Sampler {
+    mag_filter: MagFilter,
+    min_filter: MinFilter,
+    wrap_u: WrappingMode,
+    wrap_v: WrappingMode,
+}
+
 #[resource()]
 #[derive(Clone)]
 pub struct Material {
@@ -24,4 +51,6 @@ pub struct Material {
 
     #[legion(default = 0.0)]
     pub reflectance: f32,
+
+    pub sampler: Option<Sampler>,
 }

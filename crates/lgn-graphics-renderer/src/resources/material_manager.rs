@@ -15,8 +15,9 @@ use crate::{
 };
 
 use super::{
-    GpuDataManager, IndexAllocator, MissingVisualTracker, SharedResourcesManager, TextureEvent,
-    TextureManager, UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+    GpuDataManager, IndexAllocator, MissingVisualTracker, PersistentDescriptorSetManager,
+    SamplerManager, SharedResourcesManager, TextureEvent, TextureManager,
+    UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
 };
 
 type GpuMaterialData = GpuDataManager<MaterialId, crate::cgen::cgen_type::MaterialData>;
@@ -254,6 +255,7 @@ impl MaterialManager {
         material_component: &MaterialData,
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
+        sampler_manager: &SamplerManager,
     ) -> crate::cgen::cgen_type::MaterialData {
         let mut material_data = crate::cgen::cgen_type::MaterialData::default();
 
@@ -303,6 +305,11 @@ impl MaterialManager {
             )
             .into(),
         );
+        material_data.set_sampler(
+            sampler_manager
+                .get_index(material_component.sampler.as_ref())
+                .into(),
+        );
 
         material_data
     }
@@ -330,6 +337,8 @@ impl MaterialManager {
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
+        persistent_descriptor_set_manager: &PersistentDescriptorSetManager,
+        sampler_manager: &SamplerManager,
     ) {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
@@ -337,10 +346,14 @@ impl MaterialManager {
             let material = &self.get_material(*material_id);
             let material_data = &material.material_data;
 
+            sampler_manager
+                .upload_sampler_data(persistent_descriptor_set_manager, material_data.sampler);
+
             let gpu_material_data = Self::build_gpu_material_data(
                 material_data,
                 texture_manager,
                 shared_resources_manager,
+                sampler_manager,
             );
             self.gpu_material_data
                 .update_gpu_data(material_id, &gpu_material_data, &mut updater);
@@ -389,6 +402,7 @@ impl MaterialManager {
                     .default_texture_bindless_index(SharedTextureId::Roughness)
                     .into(),
             );
+            default_material_data.set_sampler();
 
             self.alloc_material(
                 self.default_material_id,

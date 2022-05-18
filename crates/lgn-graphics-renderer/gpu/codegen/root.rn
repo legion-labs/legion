@@ -114,6 +114,7 @@ pub fn main() {
             #{ name:"normal_texture", ty:"Uint1" },
             #{ name:"metalness_texture", ty:"Uint1" },
             #{ name:"roughness_texture", ty:"Uint1" },
+            #{ name:"sampler", ty:"Uint1" },
         ]
     };
     products.push( material_data );    
@@ -125,7 +126,8 @@ pub fn main() {
         name: "PersistentDescriptorSet",
         frequency: PERSISTENT_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [            
-            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:10240, bindless:true },            
+            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:10240, bindless:true },
+            #{ type:"Sampler", name:"material_samplers", array_len:64 },         
         ]
     };
     products.push( persistent_descriptor_set );
@@ -140,8 +142,7 @@ pub fn main() {
             #{ type:"StructuredBuffer", name:"omni_directional_lights", content:"OmniDirectionalLight" },
             #{ type:"StructuredBuffer", name:"spot_lights", content:"SpotLight" },
             #{ type:"ByteAddressBuffer", name:"static_buffer" },
-            #{ type:"StructuredBuffer", name:"va_table_address_buffer", content:"Uint1"  },
-            #{ type:"Sampler", name:"material_sampler" },
+            #{ type:"StructuredBuffer", name:"va_table_address_buffer", content:"Uint1" },
         ]
     };
     products.push( frame_descriptor_set );
