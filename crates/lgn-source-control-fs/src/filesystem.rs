@@ -60,8 +60,10 @@ impl SourceControlFilesystem {
 
     async fn read_tree(index: impl Index, branch_name: &str) -> Result<Tree> {
         let branch = index.get_branch(branch_name).await?;
-        let commit = index.get_commit(branch.head).await?;
-        index.get_tree(&commit.root_tree_id).await
+        let _commit = index.get_commit(branch.head).await?;
+        // TODO
+        // index.get_tree(&commit.root_tree_id).await
+        Ok(Tree::empty())
     }
 
     fn get_data(&self, id: &Identifier) -> Result<Vec<u8>> {

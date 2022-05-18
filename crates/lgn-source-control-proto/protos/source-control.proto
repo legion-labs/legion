@@ -111,6 +111,12 @@ message ChangeType {
   string new_id = 2;
 }
 
+message Tree {
+  string name = 1;
+  string id = 2;
+  repeated Tree children = 3;
+}
+
 message LockRequest {
   string repository_name = 1;
   Lock lock = 2;
