@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use chrono::DateTime;
-use lgn_content_store::indexing::TreeIdentifier;
 use lgn_tracing::prelude::*;
 use sqlx::{
     any::AnyPoolOptions, error::DatabaseError, migrate::MigrateDatabase, mysql::MySqlDatabaseError,
@@ -299,6 +298,8 @@ impl core::fmt::Debug for SqlIndex {
 }
 
 impl SqlIndex {
+    const NULL_TREE_ID: &'static str = "null";
+
     async fn init(
         driver: SqlDatabaseDriver,
         pool: Pool<sqlx::Any>,
@@ -381,15 +382,12 @@ impl SqlIndex {
         )
         .await?;
 
-        // TODO get empty TreeIdentifier
-        let empty_tree_id: TreeIdentifier = "AGE".parse().unwrap();
-
         let initial_commit = Commit::new_unique_now(
             whoami::username(),
             String::from("initial commit"),
             BTreeSet::new(),
-            empty_tree_id.clone(),
-            empty_tree_id,
+            None,
+            None,
             BTreeSet::new(),
         );
 
@@ -708,6 +706,20 @@ impl SqlIndex {
                             })
                             .collect::<Result<BTreeSet<_>>>()?;
 
+                        let main_index_tree_id = row.get::<String, &str>("main_index_tree_id");
+                        let main_index_tree_id = if main_index_tree_id == Self::NULL_TREE_ID {
+                            None
+                        } else {
+                            Some(main_index_tree_id.parse().unwrap())
+                        };
+
+                        let path_index_tree_id = row.get::<String, &str>("path_index_tree_id");
+                        let path_index_tree_id = if path_index_tree_id == Self::NULL_TREE_ID {
+                            None
+                        } else {
+                            Some(path_index_tree_id.parse().unwrap())
+                        };
+
                         Commit::new(
                             CommitId(
                                 commit_id
@@ -717,12 +729,8 @@ impl SqlIndex {
                             row.get("owner"),
                             row.get("message"),
                             changes,
-                            row.get::<String, &str>("main_index_tree_id")
-                                .parse()
-                                .unwrap(),
-                            row.get::<String, &str>("path_index_tree_id")
-                                .parse()
-                                .unwrap(),
+                            main_index_tree_id,
+                            path_index_tree_id,
                             parents,
                             timestamp,
                         )
@@ -749,6 +757,15 @@ impl SqlIndex {
         repository_id: i64,
         commit: &Commit,
     ) -> Result<CommitId> {
+        let main_index_tree_id = match &commit.main_index_tree_id {
+            Some(id) => id.to_string(),
+            None => Self::NULL_TREE_ID.to_owned(),
+        };
+        let path_index_tree_id = match &commit.path_index_tree_id {
+            Some(id) => id.to_string(),
+            None => Self::NULL_TREE_ID.to_owned(),
+        };
+
         let result = sqlx::query(&format!(
             "INSERT INTO `{}` VALUES(?, NULL, ?, ?, ?, ?, ?);",
             TABLE_COMMITS
@@ -756,8 +773,8 @@ impl SqlIndex {
         .bind(repository_id)
         .bind(commit.owner.clone())
         .bind(commit.message.clone())
-        .bind(commit.main_index_tree_id.to_string())
-        .bind(commit.path_index_tree_id.to_string())
+        .bind(main_index_tree_id)
+        .bind(path_index_tree_id)
         .bind(commit.timestamp.to_rfc3339())
         .execute(&mut *transaction)
         .await

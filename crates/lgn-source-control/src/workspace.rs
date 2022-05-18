@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use lgn_content_store::{
     indexing::{
-        IndexableResource, ResourceWriter, StaticIndexer, StringPathIndexer, TreeIdentifier,
-        TreeLeafNode,
+        IndexableResource, ResourceWriter, StaticIndexer, StringPathIndexer, Tree, TreeIdentifier,
+        TreeLeafNode, TreeWriter,
     },
     Provider,
 };
@@ -127,7 +127,19 @@ impl Workspace {
     pub async fn get_current_commit(&self) -> Result<Commit> {
         let current_branch = self.get_current_branch().await?;
 
-        self.index.get_commit(current_branch.head).await
+        let mut commit = self.index.get_commit(current_branch.head).await?;
+
+        if commit.main_index_tree_id.is_none() || commit.path_index_tree_id.is_none() {
+            let empty_tree_id = self.provider.write_tree(&Tree::default()).await.unwrap();
+            if commit.main_index_tree_id.is_none() {
+                commit.main_index_tree_id = Some(empty_tree_id.clone());
+            }
+            if commit.path_index_tree_id.is_none() {
+                commit.path_index_tree_id = Some(empty_tree_id);
+            }
+        }
+
+        Ok(commit)
     }
 
     /*
@@ -140,13 +152,26 @@ impl Workspace {
 
     pub async fn resource_exists(&self, id: WorkspaceResourceId) -> Result<bool> {
         let commit = self.get_current_commit().await?;
-
         Ok(self
             .main_index
-            .get_leaf(&self.provider, &commit.main_index_tree_id, &id.into())
+            .get_leaf(
+                &self.provider,
+                &commit.main_index_tree_id.unwrap(),
+                &id.into(),
+            )
             .await
             .map_other_err("reading main index")?
             .is_some())
+
+        // Ok(match commit.main_index_tree_id {
+        //     Some(tree_id) => self
+        //         .main_index
+        //         .get_leaf(&self.provider, &tree_id, &id.into())
+        //         .await
+        //         .map_other_err("reading main index")?
+        //         .is_some(),
+        //     None => false,
+        // })
     }
 
     /// Add a resource to the local changes.
@@ -173,7 +198,7 @@ impl Workspace {
             .main_index
             .add_leaf(
                 &self.provider,
-                &commit.main_index_tree_id,
+                &commit.main_index_tree_id.unwrap(),
                 &id.into(),
                 TreeLeafNode::Resource(resource_identifier.clone()),
             )
@@ -184,7 +209,7 @@ impl Workspace {
             .path_index
             .add_leaf(
                 &self.provider,
-                &commit.path_index_tree_id,
+                &commit.path_index_tree_id.unwrap(),
                 &path.into(),
                 TreeLeafNode::Resource(resource_identifier),
             )
@@ -987,19 +1012,8 @@ impl Workspace {
     */
 
     async fn initial_checkout(&self) -> Result<()> {
-        // 1. Read the branch information.
-        let branch = self.get_current_branch().await?;
-
-        // 2. Read the head commit information.
-        let _commit = self.index.get_commit(branch.head).await?;
-
-        /*
-        // 3. Read the tree.
-        let tree = self.index.get_tree(&commit.root_tree_id).await?;
-
-        // 4. Write the files on disk.
-        self.sync_tree(&Tree::empty(), &tree).await
-        */
+        // 1. Read the head commit information.
+        let _commit = self.get_current_commit().await?;
 
         Ok(())
     }
