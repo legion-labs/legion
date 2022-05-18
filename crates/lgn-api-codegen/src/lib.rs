@@ -7,16 +7,11 @@
 //#![allow()]
 
 pub(crate) mod api;
-pub(crate) mod byte_array;
 pub(crate) mod errors;
-pub(crate) mod extra;
 pub(crate) mod filters;
 pub(crate) mod openapi_ext;
 pub(crate) mod rust;
 pub(crate) mod visitor;
-
-pub use byte_array::ByteArray;
-pub use extra::Extra;
 
 use api::Api;
 use errors::{Error, Result};

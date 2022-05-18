@@ -1,6 +1,6 @@
 use crate::{api, errors::{Error, Result}, params, responses};
 use http::{header::CONTENT_TYPE, HeaderValue};
-use lgn_api_codegen::{ByteArray, Extra};
+use lgn_online::codegen::{ByteArray, Extra};
 
 pub struct Client {
     inner: reqwest::Client,
