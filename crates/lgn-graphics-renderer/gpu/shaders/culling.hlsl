@@ -107,7 +107,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             for (uint pass_idx = first_pass; pass_idx < last_pass; pass_idx++) {
 
                 uint offset_base_va = render_pass_data[pass_idx].offset_base_va;
-                uint offset_va = offset_base_va += (instance_data.state_id * 8);
+                uint offset_va = offset_base_va + (instance_data.state_id * 8);
         
                 uint count_offset = static_buffer.Load<uint>(offset_va);
                 uint indirect_arg_offset = static_buffer.Load<uint>(offset_va + 4);
