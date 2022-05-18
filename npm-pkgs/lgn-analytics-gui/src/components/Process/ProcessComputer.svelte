@@ -11,9 +11,9 @@
   class="flex gap-2 items-center"
 >
   <i class="bi bi-pc placeholder" />
-  <span>
+  <div class="truncate">
     <slot {computer}>
       {computer}
     </slot>
-  </span>
+  </div>
 </div>

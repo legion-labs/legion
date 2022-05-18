@@ -16,6 +16,4 @@
     : highlightText(text, pattern);
 </script>
 
-<div>
-  {@html highlightedText}
-</div>
+{@html highlightedText}
