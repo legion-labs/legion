@@ -1,6 +1,8 @@
+#![allow(dead_code)]
+
 use lgn_transform::components::Transform;
 
-use crate::{animation_task::SampleTask, animation_task_pose_pool::PoseBufferPool};
+use crate::{animation_task::_SampleTask, animation_task_pose_pool::PoseBufferPool};
 
 pub enum TaskUpdateStage {
     Any = 0,
@@ -10,13 +12,13 @@ pub enum TaskUpdateStage {
 pub struct TaskContext {
     world_transform: Transform,
     world_transform_inverse: Transform,
-    dependencies: Vec<SampleTask>,
+    dependencies: Vec<_SampleTask>,
     delta_time: f32,
     update_stage: TaskUpdateStage,
     pose_pool: PoseBufferPool,
 }
 pub struct TaskSystem {
-    tasks: Vec<SampleTask>,
+    tasks: Vec<_SampleTask>,
     pose_pool: PoseBufferPool,
     task_context: TaskContext,
     pre_physics_task_indices: Vec<i8>,

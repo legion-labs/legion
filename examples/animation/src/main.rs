@@ -1029,7 +1029,6 @@ async fn create_offline_model(
         .instantiate::<lgn_graphics_data::offline::Model>(resources)
         .unwrap();
     model.meshes.clear();
-
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
         normals: mesh.normals.unwrap(),

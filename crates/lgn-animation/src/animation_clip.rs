@@ -1,9 +1,9 @@
-use lgn_math::{Quat, Vec4};
+#![allow(dead_code)]
+
 use lgn_transform::components::Transform;
 
 use crate::{
-    animation_event::Event, animation_frame_time::FrameTime, animation_skeleton::Skeleton,
-    animation_sync_track::SyncTrack,
+    animation_event::Event, animation_skeleton::Skeleton, animation_sync_track::SyncTrack,
 };
 
 pub struct QuantizationRange {
@@ -13,29 +13,29 @@ pub struct QuantizationRange {
 
 impl QuantizationRange {
     #[inline]
-    fn is_valid() -> bool {
-        return false;
-    }
+    fn is_valid() {}
 }
 
 pub struct TrackCompressionSettings {
-    translation_range_X: QuantizationRange, // TODO QUantizationRange
-    translation_range_Y: QuantizationRange,
-    translation_range_Z: QuantizationRange,
-    scale_range_X: QuantizationRange,
-    scale_range_Y: QuantizationRange,
-    scale_range_Z: QuantizationRange,
+    translation_range_x: QuantizationRange,
+    translation_range_y: QuantizationRange,
+    translation_range_z: QuantizationRange,
+    scale_range_x: QuantizationRange,
+    scale_range_y: QuantizationRange,
+    scale_range_z: QuantizationRange,
     track_start_index: u32,
     is_translation_static: bool,
     is_scale_static: bool,
 }
 
+impl TrackCompressionSettings {}
+
 pub struct AnimationClip {
     skeleton: Skeleton,
     num_frames: u32,
     duration: f32,
-    compressed_pose_data: Vec<u16>, // Check if should start compressed or not
-    track_compression_settings: Vec<TrackCompressionSettings>,
+    // compressed_pose_data: Vec<u16>, // Check if should start compressed or not
+    // track_compression_settings: Vec<TrackCompressionSettings>,
     root_motion_track: Vec<Transform>,
     events: Vec<Event>,
     sync_track: SyncTrack,
@@ -47,9 +47,7 @@ pub struct AnimationClip {
 
 impl AnimationClip {
     #[inline]
-    pub fn decode_rotation() {
-        /* */
-    }
+    pub fn decode_rotation() {}
 
     #[inline]
     pub fn decode_translation() {

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::{animation_pose::Pose, animation_skeleton::Skeleton};
 
 pub struct PoseBuffer {

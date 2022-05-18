@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::animation_event::Event;
 
 pub struct SyncTrackTime {
