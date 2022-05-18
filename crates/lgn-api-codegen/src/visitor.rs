@@ -16,8 +16,6 @@ pub fn visit(oas: &openapiv3::OpenAPI) -> Result<Api> {
     Visitor::new(oas).visit()
 }
 
-const SUPPORTED_CONTENT_TYPES: &[&str] = &["application/json", "application/octet-stream"];
-
 #[derive(Debug)]
 struct Visitor<'a> {
     pub oas: &'a openapiv3::OpenAPI,
@@ -163,13 +161,6 @@ impl<'a> Visitor<'a> {
                         let (media_type, media_type_data) =
                             request_body.content.iter().next().unwrap();
 
-                        if !SUPPORTED_CONTENT_TYPES.contains(&media_type.as_str()) {
-                            return Err(Error::Unsupported(format!(
-                                "content type: {:?}",
-                                media_type
-                            )));
-                        }
-
                         let type_ = match &media_type_data.schema {
                             Some(schema_ref) => match &schema_ref {
                                 openapiv3::ReferenceOr::Item(schema) => {
@@ -219,12 +210,6 @@ impl<'a> Visitor<'a> {
                 0 => (None, None),
                 1 => {
                     let (media_type, media_type_data) = response.content.iter().next().unwrap();
-                    if !SUPPORTED_CONTENT_TYPES.contains(&media_type.as_str()) {
-                        return Err(Error::Unsupported(format!(
-                            "content type: {:?}",
-                            media_type
-                        )));
-                    }
 
                     let type_ = match &media_type_data.schema {
                         Some(schema_ref) => Some(match &schema_ref {
