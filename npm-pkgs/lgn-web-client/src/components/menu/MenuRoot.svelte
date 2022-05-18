@@ -1,8 +1,8 @@
 <script lang="ts">
   import clickOutside from "../../actions/clickOutside";
+  import MenuItem from "./MenuItem.svelte";
   import type { MenuContextStore } from "./lib/MenuContextStore";
   import type { MenuItemDescription } from "./lib/MenuItemDescription";
-  import MenuItem from "./MenuItem.svelte";
 
   export let menuContext: MenuContextStore;
   export let desc: MenuItemDescription;

@@ -6,9 +6,6 @@
 </script>
 
 <script lang="ts">
-  import "golden-layout/dist/css/goldenlayout-base.css";
-  import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css";
-  import { onMount } from "svelte";
   import {
     ComponentContainer,
     ComponentItemConfig,
@@ -16,6 +13,9 @@
     VirtualLayout,
   } from "golden-layout";
   import type { LayoutConfig } from "golden-layout";
+  import "golden-layout/dist/css/goldenlayout-base.css";
+  import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css";
+  import { onMount } from "svelte";
   import type { SvelteComponentDev } from "svelte/internal";
 
   type LayoutComponent = {

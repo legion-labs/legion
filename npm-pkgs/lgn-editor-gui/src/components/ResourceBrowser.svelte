@@ -4,6 +4,7 @@
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import Loader from "@lgn/web-client/src/components/Loader.svelte";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { readFile } from "@lgn/web-client/src/lib/files";
   import log from "@lgn/web-client/src/lib/log";
@@ -62,7 +63,6 @@
   import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
   import CreateResourceModal from "./resources/CreateResourceModal.svelte";
   import ResourceFilter from "./resources/ResourceFilter.svelte";
-  import Loader from "@lgn/web-client/src/components/Loader.svelte";
 
   const createResourceModalId = Symbol.for("create-resource-modal");
 

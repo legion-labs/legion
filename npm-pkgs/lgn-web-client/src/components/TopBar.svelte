@@ -6,8 +6,8 @@
   import userInfo from "../orchestrators/userInfo";
   import type { DevSettingsValue } from "../stores/devSettings";
   import BrandLogo from "./BrandLogo.svelte";
-  import type { MenuItemDescription } from "./menu/lib/MenuItemDescription";
   import MenuBar from "./menu/MenuBar.svelte";
+  import type { MenuItemDescription } from "./menu/lib/MenuItemDescription";
 
   const { data: userInfoData } = userInfo;
 

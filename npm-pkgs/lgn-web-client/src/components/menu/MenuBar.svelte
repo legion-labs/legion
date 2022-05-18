@@ -1,7 +1,7 @@
 <script lang="ts">
+  import MenuRoot from "./MenuRoot.svelte";
   import { getMenuContextStore } from "./lib/MenuContextStore";
   import type { MenuItemDescription } from "./lib/MenuItemDescription";
-  import MenuRoot from "./MenuRoot.svelte";
 
   const menuContext = getMenuContextStore();
 

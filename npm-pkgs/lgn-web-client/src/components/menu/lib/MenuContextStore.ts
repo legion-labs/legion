@@ -1,4 +1,5 @@
 import { writable } from "svelte/store";
+
 import type { MenuItemDescription } from "./MenuItemDescription";
 
 export type MenuContextStore = ReturnType<typeof getMenuContextStore>;

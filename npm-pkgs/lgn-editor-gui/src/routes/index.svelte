@@ -1,17 +1,30 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
+  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
   import Layout from "@lgn/web-client/src/components/layout/Layout.svelte";
-
+  import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
   import { EmptyPanel, Panel } from "@lgn/web-client/src/components/panel";
 
+  import { closeScene } from "@/api";
   import DynamicPanel from "@/components/DynamicPanel.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
+  import SceneExplorer from "@/components/SceneExplorer.svelte";
+  import {
+    AppComponentMap as appComponentMap,
+    defaultLayoutConfig,
+  } from "@/components/layout/LayoutConfig";
+  import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
+  import { fileName } from "@/lib/path";
+  import {
+    allActiveScenes,
+    fetchAllActiveScenes,
+  } from "@/orchestrators/allActiveScenes";
   import {
     allResourcesError,
     fetchAllResources,
@@ -22,20 +35,6 @@
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
-  import {
-    AppComponentMap as appComponentMap,
-    defaultLayoutConfig,
-  } from "@/components/layout/LayoutConfig";
-  import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
-  import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
-  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
-  import {
-    allActiveScenes,
-    fetchAllActiveScenes,
-  } from "@/orchestrators/allActiveScenes";
-  import SceneExplorer from "@/components/SceneExplorer.svelte";
-  import { fileName } from "@/lib/path";
-  import { closeScene } from "@/api";
 
   $: if ($allResourcesError) {
     refetchResources().catch(() => {

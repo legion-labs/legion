@@ -1,12 +1,14 @@
 import type { LayoutConfig } from "golden-layout";
-import PropertyGrid from "../propertyGrid/PropertyGrid.svelte";
-import OrangeSvelte from "./Orange.svelte";
 import type { SvelteComponentDev } from "svelte/internal";
+
+import RemoteWindowSvelte from "@lgn/web-client/src/components/RemoteWindow.svelte";
+
+import Log from "../Log.svelte";
 import ResourceBrowser from "../ResourceBrowser.svelte";
 import SceneExplorer from "../SceneExplorer.svelte";
-import RemoteWindowSvelte from "@lgn/web-client/src/components/RemoteWindow.svelte";
 import LocalChanges from "../localChanges/LocalChanges.svelte";
-import Log from "../Log.svelte";
+import PropertyGrid from "../propertyGrid/PropertyGrid.svelte";
+import OrangeSvelte from "./Orange.svelte";
 
 export const AppComponentMap: Record<string, typeof SvelteComponentDev> = {
   PropertyGrid: PropertyGrid,
