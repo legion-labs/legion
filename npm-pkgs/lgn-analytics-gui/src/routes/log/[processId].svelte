@@ -179,7 +179,9 @@
 
   $: levelThresholdParam = $page.url.searchParams.get("level-threshold");
 
-  $: searchParam = $page.url.searchParams.get("search") || "";
+  $: searchParam = decodeURIComponent(
+    $page.url.searchParams.get("search") || ""
+  );
 
   $: levelThreshold =
     levelThresholdParam !== null && !isNaN(+levelThresholdParam)
