@@ -345,7 +345,10 @@
     }
 
     gxAxis.call(xAxis.scale(scaleX));
-    gyAxis.call(yAxis.scale(bestY));
+    gyAxis.call((_selection) => {
+      // Disables dynamic scale for now
+      // yAxis.scale(bestY)(_selection);
+    });
   }
 
   function handleKeydown(event: KeyboardEvent) {
