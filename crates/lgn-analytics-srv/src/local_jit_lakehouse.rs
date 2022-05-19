@@ -1,21 +1,12 @@
-use std::path::Path;
 use std::{path::PathBuf, sync::Arc};
 
-use crate::span_table::make_span_table;
-use crate::{
-    jit_lakehouse::JitLakehouse,
-    span_table::SpanTable
-};
+use crate::jit_lakehouse::JitLakehouse;
+use crate::span_table::{make_span_table, write_parquet};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::{prelude::*, time::ConvertTicks};
 use lgn_blob_storage::BlobStorage;
 use lgn_tracing::prelude::*;
-use parquet::column::writer::ColumnWriter;
-use parquet::file::properties::WriterProperties;
-use parquet::file::writer::FileWriter;
-use parquet::file::writer::SerializedFileWriter;
-use parquet::schema::parser::parse_message_type;
 use tokio::fs;
 
 pub struct LocalJitLakehouse {
@@ -38,90 +29,10 @@ impl LocalJitLakehouse {
     }
 }
 
-
-#[span_fn]
-fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
-    let message_type = "
-  message schema {
-    REQUIRED INT32 hash;
-    REQUIRED INT32 depth;
-    REQUIRED DOUBLE begin_ms;
-    REQUIRED DOUBLE end_ms;
-  }
-";
-    let schema =
-        Arc::new(parse_message_type(message_type).with_context(|| "parsing spans schema")?);
-    let props = Arc::new(WriterProperties::builder().build());
-    let file = std::fs::File::create(file_path)
-        .with_context(|| format!("creating file {}", file_path.display()))?;
-    let mut writer = SerializedFileWriter::new(file, schema, props)
-        .with_context(|| "creating parquet writer")?;
-    let mut row_group_writer = writer
-        .next_row_group()
-        .with_context(|| "creating row group writer")?;
-    if let Some(mut col_writer) = row_group_writer
-        .next_column()
-        .with_context(|| "creating column writer")?
-    {
-        if let ColumnWriter::Int32ColumnWriter(writer_impl) = &mut col_writer {
-            writer_impl
-                .write_batch(&spans.hashes.values, None, None)
-                .with_context(|| "writing hash batch")?;
-        }
-        row_group_writer
-            .close_column(col_writer)
-            .with_context(|| "closing column")?;
-    }
-    if let Some(mut col_writer) = row_group_writer
-        .next_column()
-        .with_context(|| "creating column writer")?
-    {
-        if let ColumnWriter::Int32ColumnWriter(writer_impl) = &mut col_writer {
-            writer_impl
-                .write_batch(&spans.depths.values, None, None)
-                .with_context(|| "writing depth batch")?;
-        }
-        row_group_writer
-            .close_column(col_writer)
-            .with_context(|| "closing column")?;
-    }
-    if let Some(mut col_writer) = row_group_writer
-        .next_column()
-        .with_context(|| "creating column writer")?
-    {
-        if let ColumnWriter::DoubleColumnWriter(writer_impl) = &mut col_writer {
-            writer_impl
-                .write_batch(&spans.begins.values, None, None)
-                .with_context(|| "writing begins batch")?;
-        }
-        row_group_writer
-            .close_column(col_writer)
-            .with_context(|| "closing column")?;
-    }
-    if let Some(mut col_writer) = row_group_writer
-        .next_column()
-        .with_context(|| "creating column writer")?
-    {
-        if let ColumnWriter::DoubleColumnWriter(writer_impl) = &mut col_writer {
-            writer_impl
-                .write_batch(&spans.ends.values, None, None)
-                .with_context(|| "writing ends batch")?;
-        }
-        row_group_writer
-            .close_column(col_writer)
-            .with_context(|| "closing column")?;
-    }
-    writer
-        .close_row_group(row_group_writer)
-        .with_context(|| "closing row group")?;
-    writer.close().with_context(|| "closing parquet writer")?;
-    Ok(())
-}
-
 #[async_trait]
 impl JitLakehouse for LocalJitLakehouse {
-    #[span_fn]
     async fn build_timeline_tables(&self, process_id: &str) -> Result<()> {
+        async_span_scope!("build_timeline_tables");
         let mut connection = self.pool.acquire().await?;
         let process = find_process(&mut connection, process_id).await?;
         let convert_ticks = ConvertTicks::new(&process);
