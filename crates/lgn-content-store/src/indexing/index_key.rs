@@ -186,6 +186,28 @@ impl Display for IndexKey {
     }
 }
 
+impl Display for IndexKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        const N: usize = 2;
+        let repr = self
+            .to_hex()
+            .chars()
+            .enumerate()
+            .flat_map(|(i, c)| {
+                if i != 0 && i % N == 0 {
+                    Some(' ')
+                } else {
+                    None
+                }
+                .into_iter()
+                .chain(std::iter::once(c))
+            })
+            .collect::<String>();
+
+        write!(f, "{}", repr)
+    }
+}
+
 impl Deref for IndexKey {
     type Target = SmallVec<[u8; 16]>;
 
@@ -290,6 +312,12 @@ impl From<u128> for IndexKey {
         buf.resize(16, 0);
         byteorder::BigEndian::write_u128(&mut buf, v);
         Self(buf)
+    }
+}
+
+impl From<IndexKey> for u128 {
+    fn from(key: IndexKey) -> Self {
+        byteorder::BigEndian::read_u128(key.as_slice())
     }
 }
 

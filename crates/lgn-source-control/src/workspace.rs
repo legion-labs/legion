@@ -2,16 +2,17 @@ use std::{collections::BTreeSet, fmt::Formatter};
 
 use lgn_content_store::{
     indexing::{
-        IndexableResource, ResourceIdentifier, ResourceReader, ResourceWriter, StaticIndexer,
-        StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
+        IndexKey, IndexableResource, ResourceIdentifier, ResourceReader, ResourceWriter,
+        StaticIndexer, StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
     },
     Provider,
 };
 use lgn_tracing::error;
+use tokio_stream::StreamExt;
 
 use crate::{
     Branch, Change, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
-    MapOtherError, RepositoryIndex, RepositoryName, Result,
+    RepositoryIndex, RepositoryName, Result,
 };
 
 /// Represents a workspace.
@@ -20,8 +21,13 @@ pub struct Workspace {
     transaction: Provider,
     branch_name: String,
     main_index: StaticIndexer,
-    main_index_tree_id: TreeIdentifier,
     path_index: StringPathIndexer,
+    content_id: ContentId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ContentId {
+    main_index_tree_id: TreeIdentifier,
     path_index_tree_id: TreeIdentifier,
 }
 
@@ -97,6 +103,10 @@ impl Workspace {
         self.branch_name.as_str()
     }
 
+    pub fn id(&self) -> &ContentId {
+        &self.content_id
+    }
+
     async fn new(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
@@ -111,10 +121,12 @@ impl Workspace {
             index,
             transaction: provider.begin_transaction_in_memory(),
             branch_name: branch_name.to_owned(),
-            main_index: StaticIndexer::new(std::mem::size_of::<WorkspaceResourceId>()),
+            main_index: StaticIndexer::new(std::mem::size_of::<u128>()),
             path_index: StringPathIndexer::default(),
-            main_index_tree_id: commit.main_index_tree_id,
-            path_index_tree_id: commit.path_index_tree_id,
+            content_id: ContentId {
+                main_index_tree_id: commit.main_index_tree_id,
+                path_index_tree_id: commit.path_index_tree_id,
+            },
         })
     }
 
@@ -138,15 +150,12 @@ impl Workspace {
     }
     */
 
-    async fn get_resource_identifier(
-        &self,
-        id: WorkspaceResourceId,
-    ) -> Result<Option<ResourceIdentifier>> {
+    async fn get_resource_identifier(&self, id: &IndexKey) -> Result<Option<ResourceIdentifier>> {
         let leaf_node = self
             .main_index
-            .get_leaf(&self.transaction, &self.main_index_tree_id, &id.into())
+            .get_leaf(&self.transaction, &self.content_id.main_index_tree_id, id)
             .await
-            .map_other_err("reading main index")?;
+            .map_err(Error::ContentStoreIndexing)?;
 
         match leaf_node {
             Some(leaf_node) => match leaf_node {
@@ -157,12 +166,12 @@ impl Workspace {
         }
     }
 
-    pub async fn resource_exists(&self, id: WorkspaceResourceId) -> Result<bool> {
+    pub async fn resource_exists(&self, id: &IndexKey) -> Result<bool> {
         let resource_id = self.get_resource_identifier(id).await?;
         Ok(resource_id.is_some())
     }
 
-    pub async fn load_resource<F, R>(&self, id: WorkspaceResourceId, f: F) -> Result<R>
+    pub async fn load_resource<F, R>(&self, id: &IndexKey, f: F) -> Result<R>
     where
         F: FnOnce(&mut dyn std::io::Read) -> R,
     {
@@ -171,14 +180,45 @@ impl Workspace {
                 .transaction
                 .read_resource::<WorkspaceResourceReader>(&resource_id)
                 .await
-                .map_other_err("reading resource")?;
+                .map_err(Error::ContentStoreIndexing)?;
 
             let mut cursor = std::io::Cursor::new(resource.0);
 
             Ok(f(&mut cursor))
         } else {
-            Err(Error::ResourceNotFound { id })
+            Err(Error::ResourceNotFound { id: id.clone() })
         }
+    }
+
+    pub async fn get_resources_for_commit(
+        &self,
+        commit: &Commit,
+    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
+        self.get_resources_for_tree_id(&commit.main_index_tree_id)
+            .await
+    }
+
+    pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
+        self.get_resources_for_tree_id(&self.content_id.main_index_tree_id)
+            .await
+    }
+
+    async fn get_resources_for_tree_id(
+        &self,
+        tree_id: &TreeIdentifier,
+    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
+        self.main_index
+            .all_leaves_in_range(&self.transaction, tree_id, 0..)
+            .map_err(Error::ContentStoreIndexing)?
+            .map(|(key, leaf_res)| match leaf_res {
+                Ok(leaf) => match leaf {
+                    TreeLeafNode::Resource(resource_id) => Ok((key, resource_id)),
+                    TreeLeafNode::TreeRoot(_) => Err(Error::Unspecified("".to_owned())),
+                },
+                Err(err) => Err(Error::ContentStoreIndexing(err)),
+            })
+            .collect::<Result<Vec<(IndexKey, ResourceIdentifier)>>>()
+            .await
     }
 
     /// Add a resource to the local changes.
@@ -187,7 +227,7 @@ impl Workspace {
     /// added, an empty list is returned and call still succeeds.
     pub async fn add_resource(
         &mut self,
-        id: WorkspaceResourceId,
+        id: &IndexKey,
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
@@ -197,29 +237,29 @@ impl Workspace {
             .transaction
             .write_resource(&resource_contents)
             .await
-            .map_other_err("writing resource contents")?;
+            .map_err(Error::ContentStoreIndexing)?;
 
-        self.main_index_tree_id = self
+        self.content_id.main_index_tree_id = self
             .main_index
             .add_leaf(
                 &self.transaction,
-                &self.main_index_tree_id,
-                &id.into(),
+                &self.content_id.main_index_tree_id,
+                id,
                 TreeLeafNode::Resource(resource_identifier.clone()),
             )
             .await
-            .map_other_err("adding resource to main index")?;
+            .map_err(Error::ContentStoreIndexing)?;
 
-        self.path_index_tree_id = self
+        self.content_id.path_index_tree_id = self
             .path_index
             .add_leaf(
                 &self.transaction,
-                &self.path_index_tree_id,
+                &self.content_id.path_index_tree_id,
                 &path.into(),
                 TreeLeafNode::Resource(resource_identifier.clone()),
             )
             .await
-            .map_other_err("adding resource to main index")?;
+            .map_err(Error::ContentStoreIndexing)?;
 
         Ok(resource_identifier)
     }
@@ -393,7 +433,7 @@ impl Workspace {
     ///
     /// The list of new files edited is returned. If all the files were already
     /// edited, an empty list is returned and call still succeeds.
-    pub async fn delete_resource(&self, _id: WorkspaceResourceId) -> Result<()> {
+    pub async fn delete_resource(&self, _id: &IndexKey) -> Result<()> {
         Ok(())
     }
 
@@ -641,8 +681,8 @@ impl Workspace {
             return Err(Error::stale_branch(branch));
         }
 
-        let empty_commit = commit.main_index_tree_id == self.main_index_tree_id
-            && commit.path_index_tree_id == self.path_index_tree_id;
+        let empty_commit = commit.main_index_tree_id == self.content_id.main_index_tree_id
+            && commit.path_index_tree_id == self.content_id.path_index_tree_id;
 
         if empty_commit && matches!(behavior, CommitMode::Strict) {
             return Err(Error::EmptyCommitNotAllowed);
@@ -653,8 +693,8 @@ impl Workspace {
                 whoami::username(),
                 message,
                 commit.changes.clone(),
-                self.main_index_tree_id.clone(),
-                self.path_index_tree_id.clone(),
+                self.content_id.main_index_tree_id.clone(),
+                self.content_id.path_index_tree_id.clone(),
                 BTreeSet::from([commit.id]),
             );
 
@@ -1062,8 +1102,6 @@ impl Workspace {
     }
     */
 }
-
-pub type WorkspaceResourceId = u128;
 
 struct WorkspaceResourceWriter<'a>(&'a [u8]);
 

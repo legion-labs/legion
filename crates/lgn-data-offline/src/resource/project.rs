@@ -7,13 +7,16 @@ use std::{
     str::FromStr,
 };
 
-use lgn_content_store::Provider;
+use lgn_content_store::{
+    indexing::{IndexKey, ResourceIdentifier},
+    Provider,
+};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId, ResourcePathId, ResourceType,
     ResourceTypeAndId,
 };
 use lgn_source_control::{
-    CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
+    CommitMode, ContentId, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
 };
 use lgn_tracing::error;
 use thiserror::Error;
@@ -290,7 +293,10 @@ impl Project {
 
     /// Checks if a resource is part of the project.
     pub async fn exists(&self, id: ResourceId) -> bool {
-        self.workspace.resource_exists(id.as_raw()).await.unwrap()
+        self.workspace
+            .resource_exists(&id.as_raw().into())
+            .await
+            .unwrap()
     }
 
     /// From a specific `ResourcePathName`, validate that the resource doesn't already exists
@@ -383,7 +389,7 @@ impl Project {
         };
 
         self.workspace
-            .add_resource(id.as_raw(), name.as_str(), &resource_contents)
+            .add_resource(&id.as_raw().into(), name.as_str(), &resource_contents)
             .await?;
 
         let type_id = ResourceTypeAndId { kind, id };
@@ -393,7 +399,7 @@ impl Project {
 
     /// Delete the resource+meta files, remove from Registry and Flush index
     pub async fn delete_resource(&mut self, id: ResourceId) -> Result<(), Error> {
-        self.workspace.delete_resource(id.as_raw()).await?;
+        self.workspace.delete_resource(&id.as_raw().into()).await?;
 
         Ok(())
     }
@@ -468,7 +474,7 @@ impl Project {
         resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
         self.workspace
-            .load_resource(type_id.id.as_raw(), |reader| {
+            .load_resource(&type_id.id.as_raw().into(), |reader| {
                 resources.deserialize_resource(type_id, reader)
             })
             .await?
@@ -700,35 +706,17 @@ impl Project {
         Ok(resources)
     }
 
-    /// Returns the current state of the workspace that includes staged changes.
-    /*
-    pub async fn tree(&self) -> Result<Tree, Error> {
-        let remote = self
-            .workspace
-            .get_current_tree()
+    /// Returns list of resources stored in the content store
+    pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
+        self.workspace
+            .get_resources()
             .await
-            .map_err(Error::SourceControl)?;
-
-        let staged_changes = self
-            .workspace
-            .get_staged_changes()
-            .await
-            .map_err(Error::SourceControl)?;
-
-        let local = remote
-            .with_changes(staged_changes.values())
-            .map_err(Error::SourceControl)?;
-        Ok(local)
+            .map_err(Error::SourceControl)
     }
-    */
 
     /// Returns the checksum of the root project directory at the current state.
-    pub async fn root_checksum(&self) -> Result<String, Error> {
-        /*
-        let tree = self.tree().await?;
-        Ok(tree.id())
-        */
-        Err(Error::FileNotFound("todo".to_owned()))
+    pub fn root_checksum(&self) -> &ContentId {
+        self.workspace.id()
     }
 }
 

@@ -247,11 +247,10 @@ impl DataBuild {
 
     /// Updates the build database with information about resources from
     /// provided resource database.
-    pub async fn source_pull(&mut self, _project: &Project) -> Result<(), Error> {
-        // self.source_index
-        //     .source_pull(project, Self::version())
-        //     .await
-        Ok(())
+    pub async fn source_pull(&mut self, project: &Project) -> Result<(), Error> {
+        self.source_index
+            .source_pull(project, Self::version())
+            .await
     }
 
     /// Compile `compile_path` resource and all its dependencies in the build

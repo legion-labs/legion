@@ -1,17 +1,16 @@
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
     hash::{Hash, Hasher},
-    // path::PathBuf,
-    // str::FromStr,
     sync::Arc,
 };
 
-// use hex::ToHex;
+use hex::ToHex;
 use lgn_content_store::Provider;
-// use lgn_data_offline::resource::Project;
-use lgn_data_runtime::{/*ResourceId,*/ ResourcePathId, ResourceTypeAndId};
+use lgn_data_offline::resource::Project;
+use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceTypeAndId};
+use lgn_source_control::ContentId;
 use lgn_tracing::span_scope;
-use lgn_utils::DefaultHasher;
+use lgn_utils::{DefaultHasher, DefaultHasher256};
 use petgraph::{Directed, Graph};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -19,7 +18,7 @@ use serde_with::DisplayFromStr;
 
 use crate::{output_index::AssetHash, Error};
 
-//pub const LGN_DATA_BUILD: &str = "data-build";
+pub const LGN_DATA_BUILD: &str = "data-build";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ResourceInfo {
@@ -256,7 +255,7 @@ impl Extend<Self> for SourceContent {
 }
 
 pub(crate) struct SourceIndex {
-    current: Option<(String, SourceContent)>,
+    current: Option<(ContentId, SourceContent)>,
     pub(super) content_store: Arc<Provider>,
 }
 
@@ -279,11 +278,8 @@ impl SourceIndex {
         self.current.as_ref().map(|(_, index)| index)
     }
 
-    /*
-    #[async_recursion::async_recursion]
     async fn source_pull_tree(
         &self,
-        directory: Tree,
         project: &Project,
         version: &str,
         mut uploads: Vec<(Vec<u8>, Vec<u8>)>,
@@ -291,7 +287,7 @@ impl SourceIndex {
         let dir_checksum = {
             let mut hasher = DefaultHasher256::new();
             LGN_DATA_BUILD.hash(&mut hasher);
-            directory.id().hash(&mut hasher);
+            project.root_checksum().hash(&mut hasher);
             version.hash(&mut hasher);
             hasher.finish_256()[..].to_vec()
         };
@@ -302,114 +298,62 @@ impl SourceIndex {
             let source_index = SourceContent::read(&cached_data)?;
             Ok((source_index, uploads))
         } else {
-            let (content, uploads) = match directory {
-                Tree::Directory { name: _, children } => {
-                    let is_leaf = !children
-                        .iter()
-                        .any(|(_, tree)| matches!(tree, Tree::Directory { .. }));
+            let resources = project.get_resources().await?;
 
-                    if is_leaf {
-                        let mut content = SourceContent::new(version);
+            let mut content = SourceContent::new(version);
 
-                        let resource_infos = children
-                            .into_iter()
-                            .filter_map(|(_, tree)| match tree {
-                                Tree::Directory { .. } => None,
-                                Tree::File { name, id } => Some((PathBuf::from(&name), id)),
-                            })
-                            .filter(|(path, _)| path.extension().is_none());
+            for (index_key, content_store_resource_id) in resources {
+                let resource_id = ResourceId::from_raw(index_key.into());
+                let resource_hash = {
+                    let mut hasher = DefaultHasher256::new();
+                    content_store_resource_id.hash(&mut hasher);
+                    hasher.finish_256().encode_hex::<String>()
+                };
 
-                        let resource_list = resource_infos.map(|(path, id)| {
-                            (
-                                ResourceId::from_str(path.file_stem().unwrap().to_str().unwrap())
-                                    .unwrap(),
-                                {
-                                    let mut hasher = DefaultHasher256::new();
-                                    id.hash(&mut hasher);
-                                    hasher.finish_256().encode_hex::<String>()
-                                },
-                            )
-                        });
+                let (kind, resource_deps) = project.resource_info(resource_id)?;
 
-                        for (resource_id, resource_hash) in resource_list {
-                            let (kind, resource_deps) = project.resource_info(resource_id)?;
+                content.update_resource(
+                    ResourcePathId::from(ResourceTypeAndId {
+                        id: resource_id,
+                        kind,
+                    }),
+                    Some(resource_hash),
+                    resource_deps.clone(),
+                );
 
-                            content.update_resource(
-                                ResourcePathId::from(ResourceTypeAndId {
-                                    id: resource_id,
-                                    kind,
-                                }),
-                                Some(resource_hash),
-                                resource_deps.clone(),
-                            );
-
-                            // add each derived dependency with it's direct dependency listed in deps.
-                            for dependency in resource_deps {
-                                if let Some(direct_dependency) = dependency.direct_dependency() {
-                                    content.update_resource(
-                                        dependency,
-                                        None,
-                                        vec![direct_dependency],
-                                    );
-                                }
-                            }
-                        }
-
-                        uploads.push((dir_checksum, content.write()?));
-                        (content, uploads)
-                    } else {
-                        let mut content = SourceContent::new(version);
-                        for (_, subtree) in children {
-                            if matches!(subtree, Tree::Directory { .. }) {
-                                let (sub_content, upl) = self
-                                    .source_pull_tree(subtree, project, version, uploads)
-                                    .await?;
-                                uploads = upl;
-                                content.extend(Some(sub_content));
-                            }
-                        }
-
-                        uploads.push((dir_checksum, content.write()?));
-                        (content, uploads)
+                // add each derived dependency with it's direct dependency listed in deps.
+                for dependency in resource_deps {
+                    if let Some(direct_dependency) = dependency.direct_dependency() {
+                        content.update_resource(dependency, None, vec![direct_dependency]);
                     }
                 }
-                Tree::File { .. } => panic!(),
-            };
+            }
 
+            uploads.push((dir_checksum, content.write()?));
             Ok((content, uploads))
         }
     }
-    */
 
-    /*
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<(), Error> {
-        let tree = project.tree().await?;
+        let root_checksum = project.root_checksum();
 
-        let root_checksum = tree.id();
-
-        let (current_checksum, mut source_index) = self
-            .current
-            .take()
-            .unwrap_or(("".to_string(), SourceContent::new(version)));
-
-        if current_checksum != root_checksum {
-            let (final_content, uploads) = self
-                .source_pull_tree(tree, project, version, vec![])
-                .await?;
-
-            for (dir_checksum, buffer) in uploads {
-                self.content_store
-                    .write_alias(dir_checksum, &buffer)
-                    .await?;
+        if let Some((current_checksum, _source_index)) = &self.current {
+            if current_checksum == root_checksum {
+                return Ok(());
             }
-
-            source_index = final_content;
         }
 
-        self.current = Some((root_checksum, source_index));
+        let (content, uploads) = self.source_pull_tree(project, version, vec![]).await?;
+
+        for (dir_checksum, buffer) in uploads {
+            self.content_store
+                .write_alias(dir_checksum, &buffer)
+                .await?;
+        }
+
+        self.current = Some((root_checksum.clone(), content));
         Ok(())
     }
-    */
 }
 
 #[cfg(test)]
