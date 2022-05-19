@@ -1,3 +1,9 @@
+<script lang="ts" context="module">
+  export type RootContext = {
+    getLayout: () => Layout;
+  };
+</script>
+
 <script lang="ts">
   import { onMount } from "svelte";
 
@@ -35,6 +41,8 @@
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
+  import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
+  import { setContext } from "svelte";
 
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
@@ -42,10 +50,12 @@
     });
   }
 
-  onMount(() => {
+  onMount(async () => {
     refetchResources().catch(() => {
       // TODO: Handle errors
     });
+
+    await fetchAllActiveScenes();
 
     return allActiveScenes.subscribe((scenes) => {
       scenes?.forEach((s) => {
@@ -124,11 +134,24 @@
             layout.addComponent(LocalChanges.name);
           },
         },
+        {
+          title: "Script Editor",
+          action: () => {
+            layout.addComponent(ScriptEditor.name);
+          },
+        },
       ],
     },
   ];
 
   let layout: Layout;
+
+  setContext<RootContext>("root", {
+    getLayout() {
+      return layout;
+    },
+  });
+
   const enableOld = false;
 </script>
 

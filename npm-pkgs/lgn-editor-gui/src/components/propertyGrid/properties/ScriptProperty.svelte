@@ -3,61 +3,80 @@
 
   import Button from "@lgn/web-client/src/components/Button.svelte";
 
-  import {
-    currentResource,
-    currentResourceName,
-  } from "@/orchestrators/currentResource";
-  import tabPayloads from "@/stores/tabPayloads";
-  import workspace, { viewportPanelId } from "@/stores/workspace";
+  import { currentResource } from "@/orchestrators/currentResource";
+  import type { RootContext } from "@/routes/index.svelte";
+  import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
+  import { fileName } from "@/lib/path";
+  import { getContext } from "svelte";
+  import { writable } from "svelte/store";
 
-  const dispatch = createEventDispatcher<{ input: string }>();
+  // export let name: string;
+  // export let path: string;
 
-  export let name: string;
+  // $: id = `script-${$currentResource?.id || ""}-${path}`;
 
-  export let path: string;
+  // $: payloadId = `${id}-payload`;
+
+  // $: {
+  //   // As soon as a payload exists it means the property is in "write" mode,
+  //   // at that point the value is not owned by the property itself but rather by the tab
+  //   // so we need to source the value from the payload instead of the property
+  //   const payload = $tabPayloads[payloadId];
+
+  //   if (payload?.type === "script") {
+  //     value = payload.value;
+  //   }
+  // }
 
   export let value: string;
-
   export let readonly = false;
 
-  $: id = `script-${$currentResource?.id || ""}-${path}`;
-
-  $: payloadId = `${id}-payload`;
-
-  $: {
-    // As soon as a payload exists it means the property is in "write" mode,
-    // at that point the value is not owned by the property itself but rather by the tab
-    // so we need to source the value from the payload instead of the property
-    const payload = $tabPayloads[payloadId];
-
-    if (payload?.type === "script") {
-      value = payload.value;
-    }
-  }
+  const dispatch = createEventDispatcher<{ input: string }>();
+  const context = getContext<RootContext>("root");
+  const scriptEditor = writable(value);
 
   $: dispatch("input", value);
+  $: dispatch("input", $scriptEditor);
 
   function openTab() {
-    $tabPayloads[payloadId] = {
-      type: "script",
-      lang: "rust",
-      readonly,
-      value,
-    };
+    const layout = context.getLayout();
 
-    workspace.pushTabToPanel(
-      viewportPanelId,
+    layout.addComponent(
+      ScriptEditor.name,
       {
-        id,
-        type: "script",
-        label: `Script - ${
-          $currentResourceName || "unknown resource"
-        } - ${name}`,
-        disposable: true,
-        payloadId,
+        state: {
+          theme: "vs-dark",
+          lang: "rust",
+          readonly,
+          value: scriptEditor,
+        },
       },
-      { focus: true }
+      `Script Editor: ${fileName(
+        $currentResource?.description.path ?? "undefined"
+      )}`,
+      $currentResource?.id
     );
+
+    // $tabPayloads[payloadId] = {
+    //   type: "script",
+    //   lang: "rust",
+    //   readonly,
+    //   value,
+    // };
+
+    // workspace.pushTabToPanel(
+    //   viewportPanelId,
+    //   {
+    //     id,
+    //     type: "script",
+    //     label: `Script - ${
+    //       $currentResourceName || "unknown resource"
+    //     } - ${name}`,
+    //     disposable: true,
+    //     payloadId,
+    //   },
+    //   { focus: true }
+    // );
   }
 </script>
 

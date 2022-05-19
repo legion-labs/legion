@@ -9,6 +9,7 @@ import SceneExplorer from "../SceneExplorer.svelte";
 import LocalChanges from "../localChanges/LocalChanges.svelte";
 import PropertyGrid from "../propertyGrid/PropertyGrid.svelte";
 import OrangeSvelte from "./Orange.svelte";
+import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
 
 export const AppComponentMap: Record<string, typeof SvelteComponentDev> = {
   PropertyGrid: PropertyGrid,
@@ -18,6 +19,7 @@ export const AppComponentMap: Record<string, typeof SvelteComponentDev> = {
   RemoteWindow: RemoteWindowSvelte,
   LocalChanges: LocalChanges,
   Log: Log,
+  ScriptEditor: ScriptEditor,
 };
 
 export const defaultLayoutConfig: LayoutConfig = {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type * as monaco from "monaco-editor/esm/vs/editor/editor.api";
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
-
+  import type { Writable } from "svelte/store";
   import { debounce } from "../lib/promises";
 
   const dispatch = createEventDispatcher<{
@@ -12,7 +12,7 @@
 
   export let theme: monaco.editor.BuiltinTheme | undefined = undefined;
 
-  export let value: string;
+  export let value: Writable<string>;
 
   export let readonly = false;
 
@@ -30,7 +30,7 @@
     }
 
     editor = monaco.editor.create(editorContainer, {
-      value,
+      value: $value,
       language: lang,
       automaticLayout: true,
       theme,
@@ -41,7 +41,7 @@
       debounce(() => {
         const newValue = getValue();
 
-        value = newValue;
+        $value = newValue;
 
         dispatch("change", newValue);
       }, debounceTime)
