@@ -12,6 +12,16 @@ use lgn_online::codegen::ByteArray;
                     {{ variant|pascal_case }},
                 {%- endfor -%}
             }
+        {% when Model::OneOf with (one_of) %}
+            {% if let Some(description) = one_of.description %}/// {{ description }}{% endif %}
+            #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+            pub enum {{ one_of.name }}
+            {
+                {%- for type_ in one_of.types -%}
+                    #[serde(rename = "option{{loop.index}}")]
+                    Option{{loop.index}}({{ type_|fmt_type }}),
+                {%- endfor -%}
+            }
         {% when Model::Struct with (struct_) %}
             {% if let Some(description) = struct_.description %}/// {{ description }}{% endif %}
             #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]

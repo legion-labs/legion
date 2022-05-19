@@ -34,6 +34,8 @@ pub mod api {
             body: ByteArray,
             extra: Extra,
         ) -> Result<responses::TestBinaryResponse>;
+
+        async fn test_one_of(&self, extra: Extra) -> Result<responses::TestOneOfResponse>;
     }
 }
 
@@ -178,6 +180,16 @@ pub mod client {
 
             responses::TestBinaryResponse::from_reqwest(resp).await
         }
+
+        async fn test_one_of(&self, extra: Extra) -> Result<responses::TestOneOfResponse> {
+            let uri = format!("{}/test-one-of", self.base_uri);
+
+            let mut headers = extra.headers;
+
+            let resp = self.inner.get(&uri).headers(headers).send().await?;
+
+            responses::TestOneOfResponse::from_reqwest(resp).await
+        }
     }
 }
 
@@ -214,6 +226,7 @@ pub mod server {
                 "/spaces/:space-id/car-service/test-binary",
                 routing::post(test_binary::<T>),
             )
+            .route("/test-one-of", routing::get(test_one_of::<T>))
             .layer(Extension(api))
     }
 
@@ -263,6 +276,17 @@ pub mod server {
             Err(err) => err.into_response(),
         }
     }
+
+    async fn test_one_of<T>(Extension(api): Extension<T>, headers: HeaderMap) -> Response
+    where
+        T: api::Api + Send + Sync + 'static,
+    {
+        let resp = api.test_one_of(Extra { headers }).await;
+        match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
 }
 
 // ---------- Models ----------
@@ -301,6 +325,21 @@ pub mod models {
         #[serde(rename = "extra")]
         #[serde(skip_serializing_if = "Option::is_none")]
         pub extra: Option<ByteArray>,
+    }
+
+    #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Pet {
+        #[serde(rename = "name")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub name: Option<String>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub enum TestOneOfResponse {
+        #[serde(rename = "option1")]
+        Option1(crate::models::Pet),
+        #[serde(rename = "option2")]
+        Option2(crate::models::Car),
     }
 }
 
@@ -380,7 +419,7 @@ pub mod responses {
 
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub enum TestBinaryResponse {
-        /// Successful operation
+        /// Ok.
         Ok(ByteArray),
     }
 
@@ -397,6 +436,33 @@ pub mod responses {
         pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
             match response.status().as_u16() {
                 200 => Ok(Self::Ok(response.bytes().await?.into())),
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub enum TestOneOfResponse {
+        /// Ok.
+        Ok(crate::models::TestOneOfResponse),
+    }
+
+    impl TestOneOfResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                TestOneOfResponse::Ok(inner) => {
+                    let inner = Json(inner);
+                    (StatusCode::from_u16(200).unwrap(), inner).into_response()
+                }
+            }
+        }
+
+        pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
+            match response.status().as_u16() {
+                200 => Ok(Self::Ok(response.json().await?)),
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",
                     status

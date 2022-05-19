@@ -40,6 +40,7 @@ pub enum Type {
 pub enum Model {
     Enum(Enum),
     Struct(Struct),
+    OneOf(OneOf),
 }
 
 impl Model {
@@ -47,6 +48,7 @@ impl Model {
         match self {
             Model::Enum(enum_) => &enum_.name,
             Model::Struct(struct_) => &struct_.name,
+            Model::OneOf(oneof) => &oneof.name,
         }
     }
 }
@@ -56,6 +58,13 @@ pub struct Enum {
     pub name: String,
     pub description: Option<String>,
     pub variants: Vec<String>,
+}
+
+#[derive(Debug, PartialEq, Default)]
+pub struct OneOf {
+    pub name: String,
+    pub description: Option<String>,
+    pub types: Vec<Type>,
 }
 
 #[derive(Debug, PartialEq, Default)]
