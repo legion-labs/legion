@@ -3312,6 +3312,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "insta"
+version = "1.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "689960f187c43c01650c805fb6bc6f55ab944499d86d4ffe9474ad78991d8e94"
+dependencies = [
+ "console",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "similar",
+]
+
+[[package]]
 name = "instant"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3604,6 +3618,7 @@ dependencies = [
  "convert_case",
  "http",
  "indexmap",
+ "insta",
  "lazy_static",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -7810,6 +7825,12 @@ dependencies = [
  "digest 0.9.0",
  "rand_core 0.5.1",
 ]
+
+[[package]]
+name = "similar"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e24979f63a11545f5f2c60141afe249d4f19f84581ea2138065e400941d83d3"
 
 [[package]]
 name = "simple_asn1"

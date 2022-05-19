@@ -16,7 +16,7 @@ pub(crate) mod visitor;
 use api::Api;
 use errors::{Error, Result};
 use rust::RustGenerator;
-use std::{fs, path::Path};
+use std::path::Path;
 
 /// Generates the code for the specificed language.
 ///
@@ -28,11 +28,11 @@ pub fn generate(
     openapi_file: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
 ) -> Result<()> {
-    let openapi_file = fs::File::open(openapi_file)?;
-    let oas: openapiv3::OpenAPI = serde_yaml::from_reader(&openapi_file)?;
-    let api = visitor::visit(&oas)?;
-    let generator = load_generator_for_language(language)?;
+    let openapi_file = std::fs::File::open(openapi_file)?;
+    let openapi: openapiv3::OpenAPI = serde_yaml::from_reader(&openapi_file)?;
+    let api = Api::try_from(&openapi)?;
 
+    let generator = load_generator_for_language(language)?;
     generator.generate(&api, output_dir.as_ref())
 }
 
