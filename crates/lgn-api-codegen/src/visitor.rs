@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use indexmap::IndexMap;
 
 use super::api::{
@@ -31,7 +29,7 @@ impl<'a> Visitor<'a> {
                 description: oas.info.description.clone(),
                 version: oas.info.version.clone(),
                 models: Vec::new(),
-                paths: HashMap::new(),
+                paths: IndexMap::new(),
             },
         }
     }
@@ -276,9 +274,10 @@ impl<'a> Visitor<'a> {
             responses,
         };
 
+        // We are guarenteed to have the path key in the map.
         self.api
             .paths
-            .get_mut(&path.to_string().as_str().into())
+            .get_mut::<crate::api::Path>(&path.into())
             .unwrap()
             .push(route);
         Ok(())
@@ -506,7 +505,7 @@ impl<'a> Visitor<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{Content, MediaType};
+    use crate::api::{Content, MediaType, Path};
     use indexmap::IndexMap;
 
     use super::*;
@@ -995,7 +994,10 @@ mod tests {
         assert!(api.models.contains(&expected_struct));
 
         assert_eq!(api.paths.len(), 1);
-        assert_eq!(api.paths.get(&"/pets".into()), Some(&vec![expected_route]));
+        assert_eq!(
+            api.paths.get::<Path>(&"/pets".into()),
+            Some(&vec![expected_route])
+        );
     }
 
     #[test]
@@ -1088,7 +1090,10 @@ mod tests {
         assert!(api.models.contains(&expected_inner_struct));
 
         assert_eq!(api.paths.len(), 1);
-        assert_eq!(api.paths.get(&"/pets".into()), Some(&vec![expected_route]));
+        assert_eq!(
+            api.paths.get::<Path>(&"/pets".into()),
+            Some(&vec![expected_route])
+        );
     }
 
     #[test]
@@ -1188,7 +1193,10 @@ mod tests {
         assert!(api.models.contains(&expected_struct));
 
         assert_eq!(api.paths.len(), 1);
-        assert_eq!(api.paths.get(&"/pets".into()), Some(&vec![expected_route]));
+        assert_eq!(
+            api.paths.get::<Path>(&"/pets".into()),
+            Some(&vec![expected_route])
+        );
     }
 
     #[test]

@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use crate::{visitor, Error, Result};
+use crate::{openapi_ext::OpenAPIPath, visitor, Error, Result};
 use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 
@@ -10,7 +8,7 @@ pub struct Api {
     pub description: Option<String>,
     pub version: String,
     pub models: Vec<Model>,
-    pub paths: HashMap<Path, Vec<Route>>,
+    pub paths: IndexMap<Path, Vec<Route>>,
 }
 
 impl TryFrom<&openapiv3::OpenAPI> for Api {
@@ -77,6 +75,12 @@ pub struct Field {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct Path(pub String);
+
+impl From<&OpenAPIPath> for Path {
+    fn from(path: &OpenAPIPath) -> Self {
+        Self(path.to_string())
+    }
+}
 
 impl From<&str> for Path {
     fn from(path: &str) -> Self {
