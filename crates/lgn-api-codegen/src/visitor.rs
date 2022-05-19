@@ -5,7 +5,7 @@ use super::api::{
     Type,
 };
 use crate::{
-    api::{Content, Parameters},
+    api::{Content, OneOf, Parameters},
     openapi_ext::{OpenAPIExt, OpenAPIPath},
     Error, Result,
 };
@@ -385,6 +385,9 @@ impl<'a> Visitor<'a> {
                 openapiv3::Type::Array(t) => self.resolve_array(path, t)?,
                 openapiv3::Type::Object(t) => self.resolve_object(path, &schema.schema_data, t)?,
             },
+            openapiv3::SchemaKind::OneOf { one_of } => {
+                self.resolve_one_of(path, &schema.schema_data, one_of)?
+            }
             _ => {
                 return Err(Error::Unsupported(format!(
                     "schema kind: {:?}",
@@ -499,6 +502,32 @@ impl<'a> Visitor<'a> {
         let model = self.new_model_from_object(path, schema_data, object_type)?;
         let model_name = model.name().to_owned();
         self.api.models.push(model);
+        Ok(Type::Struct(model_name))
+    }
+
+    fn resolve_one_of(
+        &mut self,
+        path: &OpenAPIPath,
+        schema_data: &'a openapiv3::SchemaData,
+        one_of: &'a [openapiv3::ReferenceOr<openapiv3::Schema>],
+    ) -> Result<Type> {
+        // New enum model is created on the fly for each oneof.
+        let one_of = Model::OneOf(OneOf {
+            name: path.to_pascal_case(),
+            description: schema_data.description.clone(),
+            types: one_of
+                .iter()
+                .map(|schema_ref| match schema_ref {
+                    openapiv3::ReferenceOr::Item(schema) => self.resolve_type(path, schema),
+                    openapiv3::ReferenceOr::Reference { reference } => {
+                        self.resolve_schema_ref(path, reference)
+                    }
+                })
+                .collect::<Result<Vec<_>>>()?,
+        });
+
+        let model_name = one_of.name().to_owned();
+        self.api.models.push(one_of);
         Ok(Type::Struct(model_name))
     }
 }
@@ -1224,5 +1253,62 @@ mod tests {
         };
         let result = visit(&oas);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test() {
+        let components = serde_yaml::from_str::<openapiv3::Components>(
+            r#"  
+            schemas:
+              Pet:
+                type: object
+                properties:
+                  name:
+                    type: string
+              Car:
+                type: object
+                properties:
+                  name:
+                    type: string
+            "#,
+        )
+        .unwrap();
+
+        let paths = serde_yaml::from_str::<openapiv3::Paths>(
+            r#"
+            /test-one-of:
+              get:
+                operationId: testOneOf
+                responses:
+                  '200':
+                    description: Ok.
+                    content:
+                      application/json:
+                        schema:
+                          oneOf:
+                            - $ref: '#/components/schemas/Pet'
+                            - $ref: '#/components/schemas/Car'
+            "#,
+        )
+        .unwrap();
+
+        let oas = openapiv3::OpenAPI {
+            components: Some(components),
+            paths,
+            ..openapiv3::OpenAPI::default()
+        };
+        let api = visit(&oas).unwrap();
+
+        let expected_one_of = Model::OneOf(OneOf {
+            name: "TestOneOfResponse".to_string(),
+            types: vec![
+                Type::Struct("Pet".to_string()),
+                Type::Struct("Car".to_string()),
+            ],
+            ..OneOf::default()
+        });
+
+        assert_eq!(api.models.len(), 3);
+        assert!(api.models.contains(&expected_one_of));
     }
 }
