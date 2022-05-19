@@ -17,6 +17,8 @@
   import { initApiClient } from "@/api";
   import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import contextMenu, {
+    localChangesContextMenuId,
+    localChangesEntries,
     resourceBrowserItemContextMenuId,
     resourceBrowserItemEntries,
     resourceBrowserPanelContextMenuId,
@@ -110,6 +112,8 @@
             resourceBrowserPanelContextMenuId,
             resourceBrowserPanelEntries
           );
+
+          contextMenu.register(localChangesContextMenuId, localChangesEntries);
 
           const videoEditorTabPayloadId = "video-editor-payload";
 

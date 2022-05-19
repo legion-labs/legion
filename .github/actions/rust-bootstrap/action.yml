@@ -10,11 +10,11 @@ runs:
   steps:
     - name: Mirror cargo dependencies
       if: ${{ inputs.init == 'true' }}
-      run: cargo fetcher --include-index --url "https://legionlabs-ci-artefacts.s3-ca-central-1.amazonaws.com/fetch-cache/" mirror
+      run: cargo fetcher --include-index --url "https://legionlabs-governance-ci-artefacts.s3-ca-central-1.amazonaws.com/fetch-cache/" mirror
       shell: bash
 
     - name: Sync cargo dependencies
-      run: cargo fetcher --include-index --url "https://legionlabs-ci-artefacts.s3-ca-central-1.amazonaws.com/fetch-cache/" sync
+      run: cargo fetcher --include-index --url "https://legionlabs-governance-ci-artefacts.s3-ca-central-1.amazonaws.com/fetch-cache/" sync
       shell: bash
 
     - name: Bootstrap monorepo
@@ -25,13 +25,13 @@ runs:
         echo "::endgroup::"
         echo "::group::Copy executables to s3"
         tar -czvf ./target/monorepo.tar.gz --directory ./target/debug monorepo
-        aws s3 cp ./target/monorepo.tar.gz s3://legionlabs-ci-artefacts/workflow-scratch/$GITHUB_RUN_ID/monorepo.tar.gz --region ca-central-1
+        aws s3 cp ./target/monorepo.tar.gz s3://legionlabs-governance-ci-artefacts/workflow-scratch/$GITHUB_RUN_ID/monorepo.tar.gz --region ca-central-1
         echo "::endgroup::"
       shell: bash
 
     - name: Bootstrap monorepo
       run: |
-        aws s3 cp s3://legionlabs-ci-artefacts/workflow-scratch/$GITHUB_RUN_ID/monorepo.tar.gz ./target/monorepo.tar.gz --region ca-central-1
+        aws s3 cp s3://legionlabs-governance-ci-artefacts/workflow-scratch/$GITHUB_RUN_ID/monorepo.tar.gz ./target/monorepo.tar.gz --region ca-central-1
         tar -xzvf ./target/monorepo.tar.gz --directory /usr/local/bin
         monorepo --help
       shell: bash

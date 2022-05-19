@@ -1,3 +1,5 @@
+use std::string::FromUtf8Error;
+
 use thiserror::Error;
 
 use super::{IndexKey, TreeLeafNode};
@@ -9,9 +11,11 @@ pub enum Error {
     CorruptedTree(String),
     #[error("invalid index key: {0}")]
     InvalidIndexKey(String),
-    #[error("the index tree leaf node already exists at `{0}`")]
+    #[error("invalid index key display format: {0}")]
+    InvalidIndexKeyDisplayFormat(String),
+    #[error("the index tree leaf node already exists at `{0:?}`")]
     IndexTreeLeafNodeAlreadyExists(IndexKey, TreeLeafNode),
-    #[error("the index tree leaf node wasn't found at `{0}`")]
+    #[error("the index tree leaf node wasn't found at `{0:?}`")]
     IndexTreeLeafNodeNotFound(IndexKey),
     #[error("invalid tree identifier: {0}")]
     InvalidTreeIdentifier(crate::InvalidIdentifier),
@@ -27,6 +31,8 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error("hex error: {0}")]
     Hex(#[from] hex::FromHexError),
+    #[error("UTF-8 error: {0}")]
+    Utf8(#[from] FromUtf8Error),
     #[error("MessagePack error: {0}")]
     RmpSerdeDecode(#[from] rmp_serde::decode::Error),
     #[error("unknown error: {0}")]

@@ -25,6 +25,8 @@ service ResourceBrowser {
   rpc GetActiveScenes(GetActiveScenesRequest) returns (GetActiveScenesResponse);
 
   rpc GetRuntimeSceneInfo(GetRuntimeSceneInfoRequest) returns (GetRuntimeSceneInfoResponse);
+
+  rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
 }
 
 message SearchResourcesRequest {
@@ -121,4 +123,15 @@ message GetRuntimeSceneInfoRequest {
 message GetRuntimeSceneInfoResponse {
   string manifest_id = 1;
   string asset_id = 2;
+}
+
+message Asset {
+  string id = 1;
+  string asset_name = 2;
+}
+message ListAssetsRequest {
+  repeated string asset_types = 1;
+}
+message ListAssetsResponse {
+  repeated Asset assets = 1;
 }

@@ -14,17 +14,22 @@ declare type Fluent = {
   "global-cumulative-call-graph": null;
   "global-log": null;
   "global-timeline": null;
+  "global-metrics": null;
   "global-thread": null;
-  "process-list-user": null;
-  "process-list-process": null;
-  "process-list-computer": null;
-  "process-list-platform": null;
-  "process-list-start-time": null;
-  "process-list-statistics": null;
+  "global-severity-level": {
+    variables: "level";
+  };
   "process-list-search": null;
+  "process-list-table-column": {
+    variables: "columnName";
+  };
   "log-process-id": null;
   "log-executable": null;
   "log-parent-link": null;
+  "log-table-column": {
+    variables: "columnName";
+  };
+  "log-search": null;
   "timeline-open-cumulative-call-graph": null;
   "timeline-search": null;
   "timeline-table-function": null;
@@ -50,4 +55,18 @@ declare type Fluent = {
   };
   "timeline-link-copy-notification-title": null;
   "timeline-link-copy-notification-message": null;
+  "metrics-search-choose-metrics": null;
+  "metrics-search-placeholder": null;
+  "metrics-search-result-number": {
+    variables: "selectedMetricCount" | "selectedMetricCount";
+  };
+  "metrics-search-clear": null;
+  "metrics-recently-used": null;
+  "metrics-all-metrics": null;
+  "metrics-open-cumulative-call-graph": null;
+  "metrics-open-timeline": null;
+  "metrics-selected-time-range": null;
+  "metrics-selected-time-range-duration": null;
+  "metrics-selected-time-range-beginning": null;
+  "metrics-selected-time-range-end": null;
 };

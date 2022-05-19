@@ -4,13 +4,13 @@
 use bytesize::ByteSize;
 use clap::Parser;
 use http::{header, Method};
+use lgn_auth::{jwt::RequestAuthorizer, UserInfo};
 use lgn_cli_utils::termination_handler::AsyncTerminationHandler;
 use lgn_content_store::{
     AddressProviderConfig, AliasProviderConfig, ContentProviderConfig, DataSpace, GrpcProviderSet,
     GrpcService, Result,
 };
 use lgn_content_store_proto::content_store_server::ContentStoreServer;
-use lgn_online::authentication::{jwt::RequestAuthorizer, UserInfo};
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::prelude::*;
 use serde::Deserialize;

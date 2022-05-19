@@ -15,6 +15,7 @@ DOCKER_VERSION=5:20.10.12~3-0~ubuntu-focal
 CONTAINERD_VERSION=1.4.12-1
 AWS_CLI_VERSION=2.4.20
 ECR_LOGIN_VERSION=0.6.0
+AWS_ACCOUNT_ID=616787818023
 
 ###################################################################################################
 
@@ -45,7 +46,7 @@ if [[ ! -d ~/.docker ]]; then
     mkdir ~/.docker
     echo '{
     "credHelpers": {
-        "550877636976.dkr.ecr.ca-central-1.amazonaws.com": "ecr-login"
+        "$AWS_ACCOUNT_ID.dkr.ecr.ca-central-1.amazonaws.com": "ecr-login"
     }
 }' | tee ~/.docker/config.json
 fi

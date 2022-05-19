@@ -1,11 +1,11 @@
 {
+  "extends": "./.svelte-kit/tsconfig.json",
   "compilerOptions": {
     "importsNotUsedAsValues": "error",
-    "preserveValueImports": true,
-    "isolatedModules": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noEmit": true,
+    "allowJs": true,
     "checkJs": true,
     "target": "esnext",
     "module": "esnext",
@@ -18,14 +18,24 @@
     "lib": ["esnext", "dom"],
     "types": [
       "svelte",
+      // The @testing-library/jest-dom lib relies on @types/jest
+      // which global types conflict with vitest, as long as
+      // the conflict isn't solved we need to comment this out
+      // and drop jest below
+      // "vitest/globals",
       "jest",
       "vite/client",
+      "@sveltejs/kit",
       "@lgn/web-client/src/types/electron",
       "@lgn/web-client/src/types/custom-events"
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/resources/*": ["tests/resources/*"],
+      "@/*": ["src/*"],
+      // Sveltekit insists on having these two
+      "$lib": ["src/lib"],
+      "$lib/*": ["src/lib/*"]
     }
   },
   "include": [

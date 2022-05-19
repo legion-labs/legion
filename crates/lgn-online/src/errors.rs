@@ -3,7 +3,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("authentication error: {0}")]
-    Authentication(#[from] crate::authentication::Error),
+    Authentication(#[from] lgn_auth::Error),
     #[error("configuration error: {0}")]
     Config(#[from] lgn_config::Error),
     #[error("reqwest error: {0}")]

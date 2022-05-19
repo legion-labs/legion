@@ -24,8 +24,6 @@ pub use common::*;
 pub mod plugin;
 pub use plugin::*;
 
-pub(crate) mod helpers;
-
 #[cfg(feature = "runtime")]
 #[path = "runtime/texture.rs"]
 pub mod runtime_texture;

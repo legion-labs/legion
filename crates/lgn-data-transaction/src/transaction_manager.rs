@@ -125,7 +125,13 @@ impl TransactionManager {
     ) -> Result<ResourcePathId, Error> {
         self.active_scenes.insert(resource_id);
         lgn_tracing::info!("Adding scene: {}", resource_id);
-        self.build_by_id(resource_id).await
+        let path_id = self.build_by_id(resource_id).await?;
+        let runtime_id = path_id.resource_id();
+
+        if self.asset_registry.get_untyped(runtime_id).is_none() {
+            self.asset_registry.load_untyped(runtime_id);
+        }
+        Ok(path_id)
     }
 
     /// Remove a scene

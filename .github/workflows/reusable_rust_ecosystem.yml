@@ -33,14 +33,14 @@ on:
         required: false
 
 env:
-  MONOREPO_DOCKER_REGISTRY: 550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
+  MONOREPO_DOCKER_REGISTRY: 616787818023.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
   CARGO_TERM_COLOR: always
   LGN_TELEMETRY_URL: https://api.live.playground.legionlabs.com
 
 jobs:
   lint:
     name: Lints
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     strategy:
@@ -60,7 +60,7 @@ jobs:
   test:
     name: Tests
     needs: [lint]
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     strategy:
@@ -91,7 +91,7 @@ jobs:
   publish:
     name: Release
     needs: [test]
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     strategy:
@@ -126,7 +126,7 @@ jobs:
   build_docs:
     name: Api docs
     needs: [lint]
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     steps:
@@ -175,7 +175,7 @@ jobs:
     name: Benchmarks
     if: ${{ inputs.benchmark }}
     needs: [lint]
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     steps:
@@ -193,7 +193,7 @@ jobs:
     name: Build timings
     if: ${{ inputs.timings }}
     needs: [lint]
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     steps:
@@ -238,7 +238,7 @@ jobs:
     name: Coverage analysis
     if: ${{ inputs.coverage }}
     needs: [lint]
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     steps:

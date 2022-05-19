@@ -3,9 +3,14 @@
 
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
 
+  import { getL10nOrchestratorContext } from "@/contexts";
+
+  import L10n from "../Misc/L10n.svelte";
   import { getRecentlyUsedStore } from "./Lib/MetricStore";
   import type { MetricStore } from "./Lib/MetricStore";
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
+
+  const { t } = getL10nOrchestratorContext();
 
   export let metricStore: MetricStore;
 
@@ -51,7 +56,8 @@
     class="cursor-pointer select-none text-left font-semibold"
     on:click={() => (show = !show)}
   >
-    Choose metric <i class="bi bi-caret-{!show ? 'down' : 'up'}-fill" />
+    <L10n id="metrics-search-choose-metrics" />
+    <i class="bi bi-caret-{!show ? 'down' : 'up'}-fill" />
   </div>
   {#if show}
     <div class="on-surface shadow-md border-2 main p-4 absolute z-10">
@@ -61,24 +67,28 @@
             <input
               type="text"
               class="h-8 w-96 placeholder rounded-sm pl-2 surface"
-              placeholder="Search metric..."
+              placeholder={$t("metrics-search-placeholder")}
               bind:value={$searchString}
             />
           </div>
           <div class="flex space-x-3 select-none">
             <div class="text-gray-400">
-              {$selectedMetricCount} metric{$selectedMetricCount > 1 ? "s" : ""}
-              selected
+              <L10n
+                id="metrics-search-result-number"
+                variables={{ selectedMetricCount: $selectedMetricCount }}
+              />
             </div>
             <div on:click={() => metricStore.clearSelection()}>
               <i class="bi bi-x-circle" />
-              Clear all
+              <L10n id="metrics-search-clear" />
             </div>
           </div>
         </div>
         <div class="grid grid-cols-3">
           <div class=" metric-scrollable ">
-            <div class="metric-category-header select-none">Recently Used</div>
+            <div class="metric-category-header select-none">
+              <L10n id="metrics-recently-used" />
+            </div>
             <div class="grid grid-cols-1 justify-items-start">
               {#each $recentlyUsedMetrics as metric}
                 <MetricSelectionItem {metricStore} {metric} />
@@ -86,7 +96,9 @@
             </div>
           </div>
           <div class="col-span-2 metric-scrollable">
-            <div class="metric-category-header select-none">All Metrics</div>
+            <div class="metric-category-header select-none">
+              <L10n id="metrics-all-metrics" />
+            </div>
             <div class="grid grid-cols-2 justify-items-start">
               {#each $filteredMetrics as metric}
                 <MetricSelectionItem {metricStore} {metric} />

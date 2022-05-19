@@ -62,5 +62,6 @@ module.exports = {
       },
     ],
     eqeqeq: "error",
+    "@typescript-eslint/strict-boolean-expressions": "error",
   },
 };

@@ -162,17 +162,6 @@ impl HzbSurface {
                 descriptor_set_handle,
             );
 
-            #[rustfmt::skip]
-            let vertex_data: [f32; 12] = [0.0, 2.0, 0.0, 2.0,
-                                          0.0, 0.0, 0.0, 0.0,
-                                          2.0, 0.0, 2.0, 0.0];
-
-            let sub_allocation = render_context
-                .transient_buffer_allocator()
-                .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
-
-            cmd_buffer.bind_buffer_suballocation_as_vertex_buffer(0, &sub_allocation);
-
             cmd_buffer.begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: rt_view,

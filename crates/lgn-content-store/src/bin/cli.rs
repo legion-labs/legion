@@ -8,12 +8,14 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use async_recursion::async_recursion;
 use clap::{Parser, Subcommand};
 use console::style;
 use futures::Future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lgn_content_store::{
-    Config, Error, HashRef, Identifier, MonitorAsyncAdapter, TransferCallbacks,
+    indexing::{IndexKeyDisplayFormat, TreeIdentifier, TreeLeafNode, TreeNode, TreeReader},
+    Config, Error, HashRef, Identifier, MonitorAsyncAdapter, Provider, TransferCallbacks,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, LevelFilter};
@@ -51,16 +53,39 @@ enum Commands {
         )]
         show_data: bool,
     },
+    Tree {
+        #[clap(subcommand)]
+        command: TreeCommands,
+    },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Subcommand, Debug)]
+enum TreeCommands {
+    Show {
+        identifier: TreeIdentifier,
+        #[clap(
+            short = 'r',
+            long = "recursion-level",
+            help = "The recursion level to use",
+            default_value_t = 0
+        )]
+        recursion_level: u32,
+
+        #[clap(
+            short = 'f',
+            long = "display-format",
+            help = "The format to use to display index keys",
+            default_value_t = IndexKeyDisplayFormat::Hex
+        )]
+        display_format: IndexKeyDisplayFormat,
+    },
+}
+
+#[derive(Debug)]
 struct TransferProgress {
     progress: Arc<MultiProgress>,
     progress_style: ProgressStyle,
     bars: Arc<RwLock<HashMap<String, ProgressBar>>>,
-
-    #[allow(dead_code)]
-    hidden_bar: Arc<ProgressBar>,
 }
 
 impl TransferProgress {
@@ -70,15 +95,10 @@ impl TransferProgress {
                 .template("{prefix:52!} [{elapsed_precise}] {bar:40.cyan/blue} {bytes}/{total_bytes} ({bytes_per_sec}, {eta}) {msg}");
         let bars = Arc::new(RwLock::new(HashMap::new()));
 
-        // Let's add a hidden bar to the progress bar that the progress stays
-        // alive until we explicitely shut it down.
-        let hidden_bar = Arc::new(progress.add(ProgressBar::hidden()));
-
         Self {
             progress,
             progress_style,
             bars,
-            hidden_bar,
         }
     }
 
@@ -102,8 +122,6 @@ impl TransferCallbacks<HashRef> for TransferProgress {
         bar.set_prefix(id.to_string());
         bar.set_position(id.data_size().try_into().unwrap());
         bar.finish_with_message("♥");
-
-        self.bars.write().unwrap().insert(id.to_string(), bar);
     }
 
     fn on_transfer_started(&self, id: &HashRef, total: usize) {
@@ -130,7 +148,7 @@ impl TransferCallbacks<HashRef> for TransferProgress {
         _current: usize,
         result: lgn_content_store::content_providers::Result<()>,
     ) {
-        if let Some(bar) = self.bars.read().unwrap().get(&id.to_string()) {
+        if let Some(bar) = self.bars.write().unwrap().remove(&id.to_string()) {
             bar.inc(inc.try_into().unwrap());
 
             match result {
@@ -168,7 +186,7 @@ impl TransferCallbacks<String> for TransferProgress {
         _current: usize,
         result: lgn_content_store::content_providers::Result<()>,
     ) {
-        if let Some(bar) = self.bars.read().unwrap().get(id) {
+        if let Some(bar) = self.bars.write().unwrap().remove(id) {
             bar.inc(inc.try_into().unwrap());
 
             match result {
@@ -197,8 +215,7 @@ async fn main() -> anyhow::Result<()> {
         .map_err(|err| anyhow::anyhow!("failed to create content provider: {}", err))?;
 
     // Let's add monitoring to the content-provider.
-    let transfer_progress = TransferProgress::new();
-    let file_transfer_progress = transfer_progress.clone();
+    let transfer_progress = Arc::new(TransferProgress::new());
     let transfer_join = transfer_progress.join();
 
     match args.command {
@@ -206,7 +223,7 @@ async fn main() -> anyhow::Result<()> {
             identifier,
             file_path,
         } => {
-            provider.set_download_callbacks(transfer_progress);
+            provider.set_download_callbacks(transfer_progress.clone());
 
             let output = Box::new(tokio::fs::File::create(&file_path).await.map_err(|err| {
                 anyhow::anyhow!(
@@ -225,7 +242,7 @@ async fn main() -> anyhow::Result<()> {
                 output,
                 file_path.display().to_string(),
                 input.size(),
-                Arc::new(Box::new(file_transfer_progress)),
+                Arc::new(Box::new(transfer_progress)),
             );
 
             let copy = async move {
@@ -249,7 +266,7 @@ async fn main() -> anyhow::Result<()> {
             res.1?;
         }
         Commands::Put { file_path } => {
-            provider.set_upload_callbacks(transfer_progress);
+            provider.set_upload_callbacks(transfer_progress.clone());
 
             let copy = async move {
                 let buf = if let Some(file_path) = file_path {
@@ -271,7 +288,7 @@ async fn main() -> anyhow::Result<()> {
                         f,
                         file_path.display().to_string(),
                         metadata.len().try_into().unwrap(),
-                        Arc::new(Box::new(file_transfer_progress)),
+                        Arc::new(Box::new(transfer_progress)),
                     );
 
                     f.read_to_end(&mut buf)
@@ -421,7 +438,90 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         }
+        Commands::Tree { command } => match command {
+            TreeCommands::Show {
+                identifier,
+                recursion_level,
+                display_format,
+            } => {
+                let tree = read_tree(
+                    &provider,
+                    "root",
+                    &identifier,
+                    display_format,
+                    recursion_level,
+                )
+                .await;
+                println!("{}", tree);
+            }
+        },
     }
 
     Ok(())
+}
+
+#[async_recursion]
+async fn read_tree(
+    provider: &Provider,
+    name: &str,
+    id: &TreeIdentifier,
+    display_format: IndexKeyDisplayFormat,
+    recursion_level: u32,
+) -> termtree::Tree<String> {
+    match provider.read_tree(id).await {
+        Ok(tree) => {
+            let mut r = termtree::Tree::new(format!(
+                "{} (tree: {}): count: {} - total_size: {}",
+                name,
+                id,
+                tree.count(),
+                tree.total_size()
+            ));
+
+            for (k, n) in tree.children() {
+                let name = k.format(display_format);
+
+                match n {
+                    TreeNode::Branch(id) => {
+                        if recursion_level > 0 {
+                            r.push(
+                                read_tree(provider, &name, id, display_format, recursion_level - 1)
+                                    .await,
+                            );
+                        } else {
+                            r.push(format!("{} (tree: {})", name, id));
+                        }
+                    }
+                    TreeNode::Leaf(n) => match n {
+                        TreeLeafNode::Resource(id) => {
+                            r.push(format!("{} (resource: {})", name, id));
+                        }
+                        TreeLeafNode::TreeRoot(id) => {
+                            let name = format!("{} (subtree)", name);
+                            if recursion_level > 0 {
+                                r.push(
+                                    read_tree(
+                                        provider,
+                                        &name,
+                                        id,
+                                        display_format,
+                                        recursion_level - 1,
+                                    )
+                                    .await,
+                                );
+                            } else {
+                                r.push(format!("{} (tree: {})", name, id));
+                            }
+                        }
+                    },
+                };
+            }
+
+            r
+        }
+        Err(err) => termtree::Tree::new(format!(
+            "{} (tree: {}): failed to read tree: {}",
+            name, id, err,
+        )),
+    }
 }

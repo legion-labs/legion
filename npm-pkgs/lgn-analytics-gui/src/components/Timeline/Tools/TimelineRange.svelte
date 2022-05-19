@@ -9,7 +9,7 @@
 
   $: if ($stateStore?.currentSelection) {
     const width = $stateStore?.canvasWidth;
-    const [begin, end] = $stateStore.getViewRange();
+    const [begin, end] = $stateStore.viewRange;
     const invTimeSpan = 1.0 / (end - begin);
     const msToPixelsFactor = invTimeSpan * width;
     const [beginSelection, endSelection] = $stateStore.currentSelection;

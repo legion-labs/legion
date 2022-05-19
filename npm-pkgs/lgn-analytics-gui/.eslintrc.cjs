@@ -4,6 +4,7 @@ module.exports = {
   env: {
     browser: true,
     es2021: true,
+    node: true,
   },
   parser: "@typescript-eslint/parser",
   parserOptions: {
@@ -31,5 +32,6 @@ module.exports = {
     "no-debugger": process.env.NODE_ENV === "production" ? "error" : "off",
     "@typescript-eslint/no-unused-vars": "off",
     eqeqeq: "error",
+    "@typescript-eslint/strict-boolean-expressions": "error",
   },
 };

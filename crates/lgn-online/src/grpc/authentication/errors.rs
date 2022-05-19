@@ -4,7 +4,7 @@ use tonic::codegen::StdError;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("authentication error: {0}")]
-    AuthenticationError(#[from] crate::authentication::Error),
+    AuthenticationError(#[from] lgn_auth::Error),
     #[error(transparent)]
     Other(#[from] StdError),
 }

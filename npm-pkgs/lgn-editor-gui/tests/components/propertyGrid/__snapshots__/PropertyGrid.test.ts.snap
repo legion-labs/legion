@@ -4,7 +4,7 @@ exports[`PropertyGrid > renders properly with an error 1`] = `
 <body>
   <div>
     <div
-      class="root svelte-1ry933g"
+      class="h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden"
     >
       <div
         class="italic"
@@ -20,844 +20,603 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
 <body>
   <div>
     <div
-      class="root svelte-1ry933g"
+      class="h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden"
     >
       
-      <div
-        class="root"
-      >
+      <div>
         <div
-          class="root svelte-1apq080"
+          class="root svelte-1mg9gpy"
         >
            
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-tg2vtt"
-            >
+          <div>
+            
+            <div>
               <div
-                class="property-name svelte-tg2vtt"
-                title="test_string"
+                class="root svelte-tg2vtt"
               >
                 <div
-                  class="truncate"
-                >
-                  test_string
-                </div>
-              </div>
-               
-              <div
-                class="property-input-container svelte-tg2vtt"
-              >
-                <div
-                  class="property-input svelte-tg2vtt"
+                  class="property-name svelte-tg2vtt"
+                  title="test_string"
                 >
                   <div
-                    class="root svelte-1gjlayc"
+                    class="truncate"
+                  >
+                    test_string
+                  </div>
+                </div>
+                 
+                <div
+                  class="property-input-container svelte-tg2vtt"
+                >
+                  <div
+                    class="property-input svelte-tg2vtt"
                   >
                     <div
-                      class="root svelte-jk7kfq w-full readonly default"
+                      class="root svelte-1gjlayc"
                     >
-                       
-                      <input
-                        aria-autocomplete="none"
-                        autocomplete="none"
-                        class="input svelte-jk7kfq default"
-                        readonly=""
-                        type="text"
-                      />
+                      <div
+                        class="root svelte-jk7kfq w-full readonly default"
+                      >
+                         
+                        <input
+                          aria-autocomplete="none"
+                          autocomplete="none"
+                          class="input svelte-jk7kfq default"
+                          readonly=""
+                          type="text"
+                        />
+                         
+                      </div>
                        
                     </div>
-                     
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-1apq080"
-            >
+            
+            
+            <div>
               <div
-                class="property-name svelte-1apq080"
-                title="GroupTest1"
+                class="root svelte-1mg9gpy"
               >
                 <div
-                  class="truncate"
+                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                  title="GroupTest1"
                 >
-                  GroupTest1
-                </div>
-                 
-                 
-                 
-              </div>
-               
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="test_color"
-                  >
+                  <div>
+                    
+                     
                     <div
                       class="truncate"
                     >
-                      test_color
+                      GroupTest1
                     </div>
                   </div>
                    
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
+                   
+                   
+                </div>
+                 
+                <div>
+                  
+                  <div>
                     <div
-                      class="property-input svelte-tg2vtt"
+                      class="root svelte-tg2vtt"
                     >
                       <div
-                        class="root svelte-1gjlayc"
+                        class="property-name svelte-tg2vtt"
+                        title="test_color"
                       >
                         <div
-                          class="root svelte-1nb3fu7"
+                          class="truncate"
+                        >
+                          test_color
+                        </div>
+                      </div>
+                       
+                      <div
+                        class="property-input-container svelte-tg2vtt"
+                      >
+                        <div
+                          class="property-input svelte-tg2vtt"
                         >
                           <div
-                            class="root svelte-jk7kfq w-full default with-extension"
+                            class="root svelte-1gjlayc"
                           >
                             <div
-                              class="extension left-extension svelte-jk7kfq extension-default"
+                              class="root svelte-1nb3fu7"
                             >
                               <div
-                                class="h-full w-full flex items-center justify-center text-xl font-bold"
-                                slot="leftExtension"
-                                title="Hexadecimal color value"
-                              >
-                                #
-                              </div>
-                            </div>
-                             
-                            <input
-                              aria-autocomplete="none"
-                              autocomplete="none"
-                              class="input svelte-jk7kfq with-right-extension with-left-extension default"
-                              type="text"
-                            />
-                             
-                            <div
-                              class="extension right-extension svelte-jk7kfq extension-default"
-                            >
-                              <div
-                                class="root svelte-1agkg6l"
+                                class="root svelte-jk7kfq w-full default with-extension"
                               >
                                 <div
-                                  class="dropdown-toggle svelte-1agkg6l"
+                                  class="extension left-extension svelte-jk7kfq extension-default"
                                 >
                                   <div
-                                    class="dropdown-toggle-color svelte-1agkg6l"
-                                    style="--current-rgba-color: rgba(255,0,0,1.0);"
-                                  />
+                                    class="h-full w-full flex items-center justify-center text-xl font-bold"
+                                    slot="leftExtension"
+                                    title="Hexadecimal color value"
+                                  >
+                                    #
+                                  </div>
                                 </div>
                                  
+                                <input
+                                  aria-autocomplete="none"
+                                  autocomplete="none"
+                                  class="input svelte-jk7kfq with-right-extension with-left-extension default"
+                                  type="text"
+                                />
+                                 
                                 <div
-                                  class="dropdown svelte-1agkg6l invisible right-0"
+                                  class="extension right-extension svelte-jk7kfq extension-default"
                                 >
                                   <div
-                                    class="sv-selector-input svelte-1agkg6l"
+                                    class="root svelte-bi7nzo"
                                   >
                                     <div
-                                      class="sv-selector-background svelte-1agkg6l"
-                                      style="--current-background: rgba(255,0,0,1.0);"
+                                      class="dropdown-toggle svelte-bi7nzo"
                                     >
                                       <div
-                                        class="sv-selector-white-gradient-mask svelte-1agkg6l"
-                                      >
-                                        <div
-                                          class="sv-selector-black-gradient-mask svelte-1agkg6l"
-                                        >
-                                          <iframe
-                                            aria-hidden="true"
-                                            src="about:blank"
-                                            style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
-                                            tabindex="-1"
-                                          />
-                                        </div>
-                                         
-                                        <div
-                                          class="sv-selector-cursor svelte-1agkg6l"
-                                          style="--color-block-top: -6px; --color-block-left: -6px; --current-rgba-color: rgba(255,0,0,1);"
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                   
-                                  <div
-                                    class="additional-selectors svelte-1agkg6l"
-                                  >
-                                    <div
-                                      class="h-selector-container svelte-1agkg6l"
-                                    >
-                                      <input
-                                        class="h-selector svelte-1agkg6l"
-                                        max="360"
-                                        min="0"
-                                        style="--current-background: rgba(255,0,0,1);"
-                                        type="range"
+                                        class="dropdown-toggle-color svelte-bi7nzo"
+                                        style="--current-rgba-color: rgba(255,0,0,1.0);"
                                       />
                                     </div>
                                      
                                     <div
-                                      class="alpha-selector-container svelte-1agkg6l"
+                                      class="dropdown svelte-bi7nzo invisible right-0"
                                     >
                                       <div
-                                        class="alpha-selector-checkered-mask svelte-1agkg6l"
+                                        class="sv-selector-input svelte-bi7nzo"
                                       >
                                         <div
-                                          class="alpha-selector-opacity-mask svelte-1agkg6l"
-                                          style="--tw-gradient-to: rgba(255,0,0,1);"
+                                          class="sv-selector-background svelte-bi7nzo"
+                                          style="--current-background: rgba(255,0,0,1.0);"
+                                        >
+                                          <div
+                                            class="sv-selector-white-gradient-mask svelte-bi7nzo"
+                                          >
+                                            <div
+                                              class="sv-selector-black-gradient-mask svelte-bi7nzo"
+                                            >
+                                              <iframe
+                                                aria-hidden="true"
+                                                src="about:blank"
+                                                style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                                tabindex="-1"
+                                              />
+                                            </div>
+                                             
+                                            <div
+                                              class="sv-selector-cursor svelte-bi7nzo"
+                                              style="--color-block-top: -6px; --color-block-left: -6px; --current-rgba-color: rgba(255,0,0,1);"
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                       
+                                      <div
+                                        class="additional-selectors svelte-bi7nzo"
+                                      >
+                                        <div
+                                          class="h-selector-container svelte-bi7nzo"
                                         >
                                           <input
-                                            class="alpha-selector svelte-1agkg6l"
-                                            max="255"
+                                            class="h-selector svelte-bi7nzo"
+                                            max="360"
                                             min="0"
                                             style="--current-background: rgba(255,0,0,1);"
                                             type="range"
                                           />
                                         </div>
-                                      </div>
-                                    </div>
-                                     
-                                    <div
-                                      class="rgba-inputs svelte-1agkg6l"
-                                    >
-                                      <div
-                                        class="svelte-1agkg6l"
-                                      >
-                                        <input
-                                          aria-autocomplete="none"
-                                          autocomplete="none"
-                                          class="input svelte-1s4bysp default w-full no-arrow"
-                                          max="255"
-                                          min="0"
-                                          step="0"
-                                          type="number"
-                                        />
-                                      </div>
-                                       
-                                      <div
-                                        class="svelte-1agkg6l"
-                                      >
-                                        <input
-                                          aria-autocomplete="none"
-                                          autocomplete="none"
-                                          class="input svelte-1s4bysp default w-full no-arrow"
-                                          max="255"
-                                          min="0"
-                                          step="0"
-                                          type="number"
-                                        />
-                                      </div>
-                                       
-                                      <div
-                                        class="svelte-1agkg6l"
-                                      >
-                                        <input
-                                          aria-autocomplete="none"
-                                          autocomplete="none"
-                                          class="input svelte-1s4bysp default w-full no-arrow"
-                                          max="255"
-                                          min="0"
-                                          step="0"
-                                          type="number"
-                                        />
-                                      </div>
-                                       
-                                      <div
-                                        class="svelte-1agkg6l"
-                                      >
-                                        <input
-                                          aria-autocomplete="none"
-                                          autocomplete="none"
-                                          class="input svelte-1s4bysp default w-full no-arrow"
-                                          max="255"
-                                          min="0"
-                                          step="0"
-                                          type="number"
-                                        />
+                                         
+                                        <div
+                                          class="alpha-selector-container svelte-bi7nzo"
+                                        >
+                                          <div
+                                            class="alpha-selector-checkered-mask svelte-bi7nzo"
+                                          >
+                                            <div
+                                              class="alpha-selector-opacity-mask svelte-bi7nzo"
+                                              style="--tw-gradient-to: rgba(255,0,0,1);"
+                                            >
+                                              <input
+                                                class="alpha-selector svelte-bi7nzo"
+                                                max="255"
+                                                min="0"
+                                                style="--current-background: rgba(255,0,0,1);"
+                                                type="range"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                         
+                                        <div
+                                          class="rgba-inputs svelte-bi7nzo"
+                                        >
+                                          <div
+                                            class="svelte-bi7nzo"
+                                          >
+                                            <input
+                                              aria-autocomplete="none"
+                                              autocomplete="none"
+                                              class="input svelte-1s4bysp default w-full no-arrow"
+                                              max="255"
+                                              min="0"
+                                              step="0"
+                                              type="number"
+                                            />
+                                          </div>
+                                           
+                                          <div
+                                            class="svelte-bi7nzo"
+                                          >
+                                            <input
+                                              aria-autocomplete="none"
+                                              autocomplete="none"
+                                              class="input svelte-1s4bysp default w-full no-arrow"
+                                              max="255"
+                                              min="0"
+                                              step="0"
+                                              type="number"
+                                            />
+                                          </div>
+                                           
+                                          <div
+                                            class="svelte-bi7nzo"
+                                          >
+                                            <input
+                                              aria-autocomplete="none"
+                                              autocomplete="none"
+                                              class="input svelte-1s4bysp default w-full no-arrow"
+                                              max="255"
+                                              min="0"
+                                              step="0"
+                                              type="number"
+                                            />
+                                          </div>
+                                           
+                                          <div
+                                            class="svelte-bi7nzo"
+                                          >
+                                            <input
+                                              aria-autocomplete="none"
+                                              autocomplete="none"
+                                              class="input svelte-1s4bysp default w-full no-arrow"
+                                              max="255"
+                                              min="0"
+                                              step="0"
+                                              type="number"
+                                            />
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
+                             
                           </div>
                         </div>
-                         
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              
-              
-              
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="test_rotation"
-                  >
+                  
+                  
+                  
+                  
+                  <div>
                     <div
-                      class="truncate"
-                    >
-                      test_rotation
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
+                      class="root svelte-tg2vtt"
                     >
                       <div
-                        class="root svelte-1gjlayc"
+                        class="property-name svelte-tg2vtt"
+                        title="test_rotation"
                       >
                         <div
-                          class="root svelte-1p3vtt3"
+                          class="truncate"
                         >
-                          <div
-                            class="svelte-1p3vtt3"
-                          >
-                            <input
-                              aria-autocomplete="none"
-                              autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow"
-                              step="0"
-                              type="number"
-                            />
-                          </div>
-                           
-                          <div
-                            class="svelte-1p3vtt3"
-                          >
-                            <input
-                              aria-autocomplete="none"
-                              autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow"
-                              step="0"
-                              type="number"
-                            />
-                          </div>
-                           
-                          <div
-                            class="svelte-1p3vtt3"
-                          >
-                            <input
-                              aria-autocomplete="none"
-                              autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow"
-                              step="0"
-                              type="number"
-                            />
-                          </div>
-                           
-                          <div
-                            class="svelte-1p3vtt3"
-                          >
-                            <input
-                              aria-autocomplete="none"
-                              autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow"
-                              step="0"
-                              type="number"
-                            />
-                          </div>
+                          test_rotation
                         </div>
-                         
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-1apq080"
-            >
-              <div
-                class="property-name svelte-1apq080"
-                title="GroupTest2"
-              >
-                <div
-                  class="truncate"
-                >
-                  GroupTest2
-                </div>
-                 
-                 
-                 
-              </div>
-               
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="test_bool"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      test_bool
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
-                    >
+                       
                       <div
-                        class="root svelte-1gjlayc"
+                        class="property-input-container svelte-tg2vtt"
                       >
                         <div
-                          class="boolean-property svelte-1gjlayc"
+                          class="property-input svelte-tg2vtt"
                         >
                           <div
-                            class="root group svelte-lo75i2"
+                            class="root svelte-1gjlayc"
                           >
                             <div
-                              class="handler svelte-lo75i2 handler-off"
-                            />
+                              class="root svelte-1p3vtt3"
+                            >
+                              <div
+                                class="svelte-1p3vtt3"
+                              >
+                                <input
+                                  aria-autocomplete="none"
+                                  autocomplete="none"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
+                                  step="0"
+                                  type="number"
+                                />
+                              </div>
+                               
+                              <div
+                                class="svelte-1p3vtt3"
+                              >
+                                <input
+                                  aria-autocomplete="none"
+                                  autocomplete="none"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
+                                  step="0"
+                                  type="number"
+                                />
+                              </div>
+                               
+                              <div
+                                class="svelte-1p3vtt3"
+                              >
+                                <input
+                                  aria-autocomplete="none"
+                                  autocomplete="none"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
+                                  step="0"
+                                  type="number"
+                                />
+                              </div>
+                               
+                              <div
+                                class="svelte-1p3vtt3"
+                              >
+                                <input
+                                  aria-autocomplete="none"
+                                  autocomplete="none"
+                                  class="input svelte-1s4bysp default w-full no-arrow"
+                                  step="0"
+                                  type="number"
+                                />
+                              </div>
+                            </div>
+                             
                           </div>
                         </div>
-                         
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="test_float32"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      test_float32
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
-                    >
-                      <div
-                        class="root svelte-1gjlayc"
-                      >
-                        <input
-                          aria-autocomplete="none"
-                          autocomplete="none"
-                          class="input svelte-1s4bysp default w-full no-arrow text-right"
-                          step="0"
-                          type="number"
-                        />
-                         
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="test_int"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      test_int
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
-                    >
-                      <div
-                        class="root svelte-1gjlayc"
-                      >
-                        <input
-                          aria-autocomplete="none"
-                          autocomplete="none"
-                          class="input svelte-1s4bysp default w-full no-arrow text-right"
-                          step="0"
-                          type="number"
-                        />
-                         
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-tg2vtt"
-            >
-              <div
-                class="property-name svelte-tg2vtt"
-                title="test_float64"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_float64
-                </div>
-              </div>
-               
-              <div
-                class="property-input-container svelte-tg2vtt"
-              >
-                <div
-                  class="property-input svelte-tg2vtt"
-                >
-                  <div
-                    class="root svelte-1gjlayc"
-                  >
-                    <input
-                      aria-autocomplete="none"
-                      autocomplete="none"
-                      class="input svelte-1s4bysp default w-full no-arrow text-right"
-                      step="0"
-                      type="number"
-                    />
-                     
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-1apq080"
-            >
-              <div
-                class="property-name svelte-1apq080"
-                title="test_blob"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_blob
-                </div>
-                 
-                 
-                 
-                <div
-                  class="add-vector svelte-1apq080"
-                  title="Add property to vector"
-                >
-                  +
-                </div>
-              </div>
-               
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="[0]"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      [0]
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
-                    >
-                      <div
-                        class="root svelte-1gjlayc"
-                      >
-                        <input
-                          aria-autocomplete="none"
-                          autocomplete="none"
-                          class="input svelte-1s4bysp default w-full no-arrow text-right"
-                          step="0"
-                          type="number"
-                        />
-                         
-                        <div
-                          class="close-button svelte-1gjlayc"
-                        >
-                          ×
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="[1]"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      [1]
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
-                    >
-                      <div
-                        class="root svelte-1gjlayc"
-                      >
-                        <input
-                          aria-autocomplete="none"
-                          autocomplete="none"
-                          class="input svelte-1s4bysp default w-full no-arrow text-right"
-                          step="0"
-                          type="number"
-                        />
-                         
-                        <div
-                          class="close-button svelte-1gjlayc"
-                        >
-                          ×
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="[2]"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      [2]
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
-                    >
-                      <div
-                        class="root svelte-1gjlayc"
-                      >
-                        <input
-                          aria-autocomplete="none"
-                          autocomplete="none"
-                          class="input svelte-1s4bysp default w-full no-arrow text-right"
-                          step="0"
-                          type="number"
-                        />
-                         
-                        <div
-                          class="close-button svelte-1gjlayc"
-                        >
-                          ×
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-tg2vtt"
-                >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="[3]"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      [3]
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
-                    >
-                      <div
-                        class="root svelte-1gjlayc"
-                      >
-                        <input
-                          aria-autocomplete="none"
-                          autocomplete="none"
-                          class="input svelte-1s4bysp default w-full no-arrow text-right"
-                          step="0"
-                          type="number"
-                        />
-                         
-                        <div
-                          class="close-button svelte-1gjlayc"
-                        >
-                          ×
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-1apq080"
-            >
-              <div
-                class="property-name svelte-1apq080"
-                title="test_sub_type"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_sub_type
-                </div>
-                 
-                 
-                 
-              </div>
-               
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-1apq080 with-indent"
-                >
-                  <div
-                    class="property-name svelte-1apq080"
-                    title="test_components"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      test_components
-                    </div>
-                     
-                     
-                     
-                    <div
-                      class="add-vector svelte-1apq080"
-                      title="Add property to vector"
-                    >
-                      +
-                    </div>
-                  </div>
-                   
                   
-                  <div
-                    class="root"
-                  >
+                </div>
+              </div>
+            </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-1mg9gpy"
+              >
+                <div
+                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                  title="GroupTest2"
+                >
+                  <div>
+                    
+                     
                     <div
-                      class="root svelte-1apq080 with-indent"
+                      class="truncate"
+                    >
+                      GroupTest2
+                    </div>
+                  </div>
+                   
+                   
+                   
+                </div>
+                 
+                <div>
+                  
+                  <div>
+                    <div
+                      class="root svelte-tg2vtt"
                     >
                       <div
-                        class="property-name svelte-1apq080"
+                        class="property-name svelte-tg2vtt"
+                        title="test_bool"
+                      >
+                        <div
+                          class="truncate"
+                        >
+                          test_bool
+                        </div>
+                      </div>
+                       
+                      <div
+                        class="property-input-container svelte-tg2vtt"
+                      >
+                        <div
+                          class="property-input svelte-tg2vtt"
+                        >
+                          <div
+                            class="root svelte-1gjlayc"
+                          >
+                            <div
+                              class="boolean-property svelte-1gjlayc"
+                            >
+                              <div
+                                class="root group svelte-lo75i2"
+                              >
+                                <div
+                                  class="handler svelte-lo75i2 handler-off"
+                                />
+                              </div>
+                            </div>
+                             
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  
+                  <div>
+                    <div
+                      class="root svelte-tg2vtt"
+                    >
+                      <div
+                        class="property-name svelte-tg2vtt"
+                        title="test_float32"
+                      >
+                        <div
+                          class="truncate"
+                        >
+                          test_float32
+                        </div>
+                      </div>
+                       
+                      <div
+                        class="property-input-container svelte-tg2vtt"
+                      >
+                        <div
+                          class="property-input svelte-tg2vtt"
+                        >
+                          <div
+                            class="root svelte-1gjlayc"
+                          >
+                            <input
+                              aria-autocomplete="none"
+                              autocomplete="none"
+                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              step="0"
+                              type="number"
+                            />
+                             
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  
+                  <div>
+                    <div
+                      class="root svelte-tg2vtt"
+                    >
+                      <div
+                        class="property-name svelte-tg2vtt"
+                        title="test_int"
+                      >
+                        <div
+                          class="truncate"
+                        >
+                          test_int
+                        </div>
+                      </div>
+                       
+                      <div
+                        class="property-input-container svelte-tg2vtt"
+                      >
+                        <div
+                          class="property-input svelte-tg2vtt"
+                        >
+                          <div
+                            class="root svelte-1gjlayc"
+                          >
+                            <input
+                              aria-autocomplete="none"
+                              autocomplete="none"
+                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              step="0"
+                              type="number"
+                            />
+                             
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                </div>
+              </div>
+            </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-tg2vtt"
+              >
+                <div
+                  class="property-name svelte-tg2vtt"
+                  title="test_float64"
+                >
+                  <div
+                    class="truncate"
+                  >
+                    test_float64
+                  </div>
+                </div>
+                 
+                <div
+                  class="property-input-container svelte-tg2vtt"
+                >
+                  <div
+                    class="property-input svelte-tg2vtt"
+                  >
+                    <div
+                      class="root svelte-1gjlayc"
+                    >
+                      <input
+                        aria-autocomplete="none"
+                        autocomplete="none"
+                        class="input svelte-1s4bysp default w-full no-arrow text-right"
+                        step="0"
+                        type="number"
+                      />
+                       
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-1mg9gpy"
+              >
+                <div
+                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                  title="test_blob"
+                >
+                  <div>
+                    
+                     
+                    <div
+                      class="truncate"
+                    >
+                      test_blob
+                    </div>
+                  </div>
+                   
+                   
+                   
+                  <div
+                    class="add-vector svelte-1mg9gpy"
+                    title="Add property to vector"
+                  >
+                    +
+                  </div>
+                </div>
+                 
+                <div>
+                  
+                  <div>
+                    <div
+                      class="root svelte-tg2vtt"
+                    >
+                      <div
+                        class="property-name svelte-tg2vtt"
                         title="[0]"
                       >
                         <div
@@ -865,70 +624,43 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         >
                           [0]
                         </div>
-                         
-                        <div
-                          class="delete-button svelte-1apq080"
-                          title="Remove Component"
-                        >
-                          ×
-                        </div>
-                         
-                         
                       </div>
                        
-                      
                       <div
-                        class="root"
+                        class="property-input-container svelte-tg2vtt"
                       >
                         <div
-                          class="root svelte-tg2vtt"
+                          class="property-input svelte-tg2vtt"
                         >
                           <div
-                            class="property-name svelte-tg2vtt"
-                            title="test_i32"
+                            class="root svelte-1gjlayc"
                           >
+                            <input
+                              aria-autocomplete="none"
+                              autocomplete="none"
+                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              step="0"
+                              type="number"
+                            />
+                             
                             <div
-                              class="truncate"
+                              class="close-button svelte-1gjlayc"
                             >
-                              test_i32
-                            </div>
-                          </div>
-                           
-                          <div
-                            class="property-input-container svelte-tg2vtt"
-                          >
-                            <div
-                              class="property-input svelte-tg2vtt"
-                            >
-                              <div
-                                class="root svelte-1gjlayc"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow text-right"
-                                  step="0"
-                                  type="number"
-                                />
-                                 
-                              </div>
+                              ×
                             </div>
                           </div>
                         </div>
                       </div>
-                      
                     </div>
                   </div>
                   
                   
-                  <div
-                    class="root"
-                  >
+                  <div>
                     <div
-                      class="root svelte-1apq080 with-indent"
+                      class="root svelte-tg2vtt"
                     >
                       <div
-                        class="property-name svelte-1apq080"
+                        class="property-name svelte-tg2vtt"
                         title="[1]"
                       >
                         <div
@@ -936,70 +668,43 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         >
                           [1]
                         </div>
-                         
-                        <div
-                          class="delete-button svelte-1apq080"
-                          title="Remove Component"
-                        >
-                          ×
-                        </div>
-                         
-                         
                       </div>
                        
-                      
                       <div
-                        class="root"
+                        class="property-input-container svelte-tg2vtt"
                       >
                         <div
-                          class="root svelte-tg2vtt"
+                          class="property-input svelte-tg2vtt"
                         >
                           <div
-                            class="property-name svelte-tg2vtt"
-                            title="test_i32"
+                            class="root svelte-1gjlayc"
                           >
+                            <input
+                              aria-autocomplete="none"
+                              autocomplete="none"
+                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              step="0"
+                              type="number"
+                            />
+                             
                             <div
-                              class="truncate"
+                              class="close-button svelte-1gjlayc"
                             >
-                              test_i32
-                            </div>
-                          </div>
-                           
-                          <div
-                            class="property-input-container svelte-tg2vtt"
-                          >
-                            <div
-                              class="property-input svelte-tg2vtt"
-                            >
-                              <div
-                                class="root svelte-1gjlayc"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow text-right"
-                                  step="0"
-                                  type="number"
-                                />
-                                 
-                              </div>
+                              ×
                             </div>
                           </div>
                         </div>
                       </div>
-                      
                     </div>
                   </div>
                   
                   
-                  <div
-                    class="root"
-                  >
+                  <div>
                     <div
-                      class="root svelte-1apq080 with-indent"
+                      class="root svelte-tg2vtt"
                     >
                       <div
-                        class="property-name svelte-1apq080"
+                        class="property-name svelte-tg2vtt"
                         title="[2]"
                       >
                         <div
@@ -1007,596 +712,897 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         >
                           [2]
                         </div>
-                         
-                        <div
-                          class="delete-button svelte-1apq080"
-                          title="Remove Component"
-                        >
-                          ×
-                        </div>
-                         
-                         
                       </div>
                        
-                      
                       <div
-                        class="root"
+                        class="property-input-container svelte-tg2vtt"
                       >
                         <div
-                          class="root svelte-tg2vtt"
+                          class="property-input svelte-tg2vtt"
                         >
                           <div
-                            class="property-name svelte-tg2vtt"
-                            title="test_i32"
+                            class="root svelte-1gjlayc"
                           >
+                            <input
+                              aria-autocomplete="none"
+                              autocomplete="none"
+                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              step="0"
+                              type="number"
+                            />
+                             
                             <div
-                              class="truncate"
+                              class="close-button svelte-1gjlayc"
                             >
-                              test_i32
-                            </div>
-                          </div>
-                           
-                          <div
-                            class="property-input-container svelte-tg2vtt"
-                          >
-                            <div
-                              class="property-input svelte-tg2vtt"
-                            >
-                              <div
-                                class="root svelte-1gjlayc"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow text-right"
-                                  step="0"
-                                  type="number"
-                                />
-                                 
-                              </div>
+                              ×
                             </div>
                           </div>
                         </div>
                       </div>
-                      
+                    </div>
+                  </div>
+                  
+                  
+                  <div>
+                    <div
+                      class="root svelte-tg2vtt"
+                    >
+                      <div
+                        class="property-name svelte-tg2vtt"
+                        title="[3]"
+                      >
+                        <div
+                          class="truncate"
+                        >
+                          [3]
+                        </div>
+                      </div>
+                       
+                      <div
+                        class="property-input-container svelte-tg2vtt"
+                      >
+                        <div
+                          class="property-input svelte-tg2vtt"
+                        >
+                          <div
+                            class="root svelte-1gjlayc"
+                          >
+                            <input
+                              aria-autocomplete="none"
+                              autocomplete="none"
+                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              step="0"
+                              type="number"
+                            />
+                             
+                            <div
+                              class="close-button svelte-1gjlayc"
+                            >
+                              ×
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
                 </div>
               </div>
-              
-              
+            </div>
+            
+            
+            <div>
               <div
-                class="root"
+                class="root svelte-1mg9gpy"
               >
                 <div
-                  class="root svelte-tg2vtt"
+                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                  title="test_sub_type"
                 >
-                  <div
-                    class="property-name svelte-tg2vtt"
-                    title="test_string"
-                  >
-                    <div
-                      class="truncate"
-                    >
-                      test_string
-                    </div>
-                  </div>
-                   
-                  <div
-                    class="property-input-container svelte-tg2vtt"
-                  >
-                    <div
-                      class="property-input svelte-tg2vtt"
-                    >
-                      <div
-                        class="root svelte-1gjlayc"
-                      >
-                        <div
-                          class="root svelte-jk7kfq w-full default"
-                        >
-                           
-                          <input
-                            aria-autocomplete="none"
-                            autocomplete="none"
-                            class="input svelte-jk7kfq default"
-                            type="text"
-                          />
-                           
-                        </div>
-                         
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-1apq080 with-indent"
-                >
-                  <div
-                    class="property-name svelte-1apq080"
-                    title="test_sub_type"
-                  >
+                  <div>
+                    
+                     
                     <div
                       class="truncate"
                     >
                       test_sub_type
                     </div>
-                     
-                     
-                     
                   </div>
                    
-                  
-                  <div
-                    class="root"
-                  >
-                    <div
-                      class="root svelte-tg2vtt"
-                    >
-                      <div
-                        class="property-name svelte-tg2vtt"
-                        title="test_vec"
-                      >
-                        <div
-                          class="truncate"
-                        >
-                          test_vec
-                        </div>
-                      </div>
-                       
-                      <div
-                        class="property-input-container svelte-tg2vtt"
-                      >
-                        <div
-                          class="property-input svelte-tg2vtt"
-                        >
-                          <div
-                            class="root svelte-1gjlayc"
-                          >
-                            <div
-                              class="root svelte-1p3vtt3"
-                            >
-                              <div
-                                class="svelte-1p3vtt3"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
-                               
-                              <div
-                                class="svelte-1p3vtt3"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
-                               
-                              <div
-                                class="svelte-1p3vtt3"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
-                            </div>
-                             
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                </div>
-              </div>
-              
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-1apq080"
-            >
-              <div
-                class="property-name svelte-1apq080"
-                title="test_option_set"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_option_set
-                </div>
-                 
-                 
-                 
-              </div>
-               
-              
-              <div
-                class="root"
-              >
-                <div
-                  class="root svelte-1apq080 with-indent"
-                >
                    
+                   
+                </div>
+                 
+                <div>
                   
-                  <div
-                    class="root"
-                  >
+                  <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="root svelte-1mg9gpy with-indent"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="test_vec"
+                        class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                        title="test_components"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          test_vec
-                        </div>
-                      </div>
-                       
-                      <div
-                        class="property-input-container svelte-tg2vtt"
-                      >
-                        <div
-                          class="property-input svelte-tg2vtt"
-                        >
-                          <div
-                            class="root svelte-1gjlayc"
-                          >
-                            <div
-                              class="root svelte-1p3vtt3"
-                            >
-                              <div
-                                class="svelte-1p3vtt3"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
-                               
-                              <div
-                                class="svelte-1p3vtt3"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
-                               
-                              <div
-                                class="svelte-1p3vtt3"
-                              >
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
-                            </div>
-                             
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                </div>
-              </div>
-              
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-1apq080"
-            >
-              <div
-                class="property-name svelte-1apq080"
-                title="test_option_none"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_option_none
-                </div>
-                 
-                 
-                 
-              </div>
-               
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-tg2vtt"
-            >
-              <div
-                class="property-name svelte-tg2vtt"
-                title="test_resource_path_option"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_resource_path_option
-                </div>
-              </div>
-               
-              <div
-                class="property-input-container svelte-tg2vtt"
-              >
-                <div
-                  class="property-input svelte-tg2vtt"
-                >
-                  <div
-                    class="root svelte-1gjlayc"
-                  >
-                    <div
-                      class="option-property svelte-1sn8kpr"
-                    >
-                      <div
-                        class="cursor-help svelte-1sn8kpr"
-                        title="This property's value is optional and no value has been set yet"
-                      >
-                        <div
-                          class="cursor-help-icon svelte-1sn8kpr"
-                        >
-                          ?
-                        </div>
-                      </div>
-                       
-                      <div
-                        class="option-property-checkbox svelte-1sn8kpr"
-                      >
-                        <div
-                          class="root svelte-10vzrsx default"
-                        >
-                          <input
-                            class="input svelte-10vzrsx"
-                            type="checkbox"
-                          />
-                           
-                        </div>
-                      </div>
-                    </div>
-                    
-                     
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-1apq080"
-            >
-              <div
-                class="property-name svelte-1apq080"
-                title="test_resource_path_vec"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_resource_path_vec
-                </div>
-                 
-                 
-                 
-                <div
-                  class="add-vector svelte-1apq080"
-                  title="Add property to vector"
-                >
-                  +
-                </div>
-              </div>
-               
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-tg2vtt"
-            >
-              <div
-                class="property-name svelte-tg2vtt"
-                title="test_option_primitive_set"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_option_primitive_set
-                </div>
-              </div>
-               
-              <div
-                class="property-input-container svelte-tg2vtt"
-              >
-                <div
-                  class="property-input svelte-tg2vtt"
-                >
-                  <div
-                    class="root svelte-1gjlayc"
-                  >
-                    <div
-                      class="option-property svelte-1sn8kpr"
-                    >
-                      <div
-                        class="root svelte-1gjlayc"
-                      >
-                        <div
-                          class="root svelte-1p3vtt3"
-                        >
-                          <div
-                            class="svelte-1p3vtt3"
-                          >
-                            <input
-                              aria-autocomplete="none"
-                              autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow"
-                              step="0"
-                              type="number"
-                            />
-                          </div>
+                        <div>
+                          
                            
                           <div
-                            class="svelte-1p3vtt3"
+                            class="truncate"
                           >
-                            <input
-                              aria-autocomplete="none"
-                              autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow"
-                              step="0"
-                              type="number"
-                            />
-                          </div>
-                           
-                          <div
-                            class="svelte-1p3vtt3"
-                          >
-                            <input
-                              aria-autocomplete="none"
-                              autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow"
-                              step="0"
-                              type="number"
-                            />
+                            test_components
                           </div>
                         </div>
                          
-                      </div>
-                       
-                      <div
-                        class="option-property-checkbox svelte-1sn8kpr"
-                      >
+                         
+                         
                         <div
-                          class="root svelte-10vzrsx default"
+                          class="add-vector svelte-1mg9gpy"
+                          title="Add property to vector"
                         >
-                          <input
-                            class="input svelte-10vzrsx"
-                            type="checkbox"
-                          />
-                           
-                          ✓
+                          +
                         </div>
                       </div>
+                       
+                      <div>
+                        
+                        <div>
+                          <div
+                            class="root svelte-1mg9gpy with-indent"
+                          >
+                            <div
+                              class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                              title="[0]"
+                            >
+                              <div>
+                                
+                                 
+                                <div
+                                  class="truncate"
+                                >
+                                  [0]
+                                </div>
+                              </div>
+                               
+                              <div
+                                class="delete-button svelte-1mg9gpy"
+                                title="Remove Component"
+                              >
+                                ×
+                              </div>
+                               
+                               
+                            </div>
+                             
+                            <div>
+                              
+                              <div>
+                                <div
+                                  class="root svelte-tg2vtt"
+                                >
+                                  <div
+                                    class="property-name svelte-tg2vtt"
+                                    title="test_i32"
+                                  >
+                                    <div
+                                      class="truncate"
+                                    >
+                                      test_i32
+                                    </div>
+                                  </div>
+                                   
+                                  <div
+                                    class="property-input-container svelte-tg2vtt"
+                                  >
+                                    <div
+                                      class="property-input svelte-tg2vtt"
+                                    >
+                                      <div
+                                        class="root svelte-1gjlayc"
+                                      >
+                                        <input
+                                          aria-autocomplete="none"
+                                          autocomplete="none"
+                                          class="input svelte-1s4bysp default w-full no-arrow text-right"
+                                          step="0"
+                                          type="number"
+                                        />
+                                         
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                            </div>
+                          </div>
+                        </div>
+                        
+                        
+                        <div>
+                          <div
+                            class="root svelte-1mg9gpy with-indent"
+                          >
+                            <div
+                              class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                              title="[1]"
+                            >
+                              <div>
+                                
+                                 
+                                <div
+                                  class="truncate"
+                                >
+                                  [1]
+                                </div>
+                              </div>
+                               
+                              <div
+                                class="delete-button svelte-1mg9gpy"
+                                title="Remove Component"
+                              >
+                                ×
+                              </div>
+                               
+                               
+                            </div>
+                             
+                            <div>
+                              
+                              <div>
+                                <div
+                                  class="root svelte-tg2vtt"
+                                >
+                                  <div
+                                    class="property-name svelte-tg2vtt"
+                                    title="test_i32"
+                                  >
+                                    <div
+                                      class="truncate"
+                                    >
+                                      test_i32
+                                    </div>
+                                  </div>
+                                   
+                                  <div
+                                    class="property-input-container svelte-tg2vtt"
+                                  >
+                                    <div
+                                      class="property-input svelte-tg2vtt"
+                                    >
+                                      <div
+                                        class="root svelte-1gjlayc"
+                                      >
+                                        <input
+                                          aria-autocomplete="none"
+                                          autocomplete="none"
+                                          class="input svelte-1s4bysp default w-full no-arrow text-right"
+                                          step="0"
+                                          type="number"
+                                        />
+                                         
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                            </div>
+                          </div>
+                        </div>
+                        
+                        
+                        <div>
+                          <div
+                            class="root svelte-1mg9gpy with-indent"
+                          >
+                            <div
+                              class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                              title="[2]"
+                            >
+                              <div>
+                                
+                                 
+                                <div
+                                  class="truncate"
+                                >
+                                  [2]
+                                </div>
+                              </div>
+                               
+                              <div
+                                class="delete-button svelte-1mg9gpy"
+                                title="Remove Component"
+                              >
+                                ×
+                              </div>
+                               
+                               
+                            </div>
+                             
+                            <div>
+                              
+                              <div>
+                                <div
+                                  class="root svelte-tg2vtt"
+                                >
+                                  <div
+                                    class="property-name svelte-tg2vtt"
+                                    title="test_i32"
+                                  >
+                                    <div
+                                      class="truncate"
+                                    >
+                                      test_i32
+                                    </div>
+                                  </div>
+                                   
+                                  <div
+                                    class="property-input-container svelte-tg2vtt"
+                                  >
+                                    <div
+                                      class="property-input svelte-tg2vtt"
+                                    >
+                                      <div
+                                        class="root svelte-1gjlayc"
+                                      >
+                                        <input
+                                          aria-autocomplete="none"
+                                          autocomplete="none"
+                                          class="input svelte-1s4bysp default w-full no-arrow text-right"
+                                          step="0"
+                                          type="number"
+                                        />
+                                         
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                            </div>
+                          </div>
+                        </div>
+                        
+                      </div>
                     </div>
-                    
-                     
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          
-          <div
-            class="root"
-          >
-            <div
-              class="root svelte-tg2vtt"
-            >
-              <div
-                class="property-name svelte-tg2vtt"
-                title="test_option_primitive_none"
-              >
-                <div
-                  class="truncate"
-                >
-                  test_option_primitive_none
-                </div>
-              </div>
-               
-              <div
-                class="property-input-container svelte-tg2vtt"
-              >
-                <div
-                  class="property-input svelte-tg2vtt"
-                >
-                  <div
-                    class="root svelte-1gjlayc"
-                  >
+                  
+                  
+                  <div>
                     <div
-                      class="option-property svelte-1sn8kpr"
+                      class="root svelte-tg2vtt"
                     >
                       <div
-                        class="cursor-help svelte-1sn8kpr"
-                        title="This property's value is optional and no value has been set yet"
+                        class="property-name svelte-tg2vtt"
+                        title="test_string"
                       >
                         <div
-                          class="cursor-help-icon svelte-1sn8kpr"
+                          class="truncate"
                         >
-                          ?
+                          test_string
                         </div>
                       </div>
                        
                       <div
-                        class="option-property-checkbox svelte-1sn8kpr"
+                        class="property-input-container svelte-tg2vtt"
                       >
                         <div
-                          class="root svelte-10vzrsx default"
+                          class="property-input svelte-tg2vtt"
                         >
-                          <input
-                            class="input svelte-10vzrsx"
-                            type="checkbox"
-                          />
-                           
+                          <div
+                            class="root svelte-1gjlayc"
+                          >
+                            <div
+                              class="root svelte-jk7kfq w-full default"
+                            >
+                               
+                              <input
+                                aria-autocomplete="none"
+                                autocomplete="none"
+                                class="input svelte-jk7kfq default"
+                                type="text"
+                              />
+                               
+                            </div>
+                             
+                          </div>
                         </div>
                       </div>
                     </div>
+                  </div>
+                  
+                  
+                  <div>
+                    <div
+                      class="root svelte-1mg9gpy with-indent"
+                    >
+                      <div
+                        class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                        title="test_sub_type"
+                      >
+                        <div>
+                          
+                           
+                          <div
+                            class="truncate"
+                          >
+                            test_sub_type
+                          </div>
+                        </div>
+                         
+                         
+                         
+                      </div>
+                       
+                      <div>
+                        
+                        <div>
+                          <div
+                            class="root svelte-tg2vtt"
+                          >
+                            <div
+                              class="property-name svelte-tg2vtt"
+                              title="test_vec"
+                            >
+                              <div
+                                class="truncate"
+                              >
+                                test_vec
+                              </div>
+                            </div>
+                             
+                            <div
+                              class="property-input-container svelte-tg2vtt"
+                            >
+                              <div
+                                class="property-input svelte-tg2vtt"
+                              >
+                                <div
+                                  class="root svelte-1gjlayc"
+                                >
+                                  <div
+                                    class="root svelte-1p3vtt3"
+                                  >
+                                    <div
+                                      class="svelte-1p3vtt3"
+                                    >
+                                      <input
+                                        aria-autocomplete="none"
+                                        autocomplete="none"
+                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        step="0"
+                                        type="number"
+                                      />
+                                    </div>
+                                     
+                                    <div
+                                      class="svelte-1p3vtt3"
+                                    >
+                                      <input
+                                        aria-autocomplete="none"
+                                        autocomplete="none"
+                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        step="0"
+                                        type="number"
+                                      />
+                                    </div>
+                                     
+                                    <div
+                                      class="svelte-1p3vtt3"
+                                    >
+                                      <input
+                                        aria-autocomplete="none"
+                                        autocomplete="none"
+                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        step="0"
+                                        type="number"
+                                      />
+                                    </div>
+                                  </div>
+                                   
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                      </div>
+                    </div>
+                  </div>
+                  
+                </div>
+              </div>
+            </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-1mg9gpy"
+              >
+                <div
+                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                  title="test_option_set"
+                >
+                  <div>
                     
                      
+                    <div
+                      class="truncate"
+                    >
+                      test_option_set
+                    </div>
+                  </div>
+                   
+                   
+                   
+                </div>
+                 
+                <div>
+                  
+                  <div>
+                    <div
+                      class="root svelte-1mg9gpy with-indent"
+                    >
+                       
+                      <div>
+                        
+                        <div>
+                          <div
+                            class="root svelte-tg2vtt"
+                          >
+                            <div
+                              class="property-name svelte-tg2vtt"
+                              title="test_vec"
+                            >
+                              <div
+                                class="truncate"
+                              >
+                                test_vec
+                              </div>
+                            </div>
+                             
+                            <div
+                              class="property-input-container svelte-tg2vtt"
+                            >
+                              <div
+                                class="property-input svelte-tg2vtt"
+                              >
+                                <div
+                                  class="root svelte-1gjlayc"
+                                >
+                                  <div
+                                    class="root svelte-1p3vtt3"
+                                  >
+                                    <div
+                                      class="svelte-1p3vtt3"
+                                    >
+                                      <input
+                                        aria-autocomplete="none"
+                                        autocomplete="none"
+                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        step="0"
+                                        type="number"
+                                      />
+                                    </div>
+                                     
+                                    <div
+                                      class="svelte-1p3vtt3"
+                                    >
+                                      <input
+                                        aria-autocomplete="none"
+                                        autocomplete="none"
+                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        step="0"
+                                        type="number"
+                                      />
+                                    </div>
+                                     
+                                    <div
+                                      class="svelte-1p3vtt3"
+                                    >
+                                      <input
+                                        aria-autocomplete="none"
+                                        autocomplete="none"
+                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        step="0"
+                                        type="number"
+                                      />
+                                    </div>
+                                  </div>
+                                   
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                      </div>
+                    </div>
+                  </div>
+                  
+                </div>
+              </div>
+            </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-1mg9gpy"
+              >
+                <div
+                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                  title="test_option_none"
+                >
+                  <div>
+                    
+                     
+                    <div
+                      class="truncate"
+                    >
+                      test_option_none
+                    </div>
+                  </div>
+                   
+                   
+                   
+                </div>
+                 
+                <div />
+              </div>
+            </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-tg2vtt"
+              >
+                <div
+                  class="property-name svelte-tg2vtt"
+                  title="test_resource_path_option"
+                >
+                  <div
+                    class="truncate"
+                  >
+                    test_resource_path_option
+                  </div>
+                </div>
+                 
+                <div
+                  class="property-input-container svelte-tg2vtt"
+                >
+                  <div
+                    class="property-input svelte-tg2vtt"
+                  >
+                    <div
+                      class="root svelte-1gjlayc"
+                    >
+                      <div
+                        class="option-property svelte-1sn8kpr"
+                      >
+                        <div
+                          class="cursor-help svelte-1sn8kpr"
+                          title="This property's value is optional and no value has been set yet"
+                        >
+                          <div
+                            class="cursor-help-icon svelte-1sn8kpr"
+                          >
+                            ?
+                          </div>
+                        </div>
+                         
+                        <div
+                          class="option-property-checkbox svelte-1sn8kpr"
+                        >
+                          <div
+                            class="root svelte-10vzrsx default"
+                          >
+                            <input
+                              class="input svelte-10vzrsx"
+                              type="checkbox"
+                            />
+                             
+                          </div>
+                        </div>
+                      </div>
+                      
+                       
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-1mg9gpy"
+              >
+                <div
+                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
+                  title="test_resource_path_vec"
+                >
+                  <div>
+                    
+                     
+                    <div
+                      class="truncate"
+                    >
+                      test_resource_path_vec
+                    </div>
+                  </div>
+                   
+                   
+                   
+                  <div
+                    class="add-vector svelte-1mg9gpy"
+                    title="Add property to vector"
+                  >
+                    +
+                  </div>
+                </div>
+                 
+                <div />
+              </div>
+            </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-tg2vtt"
+              >
+                <div
+                  class="property-name svelte-tg2vtt"
+                  title="test_option_primitive_set"
+                >
+                  <div
+                    class="truncate"
+                  >
+                    test_option_primitive_set
+                  </div>
+                </div>
+                 
+                <div
+                  class="property-input-container svelte-tg2vtt"
+                >
+                  <div
+                    class="property-input svelte-tg2vtt"
+                  >
+                    <div
+                      class="root svelte-1gjlayc"
+                    >
+                      <div
+                        class="option-property svelte-1sn8kpr"
+                      >
+                        <div
+                          class="root svelte-1gjlayc"
+                        >
+                          <div
+                            class="root svelte-1p3vtt3"
+                          >
+                            <div
+                              class="svelte-1p3vtt3"
+                            >
+                              <input
+                                aria-autocomplete="none"
+                                autocomplete="none"
+                                class="input svelte-1s4bysp default w-full no-arrow"
+                                step="0"
+                                type="number"
+                              />
+                            </div>
+                             
+                            <div
+                              class="svelte-1p3vtt3"
+                            >
+                              <input
+                                aria-autocomplete="none"
+                                autocomplete="none"
+                                class="input svelte-1s4bysp default w-full no-arrow"
+                                step="0"
+                                type="number"
+                              />
+                            </div>
+                             
+                            <div
+                              class="svelte-1p3vtt3"
+                            >
+                              <input
+                                aria-autocomplete="none"
+                                autocomplete="none"
+                                class="input svelte-1s4bysp default w-full no-arrow"
+                                step="0"
+                                type="number"
+                              />
+                            </div>
+                          </div>
+                           
+                        </div>
+                         
+                        <div
+                          class="option-property-checkbox svelte-1sn8kpr"
+                        >
+                          <div
+                            class="root svelte-10vzrsx default"
+                          >
+                            <input
+                              class="input svelte-10vzrsx"
+                              type="checkbox"
+                            />
+                             
+                            ✓
+                          </div>
+                        </div>
+                      </div>
+                      
+                       
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            
+            <div>
+              <div
+                class="root svelte-tg2vtt"
+              >
+                <div
+                  class="property-name svelte-tg2vtt"
+                  title="test_option_primitive_none"
+                >
+                  <div
+                    class="truncate"
+                  >
+                    test_option_primitive_none
+                  </div>
+                </div>
+                 
+                <div
+                  class="property-input-container svelte-tg2vtt"
+                >
+                  <div
+                    class="property-input svelte-tg2vtt"
+                  >
+                    <div
+                      class="root svelte-1gjlayc"
+                    >
+                      <div
+                        class="option-property svelte-1sn8kpr"
+                      >
+                        <div
+                          class="cursor-help svelte-1sn8kpr"
+                          title="This property's value is optional and no value has been set yet"
+                        >
+                          <div
+                            class="cursor-help-icon svelte-1sn8kpr"
+                          >
+                            ?
+                          </div>
+                        </div>
+                         
+                        <div
+                          class="option-property-checkbox svelte-1sn8kpr"
+                        >
+                          <div
+                            class="root svelte-10vzrsx default"
+                          >
+                            <input
+                              class="input svelte-10vzrsx"
+                              type="checkbox"
+                            />
+                             
+                          </div>
+                        </div>
+                      </div>
+                      
+                       
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
           </div>
-          
         </div>
       </div>
       
@@ -1610,7 +1616,7 @@ exports[`PropertyGrid > renders properly without resources 1`] = `
 <body>
   <div>
     <div
-      class="root svelte-1ry933g"
+      class="h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden"
     >
       <div
         class="italic"

@@ -117,7 +117,7 @@
           bind:this={components[index + 1]}
           processCollapsed={collapsed}
           threadTitle={$t("timeline-main-thread-description-title", {
-            threadName,
+            threadName: threadName || "Undefined",
             threadBlocks: thread.block_ids.length,
             threadLength,
           })}

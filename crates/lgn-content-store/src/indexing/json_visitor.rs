@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use super::{
-    tree::TreeIdentifier, IndexKey, Result, Tree, TreeLeafNode, TreeVisitor, TreeVisitorAction,
+    IndexKeyDisplayFormat, Result, Tree, TreeBranchInfo, TreeIdentifier, TreeLeafInfo, TreeVisitor,
+    TreeVisitorAction,
 };
 
 /// A visitor that generates a JSON representation of the tree.
@@ -28,8 +29,9 @@ use super::{
 ///     ],
 /// }
 /// ```
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct JsonVisitor {
+    display_format: IndexKeyDisplayFormat,
     result: JsonResult,
 }
 
@@ -57,6 +59,13 @@ pub struct JsonLink {
 }
 
 impl JsonVisitor {
+    pub fn new(display_format: IndexKeyDisplayFormat) -> Self {
+        Self {
+            display_format,
+            result: JsonResult::default(),
+        }
+    }
+
     pub fn into_result(self) -> JsonResult {
         self.result
     }
@@ -90,48 +99,33 @@ impl TreeVisitor for JsonVisitor {
         Ok(TreeVisitorAction::Continue)
     }
 
-    async fn visit_branch(
-        &mut self,
-        parent_id: &TreeIdentifier,
-        _key: &IndexKey,
-        local_key: &IndexKey,
-        branch_id: &TreeIdentifier,
-        _branch: &Tree,
-        _depth: usize,
-    ) -> Result<TreeVisitorAction> {
+    async fn visit_branch(&mut self, info: TreeBranchInfo<'_>) -> Result<TreeVisitorAction> {
         self.result.nodes.insert(JsonNode {
-            id: branch_id.to_string(),
-            alias: Self::alias(branch_id.to_string()),
+            id: info.branch_id.to_string(),
+            alias: Self::alias(info.branch_id.to_string()),
             is_root: false,
             is_leaf: false,
         });
         self.result.links.push(JsonLink {
-            source: parent_id.to_string(),
-            target: branch_id.to_string(),
-            alias: local_key.to_string(),
+            source: info.parent_id.to_string(),
+            target: info.branch_id.to_string(),
+            alias: info.local_key.format(self.display_format),
         });
 
         Ok(TreeVisitorAction::Continue)
     }
 
-    async fn visit_leaf(
-        &mut self,
-        parent_id: &TreeIdentifier,
-        _key: &IndexKey,
-        local_key: &IndexKey,
-        leaf: &TreeLeafNode,
-        _depth: usize,
-    ) -> Result<()> {
+    async fn visit_leaf(&mut self, info: TreeLeafInfo<'_>) -> Result<()> {
         self.result.nodes.insert(JsonNode {
-            id: leaf.to_string(),
-            alias: Self::alias(leaf.to_string()),
+            id: info.leaf_node.to_string(),
+            alias: Self::alias(info.leaf_node.to_string()),
             is_root: false,
             is_leaf: true,
         });
         self.result.links.push(JsonLink {
-            source: parent_id.to_string(),
-            target: leaf.to_string(),
-            alias: local_key.to_string(),
+            source: info.parent_id.to_string(),
+            target: info.leaf_node.to_string(),
+            alias: info.local_key.format(self.display_format),
         });
 
         Ok(())

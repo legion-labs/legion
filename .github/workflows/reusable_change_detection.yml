@@ -35,7 +35,7 @@ env:
 jobs:
   change_detection:
     name: Change detection
-    runs-on: [self-hosted, linux, common, build]
+    runs-on: [self-hosted, linux, governance-common, build]
     container:
       image: ${{ inputs.image }}
     outputs:
@@ -77,10 +77,10 @@ jobs:
           graphics_cargo_pkgs=$(echo $changed | jq --raw-output '.cargo_pkgs[]|select((.|contains("graphics")) or (.|contains("renderer")))')
           if [[ $graphics_cargo_pkgs ]]; then
             echo "Matched crates: $graphics_cargo_pkgs"
-            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"gpu\",\"build\"]]"
-            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"gpu\",\"build\"]]"
+            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"governance-gpu\",\"build\"]]"
+            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"governance-gpu\",\"build\"]]"
           else
             echo "No change impacting a graphics crate was detected"
-            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"common\",\"build\"]]"
-            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"common\",\"build\"]]"
+            echo "::set-output name=linux_runner::[[\"self-hosted\",\"linux\",\"governance-common\",\"build\"]]"
+            echo "::set-output name=windows_runner::[[\"self-hosted\",\"windows\",\"governance-common\",\"build\"]]"
           fi
