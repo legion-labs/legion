@@ -49,7 +49,7 @@
   }
   $: {
     if (xValue) {
-      values = get(metricStore)
+      values = $metricStore
         .filter((m) => !m.hidden && m.selected)
         .map((metric) => {
           return {

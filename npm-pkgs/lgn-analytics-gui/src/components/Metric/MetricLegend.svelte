@@ -18,7 +18,7 @@
 
 <div
   class="flex align-middle gap-1 select-none cursor-pointer"
-  on:click={() => metricStore.switchHidden(metric.name)}
+  on:click={() => metricStore.switchSelection(metric.name)}
 >
   <span class="h-4 w-4 block" style="background-color:{color}" />
   <span class="text-sm flex space-x-1 {metric.hidden ? 'text' : 'black'}">
