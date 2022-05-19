@@ -31,6 +31,7 @@ use local_data_lake::connect_to_local_data_lake;
 use remote_data_lake::connect_to_remote_data_lake;
 use std::net::SocketAddr;
 use tonic::transport::Server;
+use tower_http::auth::AsyncRequireAuthorizationLayer;
 use warp::Filter;
 use web_ingestion_service::WebIngestionService;
 
@@ -59,8 +60,21 @@ async fn serve_grpc(
     args: &Cli,
     lake: DataLakeConnection,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // For now we still load the API key from the environment. Next step:
+    // validating it against a database.
+    let api_key = std::env::var("LGN_TELEMETRY_GRPC_API_KEY")?.into();
+    let validation = lgn_auth::api_key::MemoryValidation::new(vec![api_key]);
+    let auth_layer =
+        AsyncRequireAuthorizationLayer::new(lgn_auth::api_key::RequestAuthorizer::new(validation));
+
+    let layer = tower::ServiceBuilder::new() //todo: compose with cors layer
+        .layer(auth_layer)
+        .into_inner();
+
     let service = GRPCIngestionService::new(lake);
+
     Server::builder()
+        .layer(layer)
         .add_service(TelemetryIngestionServer::new(service))
         .serve(args.listen_endpoint)
         .await?;
