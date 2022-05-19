@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use lgn_blob_storage::BlobStorage;
+use lgn_telemetry_proto::analytics::LogEntry;
 use lgn_telemetry_proto::decompress;
 use lgn_telemetry_proto::telemetry::{
     BlockMetadata, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
@@ -19,6 +20,8 @@ use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDe
 use prost::Message;
 use sqlx::any::AnyRow;
 use sqlx::Row;
+
+use crate::time::get_tsc_frequency_inverse_ms;
 
 #[span_fn]
 pub async fn alloc_sql_pool(data_folder: &Path) -> Result<sqlx::AnyPool> {
@@ -652,19 +655,17 @@ where
 }
 
 #[span_fn]
-fn format_log_level(level: u32) -> &'static str {
-    match level {
-        1 => "Error",
-        2 => "Warn",
-        3 => "Info",
-        4 => "Debug",
-        5 => "Trace",
-        _ => "Unknown",
-    }
+#[allow(clippy::cast_precision_loss)]
+fn tsc_to_ms(process: &ProcessInfo, tsc_time: i64) -> f64 {
+    let inv_tsc_frequency = get_tsc_frequency_inverse_ms(process.tsc_frequency);
+
+    let ts_offset = process.start_ticks;
+
+    (tsc_time - ts_offset) as f64 * inv_tsc_frequency
 }
 
 #[span_fn]
-pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
+pub fn log_entry_from_value(process: &ProcessInfo, val: &Value) -> Result<Option<LogEntry>> {
     if let Value::Object(obj) = val {
         match obj.type_name.as_str() {
             "LogStaticStrEvent" => {
@@ -674,17 +675,23 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let desc = obj
                     .get::<Arc<lgn_tracing_transit::Object>>("desc")
                     .with_context(|| "reading desc from LogStaticStrEvent")?;
-                let level = desc
-                    .get::<u32>("level")
-                    .with_context(|| "reading level from LogStaticStrEvent")?;
+                let level = Level::from_value(
+                    desc.get::<u32>("level")
+                        .with_context(|| "reading level from LogStaticStrEvent")?,
+                )
+                .with_context(|| "converting level to Level enum")?;
                 let target = desc
                     .get::<Arc<String>>("target")
                     .with_context(|| "reading target from LogStaticStrEvent")?;
                 let msg = desc
                     .get::<Arc<String>>("fmt_str")
                     .with_context(|| "reading fmt_str from LogStaticStrEvent")?;
-                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
-                Ok(Some((time, entry)))
+                Ok(Some(LogEntry {
+                    time_ms: tsc_to_ms(process, time),
+                    level: (level as i32) - 1,
+                    target: target.as_str().to_string(),
+                    msg: msg.as_str().to_string(),
+                }))
             }
             "LogStringEvent" => {
                 let time = obj
@@ -693,33 +700,45 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
                 let desc = obj
                     .get::<Arc<lgn_tracing_transit::Object>>("desc")
                     .with_context(|| "reading desc from LogStringEvent")?;
-                let level = desc
-                    .get::<u32>("level")
-                    .with_context(|| "reading level from LogStringEvent")?;
+                let level = Level::from_value(
+                    desc.get::<u32>("level")
+                        .with_context(|| "reading level from LogStringEvent")?,
+                )
+                .with_context(|| "converting level to Level enum")?;
                 let target = desc
                     .get::<Arc<String>>("target")
                     .with_context(|| "reading target from LogStringEvent")?;
                 let msg = obj
                     .get::<Arc<String>>("msg")
                     .with_context(|| "reading msg from LogStringEvent")?;
-                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
-                Ok(Some((time, entry)))
+                Ok(Some(LogEntry {
+                    time_ms: tsc_to_ms(process, time),
+                    level: (level as i32) - 1,
+                    target: target.as_str().to_string(),
+                    msg: msg.as_str().to_string(),
+                }))
             }
             "LogStaticStrInteropEvent" | "LogStringInteropEventV2" | "LogStringInteropEventV3" => {
                 let time = obj
                     .get::<i64>("time")
                     .with_context(|| format!("reading time from {}", obj.type_name.as_str()))?;
-                let level = obj
-                    .get::<u32>("level")
-                    .with_context(|| format!("reading level from {}", obj.type_name.as_str()))?;
+                let level =
+                    Level::from_value(obj.get::<u32>("level").with_context(|| {
+                        format!("reading level from {}", obj.type_name.as_str())
+                    })?)
+                    .with_context(|| "converting level to Level enum")?;
                 let target = obj
                     .get::<Arc<String>>("target")
                     .with_context(|| format!("reading target from {}", obj.type_name.as_str()))?;
                 let msg = obj
                     .get::<Arc<String>>("msg")
                     .with_context(|| format!("reading msg from {}", obj.type_name.as_str()))?;
-                let entry = format!("{} [{}] {}", format_log_level(level), *target, *msg);
-                Ok(Some((time, entry)))
+                Ok(Some(LogEntry {
+                    time_ms: tsc_to_ms(process, time),
+                    level: (level as i32) - 1,
+                    target: target.as_str().to_string(),
+                    msg: msg.as_str().to_string(),
+                }))
             }
             _ => {
                 warn!("unknown log event {:?}", obj);
@@ -733,22 +752,23 @@ pub fn log_entry_from_value(val: &Value) -> Result<Option<(i64, String)>> {
 
 // find_process_log_entry calls pred(time_ticks,entry_str) with each log entry
 // until pred returns Some(x)
-pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option<Res>>(
+pub async fn find_process_log_entry<Res, Predicate: FnMut(LogEntry) -> Option<Res>>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
-    process_id: &str,
+    process: &ProcessInfo,
     mut pred: Predicate,
 ) -> Result<Option<Res>> {
     let mut found_entry = None;
-    for stream in find_process_log_streams(connection, process_id).await? {
+
+    for stream in find_process_log_streams(connection, &process.process_id).await? {
         for b in find_stream_blocks(connection, &stream.stream_id).await? {
             let payload =
                 fetch_block_payload(connection, blob_storage.clone(), b.block_id.clone()).await?;
             parse_block(&stream, &payload, |val| {
-                if let Some((time, msg)) =
-                    log_entry_from_value(&val).with_context(|| "log_entry_from_value")?
+                if let Some(log_entry) =
+                    log_entry_from_value(process, &val).with_context(|| "log_entry_from_value")?
                 {
-                    if let Some(x) = pred(time, msg) {
+                    if let Some(x) = pred(log_entry) {
                         found_entry = Some(x);
                         return Ok(false); //do not continue
                     }
@@ -766,19 +786,20 @@ pub async fn find_process_log_entry<Res, Predicate: FnMut(i64, String) -> Option
 // for_each_log_entry_in_block calls fun(time_ticks,entry_str) with each log
 // entry until fun returns false mad
 #[span_fn]
-pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
+pub async fn for_each_log_entry_in_block<Predicate: FnMut(LogEntry) -> bool>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
+    process: &ProcessInfo,
     stream: &StreamInfo,
     block: &BlockMetadata,
     mut fun: Predicate,
 ) -> Result<()> {
     let payload = fetch_block_payload(connection, blob_storage, block.block_id.clone()).await?;
     parse_block(stream, &payload, |val| {
-        if let Some((time, msg)) =
-            log_entry_from_value(&val).with_context(|| "log_entry_from_value")?
+        if let Some(log_entry) =
+            log_entry_from_value(process, &val).with_context(|| "log_entry_from_value")?
         {
-            if !fun(time, msg) {
+            if !fun(log_entry) {
                 return Ok(false); //do not continue
             }
         }
@@ -789,14 +810,14 @@ pub async fn for_each_log_entry_in_block<Predicate: FnMut(i64, String) -> bool>(
 }
 
 #[span_fn]
-pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(i64, String)>(
+pub async fn for_each_process_log_entry<ProcessLogEntry: FnMut(LogEntry)>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
-    process_id: &str,
+    process: &ProcessInfo,
     mut process_log_entry: ProcessLogEntry,
 ) -> Result<()> {
-    find_process_log_entry(connection, blob_storage, process_id, |time, entry| {
-        process_log_entry(time, entry);
+    find_process_log_entry(connection, blob_storage, process, |log_entry| {
+        process_log_entry(log_entry);
         let nothing: Option<()> = None;
         nothing //continue searching
     })

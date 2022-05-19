@@ -51,7 +51,7 @@ export function remToPx(rem: number): number | null {
 
   const parsedFontSize = fontSizeInPx.match(/(\d+)px/)?.[1];
 
-  if (!parsedFontSize) {
+  if (parsedFontSize === undefined || !parsedFontSize.length) {
     return null;
   }
 
@@ -71,4 +71,12 @@ export function replaceClassesWith(element: Element, newClass: string) {
   }
 
   element.classList.add(newClass);
+}
+
+/** Cleanup and convert a string into a `RegExp` */
+export function stringToSafeRegExp(s: string, flags?: string): RegExp {
+  return new RegExp(
+    s.replace(/([|&;$%@"<>()+,])/g, (char) => `\\${char}`),
+    flags
+  );
 }

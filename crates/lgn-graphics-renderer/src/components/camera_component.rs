@@ -5,6 +5,7 @@ use lgn_ecs::prelude::*;
 use lgn_graphics_cgen_runtime::Float4;
 use lgn_graphics_data::runtime::CameraSetup;
 use lgn_input::gamepad::GamepadButtonType;
+use lgn_input::mouse::MouseScrollUnit;
 use lgn_input::{
     mouse::{MouseMotion, MouseWheel},
     prelude::{
@@ -20,7 +21,7 @@ use crate::{cgen, UP_VECTOR};
 pub struct CameraComponent {
     camera_rig: CameraRig,
     speed: f32,
-    rotation_speed: f32,
+    rotation_speed: Angle,
     setup: CameraSetup,
     fov_y: Angle,
     z_near: f32,
@@ -44,7 +45,7 @@ impl CameraComponent {
 
     pub fn build_projection(&self, width: f32, height: f32) -> Mat4 {
         let aspect_ratio = width / height;
-        Mat4::perspective_lh(self.fov_y.radians(), aspect_ratio, self.z_near, self.z_far)
+        Mat4::perspective_infinite_reverse_lh(self.fov_y.radians(), aspect_ratio, self.z_near)
     }
 
     pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
@@ -179,7 +180,7 @@ impl Default for CameraComponent {
         Self {
             camera_rig: Self::build_rig(&setup),
             speed: 2.5,
-            rotation_speed: 40.0,
+            rotation_speed: Angle::from_degrees(40.0),
             setup,
             fov_y: Angle::from_radians(std::f32::consts::FRAC_PI_4),
             z_near: 0.01,
@@ -295,7 +296,7 @@ pub(crate) fn camera_control(
                 }
             }
 
-            let mut speed = camera.speed;
+            let mut speed = camera.speed.exp();
             if let Some(gamepad) = gamepad {
                 if gamepad_buttons.pressed(GamepadButton(gamepad, GamepadButtonType::RightTrigger2))
                 {
@@ -315,13 +316,22 @@ pub(crate) fn camera_control(
             let rotation_speed = camera.rotation_speed;
             let camera_driver = camera.camera_rig.driver_mut::<YawPitch>();
             for mouse_motion_event in mouse_motion_events.iter() {
+                let rotation = (rotation_speed.degrees() * time.delta_seconds()).min(10.0); // clamping rotation speed for when it's laggy
                 camera_driver.rotate_yaw_pitch(
-                    mouse_motion_event.delta.x * rotation_speed * time.delta_seconds(),
-                    -mouse_motion_event.delta.y * rotation_speed * time.delta_seconds(),
+                    mouse_motion_event.delta.x * rotation,
+                    -mouse_motion_event.delta.y * rotation,
                 );
+                camera_driver.pitch_degrees = camera_driver.pitch_degrees.clamp(-80.0, 80.0);
             }
             for mouse_wheel_event in mouse_wheel_events.iter() {
-                camera.speed = (camera.speed * (1.0 + mouse_wheel_event.y * 0.1)).clamp(0.01, 10.0);
+                // Different signs on Line and Pixel is correct. Line returns positive values when scrolling up
+                // and pixels return negative values
+                let speed_change = match mouse_wheel_event.unit {
+                    MouseScrollUnit::Line => mouse_wheel_event.y * 0.1,
+                    // Last time I tested one segment of a wheel would yield 250 pixels,
+                    MouseScrollUnit::Pixel => -mouse_wheel_event.y / 1000.0,
+                };
+                camera.speed = (camera.speed + speed_change).clamp(0.0, 10.0);
             }
         }
         camera.camera_rig.update(time.delta_seconds());

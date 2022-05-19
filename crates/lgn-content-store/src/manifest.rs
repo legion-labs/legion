@@ -117,4 +117,12 @@ impl Manifest {
             Manifest::Linear(ids) => ids,
         }
     }
+
+    /// Consumes the manifest and returns the list of identifiers that it
+    /// contains.
+    pub fn into_identifiers(self) -> Vec<Identifier> {
+        match self {
+            Manifest::Linear(ids) => ids,
+        }
+    }
 }

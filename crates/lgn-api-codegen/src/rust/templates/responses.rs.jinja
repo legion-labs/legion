@@ -1,0 +1,80 @@
+use crate::errors::{Error, Result};
+use lgn_online::codegen::ByteArray;
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
+
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
+        
+        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+        pub enum {{ enum_name }} {
+            {%- for (status_code, response) in route.responses -%}
+                /// {{ response.description }}
+                {% if let Some(content) = response.content -%}
+                    {{ status_code }}({{ content.type_|fmt_type }}),
+                {%- else -%}
+                    {{ status_code }},
+                {%- endif -%}
+            {%- endfor -%}
+        }
+
+        impl {{ enum_name }} {
+            pub(crate) fn into_response(self) -> Response {
+                match self {
+                    {% for (status_code, response) in route.responses %}
+                        {%- if let Some(content) = response.content -%}
+                            {{ enum_name }}::{{ status_code }}(inner) => {
+                                {% match content.media_type -%}
+                                    {% when MediaType::Json -%}
+                                        let inner = Json(inner);
+                                    {% when MediaType::Bytes -%}
+                                        let inner: Vec<u8> = inner.into();
+                                {% endmatch -%}
+                                (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), inner).into_response()
+                        },
+                        {%- else -%}
+                            {{ enum_name }}::{{ status_code }} => {
+                                StatusCode::from_u16({{ status_code.as_u16() }}).unwrap().into_response()
+                        },
+                        {%- endif -%}                     
+                    {% endfor %}
+                }
+            }
+
+            pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
+                {% if route.responses.is_empty() %}
+                    Err(Error::Internal(format!(
+                        "unexpected status code: {}",
+                        response.status().as_u16()
+                    )))
+                {% else %}
+                    match response.status().as_u16() {
+                        {% for (status_code, response) in route.responses %}
+                            {{ status_code.as_u16() }} => 
+                                Ok(Self::{{ status_code }}
+                                    {%- if let Some(content) = response.content -%}
+                                        {% match content.media_type %}
+                                            {% when MediaType::Json %}
+                                                (response.json().await?)
+                                            {% when MediaType::Bytes %}
+                                                (response.bytes().await?.into())
+                                        {% endmatch %}
+                                    {%- endif -%}
+                                ),              
+                        {%- endfor -%}
+                        status => Err(Error::Internal(format!(
+                            "unexpected status code: {}",
+                            status
+                        ))),
+                    }
+                {% endif %}
+
+                
+            } 
+        }
+    {% endfor %}
+{% endfor %}

@@ -6,7 +6,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use futures::{stream::TryStreamExt, Future};
+use futures::{stream::TryStreamExt, Future, FutureExt};
 use http::header;
 use http_body::Body;
 use lgn_content_store_proto::{
@@ -14,7 +14,11 @@ use lgn_content_store_proto::{
 };
 use lgn_tracing::{async_span_scope, debug, error, warn};
 use pin_project::pin_project;
-use tokio::{io::AsyncWrite, sync::Mutex};
+use tokio::{
+    io::AsyncRead,
+    io::{AsyncWrite, ReadBuf},
+    sync::Mutex,
+};
 use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
 use tonic::codegen::StdError;
 
@@ -110,44 +114,7 @@ where
                     let origin = rmp_serde::from_slice(&content.origin)
                         .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
 
-                    match reqwest::get(&content.url)
-                        .await
-                        .map_err(|err| {
-                            anyhow::anyhow!("failed to fetch content from {}: {}", content.url, err)
-                        })?
-                        .error_for_status()
-                    {
-                        Ok(resp) => {
-                            debug!(
-                                "GrpcContentProvider::get_content_reader({}) -> started reading content from URL...",
-                                id
-                            );
-
-                             resp
-                            .bytes_stream()
-                            .map_err(|e| futures::io::Error::new(futures::io::ErrorKind::Other, e))
-                            .into_async_read()
-                            .compat()
-                        }
-                        Err(err) => {
-                            return if err.status() == Some(reqwest::StatusCode::NOT_FOUND) {
-                                warn!(
-                                    "GrpcContentProvider::get_content_reader({}) -> content does not exist at the specified URL.",
-                                    id
-                                );
-
-                                Err(Error::HashRefNotFound(id.clone()))
-                            } else {
-                                error!(
-                                    "GrpcContentProvider::get_content_reader({}) -> failed to read content from the specified URL: {}",
-                                    id, err
-                                );
-
-                                Err(anyhow::anyhow!("HTTP error: {}", err).into())
-                            }
-                        }
-                    }
-                    .with_origin_and_size(origin, id.data_size())
+                    HttpDownloader::new(content.url).with_origin_and_size(origin, id.data_size())
                 }
             }),
             None => {
@@ -157,6 +124,107 @@ where
                 );
 
                 Err(Error::HashRefNotFound(id.clone()))
+            }
+        }
+    }
+}
+
+/// An `AsyncRead` instance that doesn't really connect to the specified URL until first polled.
+#[pin_project]
+struct HttpDownloader {
+    #[pin]
+    state: HttpDownloaderState,
+}
+
+enum HttpDownloaderState {
+    Idle(String),
+    Connecting(Pin<Box<dyn Future<Output = Result<reqwest::Response, reqwest::Error>> + Send>>),
+    Reading(Pin<Box<dyn AsyncRead + Send>>),
+}
+
+impl HttpDownloader {
+    fn new(url: String) -> Self {
+        Self {
+            state: HttpDownloaderState::Idle(url),
+        }
+    }
+}
+
+impl AsyncRead for HttpDownloader {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<tokio::io::Result<()>> {
+        let this = self.project();
+        let state = this.state.get_mut();
+
+        loop {
+            match state {
+                HttpDownloaderState::Idle(url) => {
+                    // The call hasn't started yet: we need to start it.
+                    let call = Box::pin(reqwest::get(std::mem::take(url)));
+
+                    // We need to poll it right away, as it's the only way to either
+                    // move on to the next step directly, or to make sure the `cx`
+                    // is notified when the call completes. To do so, we
+                    // directly go to the next iteration after updating the
+                    // state.
+
+                    *state = HttpDownloaderState::Connecting(call);
+                }
+                HttpDownloaderState::Connecting(call) => {
+                    match call.poll_unpin(cx) {
+                        Poll::Ready(Ok(resp)) => {
+                            match resp.error_for_status() {
+                                Ok(resp) => {
+                                    let reader = Box::pin(
+                                        resp.bytes_stream()
+                                            .map_err(|e| {
+                                                futures::io::Error::new(
+                                                    futures::io::ErrorKind::Other,
+                                                    e,
+                                                )
+                                            })
+                                            .into_async_read()
+                                            .compat(),
+                                    );
+
+                                    *state = HttpDownloaderState::Reading(reader);
+
+                                    // Okay we moved to the next step directly, so `cx`
+                                    // won't be notified: let's run another iteration
+                                    // straight away.
+                                }
+                                Err(err) => {
+                                    error!(
+                                            "HttpRequestAsyncRead::poll_read -> failed to read content from the specified URL: {}",
+                                            err
+                                        );
+
+                                    return Poll::Ready(Err(tokio::io::Error::new(
+                                        tokio::io::ErrorKind::Other,
+                                        err,
+                                    )));
+                                }
+                            }
+                        }
+                        Poll::Ready(Err(err)) => {
+                            return Poll::Ready(Err(tokio::io::Error::new(
+                                tokio::io::ErrorKind::Other,
+                                err,
+                            )));
+                        }
+                        Poll::Pending => {
+                            return Poll::Pending;
+                        }
+                    }
+                }
+                HttpDownloaderState::Reading(reader) => {
+                    tokio::pin!(reader);
+
+                    return reader.poll_read(cx, buf);
+                }
             }
         }
     }
@@ -411,7 +479,7 @@ mod test {
         conn::{AddrIncoming, AddrStream},
     };
     use lgn_online::grpc::GrpcClient;
-    use std::net::SocketAddr;
+    use std::{collections::HashMap, net::SocketAddr};
 
     use crate::{
         ContentAddressReader, ContentAddressWriter, ContentReaderExt, ContentWriterExt,
@@ -424,6 +492,7 @@ mod test {
     pub struct FakeContentAddressProvider {
         base_url: String,
         already_exists: Arc<Mutex<bool>>,
+        origins: Arc<Mutex<HashMap<HashRef, Origin>>>,
     }
 
     impl Display for FakeContentAddressProvider {
@@ -437,11 +506,23 @@ mod test {
             Self {
                 base_url,
                 already_exists: Arc::new(Mutex::new(false)),
+                origins: Arc::new(Mutex::new(HashMap::new())),
             }
+        }
+
+        pub async fn register_origin(&self, id: &HashRef, origin: Origin) {
+            self.origins.lock().await.insert(id.clone(), origin);
         }
 
         pub fn get_address(&self, id: &HashRef, suffix: &str) -> String {
             format!("{}{}/{}", self.base_url, id, suffix)
+        }
+
+        pub async fn get_origin(&self, id: &HashRef) -> Result<Origin> {
+            match self.origins.lock().await.get(id) {
+                Some(origin) => Ok(origin.clone()),
+                None => Err(Error::HashRefNotFound(id.clone())),
+            }
         }
 
         pub async fn set_already_exists(&self, exists: bool) {
@@ -455,12 +536,10 @@ mod test {
             &self,
             id: &HashRef,
         ) -> Result<(String, Origin)> {
-            Ok((
-                self.get_address(id, "read"),
-                Origin::Local {
-                    path: "fake".into(),
-                },
-            ))
+            let address = self.get_address(id, "read");
+            let origin = self.get_origin(id).await?;
+
+            Ok((address, origin))
         }
     }
 
@@ -549,17 +628,10 @@ mod test {
             crate::content_providers::test_content_provider(&content_provider, &SMALL_DATA, origin)
                 .await;
 
-            // Now let's try again with a larger file.
+            // Now let's try again with a larger file to test the address lookup
+            // & HTTP request mechanisms.
 
             let id = HashRef::new_from_data(&BIG_DATA);
-
-            http_server.expect(
-                httptest::Expectation::matching(httptest::all_of![
-                    httptest::matchers::request::method("GET"),
-                    httptest::matchers::request::path(format!("/{}/read", id)),
-                ])
-                .respond_with(httptest::responders::status_code(404)),
-            );
 
             match content_provider.get_content_reader(&id).await {
                 Ok(_) => panic!("expected HashRefNotFound error"),
@@ -593,17 +665,20 @@ mod test {
 
             assert_eq!(new_id, id);
 
+            let expected_origin = Origin::Local {
+                path: "fake".into(),
+            };
+
+            address_provider
+                .register_origin(&id, expected_origin.clone())
+                .await;
+
             let (data, origin) = content_provider
                 .read_content_with_origin(&id)
                 .await
                 .unwrap();
             assert_eq!(&data, &BIG_DATA);
-            assert_eq!(
-                origin,
-                Origin::Local {
-                    path: "fake".into()
-                }
-            );
+            assert_eq!(origin, expected_origin);
 
             // Make sure the next write yields `Error::AlreadyExists`.
             address_provider.set_already_exists(true).await;

@@ -1,15 +1,10 @@
-use std::collections::VecDeque;
-
-use async_stream::stream;
-use futures::Stream;
 use serde::{Deserialize, Serialize};
 
 use crate::{indexing::TreeWriter, Provider};
 
 use super::{
     tree::{TreeIdentifier, TreeLeafNode},
-    Error, IndexKey, IndexPath, IndexPathItem, IntoIndexKey, Result, SearchResult, Tree, TreeNode,
-    TreeReader,
+    Error, IndexKey, IndexPath, IndexPathItem, Result, SearchResult, Tree, TreeNode, TreeReader,
 };
 
 /// A `StringPathIndexer` is an indexer that adds resources according to a
@@ -80,7 +75,13 @@ impl StringPathIndexer {
         let index_key = std::str::from_utf8(index_key)
             .map_err(|err| Error::InvalidIndexKey(format!("invalid UTF-8: {}", err)))?;
 
-        Ok(index_key.trim_matches(self.path_separator))
+        if !index_key.starts_with(self.path_separator) {
+            return Err(Error::InvalidIndexKey(
+                "index key must start with a '/' character".to_string(),
+            ));
+        }
+
+        Ok(index_key.trim_end_matches(self.path_separator))
     }
 
     /// Split the index key into its first path element and the remaining path.
@@ -88,15 +89,9 @@ impl StringPathIndexer {
     /// The index key should have been sanitized before calling this function.
     /// See `sanitize_index_key`.
     fn split_first_index_key<'k>(&self, index_key: &'k str) -> (&'k str, &'k str) {
-        let mut iter = index_key.splitn(2, self.path_separator);
-        let first = iter
-            .next()
-            .expect("splitn should return at least one value");
-
-        if let Some(second) = iter.next() {
-            (first, second)
-        } else {
-            (first, "")
+        match index_key[1..].find(self.path_separator) {
+            Some(pos) => (&index_key[..=pos], &index_key[pos + 1..]),
+            None => (index_key, ""),
         }
     }
 
@@ -106,15 +101,9 @@ impl StringPathIndexer {
     /// The index key should have been sanitized before calling this function.
     /// See `sanitize_index_key`.
     fn split_last_index_key<'k>(&self, index_key: &'k str) -> (&'k str, &'k str) {
-        let mut iter = index_key.rsplitn(2, self.path_separator);
-        let first = iter
-            .next()
-            .expect("rsplit should return at least one value");
-
-        if let Some(second) = iter.next() {
-            (second, first)
-        } else {
-            ("", first)
+        match index_key[1..].rfind(self.path_separator) {
+            Some(pos) => (&index_key[..=pos], &index_key[pos + 1..]),
+            None => ("", index_key),
         }
     }
 
@@ -219,7 +208,7 @@ impl StringPathIndexer {
                 Error::IndexTreeLeafNodeAlreadyExists(index_key.clone(), existing_leaf_node),
             ),
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node with the same key already exists: `{}`",
+                "a branch node with the same key already exists: `{:?}`",
                 index_key
             ))),
             SearchResult::NotFound(mut stack) => {
@@ -245,7 +234,7 @@ impl StringPathIndexer {
                     let tree = Tree {
                         count: 1,
                         total_size: size_delta,
-                        children: vec![(local_key.as_bytes().into_index_key(), node)],
+                        children: vec![(local_key.into(), node)],
                     };
 
                     let tree_id = provider.write_tree(&tree).await?;
@@ -257,7 +246,7 @@ impl StringPathIndexer {
                     item.tree.count += 1;
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
 
                     item.tree.total_size += size_delta;
@@ -267,7 +256,7 @@ impl StringPathIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         break Ok(node.into_branch().unwrap());
                     }
@@ -313,7 +302,7 @@ impl StringPathIndexer {
 
                     loop {
                         if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                            provider.unwrite(old_node.as_identifier()).await?;
+                            provider.unwrite(old_node.as_identifier()).await;
                         }
 
                         item.tree.total_size += data_size;
@@ -326,7 +315,7 @@ impl StringPathIndexer {
                         if let Some(next) = stack.pop() {
                             item = next;
                         } else {
-                            provider.unwrite(root_id.as_identifier()).await?;
+                            provider.unwrite(root_id.as_identifier()).await;
 
                             break Ok((node.into_branch().unwrap(), existing_leaf_node));
                         }
@@ -334,7 +323,7 @@ impl StringPathIndexer {
                 }
             }
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node was found at `{}` which can't be replaced",
+                "a branch node was found at `{:?}` which can't be replaced",
                 index_key
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
@@ -376,7 +365,7 @@ impl StringPathIndexer {
 
                 loop {
                     if let Some(old_node) = item.tree.remove_children(item.key) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
 
                     if !item.tree.is_empty() || self.keep_empty_branches {
@@ -391,7 +380,7 @@ impl StringPathIndexer {
                         // to return.
                         //
                         // This should always return an empty tree.
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         return Ok((
                             provider.write_tree(&Tree::default()).await?,
@@ -411,62 +400,21 @@ impl StringPathIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await?;
+                        provider.unwrite(root_id.as_identifier()).await;
 
                         break Ok((node.into_branch().unwrap(), existing_leaf_node));
                     }
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await?;
+                        provider.unwrite(old_node.as_identifier()).await;
                     }
                 }
             }
             SearchResult::Branch(..) => Err(Error::CorruptedTree(format!(
-                "a branch node was found at `{}` which can't be removed",
+                "a branch node was found at `{:?}` which can't be removed",
                 index_key
             ))),
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
-        }
-    }
-
-    /// Returns a stream that iterates over all leaves in the specified tree.
-    ///
-    /// # Warning
-    ///
-    /// This method will iterate over the entire tree. If used on a real, large
-    /// tree it could actually take a very long time to end. Think twice before
-    /// using it.
-    pub fn all_leaves<'s>(
-        provider: &'s Provider,
-        root_id: &'s TreeIdentifier,
-    ) -> impl Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's {
-        let mut trees = VecDeque::new();
-
-        stream! {
-            let root = provider.read_tree(root_id).await.unwrap();
-            trees.push_back((IndexKey::default(), root));
-
-            while let Some((prefix, current_tree)) = trees.pop_front() {
-                for (key, node) in current_tree.children {
-                    let new_prefix = prefix.join(key);
-
-                    match node {
-                        TreeNode::Leaf(entry) => {
-                            yield (new_prefix, Ok(entry));
-                        },
-                        TreeNode::Branch(id) => {
-                            match provider.read_tree(&id).await {
-                                Ok(tree) => {
-                                    trees.push_back((new_prefix, tree));
-                                },
-                                Err(err) => {
-                                    yield (new_prefix, Err(err));
-                                },
-                            };
-                        },
-                    }
-                }
-            }
         }
     }
 }
@@ -569,43 +517,44 @@ mod tests {
     }
 
     #[test]
-    fn test_filesystem_indexer_sanitize() {
+    fn test_string_path_indexer_sanitize() {
         let idx = StringPathIndexer::new('/');
 
+        // Missing leading slash.
         let b = "foo/bar/baz/qux/quux";
-        assert_eq!(idx.sanitize_index_key(b.as_bytes()).unwrap(), b);
+        assert!(idx.sanitize_index_key(b.as_bytes()).is_err());
 
-        let b = "///foo/bar/baz/qux/quux///";
+        let b = "/foo/bar/baz/qux/quux///";
         assert_eq!(
             idx.sanitize_index_key(b.as_bytes()).unwrap(),
-            "foo/bar/baz/qux/quux"
+            "/foo/bar/baz/qux/quux"
         );
     }
 
     #[test]
-    fn test_filesystem_indexer_split_first() {
+    fn test_string_path_indexer_split_first() {
         let idx = StringPathIndexer::new('/');
 
-        let b = "foo/bar/baz/qux/quux";
-        assert_eq!(idx.split_first_index_key(b), ("foo", "bar/baz/qux/quux"));
+        let b = "/foo/bar/baz/qux/quux";
+        assert_eq!(idx.split_first_index_key(b), ("/foo", "/bar/baz/qux/quux"));
 
-        let b = "foo-bar";
-        assert_eq!(idx.split_first_index_key(b), ("foo-bar", ""));
+        let b = "/foo-bar";
+        assert_eq!(idx.split_first_index_key(b), ("/foo-bar", ""));
     }
 
     #[test]
-    fn test_filesystem_indexer_split_last() {
+    fn test_string_path_indexer_split_last() {
         let idx = StringPathIndexer::new('/');
 
-        let b = "foo/bar/baz/qux/quux";
-        assert_eq!(idx.split_last_index_key(b), ("foo/bar/baz/qux", "quux"));
+        let b = "/foo/bar/baz/qux/quux";
+        assert_eq!(idx.split_last_index_key(b), ("/foo/bar/baz/qux", "/quux"));
 
-        let b = "foo-bar";
-        assert_eq!(idx.split_last_index_key(b), ("", "foo-bar"));
+        let b = "/foo-bar";
+        assert_eq!(idx.split_last_index_key(b), ("", "/foo-bar"));
     }
 
     #[tokio::test]
-    async fn test_filesystem_indexer() {
+    async fn test_string_path_indexer() {
         let provider = Provider::new_in_memory();
         let idx = StringPathIndexer::default();
 
@@ -616,7 +565,6 @@ mod tests {
         let tree_id = provider.write_tree(&Tree::default()).await.unwrap();
 
         assert_node_does_not_exist!(idx, provider, tree_id, "/fruits/pear.txt");
-        assert_node_does_not_exist!(idx, provider, tree_id, "fruits/pear.txt");
 
         let (tree_id, _) = add_leaf!(idx, provider, tree_id, "/fruits/apple.txt", "apple");
         let (tree_id, pear_node) = add_leaf!(idx, provider, tree_id, "/fruits/pear.txt", "pear");
@@ -635,13 +583,10 @@ mod tests {
 
         // Let's perform a search in the resulting tree. It should yield the leaf node.
         assert_leaf!(idx, provider, tree_id, "/fruits/pear.txt", pear_node);
-        assert_leaf!(idx, provider, tree_id, "fruits/pear.txt", pear_node);
 
         // Let's do the same for a branch.
         assert_branch!(idx, provider, tree_id, "/vegetables/");
         assert_branch!(idx, provider, tree_id, "/vegetables");
-        assert_branch!(idx, provider, tree_id, "vegetables/");
-        assert_branch!(idx, provider, tree_id, "vegetables");
 
         // Let's update a leaf node: a tomato is not a vegetable. It's a fruit.
         let (tree_id, _) = assert_replace_leaf!(
@@ -674,10 +619,8 @@ mod tests {
         assert_eq!(tree.count, 0);
         assert_eq!(tree.total_size(), 0);
 
-        // There should be no identifiers left to pop, as we went back to the
-        // original tree.
-        let ids = provider.pop_referenced_identifiers();
-
-        assert_eq!(&ids, &[]);
+        // The only identifier that should be referenced is the root.
+        let ids = provider.referenced().await;
+        assert_eq!(&ids, &[tree_id.as_identifier().clone()]);
     }
 }

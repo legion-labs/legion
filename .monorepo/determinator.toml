@@ -26,6 +26,7 @@ globs = [
     "package.json",
     "postcss.config.cjs",
     "tailwind.config.cjs",
+    "dccs/**/*",
     # Ignore *.md documentation
     "*.md",
 ]

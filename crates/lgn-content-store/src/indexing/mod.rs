@@ -1,6 +1,5 @@
 //! Indexing facilities backed by the content-store.
 
-mod composite_index_key;
 mod errors;
 mod graphviz_visitor;
 mod index;
@@ -14,11 +13,10 @@ mod static_indexer;
 mod string_path_indexer;
 mod tree;
 
-pub use composite_index_key::CompositeIndexKey;
 pub use errors::{Error, Result};
 pub use graphviz_visitor::GraphvizVisitor;
 pub use index::{Index, IndexIdentifier, IndexReader, IndexWriter};
-pub use index_key::{IndexKey, IndexKeyBound, IntoIndexKey};
+pub use index_key::{IndexKey, IndexKeyBound, IndexKeyDisplayFormat};
 pub use indexable_resource::{
     IndexableResource, ResourceIdentifier, ResourceReader, ResourceWriter,
 };
@@ -28,8 +26,8 @@ pub(crate) use search_result::SearchResult;
 pub use static_indexer::StaticIndexer;
 pub use string_path_indexer::StringPathIndexer;
 pub use tree::{
-    Tree, TreeIdentifier, TreeLeafNode, TreeNode, TreeReader, TreeVisitor, TreeVisitorAction,
-    TreeWriter,
+    tree_diff, tree_leaves, tree_visit, Tree, TreeBranchInfo, TreeDiffSide, TreeIdentifier,
+    TreeLeafInfo, TreeLeafNode, TreeNode, TreeReader, TreeVisitor, TreeVisitorAction, TreeWriter,
 };
 
 pub(crate) use index_path::{IndexPath, IndexPathItem};

@@ -29,6 +29,58 @@ pub trait TransferCallbacks<Id = HashRef>: Debug + Send + Sync {
     );
 }
 
+// A blanket implementation of TransferCallbacks for Arc<T>.
+impl<Id, T: TransferCallbacks<Id> + ?Sized> TransferCallbacks<Id> for Arc<T> {
+    fn on_transfer_avoided(&self, id: &Id, total: usize) {
+        (**self).on_transfer_avoided(id, total);
+    }
+
+    fn on_transfer_started(&self, id: &Id, total: usize) {
+        (**self).on_transfer_started(id, total);
+    }
+
+    fn on_transfer_progress(&self, id: &Id, total: usize, inc: usize, current: usize) {
+        (**self).on_transfer_progress(id, total, inc, current);
+    }
+
+    fn on_transfer_stopped(
+        &self,
+        id: &Id,
+        total: usize,
+        inc: usize,
+        current: usize,
+        result: Result<()>,
+    ) {
+        (**self).on_transfer_stopped(id, total, inc, current, result);
+    }
+}
+
+// A blanket implementation of TransferCallbacks for &T.
+impl<Id, T: TransferCallbacks<Id> + ?Sized> TransferCallbacks<Id> for &T {
+    fn on_transfer_avoided(&self, id: &Id, total: usize) {
+        (**self).on_transfer_avoided(id, total);
+    }
+
+    fn on_transfer_started(&self, id: &Id, total: usize) {
+        (**self).on_transfer_started(id, total);
+    }
+
+    fn on_transfer_progress(&self, id: &Id, total: usize, inc: usize, current: usize) {
+        (**self).on_transfer_progress(id, total, inc, current);
+    }
+
+    fn on_transfer_stopped(
+        &self,
+        id: &Id,
+        total: usize,
+        inc: usize,
+        current: usize,
+        result: Result<()>,
+    ) {
+        (**self).on_transfer_stopped(id, total, inc, current, result);
+    }
+}
+
 /// A `ContentProviderMonitor` is a provider that tracks uploads and downloads.
 #[derive(Debug)]
 pub struct ContentProviderMonitor<Inner> {
@@ -136,6 +188,8 @@ pub struct MonitorAsyncAdapter<Inner, Id> {
     id: Id,
     #[pin]
     started: bool,
+    #[pin]
+    stopped: bool,
     total: usize,
     #[pin]
     current: usize,
@@ -156,6 +210,7 @@ impl<Inner, Id: Display> MonitorAsyncAdapter<Inner, Id> {
             inner,
             id,
             started: false,
+            stopped: false,
             total,
             current: 0,
             inc: 0,
@@ -199,17 +254,19 @@ impl<Inner: AsyncRead + Send, Id: Display> AsyncRead for MonitorAsyncAdapter<Inn
 
         let before = buf.filled().len();
 
-        match this.inner.poll_read(cx, buf) {
-            Poll::Pending => Poll::Pending,
-            Poll::Ready(res) => {
+        let res = this.inner.poll_read(cx, buf);
+
+        if !*this.stopped {
+            // Monitoring only: we do not actually use or move `res` and make sure
+            // it cannot happen by overriding it in the scope.
+            if let Poll::Ready(res) = &res {
                 let diff = buf.filled().len() - before;
 
                 if diff > 0 {
                     *this.inc += diff;
+                    *this.current += diff;
 
                     if *this.inc > *this.progress_step {
-                        *this.current += *this.inc;
-
                         this.callbacks.on_transfer_progress(
                             this.id,
                             *this.total,
@@ -220,24 +277,49 @@ impl<Inner: AsyncRead + Send, Id: Display> AsyncRead for MonitorAsyncAdapter<Inn
                         *this.inc = 0;
                     }
                 } else {
-                    match &res {
-                        Ok(_) => {
-                            debug!(
-                                "MonitorAsyncAdapter::poll_read: transfer stopped for {}",
-                                this.id
-                            );
+                    // A null difference means that we reached the end of the
+                    // stream.
+                    *this.stopped = true;
 
-                            this.callbacks.on_transfer_stopped(
-                                this.id,
-                                *this.total,
-                                *this.inc,
-                                *this.current,
-                                Ok(()),
-                            );
+                    match res {
+                        Ok(_) => {
+                            if *this.current == *this.total {
+                                debug!(
+                                    "MonitorAsyncAdapter::poll_read: transfer completed for {}",
+                                    this.id
+                                );
+
+                                this.callbacks.on_transfer_stopped(
+                                    this.id,
+                                    *this.total,
+                                    *this.inc,
+                                    *this.current,
+                                    Ok(()),
+                                );
+                            } else {
+                                debug!(
+                                    "MonitorAsyncAdapter::poll_read: transfer reported EOF ({}/{}) for {}",
+                                    *this.current,
+                                    *this.total,
+                                    this.id,
+                                );
+
+                                this.callbacks.on_transfer_stopped(
+                                    this.id,
+                                    *this.total,
+                                    *this.inc,
+                                    *this.current,
+                                    Err(std::io::Error::new(
+                                        std::io::ErrorKind::UnexpectedEof,
+                                        "Unexpected EOF",
+                                    )
+                                    .into()),
+                                );
+                            }
                         }
                         Err(err) => {
                             debug!(
-                                "MonitorAsyncAdapter::poll_read: transfer stopped for {}: {}",
+                                "MonitorAsyncAdapter::poll_read: transfer failed for {}: {}",
                                 this.id, err
                             );
 
@@ -251,10 +333,10 @@ impl<Inner: AsyncRead + Send, Id: Display> AsyncRead for MonitorAsyncAdapter<Inn
                         }
                     }
                 }
-
-                Poll::Ready(res)
             }
         }
+
+        res
     }
 }
 

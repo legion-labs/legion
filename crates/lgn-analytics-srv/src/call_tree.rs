@@ -15,13 +15,14 @@ use lgn_telemetry_proto::analytics::SpanEventType;
 use lgn_telemetry_proto::analytics::SpanTrack;
 use lgn_tracing::prelude::*;
 
+#[derive(Debug)]
 pub struct ProcessedThreadBlock {
     pub scopes: ScopeHashMap,
     pub call_tree_root: Option<CallTreeNode>,
     pub async_events: Vec<AsyncSpanEvent>,
 }
 
-struct CallTreeBuilder {
+pub struct CallTreeBuilder {
     ts_begin_block: i64,
     ts_end_block: i64,
     stack: Vec<CallTreeNode>,

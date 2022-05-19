@@ -13,6 +13,7 @@ NVM_VERSION=0.39.1
 # This version is duplicated in the Dockerfile, make sure to update both
 NODE_VERSION=${NODE_VERSION:-'16.14.0'}
 PROTOBUF_VERSION=3.19.4
+PNPM_VERSION=7.1.0
 
 ###################################################################################################
 
@@ -26,7 +27,7 @@ nvm use ${NODE_VERSION}
 export NODE_PATH=$NVM_DIR/v$NODE_VERSION/lib/node_modules
 export PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 
-npm install -g yarn pbjs pnpm
+npm install -g yarn pbjs pnpm@$PNPM_VERSION
 
 wget -O protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip
 unzip protoc.zip -d protoc

@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+use lgn_auth::UserInfo;
 use lgn_content_store_proto::{
     read_content_response::Content, DataContent, GetContentWriterRequest, GetContentWriterResponse,
     ReadContentRequest, ReadContentResponse, RegisterAliasRequest, RegisterAliasResponse,
     ResolveAliasRequest, ResolveAliasResponse, UrlContent, WriteContentRequest,
     WriteContentResponse,
 };
-use lgn_online::authentication::UserInfo;
 use lgn_tracing::{async_span_scope, info};
 use tonic::{Request, Response};
 

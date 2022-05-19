@@ -3,12 +3,10 @@
 // crate-specific lint exceptions:
 #![allow(clippy::implicit_hasher, clippy::missing_errors_doc)]
 
-pub mod authentication;
-#[cfg(feature = "aws")]
-pub mod aws;
+pub mod cloud;
+pub mod codegen;
 pub mod grpc;
 
-pub mod cloud;
 mod config;
 mod errors;
 

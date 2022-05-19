@@ -43,7 +43,7 @@ Add this to your docker config file `~/.docker/config.json`:
 ```json
 {
   "credHelpers": {
-    "550877636976.dkr.ecr.ca-central-1.amazonaws.com": "ecr-login"
+    "616787818023.dkr.ecr.ca-central-1.amazonaws.com": "ecr-login"
   }
 }
 ```
@@ -53,7 +53,7 @@ Add this to your docker config file `~/.docker/config.json`:
 At any given commit you'll be able to run in a virtually similar environment as the build machines run in. To do so you need to locally build the container image the CI uses.
 
 > Legion labs employee or partner: you can also use the same exact image by exporting the MONOREPO_DOCKER_REGISTRY environment variable, to
-> `550877636976.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion`. You also need the [proper credentials](#Cloud-access) to be access the repository.
+> `616787818023.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion`. You also need the [proper credentials](#Cloud-access) to be access the repository.
 
 To build a container image at the current commit, run the `build/env/setup.sh` or `build/env/setup.bat` scripts on linux or windows respectively. If you are using WSL you can build on the image on windows and use it on WSL and inversely.
 
