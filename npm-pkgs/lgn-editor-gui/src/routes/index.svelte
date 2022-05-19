@@ -43,6 +43,7 @@
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
+import Log from "@lgn/web-client/src/components/Log.svelte";
 
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
@@ -135,9 +136,9 @@
           },
         },
         {
-          title: "Script Editor",
+          title: "Logs",
           action: () => {
-            layout.addComponent(ScriptEditor.name);
+            layout.addComponent(Log.name);
           },
         },
       ],
