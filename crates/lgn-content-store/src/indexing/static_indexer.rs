@@ -1,19 +1,20 @@
 use std::{
     collections::{BTreeMap, VecDeque},
     ops::{Bound, RangeBounds},
+    pin::Pin,
 };
 
 use async_stream::stream;
+use async_trait::async_trait;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
-use tokio_stream::StreamExt;
 
 use crate::{indexing::TreeWriter, Provider};
 
 use super::{
     tree::{TreeIdentifier, TreeLeafNode},
-    Error, IndexKey, IndexKeyBound, IndexPath, IndexPathItem, Result, SearchResult, Tree, TreeNode,
-    TreeReader,
+    BasicIndexer, Error, IndexKey, IndexKeyBound, IndexPath, IndexPathItem, OrderedIndexer, Result,
+    SearchResult, Tree, TreeNode, TreeReader,
 };
 
 /// A `StaticIndexer` is an indexer that adds resources according to the prefix
@@ -359,17 +360,11 @@ impl StaticIndexer {
 
         Ok(tree)
     }
+}
 
-    /// Get a leaf node from the tree.
-    ///
-    /// This function will return `None` if the tree does not contain a leaf
-    /// with the specified key.
-    ///
-    /// # Errors
-    ///
-    /// If the specified index key is invalid or the tree is corrupted, an error
-    /// will be returned.
-    pub async fn get_leaf(
+#[async_trait]
+impl BasicIndexer for StaticIndexer {
+    async fn get_leaf(
         &self,
         provider: &Provider,
         root_id: &TreeIdentifier,
@@ -385,23 +380,7 @@ impl StaticIndexer {
         }
     }
 
-    /// Add a non-existing leaf to the tree.
-    ///
-    /// # Cost
-    ///
-    /// Adding a leaf is generally fast. But in some cases, a tree rebalancing
-    /// may occur which may be costly. If the tree is expected to grow a lot,
-    /// this can be prevented by configuring the indexer with a smaller
-    /// `max_children_per_layer` value to force each layer to be splitted.
-    ///
-    /// # Errors
-    ///
-    /// If the leaf at the specified index key already exists, this function
-    /// will return `Error::IndexTreeLeafNodeAlreadyExists`.
-    ///
-    /// If the specified index key is invalid or the tree is corrupted, an error
-    /// will be returned.
-    pub async fn add_leaf<'call>(
+    async fn add_leaf<'call>(
         &self,
         provider: &Provider,
         root_id: &TreeIdentifier,
@@ -490,24 +469,7 @@ impl StaticIndexer {
         }
     }
 
-    /// Replace an existing leaf in the tree.
-    ///
-    /// # Returns
-    ///
-    /// The new tree and the old leaf replaced by the new one.
-    ///
-    /// # Cost
-    ///
-    /// Replacing a leaf is generally fast as no tree rebalancing can occur.
-    ///
-    /// # Errors
-    ///
-    /// If the leaf at the specified index key does not exist, this function
-    /// will return `Error::IndexTreeLeafNodeNotFound`.
-    ///
-    /// If the specified index key is invalid or the tree is corrupted, an error
-    /// will be returned.
-    pub async fn replace_leaf<'call>(
+    async fn replace_leaf<'call>(
         &self,
         provider: &Provider,
         root_id: &TreeIdentifier,
@@ -557,30 +519,7 @@ impl StaticIndexer {
         }
     }
 
-    /// Remove an existing leaf from the tree.
-    ///
-    /// # Returns
-    ///
-    /// The new tree and the old removed leaf.
-    ///
-    /// # Cost
-    ///
-    /// Removing a leaf is generally fast. But in some cases, a tree rebalancing
-    /// may occur which may be costly. If the tree is expected to shrink a lot,
-    /// this can be prevented by configuring the indexer with a smaller
-    /// `max_children_per_layer` value to force each layer to be splitted.
-    ///
-    /// If the removal of the leaf causes a parent tree to be empty, the parent
-    /// itself removing, recursively.
-    ///
-    /// # Errors
-    ///
-    /// If the leaf at the specified index key does not exist, this function
-    /// will return `Error::IndexTreeLeafNodeNotFound`.
-    ///
-    /// If the specified index key is invalid or the tree is corrupted, an error
-    /// will be returned.
-    pub async fn remove_leaf<'call>(
+    async fn remove_leaf<'call>(
         &self,
         provider: &Provider,
         root_id: &TreeIdentifier,
@@ -650,61 +589,19 @@ impl StaticIndexer {
             SearchResult::NotFound(_) => Err(Error::IndexTreeLeafNodeNotFound(index_key.clone())),
         }
     }
+}
 
-    /// Returns a list of all leaves in the specified range.
-    ///
-    /// # Warning
-    ///
-    /// This method may iterate over the entire tree and possibly allocate a
-    /// very big vector for its result. If used on a real, large tree it could
-    /// actually take a very long time to end and lead to memory shortage. Think
-    /// twice before using it with a large range on a large tree.
-    ///
-    /// # Errors
-    ///
-    /// If the iteration fails, an error will be returned.
-    pub async fn get_leaves_in_range<'s, T>(
+#[async_trait]
+impl OrderedIndexer for StaticIndexer {
+    async fn enumerate_leaves_in_range<'s, T, R>(
         &'s self,
         provider: &'s Provider,
         root_id: &'s TreeIdentifier,
-        range: impl RangeBounds<T>,
-    ) -> Result<Vec<(IndexKey, TreeLeafNode)>>
+        range: R,
+    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's>>>
     where
         T: Into<IndexKey> + Clone,
-    {
-        self.all_leaves_in_range(provider, root_id, range)?
-            .map(|(key, leaf_res)| match leaf_res {
-                Ok(leaf) => Ok((key, leaf)),
-                Err(err) => Err(Error::Unknown(anyhow::anyhow!(
-                    "failed to read leaf at `{:?}`: {}",
-                    key,
-                    err
-                ))),
-            })
-            .collect::<Result<Vec<(IndexKey, TreeLeafNode)>>>()
-            .await
-    }
-
-    /// Returns a stream that iterates over all leaves in the specified tree
-    /// that belong to the specified range.
-    ///
-    /// # Warning
-    ///
-    /// This method may iterate over the entire tree. If used on a real, large
-    /// tree it could actually take a very long time to end. Think twice before
-    /// using it with a large range.
-    ///
-    /// # Errors
-    ///
-    /// If the range is invalid, an error will be returned.
-    pub fn all_leaves_in_range<'s, T>(
-        &'s self,
-        provider: &'s Provider,
-        root_id: &'s TreeIdentifier,
-        range: impl RangeBounds<T>,
-    ) -> Result<impl Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's>
-    where
-        T: Into<IndexKey> + Clone,
+        R: RangeBounds<T> + Send + 's,
     {
         let start_bound = range.start_bound().as_index_key_bound();
         let end_bound = range.end_bound().as_index_key_bound();
@@ -724,7 +621,7 @@ impl StaticIndexer {
 
         let mut trees = VecDeque::new();
 
-        Ok(stream! {
+        Ok(Box::pin(stream! {
             let root = provider.read_tree(root_id).await.unwrap();
             trees.push_back((IndexKey::default(), root));
 
@@ -812,13 +709,14 @@ impl StaticIndexer {
                     }
                 }
             }
-        })
+        }))
     }
 }
-
 #[cfg(test)]
 mod tests {
     use crate::{indexing::ResourceIdentifier, Identifier};
+
+    use tokio_stream::StreamExt;
 
     use super::*;
 
@@ -984,7 +882,11 @@ mod tests {
     macro_rules! assert_get_leaves_in_range {
         ($indexer:expr, $provider:expr, $tree_id:expr, $range:expr, $expected:expr) => {{
             let leaves = $indexer
-                .get_leaves_in_range(&$provider, &$tree_id, $range)
+                .enumerate_leaves_in_range::<u32, _>(&$provider, &$tree_id, $range)
+                .await
+                .unwrap()
+                .map(|(key, node)| node.map(|node| (key, node)))
+                .collect::<Result<Vec<_>>>()
                 .await
                 .unwrap();
 
@@ -1124,10 +1026,12 @@ mod tests {
         assert_eq!(tree.count, 0);
         assert_eq!(tree.total_size, 0);
 
-        //let visitor = crate::indexing::GraphvizVisitor::create("tree.dot")
+        //crate::indexing::GraphvizVisitor::create("tree.dot")
+        //    .await
+        //    .unwrap()
+        //    .visit(&ct, &tree_id)
         //    .await
         //    .unwrap();
-        //tree_id.visit(&ct, visitor).await.unwrap();
 
         // The only identifier that should be referenced is the root.
         let ids = provider.referenced().await;
