@@ -65,8 +65,14 @@
   ) {
     // Poor man's way to optionally ensure unicity per id which currently allows to avoid opening <SceneExplorer> duplicates.
     // A better system would check if a given component is allowed to be created multiple times (singleton or singleton-by-key).
-    if (id && layoutComponents.find((l) => l.id === id)) {
-      return;
+    if (id) {
+      const lc = layoutComponents.find((l) => l.id === id);
+
+      if (lc) {
+        lc.container.focus();
+
+        return;
+      }
     }
 
     const config: ComponentItemConfig = {
