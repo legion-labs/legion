@@ -28,6 +28,8 @@ mod metrics;
 mod remote_jit_lakehouse;
 mod scope;
 mod thread_block_processor;
+mod column;
+mod span_table;
 
 use std::str::FromStr;
 use std::{path::PathBuf, sync::Arc};
