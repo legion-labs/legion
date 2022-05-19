@@ -53,18 +53,18 @@
   let deltaMs: number;
   let pixelSizeNs: number;
   let x: d3.ScaleLinear<number, number, never>;
-  let bestY: d3.ScaleLinear<number, number, never>;
+  // let bestY: d3.ScaleLinear<number, number, never>;
 
   let brushFunction: d3.BrushBehavior<unknown>;
   let svgGroup: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
   let gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
-  let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
+  // let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
   let container: d3.Selection<d3.BaseType, unknown, HTMLElement, unknown>;
   let zoomEvent: D3ZoomEvent<HTMLCanvasElement, unknown>;
   let brushSvg: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
 
   let xAxis: d3.Axis<d3.NumberValue>;
-  let yAxis: d3.Axis<d3.NumberValue>;
+  // let yAxis: d3.Axis<d3.NumberValue>;
   let zoom: d3.ZoomBehavior<Element, unknown>;
 
   let context: CanvasRenderingContext2D;
@@ -220,8 +220,8 @@
       .axisBottom(x)
       .tickFormat((d) => formatExecutionTime(d.valueOf()));
 
-    bestY = axisCollection.getBestAxisScale([height, 0], $metricStore);
-    yAxis = d3.axisLeft(bestY);
+    // bestY = axisCollection.getBestAxisScale([height, 0], $metricStore);
+    // yAxis = d3.axisLeft(bestY);
 
     gxAxis = svgGroup
       .append("g")
@@ -229,7 +229,8 @@
       .attr("transform", `translate(0, ${height})`)
       .call(xAxis);
 
-    gyAxis = svgGroup.append("g").style("user-select", "none").call(yAxis);
+    // Remove y axis for now
+    // gyAxis = svgGroup.append("g").style("user-select", "none").call(yAxis);
 
     zoom = d3
       .zoom()
@@ -295,7 +296,7 @@
     svgGroup.call(zoom as any);
     refreshZoom();
     updateChartWidth();
-    bestY = axisCollection.getBestAxisScale([height, 0], $metricStore);
+    // bestY = axisCollection.getBestAxisScale([height, 0], $metricStore);
     draw();
     updateTime = Math.floor(performance.now() - startTime);
   }
@@ -346,10 +347,8 @@
     }
 
     gxAxis.call(xAxis.scale(scaleX));
-    gyAxis.call((_selection) => {
-      // Disables dynamic scale for now
-      // yAxis.scale(bestY)(_selection);
-    });
+    // Remove y axis for now
+    // gyAxis.call(yAxis.scale(bestY));
   }
 
   function handleKeydown(event: KeyboardEvent) {
