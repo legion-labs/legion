@@ -128,10 +128,7 @@ impl LightingManager {
     pub fn frame_update(&self, render_objects: &RenderObjects) {
         let q = RenderObjectQuery::<RenderLight>::new(render_objects);
 
-        q.for_each(|index, render_light| {
-            dbg!(index);
-            dbg!(render_light);
-        });
+        q.for_each(|index, render_light| {});
 
         // render_objects.for_each_ready::<RenderLight>(|x| {});
         //

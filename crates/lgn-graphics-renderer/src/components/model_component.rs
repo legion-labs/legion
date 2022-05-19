@@ -94,12 +94,12 @@ impl Mesh {
             (std::mem::size_of::<[u8; 4]>() * stream.len()) as u32
         });
 
-        let position_offset = byteadressbuffer_align(std::mem::size_of::<MeshDescription>() as u32);
+        let indice_offset = byteadressbuffer_align(std::mem::size_of::<MeshDescription>() as u32);
+        let position_offset = byteadressbuffer_align(indice_offset + indice_size);
         let normal_offset = byteadressbuffer_align(position_offset + position_size);
         let tangent_offset = byteadressbuffer_align(normal_offset + normal_size);
         let texcoord_offset = byteadressbuffer_align(tangent_offset + tangent_size);
-        let indice_offset = byteadressbuffer_align(texcoord_offset + texcoord_size);
-        let color_offset = byteadressbuffer_align(indice_offset + indice_size);
+        let color_offset = byteadressbuffer_align(texcoord_offset + texcoord_size);
         let buf_size = byteadressbuffer_align(color_offset + color_size);
 
         let mut mesh_desc = MeshDescription::default();
@@ -125,6 +125,10 @@ impl Mesh {
 
         writer.write(&mesh_desc);
 
+        if let Some(indices) = &self.indices {
+            write_slice!(writer, indices, indice_offset, indice_size);
+        }
+
         write_slice!(writer, &self.positions, position_offset, position_size);
 
         if let Some(normals) = &self.normals {
@@ -145,9 +149,6 @@ impl Mesh {
         }
         if let Some(tex_coords) = &self.tex_coords {
             write_slice!(writer, tex_coords, texcoord_offset, texcoord_size);
-        }
-        if let Some(indices) = &self.indices {
-            write_slice!(writer, indices, indice_offset, indice_size);
         }
         if let Some(colors) = &self.colors {
             write_slice!(writer, colors, color_offset, color_size);

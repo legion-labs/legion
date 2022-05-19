@@ -169,10 +169,6 @@ impl GpuUploadManager {
             .queue_mut()
             .submit(&[cmd_buffer], &[], &[], None);
 
-        println!("before");
-        graphics_queue.queue_mut().wait_for_queue_idle();
-        println!("after");
-
         transient_commandbuffer_allocator.release(cmd_buffer_handle);
     }
 }

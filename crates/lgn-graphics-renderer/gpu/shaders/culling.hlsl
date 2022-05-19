@@ -31,7 +31,7 @@ float aabb_max_z(float4 aabb, float2 view_port, float debug_index) {
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dt_id : SV_DispatchThreadID) {
     if (dt_id.x < gpu_instance_count[0]) {
-        GpuInstanceData instance_data = gpu_instance_data[dt_id.x];
+        GpuInstanceData instance_data = gpu_instance_data[dt_id.x];        
         
         uint va_table_address = va_table_address_buffer[instance_data.gpu_instance_id];
         GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, va_table_address);
@@ -117,7 +117,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
                 
                 uint indirect_offset = (indirect_arg_offset + prev_draw_count) * 5;
 
-                draw_args[indirect_offset + 0] =  mesh_desc.index_count;
+                draw_args[indirect_offset + 0] = mesh_desc.index_count;
                 draw_args[indirect_offset + 1] = 1;
                 draw_args[indirect_offset + 2] = (addresses.mesh_description_va + mesh_desc.index_offset) / 2;
                 draw_args[indirect_offset + 3] = 0;

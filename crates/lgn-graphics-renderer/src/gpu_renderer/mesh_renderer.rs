@@ -265,11 +265,12 @@ impl MeshRenderer {
 
         let mut instance_data = GpuInstanceData::default();
         instance_data.set_gpu_instance_id(gpu_instance_index.into());
+        instance_data.set_state_id(0.into());
 
         for layer in &mut self.default_layers {
-            instance_data.set_state_id(0.into());
             layer.register_element(0, element);
         }
+
         self.gpu_instance_data.push(instance_data);
     }
 
