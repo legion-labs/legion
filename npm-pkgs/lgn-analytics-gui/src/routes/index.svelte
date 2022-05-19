@@ -41,7 +41,9 @@
     });
   }
 
-  $: searchParam = $page.url.searchParams.get("search") || "";
+  $: searchParam = decodeURIComponent(
+    $page.url.searchParams.get("search") || ""
+  );
 
   $: searchValue = searchParam;
 
