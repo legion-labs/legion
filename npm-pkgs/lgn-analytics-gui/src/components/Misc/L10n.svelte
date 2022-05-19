@@ -4,7 +4,9 @@
 
   type Id = $$Generic<keyof Fluent>;
 
-  type $$Props = ResolveFluentRecordVariablesOnly<Fluent, Id>;
+  type $$Props = ResolveFluentRecordVariablesOnly<Fluent, Id> & {
+    asHtml?: boolean;
+  };
 </script>
 
 <L10n id={$$props.id} {...$$props} />

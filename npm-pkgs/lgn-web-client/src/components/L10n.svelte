@@ -14,6 +14,8 @@
 
   type $$Props = ResolveFluentRecordVariablesOnly<Fluent, Id>;
 
+  export let asHtml = false;
+
   export let customL10nOrchestrator: L10nOrchestrator<Fluent> | undefined =
     undefined;
 
@@ -34,4 +36,8 @@ constant exported by the `L10n` component"
   const { t } = l10n;
 </script>
 
-{$t($$props.id, $$props.variables)}
+{#if asHtml}
+  {@html $t($$props.id, $$props.variables)}
+{:else}
+  {$t($$props.id, $$props.variables)}
+{/if}
