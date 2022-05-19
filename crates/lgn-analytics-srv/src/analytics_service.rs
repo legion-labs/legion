@@ -794,6 +794,7 @@ impl PerformanceAnalytics for AnalyticsService {
     ) -> Result<Response<ProcessBlocksReply>, Status> {
         self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::list_process_blocks");
+        let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         match self.list_process_blocks_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -813,6 +814,7 @@ impl PerformanceAnalytics for AnalyticsService {
     ) -> Result<Response<MetricBlockData>, Status> {
         self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::fetch_block_metric");
+        let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         match self.fetch_block_metric_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -832,6 +834,7 @@ impl PerformanceAnalytics for AnalyticsService {
     ) -> Result<Response<MetricBlockManifest>, Status> {
         self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::fetch_block_metric_manifest");
+        let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         match self.fetch_block_metric_manifest_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -851,6 +854,7 @@ impl PerformanceAnalytics for AnalyticsService {
     ) -> Result<Response<BlockAsyncEventsStatReply>, Status> {
         self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::fetch_block_async_stats");
+        let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         match self.fetch_block_async_stats_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -870,6 +874,7 @@ impl PerformanceAnalytics for AnalyticsService {
     ) -> Result<Response<AsyncSpansReply>, Status> {
         self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::fetch_async_spans");
+        let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         match self.fetch_async_spans_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
@@ -889,6 +894,7 @@ impl PerformanceAnalytics for AnalyticsService {
     ) -> Result<Response<BuildTimelineTablesReply>, Status> {
         self.flush_monitor.tick();
         async_span_scope!("AnalyticsService::build_timeline_tables");
+        let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         match self.build_timeline_tables_impl(inner_request).await {
             Ok(reply) => Ok(Response::new(reply)),
