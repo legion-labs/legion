@@ -1,14 +1,14 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
-
-  import Button from "@lgn/web-client/src/components/Button.svelte";
-
-  import { currentResource } from "@/orchestrators/currentResource";
-  import type { RootContext } from "@/routes/index.svelte";
-  import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
-  import { fileName } from "@/lib/path";
   import { getContext } from "svelte";
   import { writable } from "svelte/store";
+
+  import Button from "@lgn/web-client/src/components/Button.svelte";
+  import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
+
+  import { fileName } from "@/lib/path";
+  import { currentResource } from "@/orchestrators/currentResource";
+  import type { RootContext } from "@/routes/index.svelte";
 
   // export let name: string;
   // export let path: string;

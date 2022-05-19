@@ -6,8 +6,10 @@
 
 <script lang="ts">
   import { onMount } from "svelte";
+  import { setContext } from "svelte";
 
   import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
+  import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
@@ -41,8 +43,6 @@
   import { stagedResources, syncFromMain } from "@/stores/stagedResources";
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
-  import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
-  import { setContext } from "svelte";
 
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
