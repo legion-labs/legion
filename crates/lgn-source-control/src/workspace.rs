@@ -622,7 +622,7 @@ impl Workspace {
     /// # Returns
     ///
     /// The commit id.
-    pub async fn commit(&mut self, message: &str, _behavior: CommitMode) -> Result<Commit> {
+    pub async fn commit(&mut self, message: &str, behavior: CommitMode) -> Result<Commit> {
         let transaction = std::mem::replace(&mut self.transaction, Provider::new_in_memory());
         let provider = match transaction.commit_transaction().await {
             Ok(provider) => provider,
@@ -641,18 +641,31 @@ impl Workspace {
             return Err(Error::stale_branch(branch));
         }
 
-        let mut commit = Commit::new_unique_now(
-            whoami::username(),
-            message,
-            commit.changes.clone(),
-            self.main_index_tree_id.clone(),
-            self.path_index_tree_id.clone(),
-            BTreeSet::from([commit.id]),
-        );
+        let empty_commit = commit.main_index_tree_id == self.main_index_tree_id
+            && commit.path_index_tree_id == self.path_index_tree_id;
 
-        commit.id = self.index.commit_to_branch(&commit, &branch).await?;
+        if empty_commit && matches!(behavior, CommitMode::Strict) {
+            return Err(Error::EmptyCommitNotAllowed);
+        }
 
-        branch.head = commit.id;
+        let commit = if !empty_commit {
+            let mut commit = Commit::new_unique_now(
+                whoami::username(),
+                message,
+                commit.changes.clone(),
+                self.main_index_tree_id.clone(),
+                self.path_index_tree_id.clone(),
+                BTreeSet::from([commit.id]),
+            );
+
+            commit.id = self.index.commit_to_branch(&commit, &branch).await?;
+
+            branch.head = commit.id;
+
+            commit
+        } else {
+            commit
+        };
 
         self.transaction = provider.begin_transaction_in_memory();
 
