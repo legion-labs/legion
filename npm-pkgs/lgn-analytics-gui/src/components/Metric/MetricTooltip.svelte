@@ -1,17 +1,14 @@
 <script lang="ts">
   import type { D3ZoomEvent } from "d3";
-  import { get } from "svelte/store";
 
   import type { MetricPoint } from "./Lib/MetricPoint";
   import type { MetricState } from "./Lib/MetricState";
   import type { MetricStore } from "./Lib/MetricStore";
-  import type { MetricStreamer } from "./Lib/MetricStreamer";
   import MetricTooltipItem from "./MetricTooltipItem.svelte";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let zoomEvent: D3ZoomEvent<HTMLCanvasElement, any>;
   export let xScale: d3.ScaleLinear<number, number, never>;
-  export let metricStreamer: MetricStreamer;
   export let leftMargin: number;
   export let metricStore: MetricStore;
 
@@ -40,13 +37,16 @@
   }
 
   $: time = xScale.invert(xValue - leftMargin);
+
   $: side = xValue < (2 * width) / 3;
+
   $: {
     if (zoomEvent?.sourceEvent) {
       xValue = zoomEvent.sourceEvent.offsetX;
       yValue = zoomEvent.sourceEvent.offsetY;
     }
   }
+
   $: {
     if (xValue) {
       values = $metricStore
@@ -60,19 +60,18 @@
       displayInternal = values.some((v) => v.value);
     }
   }
+
   $: style = side
     ? `top:${yValue}px;left:${xValue + margin}px`
     : `top:${yValue}px;right:${width - xValue + margin}px`;
 
   function getClosestValue(metric: MetricState, time: number) {
-    if (!metricStreamer?.metricStore) {
-      return null;
-    }
-    const store = metricStreamer.metricStore;
-    const m = get(store).filter((m) => m.name === metric.name)[0];
+    const m = $metricStore.filter((m) => m.name === metric.name)[0];
+
     if (m) {
       return m.getClosestValue(time);
     }
+
     return null;
   }
 </script>

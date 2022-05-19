@@ -4,13 +4,12 @@
   import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
   import type { Unsubscriber } from "svelte/store";
-  import { get } from "svelte/store";
 
   import { MetricAxisCollection } from "@/components/Metric/Lib/MetricAxisCollection";
   import { getMetricColor } from "@/components/Metric/Lib/MetricColor";
   import type { MetricSlice } from "@/components/Metric/Lib/MetricSlice";
   import type { MetricState } from "@/components/Metric/Lib/MetricState";
-  import type { MetricStore } from "@/components/Metric/Lib/MetricStore";
+  import { getMetricStore } from "@/components/Metric/Lib/MetricStore";
   import { MetricStreamer } from "@/components/Metric/Lib/MetricStreamer";
   import MetricDebugDisplay from "@/components/Metric/MetricDebugDisplay.svelte";
   import MetricLegendGroup from "@/components/Metric/MetricLegendGroup.svelte";
@@ -26,7 +25,8 @@
 
   let metricStreamer: MetricStreamer;
   let axisCollection: MetricAxisCollection;
-  let metricStore: MetricStore;
+
+  const metricStore = getMetricStore();
 
   const defaultLineWidth = 1;
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
@@ -75,7 +75,7 @@
   $: if (!loading) {
     if (transform) {
       updateLod();
-      updatePoints(get(metricStore));
+      updatePoints($metricStore);
       updateChart();
       tick();
     }
@@ -92,14 +92,16 @@
 
   onMount(async () => {
     axisCollection = new MetricAxisCollection();
-    await fetchMetrics().then(() => {
-      createChart();
-      updateLod();
-      updatePoints(get(metricStore));
-      updateChart();
-      tick();
-      loading = false;
-    });
+
+    await fetchMetrics();
+
+    createChart();
+    updateLod();
+    updatePoints($metricStore);
+    updateChart();
+    tick();
+
+    loading = false;
   });
 
   onDestroy(() => {
@@ -128,8 +130,7 @@
   }
 
   async function fetchMetrics() {
-    metricStreamer = new MetricStreamer(client, processId);
-    metricStore = metricStreamer.metricStore;
+    metricStreamer = new MetricStreamer(client, processId, metricStore);
     await metricStreamer.initialize();
 
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;
@@ -219,7 +220,7 @@
       .axisBottom(x)
       .tickFormat((d) => formatExecutionTime(d.valueOf()));
 
-    bestY = axisCollection.getBestAxisScale([height, 0], get(metricStore));
+    bestY = axisCollection.getBestAxisScale([height, 0], $metricStore);
     yAxis = d3.axisLeft(bestY);
 
     gxAxis = svgGroup
@@ -294,7 +295,7 @@
     svgGroup.call(zoom as any);
     refreshZoom();
     updateChartWidth();
-    bestY = axisCollection.getBestAxisScale([height, 0], get(metricStore));
+    bestY = axisCollection.getBestAxisScale([height, 0], $metricStore);
     draw();
     updateTime = Math.floor(performance.now() - startTime);
   }
@@ -372,7 +373,6 @@
         xScale={transform.rescaleX(x)}
         leftMargin={margin.left}
         {zoomEvent}
-        {metricStreamer}
       />
     {/if}
 
