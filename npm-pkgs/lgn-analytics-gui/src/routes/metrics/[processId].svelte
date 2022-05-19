@@ -28,6 +28,7 @@
   let axisCollection: MetricAxisCollection;
   let metricStore: MetricStore;
 
+  const defaultLineWidth = 1;
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
@@ -55,14 +56,12 @@
   let bestY: d3.ScaleLinear<number, number, never>;
 
   let brushFunction: d3.BrushBehavior<unknown>;
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  let svgGroup: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-  let gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-  let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-  let container: d3.Selection<d3.BaseType, unknown, HTMLElement, any>;
-  let zoomEvent: D3ZoomEvent<HTMLCanvasElement, any>;
-  let brushSvg: d3.Selection<SVGGElement, unknown, HTMLElement, any>;
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+  let svgGroup: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
+  let gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
+  let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
+  let container: d3.Selection<d3.BaseType, unknown, HTMLElement, unknown>;
+  let zoomEvent: D3ZoomEvent<HTMLCanvasElement, unknown>;
+  let brushSvg: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
 
   let xAxis: d3.Axis<d3.NumberValue>;
   let yAxis: d3.Axis<d3.NumberValue>;
@@ -312,6 +311,13 @@
   }
 
   function draw() {
+    let lineWidth = +import.meta.env
+      .VITE_LEGION_ANALYTICS_METRICS_LINE_THICKNESS;
+
+    if (isNaN(lineWidth) || lineWidth <= 0) {
+      lineWidth = defaultLineWidth;
+    }
+
     const scaleX = transform.rescaleX(x);
     for (const metric of points) {
       const color = (context.strokeStyle = getMetricColor(metric.name));
@@ -320,7 +326,7 @@
       context.beginPath();
       line(metric.points.map((p) => [p.time, p.value]));
       context.strokeStyle = color;
-      context.lineWidth = 0.33;
+      context.lineWidth = lineWidth;
       context.stroke();
       if (lod <= 3) {
         for (const point of metric.points) {
