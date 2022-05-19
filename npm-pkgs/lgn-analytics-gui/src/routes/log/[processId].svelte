@@ -278,8 +278,8 @@
           <Pagination
             begin={beginRange || 0}
             end={endRange || MAX_NB_ENTRIES_IN_PAGE}
-            entriesPerPage={$processInfo.nbEntries}
-            maxEntriesPerPage={MAX_NB_ENTRIES_IN_PAGE}
+            totalEntries={$processInfo.nbEntries}
+            entriesPerPage={MAX_NB_ENTRIES_IN_PAGE}
             buildHref={buildPaginationHref}
           />
         {/if}
