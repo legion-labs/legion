@@ -2,8 +2,9 @@ use std::{collections::BTreeSet, fmt::Formatter};
 
 use lgn_content_store::{
     indexing::{
-        IndexKey, IndexableResource, ResourceIdentifier, ResourceReader, ResourceWriter,
-        StaticIndexer, StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
+        BasicIndexer, IndexKey, IndexableResource, OrderedIndexer, ResourceIdentifier,
+        ResourceReader, ResourceWriter, StaticIndexer, StringPathIndexer, Tree, TreeIdentifier,
+        TreeLeafNode, TreeWriter,
     },
     Provider,
 };
@@ -208,7 +209,8 @@ impl Workspace {
         tree_id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         self.main_index
-            .all_leaves_in_range(&self.transaction, tree_id, 0..)
+            .enumerate_leaves_in_range(&self.transaction, tree_id, 0_u128..)
+            .await
             .map_err(Error::ContentStoreIndexing)?
             .map(|(key, leaf_res)| match leaf_res {
                 Ok(leaf) => match leaf {
