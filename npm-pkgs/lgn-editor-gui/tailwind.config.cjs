@@ -4,9 +4,7 @@ const fs = require("fs");
 const path = require("path");
 
 const contentGlobSuffix = "**/*.{svelte,ts}";
-
 const srcContentDir = "./src";
-
 const lgnFrontendContentDir = "./node_modules/@lgn/web-client/src";
 
 if (!fs.existsSync(lgnFrontendContentDir)) {
@@ -18,35 +16,12 @@ if (!fs.existsSync(lgnFrontendContentDir)) {
   process.exit(1);
 }
 
+/** @type {import("tailwindcss/tailwind-config").TailwindConfig } */
 module.exports = {
-  mode: "jit",
+  ...require("../../tailwind.config.cjs"),
   content: [
     path.join(srcContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, "app.html"),
   ],
-  theme: {
-    fontFamily: {
-      default: "Inter,Arial,sans-serif",
-    },
-    extend: {
-      colors: {
-        white: "#eeeeee",
-        black: "#181818",
-        gray: {
-          400: "#666666",
-          500: "#555555",
-          700: "#333333",
-          800: "#222222",
-        },
-        orange: {
-          700: "#fc4d0f",
-        },
-      },
-    },
-  },
-  variants: {
-    extend: {},
-  },
-  plugins: [],
 };

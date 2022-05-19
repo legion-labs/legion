@@ -4,12 +4,14 @@ importers:
 
   .:
     specifiers:
+      '@types/tailwindcss': ^3.0.10
       autoprefixer: ^10.4.4
       postcss: ^8.4.12
       rimraf: ^3.0.2
       tailwindcss: ^3.0.24
       wasm-pack: 0.10.2
     devDependencies:
+      '@types/tailwindcss': 3.0.10
       autoprefixer: 10.4.7_postcss@8.4.13
       postcss: 8.4.13
       rimraf: 3.0.2
