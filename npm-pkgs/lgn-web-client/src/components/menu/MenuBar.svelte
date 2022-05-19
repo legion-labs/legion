@@ -5,7 +5,7 @@
 
   const menuContext = getMenuContextStore();
 
-  export let items: MenuItemDescription[];
+  export let items: MenuItemDescription[] = [];
 </script>
 
 {#each items as menu (menu.title)}
