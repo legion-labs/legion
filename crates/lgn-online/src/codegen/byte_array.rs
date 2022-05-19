@@ -44,6 +44,12 @@ impl From<Vec<u8>> for ByteArray {
     }
 }
 
+impl From<&[u8]> for ByteArray {
+    fn from(v: &[u8]) -> Self {
+        Self(v.to_vec())
+    }
+}
+
 impl From<ByteArray> for Vec<u8> {
     fn from(v: ByteArray) -> Self {
         v.0
