@@ -1,0 +1,30 @@
+// Auto-generated file for Api: {{ api.title }} : {{ api.version }}
+//
+// {% if let Some(description) = api.description %}{{ description|multilinecomment }}{% endif %}
+//
+
+import qs from "qs";
+
+// ---------- Api ----------
+
+{% include "api.ts.jinja" %}
+
+// ---------- Errors ----------
+
+{% include "errors.ts.jinja" %}
+
+// ---------- Client ----------
+
+{% include "client.ts.jinja" %}
+
+// ---------- Models ----------
+
+{% include "models.ts.jinja" %}
+
+// ---------- Parameters ----------
+
+{% include "parameters.ts.jinja" %}
+
+// ---------- Responses ----------
+
+{% include "responses.ts.jinja" %}

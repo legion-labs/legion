@@ -1,0 +1,79 @@
+type Fetch = typeof globalThis.fetch;
+
+const defaultFetch = globalThis.fetch;
+
+export class Client implements Api {
+    #baseUri: string | URL;
+    #fetch: Fetch;
+
+    constructor({ baseUri, fetch = defaultFetch }: { baseUri: string | URL, fetch?: Fetch }) {
+        this.#baseUri = baseUri;
+        this.#fetch = fetch;
+    }
+
+    {% for (path, routes) in api.paths %}
+        {% for route in routes %}
+            {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
+
+            async {% include "signature.ts.jinja" %} {
+                const url = new URL(`${this.#baseUri}{{ path|fmt_ts_path(route.parameters.path) }}`);
+
+                {% if !route.parameters.query.is_empty() -%}
+                    const query: {{ route.name|pascal_case }}Query = { 
+                        {% for parameter in route.parameters.query -%}
+                            "{{ parameter.name }}": input.query["{{ parameter.name }}"],
+                        {% endfor -%}
+                    };
+
+                    url.search = `?${qs.stringify(query)}`;
+                {% endif %}
+
+                const headers = new Headers();
+
+                {% if let Some(request_body) = route.request_body %}
+                    headers.set(
+                        "Content-Type",
+                        "{{ request_body.content.media_type }}",
+                    );
+                {% endif %}
+
+
+                {# {% if !route.parameters.header.is_empty() -%}
+                    {%- for parameter in route.parameters.header -%}
+                        {% let param_name = "{}"|format(parameter.name) %}
+                        {% if parameter.required -%}
+                            headers.set(
+                                "{{ parameter.name }}",
+                                "{{ param_name }}",
+                            ); 
+                        {% else %}
+                            if let Some({{ param_name }}) = {{ param_name }} {
+                                headers.set(
+                                    "{{ parameter.name }}",
+                                    "{{ param_name}}",
+                                );
+                            }
+                        {% endif -%}                
+                    {% endfor %}
+                {% endif -%} #}
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "{{ route.method|uppercase }}",
+                    headers,
+                    {% if let Some(request_body) = route.request_body %}
+                        {% match request_body.content.media_type %}
+                            {% when MediaType::Json %}
+                                body: JSON.stringify(input.body),
+                            {% when MediaType::Bytes %}
+                                body: input.body,
+                        {% endmatch %}
+                    {% endif -%}
+                    {% if let Some(request_body) = route.request_body %}
+                    {% endif %}
+                });
+
+                return {{ enum_name }}.fromResponse(response);
+            }
+        {% endfor %}
+    {% endfor %}
+}
