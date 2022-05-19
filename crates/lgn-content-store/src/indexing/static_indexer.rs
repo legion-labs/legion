@@ -598,7 +598,7 @@ impl OrderedIndexer for StaticIndexer {
         provider: &'s Provider,
         root_id: &'s TreeIdentifier,
         range: R,
-    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's>>>
+    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + Send + 's>>>
     where
         T: Into<IndexKey> + Clone,
         R: RangeBounds<T> + Send + 's,
