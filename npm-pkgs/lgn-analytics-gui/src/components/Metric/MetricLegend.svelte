@@ -12,6 +12,8 @@
   ]);
 
   $: color = metric.hidden ? "rgb(203 213 225)" : getMetricColor(metric.name);
+
+  $: icon = iconMap.get(metric.unit);
 </script>
 
 <div
@@ -19,11 +21,11 @@
   on:click={() => metricStore.switchHidden(metric.name)}
 >
   <span class="h-4 w-4 block" style="background-color:{color}" />
-  <span class="text-sm {metric.hidden ? 'text' : 'black'}">
-    {metric.name} ({metric.unit})</span
-  >
-  <i
-    class="{iconMap.get(metric.unit) ??
-      'bi bi-question-circle-fill'} {metric.hidden ? 'text' : 'headline'}"
-  />
+  <span class="text-sm flex space-x-1 {metric.hidden ? 'text' : 'black'}">
+    <span>{metric.name}</span>
+    {#if metric.unit}<span style="color:{color}">({metric.unit})</span>{/if}
+  </span>
+  {#if icon}
+    <i class="{icon} {metric.hidden ? 'text' : 'headline'}" />
+  {/if}
 </div>
