@@ -21,8 +21,8 @@ pub struct SpanTable {
     pub depths: Column<i32>,
     pub begins: Column<f64>,
     pub ends: Column<f64>,
-    pub ids: Column<u64>,
-    pub parents: Column<u64>,
+    pub ids: Column<i64>,
+    pub parents: Column<i64>,
 }
 
 impl SpanTable {
@@ -43,8 +43,8 @@ impl SpanTable {
         self.depths.append(row.depth as i32);
         self.begins.append(row.begin_ms);
         self.ends.append(row.end_ms);
-        self.ids.append(row.id);
-        self.parents.append(row.parent);
+        self.ids.append(row.id as i64);
+        self.parents.append(row.parent as i64);
     }
 }
 
@@ -133,6 +133,8 @@ pub fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
     REQUIRED INT32 depth;
     REQUIRED DOUBLE begin_ms;
     REQUIRED DOUBLE end_ms;
+    REQUIRED INT64 id;
+    REQUIRED INT64 parent;
   }
 ";
     let schema =
@@ -161,6 +163,14 @@ pub fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
         .ends
         .write_batch(&mut *row_group_writer)
         .with_context(|| "writing begins column")?;
+    spans
+        .ids
+        .write_batch(&mut *row_group_writer)
+        .with_context(|| "writing ids column")?;
+    spans
+        .parents
+        .write_batch(&mut *row_group_writer)
+        .with_context(|| "writing parents column")?;
     writer
         .close_row_group(row_group_writer)
         .with_context(|| "closing row group")?;

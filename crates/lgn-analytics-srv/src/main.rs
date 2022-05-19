@@ -17,6 +17,7 @@ mod auth;
 mod cache;
 mod call_tree;
 mod call_tree_store;
+mod column;
 mod cumulative_call_graph;
 mod cumulative_call_graph_handler;
 mod cumulative_call_graph_node;
@@ -27,9 +28,8 @@ mod log_entry;
 mod metrics;
 mod remote_jit_lakehouse;
 mod scope;
-mod thread_block_processor;
-mod column;
 mod span_table;
+mod thread_block_processor;
 
 use std::str::FromStr;
 use std::{path::PathBuf, sync::Arc};
