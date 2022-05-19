@@ -14,6 +14,12 @@
 
   const notifications = createNotificationsStore<Fluent>();
 
+  const issuerUrl = import.meta.env
+    .VITE_LEGION_ANALYTICS_ONLINE_AUTHENTICATION_OAUTH_ISSUER_URL as string;
+
+  const clientId = import.meta.env
+    .VITE_LEGION_ANALYTICS_ONLINE_AUTHENTICATION_OAUTH_CLIENT_ID as string;
+
   let loaded = false;
 
   export const load: Load = async ({ fetch, url }) => {
@@ -25,10 +31,9 @@
       const { dispose, initAuthStatus } = await headlessRun({
         auth: {
           fetch,
-          issuerUrl:
-            "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz",
+          issuerUrl,
           redirectUri,
-          clientId: "2kp01gr54dfc7qp1325hibcro3",
+          clientId,
           login: {
             cookies: {
               accessToken: "analytics_access_token_v2",
