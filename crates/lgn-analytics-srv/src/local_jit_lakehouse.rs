@@ -47,6 +47,7 @@ impl JitLakehouse for LocalJitLakehouse {
         fs::create_dir_all(&spans_table_path)
             .await
             .with_context(|| format!("creating folder {}", spans_table_path.display()))?;
+        //todo: create file at the beginning and write to it as the blocks arrive
         write_parquet(&spans_table_path.join("spans.parquet"), &table)?;
         Ok(())
     }

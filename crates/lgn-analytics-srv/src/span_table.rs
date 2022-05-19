@@ -101,7 +101,7 @@ pub async fn make_span_table(
     convert_ticks: &ConvertTicks,
 ) -> Result<SpanTable> {
     let mut next_id = 1;
-    let mut table = SpanTable::new();
+    let mut table = SpanTable::new(); //todo: don't keep the whole table in memory, only row groups
     let streams = find_process_thread_streams(connection, process_id).await?;
     for stream in streams {
         let blocks = find_stream_blocks(connection, &stream.stream_id).await?;
