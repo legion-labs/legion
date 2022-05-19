@@ -7,6 +7,7 @@ use std::{
     str::FromStr,
 };
 
+use async_recursion::async_recursion;
 use lgn_content_store::{
     indexing::{IndexKey, ResourceIdentifier},
     Provider,
@@ -21,7 +22,7 @@ use lgn_source_control::{
 use lgn_tracing::error;
 use thiserror::Error;
 
-use crate::resource::{metadata::Metadata, ResourcePathName};
+use crate::resource::{metadata::Metadata, offline_content::OfflineContent, ResourcePathName};
 
 // const METADATA_EXT: &str = "meta";
 
@@ -261,29 +262,18 @@ impl Project {
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
     pub async fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
-        // this below would be better expressed as try_map (still experimental).
-        let res = self
-            .resource_list()
-            .await
-            .into_iter()
-            .find_map(|id| match self.read_meta(id) {
-                Ok(meta) => {
-                    if &meta.name == name {
-                        Some(Ok(ResourceTypeAndId {
-                            id,
-                            kind: meta.type_id,
-                        }))
-                    } else {
-                        None
-                    }
+        for id in self.resource_list().await {
+            let metadata = self.read_meta(id).await;
+            if let Ok(metadata) = metadata {
+                if &metadata.name == name {
+                    return Ok(ResourceTypeAndId {
+                        id,
+                        kind: metadata.type_id,
+                    });
                 }
-                Err(_err) => None, // TODO: Ignore for now to fix deleted files
-            });
-
-        match res {
-            None => Err(Error::FileNotFound(name.to_string())),
-            Some(e) => e,
+            }
         }
+        Err(Error::FileNotFound(name.to_string()))
     }
 
     /// Checks if a resource with a given name is part of the project.
@@ -374,22 +364,34 @@ impl Project {
     pub async fn add_resource_with_id(
         &mut self,
         name: ResourcePathName,
-        _kind_name: &str,
+        kind_name: &str,
         kind: ResourceType,
         id: ResourceId,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        let (resource_contents, _build_dependencies) = {
-            let mut resource_contents = std::io::Cursor::new(Vec::new());
-            let (_written, build_deps) = registry
-                .serialize_resource(kind, handle, &mut resource_contents)
-                .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
-            (resource_contents.into_inner(), build_deps)
-        };
+        let mut offline_content = OfflineContent::new(name, kind_name, kind);
+
+        let mut content = std::io::Cursor::new(Vec::new());
+        let (_written, mut build_dependencies) = registry
+            .serialize_resource(kind, handle, &mut content)
+            .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
+
+        offline_content
+            .metadata
+            .dependencies
+            .append(&mut build_dependencies);
+        offline_content.content.append(&mut content.into_inner());
+
+        let resource_bytes =
+            rmp_serde::to_vec(&offline_content).expect("failed to encode resource contents");
 
         self.workspace
-            .add_resource(&id.as_raw().into(), name.as_str(), &resource_contents)
+            .add_resource(
+                &id.as_raw().into(),
+                offline_content.metadata.name.as_str(),
+                &resource_bytes,
+            )
             .await?;
 
         let type_id = ResourceTypeAndId { kind, id };
@@ -467,40 +469,47 @@ impl Project {
     }
 
     /// Loads a resource of a given id.
-    #[allow(clippy::unused_self)]
     pub async fn load_resource(
         &self,
         type_id: ResourceTypeAndId,
         resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
-        self.workspace
-            .load_resource(&type_id.id.as_raw().into(), |reader| {
-                resources.deserialize_resource(type_id, reader)
-            })
-            .await?
+        let resource_bytes = self
+            .workspace
+            .load_resource(&type_id.id.as_raw().into())
+            .await?;
+
+        let offline_content: OfflineContent =
+            rmp_serde::from_slice(&resource_bytes).expect("failed to decode resource contents");
+
+        let mut reader = std::io::Cursor::new(offline_content.content);
+
+        resources
+            .deserialize_resource(type_id, &mut reader)
             .map_err(|e| Error::ResourceRegistry(type_id, e))
     }
 
     /// Returns information about a given resource from its `.meta` file.
-    pub fn resource_info(
+    pub async fn resource_info(
         &self,
         id: ResourceId,
     ) -> Result<(ResourceType, Vec<ResourcePathId>), Error> {
-        let meta = self.read_meta(id)?;
+        let meta = self.read_meta(id).await?;
         let dependencies = meta.dependencies;
 
         Ok((meta.type_id, dependencies))
     }
 
     /// Returns type of the resource.
-    pub fn resource_type(&self, id: ResourceId) -> Result<ResourceType, Error> {
-        let meta = self.read_meta(id)?;
+    pub async fn resource_type(&self, id: ResourceId) -> Result<ResourceType, Error> {
+        let meta = self.read_meta(id).await?;
         Ok(meta.type_id)
     }
 
     /// Returns the name of the resource from its `.meta` file.
-    pub fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(id)?;
+    #[async_recursion]
+    pub async fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
+        let meta = self.read_meta(id).await?;
         if let Some((resource_id, suffix)) = meta
             .name
             .as_str()
@@ -508,7 +517,7 @@ impl Project {
             .and_then(|v| v.split_once('/'))
         {
             if let Ok(type_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id) {
-                if let Ok(mut parent_path) = self.resource_name(type_id.id) {
+                if let Ok(mut parent_path) = self.resource_name(type_id.id).await {
                     parent_path.push(suffix);
                     return Ok(parent_path);
                 }
@@ -568,14 +577,14 @@ impl Project {
     }
 
     /// Returns the raw name of the resource from its `.meta` file.
-    pub fn raw_resource_name(&self, type_id: ResourceId) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(type_id)?;
+    pub async fn raw_resource_name(&self, type_id: ResourceId) -> Result<ResourcePathName, Error> {
+        let meta = self.read_meta(type_id).await?;
         Ok(meta.name)
     }
 
     /// Returns the type name of the resource from its `.meta` file.
-    pub fn resource_type_name(&self, id: ResourceId) -> Result<String, Error> {
-        let meta = self.read_meta(id)?;
+    pub async fn resource_type_name(&self, id: ResourceId) -> Result<String, Error> {
+        let meta = self.read_meta(id).await?;
         Ok(meta.type_name)
     }
 
@@ -609,16 +618,13 @@ impl Project {
         Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
-    #[allow(clippy::unused_self)]
-    fn read_meta(&self, _id: ResourceId) -> Result<Metadata, Error> {
-        // let path = self.metadata_path(id);
+    async fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
+        let resource_bytes = self.workspace.load_resource(&id.as_raw().into()).await?;
 
-        // let file = File::open(&path).map_err(|e| Error::Io(path.clone(), e))?;
+        let offline_content: OfflineContent =
+            rmp_serde::from_slice(&resource_bytes).expect("failed to decode resource contents");
 
-        // let result = serde_json::from_reader(file).map_err(|e| Error::Parse(path, e))?;
-        // Ok(result)
-
-        Err(Error::FileNotFound("not implemented".to_owned()))
+        Ok(offline_content.metadata)
     }
 
     async fn update_meta<F>(&self, _id: ResourceId, mut _func: F)
@@ -1123,7 +1129,7 @@ mod tests {
             .await
             .unwrap();
 
-        let (_, dependencies) = project.resource_info(top_level_resource.id).unwrap();
+        let (_, dependencies) = project.resource_info(top_level_resource.id).await.unwrap();
 
         assert_eq!(dependencies.len(), 2);
     }

@@ -410,7 +410,7 @@ async fn main() -> Result<(), String> {
                     }
                 };
 
-                let pretty = pretty_name_from_pathid(&rid, &project, &config);
+                let pretty = pretty_name_from_pathid(&rid, &project, &config).await;
                 println!("Explained: \t{}", pretty);
                 println!("ResourcePathId: {}", rid);
             } else {
@@ -442,7 +442,7 @@ async fn main() -> Result<(), String> {
             match command {
                 SourceCommands::List => {
                     for id in project.resource_list().await {
-                        let name = project.resource_name(id).map_err(|e| e.to_string())?;
+                        let name = project.resource_name(id).await.map_err(|e| e.to_string())?;
                         println!("{} = {}", name, id);
                     }
                 }
@@ -450,7 +450,7 @@ async fn main() -> Result<(), String> {
                     let type_id = id
                         .parse::<ResourceTypeAndId>()
                         .map_err(std::string::ToString::to_string)?;
-                    if let Ok(name) = project.resource_name(type_id.id) {
+                    if let Ok(name) = project.resource_name(type_id.id).await {
                         println!("{} = {}", name, type_id);
                     } else {
                         println!("None");
@@ -528,8 +528,9 @@ async fn main() -> Result<(), String> {
                             .map_err(|_e| format!("Invalid ResourcePathId '{}'", id))?
                     }
                 };
-                let output = build
-                    .print_build_graph(rid, |rid| pretty_name_from_pathid(rid, &project, &config));
+                let output = build.print_build_graph(rid, |rid| {
+                    pretty_name_from_pathid(rid, &project, &config).await
+                });
                 println!("{}", output);
             } else {
                 return Err(
@@ -803,10 +804,14 @@ async fn parse_asset_file(
 }
 */
 
-fn pretty_name_from_pathid(rid: &ResourcePathId, project: &Project, config: &Config) -> String {
+async fn pretty_name_from_pathid(
+    rid: &ResourcePathId,
+    project: &Project,
+    config: &Config,
+) -> String {
     let mut output_text = String::new();
 
-    if let Ok(source_name) = project.resource_name(rid.source_resource().id) {
+    if let Ok(source_name) = project.resource_name(rid.source_resource().id).await {
         output_text.push_str(&source_name.to_string());
     } else {
         output_text.push_str(&rid.source_resource().to_string());

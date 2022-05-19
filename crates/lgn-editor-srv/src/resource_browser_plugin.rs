@@ -82,10 +82,10 @@ impl IndexSnapshot {
 
         for id in ctx.project.resource_list().await {
             if let (Ok(raw_name), Ok(res_name)) = (
-                ctx.project.raw_resource_name(id),
-                ctx.project.resource_name(id),
+                ctx.project.raw_resource_name(id).await,
+                ctx.project.resource_name(id).await,
             ) {
-                let kind = ctx.project.resource_type(id).unwrap();
+                let kind = ctx.project.resource_type(id).await.unwrap();
                 let res_id = ResourceTypeAndId { kind, id };
 
                 let mut parent_id = raw_name.extract_parent_info().0;
@@ -357,6 +357,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 let path: String = ctx
                     .project
                     .resource_name(resource_id)
+                    .await
                     .unwrap_or_else(|_err| "".into())
                     .to_string();
 
@@ -365,7 +366,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
                     path.find(&request.search_token)?;
                 }
 
-                if let Ok(kind) = ctx.project.resource_type(resource_id) {
+                if let Ok(kind) = ctx.project.resource_type(resource_id).await {
                     Some(ResourceDescription {
                         id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
                             kind,
@@ -700,6 +701,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
             guard
                 .project
                 .resource_name(clone_id.id)
+                .await
                 .map_err(|err| Status::internal(err.to_string()))?
                 .as_str()
                 .to_string()
@@ -911,11 +913,12 @@ impl ResourceBrowser for ResourceBrowserRPC {
             .await
             .into_iter()
             .filter_map(|resource_id| {
-                if let Ok(kind) = ctx.project.resource_type(resource_id) {
+                if let Ok(kind) = ctx.project.resource_type(resource_id).await {
                     if asset_types.contains(&kind) {
                         let path: String = ctx
                             .project
                             .resource_name(resource_id)
+                            .await
                             .unwrap_or_else(|_err| "".into())
                             .to_string();
                         Some(Asset {

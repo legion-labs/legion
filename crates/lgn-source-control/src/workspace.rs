@@ -2,9 +2,9 @@ use std::{collections::BTreeSet, fmt::Formatter};
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, IndexableResource, OrderedIndexer, ResourceIdentifier,
-        ResourceReader, ResourceWriter, StaticIndexer, StringPathIndexer, Tree, TreeIdentifier,
-        TreeLeafNode, TreeWriter,
+        BasicIndexer, IndexKey, IndexableResource, ResourceIdentifier, ResourceReader,
+        ResourceWriter, StaticIndexer, StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode,
+        TreeWriter,
     },
     Provider,
 };
@@ -172,10 +172,7 @@ impl Workspace {
         Ok(resource_id.is_some())
     }
 
-    pub async fn load_resource<F, R>(&self, id: &IndexKey, f: F) -> Result<R>
-    where
-        F: FnOnce(&mut dyn std::io::Read) -> R,
-    {
+    pub async fn load_resource(&self, id: &IndexKey) -> Result<Vec<u8>> {
         if let Some(resource_id) = self.get_resource_identifier(id).await? {
             let resource = self
                 .transaction
@@ -183,9 +180,7 @@ impl Workspace {
                 .await
                 .map_err(Error::ContentStoreIndexing)?;
 
-            let mut cursor = std::io::Cursor::new(resource.0);
-
-            Ok(f(&mut cursor))
+            Ok(resource.0)
         } else {
             Err(Error::ResourceNotFound { id: id.clone() })
         }
@@ -209,7 +204,7 @@ impl Workspace {
         tree_id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         self.main_index
-            .enumerate_leaves_in_range(&self.transaction, tree_id, 0_u128..)
+            .enumerate_leaves(&self.transaction, tree_id)
             .await
             .map_err(Error::ContentStoreIndexing)?
             .map(|(key, leaf_res)| match leaf_res {

@@ -36,6 +36,7 @@ impl TransactionOperation for RenameResourceOperation {
         let mut raw_name = ctx
             .project
             .raw_resource_name(self.resource_id.id)
+            .await
             .map_err(|err| Error::Project(self.resource_id, err))?;
         raw_name.replace_parent_info(None, Some(self.new_path.clone()));
 

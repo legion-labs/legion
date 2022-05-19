@@ -53,6 +53,7 @@ impl TransactionOperation for CloneResourceOperation {
         let mut source_raw_name = ctx
             .project
             .raw_resource_name(self.source_resource_id.id)
+            .await
             .map_err(|err| Error::Project(self.source_resource_id, err))?;
         source_raw_name.replace_parent_info(self.target_parent_id, None);
 

@@ -177,7 +177,7 @@ impl TransactionManager {
         let mut resource_handles = self.loaded_resource_handles.lock().await;
 
         for resource_id in project.resource_list().await {
-            let kind = project.resource_type(resource_id).ok();
+            let kind = project.resource_type(resource_id).await.ok();
 
             if kinds.iter().any(|k| Some(*k) == kind) {
                 let kind = kind.unwrap();

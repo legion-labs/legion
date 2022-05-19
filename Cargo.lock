@@ -4540,8 +4540,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-recursion",
- "async-trait",
- "bincode",
  "crossbeam-channel",
  "erased-serde",
  "hex",
@@ -4552,6 +4550,7 @@ dependencies = [
  "lgn-source-control",
  "lgn-tracing",
  "lgn-utils",
+ "rmp-serde",
  "serde",
  "serde_json",
  "tempfile",

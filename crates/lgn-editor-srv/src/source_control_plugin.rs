@@ -587,7 +587,7 @@ impl SourceControl for SourceControlRPC {
             })?;
 
             for (id, change_type) in changes {
-                if let Ok(kind) = ctx.project.resource_type(id) {
+                if let Ok(kind) = ctx.project.resource_type(id).await {
                     let resource_id = ResourceTypeAndId { kind, id };
                     match change_type {
                         ChangeType::Add | ChangeType::Edit => {

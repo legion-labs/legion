@@ -147,7 +147,8 @@ pub async fn build_offline(
 
                     if let Some(entity) = handle.instantiate(&resources) {
                         if let Some(parent_id) = &entity.parent {
-                            let mut raw_name = project.raw_resource_name(resource_id.id).unwrap();
+                            let mut raw_name =
+                                project.raw_resource_name(resource_id.id).await.unwrap();
                             raw_name.replace_parent_info(Some(parent_id.source_resource()), None);
                             project
                                 .rename_resource(resource_id, &raw_name)

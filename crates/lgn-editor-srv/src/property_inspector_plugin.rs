@@ -277,6 +277,7 @@ impl PropertyInspector for PropertyInspectorRPC {
                 path: ctx
                     .project
                     .resource_name(resource_id.id)
+                    .await
                     .unwrap_or_else(|_err| "".into())
                     .to_string(),
                 version: 1,

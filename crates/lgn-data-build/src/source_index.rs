@@ -310,7 +310,7 @@ impl SourceIndex {
                     hasher.finish_256().encode_hex::<String>()
                 };
 
-                let (kind, resource_deps) = project.resource_info(resource_id)?;
+                let (kind, resource_deps) = project.resource_info(resource_id).await?;
 
                 content.update_resource(
                     ResourcePathId::from(ResourceTypeAndId {

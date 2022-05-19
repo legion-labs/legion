@@ -41,6 +41,7 @@ impl TransactionOperation for DeleteResourceOperation {
                 self.old_resource_name = Some(
                     ctx.project
                         .raw_resource_name(self.resource_id.id)
+                        .await
                         .map_err(|err| Error::Project(self.resource_id, err))?,
                 );
                 self.old_resource_data = Some(old_resource_data);

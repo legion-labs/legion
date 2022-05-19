@@ -32,6 +32,7 @@ impl TransactionOperation for ReparentResourceOperation {
         let raw_name = ctx
             .project
             .raw_resource_name(self.resource_id.id)
+            .await
             .map_err(|err| Error::Project(self.resource_id, err))?;
 
         // Check if the parent is a resource or just a path
