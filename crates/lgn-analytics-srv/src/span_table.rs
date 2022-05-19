@@ -4,7 +4,6 @@ use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_tracing::prelude::*;
-use parquet::column::writer::ColumnWriter;
 use parquet::file::properties::WriterProperties;
 use parquet::file::writer::FileWriter;
 use parquet::file::writer::SerializedFileWriter;
@@ -146,58 +145,22 @@ pub fn write_parquet(file_path: &Path, spans: &SpanTable) -> Result<()> {
     let mut row_group_writer = writer
         .next_row_group()
         .with_context(|| "creating row group writer")?;
-    if let Some(mut col_writer) = row_group_writer
-        .next_column()
-        .with_context(|| "creating column writer")?
-    {
-        if let ColumnWriter::Int32ColumnWriter(writer_impl) = &mut col_writer {
-            writer_impl
-                .write_batch(&spans.hashes.values, None, None)
-                .with_context(|| "writing hash batch")?;
-        }
-        row_group_writer
-            .close_column(col_writer)
-            .with_context(|| "closing column")?;
-    }
-    if let Some(mut col_writer) = row_group_writer
-        .next_column()
-        .with_context(|| "creating column writer")?
-    {
-        if let ColumnWriter::Int32ColumnWriter(writer_impl) = &mut col_writer {
-            writer_impl
-                .write_batch(&spans.depths.values, None, None)
-                .with_context(|| "writing depth batch")?;
-        }
-        row_group_writer
-            .close_column(col_writer)
-            .with_context(|| "closing column")?;
-    }
-    if let Some(mut col_writer) = row_group_writer
-        .next_column()
-        .with_context(|| "creating column writer")?
-    {
-        if let ColumnWriter::DoubleColumnWriter(writer_impl) = &mut col_writer {
-            writer_impl
-                .write_batch(&spans.begins.values, None, None)
-                .with_context(|| "writing begins batch")?;
-        }
-        row_group_writer
-            .close_column(col_writer)
-            .with_context(|| "closing column")?;
-    }
-    if let Some(mut col_writer) = row_group_writer
-        .next_column()
-        .with_context(|| "creating column writer")?
-    {
-        if let ColumnWriter::DoubleColumnWriter(writer_impl) = &mut col_writer {
-            writer_impl
-                .write_batch(&spans.ends.values, None, None)
-                .with_context(|| "writing ends batch")?;
-        }
-        row_group_writer
-            .close_column(col_writer)
-            .with_context(|| "closing column")?;
-    }
+    spans
+        .hashes
+        .write_batch(&mut *row_group_writer)
+        .with_context(|| "writing hash column")?;
+    spans
+        .depths
+        .write_batch(&mut *row_group_writer)
+        .with_context(|| "writing depth column")?;
+    spans
+        .begins
+        .write_batch(&mut *row_group_writer)
+        .with_context(|| "writing begins column")?;
+    spans
+        .ends
+        .write_batch(&mut *row_group_writer)
+        .with_context(|| "writing begins column")?;
     writer
         .close_row_group(row_group_writer)
         .with_context(|| "closing row group")?;
