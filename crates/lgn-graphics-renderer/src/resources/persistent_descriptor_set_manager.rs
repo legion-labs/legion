@@ -2,7 +2,7 @@ use lgn_app::App;
 use lgn_ecs::prelude::ResMut;
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSet, DescriptorSetWriter,
-    DeviceContext, TextureView,
+    DeviceContext, Sampler, TextureView,
 };
 
 use crate::{cgen, labels::RenderStage, resources::IndexAllocator};
@@ -82,20 +82,27 @@ impl PersistentDescriptorSetManager {
             self.descriptor_set.layout(),
         );
 
-        // todo:  cache this index
-        let material_textures_index = self
-            .descriptor_set
-            .layout()
-            .find_descriptor_index_by_name("material_textures")
-            .unwrap();
-
         writer.set_descriptors_by_index_and_offset(
-            material_textures_index,
+            self.material_textures_index,
             index,
             &[DescriptorRef::TextureView(texture_view)],
         );
 
         index
+    }
+
+    pub fn set_sampler(&mut self, idx: u32, samler: Sampler) {
+        let mut writer = DescriptorSetWriter::new(
+            &self.device_context,
+            self.descriptor_set.handle(),
+            self.descriptor_set.layout(),
+        );
+
+        writer.set_descriptors_by_index_and_offset(
+            self.material_samplers_index,
+            index,
+            &[DescriptorRef::Sampler(sampler)],
+        );
     }
 
     pub fn set_sampler(&mut self) {
