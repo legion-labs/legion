@@ -4,7 +4,6 @@ use super::{Error, Result};
 
 use super::{ApiKey, ApiKeyValidator};
 
-#[derive(Clone)]
 pub struct MemoryValidation {
     api_keys: Vec<ApiKey>,
 }

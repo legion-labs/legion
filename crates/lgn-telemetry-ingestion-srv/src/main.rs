@@ -18,7 +18,7 @@ mod sql_migration;
 mod sql_telemetry_db;
 mod web_ingestion_service;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -63,7 +63,7 @@ async fn serve_grpc(
     // For now we still load the API key from the environment. Next step:
     // validating it against a database.
     let api_key = std::env::var("LGN_TELEMETRY_GRPC_API_KEY")?.into();
-    let validation = lgn_auth::api_key::MemoryValidation::new(vec![api_key]);
+    let validation = Arc::new(lgn_auth::api_key::MemoryValidation::new(vec![api_key]));
     let auth_layer =
         AsyncRequireAuthorizationLayer::new(lgn_auth::api_key::RequestAuthorizer::new(validation));
 

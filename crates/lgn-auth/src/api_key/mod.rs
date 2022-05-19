@@ -2,7 +2,7 @@ mod errors;
 mod memory_validation;
 mod request_authorizer;
 
-use std::fmt::Formatter;
+use std::{fmt::Formatter, sync::Arc};
 
 use async_trait::async_trait;
 pub use errors::{Error, Result};
@@ -28,4 +28,20 @@ impl From<String> for ApiKey {
 #[async_trait]
 pub trait ApiKeyValidator {
     async fn validate_api_key(&self, api_key: ApiKey) -> Result<()>;
+}
+
+/// Blanket implementation for &T.
+#[async_trait]
+impl<T: ApiKeyValidator + Send + Sync + ?Sized> ApiKeyValidator for &T {
+    async fn validate_api_key(&self, api_key: ApiKey) -> Result<()> {
+        (**self).validate_api_key(api_key).await
+    }
+}
+
+/// Blanket implementation for Arc<T>.
+#[async_trait]
+impl<T: ApiKeyValidator + Send + Sync> ApiKeyValidator for Arc<T> {
+    async fn validate_api_key(&self, api_key: ApiKey) -> Result<()> {
+        (**self).validate_api_key(api_key).await
+    }
 }
