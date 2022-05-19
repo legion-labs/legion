@@ -4,8 +4,6 @@
 
   import { debounce } from "@lgn/web-client/src/lib/event";
 
-  type Id = $$Generic<keyof Fluent>;
-
   const dispatch = createEventDispatcher<{
     debouncedInput: { value: string; encodedValue: string };
     clear: undefined;
