@@ -193,7 +193,7 @@ where
         &'s self,
         provider: &'s Provider,
         root_id: &'s TreeIdentifier,
-    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's>>> {
+    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + Send + 's>>> {
         let leaves = self.first.enumerate_leaves(provider, root_id).await?;
 
         Ok(Box::pin(stream! {

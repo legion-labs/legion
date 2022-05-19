@@ -144,7 +144,7 @@ pub trait BasicIndexer {
         &'s self,
         provider: &'s Provider,
         root_id: &'s TreeIdentifier,
-    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's>>> {
+    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + Send + 's>>> {
         Ok(Box::pin(tree_leaves(
             provider,
             root_id,
@@ -172,7 +172,7 @@ pub trait OrderedIndexer {
         provider: &'s Provider,
         root_id: &'s TreeIdentifier,
         range: R,
-    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's>>>
+    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + Send + 's>>>
     where
         T: Into<IndexKey> + Clone,
         R: RangeBounds<T> + Send + 's;
@@ -221,7 +221,7 @@ pub trait RecursiveIndexer {
         provider: &'s Provider,
         root_id: &'s TreeIdentifier,
         index_key: &'s IndexKey,
-    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + 's>>> {
+    ) -> Result<Pin<Box<dyn Stream<Item = (IndexKey, Result<TreeLeafNode>)> + Send + 's>>> {
         match self.get(provider, root_id, index_key).await? {
             Some(node) => Ok(match node {
                 TreeNode::Leaf(leaf_node) => Box::pin(futures::stream::once(async {
