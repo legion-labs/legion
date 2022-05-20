@@ -20,7 +20,7 @@ use crate::{
     cgen::{
         self,
         cgen_type::{
-            CullingDebugData, CullingEfficiancyStats, CullingOptions, GpuInstanceData,
+            CullingDebugData, CullingEfficiencyStats, CullingOptions, GpuInstanceData,
             RenderPassData,
         },
         shader,
@@ -165,7 +165,7 @@ pub struct MeshRenderer {
     culling_shader_first_pass: Option<PipelineHandle>,
     culling_shader_second_pass: Option<PipelineHandle>,
     culling_buffers: CullingArgBuffers,
-    culling_stats: CullingEfficiancyStats,
+    culling_stats: CullingEfficiencyStats,
 
     tmp_batch_ids: Vec<u32>,
     tmp_pipeline_handles: Vec<PipelineHandle>,
@@ -191,14 +191,14 @@ impl MeshRenderer {
                 culling_debug: None,
                 stats_buffer: GpuBufferWithReadback::new(
                     device_context,
-                    std::mem::size_of::<CullingEfficiancyStats>() as u64,
+                    std::mem::size_of::<CullingEfficiencyStats>() as u64,
                 ),
                 stats_buffer_readback: None,
                 tmp_culled_count: None,
                 tmp_culled_args: None,
                 tmp_culled_instances: None,
             },
-            culling_stats: CullingEfficiancyStats::default(),
+            culling_stats: CullingEfficiencyStats::default(),
             instance_data_indices: vec![],
             gpu_instance_data: vec![],
             depth_count_buffer_count: 0,
@@ -321,7 +321,7 @@ impl MeshRenderer {
             0,
             usize::MAX,
             u64::MAX,
-            |data: &[CullingEfficiancyStats]| {
+            |data: &[CullingEfficiencyStats]| {
                 self.culling_stats = data[0];
             },
         );

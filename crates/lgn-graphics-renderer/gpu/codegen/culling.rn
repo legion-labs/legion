@@ -1,5 +1,5 @@
-pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set ) {    
-    [        
+pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set ) {
+    [
         #{
             type: "Struct",
             name: "GpuInstanceData",
@@ -25,7 +25,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
         },
         #{
             type: "Struct",
-            name: "CullingEfficiancyStats",
+            name: "CullingEfficiencyStats",
             fields: [
                 #{ name:"total_elements", ty:"Uint1" },
                 #{ name:"frustum_visible", ty:"Uint1" },
@@ -52,7 +52,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             fields: [
                 #{ name:"first_render_pass", ty:"Uint1" },
                 #{ name:"num_render_passes", ty:"Uint1" },
-                #{ name:"hzb_max_lod", ty:"Uint1" },                
+                #{ name:"hzb_max_lod", ty:"Uint1" },
                 #{ name:"hzb_pixel_extents", ty:"Float2" },
                 #{ name:"options", ty:"CullingOptions" },
             ]
@@ -70,9 +70,9 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
                 #{ name:"culled_count", type:"RWStructuredBuffer", content:"Uint1" },
                 #{ name:"culled_args", type:"RWStructuredBuffer", content:"Uint3" },
                 #{ name:"culled_instances", type:"RWStructuredBuffer", content:"GpuInstanceData" },
-                #{ name:"culling_efficiency", type:"RWStructuredBuffer", content:"CullingEfficiancyStats" },
+                #{ name:"culling_efficiency", type:"RWStructuredBuffer", content:"CullingEfficiencyStats" },
                 #{ name:"culling_debug", type:"RWStructuredBuffer", content:"CullingDebugData" },
-            ]        
+            ]
         },
         #{
             type: "PipelineLayout",
@@ -80,22 +80,22 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
             descriptor_sets: [ persistent_descriptor_set.name, frame_descriptor_set.name, view_descriptor_set.name, "CullingDescriptorSet" ],
             push_constant: "CullingPushConstantData"
         },
-        #{            
+        #{
             type: "Shader",
             name: "CullingShader",
             path: "gpu/shaders/culling.hlsl",
-            pipeline_layout: "CullingPipelineLayout",    
-            options: [ "FIRST_PASS", "SECOND_PASS" ],        
+            pipeline_layout: "CullingPipelineLayout",
+            options: [ "FIRST_PASS", "SECOND_PASS" ],
             instances: [
-                #{    
+                #{
                     key: [ "FIRST_PASS" ],
                     stages: [ "CS" ],
-                },   
-                #{    
+                },
+                #{
                     key: [ "SECOND_PASS" ],
                     stages: [ "CS" ],
-                },               
-            ]            
+                },
+            ]
         }
     ]
 }
