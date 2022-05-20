@@ -1,6 +1,6 @@
 use futures_util::future::BoxFuture;
 use hyper::{Request, Response, StatusCode};
-use lgn_tracing::debug;
+use lgn_tracing::{debug, warn};
 use tower_http::auth::AsyncAuthorizeRequest;
 
 use super::{ApiKey, ApiKeyValidator};
@@ -39,14 +39,14 @@ where
                     let parts = authorization.split_whitespace().collect::<Vec<_>>();
 
                     if parts.len() != 2 {
-                        debug!("Invalid authorization header: expected `Bearer <api-key>`");
+                        warn!("Invalid authorization header: expected `Bearer <api-key>`");
 
                         Err(Response::builder()
                             .status(StatusCode::UNAUTHORIZED)
                             .body(Default::default())
                             .unwrap())
                     } else if parts[0] != "Bearer" {
-                        debug!("Invalid authorization header: expected `Bearer <api-key>` but got `{} <...>`", parts[0]);
+                        warn!("Invalid authorization header: expected `Bearer <api-key>` but got `{} <...>`", parts[0]);
 
                         Err(Response::builder()
                             .status(StatusCode::UNAUTHORIZED)
@@ -57,7 +57,7 @@ where
                     }
                 }
                 Err(err) => {
-                    debug!("Invalid authorization header: {}", err);
+                    warn!("Invalid authorization header: {}", err);
 
                     Err(Response::builder()
                         .status(StatusCode::UNAUTHORIZED)
@@ -66,7 +66,7 @@ where
                 }
             }
         } else {
-            debug!("No authorization header found");
+            warn!("No authorization header found");
 
             Err(Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
@@ -93,11 +93,18 @@ where
 
         Box::pin(async move {
             match Self::get_api_key(&mut request) {
-                Ok(api_key) => {
-                    validator.validate_api_key(api_key).await?;
+                Ok(api_key) => match validator.validate_api_key(api_key).await {
+                    Ok(_) => {
+                        debug!("API key validation succeeded.");
 
-                    Ok(request)
-                }
+                        Ok(request)
+                    }
+                    Err(err) => {
+                        warn!("API key validation failed: {}", err);
+
+                        Err(err.into())
+                    }
+                },
                 Err(response) => Err(response),
             }
         })
