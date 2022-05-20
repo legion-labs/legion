@@ -46,7 +46,7 @@ impl UnifiedStaticBuffer {
         let read_only_view =
             buffer.create_view(BufferViewDef::as_byte_address_buffer(element_count, true));
 
-        let mut required_alignment = std::cmp::max(
+        let required_alignment = std::cmp::max(
             device_context
                 .device_info()
                 .min_uniform_buffer_offset_alignment,
@@ -54,7 +54,6 @@ impl UnifiedStaticBuffer {
                 .device_info()
                 .min_storage_buffer_offset_alignment,
         );
-        required_alignment = 256;
 
         let allocator = UnifiedStaticBufferAllocator::new(&buffer, u64::from(required_alignment));
 

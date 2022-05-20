@@ -1,6 +1,9 @@
 use lgn_graphics_api::CommandBuffer;
 
-use crate::resources::{MaterialId, MeshMetaData};
+use crate::{
+    components::MeshTopology,
+    resources::{MaterialId, MeshMetaData},
+};
 
 use super::GpuInstanceId;
 
@@ -8,7 +11,6 @@ use super::GpuInstanceId;
 pub struct RenderElement {
     gpu_instance_id: GpuInstanceId,
     material_id: MaterialId,
-    vertex_count: u32,
     index_count: u32,
     index_offset: u32,
 }
@@ -19,11 +21,11 @@ impl RenderElement {
         material_id: MaterialId,
         mesh: &MeshMetaData,
     ) -> Self {
+        assert_eq!(mesh.topology, MeshTopology::TriangleList);
         Self {
             gpu_instance_id,
             material_id,
-            vertex_count: mesh.vertex_count,
-            index_count: mesh.index_count,
+            index_count: mesh.index_count.get(),
             index_offset: mesh.index_offset,
         }
     }
@@ -37,16 +39,12 @@ impl RenderElement {
     }
 
     pub fn draw(&self, cmd_buffer: &mut CommandBuffer) {
-        if self.index_count != 0 {
-            cmd_buffer.cmd_draw_indexed_instanced(
-                self.index_count,
-                self.index_offset,
-                1,
-                self.gpu_instance_id.index(),
-                0,
-            );
-        } else {
-            cmd_buffer.cmd_draw_instanced(self.vertex_count, 0, 1, self.gpu_instance_id.index());
-        }
+        cmd_buffer.cmd_draw_indexed_instanced(
+            self.index_count,
+            self.index_offset,
+            1,
+            self.gpu_instance_id.index(),
+            0,
+        );
     }
 }

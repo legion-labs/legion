@@ -197,9 +197,5 @@ fn render_mesh(
 
     cmd_buffer.cmd_push_constant_typed(&push_constant_data);
 
-    if mesh.index_count != 0 {
-        cmd_buffer.cmd_draw_indexed(mesh.index_count, mesh.index_offset, 0);
-    } else {
-        cmd_buffer.cmd_draw(mesh.vertex_count, 0);
-    }
+    cmd_buffer.cmd_draw_indexed(mesh.index_count.get(), mesh.index_offset, 0);
 }

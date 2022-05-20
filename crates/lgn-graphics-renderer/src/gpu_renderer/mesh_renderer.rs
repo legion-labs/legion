@@ -181,9 +181,9 @@ impl MeshRenderer {
     ) -> Self {
         Self {
             default_layers: vec![
-                RenderLayer::new(allocator, false),
-                RenderLayer::new(allocator, false),
-                RenderLayer::new(allocator, false),
+                RenderLayer::new(allocator, true),
+                RenderLayer::new(allocator, true),
+                RenderLayer::new(allocator, true),
             ],
             culling_buffers: CullingArgBuffers {
                 draw_count: None,
@@ -272,11 +272,14 @@ impl MeshRenderer {
         }
 
         self.gpu_instance_data.push(instance_data);
+
+        self.invariant();
     }
 
     fn unregister_element(&mut self, gpu_instance_id: GpuInstanceId) {
         let gpu_instance_index = gpu_instance_id.index();
         let removed_index = self.instance_data_idxs[gpu_instance_index as usize] as usize;
+        assert!(removed_index as u32 != u32::MAX);
         self.instance_data_idxs[gpu_instance_index as usize] = u32::MAX;
 
         let removed_instance = self.gpu_instance_data.swap_remove(removed_index as usize);
@@ -292,6 +295,17 @@ impl MeshRenderer {
 
         for layer in &mut self.default_layers {
             layer.unregister_element(removed_instance.state_id().into(), gpu_instance_id);
+        }
+
+        self.invariant();
+    }
+
+    fn invariant(&self) {
+        for (instance_idx, slot_idx) in self.instance_data_idxs.iter().enumerate() {
+            if *slot_idx != u32::MAX {
+                let gpu_instance_data = &self.gpu_instance_data[*slot_idx as usize];
+                assert!(gpu_instance_data.gpu_instance_id() == (instance_idx as u32).into());
+            }
         }
     }
 
@@ -607,7 +621,7 @@ impl MeshRenderer {
 
             let mut options = CullingOptions::empty();
             if gather_perf_stats {
-                // options |= CullingOptions::GATHER_PERF_STATS;
+                options |= CullingOptions::GATHER_PERF_STATS;
             }
 
             let mut culling_constant_data = cgen::cgen_type::CullingPushConstantData::default();

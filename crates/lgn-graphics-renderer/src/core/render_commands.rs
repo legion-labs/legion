@@ -2,6 +2,7 @@ use std::{alloc::Layout, slice, sync::Arc};
 
 use egui::mutex::RwLock;
 use lgn_core::{Handle, ObjectPool};
+use lgn_utils::memory::round_size_up_to_alignment_usize;
 
 use super::RenderResources;
 
@@ -189,6 +190,15 @@ impl BinaryWriter {
 
     pub fn len(&self) -> usize {
         self.buf.len()
+    }
+
+    pub fn align(&mut self, alignment: usize) -> usize {
+        let new_len = round_size_up_to_alignment_usize(self.buf.len(), alignment);
+        let padding = new_len - self.buf.len();
+        if padding > 0 {
+            self.buf.resize(new_len, 0xff);
+        }
+        padding
     }
 
     pub fn write<T: Sized>(&mut self, data: &T) -> usize {

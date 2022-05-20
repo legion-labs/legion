@@ -1,3 +1,5 @@
+use std::num::NonZeroU32;
+
 use lgn_graphics_api::ResourceUsage;
 use lgn_math::{Vec3, Vec4};
 use strum::EnumIter;
@@ -5,18 +7,22 @@ use strum::EnumIter;
 use super::{
     StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
 };
-use crate::{components::Mesh, core::RenderCommandBuilder};
+use crate::{
+    components::{Mesh, MeshTopology},
+    core::RenderCommandBuilder,
+};
 
 #[derive(Clone, Copy)]
 pub struct MeshId(u32);
 
 pub struct MeshMetaData {
-    pub vertex_count: u32,
-    pub index_count: u32,
-    pub index_offset: u32,
-    pub mesh_description_offset: u32,
-    pub positions: Vec<Vec3>, // for AABB calculation
+    pub vertex_count: NonZeroU32,
+    pub index_count: NonZeroU32,
+    pub index_offset: u32,            // static_buffer_index_offset
+    pub mesh_description_offset: u32, // static_buffer_mesh_description_offset
+    pub positions: Vec<Vec3>,         // for AABB calculation
     pub bounding_sphere: Vec4,
+    pub topology: MeshTopology,
     _allocation: StaticBufferAllocation,
 }
 
@@ -74,21 +80,29 @@ impl MeshManager {
 
     pub fn add_mesh(&mut self, render_commands: &mut RenderCommandBuilder, mesh: &Mesh) -> MeshId {
         let (buf, index_byte_offset) = mesh.pack_gpu_data();
+        assert_eq!(index_byte_offset % 4, 0);
 
         let allocation = self
             .allocator
             .allocate(buf.len() as u64, ResourceUsage::AS_SHADER_RESOURCE);
 
         let allocation_offset = u32::try_from(allocation.byte_offset()).unwrap();
+        assert_eq!(allocation_offset % 4, 0);
+
+        let index_offset =
+            (allocation_offset + index_byte_offset) / std::mem::size_of::<u16>() as u32;
+        assert_eq!(index_offset % 4, 0);
+
+        let mesh_id = self.static_meshes.len();
 
         self.static_meshes.push(MeshMetaData {
-            vertex_count: mesh.num_vertices() as u32,
-            index_count: mesh.num_indices() as u32,
-            index_offset: (allocation_offset + index_byte_offset)
-                / std::mem::size_of::<u16>() as u32,
+            vertex_count: NonZeroU32::new(mesh.num_vertices() as u32).unwrap(),
+            index_count: NonZeroU32::new(mesh.num_indices() as u32).unwrap(),
+            index_offset,
             mesh_description_offset: allocation_offset,
             positions: mesh.positions.clone(),
             bounding_sphere: mesh.bounding_sphere,
+            topology: mesh.topology,
             _allocation: allocation.clone(),
         });
 
@@ -97,7 +111,7 @@ impl MeshManager {
             dst_offset: allocation.byte_offset(),
         });
 
-        MeshId(u32::try_from(self.static_meshes.len() - 1).unwrap())
+        MeshId(u32::try_from(mesh_id).unwrap())
     }
 
     pub fn get_default_mesh_id(&self, default_mesh_type: DefaultMeshType) -> MeshId {

@@ -12,7 +12,7 @@ use crate::{components::VisualComponent, labels::RenderStage};
 #[derive(Default)]
 pub(crate) struct MissingVisualTracker {
     resource_to_entity_set: BTreeMap<ResourceTypeAndId, HashSet<Entity>>,
-    resource_added: Vec<ResourceTypeAndId>,
+    resource_added: HashSet<ResourceTypeAndId>,
 }
 
 impl MissingVisualTracker {
@@ -38,17 +38,17 @@ impl MissingVisualTracker {
     }
 
     pub(crate) fn add_changed_resource(&mut self, resource_id: ResourceTypeAndId) {
-        self.resource_added.push(resource_id);
+        self.resource_added.insert(resource_id);
     }
 
     fn get_entities_to_update(&mut self) -> HashSet<Entity> {
         let mut entities = HashSet::new();
-        for model_resource_id in &self.resource_added {
-            if let Some(entry) = self.resource_to_entity_set.get(model_resource_id) {
+        for resource_id in &self.resource_added {
+            if let Some(entry) = self.resource_to_entity_set.get(resource_id) {
                 for entity in entry {
                     entities.insert(*entity);
                 }
-                self.resource_to_entity_set.remove_entry(model_resource_id);
+                self.resource_to_entity_set.remove_entry(resource_id);
             }
         }
         self.resource_added.clear();

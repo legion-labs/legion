@@ -27,11 +27,7 @@ impl PresenterWindow {
         let device_context = renderer.device_context();
         let swapchain = device_context.create_swapchain(
             hwnd,
-            SwapchainDef {
-                width: extents.width(),
-                height: extents.height(),
-                enable_vsync: true,
-            },
+            SwapchainDef::new(extents.width(), extents.height(), true),
         );
 
         Self {

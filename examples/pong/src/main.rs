@@ -621,7 +621,7 @@ async fn create_offline_model(
         normals: mesh.normals.unwrap(),
         tangents: mesh.tangents.unwrap(),
         tex_coords: mesh.tex_coords.unwrap(),
-        indices: mesh.indices.unwrap(),
+        indices: mesh.indices,
         colors: mesh
             .colors
             .map(|colors| colors.iter().map(|color| (*color).into()).collect())

@@ -369,8 +369,8 @@ impl SwapchainHelper {
                             // a counter to limit the frequency. (A sensible case for this is
                             // resizing a window - to avoid rebuilding swapchain every frame during
                             // the resize.
-                            window_height != self.swapchain_def.height
-                                || window_width != self.swapchain_def.width
+                            window_height != self.swapchain_def.height()
+                                || window_width != self.swapchain_def.width()
                         }
                         PresentSuccessResult::DeviceReset => {
                             debug!("Swapchain sent DeviceReset, rebuilding");
@@ -447,7 +447,7 @@ impl SwapchainHelper {
         let mut swapchain = shared_state.swapchain.lock().unwrap();
         let swapchain_def = swapchain.definition();
 
-        if swapchain_def.width != window_width || swapchain_def.height != window_height {
+        if swapchain_def.width() != window_width || swapchain_def.height() != window_height {
             debug!("Force swapchain rebuild due to changed window size");
             return Ok(TryAcquireNextImageResult::DeviceReset);
         }
@@ -490,11 +490,13 @@ impl SwapchainHelper {
                 event_listener.swapchain_destroyed(&self.device_context, &*swapchain)?;
             }
 
-            let mut swapchain_def = *swapchain.definition();
-            swapchain_def.width = window_width;
-            swapchain_def.height = window_height;
+            let swapchain_def = *swapchain.definition();
 
-            swapchain.rebuild(swapchain_def);
+            swapchain.rebuild(SwapchainDef::new(
+                window_width,
+                window_height,
+                swapchain_def.enable_vsync(),
+            ));
 
             if let Some(event_listener) = event_listener.as_mut() {
                 event_listener.swapchain_created(&self.device_context, &swapchain)?;

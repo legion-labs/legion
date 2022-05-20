@@ -32,7 +32,7 @@ use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
     AddressMode, ApiDef, BufferViewDef, CompareOp, DescriptorHeapDef, DeviceContext, Extents3D,
     FilterType, Format, MemoryUsage, MipMapMode, Queue, QueueType, ResourceFlags, ResourceUsage,
-    SamplerDef, TextureDef, TextureTiling,
+    SamplerDef, TextureDef, TextureTiling, BACKBUFFER_COUNT,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
@@ -154,7 +154,7 @@ impl Plugin for RendererPlugin {
         EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_TRANSFORM);
         EMBEDDED_FS.add_file(&gpu_renderer::SHADER_SHADER);
 
-        const NUM_RENDER_FRAMES: u64 = 2;
+        const NUM_RENDER_FRAMES: u64 = BACKBUFFER_COUNT as u64 + 1;
 
         //
         // Init in dependency order

@@ -129,6 +129,7 @@ impl VulkanSwapchain {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
             },
+            swapchain_def.backbuffer_count,
         )
         .map_err(|e| format!("{:?}", e))
         .unwrap();
@@ -295,6 +296,7 @@ impl Swapchain {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
             },
+            swapchain_def.backbuffer_count,
         )
         .unwrap();
 
@@ -336,6 +338,7 @@ impl SwapchainVulkanInstance {
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[VkPresentMode],
         window_inner_size: Extent2D,
+        backbufffer_count: u32,
     ) -> VkResult<Self> {
         let (available_formats, available_present_modes, surface_capabilities) =
             Self::query_swapchain_support(
@@ -376,6 +379,7 @@ impl SwapchainVulkanInstance {
             swapchain_image_usage_flags,
             old_swapchain,
             present_queue_family_index,
+            backbufffer_count,
         )?;
 
         let swapchain_images = unsafe {
@@ -647,25 +651,16 @@ impl SwapchainVulkanInstance {
         swapchain_image_usage_flags: vk::ImageUsageFlags,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_queue_family_index: u32,
+        backbufffer_count: u32,
     ) -> VkResult<CreateSwapchainResult> {
         trace!("VkSwapchain::create_swapchain");
-        // "simply sticking to this minimum means that we may sometimes have to wait on
-        // the driver to complete internal operations before we can acquire
-        // another image to render to. Therefore it is recommended to request at
-        // least one more image than the minimum"
-        let mut min_image_count = surface_capabilities.min_image_count + 1;
-
-        // But if there is a limit, we must not exceed it
-        if surface_capabilities.max_image_count > 0 {
-            min_image_count = u32::min(min_image_count, surface_capabilities.max_image_count);
-        }
 
         let swapchain_loader =
             khr::Swapchain::new(device_context.vk_instance(), device_context.vk_device());
 
         let mut swapchain_create_info = vk::SwapchainCreateInfoKHR::builder()
             .surface(surface)
-            .min_image_count(min_image_count)
+            .min_image_count(backbufffer_count)
             .image_format(surface_format.format)
             .image_color_space(surface_format.color_space)
             .image_extent(extents)

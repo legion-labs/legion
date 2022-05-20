@@ -82,6 +82,8 @@ pub use types::*;
 // Constants
 //
 
+pub const BACKBUFFER_COUNT: u32 = 2; // Needs to be known by the renderer (NUM_RENDER_FRAMES) and plugins (PresenterWindow)
+
 /// The maximum descriptor set layout index allowed. Vulkan only guarantees up
 /// to 4 are available
 pub const MAX_DESCRIPTOR_SET_LAYOUTS: usize = 4;

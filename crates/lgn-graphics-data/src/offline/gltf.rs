@@ -108,7 +108,6 @@ impl GltfFile {
                     }
                 }
 
-                let mut indices = Some(indices);
                 if tangents.is_empty() && !normals.is_empty() {
                     tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices)
                         .iter()
@@ -147,7 +146,7 @@ impl GltfFile {
                     normals,
                     tangents,
                     tex_coords,
-                    indices: indices.take().unwrap(),
+                    indices,
                     colors: Vec::new(),
                     material,
                 });

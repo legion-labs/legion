@@ -157,6 +157,7 @@ impl DebugRenderPass {
                 .pipeline_manager
                 .get_pipeline(self.wire_pso_depth_handle)
                 .unwrap();
+
             cmd_buffer.cmd_bind_pipeline(wire_pso_depth_pipeline);
 
             render_context.bind_default_descriptor_sets(cmd_buffer);
@@ -415,9 +416,9 @@ fn render_mesh(
 
     cmd_buffer.cmd_push_constant_typed(&push_constant_data);
 
-    if mesh_meta_data.index_count != 0 {
-        cmd_buffer.cmd_draw_indexed(mesh_meta_data.index_count, mesh_meta_data.index_offset, 0);
-    } else {
-        cmd_buffer.cmd_draw(mesh_meta_data.vertex_count, 0);
-    }
+    cmd_buffer.cmd_draw_indexed(
+        mesh_meta_data.index_count.get(),
+        mesh_meta_data.index_offset,
+        0,
+    );
 }

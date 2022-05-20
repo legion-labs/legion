@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use crate::components::{MaterialComponent, Mesh, ModelComponent, TextureComponent, TextureData};
+use crate::components::{
+    MaterialComponent, Mesh, MeshTopology, ModelComponent, TextureComponent, TextureData,
+};
 use lgn_app::EventReader;
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Handle, ResourceDescriptor};
@@ -146,7 +148,11 @@ pub(crate) fn create_model(
 
     let mut meshes = Vec::new();
     for mesh in &model.meshes {
+        assert!(!mesh.indices.is_empty());
+        assert!(!mesh.positions.is_empty());
+        assert_eq!(mesh.indices.len() % 3, 0); // triangle list
         meshes.push(Mesh {
+            indices: mesh.indices.clone(),
             positions: mesh.positions.clone(),
             normals: if !mesh.normals.is_empty() {
                 Some(mesh.normals.clone())
@@ -163,11 +169,6 @@ pub(crate) fn create_model(
             } else {
                 None
             },
-            indices: if !mesh.indices.is_empty() {
-                Some(mesh.indices.clone())
-            } else {
-                None
-            },
             colors: if !mesh.colors.is_empty() {
                 Some(mesh.colors.iter().map(|v| Into::into(*v)).collect())
             } else {
@@ -175,6 +176,7 @@ pub(crate) fn create_model(
             },
             material_id: mesh.material.clone(),
             bounding_sphere: Mesh::calculate_bounding_sphere(&mesh.positions),
+            topology: MeshTopology::TriangleList,
         });
     }
 
