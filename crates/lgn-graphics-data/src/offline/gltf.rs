@@ -213,7 +213,7 @@ impl GltfFile {
                 .map(|info| {
                     let roughness_sampler = info.texture().sampler();
                     if let Some(sampler) = &*material_sampler.borrow() {
-                        if samplers_differ(&sampler, &roughness_sampler) {
+                        if samplers_differ(sampler, &roughness_sampler) {
                             warn!("Material {} uses more than one sampler", material_name);
                         }
                     } else {
@@ -233,7 +233,7 @@ impl GltfFile {
                 .map(|info| {
                     let metalness_sampler = info.texture().sampler();
                     if let Some(sampler) = &*material_sampler.borrow() {
-                        if samplers_differ(&sampler, &metalness_sampler) {
+                        if samplers_differ(sampler, &metalness_sampler) {
                             warn!("Material {} uses more than one sampler", material_name);
                         }
                     } else {

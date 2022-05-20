@@ -5,26 +5,24 @@ use super::PersistentDescriptorSetManager;
 
 const SAMPLER_ARRAY_SIZE: usize = 64;
 pub struct SamplerManager {
-    samplers: [Sampler; SAMPLER_ARRAY_SIZE],
-    num: u32,
+    samplers: Vec<Sampler>,
 }
 
 impl SamplerManager {
-    pub fn new() -> SamplerManager {
-        SamplerManager {
-            samplers: [Sampler::default(); SAMPLER_ARRAY_SIZE],
-            num: 0,
+    pub fn new() -> Self {
+        Self {
+            samplers: Vec::new(),
         }
     }
 
     pub fn upload_sampler_data(
         &mut self,
-        persistent_descriptor_set_manager: &PersistentDescriptorSetManager,
+        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
         sampler: &Sampler,
     ) {
         if self.find_sampler(sampler).is_none() {
             persistent_descriptor_set_manager.set_sampler(
-                self.num,
+                self.samplers.len() as u32,
                 SamplerDef {
                     min_filter: match sampler.min_filter {
                         lgn_graphics_data::MinFilter::Nearest
@@ -76,15 +74,14 @@ impl SamplerManager {
                 return idx as u32;
             }
             self.add_sampler(sampler);
-            return self.num;
+            return self.samplers.len() as u32;
         }
         return SAMPLER_ARRAY_SIZE as u32;
     }
 
-    fn add_sampler(&self, sampler: &Sampler) {
-        assert!(self.num < SAMPLER_ARRAY_SIZE as u32);
-        self.samplers[self.num as usize] = *sampler;
-        self.num += 1;
+    fn add_sampler(&mut self, sampler: &Sampler) {
+        assert!(self.samplers.len() < SAMPLER_ARRAY_SIZE);
+        self.samplers.push(sampler.clone());
     }
 
     fn find_sampler(&self, sampler: &Sampler) -> Option<u32> {

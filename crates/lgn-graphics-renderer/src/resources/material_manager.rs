@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use lgn_app::App;
 use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
+use lgn_graphics_api::Sampler;
 use lgn_graphics_data::runtime_texture::TextureReferenceType;
 use lgn_math::Vec4;
 use lgn_utils::{memory::round_size_up_to_alignment_u32, HashSet};
@@ -255,7 +256,7 @@ impl MaterialManager {
         material_component: &MaterialData,
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
-        sampler_manager: &SamplerManager,
+        sampler_manager: &mut SamplerManager,
     ) -> crate::cgen::cgen_type::MaterialData {
         let mut material_data = crate::cgen::cgen_type::MaterialData::default();
 
@@ -337,8 +338,8 @@ impl MaterialManager {
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
-        persistent_descriptor_set_manager: &PersistentDescriptorSetManager,
-        sampler_manager: &SamplerManager,
+        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
+        sampler_manager: &mut SamplerManager,
     ) {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
 
@@ -346,8 +347,9 @@ impl MaterialManager {
             let material = &self.get_material(*material_id);
             let material_data = &material.material_data;
 
-            sampler_manager
-                .upload_sampler_data(persistent_descriptor_set_manager, material_data.sampler);
+            if let Some(sampler) = &material_data.sampler {
+                sampler_manager.upload_sampler_data(persistent_descriptor_set_manager, sampler);
+            }
 
             let gpu_material_data = Self::build_gpu_material_data(
                 material_data,
@@ -371,6 +373,7 @@ impl MaterialManager {
         &mut self,
         renderer: &Renderer,
         shared_resources_manager: &SharedResourcesManager,
+        sampler_manager: &SamplerManager,
     ) {
         if !self.default_uploaded {
             let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
@@ -402,7 +405,7 @@ impl MaterialManager {
                     .default_texture_bindless_index(SharedTextureId::Roughness)
                     .into(),
             );
-            default_material_data.set_sampler();
+            default_material_data.set_sampler(63.into()); // TODO (kdaibov): remove, don't keep like this
 
             self.alloc_material(
                 self.default_material_id,
@@ -515,8 +518,13 @@ fn upload_default_material(
     mut material_manager: ResMut<'_, MaterialManager>,
     renderer: Res<'_, Renderer>,
     shared_resources_manager: Res<'_, SharedResourcesManager>,
+    sampler_manager: Res<'_, SamplerManager>,
 ) {
-    material_manager.upload_default_material(&renderer, &shared_resources_manager);
+    material_manager.upload_default_material(
+        &renderer,
+        &shared_resources_manager,
+        &sampler_manager,
+    );
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -526,11 +534,15 @@ fn upload_material_data(
     texture_manager: Res<'_, TextureManager>,
     shared_resources_manager: Res<'_, SharedResourcesManager>,
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
+    mut sampler_manager: ResMut<'_, SamplerManager>,
+    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
 ) {
     material_manager.upload_material_data(
         &renderer,
         &texture_manager,
         &shared_resources_manager,
         &mut missing_visuals_tracker,
+        &mut persistent_descriptor_set_manager,
+        &mut sampler_manager,
     );
 }
