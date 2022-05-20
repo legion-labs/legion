@@ -43,8 +43,6 @@
     // Tests
     "tests/**/*.ts",
     // Benchmarks
-    "benchmarks/**/*.ts",
-    "*.cjs",
-    "*.js"
+    "benchmarks/**/*.ts"
   ]
 }
