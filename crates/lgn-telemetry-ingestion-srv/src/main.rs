@@ -60,10 +60,21 @@ async fn serve_grpc(
     args: &Cli,
     lake: DataLakeConnection,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // For now we still load the API key from the environment. Next step:
-    // validating it against a database.
-    let api_key = std::env::var("LGN_TELEMETRY_GRPC_API_KEY")?.into();
+    // To enable AWS DynamoDb API key validation, uncomment the following (and possibly adapt the name of the DynamoDb table):
+    //let validation = Arc::new(lgn_auth::api_key::TtlCacheValidation::new(
+    //    lgn_auth::api_key::AwsDynamoDbValidation::new(None, "legionlabs-telemetry-api-keys")
+    //        .await?,
+    //    10,                                  // Hold up to 10 API keys in memory.
+    //    std::time::Duration::from_secs(600), // Hold them for 10 minutes.
+    //));
+
+    // This validates against an in-memory API key.
+    // In a real world scenario, you would want to read the API key from the
+    // environment at runtime, but for now we'll hardcode it during compilation.
+    //let api_key = std::env::var("LGN_TELEMETRY_GRPC_API_KEY")?.into();
+    let api_key = env!("LGN_TELEMETRY_GRPC_API_KEY").to_string().into();
     let validation = Arc::new(lgn_auth::api_key::MemoryValidation::new(vec![api_key]));
+
     let auth_layer =
         AsyncRequireAuthorizationLayer::new(lgn_auth::api_key::RequestAuthorizer::new(validation));
 

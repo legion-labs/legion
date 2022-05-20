@@ -1,13 +1,21 @@
+#[cfg(feature = "aws")]
+mod aws_dynamo_db_validation;
 mod errors;
 mod memory_validation;
 mod request_authorizer;
+#[cfg(feature = "ttl")]
+mod ttl_cache_validation;
 
 use std::{fmt::Formatter, sync::Arc};
 
 use async_trait::async_trait;
+#[cfg(feature = "aws")]
+pub use aws_dynamo_db_validation::AwsDynamoDbValidation;
 pub use errors::{Error, Result};
 pub use memory_validation::MemoryValidation;
 pub use request_authorizer::RequestAuthorizer;
+#[cfg(feature = "ttl")]
+pub use ttl_cache_validation::TtlCacheValidation;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub struct ApiKey(String);
