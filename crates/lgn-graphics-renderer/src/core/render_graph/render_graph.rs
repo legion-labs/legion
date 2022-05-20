@@ -13,7 +13,6 @@ use lgn_graphics_api::{
 
 use crate::core::render_graph::RenderGraphBuilder;
 use crate::core::RenderResources;
-use crate::gpu_renderer::{GpuInstanceManager, MeshRenderer};
 use crate::resources::PipelineManager;
 use crate::RenderContext;
 
@@ -246,12 +245,8 @@ pub struct ResourceData {
     pub load_state: RenderGraphLoadState,
 }
 
-pub(crate) type RenderGraphExecuteFn = dyn Fn(
-    &RenderGraphContext,
-    &RenderGraphExecuteContext<'_>,
-    &mut RenderContext<'_>,
-    &mut CommandBuffer,
-);
+pub(crate) type RenderGraphExecuteFn =
+    dyn Fn(&RenderGraphContext, &mut RenderGraphExecuteContext<'_, '_>, &mut CommandBuffer);
 
 pub(crate) struct RGNode {
     pub(crate) name: String,
@@ -477,18 +472,10 @@ impl RenderGraphContext {
     }
 }
 
-pub(crate) struct RenderManagers<'frame> {
-    pub(crate) mesh_renderer: &'frame MeshRenderer,
-    pub(crate) instance_manager: &'frame GpuInstanceManager,
-}
-
-pub(crate) struct RenderGraphExecuteContext<'frame> {
-    pub(crate) read_resources: &'frame Vec<ResourceData>,
-    pub(crate) write_resources: &'frame Vec<ResourceData>,
-    pub(crate) render_targets: &'frame Vec<Option<ResourceData>>,
-    pub(crate) depth_stencil: &'frame Option<ResourceData>,
-    pub(crate) render_resources: &'frame RenderResources,
-    pub(crate) render_managers: &'frame RenderManagers<'frame>,
+pub(crate) struct RenderGraphExecuteContext<'a, 'frame> {
+    // Managers and data used when rendering.
+    pub(crate) render_resources: &'a RenderResources,
+    pub(crate) render_context: &'a mut RenderContext<'frame>,
 }
 
 pub(crate) struct RenderGraph {
@@ -555,7 +542,7 @@ impl RenderGraph {
         &self,
         resource_id: RenderGraphResourceId,
         context: &mut RenderGraphContext,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
     ) {
         let res_idx = resource_id as usize;
 
@@ -565,8 +552,10 @@ impl RenderGraph {
                 let texture_def = &self.resources[res_idx];
                 let texture_def: &RenderGraphTextureDef = texture_def.try_into().unwrap();
                 let texture_def = texture_def.clone().into();
-                let texture =
-                    device_context.create_texture(texture_def, self.get_resource_name(resource_id));
+                let texture = execute_context
+                    .render_context
+                    .device_context
+                    .create_texture(texture_def, self.get_resource_name(resource_id));
                 let texture = RenderGraphResource::Texture(texture);
                 context.resources[res_idx] = Some(texture);
 
@@ -586,7 +575,7 @@ impl RenderGraph {
         &self,
         resource_id: RenderGraphResourceId,
         context: &mut RenderGraphContext,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
     ) {
         let res_idx = resource_id as usize;
 
@@ -596,8 +585,10 @@ impl RenderGraph {
                 let buffer_def = &self.resources[res_idx];
                 let buffer_def: &RenderGraphBufferDef = buffer_def.try_into().unwrap();
                 let buffer_def: BufferDef = buffer_def.clone().into();
-                let buffer =
-                    device_context.create_buffer(buffer_def, self.get_resource_name(resource_id));
+                let buffer = execute_context
+                    .render_context
+                    .device_context
+                    .create_buffer(buffer_def, self.get_resource_name(resource_id));
                 let buffer = RenderGraphResource::Buffer(buffer);
                 context.resources[res_idx] = Some(buffer);
 
@@ -664,7 +655,7 @@ impl RenderGraph {
         view_id: RenderGraphViewId,
         texture_view_def: &RenderGraphTextureViewDef,
         context: &mut RenderGraphContext,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
         barriers: &mut Vec<ResourceBarrier>,
     ) {
         let resource_id = texture_view_def.resource_id;
@@ -675,7 +666,7 @@ impl RenderGraph {
         match context.api_resource_state.entry(mip_0_id) {
             Entry::Occupied(_) => {}
             Entry::Vacant(_) => {
-                self.create_texture(resource_id, context, device_context);
+                self.create_texture(resource_id, context, execute_context);
             }
         }
 
@@ -720,7 +711,7 @@ impl RenderGraph {
         view_id: RenderGraphViewId,
         buffer_view_def: &RenderGraphBufferViewDef,
         context: &mut RenderGraphContext,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
         barriers: &mut Vec<ResourceBarrier>,
     ) {
         let resource_id = buffer_view_def.resource_id;
@@ -731,7 +722,7 @@ impl RenderGraph {
         match context.api_resource_state.entry(mip_0_id) {
             Entry::Occupied(_) => {}
             Entry::Vacant(_) => {
-                self.create_buffer(resource_id, context, device_context);
+                self.create_buffer(resource_id, context, execute_context);
             }
         }
 
@@ -771,7 +762,7 @@ impl RenderGraph {
         &self,
         view_id: RenderGraphViewId,
         context: &'a mut RenderGraphContext,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
         barriers: &mut Vec<ResourceBarrier>,
     ) {
         let view_idx = view_id as usize;
@@ -783,7 +774,7 @@ impl RenderGraph {
                     view_id,
                     texture_view_def,
                     context,
-                    device_context,
+                    execute_context,
                     barriers,
                 );
             }
@@ -792,7 +783,7 @@ impl RenderGraph {
                     view_id,
                     buffer_view_def,
                     context,
-                    device_context,
+                    execute_context,
                     barriers,
                 );
             }
@@ -802,51 +793,51 @@ impl RenderGraph {
     fn gather_read_resource_transitions(
         &self,
         context: &mut RenderGraphContext,
-        execute_context: &RenderGraphExecuteContext<'_>,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
+        node: &RGNode,
         barriers: &mut Vec<ResourceBarrier>,
     ) {
-        for read_res in execute_context.read_resources {
-            self.gather_resource_transitions(read_res.key, context, device_context, barriers);
+        for read_res in &node.read_resources {
+            self.gather_resource_transitions(read_res.key, context, execute_context, barriers);
         }
     }
 
     fn gather_write_resource_transitions<'a>(
         &self,
         context: &'a mut RenderGraphContext,
-        execute_context: &RenderGraphExecuteContext<'_>,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
+        node: &RGNode,
         barriers: &mut Vec<ResourceBarrier>,
     ) {
-        for write_res in execute_context.write_resources {
-            self.gather_resource_transitions(write_res.key, context, device_context, barriers);
+        for write_res in &node.write_resources {
+            self.gather_resource_transitions(write_res.key, context, execute_context, barriers);
         }
     }
 
     fn gather_rt_resource_transitions<'a>(
         &self,
         context: &'a mut RenderGraphContext,
-        execute_context: &RenderGraphExecuteContext<'_>,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
+        node: &RGNode,
         barriers: &mut Vec<ResourceBarrier>,
     ) {
-        for rt_res in execute_context.render_targets.iter().flatten() {
-            self.gather_resource_transitions(rt_res.key, context, device_context, barriers);
+        for rt_res in node.render_targets.iter().flatten() {
+            self.gather_resource_transitions(rt_res.key, context, execute_context, barriers);
         }
     }
 
     fn gather_depth_stencil_resource_transitions<'a>(
         &self,
         context: &'a mut RenderGraphContext,
-        execute_context: &RenderGraphExecuteContext<'_>,
-        device_context: &DeviceContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
+        node: &RGNode,
         barriers: &mut Vec<ResourceBarrier>,
     ) {
-        if let Some(depth_stencil_res) = execute_context.depth_stencil {
+        if let Some(depth_stencil_res) = &node.depth_stencil {
             self.gather_resource_transitions(
                 depth_stencil_res.key,
                 context,
-                device_context,
+                execute_context,
                 barriers,
             );
         }
@@ -855,38 +846,23 @@ impl RenderGraph {
     fn do_resource_transitions(
         &self,
         context: &mut RenderGraphContext,
-        execute_context: &mut RenderGraphExecuteContext<'_>,
+        execute_context: &mut RenderGraphExecuteContext<'_, '_>,
+        node: &RGNode,
         command_buffer: &mut CommandBuffer,
-        device_context: &DeviceContext,
     ) {
         // Gather barriers into a container.
         let mut barriers: Vec<ResourceBarrier> = Vec::with_capacity(32);
 
-        self.gather_read_resource_transitions(
-            context,
-            execute_context,
-            device_context,
-            &mut barriers,
-        );
+        self.gather_read_resource_transitions(context, execute_context, node, &mut barriers);
 
-        self.gather_write_resource_transitions(
-            context,
-            execute_context,
-            device_context,
-            &mut barriers,
-        );
+        self.gather_write_resource_transitions(context, execute_context, node, &mut barriers);
 
-        self.gather_rt_resource_transitions(
-            context,
-            execute_context,
-            device_context,
-            &mut barriers,
-        );
+        self.gather_rt_resource_transitions(context, execute_context, node, &mut barriers);
 
         self.gather_depth_stencil_resource_transitions(
             context,
             execute_context,
-            device_context,
+            node,
             &mut barriers,
         );
 
@@ -1070,24 +1046,20 @@ impl RenderGraph {
         }
     }
 
-    fn create_views(
-        &self,
-        context: &mut RenderGraphContext,
-        execute_context: &RenderGraphExecuteContext<'_>,
-    ) {
-        for resource_data in execute_context.render_targets.iter().flatten() {
+    fn create_views(&self, context: &mut RenderGraphContext, node: &RGNode) {
+        for resource_data in node.render_targets.iter().flatten() {
             self.create_view(context, resource_data, GPUViewType::RenderTarget);
         }
 
-        if let Some(resource_data) = execute_context.depth_stencil {
+        if let Some(resource_data) = &node.depth_stencil {
             self.create_view(context, resource_data, GPUViewType::DepthStencil);
         }
 
-        for resource_data in execute_context.read_resources {
+        for resource_data in &node.read_resources {
             self.create_view(context, resource_data, GPUViewType::ShaderResource);
         }
 
-        for resource_data in execute_context.write_resources {
+        for resource_data in &node.write_resources {
             self.create_view(context, resource_data, GPUViewType::UnorderedAccess);
         }
     }
@@ -1142,9 +1114,9 @@ impl RenderGraph {
     fn clear_write_targets(
         &self,
         context: &mut RenderGraphContext,
+        execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
         command_buffer: &mut CommandBuffer,
-        device_context: &DeviceContext,
     ) {
         for resource_data in &node.write_resources {
             let view_id = resource_data.key;
@@ -1159,7 +1131,7 @@ impl RenderGraph {
                             let texture = context.get_texture(resource_id);
                             let data = vec![value; texture.vk_alloc_size() as usize / 4];
                             Self::upload_texture_data(
-                                device_context,
+                                execute_context.render_context.device_context,
                                 command_buffer,
                                 texture,
                                 &data,
@@ -1197,22 +1169,21 @@ impl RenderGraph {
     fn begin_execute(
         &self,
         context: &mut RenderGraphContext,
+        execute_context: &mut RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        execute_context: &mut RenderGraphExecuteContext<'_>,
         command_buffer: &mut CommandBuffer,
-        device_context: &DeviceContext,
     ) {
         // Batch up and execute resource transitions.
-        self.do_resource_transitions(context, execute_context, command_buffer, device_context);
+        self.do_resource_transitions(context, execute_context, node, command_buffer);
 
         // Create the views we will need for the next steps.
-        self.create_views(context, execute_context);
+        self.create_views(context, node);
 
         // Do begin render pass which will also clear render targets and depth stencil.
         self.do_begin_render_pass(context, node, command_buffer);
 
         // Clear any write targets that need to.
-        self.clear_write_targets(context, node, command_buffer, device_context);
+        self.clear_write_targets(context, execute_context, node, command_buffer);
     }
 
     fn end_execute(
@@ -1220,7 +1191,6 @@ impl RenderGraph {
         context: &RenderGraphContext,
         node: &RGNode,
         command_buffer: &mut CommandBuffer,
-        _device_context: &DeviceContext,
     ) {
         if self.need_begin_end_render_pass(node) {
             command_buffer.cmd_end_render_pass();
@@ -1269,14 +1239,12 @@ impl RenderGraph {
         &self,
         context: &mut RenderGraphContext,
         render_resources: &RenderResources,
-        render_managers: &RenderManagers<'_>,
         render_context: &mut RenderContext<'_>,
         command_buffer: &mut CommandBuffer,
     ) {
         self.execute_inner(
             context,
             render_resources,
-            render_managers,
             render_context,
             &self.root,
             command_buffer,
@@ -1287,7 +1255,6 @@ impl RenderGraph {
         &self,
         context: &mut RenderGraphContext,
         render_resources: &RenderResources,
-        render_managers: &RenderManagers<'_>,
         render_context: &mut RenderContext<'_>,
         node: &RGNode,
         command_buffer: &mut CommandBuffer,
@@ -1297,30 +1264,19 @@ impl RenderGraph {
                 println!("--- Executing {}", node.name);
 
                 let mut execute_context = RenderGraphExecuteContext {
-                    read_resources: &node.read_resources,
-                    write_resources: &node.write_resources,
-                    render_targets: &node.render_targets,
-                    depth_stencil: &node.depth_stencil,
                     render_resources,
-                    render_managers,
+                    render_context,
                 };
 
-                self.begin_execute(
-                    context,
-                    node,
-                    &mut execute_context,
-                    command_buffer,
-                    render_context.device_context,
-                );
-                (execute_fn)(context, &execute_context, render_context, command_buffer);
-                self.end_execute(context, node, command_buffer, render_context.device_context);
+                self.begin_execute(context, &mut execute_context, node, command_buffer);
+                (execute_fn)(context, &mut execute_context, command_buffer);
+                self.end_execute(context, node, command_buffer);
             }
 
             for child in &node.children {
                 self.execute_inner(
                     context,
                     render_resources,
-                    render_managers,
                     render_context,
                     child,
                     command_buffer,

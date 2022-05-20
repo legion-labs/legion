@@ -64,6 +64,7 @@
     "protoc",
     "protos",
     "Rasterizer",
+    "Readback",
     "rendergraph",
     "renderpass",
     "rhai",

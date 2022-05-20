@@ -112,8 +112,8 @@ impl RenderLayer {
         }
     }
 
-    pub fn cpu_render_set(&self) -> bool {
-        self.cpu_render_set
+    pub fn gpu_culling_enabled(&self) -> bool {
+        !self.cpu_render_set
     }
 
     pub fn draw(

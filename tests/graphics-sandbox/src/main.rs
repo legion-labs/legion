@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
+use lgn_app::{prelude::*, AppExit, Events, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
@@ -22,13 +22,16 @@ use lgn_graphics_renderer::{
     {Renderer, RendererPlugin},
 };
 use lgn_hierarchy::HierarchyPlugin;
-use lgn_input::InputPlugin;
+use lgn_input::{
+    keyboard::{KeyCode, KeyboardInput},
+    InputPlugin,
+};
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
 use lgn_tracing::{flush_monitor::FlushMonitor, LevelFilter};
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
-use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
+use lgn_window::{WindowCloseRequested, WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
 use sample_data::SampleDataPlugin;
 
@@ -152,6 +155,8 @@ fn main() {
         .add_system(on_render_surface_created_for_window.exclusive_system());
     }
 
+    app.add_system_to_stage(CoreStage::Last, check_keyboard_events);
+
     if args.use_asset_registry {
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
@@ -227,7 +232,9 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
+fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
+    let model_manager = renderer.render_resources().get_mut::<ModelManager>();
+
     // sphere 1
     commands
         .spawn()
@@ -323,7 +330,9 @@ fn init_light_test(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelM
         });
 }
 
-fn init_scene(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
+fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
+    let model_manager = renderer.render_resources().get_mut::<ModelManager>();
+
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
@@ -386,4 +395,20 @@ fn on_snapshot_app_exit(
 
 fn tick_flush_monitor(flush_monitor: Res<'_, FlushMonitor>) {
     flush_monitor.tick();
+}
+
+fn check_keyboard_events(
+    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+    mut window_close_requested_events: ResMut<'_, Events<WindowCloseRequested>>,
+    windows: Res<'_, Windows>,
+) {
+    for keyboard_input_event in keyboard_input_events.iter() {
+        if let Some(key_code) = keyboard_input_event.key_code {
+            if key_code == KeyCode::Escape && keyboard_input_event.state.is_pressed() {
+                window_close_requested_events.send(WindowCloseRequested {
+                    id: windows.get_primary().unwrap().id(),
+                });
+            }
+        }
+    }
 }

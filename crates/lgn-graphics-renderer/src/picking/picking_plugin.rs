@@ -31,9 +31,7 @@ pub enum PickingSystemLabel {
 
 impl Plugin for PickingPlugin {
     fn build(&self, app: &mut App) {
-        let picking_manager = PickingManager::new(4096);
         app.add_event::<PickingEvent>();
-        app.insert_resource(picking_manager);
 
         app.add_system_to_stage(CoreStage::PostUpdate, gather_input);
         app.add_system_to_stage(CoreStage::PostUpdate, gather_window_resize);

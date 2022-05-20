@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time;
 
 use lgn_graphics_api::{ApiDef, DeviceContext, Fence, FenceStatus, GfxApi};
 
@@ -63,7 +64,7 @@ impl Renderer {
         self.num_render_frames
     }
 
-    pub(crate) fn render_resources(&self) -> &RenderResources {
+    pub fn render_resources(&self) -> &RenderResources {
         &self.render_resources
     }
 
@@ -105,6 +106,8 @@ pub(crate) struct RenderScope {
     render_frame_idx: u64,
     num_render_frames: u64,
     frame_fences: Vec<Fence>,
+    frame_start: time::Instant,
+    frame_time: time::Duration,
 }
 
 impl RenderScope {
@@ -116,6 +119,8 @@ impl RenderScope {
             frame_fences: (0..num_render_frames)
                 .map(|_| device_context.create_fence())
                 .collect(),
+            frame_start: time::Instant::now(),
+            frame_time: time::Duration::default(),
         }
     }
 
@@ -134,6 +139,8 @@ impl RenderScope {
         if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
             signal_fence.wait().unwrap();
         }
+
+        self.frame_start = time::Instant::now();
     }
 
     #[span_fn]
@@ -143,9 +150,16 @@ impl RenderScope {
         graphics_queue
             .queue_mut()
             .submit(&[], &[], &[], Some(frame_fence));
+
+        let frame_end = time::Instant::now();
+        self.frame_time = frame_end - self.frame_start;
     }
 
     pub(crate) fn frame_idx(&self) -> u64 {
         self.frame_idx
+    }
+
+    pub(crate) fn frame_time(&self) -> time::Duration {
+        self.frame_time
     }
 }

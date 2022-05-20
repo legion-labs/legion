@@ -428,9 +428,10 @@ impl MaterialManager {
 #[allow(clippy::needless_pass_by_value)]
 fn on_material_added(
     mut commands: Commands<'_, '_>,
-    mut material_manager: ResMut<'_, MaterialManager>,
+    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
     query: Query<'_, '_, (Entity, &MaterialComponent), Added<MaterialComponent>>,
 ) {
+    let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
     for (entity, material_component) in query.iter() {
         material_manager.add_material(entity, material_component);
 
@@ -442,7 +443,7 @@ fn on_material_added(
 
 #[allow(clippy::needless_pass_by_value)]
 fn on_material_changed(
-    mut material_manager: ResMut<'_, MaterialManager>,
+    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
     query: Query<
         '_,
         '_,
@@ -450,6 +451,7 @@ fn on_material_changed(
         Changed<MaterialComponent>,
     >,
 ) {
+    let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
     for (entity, material_component, _) in query.iter() {
         material_manager.change_material(entity, material_component);
     }
@@ -458,8 +460,9 @@ fn on_material_changed(
 #[allow(clippy::needless_pass_by_value)]
 fn on_material_removed(
     removed_entities: RemovedComponents<'_, MaterialComponent>,
-    mut material_manager: ResMut<'_, MaterialManager>,
+    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
 ) {
+    let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
     // todo: must be send some events to refresh the material
     for removed_entity in removed_entities.iter() {
         material_manager.remove_material(removed_entity);
@@ -469,8 +472,9 @@ fn on_material_removed(
 #[allow(clippy::needless_pass_by_value)]
 fn on_texture_event(
     mut event_reader: EventReader<'_, '_, TextureEvent>,
-    mut material_manager: ResMut<'_, MaterialManager>,
+    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
 ) {
+    let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
     for event in event_reader.iter() {
         match event {
             TextureEvent::StateChanged(texture_id_list) => {
@@ -484,21 +488,23 @@ fn on_texture_event(
 
 #[allow(clippy::needless_pass_by_value)]
 fn upload_default_material(
-    mut material_manager: ResMut<'_, MaterialManager>,
-    renderer: Res<'_, Renderer>,
+    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
     shared_resources_manager: Res<'_, SharedResourcesManager>,
 ) {
+    let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
     material_manager.upload_default_material(&renderer, &shared_resources_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
 fn upload_material_data(
-    renderer: Res<'_, Renderer>,
-    mut material_manager: ResMut<'_, MaterialManager>,
+    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
     texture_manager: Res<'_, TextureManager>,
     shared_resources_manager: Res<'_, SharedResourcesManager>,
-    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
+    let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
+    let mut missing_visuals_tracker = renderer
+        .render_resources()
+        .get_mut::<MissingVisualTracker>();
     material_manager.upload_material_data(
         &renderer,
         &texture_manager,

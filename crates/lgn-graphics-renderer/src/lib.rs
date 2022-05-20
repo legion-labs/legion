@@ -72,8 +72,9 @@ mod renderdoc;
 
 use crate::core::{
     GpuUploadManager, RenderCommandBuilder, RenderCommandManager, RenderCommandQueuePool,
-    RenderManagers, RenderObjectsBuilder, RenderResourcesBuilder,
+    RenderObjectsBuilder, RenderResourcesBuilder,
 };
+
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
 use crate::render_pass::TmpRenderPass;
 use crate::renderdoc::RenderDocManager;
@@ -200,6 +201,11 @@ impl Plugin for RendererPlugin {
         );
 
         let mesh_renderer = MeshRenderer::new(device_context, static_buffer.allocator());
+        let instance_manager = GpuInstanceManager::new(static_buffer.allocator());
+        let manipulation_manager = ManipulatorManager::new();
+        let picking_manager = PickingManager::new(4096);
+        let model_manager = ModelManager::new(&mesh_manager, &material_manager);
+        let missing_visuals_tracker = MissingVisualTracker::default();
 
         let light_manager = LightingManager::new(device_context);
 
@@ -241,20 +247,15 @@ impl Plugin for RendererPlugin {
         // Resources
         //
         app.insert_resource(pipeline_manager);
-        app.insert_resource(ManipulatorManager::new());
+        app.insert_resource(manipulation_manager.clone());
         app.insert_resource(cgen_registry_list);
         app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(ModelManager::new(&mesh_manager, &material_manager));
-        app.insert_resource(mesh_manager);
         app.insert_resource(DebugDisplay::default());
-        app.insert_resource(GpuInstanceManager::new(static_buffer.allocator()));
-        app.insert_resource(MissingVisualTracker::default());
         app.insert_resource(persistent_descriptor_set_manager);
         app.insert_resource(shared_resources_manager);
         app.insert_resource(texture_manager);
-        app.insert_resource(material_manager);
-        app.insert_resource(mesh_renderer);
         app.insert_resource(RendererOptions::default());
+        app.insert_resource(picking_manager.clone());
 
         // Init ecs
         TextureManager::init_ecs(app);
@@ -337,6 +338,14 @@ impl Plugin for RendererPlugin {
             .insert(light_manager)
             .insert(renderdoc_manager)
             .insert(render_objects)
+            .insert(instance_manager)
+            .insert(mesh_renderer)
+            .insert(manipulation_manager)
+            .insert(picking_manager)
+            .insert(model_manager)
+            .insert(mesh_manager)
+            .insert(material_manager)
+            .insert(missing_visuals_tracker)
             .finalize();
 
         let renderer = Renderer::new(
@@ -447,14 +456,10 @@ fn render_update(
     resources: (
         ResMut<'_, Renderer>,
         ResMut<'_, PipelineManager>,
-        ResMut<'_, MeshRenderer>,
-        Res<'_, MeshManager>,
         Res<'_, PickingManager>,
-        Res<'_, GpuInstanceManager>,
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
         ResMut<'_, PersistentDescriptorSetManager>,
-        Res<'_, ModelManager>,
         EventReader<'_, '_, KeyboardInput>,
     ),
     queries: (
@@ -468,15 +473,11 @@ fn render_update(
     // resources
     let mut renderer = resources.0;
     let mut pipeline_manager = resources.1;
-    let mut mesh_renderer = resources.2;
-    let mesh_manager = resources.3;
-    let picking_manager = resources.4;
-    let instance_manager = resources.5;
-    let mut egui = resources.6;
-    let mut debug_display = resources.7;
-    let mut persistent_descriptor_set_manager = resources.8;
-    let model_manager = resources.9;
-    let mut keyboard_input_events = resources.10;
+    let picking_manager = resources.2;
+    let mut egui = resources.3;
+    let mut debug_display = resources.4;
+    let mut persistent_descriptor_set_manager = resources.5;
+    let mut keyboard_input_events = resources.6;
 
     // queries
     let mut q_render_surfaces = queries.0;
@@ -641,6 +642,7 @@ fn render_update(
             let static_buffer_ro_view = static_buffer.read_only_view();
             frame_descriptor_set.set_static_buffer(static_buffer_ro_view);
 
+            let instance_manager = render_resources.get::<GpuInstanceManager>();
             let va_table_address_buffer = instance_manager.structured_buffer_view();
             frame_descriptor_set.set_va_table_address_buffer(va_table_address_buffer);
 
@@ -716,7 +718,20 @@ fn render_update(
                 );
             }
 
-            let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
+            let test_render_graph = false;
+            let frame_idx = render_scope.frame_idx();
+            if !test_render_graph || frame_idx % 2 == 0 {
+                //****************************************************************
+                // PREVIOUS RENDER PATH (WITHOUT RENDER GRAPH)
+                //****************************************************************
+
+                let mesh_renderer = render_resources.get::<MeshRenderer>();
+                let instance_manager = render_resources.get::<GpuInstanceManager>();
+                let mesh_manager = render_resources.get::<MeshManager>();
+                let model_manager = render_resources.get::<ModelManager>();
+
+                let mut cmd_buffer_handle =
+                    render_context.transient_commandbuffer_allocator.acquire();
             let cmd_buffer = cmd_buffer_handle.as_mut();
 
             cmd_buffer.begin();
@@ -784,16 +799,26 @@ fn render_update(
 
             cmd_buffer.end();
 
-            let test_render_graph = false;
-            if test_render_graph {
-                render_context
-                    .graphics_queue
-                    .queue_mut()
-                    .submit(&[cmd_buffer], &[], &[], None);
+                // queue
+                let present_semaphore = render_surface.acquire();
+                {
+                    render_context.graphics_queue.queue_mut().submit(
+                        &[cmd_buffer],
+                        &[present_semaphore],
+                        &[],
+                        None,
+                    );
+
+                    render_surface.present(&mut render_context);
+                }
 
                 render_context
                     .transient_commandbuffer_allocator
                     .release(cmd_buffer_handle);
+            } else {
+                //****************************************************************
+                // RENDER GRAPH TEST
+                //****************************************************************
 
                 let mut cmd_buffer_handle =
                     render_context.transient_commandbuffer_allocator.acquire();
@@ -801,7 +826,6 @@ fn render_update(
 
                 cmd_buffer.begin();
 
-                //****************************************************************
                 cmd_buffer.with_label("RenderGraph", |cmd_buffer| {
 
                     let gpu_culling_pass = GpuCullingPass;
@@ -868,18 +892,12 @@ fn render_update(
 
                             println!("\n\n");
 
-                            let render_managers = RenderManagers {
-                                mesh_renderer: &mesh_renderer,
-                                instance_manager: &instance_manager,
-                            };
-
                             // Execute it
                             println!("*****************************************************************************");
-                            println!("Frame {}", render_scope.frame_idx());
+                            println!("Frame {}", frame_idx);
                             render_graph.execute(
                                 &mut render_graph_context,
                                 &render_resources,
-                                &render_managers,
                                 &mut render_context,
                                 cmd_buffer,
                             );
@@ -891,33 +909,14 @@ fn render_update(
 
                 });
 
-                //****************************************************************
-
                 cmd_buffer.end();
 
                 // queue
-                let present_sema = render_surface.acquire();
+                let present_semaphore = render_surface.acquire();
                 {
                     render_context.graphics_queue.queue_mut().submit(
                         &[cmd_buffer],
-                        &[present_sema],
-                        &[],
-                        None,
-                    );
-
-                    render_surface.present(&mut render_context);
-                }
-
-                render_context
-                    .transient_commandbuffer_allocator
-                    .release(cmd_buffer_handle);
-            } else {
-                // queue
-                let present_sema = render_surface.acquire();
-                {
-                    render_context.graphics_queue.queue_mut().submit(
-                        &[cmd_buffer],
-                        &[present_sema],
+                        &[present_semaphore],
                         &[],
                         None,
                     );
@@ -940,9 +939,10 @@ fn render_update(
         render_scope.end_frame(&graphics_queue);
         transient_buffer.end_frame();
         transient_commandbuffer_manager.end_frame();
+        let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
         mesh_renderer.end_frame();
 
-        }
+    }
 
         renderdoc_manager.end_frame_capture();
 

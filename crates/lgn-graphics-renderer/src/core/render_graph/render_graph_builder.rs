@@ -6,7 +6,6 @@ use crate::{
         RenderGraphResourceDef, RenderGraphResourceId, RenderGraphViewDef, RenderGraphViewId,
     },
     resources::PipelineManager,
-    RenderContext,
 };
 
 use super::{RenderGraphContext, RenderGraphLoadState, ResourceData};
@@ -61,12 +60,7 @@ impl GraphicsPassBuilder {
 
     pub fn execute<F: 'static>(mut self, f: F) -> Self
     where
-        F: Fn(
-            &RenderGraphContext,
-            &RenderGraphExecuteContext<'_>,
-            &mut RenderContext<'_>,
-            &mut CommandBuffer,
-        ),
+        F: Fn(&RenderGraphContext, &mut RenderGraphExecuteContext<'_, '_>, &mut CommandBuffer),
     {
         self.node.execute_fn = Some(Box::new(f));
         self
@@ -96,12 +90,7 @@ impl ComputePassBuilder {
 
     pub fn execute<F: 'static>(mut self, f: F) -> Self
     where
-        F: Fn(
-            &RenderGraphContext,
-            &RenderGraphExecuteContext<'_>,
-            &mut RenderContext<'_>,
-            &mut CommandBuffer,
-        ),
+        F: Fn(&RenderGraphContext, &mut RenderGraphExecuteContext<'_, '_>, &mut CommandBuffer),
     {
         self.node.execute_fn = Some(Box::new(f));
         self

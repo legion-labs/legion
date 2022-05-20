@@ -20,7 +20,7 @@ use crate::{
     cgen::{
         self,
         cgen_type::{
-            CullingDebugData, CullingEfficiancyStats, CullingOptions, GpuInstanceData,
+            CullingDebugData, CullingEfficiencyStats, CullingOptions, GpuInstanceData,
             RenderPassData,
         },
         shader,
@@ -92,18 +92,15 @@ impl MeshRenderer {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn initialize_psos(
-    pipeline_manager: Res<'_, PipelineManager>,
-    mut mesh_renderer: ResMut<'_, MeshRenderer>,
-) {
+fn initialize_psos(pipeline_manager: Res<'_, PipelineManager>, renderer: Res<'_, Renderer>) {
+    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
     mesh_renderer.initialize_psos(&pipeline_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn update_render_elements(
-    mut mesh_renderer: ResMut<'_, MeshRenderer>,
-    instance_manager: Res<'_, GpuInstanceManager>,
-) {
+fn update_render_elements(renderer: Res<'_, Renderer>) {
+    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
+    let instance_manager = renderer.render_resources().get::<GpuInstanceManager>();
     instance_manager.for_each_removed_gpu_instance_id(|gpu_instance_id| {
         mesh_renderer.unregister_element(*gpu_instance_id);
     });
@@ -115,7 +112,10 @@ fn update_render_elements(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, mesh_renderer: Res<'_, MeshRenderer>) {
+pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, renderer: ResMut<'_, Renderer>) {
+    // renderer is a ResMut just to avoid concurrent accesses
+    let mesh_renderer = renderer.render_resources().get::<MeshRenderer>();
+
     egui.window("Culling", |ui| {
         ui.label(format!(
             "Total Elements'{}'",
@@ -133,7 +133,8 @@ pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, mesh_renderer: Res<'_, MeshR
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn prepare(renderer: Res<'_, Renderer>, mut mesh_renderer: ResMut<'_, MeshRenderer>) {
+fn prepare(renderer: Res<'_, Renderer>) {
+    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
     mesh_renderer.prepare(&renderer);
 }
 
@@ -161,14 +162,14 @@ struct CullingArgBuffers {
 pub struct MeshRenderer {
     default_layers: Vec<RenderLayer>,
 
-    instance_data_idxs: Vec<u32>,
+    instance_data_indices: Vec<u32>,
     gpu_instance_data: Vec<GpuInstanceData>,
     depth_count_buffer_count: u64,
 
     culling_shader_first_pass: Option<PipelineHandle>,
     culling_shader_second_pass: Option<PipelineHandle>,
     culling_buffers: CullingArgBuffers,
-    culling_stats: CullingEfficiancyStats,
+    culling_stats: CullingEfficiencyStats,
 
     tmp_batch_ids: Vec<u32>,
     tmp_pipeline_handles: Vec<PipelineHandle>,
@@ -181,9 +182,9 @@ impl MeshRenderer {
     ) -> Self {
         Self {
             default_layers: vec![
-                RenderLayer::new(allocator, true),
-                RenderLayer::new(allocator, true),
-                RenderLayer::new(allocator, true),
+                RenderLayer::new(allocator, false),
+                RenderLayer::new(allocator, false),
+                RenderLayer::new(allocator, false),
             ],
             culling_buffers: CullingArgBuffers {
                 draw_count: None,
@@ -194,15 +195,15 @@ impl MeshRenderer {
                 culling_debug: None,
                 stats_buffer: GpuBufferWithReadback::new(
                     device_context,
-                    std::mem::size_of::<CullingEfficiancyStats>() as u64,
+                    std::mem::size_of::<CullingEfficiencyStats>() as u64,
                 ),
                 stats_buffer_readback: None,
                 tmp_culled_count: None,
                 tmp_culled_args: None,
                 tmp_culled_instances: None,
             },
-            culling_stats: CullingEfficiancyStats::default(),
-            instance_data_idxs: vec![],
+            culling_stats: CullingEfficiencyStats::default(),
+            instance_data_indices: vec![],
             gpu_instance_data: vec![],
             depth_count_buffer_count: 0,
             culling_shader_first_pass: None,
@@ -212,7 +213,7 @@ impl MeshRenderer {
         }
     }
 
-    fn initialize_psos(&mut self, pipeline_manager: &PipelineManager) {
+    pub fn initialize_psos(&mut self, pipeline_manager: &PipelineManager) {
         if self.culling_shader_first_pass.is_none() {
             let (first_pass, second_pass) = build_culling_psos(pipeline_manager);
             self.culling_shader_first_pass = Some(first_pass);
@@ -226,7 +227,7 @@ impl MeshRenderer {
             self.tmp_pipeline_handles.push(pipeline_handle);
 
             let need_depth_write =
-                self.default_layers[DefaultLayers::Opaque as usize].cpu_render_set();
+                !self.default_layers[DefaultLayers::Opaque as usize].gpu_culling_enabled();
             let pipeline_handle = build_temp_pso(pipeline_manager, need_depth_write);
             self.tmp_batch_ids.push(
                 self.default_layers[DefaultLayers::Opaque as usize]
@@ -256,12 +257,12 @@ impl MeshRenderer {
     fn register_element(&mut self, element: &RenderElement) {
         let new_index = self.gpu_instance_data.len() as u32;
         let gpu_instance_index = element.gpu_instance_id().index();
-        if gpu_instance_index >= self.instance_data_idxs.len() as u32 {
-            self.instance_data_idxs
+        if gpu_instance_index >= self.instance_data_indices.len() as u32 {
+            self.instance_data_indices
                 .resize(gpu_instance_index as usize + 1, u32::MAX);
         }
-        assert!(self.instance_data_idxs[gpu_instance_index as usize] == u32::MAX);
-        self.instance_data_idxs[gpu_instance_index as usize] = new_index;
+        assert!(self.instance_data_indices[gpu_instance_index as usize] == u32::MAX);
+        self.instance_data_indices[gpu_instance_index as usize] = new_index;
 
         let mut instance_data = GpuInstanceData::default();
         instance_data.set_gpu_instance_id(gpu_instance_index.into());
@@ -278,9 +279,9 @@ impl MeshRenderer {
 
     fn unregister_element(&mut self, gpu_instance_id: GpuInstanceId) {
         let gpu_instance_index = gpu_instance_id.index();
-        let removed_index = self.instance_data_idxs[gpu_instance_index as usize] as usize;
+        let removed_index = self.instance_data_indices[gpu_instance_index as usize] as usize;
         assert!(removed_index as u32 != u32::MAX);
-        self.instance_data_idxs[gpu_instance_index as usize] = u32::MAX;
+        self.instance_data_indices[gpu_instance_index as usize] = u32::MAX;
 
         let removed_instance = self.gpu_instance_data.swap_remove(removed_index as usize);
         let removed_instance_id: u32 = removed_instance.gpu_instance_id().into();
@@ -290,7 +291,7 @@ impl MeshRenderer {
             let moved_instance_id: u32 = self.gpu_instance_data[removed_index as usize]
                 .gpu_instance_id()
                 .into();
-            self.instance_data_idxs[moved_instance_id as usize] = removed_index as u32;
+            self.instance_data_indices[moved_instance_id as usize] = removed_index as u32;
         }
 
         for layer in &mut self.default_layers {
@@ -301,7 +302,7 @@ impl MeshRenderer {
     }
 
     fn invariant(&self) {
-        for (instance_idx, slot_idx) in self.instance_data_idxs.iter().enumerate() {
+        for (instance_idx, slot_idx) in self.instance_data_indices.iter().enumerate() {
             if *slot_idx != u32::MAX {
                 let gpu_instance_data = &self.gpu_instance_data[*slot_idx as usize];
                 assert!(gpu_instance_data.gpu_instance_id() == (instance_idx as u32).into());
@@ -337,7 +338,7 @@ impl MeshRenderer {
             0,
             usize::MAX,
             u64::MAX,
-            |data: &[CullingEfficiancyStats]| {
+            |data: &[CullingEfficiencyStats]| {
                 self.culling_stats = data[0];
             },
         );
