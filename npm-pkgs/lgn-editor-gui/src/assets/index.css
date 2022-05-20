@@ -75,3 +75,11 @@ input[type="color"]::-webkit-color-swatch {
 .lm_header .lm_tab .lm_title {
   white-space: nowrap;
 }
+
+.lm_goldenlayout {
+  background: #2c2c2c !important;
+}
+
+.lm_header .lm_tab.lm_active {
+  box-shadow: none !important;
+}

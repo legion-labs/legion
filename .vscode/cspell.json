@@ -26,6 +26,7 @@
     "distrib",
     "fmetric",
     "gentype",
+    "goldenlayout",
     "Graphviz",
     "grcov",
     "Hasher",
