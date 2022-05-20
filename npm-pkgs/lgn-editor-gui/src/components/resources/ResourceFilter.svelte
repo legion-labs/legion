@@ -38,7 +38,7 @@
 
 <style lang="postcss">
   .root {
-    @apply flex items-center h-10 w-full justify-end py-1 px-2;
+    @apply flex items-center h-10 w-full justify-end py-2 px-1;
   }
 
   .clear {
