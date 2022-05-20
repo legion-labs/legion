@@ -304,7 +304,7 @@ pub mod models {
         Yellow,
     }
 
-    #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Car {
         #[serde(rename = "id")]
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -327,7 +327,7 @@ pub mod models {
         pub extra: Option<ByteArray>,
     }
 
-    #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Pet {
         #[serde(rename = "name")]
         #[serde(skip_serializing_if = "Option::is_none")]

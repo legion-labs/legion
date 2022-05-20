@@ -24,7 +24,7 @@ use lgn_online::codegen::ByteArray;
             }
         {% when Model::Struct with (struct_) %}
             {% if let Some(description) = struct_.description %}/// {{ description }}{% endif %}
-            #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+            #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
             pub struct {{ struct_.name }} {
                 {% for field in struct_.fields %}
                     {% if let Some(description) = field.description -%}/// {{ description }}{%- endif %}

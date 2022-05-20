@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use indexmap::IndexMap;
 
 use super::api::{
@@ -74,7 +76,7 @@ impl<'a> Visitor<'a> {
 
             for (method, operation) in path_item.iter() {
                 let method: Method = method.parse()?;
-                self.visit_operation(&path, method, operation)?;
+                self.visit_operation(&path, path_item, method, operation)?;
             }
         }
         Ok(())
@@ -83,6 +85,7 @@ impl<'a> Visitor<'a> {
     fn visit_operation(
         &mut self,
         path: &OpenAPIPath,
+        path_item: &'a openapiv3::PathItem,
         method: Method,
         operation: &'a openapiv3::Operation,
     ) -> Result<()> {
@@ -103,14 +106,26 @@ impl<'a> Visitor<'a> {
 
         // Visit parameters.
         let mut parameters = Parameters::default();
-        for parameter_ref in &operation.parameters {
-            let parameter = match parameter_ref {
-                openapiv3::ReferenceOr::Item(parameter) => parameter,
-                openapiv3::ReferenceOr::Reference { reference } => {
-                    self.oas.find_parameter(reference)?.1
-                }
-            };
 
+        // Let's iterate over all parameters, in order, with the global path
+        // parameters first and remove duplicates.
+        let raw_parameters = path_item
+            .parameters
+            .iter()
+            .chain(operation.parameters.iter())
+            .map(|parameter_ref| {
+                match parameter_ref {
+                    openapiv3::ReferenceOr::Item(parameter) => Ok(parameter),
+                    openapiv3::ReferenceOr::Reference { reference } => self
+                        .oas
+                        .find_parameter(reference)
+                        .map(|parameter| parameter.1),
+                }
+                .map(|parameter| (parameter.parameter_data_ref().name.clone(), parameter))
+            })
+            .collect::<Result<BTreeMap<_, _>>>()?;
+
+        for parameter in raw_parameters.into_values() {
             match parameter {
                 openapiv3::Parameter::Path { parameter_data, .. } => {
                     parameters
@@ -1310,5 +1325,92 @@ mod tests {
 
         assert_eq!(api.models.len(), 3);
         assert!(api.models.contains(&expected_one_of));
+    }
+
+    #[test]
+    fn test_resolve_operation_with_path_level_parameters() {
+        let paths = serde_yaml::from_str::<openapiv3::Paths>(
+            r#"    
+            /foo/{a}/bar/{b}:
+              parameters:
+                - name: a
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: b
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              get:
+                operationId: foo
+                parameters:
+                  - name: b
+                    in: path
+                    required: true
+                    schema:
+                      type: integer
+                  - name: c
+                    in: query
+                    required: true
+                    schema:
+                      type: string
+                responses:
+                  '200':
+                    description: Successful
+            "#,
+        )
+        .unwrap();
+
+        let oas = openapiv3::OpenAPI {
+            components: None,
+            paths,
+            ..openapiv3::OpenAPI::default()
+        };
+        let api = visit(&oas).unwrap();
+
+        let expected_route = Route {
+            name: "foo".to_string(),
+            method: Method::Get,
+            summary: None,
+            request_body: None,
+            parameters: Parameters {
+                path: vec![
+                    Parameter {
+                        name: "a".to_string(),
+                        description: None,
+                        required: true,
+                        type_: Type::String,
+                    },
+                    Parameter {
+                        name: "b".to_string(),
+                        description: None,
+                        required: true,
+                        type_: Type::Int32,
+                    },
+                ],
+                query: vec![Parameter {
+                    name: "c".to_string(),
+                    description: None,
+                    required: true,
+                    type_: Type::String,
+                }],
+                ..Parameters::default()
+            },
+            responses: IndexMap::from([(
+                http::StatusCode::OK.into(),
+                Response {
+                    description: "Successful".to_string(),
+                    content: None,
+                },
+            )]),
+        };
+
+        assert_eq!(api.paths.len(), 1);
+        assert_eq!(
+            api.paths.get::<Path>(&"/foo/{a}/bar/{b}".into()),
+            Some(&vec![expected_route])
+        );
     }
 }
