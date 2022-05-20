@@ -14,10 +14,10 @@ use std::{
 
 use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::Provider;
-use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId, ResourceType,
-    ResourceTypeAndId,
+    AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId,
+    ResourcePathName, ResourceType, ResourceTypeAndId,
 };
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_psd::PsdFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};

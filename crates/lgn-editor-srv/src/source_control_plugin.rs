@@ -644,18 +644,18 @@ impl SourceControl for SourceControlRPC {
         for (resource_id, change_type) in changes {
             let (path, kind) = if let ChangeType::Delete = change_type {
                 ctx.project
-                    .deleted_resource_info(resource_id, &asset_registry)
+                    .deleted_resource_info(resource_id)
                     .await
                     .unwrap_or_else(|_err| ("(error)".into(), sample_data::offline::Entity::TYPE))
             } else {
                 let path = ctx
                     .project
-                    .resource_name(resource_id, &asset_registry)
+                    .resource_name(resource_id)
                     .unwrap_or_else(|_err| "(error)".into());
 
                 let kind = ctx
                     .project
-                    .resource_type(resource_id, &asset_registry)
+                    .resource_type(resource_id)
                     .unwrap_or(sample_data::offline::Entity::TYPE); // Hack, figure out a way to get type for deleted resources
                 (path, kind)
             };

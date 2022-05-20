@@ -26,9 +26,9 @@ use lgn_data_model::{
     utils::find_property,
     ReflectionError, TypeDefinition,
 };
-use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::{
-    Resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
+    Resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourcePathName, ResourceType,
+    ResourceTypeAndId,
 };
 use lgn_data_transaction::{
     ArrayOperation, LockContext, Transaction, TransactionManager, UpdatePropertyOperation,
@@ -238,22 +238,20 @@ impl PropertyInspector for PropertyInspectorRPC {
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
 
-        let mut property_bag = if let Some(reflection) = ctx
-            .asset_registry
-            .get_resource_reflection(resource_id.kind, &handle)
-        {
-            collect_properties::<ResourcePropertyCollector>(reflection.as_reflect())
-                .map_err(|err| Status::internal(err.to_string()))?
-        } else {
-            // Return a default bag if there's no reflection
-            ResourceProperty {
-                name: "".into(),
-                ptype: resource_id.kind.as_pretty().into(),
-                json_value: None,
-                attributes: HashMap::new(),
-                sub_properties: Vec::new(),
-            }
-        };
+        let mut property_bag =
+            if let Some(reflection) = ctx.asset_registry.get_resource_reflection(&handle) {
+                collect_properties::<ResourcePropertyCollector>(reflection.as_reflect())
+                    .map_err(|err| Status::internal(err.to_string()))?
+            } else {
+                // Return a default bag if there's no reflection
+                ResourceProperty {
+                    name: "".into(),
+                    ptype: resource_id.kind.as_pretty().into(),
+                    json_value: None,
+                    attributes: HashMap::new(),
+                    sub_properties: Vec::new(),
+                }
+            };
 
         // Add Id property
         property_bag.sub_properties.insert(
@@ -473,7 +471,7 @@ impl PropertyInspector for PropertyInspectorRPC {
 
         let reflection = ctx
             .asset_registry
-            .get_resource_reflection(resource_id.kind, &handle)
+            .get_resource_reflection(&handle)
             .ok_or_else(|| {
                 Status::internal(format!("Invalid ResourceID format: {}", resource_id))
             })?;

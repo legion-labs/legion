@@ -5,9 +5,10 @@ use std::{
 };
 
 use lgn_content_store::Identifier;
-use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName};
+use lgn_data_offline::resource::{Project, ResourceHandles};
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, ResourcePathId, ResourceType, ResourceTypeAndId,
+    AssetRegistry, AssetRegistryError, ResourcePathId, ResourcePathName, ResourceType,
+    ResourceTypeAndId,
 };
 use lgn_tracing::{info, warn};
 use thiserror::Error;

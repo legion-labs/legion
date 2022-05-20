@@ -38,7 +38,7 @@ impl TransactionOperation for UpdatePropertyOperation {
 
         let mut reflection = ctx
             .asset_registry
-            .get_resource_reflection_mut(self.resource_id.kind, &resource_handle)
+            .get_resource_reflection_mut(&resource_handle)
             .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
         // init old values
@@ -69,7 +69,7 @@ impl TransactionOperation for UpdatePropertyOperation {
 
             let mut reflection = ctx
                 .asset_registry
-                .get_resource_reflection_mut(self.resource_id.kind, &handle)
+                .get_resource_reflection_mut(&handle)
                 .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
 
             if self.new_values.len() == old_values.len() {

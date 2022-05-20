@@ -16,10 +16,10 @@ use std::{
 
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{
     manifest::Manifest, AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor,
-    ResourceId, ResourcePathId, ResourceTypeAndId,
+    ResourceId, ResourcePathId, ResourcePathName, ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;

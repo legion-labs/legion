@@ -405,7 +405,7 @@ impl AssetRegistry {
         Handle::<T>::from(handle)
     }
 
-    /// Retrieves a reference to an asset, None if asset is not loaded.
+    /// Retrieves a reference to a typed resource, None if asset is not loaded.
     pub(crate) fn get<T: Resource>(
         &self,
         id: ResourceTypeAndId,
@@ -537,7 +537,6 @@ impl AssetRegistry {
     /// Interface to retrieve the Resource reflection interface
     pub fn get_resource_reflection<'a>(
         &'a self,
-        _kind: ResourceType,
         handle: &HandleUntyped,
     ) -> Option<AssetRegistryGuard<'a, dyn Resource>> {
         let guard = self.inner.read().unwrap();
@@ -551,7 +550,6 @@ impl AssetRegistry {
     /// Interface to retrieve the Resource mutable reflection interface
     pub fn get_resource_reflection_mut<'a>(
         &'a self,
-        _kind: ResourceType,
         handle: &HandleUntyped,
     ) -> Option<AssetRegistryWriteGuard<'a, dyn Resource>> {
         let mut guard = self.inner.write().unwrap();
@@ -606,7 +604,9 @@ impl AssetRegistry {
                 .as_mut();
 
             let build_deps = processor.extract_build_dependencies(&*resource);
-            resource.get_meta_mut().dependencies = build_deps;
+            if let Some(m) = resource.get_meta_mut() {
+                m.dependencies = build_deps;
+            }
             processor.write_resource(&*resource, writer)?;
             Ok(())
         } else {

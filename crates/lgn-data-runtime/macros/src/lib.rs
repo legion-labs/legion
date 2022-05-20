@@ -35,11 +35,11 @@ pub fn resource(attr: TokenStream, item: TokenStream) -> TokenStream {
             fn clone_dyn(&self) -> Box<dyn Resource> {
                 Box::new(self.clone())
             }
-            fn get_meta(&self) -> &lgn_data_runtime::Metadata {
-                todo!()
+            fn get_meta(&self) -> Option<&lgn_data_runtime::Metadata> {
+                None
             }
-            fn get_meta_mut(&mut self) -> &mut lgn_data_runtime::Metadata {
-                todo!()
+            fn get_meta_mut(&mut self) -> Option<&mut lgn_data_runtime::Metadata> {
+                None
             }
         }
 

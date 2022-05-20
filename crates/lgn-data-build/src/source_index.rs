@@ -407,9 +407,10 @@ mod tests {
     use std::sync::Arc;
 
     use lgn_content_store::Provider;
-    use lgn_data_offline::resource::{Project, ResourcePathName};
+    use lgn_data_offline::resource::Project;
     use lgn_data_runtime::{
-        AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId,
+        AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourcePathName,
+        ResourceTypeAndId,
     };
 
     use crate::source_index::{SourceContent, SourceIndex};

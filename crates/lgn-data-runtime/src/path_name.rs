@@ -20,7 +20,7 @@ use crate::ResourceTypeAndId;
 ///
 /// assert_eq!(path.to_string(), "/model/npc/dragon");
 /// ```
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Hash, Default)]
 pub struct ResourcePathName(String);
 
 const SEPARATOR: char = '/';

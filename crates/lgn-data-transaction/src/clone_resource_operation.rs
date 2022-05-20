@@ -61,7 +61,7 @@ impl TransactionOperation for CloneResourceOperation {
         if let Some(entity_name) = source_raw_name.to_string().rsplit('/').next() {
             if let Some(mut reflection) = ctx
                 .asset_registry
-                .get_resource_reflection_mut(self.source_resource_id.kind, &clone_handle)
+                .get_resource_reflection_mut(&clone_handle)
             {
                 // Try to set the name component field
                 if let Err(err) = set_property_from_json_string(

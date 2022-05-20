@@ -13,7 +13,7 @@ pub struct StructDescriptor {
     pub fields: Vec<FieldDescriptor>,
 }
 
-/// Macro to implement Primitive Descriptor for a primtive type
+/// Macro to implement Primitive Descriptor for a primitive type
 #[macro_export]
 macro_rules! implement_struct_descriptor {
     ($type_id:ty, $attributes:expr, $field:expr) => {

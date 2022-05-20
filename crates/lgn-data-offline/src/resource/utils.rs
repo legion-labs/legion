@@ -2,9 +2,19 @@
 #[macro_export]
 macro_rules! implement_raw_resource {
     ($type_id:ident, $processor:ident, $type_name:literal) => {
-        #[derive(Default, Clone)]
+        #[derive(Clone)]
         pub struct $type_id {
+            pub meta: lgn_data_runtime::Metadata,
             pub content: Vec<u8>,
+        }
+
+        impl Default for $type_id {
+            fn default() -> Self {
+                Self {
+                    meta: lgn_data_runtime::Metadata::new(lgn_data_runtime::ResourcePathName::default(), <$type_id as lgn_data_runtime::ResourceDescriptor>::TYPENAME, <$type_id as lgn_data_runtime::ResourceDescriptor>::TYPE),
+                    content: vec![],
+                }
+            }
         }
 
         impl lgn_data_runtime::ResourceDescriptor for $type_id {
@@ -21,11 +31,11 @@ macro_rules! implement_raw_resource {
             fn clone_dyn(&self) -> Box<dyn lgn_data_runtime::Resource> {
                 Box::new(self.clone())
             }
-            fn get_meta(&self) -> &lgn_data_runtime::Metadata {
-                &self.meta
+            fn get_meta(&self) -> Option<&lgn_data_runtime::Metadata> {
+                Some(&self.meta)
             }
-            fn get_meta_mut(&mut self) -> &mut lgn_data_runtime::Metadata {
-                &self.meta
+            fn get_meta_mut(&mut self) -> Option<&mut lgn_data_runtime::Metadata> {
+                Some(&mut self.meta)
             }
         }
 
@@ -56,7 +66,9 @@ macro_rules! implement_raw_resource {
             {
                 let mut content = Vec::new();
                 reader.read_to_end(&mut content)?;
-                Ok(Box::new($type_id { content }))
+                let mut instance = $type_id::default();
+                instance.content = content;
+                Ok(Box::new(instance))
             }
             fn load_init(&mut self, _asset: &mut (dyn lgn_data_runtime::Resource)) {}
         }

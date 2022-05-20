@@ -338,10 +338,10 @@ pub trait Resource: TypeReflection + Any + Send + Sync {
     fn clone_dyn(&self) -> Box<dyn Resource>;
 
     /// Returns the metdata embedded in the Resource.
-    fn get_meta(&self) -> &Metadata;
+    fn get_meta(&self) -> Option<&Metadata>;
 
     /// Returns a mutable version of the metdata embedded in the Resource.
-    fn get_meta_mut(&mut self) -> &mut Metadata;
+    fn get_meta_mut(&mut self) -> Option<&mut Metadata>;
 }
 
 /// Note: Based on impl of dyn Any

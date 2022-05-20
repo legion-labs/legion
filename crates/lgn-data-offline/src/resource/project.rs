@@ -10,8 +10,8 @@ use std::{
 
 use lgn_content_store::Provider;
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, HandleUntyped, Metadata, Resource, ResourceId,
-    ResourcePathId, ResourcePathName, ResourceType, ResourceTypeAndId,
+    AssetRegistry, AssetRegistryError, HandleUntyped, Metadata, ResourceId, ResourcePathId,
+    ResourcePathName, ResourceType, ResourceTypeAndId,
 };
 use lgn_source_control::{
     CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Staging,
@@ -357,7 +357,7 @@ impl Project {
     pub async fn add_resource_with_id(
         &mut self,
         name: ResourcePathName,
-        kind_name: &str,
+        _kind_name: &str,
         kind: ResourceType,
         id: ResourceId,
         handle: impl AsRef<HandleUntyped>,
@@ -376,8 +376,13 @@ impl Project {
         let mut resource_file =
             File::create(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
 
-        let mut meta = handle.as_ref().get::<dyn Resource>(registry).unwrap().get_meta_mut();
-        meta = Metadata::new(name, kind_name, kind);
+        if let Some(meta) = registry
+            .get_resource_reflection_mut(handle.as_ref())
+            .unwrap()
+            .get_meta_mut()
+        {
+            meta.rename(&name);
+        }
 
         registry
             .serialize_resource(kind, handle, &mut resource_file)
@@ -496,7 +501,6 @@ impl Project {
     pub async fn deleted_resource_info(
         &mut self,
         id: ResourceId,
-        registry: &AssetRegistry,
     ) -> Result<(ResourcePathName, ResourceType), Error> {
         let resource_path = self.resource_path(id);
         match self.deleted_pending.entry(id) {
@@ -575,7 +579,7 @@ impl Project {
     fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
         let resource_path = self.resource_path(id);
 
-        let mut file = OpenOptions::new().read(true).open(&resource_path).unwrap(); // todo(kstasik): return a result and propagate an error
+        let file = OpenOptions::new().read(true).open(&resource_path).unwrap(); // todo(kstasik): return a result and propagate an error
 
         let resource: Value = serde_json::from_reader(&file).unwrap();
         let meta: Metadata = serde_json::from_value(resource["meta"].clone()).unwrap();
@@ -708,12 +712,11 @@ mod tests {
 
     use lgn_content_store::Provider;
     use lgn_data_runtime::{
-        resource, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId, ResourceProcessor,
-        ResourceProcessorError, ResourceType,
+        resource, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId, ResourcePathName,
+        ResourceProcessor, ResourceProcessorError, ResourceType,
     };
 
     use crate::resource::project::Project;
-    use crate::resource::ResourcePathName;
 
     const RESOURCE_TEXTURE: &str = "texture";
     const RESOURCE_MATERIAL: &str = "material";

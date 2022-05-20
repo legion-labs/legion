@@ -1,8 +1,7 @@
 //! Transaction Operation to Rename a Resource
 
 use async_trait::async_trait;
-use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{ResourcePathName, ResourceTypeAndId};
 
 use crate::{Error, LockContext, TransactionOperation};
 

@@ -218,6 +218,7 @@ fn generate_data_definition(
     let imports = quote::quote! {
         #[allow(clippy::wildcard_imports)]
         use crate::*;
+        use lgn_data_runtime::{Metadata, ResourceDescriptor, ResourcePathName};
         #(use #imports;)*
     };
     cursor.write_all(imports.to_string().as_bytes())?;

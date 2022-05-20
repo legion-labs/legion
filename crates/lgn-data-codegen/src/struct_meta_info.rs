@@ -4,7 +4,7 @@ use crate::attributes::Attributes;
 use crate::member_meta_info::MemberMetaInfo;
 use lgn_utils::DefaultHasher;
 use std::collections::HashSet;
-use syn::{Ident, ItemStruct, Type};
+use syn::{parse_quote, Ident, ItemStruct, Type};
 
 #[derive(Debug)]
 pub(crate) struct StructMetaInfo {
@@ -16,29 +16,58 @@ pub(crate) struct StructMetaInfo {
     pub(crate) is_component: bool,
 }
 
+// Integrate a field 'meta' as the first field in each generated struct.
+fn compute_meta(ident: &Ident) -> Vec<MemberMetaInfo> {
+    let meta: ItemStruct = parse_quote!(
+        struct MetaContainer {
+            #[legion(offline_only)]
+            #[legion(default=Metadata::new(ResourcePathName::default(), <#ident as lgn_data_runtime::ResourceDescriptor>::TYPENAME, <#ident as lgn_data_runtime::ResourceDescriptor>::TYPE))]
+            meta: Metadata,
+        }
+    );
+
+    meta.fields
+        .iter()
+        .filter_map(|field| {
+            if let Type::Path(type_path) = &field.ty {
+                Some(MemberMetaInfo::new(field, type_path.path.clone()))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<MemberMetaInfo>>()
+}
+
 impl StructMetaInfo {
     pub(crate) fn new(item_struct: &ItemStruct) -> Self {
+        let is_resource = item_struct
+            .attrs
+            .iter()
+            .any(|attr| attr.path.segments.len() == 1 && attr.path.segments[0].ident == "resource");
+        let is_component = item_struct.attrs.iter().any(|attr| {
+            attr.path.segments.len() == 1 && attr.path.segments[0].ident == "component"
+        });
+
+        let mut members = if is_resource {
+            compute_meta(&item_struct.ident)
+        } else {
+            vec![]
+        };
+        members.extend(item_struct.fields.iter().filter_map(|field| {
+            if let Type::Path(type_path) = &field.ty {
+                Some(MemberMetaInfo::new(field, type_path.path.clone()))
+            } else {
+                None
+            }
+        }));
+
         Self {
             name: item_struct.ident.clone(),
             need_life_time: false,
             attributes: Attributes::new(&item_struct.attrs),
-            is_resource: item_struct.attrs.iter().any(|attr| {
-                attr.path.segments.len() == 1 && attr.path.segments[0].ident == "resource"
-            }),
-            is_component: item_struct.attrs.iter().any(|attr| {
-                attr.path.segments.len() == 1 && attr.path.segments[0].ident == "component"
-            }),
-            members: item_struct
-                .fields
-                .iter()
-                .filter_map(|field| {
-                    if let Type::Path(type_path) = &field.ty {
-                        Some(MemberMetaInfo::new(field, type_path.path.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<MemberMetaInfo>>(),
+            is_resource,
+            is_component,
+            members,
         }
     }
 

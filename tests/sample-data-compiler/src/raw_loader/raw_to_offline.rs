@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::{
-    Component, ResourceDescriptor, ResourcePathId, ResourceType, ResourceTypeAndId,
+    Component, Metadata, ResourceDescriptor, ResourcePathId, ResourcePathName, ResourceType,
+    ResourceTypeAndId,
 };
 use lgn_tracing::{error, info};
 use sample_data::offline as offline_data;
@@ -150,6 +150,11 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
         }
 
         Self {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                offline_data::Entity::TYPENAME,
+                offline_data::Entity::TYPE,
+            ),
             children,
             parent,
             components,
@@ -304,6 +309,11 @@ impl FromRaw<raw_data::Instance> for offline_data::Instance {
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                offline_data::Instance::TYPENAME,
+                offline_data::Instance::TYPE,
+            ),
             original: lookup_asset_path(references, &raw.original),
         }
     }
@@ -317,6 +327,11 @@ impl FromRaw<raw_data::Material> for lgn_graphics_data::offline::Material {
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                lgn_graphics_data::offline::Material::TYPENAME,
+                lgn_graphics_data::offline::Material::TYPE,
+            ),
             albedo: lookup_asset_path(references, &raw.albedo),
             normal: lookup_asset_path(references, &raw.normal),
             roughness: lookup_asset_path(references, &raw.roughness),

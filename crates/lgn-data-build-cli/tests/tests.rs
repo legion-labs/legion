@@ -4,8 +4,10 @@ use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
-use lgn_data_offline::resource::{Project, ResourcePathName};
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourcePathId};
+use lgn_data_offline::resource::Project;
+use lgn_data_runtime::{
+    AssetRegistryOptions, ResourceDescriptor, ResourcePathId, ResourcePathName,
+};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
 use serial_test::serial;
 

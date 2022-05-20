@@ -202,8 +202,10 @@ use byteorder::{LittleEndian, ReadBytesExt};
 use clap::{Parser, Subcommand};
 use lgn_content_store::{Identifier, Provider};
 use lgn_data_build::{DataBuild, DataBuildOptions};
-use lgn_data_offline::resource::{Project, ResourcePathName};
-use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId};
+use lgn_data_offline::resource::Project;
+use lgn_data_runtime::{
+    ResourceId, ResourcePathId, ResourcePathName, ResourceType, ResourceTypeAndId,
+};
 
 mod config;
 use config::Config;

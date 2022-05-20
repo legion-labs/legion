@@ -14,7 +14,7 @@ use std::{
 };
 
 use clap::Parser;
-use lgn_data_offline::resource::ResourcePathName;
+use lgn_data_runtime::ResourcePathName;
 use lgn_source_control::RepositoryName;
 use sample_data_compiler::{offline_compiler, raw_loader};
 

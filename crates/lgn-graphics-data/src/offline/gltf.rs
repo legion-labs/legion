@@ -46,9 +46,9 @@ impl GltfFile {
 
     pub fn gather_models(&self, resource_id: ResourceTypeAndId) -> Vec<(Model, String)> {
         let mut models = Vec::new();
-        for model in self.document.as_ref().unwrap().meshes() {
+        for mesh in self.document.as_ref().unwrap().meshes() {
             let mut meshes = Vec::new();
-            for primitive in model.primitives() {
+            for primitive in mesh.primitives() {
                 let mut positions: Vec<Vec3> = Vec::new();
                 let mut normals: Vec<Vec3> = Vec::new();
                 let mut tangents: Vec<Vec4> = Vec::new();
@@ -156,7 +156,9 @@ impl GltfFile {
                     material,
                 });
             }
-            models.push((Model { meshes }, String::from(model.name().unwrap())));
+            let mut model = Model::default();
+            model.meshes = meshes;
+            models.push((model, String::from(mesh.name().unwrap())));
         }
         models
     }
