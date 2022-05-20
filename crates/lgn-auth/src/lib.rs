@@ -19,4 +19,5 @@ mod oauth;
 mod token_cache;
 mod user_info;
 
+pub mod api_key;
 pub mod jwt;
