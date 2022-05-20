@@ -8,13 +8,13 @@
 
 use std::collections::HashSet;
 
-use proc_macro2::Literal;
+use proc_macro2::{Literal, Span};
 use quote::quote;
 use syn::{
     parse::{Parse, ParseStream, Result},
     parse_macro_input, parse_quote,
     punctuated::Punctuated,
-    Ident, ItemFn, Token,
+    Expr, Ident, ItemFn, Local, Stmt, Token,
 };
 
 struct TraceArgs {
@@ -60,7 +60,80 @@ pub fn span_fn(
         }
     };
 
-    function.block.stmts.insert(0, statement);
+    if function.sig.asyncness.is_none() {
+        function.block.stmts.insert(0, statement);
+
+        return proc_macro::TokenStream::from(quote! {
+            #function
+        });
+    }
+
+    let mut statements = vec![statement];
+
+    let mut index = 0;
+
+    for stmt in function.block.stmts {
+        match stmt {
+            // Plain .await statement terminated by a ;
+            Stmt::Semi(Expr::Await(_), _) => {
+                let scope_name =
+                    Ident::new(&format!("_METADATA_AWAIT_{}", index), Span::call_site());
+
+                statements.push(parse_quote! {
+                    {
+                        lgn_tracing::async_span_scope!(
+                            #scope_name,
+                            concat!(module_path!(), "::", #function_name)
+                        );
+
+                        #stmt
+                    };
+                });
+
+                index += 1;
+            }
+            // Let binding that depends on an .await
+            Stmt::Local(Local {
+                ref pat,
+                init: Some((_, ref expr)),
+                ..
+            }) => {
+                if let Expr::Await(_) = expr.as_ref() {
+                    let scope_name =
+                        Ident::new(&format!("_METADATA_AWAIT_{}", index), Span::call_site());
+
+                    statements.push(parse_quote! {
+                        let #pat = {
+                            lgn_tracing::async_span_scope!(
+                                #scope_name,
+                                concat!(module_path!(), "::", #function_name)
+                            );
+
+                            let result = #expr;
+
+                            result
+                        };
+                    });
+
+                    index += 1;
+                } else {
+                    statements.push(stmt);
+                }
+            }
+            _ => statements.push(stmt),
+        };
+    }
+
+    function.block.stmts = statements;
+
+    // println!(
+    //     "{}",
+    //     proc_macro::TokenStream::from(quote! {
+    //         #function
+    //     })
+    //     .to_string()
+    // );
+
     proc_macro::TokenStream::from(quote! {
         #function
     })

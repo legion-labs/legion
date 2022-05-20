@@ -3887,6 +3887,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-async-span-fn"
+version = "0.1.0"
+dependencies = [
+ "lgn-telemetry-sink",
+ "lgn-tracing",
+ "tokio",
+]
+
+[[package]]
 name = "lgn-auth"
 version = "0.1.0"
 dependencies = [
