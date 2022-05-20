@@ -5,7 +5,6 @@ use lgn_tracing::{async_span_scope, span_fn};
 use pin_project::pin_project;
 use std::future::Future;
 use std::str::FromStr;
-use std::sync::Mutex;
 use std::task::{Context, Poll};
 use std::time::Duration;
 use std::{fmt::Display, pin::Pin};
@@ -155,12 +154,13 @@ impl Stream for ByteStreamReader {
     }
 }
 
+#[pin_project]
 struct ByteStreamWriter {
     client: aws_sdk_s3::Client,
     bucket_name: String,
     key: String,
-    // TODO: Rewrite this type with pin_project and avoid the mutex.
-    state: Mutex<ByteStreamWriterState>,
+    #[pin]
+    state: ByteStreamWriterState,
 }
 
 type ByteStreamWriterBoxedFuture = Box<
@@ -184,12 +184,17 @@ impl ByteStreamWriter {
             client,
             bucket_name,
             key,
-            state: Mutex::new(ByteStreamWriterState::Writing(Vec::new())),
+            state: ByteStreamWriterState::Writing(Vec::new()),
         }
     }
 
-    fn poll_write_impl(&self, buf: &[u8]) -> Poll<std::result::Result<usize, std::io::Error>> {
-        match &mut *self.state.lock().unwrap() {
+    fn poll_write_impl(
+        self: Pin<&mut Self>,
+        buf: &[u8],
+    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+        let this = self.project();
+
+        match &mut this.state.get_mut() {
             ByteStreamWriterState::Writing(buffer) => {
                 buffer.extend_from_slice(buf);
 
@@ -202,8 +207,10 @@ impl ByteStreamWriter {
         }
     }
 
-    fn poll_flush_impl(&self) -> Poll<std::result::Result<(), std::io::Error>> {
-        match &*self.state.lock().unwrap() {
+    fn poll_flush_impl(self: Pin<&mut Self>) -> Poll<std::result::Result<(), std::io::Error>> {
+        let this = self.project();
+
+        match this.state.get_mut() {
             ByteStreamWriterState::Writing(_) => Poll::Ready(Ok(())),
             ByteStreamWriterState::Uploading(_) => Poll::Ready(Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
@@ -213,20 +220,21 @@ impl ByteStreamWriter {
     }
 
     fn poll_shutdown_impl(
-        &self,
+        self: Pin<&mut Self>,
         cx: &mut Context<'_>,
     ) -> Poll<std::result::Result<(), std::io::Error>> {
-        let mut state = self.state.lock().unwrap();
+        let this = self.project();
+        let state = this.state.get_mut();
 
         let fut = match &mut *state {
             ByteStreamWriterState::Writing(buffer) => {
                 let body = aws_sdk_s3::types::ByteStream::from(std::mem::take(buffer));
 
-                let fut = self
+                let fut = this
                     .client
                     .put_object()
-                    .bucket(&self.bucket_name)
-                    .key(&self.key)
+                    .bucket((*this.bucket_name).clone())
+                    .key((*this.key).clone())
                     .body(body)
                     .send();
 
@@ -533,7 +541,7 @@ mod test {
             "lgn-content-store/test_aws_s3_provider/{}",
             uuid::Uuid::new_v4()
         );
-        let aws_s3_url: AwsS3Url = format!("s3://legionlabs-ci-tests/{}", s3_prefix)
+        let aws_s3_url: AwsS3Url = format!("s3://legionlabs-governance-ci-tests/{}", s3_prefix)
             .parse()
             .unwrap();
 

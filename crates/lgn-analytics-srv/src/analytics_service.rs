@@ -1,4 +1,3 @@
-use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
 use anyhow::Context;
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
@@ -11,16 +10,18 @@ use lgn_telemetry_proto::analytics::AsyncSpansRequest;
 use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
 use lgn_telemetry_proto::analytics::BlockAsyncStatsRequest;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
+use lgn_telemetry_proto::analytics::BuildTimelineTablesReply;
+use lgn_telemetry_proto::analytics::BuildTimelineTablesRequest;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphBlock;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphComputedBlock;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
+use lgn_telemetry_proto::analytics::Level;
 use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
 use lgn_telemetry_proto::analytics::ListProcessStreamsRequest;
 use lgn_telemetry_proto::analytics::ListStreamBlocksReply;
 use lgn_telemetry_proto::analytics::ListStreamBlocksRequest;
 use lgn_telemetry_proto::analytics::ListStreamsReply;
-use lgn_telemetry_proto::analytics::LogEntry;
 use lgn_telemetry_proto::analytics::MetricBlockData;
 use lgn_telemetry_proto::analytics::MetricBlockManifest;
 use lgn_telemetry_proto::analytics::MetricBlockManifestRequest;
@@ -55,6 +56,9 @@ use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
+use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
+use crate::jit_lakehouse::JitLakehouse;
+use crate::log_entry::Searchable;
 use crate::metrics::MetricHandler;
 
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
@@ -86,6 +90,7 @@ pub struct AnalyticsService {
     pool: sqlx::any::AnyPool,
     data_lake_blobs: Arc<dyn BlobStorage>,
     cache: Arc<DiskCache>,
+    jit_lakehouse: Arc<dyn JitLakehouse>,
     call_trees: Arc<CallTreeStore>,
     flush_monitor: FlushMonitor,
 }
@@ -96,11 +101,13 @@ impl AnalyticsService {
         pool: sqlx::AnyPool,
         data_lake_blobs: Arc<dyn BlobStorage>,
         cache_blobs: Arc<dyn BlobStorage>,
+        jit_lakehouse: Arc<dyn JitLakehouse>,
     ) -> Self {
         Self {
             pool: pool.clone(),
             data_lake_blobs: data_lake_blobs.clone(),
             cache: Arc::new(DiskCache::new(cache_blobs.clone())),
+            jit_lakehouse,
             call_trees: Arc::new(CallTreeStore::new(pool, data_lake_blobs, cache_blobs)),
             flush_monitor: FlushMonitor::new(),
         }
@@ -221,12 +228,29 @@ impl AnalyticsService {
         process: &lgn_telemetry_sink::ProcessInfo,
         begin: u64,
         end: u64,
+        search: &Option<String>,
+        level_threshold: Option<Level>,
     ) -> Result<ProcessLogReply> {
         let mut connection = self.pool.acquire().await?;
         let mut entries = vec![];
-        let inv_tsc_frequency = get_process_tick_length_ms(process); // factor out
-        let ts_offset = process.start_ticks;
         let mut entry_index: u64 = 0;
+
+        let needles = match search {
+            Some(search) if !search.is_empty() => Some(
+                search
+                    .split(' ')
+                    .filter_map(|part| {
+                        if part.is_empty() {
+                            None
+                        } else {
+                            Some(part.to_lowercase())
+                        }
+                    })
+                    .collect::<Vec<String>>(),
+            ),
+            _ => None,
+        };
+
         for stream in find_process_log_streams(&mut connection, &process.process_id)
             .await
             .with_context(|| "error in find_process_log_streams")?
@@ -241,20 +265,30 @@ impl AnalyticsService {
                     for_each_log_entry_in_block(
                         &mut connection,
                         self.data_lake_blobs.clone(),
+                        process,
                         &stream,
                         &block,
-                        |ts, entry| {
+                        |log_entry| {
                             if entry_index >= end {
                                 return false;
                             }
+
                             if entry_index >= begin {
-                                let time_ms = (ts - ts_offset) as f64 * inv_tsc_frequency;
-                                entries.push(LogEntry {
-                                    msg: entry,
-                                    time_ms,
+                                let valid_content = needles
+                                    .as_ref()
+                                    .map_or(true, |needles| log_entry.matches(needles.as_ref()));
+
+                                let valid_level = level_threshold.map_or(true, |level_threshold| {
+                                    log_entry.matches(level_threshold)
                                 });
+
+                                if valid_content && valid_level {
+                                    entries.push(log_entry);
+                                    entry_index += 1;
+                                }
+                            } else {
+                                entry_index += 1;
                             }
-                            entry_index += 1;
 
                             true
                         },
@@ -350,6 +384,17 @@ impl AnalyticsService {
             request.block_ids,
         )
         .await
+    }
+
+    #[span_fn]
+    async fn build_timeline_tables_impl(
+        &self,
+        request: BuildTimelineTablesRequest,
+    ) -> Result<BuildTimelineTablesReply> {
+        self.jit_lakehouse
+            .build_timeline_tables(&request.process_id)
+            .await?;
+        Ok(BuildTimelineTablesReply {})
     }
 }
 
@@ -654,17 +699,23 @@ impl PerformanceAnalytics for AnalyticsService {
         async_span_scope!("AnalyticsService::list_process_log_entries");
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
-        if inner_request.process.is_none() {
-            error!("Missing process in list_process_log_entries");
-            return Err(Status::internal(String::from(
-                "Missing process in list_process_log_entries",
-            )));
-        }
+        let process = match inner_request.process {
+            Some(process) => process,
+            None => {
+                error!("Missing process in list_process_log_entries");
+                return Err(Status::internal(String::from(
+                    "Missing process in list_process_log_entries",
+                )));
+            }
+        };
+
         match self
             .process_log_impl(
-                &inner_request.process.unwrap(),
+                &process,
                 inner_request.begin,
                 inner_request.end,
+                &inner_request.search,
+                inner_request.level_threshold.and_then(Level::from_i32),
             )
             .await
         {
@@ -826,6 +877,25 @@ impl PerformanceAnalytics for AnalyticsService {
                 error!("Error in fetch_fetch_async_spans: {:?}", e);
                 Err(Status::internal(format!(
                     "Error in fetch_async_spans: {}",
+                    e
+                )))
+            }
+        }
+    }
+
+    async fn build_timeline_tables(
+        &self,
+        request: Request<BuildTimelineTablesRequest>,
+    ) -> Result<Response<BuildTimelineTablesReply>, Status> {
+        self.flush_monitor.tick();
+        async_span_scope!("AnalyticsService::build_timeline_tables");
+        let inner_request = request.into_inner();
+        match self.build_timeline_tables_impl(inner_request).await {
+            Ok(reply) => Ok(Response::new(reply)),
+            Err(e) => {
+                error!("Error in build_timeline_tables: {:?}", e);
+                Err(Status::internal(format!(
+                    "Error in build_timeline_tables: {}",
                     e
                 )))
             }

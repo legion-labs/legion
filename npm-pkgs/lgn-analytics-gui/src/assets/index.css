@@ -1,5 +1,6 @@
 @import "./theme.css";
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -11,4 +12,27 @@ body {
   font-family: "Inter", Arial, sans-serif;
 
   --thread-item-length: 11rem;
+}
+
+/* TODO: Use theme for the scrollbar */
+
+/* Customize scrollbar on Chrome, Safari, Edge */
+*::-webkit-scrollbar {
+  @apply w-3 h-3;
+}
+
+*::-webkit-scrollbar-track {
+  @apply on-surface;
+}
+
+*::-webkit-scrollbar-thumb {
+  @apply hover:bg-gray-400 opacity-0 duration-150 transition-colors rounded-full;
+
+  border: 0.15rem solid transparent;
+  background-color: #454545;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #707070;
 }

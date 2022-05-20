@@ -1,46 +1,65 @@
 <script lang="ts">
-  import { getContext, onMount } from "svelte";
-  import { link } from "svelte-navigator";
+  import { userInfo } from "@lgn/web-client/src/orchestrators/userInfo";
 
-  import { authClient } from "@lgn/web-client/src/lib/auth";
-  import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
+  import iconPath from "@/assets/icons/128x128.png";
+  import { getL10nOrchestratorContext } from "@/contexts";
 
-  import { l10nOrchestratorContextKey } from "@/constants";
-
-  import iconPath from "../../../icons/128x128.png";
   import User from "../Process/User.svelte";
 
-  let user: string | undefined;
+  const { availableLocales, locale } = getL10nOrchestratorContext();
 
-  const { locale } = getContext<L10nOrchestrator<Fluent>>(
-    l10nOrchestratorContextKey
-  );
+  const en = "en-US";
+  const fr = "fr-CA";
 
-  onMount(async () => {
-    user = (await authClient.userInfo()).name;
-  });
-
-  function toggleLocale(event: MouseEvent) {
-    if (event.ctrlKey && event.shiftKey) {
-      event.preventDefault();
-
-      $locale = $locale === "fr-CA" ? "en-US" : "fr-CA";
+  function setLocale(newLocale: string) {
+    if ($availableLocales.includes(newLocale)) {
+      $locale = newLocale;
     }
   }
+
+  $: user = $userInfo?.name;
 </script>
 
-<div class="w-full flex justify-between pl-6 pt-4 pr-4">
+<div class="header">
   <div class="flex items-center gap-3">
-    <a href="/" use:link on:click={toggleLocale}>
+    <a href="/" class="flex flex-row items-center space-x-1">
       <img src={iconPath} alt="logo" style="height:24px" class="inline" />
-      <span class="font-bold text-xl headline">
-        <a href="/" use:link>Legion Performance Analytics</a>
+      <span class="font-medium text-xl headline">
+        <a href="/">Analytics</a>
       </span>
     </a>
   </div>
-  {#if user}
-    <div class="flex justify-between items-center">
-      <User {user} />
-    </div>
+  {#if $$slots.default}
+    <slot />
   {/if}
+  <div class="flex space-x-2">
+    <div class="uppercase flex space-x-1 text-sm">
+      <div
+        class:text-primary={$locale === en}
+        class:cursor-pointer={$locale !== en}
+        on:click={() => setLocale(en)}
+      >
+        en
+      </div>
+      <div>/</div>
+      <div
+        class:text-primary={$locale === fr}
+        class:cursor-pointer={$locale !== fr}
+        on:click={() => setLocale(fr)}
+      >
+        fr
+      </div>
+    </div>
+    {#if user}
+      <div class="flex justify-between items-center">
+        <User {user} iconOnly />
+      </div>
+    {/if}
+  </div>
 </div>
+
+<style lang="postcss">
+  .header {
+    @apply on-surface h-14 w-full flex justify-between items-center px-4 border-b border-black;
+  }
+</style>

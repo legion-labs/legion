@@ -35,13 +35,8 @@
 
 <div id="loading-bar" style={`display:${ratio >= 1 ? "none" : "block"}`} />
 
-<style>
+<style lang="postcss">
   #loading-bar {
-    z-index: 1000;
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 4px;
-    width: 100%;
+    @apply z-50 fixed top-0 left-0 h-[4px] w-full;
   }
 </style>

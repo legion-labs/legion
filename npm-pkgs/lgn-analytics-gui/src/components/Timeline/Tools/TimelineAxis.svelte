@@ -1,15 +1,15 @@
 <script lang="ts">
   import * as d3 from "d3";
-  import { getContext, onMount } from "svelte";
+  import { onMount } from "svelte";
 
-  import { threadItemLengthContextKey } from "@/constants";
+  import { getThreadItemLengthContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
 
   import type { TimelineStateStore } from "../Stores/TimelineStateStore";
 
   export let stateStore: TimelineStateStore;
 
-  const threadItemLength = getContext<number>(threadItemLengthContextKey);
+  const threadItemLength = getThreadItemLengthContext();
 
   const height = 20;
   const padding = 4;
@@ -23,7 +23,7 @@
   $: if ($stateStore && svg) {
     const tickCount = Math.ceil($stateStore.canvasWidth / tickSize);
     svg = svg.attr("width", Math.max(0, $stateStore.canvasWidth));
-    x.range([0, $stateStore.canvasWidth]).domain($stateStore.getViewRange());
+    x.range([0, $stateStore.canvasWidth]).domain($stateStore.viewRange);
     ticks.length = 0;
     svg.call(
       d3

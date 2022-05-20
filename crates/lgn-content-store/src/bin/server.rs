@@ -4,13 +4,13 @@
 use bytesize::ByteSize;
 use clap::Parser;
 use http::{header, Method};
+use lgn_auth::{jwt::RequestAuthorizer, UserInfo};
 use lgn_cli_utils::termination_handler::AsyncTerminationHandler;
 use lgn_content_store::{
     AddressProviderConfig, AliasProviderConfig, ContentProviderConfig, DataSpace, GrpcProviderSet,
     GrpcService, Result,
 };
 use lgn_content_store_proto::content_store_server::ContentStoreServer;
-use lgn_online::authentication::{jwt::RequestAuthorizer, UserInfo};
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::prelude::*;
 use serde::Deserialize;
@@ -148,12 +148,13 @@ async fn main() -> anyhow::Result<()> {
 
     for (i, (data_space, provider_set)) in providers.iter().enumerate() {
         info!(
-            "{}: {} - provider: {} - address provider: {} - size threshold: {}",
+            "{}: {} - provider: {} - address provider: {} - size threshold: {} - alias provider: {}",
             i,
             data_space,
             provider_set.content_provider,
             provider_set.content_address_provider,
-            provider_set.size_threshold
+            provider_set.size_threshold,
+            provider_set.alias_provider,
         );
     }
 

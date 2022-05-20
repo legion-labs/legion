@@ -1,0 +1,20 @@
+#ifndef FULLSCREEN_TRIANGLE_HSH
+#define FULLSCREEN_TRIANGLE_HSH
+
+struct VertexOut {
+    float4 hpos : SV_POSITION;
+    float2 uv : TEXCOORD;
+};
+
+VertexOut fullscreen_triangle_vertex(uint id) {
+    VertexOut vertex_out = (VertexOut)0;
+    vertex_out.hpos.x = (float)(id / 2) * 4.0 - 1.0;
+    vertex_out.hpos.y = (float)(id % 2) * 4.0 - 1.0;
+    vertex_out.hpos.z = 0.0;
+    vertex_out.hpos.w = 1.0;
+    vertex_out.uv.x = (float)(id / 2) * 2.0;
+    vertex_out.uv.y = 1.0 - (float)(id % 2) * 2.0;
+    return vertex_out;
+}
+
+#endif  // FULLSCREEN_TRIANGLE_HSH

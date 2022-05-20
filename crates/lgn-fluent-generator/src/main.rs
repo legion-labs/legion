@@ -5,13 +5,12 @@
 
 use std::path::PathBuf;
 
-use askama::Template;
 use clap::Parser;
 use error::Error;
 use fluent_syntax::parser;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use types::EntryDescription;
-use utils::{read_files_from_glob, write_string_content};
+use types::{EntryDescription, RenderableTemplate};
+use utils::read_files_from_glob;
 
 use crate::{error::Result, types::TypeScriptTemplate};
 
@@ -44,9 +43,7 @@ fn main() -> Result<()> {
         .collect::<Vec<_>>();
 
     // TODO: Support more languages (Rust, Python?)
-    let content = TypeScriptTemplate::new(&entry_descriptions).render()?;
-
-    write_string_content(&args.out_dir, &content)?;
+    TypeScriptTemplate::new(&entry_descriptions).render_to_dir(&args.out_dir)?;
 
     Ok(())
 }

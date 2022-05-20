@@ -587,11 +587,11 @@ mod tests {
 
     #[test]
     fn test_aws_ecr_information_valid() {
-        let s = "550877636976.dkr.ecr.ca-central-1.amazonaws.com/my/repo-si_tory";
+        let s = "616787818023.dkr.ecr.ca-central-1.amazonaws.com/my/repo-si_tory";
         let info = AwsEcrInformation::from_string(s);
 
         assert!(info.is_some());
-        assert_eq!(info.as_ref().unwrap().account_id, "550877636976");
+        assert_eq!(info.as_ref().unwrap().account_id, "616787818023");
         assert_eq!(info.as_ref().unwrap().region, "ca-central-1");
         assert_eq!(info.as_ref().unwrap().repository_name, "my/repo-si_tory");
         assert_eq!(info.as_ref().unwrap().to_string(), s);
@@ -600,7 +600,7 @@ mod tests {
     #[test]
     fn test_aws_ecr_information_wrong_prefix() {
         let info =
-            AwsEcrInformation::from_string("foo.550877636976.dkr.ecr.ca-central-1.amazonaws.com/");
+            AwsEcrInformation::from_string("foo.616787818023.dkr.ecr.ca-central-1.amazonaws.com/");
 
         assert!(info.is_none());
     }
@@ -608,7 +608,7 @@ mod tests {
     #[test]
     fn test_aws_ecr_information_wrong_suffix() {
         let info = AwsEcrInformation::from_string(
-            "550877636976.dkr.ecr.ca-central-1.amazonaws.com/foo#bar",
+            "616787818023.dkr.ecr.ca-central-1.amazonaws.com/foo#bar",
         );
 
         assert!(info.is_none());

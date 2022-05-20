@@ -21,9 +21,9 @@ if (!fs.existsSync(lgnFrontendContentDir)) {
 module.exports = {
   mode: "jit",
   content: [
-    "index.html",
     path.join(srcContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, contentGlobSuffix),
+    path.join(lgnFrontendContentDir, "app.html"),
   ],
   theme: {
     fontFamily: {

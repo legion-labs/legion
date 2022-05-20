@@ -4,4 +4,12 @@ import { createAsyncStoreOrchestrator } from "./async";
 
 export type UserInfoOrchestrator = AsyncOrchestrator<UserInfo>;
 
-export default createAsyncStoreOrchestrator<UserInfo>();
+const userInfoStore = createAsyncStoreOrchestrator<UserInfo>();
+
+export const {
+  data: userInfo,
+  error: userInfoError,
+  loading: userInfoLoading,
+} = userInfoStore;
+
+export default userInfoStore;

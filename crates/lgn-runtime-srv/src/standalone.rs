@@ -1,5 +1,6 @@
-use lgn_app::prelude::*;
-use lgn_ecs::prelude::*;
+use lgn_app::prelude::App;
+use lgn_ecs::prelude::{EventReader, IntoExclusiveSystem, NonSend, Query, Res};
+use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_renderer::{
     components::{
         RenderSurface, RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
@@ -22,6 +23,7 @@ pub(crate) fn build_standalone(app: &mut App) -> &mut App {
         return_from_run: true,
         ..WinitSettings::default()
     })
+    .add_plugin(GilrsPlugin::default())
     .add_plugin(WindowPlugin::default())
     .add_plugin(WinitPlugin::default())
     .add_system(on_render_surface_created_for_window.exclusive_system())

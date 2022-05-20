@@ -7,6 +7,8 @@
 
   export let initAuthStatus: InitAuthStatus | null;
 
+  export let dispose: () => void | undefined;
+
   // TODO: Here we can control the UI and display a modal à la GitHub
   onMount(() => {
     if (initAuthStatus) {
@@ -16,6 +18,10 @@
         }
       }
     }
+
+    return () => {
+      dispose?.();
+    };
   });
 </script>
 

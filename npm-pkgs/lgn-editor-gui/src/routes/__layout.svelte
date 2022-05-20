@@ -6,6 +6,8 @@
   import { headlessRun } from "@lgn/web-client";
   import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
   import log from "@lgn/web-client/src/lib/log";
+  import type { Level } from "@lgn/web-client/src/lib/log";
+  import { ConsoleTransport } from "@lgn/web-client/src/lib/log/transports";
   import {
     createEmptyPanel,
     createPanel,
@@ -15,6 +17,8 @@
   import { initApiClient } from "@/api";
   import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import contextMenu, {
+    localChangesContextMenuId,
+    localChangesEntries,
     resourceBrowserItemContextMenuId,
     resourceBrowserItemEntries,
     resourceBrowserPanelContextMenuId,
@@ -29,8 +33,6 @@
   } from "@/stores/workspace";
   import type { TabType } from "@/stores/workspace";
   import "@/workers/editorWorker";
-
-  const logLevel = "warn";
 
   const scopes: NonEmptyArray<string> = [
     "aws.cognito.signin.user.admin",
@@ -66,7 +68,7 @@
     initApiClient({ editorServerUrl, runtimeServerUrl });
 
     try {
-      const { initAuthStatus } = await headlessRun({
+      const { dispose, initAuthStatus } = await headlessRun({
         auth: {
           fetch,
           issuerUrl,
@@ -90,7 +92,13 @@
         },
         editorServerUrl,
         runtimeServerUrl,
-        logLevel,
+        log: {
+          transports: [
+            new ConsoleTransport({
+              level: import.meta.env.VITE_CONSOLE_LOG_LEVEL as Level,
+            }),
+          ],
+        },
         onPreInit() {
           // await initWasmLogger();
           // debug("Hello from the Legion editor");
@@ -104,6 +112,8 @@
             resourceBrowserPanelContextMenuId,
             resourceBrowserPanelEntries
           );
+
+          contextMenu.register(localChangesContextMenuId, localChangesEntries);
 
           const videoEditorTabPayloadId = "video-editor-payload";
 
@@ -156,7 +166,7 @@
 
       authStatus.set(initAuthStatus);
 
-      return {};
+      return { props: { dispose } };
     } catch (error) {
       log.error("Application couldn't start", error);
 
@@ -168,6 +178,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
 
+  import ContextMenu from "@lgn/web-client/src/components/ContextMenu.svelte";
+  import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
+  import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
+
   import AuthModal from "@/components/AuthModal.svelte";
   import { fileName } from "@/lib/path";
   import { allActiveScenes } from "@/orchestrators/allActiveScenes";
@@ -176,8 +190,11 @@
   import devSettings from "@/stores/devSettings";
   import { initLogStreams } from "@/stores/log";
   import modal from "@/stores/modal";
+  import notifications from "@/stores/notifications";
 
   import "../assets/index.css";
+
+  export let dispose: (() => void) | undefined;
 
   onMount(async () => {
     if ($authStatus && $authStatus.type === "error") {
@@ -241,6 +258,7 @@
     );
 
     return () => {
+      dispose?.();
       initLogStreamSubscriptions();
       initMessageStreamSubscription();
       // initStagedResourcesStreamSubscription();
@@ -250,5 +268,11 @@
     };
   });
 </script>
+
+<ModalContainer store={modal} />
+
+<ContextMenu store={contextMenu} />
+
+<Notifications store={notifications} />
 
 <slot />

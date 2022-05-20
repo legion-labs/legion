@@ -18,7 +18,7 @@ mod sql_migration;
 mod sql_telemetry_db;
 mod web_ingestion_service;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -31,6 +31,7 @@ use local_data_lake::connect_to_local_data_lake;
 use remote_data_lake::connect_to_remote_data_lake;
 use std::net::SocketAddr;
 use tonic::transport::Server;
+use tower_http::auth::AsyncRequireAuthorizationLayer;
 use warp::Filter;
 use web_ingestion_service::WebIngestionService;
 
@@ -59,8 +60,32 @@ async fn serve_grpc(
     args: &Cli,
     lake: DataLakeConnection,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // To enable AWS DynamoDb API key validation, uncomment the following (and possibly adapt the name of the DynamoDb table):
+    //let validation = Arc::new(lgn_auth::api_key::TtlCacheValidation::new(
+    //    lgn_auth::api_key::AwsDynamoDbValidation::new(None, "legionlabs-telemetry-api-keys")
+    //        .await?,
+    //    10,                                  // Hold up to 10 API keys in memory.
+    //    std::time::Duration::from_secs(600), // Hold them for 10 minutes.
+    //));
+
+    // This validates against an in-memory API key.
+    // In a real world scenario, you would want to read the API key from the
+    // environment at runtime, but for now we'll hardcode it during compilation.
+    //let api_key = std::env::var("LGN_TELEMETRY_GRPC_API_KEY")?.into();
+    let api_key = env!("LGN_TELEMETRY_GRPC_API_KEY").to_string().into();
+    let validation = Arc::new(lgn_auth::api_key::MemoryValidation::new(vec![api_key]));
+
+    let auth_layer =
+        AsyncRequireAuthorizationLayer::new(lgn_auth::api_key::RequestAuthorizer::new(validation));
+
+    let layer = tower::ServiceBuilder::new() //todo: compose with cors layer
+        .layer(auth_layer)
+        .into_inner();
+
     let service = GRPCIngestionService::new(lake);
+
     Server::builder()
+        .layer(layer)
         .add_service(TelemetryIngestionServer::new(service))
         .serve(args.listen_endpoint)
         .await?;
@@ -132,26 +157,28 @@ async fn serve_http(
     lake: DataLakeConnection,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let service = WebIngestionService::new(lake);
-    let web_ingestion_filter = warp::path("telemetryingestion").and(with_service(service));
+    let web_ingestion_filter =
+        warp::path!("v1" / "spaces" / "default" / "telemetry" / "ingestion" / ..)
+            .and(with_service(service));
 
     let insert_process_filter = web_ingestion_filter
         .clone()
-        .and(warp::path("insertprocess"))
+        .and(warp::path("process"))
         .and(warp::body::json())
         .and_then(insert_process_request);
 
     let insert_stream_filter = web_ingestion_filter
         .clone()
-        .and(warp::path("insertstream"))
+        .and(warp::path("stream"))
         .and(warp::body::json())
         .and_then(insert_stream_request);
 
     let insert_block_filter = web_ingestion_filter
-        .and(warp::path("insertblock"))
+        .and(warp::path("block"))
         .and(warp::body::bytes())
         .and_then(insert_block_request);
 
-    let routes = warp::post().and(
+    let routes = warp::put().and(
         insert_process_filter
             .or(insert_stream_filter)
             .or(insert_block_filter),

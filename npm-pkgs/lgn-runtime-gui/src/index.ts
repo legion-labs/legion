@@ -1,4 +1,6 @@
 import { AppComponent, run } from "@lgn/web-client";
+import type { Level } from "@lgn/web-client/src/lib/log";
+import { ConsoleTransport } from "@lgn/web-client/src/lib/log/transports";
 
 import App from "@/App.svelte";
 
@@ -32,7 +34,13 @@ run({
     },
   },
   rootQuerySelector: "#root",
-  logLevel: "warn",
+  log: {
+    transports: [
+      new ConsoleTransport({
+        level: import.meta.env.VITE_CONSOLE_LOG_LEVEL as Level,
+      }),
+    ],
+  },
 })
   // eslint-disable-next-line no-console
   .catch((error) => console.error("Application couldn't start", error));

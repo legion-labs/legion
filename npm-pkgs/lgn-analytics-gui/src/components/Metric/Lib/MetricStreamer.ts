@@ -3,8 +3,6 @@ import { get } from "svelte/store";
 
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 
-import { makeGrpcClient } from "@/lib/client";
-
 import { MetricState } from "./MetricState";
 import { getMetricStore } from "./MetricStore";
 import type { MetricStore } from "./MetricStore";
@@ -13,30 +11,33 @@ export class MetricStreamer {
   currentMinMs = -Infinity;
   currentMaxMs = Infinity;
   metricStore: MetricStore;
-  private client: PerformanceAnalyticsClientImpl | null = null;
-  private processId: string;
-  private semaphore: Semaphore;
-  constructor(processId: string) {
-    this.processId = processId;
+
+  #semaphore: Semaphore;
+  #processId: string;
+  #client: PerformanceAnalyticsClientImpl;
+
+  constructor(client: PerformanceAnalyticsClientImpl, processId: string) {
+    this.#processId = processId;
+    this.#client = client;
+    this.#semaphore = new Semaphore(8);
+
     this.metricStore = getMetricStore();
-    this.semaphore = new Semaphore(8);
   }
 
   async initialize() {
-    this.client = makeGrpcClient();
     const blocks = (
-      await this.client.list_process_blocks({
-        processId: this.processId,
+      await this.#client.list_process_blocks({
+        processId: this.#processId,
         tag: "metrics",
       })
     ).blocks;
 
     const blockManifests = await Promise.all(
       blocks.map(async (block) => {
-        const blockManifest = await this.client?.fetch_block_metric_manifest({
+        const blockManifest = await this.#client?.fetch_block_metric_manifest({
           blockId: block.blockId,
           streamId: block.streamId,
-          processId: this.processId,
+          processId: this.#processId,
         });
         return blockManifest;
       })
@@ -45,14 +46,12 @@ export class MetricStreamer {
     const metricStates = new Map<string, MetricState>();
 
     for (const blockManifest of blockManifests) {
-      if (blockManifest) {
-        for (const metricDesc of blockManifest.metrics) {
-          if (!metricStates.get(metricDesc.name)) {
-            metricStates.set(metricDesc.name, new MetricState(metricDesc));
-          }
-          const metricState = metricStates.get(metricDesc.name);
-          metricState?.registerBlock(blockManifest);
+      for (const metricDesc of blockManifest.metrics) {
+        if (!metricStates.get(metricDesc.name)) {
+          metricStates.set(metricDesc.name, new MetricState(metricDesc));
         }
+        const metricState = metricStates.get(metricDesc.name);
+        metricState?.registerBlock(blockManifest);
       }
     }
 
@@ -86,16 +85,17 @@ export class MetricStreamer {
     missingBlocks.forEach((metric) => {
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       metric.blocks.forEach(async (block) => {
-        await this.semaphore.acquire();
+        await this.#semaphore.acquire();
         try {
-          const blockData = await this.client?.fetch_block_metric({
-            processId: this.processId,
+          const blockData = await this.#client.fetch_block_metric({
+            processId: this.#processId,
             streamId: block.streamId,
             metricName: metric.name,
             blockId: block.blockId,
             lod: lod,
           });
-          if (blockData) {
+          // TODO: Is this really correct? It seems the value is guaranteed not to be undefined
+          if (blockData !== undefined) {
             this.metricStore.registerBlock(
               blockData,
               block.blockId,
@@ -103,7 +103,7 @@ export class MetricStreamer {
             );
           }
         } finally {
-          this.semaphore.release();
+          this.#semaphore.release();
         }
       });
     });

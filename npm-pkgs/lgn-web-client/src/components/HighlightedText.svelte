@@ -1,26 +1,19 @@
 <script lang="ts">
   export let text: string;
 
-  export let pattern: RegExp | string;
+  export let pattern: RegExp | string | (RegExp | string)[];
 
-  $: patternRegExp =
-    pattern instanceof RegExp ? pattern : new RegExp(`(${pattern})`, "i");
+  function highlightText(text: string, pattern: RegExp | string) {
+    return text.replaceAll(
+      pattern,
+      (match) =>
+        `<mark class="bg-orange-700 text-black font-bold">${match}</mark>`
+    );
+  }
 
-  $: highlightedTextParts = text.split(patternRegExp);
+  $: highlightedText = Array.isArray(pattern)
+    ? pattern.reduce(highlightText, text)
+    : highlightText(text, pattern);
 </script>
 
-<div>
-  {#each highlightedTextParts as part, index}
-    {#if index % 2 === 0}
-      {part}
-    {:else}
-      <mark class="highlighted-text">{part}</mark>
-    {/if}
-  {/each}
-</div>
-
-<style lang="postcss">
-  .highlighted-text {
-    @apply bg-orange-700 text-black font-bold;
-  }
-</style>
+{@html highlightedText}

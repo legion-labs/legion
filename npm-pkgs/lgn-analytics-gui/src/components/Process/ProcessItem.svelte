@@ -1,28 +1,33 @@
 <script lang="ts">
   import { formatDistance } from "date-fns";
-  import { getContext } from "svelte";
-  import { link } from "svelte-navigator";
 
   import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
-  import type { L10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
 
-  import { l10nOrchestratorContextKey } from "@/constants";
-  import { makeGrpcClient } from "@/lib/client";
+  import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatProcessName } from "@/lib/format";
 
   import ProcessComputer from "./ProcessComputer.svelte";
+  import ProcessList from "./ProcessList.svelte";
   import ProcessPlatform from "./ProcessPlatform.svelte";
   import User from "./User.svelte";
 
-  const { locale } = getContext<L10nOrchestrator<Fluent>>(
-    l10nOrchestratorContextKey
-  );
+  const { locale } = getL10nOrchestratorContext();
+  const client = getHttpClientContext();
+
+  export let columns: Record<
+    "user" | "process" | "computer" | "platform" | "start-time" | "statistics",
+    string
+  >;
 
   export let processInstance: ProcessInstance;
+
   export let depth: number;
-  export let index: number;
-  export let highlightedPattern: string;
+
+  export let highlightedPattern: string | RegExp | undefined = undefined;
+
+  export let viewMode: "all" | "search";
+
   /** Prevent folding/unfolding, if this is `true` a process' sub processes can't be displayed */
   export let noFold: boolean;
 
@@ -32,10 +37,11 @@
 
   async function onClick() {
     collapsed = !collapsed;
+
     if (processes) {
       return;
     }
-    const client = makeGrpcClient();
+
     ({ processes } = await client.list_recent_processes({
       parentProcessId: processInstance.processInfo?.processId,
     }));
@@ -74,52 +80,60 @@
 
 {#if processInstance.processInfo}
   <div
-    class:surface={index % 2 === 0}
-    class:background={index % 2 !== 0}
-    class:bg-opacity-80={depth > 0}
-    class="text-white flex h-8 rounded-md items-center"
+    class="surface text-white flex h-8 items-center border-b border-[#202020] px-1"
   >
-    <div class="w-8 text-center text-white p-x-1 opacity-60">
-      {#if !noFold && processInstance.childCount}
-        <i
-          class={`bi bi-arrow-${
-            collapsed ? "down" : "up"
-          }-circle-fill cursor-pointer`}
-          on:click={onClick}
+    <div
+      class="truncate flex flex-row px-0.5"
+      style={`width: ${columns.process}`}
+      title={processInstance.processInfo.exe}
+    >
+      <div class="text-center w-6 text-white p-x-1 opacity-60">
+        {#if !noFold && processInstance.childCount > 0}
+          <i
+            class={`bi bi-arrow-${
+              collapsed ? "down" : "up"
+            }-circle-fill cursor-pointer`}
+            on:click={onClick}
+          />
+        {/if}
+      </div>
+      {#if depth}
+        <div style="padding-left: {(depth - 1) * 0.5}rem">
+          <i class="bi bi-arrow-return-right pr-1 opacity-40" />
+        </div>
+      {/if}
+      {#if highlightedPattern}
+        <HighlightedText
+          pattern={highlightedPattern}
+          text={formattedProcessName}
         />
+      {:else}
+        {formattedProcessName}
       {/if}
     </div>
-    <div
-      class="w-5/12 xl:w-2/12 truncate hidden md:block"
-      style={`padding-left:${depth * 20}px`}
-    >
+    <div class="px-0.5" style={`width: ${columns.user}`}>
       <User user={processInstance.processInfo.username ?? ""}>
-        <div slot="default" let:user>
-          <HighlightedText pattern={highlightedPattern} text={user} />
+        <div class="truncate" slot="default" let:user>
+          {#if highlightedPattern}
+            <HighlightedText pattern={highlightedPattern} text={user} />
+          {:else}
+            {user}
+          {/if}
         </div>
       </User>
     </div>
-    <div
-      class="w-5/12 xl:w-2/12 truncate flex flex-row"
-      style={`padding-left:${Math.min(0, depth - 1) * 20}px`}
-      title={processInstance.processInfo.exe}
-    >
-      {#if depth}
-        <i class="bi bi-arrow-return-right pr-1 opacity-40" />
-      {/if}
-      <HighlightedText
-        pattern={highlightedPattern}
-        text={formattedProcessName}
-      />
-    </div>
-    <div class="w-2/12 truncate hidden xl:block">
+    <div class="px-0.5" style={`width: ${columns.computer}`}>
       <ProcessComputer process={processInstance.processInfo}>
-        <div slot="default" let:computer>
-          <HighlightedText pattern={highlightedPattern} text={computer} />
+        <div class="truncate" slot="default" let:computer>
+          {#if highlightedPattern}
+            <HighlightedText pattern={highlightedPattern} text={computer} />
+          {:else}
+            {computer}
+          {/if}
         </div>
       </ProcessComputer>
     </div>
-    <div class="w-2/12 truncate hidden xl:block">
+    <div class="truncate px-0.5" style={`width: ${columns.platform}`}>
       <ProcessPlatform process={processInstance.processInfo} />
     </div>
     <!-- <div class="w-2/12 truncate">
@@ -128,13 +142,17 @@
         addSuffix: true,
       })}
     </div> -->
-    <div class="w-2/12 pl-4 truncate" title={formattedStateTime}>
+    <div
+      class="truncate px-0.5"
+      style={`width: ${columns["start-time"]}`}
+      title={formattedStateTime}
+    >
       {formattedStateTime}
     </div>
-    <div class="flex ml-auto">
+    <div class="px-0.5 flex" style={`width: ${columns.statistics}`}>
       <div class="w-8">
         {#if processInstance.nbLogBlocks > 0}
-          <a href={`/log/${processInstance.processInfo.processId}`} use:link>
+          <a href={`/log/${processInstance.processInfo.processId}`}>
             <i
               title="Log ({processInstance.nbLogBlocks})"
               class="bi bi-card-text"
@@ -144,10 +162,7 @@
       </div>
       <div class="w-8">
         {#if processInstance.nbMetricBlocks > 0}
-          <a
-            href={`/metrics/${processInstance.processInfo.processId}`}
-            use:link
-          >
+          <a href={`/metrics/${processInstance.processInfo.processId}`}>
             <i
               title="Metrics ({processInstance.nbMetricBlocks})"
               class="bi bi-graph-up"
@@ -157,10 +172,7 @@
       </div>
       <div class="w-8">
         {#if processInstance.nbCpuBlocks > 0}
-          <a
-            href={`/timeline/${processInstance.processInfo.processId}`}
-            use:link
-          >
+          <a href={`/timeline/${processInstance.processInfo.processId}`}>
             <i
               title="Timeline ({processInstance.nbCpuBlocks})"
               class="bi bi-body-text"
@@ -171,13 +183,12 @@
     </div>
   </div>
   {#if !collapsed && processes}
-    {#each processes as processInstance (processInstance.processInfo?.processId)}
-      <svelte:self
-        {highlightedPattern}
-        {processInstance}
-        depth={depth + 1}
-        index={index + 1}
-      />
-    {/each}
+    <ProcessList
+      headless
+      {highlightedPattern}
+      {viewMode}
+      depth={depth + 1}
+      {processes}
+    />
   {/if}
 {/if}

@@ -51,11 +51,11 @@
   </div>
   {#if !collapsed && node}
     <div class="background flex flex-col p-3">
-      <CallGraphFlatNodeStat node={node.value} />
-      <div class="hidden md:block pb-4">
+      <div class="hidden lg:block pb-4">
+        <CallGraphFlatNodeStat node={node.value} />
         <div class="w-full border-t border-headline" />
       </div>
-      <div class="hidden md:grid tables gap-2">
+      <div class="grid tables gap-2">
         <CallGraphFlatNodeTable
           on:clicked
           {node}

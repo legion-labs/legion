@@ -27,8 +27,8 @@ pub fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
     let resource_dir = work_dir.path().join("offline");
     let output_dir = work_dir.path().join("temp");
 
-    std::fs::create_dir(&resource_dir).unwrap();
-    std::fs::create_dir(&output_dir).unwrap();
+    std::fs::create_dir_all(&resource_dir).unwrap();
+    std::fs::create_dir_all(&output_dir).unwrap();
     (resource_dir, output_dir)
 }
 

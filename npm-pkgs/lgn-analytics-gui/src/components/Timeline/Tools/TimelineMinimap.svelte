@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { createEventDispatcher, getContext, onMount } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
 
-  import { threadItemLengthContextKey } from "@/constants";
+  import { getThreadItemLengthContext } from "@/contexts";
 
   import { TimelineMinimapViewport } from "../Lib/TimelineViewport";
   import type { TimelineStateStore } from "../Stores/TimelineStateStore";
@@ -11,8 +11,7 @@
   export let scrollHeight: number;
   export let scrollTop: number;
 
-  const threadItemLength = getContext<number>(threadItemLengthContextKey);
-
+  const threadItemLength = getThreadItemLengthContext();
   const canvasToMinimapRatio = 5;
   const minimapBreakpoint = 300;
   const bottomPadding = 20;
@@ -100,7 +99,7 @@
   }
 
   function updateViewport() {
-    const viewRange = $stateStore.getViewRange();
+    const viewRange = $stateStore.viewRange;
     const maxViewRange = viewRange[1] - viewRange[0];
     const maxRange = $stateStore.getMaxRange();
     let x = viewRange[0] / maxRange;
