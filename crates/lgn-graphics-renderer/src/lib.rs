@@ -856,10 +856,6 @@ fn render_update(
         descriptor_heap_manager.end_frame();
         debug_display.end_frame();
         render_scope.end_frame(&graphics_queue);
-        println!(
-            "CPU Renderer frame time: {}ms",
-            render_scope.frame_time().as_secs_f32() * 1000.0
-        );
         transient_buffer.end_frame();
         transient_commandbuffer_manager.end_frame();
         let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
