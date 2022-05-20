@@ -338,14 +338,56 @@ impl OutputIndex {
 #[cfg(test)]
 mod tests {
 
-    use std::{path::Path, str::FromStr};
+    use std::{path::Path, str::FromStr, thread, time::Duration};
 
+    use futures::future::join_all;
     use lgn_content_store::Identifier;
     use lgn_data_compiler::CompiledResource;
     use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
+    use sqlx::{migrate::MigrateDatabase, Executor};
     use text_resource::TextResource;
 
     use crate::output_index::{AssetHash, OutputIndex};
+
+    #[tokio::test]
+    async fn sqlx_timeout() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let index_path = work_dir.path();
+        let index_db = test_database_uri(&index_path, "0.0.1");
+
+        sqlx::Any::create_database(&index_db).await.unwrap();
+
+        let connection = sqlx::any::AnyPoolOptions::new()
+            .max_connections(1)
+            .connect_timeout(Duration::from_millis(300))
+            .connect(&index_db)
+            .await
+            .unwrap();
+
+        connection
+            .execute("CREATE TABLE some_table(some_number BIGINT);")
+            .await
+            .unwrap();
+
+        let mut vec_future = Vec::new();
+
+        for _ in 1..3 {
+            vec_future.push(async {
+                connection
+                    .execute(sqlx::query("SELECT * FROM some_table"))
+                    .await
+                    .unwrap();
+                thread::sleep(Duration::from_secs(1));
+                connection
+                    .execute(sqlx::query("SELECT * FROM some_table"))
+                    .await
+                    .unwrap();
+            });
+        }
+
+        // sqlx will return PoolTimedOut here
+        let _results = join_all(vec_future).await;
+    }
 
     fn test_database_uri(buildindex_dir: impl AsRef<Path>, version: &str) -> String {
         let db_path = buildindex_dir
