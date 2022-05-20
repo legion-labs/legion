@@ -376,12 +376,8 @@ mod tests {
                 connection
                     .execute(sqlx::query("SELECT * FROM some_table"))
                     .await
-                    .unwrap();
+                    .unwrap(); // thread 'tests::sqlx_timeout' panicked at 'called `Result::unwrap()` on an `Err` value: PoolTimedOut'
                 thread::sleep(Duration::from_secs(1));
-                connection
-                    .execute(sqlx::query("SELECT * FROM some_table"))
-                    .await
-                    .unwrap();
             });
         }
 
