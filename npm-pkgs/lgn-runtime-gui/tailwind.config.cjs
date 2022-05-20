@@ -3,9 +3,11 @@ const config = require("../../tailwind.config.cjs");
 const fs = require("fs");
 const path = require("path");
 
-const contentGlobSuffix = "**/*.{svelte,ts}";
-const srcContentDir = "./src";
-const lgnFrontendContentDir = "./node_modules/@lgn/web-client/src";
+const {
+  srcContentDir,
+  contentGlobSuffix,
+  lgnFrontendContentDir,
+} = require("./../tailwind.const.js");
 
 if (!fs.existsSync(lgnFrontendContentDir)) {
   // eslint-disable-next-line no-console

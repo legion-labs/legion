@@ -9,10 +9,7 @@
     "jsx": "preserve",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": [
-      "esnext",
-      "dom"
-    ],
+    "lib": ["esnext", "dom"],
     "importsNotUsedAsValues": "error",
     "preserveValueImports": true,
     "isolatedModules": true,
@@ -38,5 +35,7 @@
     "src/**/*.d.ts",
     "src/**/*.svelte",
     "tests/**/*.ts",
+    "*.cjs",
+    "*.js"
   ]
 }

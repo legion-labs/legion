@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const config = require("../../tailwind.config.cjs");
-
 const path = require("path");
 
-const contentGlobSuffix = "**/*.{svelte,ts}";
-const srcContentDir = "./src";
-const lgnFrontendContentDir = "./node_modules/@lgn/web-client/src";
+const {
+  srcContentDir,
+  contentGlobSuffix,
+  lgnFrontendContentDir,
+} = require("./../tailwind.const.js");
 
 // It's really painful that the type definition doesn't support commonjs
 /** @type {any} */
@@ -77,16 +78,13 @@ const themePlugin = plugin(function ({ addComponents }) {
 
 // eslint-disable-next-line no-undef
 module.exports = {
-  mode: "jit",
+  ...config,
   content: [
     path.join(srcContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, "app.html"),
   ],
   theme: {
-    fontFamily: {
-      default: "Inter,Arial,sans-serif",
-    },
     extend: {
       borderRadius: {
         DEFAULT: "var(--roundness)",
