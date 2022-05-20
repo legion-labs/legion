@@ -1,0 +1,31 @@
+{% for model in api.models %}
+    {% match model %}
+        {% when Model::Enum with (enum_) %}
+            {% if let Some(description) = enum_.description %}/** {{ description }} */{% endif %}
+            export type {{ enum_.name }}Model = (
+                {%- for variant in enum_.variants -%}
+                    | "{{ variant }}"
+                {%- endfor -%}
+            );
+        {% when Model::OneOf with (one_of) %}
+            {% if let Some(description) = one_of.description %}/** {{ description }} */{% endif %}
+            export type {{ one_of.name }}Model = (
+                {%- for type_ in one_of.types -%}
+                    | { type: "option{{loop.index}}", value: {{ type_|fmt_type }} }
+                {%- endfor -%}
+            );
+        {% when Model::Struct with (struct_) %}
+            {% if let Some(description) = struct_.description %}/** {{ description }} */{% endif %}
+            export type {{ struct_.name }}Model = {
+                {% for field in struct_.fields %}
+                    {% if let Some(description) = field.description -%}/** {{ description }} */{%- endif %}
+                    {# #[serde(rename = "{{ field.name }}")] #}
+                    {%- if field.required -%}
+                    "{{ field.name }}": {{ field.type_|fmt_type }};
+                    {%- else -%}
+                    "{{ field.name }}"?: {{ field.type_|fmt_type }};
+                    {%- endif -%}
+                {% endfor %}
+            };
+    {% endmatch %}
+{% endfor %}

@@ -21,6 +21,12 @@ paths:
             type: array
             items:
               type: string
+        - name: q
+          in: query
+          description: Dynamic search
+          required: false
+          schema:
+            type: string
       responses:
         "200":
           description: List of cars.

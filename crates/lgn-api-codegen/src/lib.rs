@@ -11,12 +11,21 @@ pub(crate) mod errors;
 pub(crate) mod filters;
 pub(crate) mod openapi_ext;
 pub(crate) mod rust;
+pub(crate) mod typescript;
 pub(crate) mod visitor;
 
 use api::Api;
+use clap::ArgEnum;
 use errors::{Error, Result};
 use rust::RustGenerator;
 use std::path::Path;
+use typescript::TypeScriptGenerator;
+
+#[derive(Debug, Clone, ArgEnum)]
+pub enum Language {
+    Rust,
+    TypeScript,
+}
 
 /// Generates the code for the specificed language.
 ///
@@ -24,7 +33,7 @@ use std::path::Path;
 ///
 /// If the generation fails to complete.
 pub fn generate(
-    language: &str,
+    language: &Language,
     openapi_file: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
 ) -> Result<()> {
@@ -32,7 +41,7 @@ pub fn generate(
     let openapi: openapiv3::OpenAPI = serde_yaml::from_reader(&openapi_file)?;
     let api = Api::try_from(&openapi)?;
 
-    let generator = load_generator_for_language(language)?;
+    let generator = load_generator_for_language(language);
     generator.generate(&api, output_dir.as_ref())
 }
 
@@ -40,9 +49,9 @@ pub(crate) trait Generator {
     fn generate(&self, api: &Api, output_dir: &Path) -> Result<()>;
 }
 
-fn load_generator_for_language(language: &str) -> Result<Box<dyn Generator>> {
-    Ok(match language {
-        "rust" => Box::new(RustGenerator::default()),
-        _ => return Err(Error::Unsupported(format!("language: {}", language))),
-    })
+fn load_generator_for_language(language: &Language) -> Box<dyn Generator> {
+    match language {
+        Language::Rust => Box::new(RustGenerator::default()),
+        Language::TypeScript => Box::new(TypeScriptGenerator::default()),
+    }
 }
