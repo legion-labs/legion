@@ -18,6 +18,10 @@ impl RenderCommandManager {
     }
 
     pub fn sync_update(&mut self, new_pool: &mut RenderCommandQueuePool) {
+        {
+            let mut pool = new_pool.pool.read();
+            assert_eq!(pool.acquired_count(), 0);
+        }
         std::mem::swap(&mut self.queue_pool, new_pool);
     }
 

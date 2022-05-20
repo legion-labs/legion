@@ -489,12 +489,14 @@ fn render_update(
     // Simulation thread
     //
 
-    let mut render_commands = renderer.render_command_builder();
+    {
+        let mut render_commands = renderer.render_command_builder();
 
-    for keyboard_input_event in keyboard_input_events.iter() {
-        if let Some(key_code) = keyboard_input_event.key_code {
-            if key_code == KeyCode::C && keyboard_input_event.state.is_pressed() {
-                render_commands.push(renderdoc::RenderDocCaptureCommand::default());
+        for keyboard_input_event in keyboard_input_events.iter() {
+            if let Some(key_code) = keyboard_input_event.key_code {
+                if key_code == KeyCode::C && keyboard_input_event.state.is_pressed() {
+                    render_commands.push(renderdoc::RenderDocCaptureCommand::default());
+                }
             }
         }
     }
@@ -743,6 +745,9 @@ fn render_update(
                 camera_component,
                 &mesh_renderer,
             );
+
+            cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
+            cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
             TmpRenderPass::render(
                 &render_context,
