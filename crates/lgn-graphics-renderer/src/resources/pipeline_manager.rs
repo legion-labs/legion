@@ -15,7 +15,7 @@ use parking_lot::RwLock;
 use smallvec::SmallVec;
 use strum::{EnumCount, IntoEnumIterator};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PipelineHandle(usize);
 
 #[allow(clippy::large_enum_variant)]

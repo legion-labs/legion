@@ -186,6 +186,7 @@ struct ManipulatorManagerInner {
     current_type: ManipulatorType,
 }
 
+#[derive(Clone)]
 pub struct ManipulatorManager {
     inner: Arc<Mutex<ManipulatorManagerInner>>,
 }

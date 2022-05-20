@@ -392,7 +392,7 @@ impl RenderScript {
             compute_pass_builder = compute_pass_builder
                 .read(radiance_view_id, RenderGraphLoadState::Load)
                 .write(view_view_id, RenderGraphLoadState::DontCare)
-                .execute(|_, _, _, _| {
+                .execute(|_, _, _| {
                     println!("Combine pass execute");
                 });
             if let Some(ui_buffer_and_view_ids) = ui_buffer_and_view_ids {

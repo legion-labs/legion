@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use lgn_app::App;
 use lgn_ecs::{
-    prelude::{Changed, Entity, Query, RemovedComponents, Res, ResMut},
+    prelude::{Changed, Entity, Query, RemovedComponents, Res},
     schedule::{SystemLabel, SystemSet},
 };
 use lgn_graphics_api::{BufferView, BufferViewDef, ResourceUsage, VertexBufferBinding};
@@ -196,7 +196,6 @@ impl GpuInstanceManager {
         material_manager: &MaterialManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
         render_commands: &mut RenderCommandBuilder,
-        // updater: &mut GPUDataUpdaterBuilder,
         picking_context: &mut PickingIdContext<'_>,
     ) {
         assert!(!self.entity_to_gpu_instance_block.contains_key(&entity));
@@ -361,12 +360,6 @@ impl GpuInstanceManager {
 )]
 fn update_gpu_instances(
     renderer: Res<'_, Renderer>,
-    picking_manager: Res<'_, PickingManager>,
-    model_manager: Res<'_, ModelManager>,
-    mesh_manager: Res<'_, MeshManager>,
-    material_manager: Res<'_, MaterialManager>,
-    mut instance_manager: ResMut<'_, GpuInstanceManager>,
-    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
     instance_query: Query<
         '_,
         '_,
@@ -376,6 +369,15 @@ fn update_gpu_instances(
     removed_visual_components: RemovedComponents<'_, VisualComponent>,
     removed_transform_components: RemovedComponents<'_, GlobalTransform>,
 ) {
+    let picking_manager = renderer.render_resources().get::<PickingManager>();
+    let model_manager = renderer.render_resources().get::<ModelManager>();
+    let mesh_manager = renderer.render_resources().get::<MeshManager>();
+    let material_manager = renderer.render_resources().get::<MaterialManager>();
+    let mut instance_manager = renderer.render_resources().get_mut::<GpuInstanceManager>();
+    let mut missing_visuals_tracker = renderer
+        .render_resources()
+        .get_mut::<MissingVisualTracker>();
+
     //
     // Clear transient containers
     //
@@ -440,9 +442,9 @@ fn update_gpu_instances(
 )]
 fn upload_transform_data(
     renderer: Res<'_, Renderer>,
-    instance_manager: Res<'_, GpuInstanceManager>,
     query: Query<'_, '_, (Entity, &GlobalTransform, &VisualComponent), Changed<GlobalTransform>>,
 ) {
+    let instance_manager = renderer.render_resources().get::<GpuInstanceManager>();
     let mut render_commands = renderer.render_command_builder();
 
     for (entity, transform, _) in query.iter() {

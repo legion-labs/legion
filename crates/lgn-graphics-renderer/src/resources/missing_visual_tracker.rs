@@ -3,11 +3,11 @@ use std::collections::{BTreeMap, HashSet};
 use lgn_app::App;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::{
-    prelude::{Entity, IntoExclusiveSystem, Query, ResMut},
+    prelude::{Entity, IntoExclusiveSystem, Query, Res},
     schedule::ExclusiveSystemDescriptorCoercion,
 };
 
-use crate::{components::VisualComponent, labels::RenderStage};
+use crate::{components::VisualComponent, labels::RenderStage, Renderer};
 
 #[derive(Default)]
 pub(crate) struct MissingVisualTracker {
@@ -58,9 +58,12 @@ impl MissingVisualTracker {
 
 #[allow(clippy::needless_pass_by_value)]
 fn update_missing_visuals(
-    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
+    renderer: Res<'_, Renderer>,
     mut visuals_query: Query<'_, '_, (Entity, &mut VisualComponent)>,
 ) {
+    let mut missing_visuals_tracker = renderer
+        .render_resources()
+        .get_mut::<MissingVisualTracker>();
     for entity in missing_visuals_tracker.get_entities_to_update() {
         if let Ok((_entity, mut visual_component)) = visuals_query.get_mut(entity) {
             visual_component.as_mut(); // Will trigger 'changed' to the visual component and it will be updated on the next update_gpu_instances()
