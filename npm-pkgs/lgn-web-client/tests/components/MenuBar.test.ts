@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render } from "@testing-library/svelte";
-import type { MenuItemDescription } from "../../src/components/menu/lib/MenuItemDescription";
+
 import MenuBar from "../../src/components/menu/MenuBar.svelte";
+import type { MenuItemDescription } from "../../src/components/menu/lib/MenuItemDescription";
 
 describe("MenuBar", () => {
   afterEach(() => cleanup());
