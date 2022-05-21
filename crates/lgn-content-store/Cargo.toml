@@ -41,9 +41,9 @@ tree-explorer = ["axum", "clap", "lgn-telemetry-sink"]
 
 [dependencies]
 anyhow = "1.0"
-aws-config = { version = "0.11", optional = true }
-aws-sdk-s3 = { version = "0.11", optional = true }
-aws-sdk-dynamodb = { version = "0.11", optional = true }
+aws-config = { version = "0.12", optional = true }
+aws-sdk-s3 = { version = "0.12", optional = true }
+aws-sdk-dynamodb = { version = "0.12", optional = true }
 async-stream = "0.3"
 async-trait = "0.1"
 async-recursion = "1"
