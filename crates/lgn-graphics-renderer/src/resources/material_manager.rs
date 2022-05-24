@@ -52,7 +52,6 @@ pub struct Material {
     va: u64,
 }
 
-#[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 enum MaterialSlot {
     Empty,
