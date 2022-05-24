@@ -1,6 +1,5 @@
 ---
 source: crates/lgn-api-codegen/src/rust/mod.rs
-assertion_line: 48
 expression: content
 ---
 // Auto-generated file for Api: Test API : 1.0.0
@@ -20,6 +19,7 @@ pub mod api {
             &self,
             space_id: String,
             names: Option<Vec<String>>,
+            q: Option<String>,
             extra: Extra,
         ) -> Result<responses::GetCarsResponse>;
 
@@ -116,13 +116,14 @@ pub mod client {
             &self,
             space_id: String,
             names: Option<Vec<String>>,
+            q: Option<String>,
             extra: Extra,
         ) -> Result<responses::GetCarsResponse> {
             let uri = format!("{}/spaces/{}/car-service/cars", self.base_uri, space_id);
 
             let mut headers = extra.headers;
 
-            let query = params::GetCarsQuery { names };
+            let query = params::GetCarsQuery { names, q };
 
             let resp = self
                 .inner
@@ -245,7 +246,9 @@ pub mod server {
     where
         T: api::Api + Send + Sync + 'static,
     {
-        let resp = api.get_cars(space_id, query.names, Extra { headers }).await;
+        let resp = api
+            .get_cars(space_id, query.names, query.q, Extra { headers })
+            .await;
         match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
@@ -359,6 +362,8 @@ pub(crate) mod params {
     pub struct GetCarsQuery {
         #[serde(rename = "names")]
         pub names: Option<Vec<String>>,
+        #[serde(rename = "q")]
+        pub q: Option<String>,
     }
 }
 
