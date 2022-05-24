@@ -1029,7 +1029,7 @@ fn build_temp_pso(pipeline_manager: &PipelineManager, need_depth_write: bool) ->
         depth_test_enable: true,
         depth_write_enable: need_depth_write,
         depth_compare_op: if need_depth_write {
-            CompareOp::Less
+            CompareOp::GreaterOrEqual
         } else {
             CompareOp::Equal
         },

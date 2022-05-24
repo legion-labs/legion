@@ -732,73 +732,73 @@ fn render_update(
                 let model_manager = render_resources.get::<ModelManager>();
 
                 let mut cmd_buffer_handle =
-                    render_context.transient_commandbuffer_allocator.acquire();
-            let cmd_buffer = cmd_buffer_handle.as_mut();
+                    render_context.transient_commandbuffer_allocator.acquire();                    
+                let cmd_buffer = cmd_buffer_handle.as_mut();
 
-            cmd_buffer.begin();
+                cmd_buffer.begin();
 
-            mesh_renderer.gen_occlusion_and_cull(
-                &mut render_context,
-                cmd_buffer,
-                &mut render_surface,
-                &instance_manager,
-            );
-
-            cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
-            cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
-
-            let picking_pass = render_surface.picking_renderpass();
-            let mut picking_pass = picking_pass.write();
-            picking_pass.render(
-                &picking_manager,
-                &render_context,
-                cmd_buffer,
-                render_surface.as_mut(),
-                &instance_manager,
-                    manipulator_drawables.as_slice(),
-                    lights.as_slice(),
-                &mesh_manager,
-                camera_component,
-                &mesh_renderer,
-            );
-
-            cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
-            cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
-
-            TmpRenderPass::render(
-                &render_context,
-                cmd_buffer,
-                render_surface.as_mut(),
-                &mesh_renderer,
-            );
-
-            let debug_renderpass = render_surface.debug_renderpass();
-            let debug_renderpass = debug_renderpass.write();
-            debug_renderpass.render(
-                &render_context,
-                cmd_buffer,
-                render_surface.as_mut(),
-                    picked_drawables.as_slice(),
-                    manipulator_drawables.as_slice(),
-                camera_component,
-                &mesh_manager,
-                &model_manager,
-                &debug_display,
-            );
-
-            if egui.is_enabled() {
-                let egui_pass = render_surface.egui_renderpass();
-                let mut egui_pass = egui_pass.write();
-                egui_pass.update_font_texture(&render_context, cmd_buffer, egui.ctx());
-                egui_pass.render(
+                mesh_renderer.gen_occlusion_and_cull(
                     &mut render_context,
                     cmd_buffer,
-                    render_surface.as_mut(),
-                    &egui,
+                    &mut render_surface,
+                    &instance_manager,
                 );
-            }
 
-            cmd_buffer.end();
+                cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
+                cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
+
+                let picking_pass = render_surface.picking_renderpass();
+                let mut picking_pass = picking_pass.write();
+                picking_pass.render(
+                    &picking_manager,
+                    &render_context,
+                    cmd_buffer,
+                    render_surface.as_mut(),
+                    &instance_manager,
+                        manipulator_drawables.as_slice(),
+                        lights.as_slice(),
+                    &mesh_manager,
+                    camera_component,
+                    &mesh_renderer,
+                );
+
+                cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
+                cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
+
+                TmpRenderPass::render(
+                    &render_context,
+                    cmd_buffer,
+                    render_surface.as_mut(),
+                    &mesh_renderer,
+                );
+
+                let debug_renderpass = render_surface.debug_renderpass();
+                let debug_renderpass = debug_renderpass.write();
+                debug_renderpass.render(
+                    &render_context,
+                    cmd_buffer,
+                    render_surface.as_mut(),
+                        picked_drawables.as_slice(),
+                        manipulator_drawables.as_slice(),
+                    camera_component,
+                    &mesh_manager,
+                    &model_manager,
+                    &debug_display,
+                );
+
+                if egui.is_enabled() {
+                    let egui_pass = render_surface.egui_renderpass();
+                    let mut egui_pass = egui_pass.write();
+                    egui_pass.update_font_texture(&render_context, cmd_buffer, egui.ctx());
+                    egui_pass.render(
+                        &mut render_context,
+                        cmd_buffer,
+                        render_surface.as_mut(),
+                        &egui,
+                    );
+                }
+
+                cmd_buffer.end();
 
                 // queue
                 let present_semaphore = render_surface.acquire();
