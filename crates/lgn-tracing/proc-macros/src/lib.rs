@@ -14,7 +14,8 @@ use syn::{
     parse::{Parse, ParseStream, Result},
     parse_macro_input, parse_quote,
     punctuated::Punctuated,
-    Expr, ExprBlock, ExprIf, ExprLoop, ExprWhile, Ident, ItemFn, Local, Stmt, Token,
+    visit_mut::{self, VisitMut},
+    Expr, ExprReturn, Ident, ItemFn, Local, Stmt, Token,
 };
 
 struct TraceArgs {
@@ -35,67 +36,43 @@ impl Parse for TraceArgs {
     }
 }
 
-fn decorate_await(stmts: &mut [Stmt]) {
-    let mut index = 0;
+struct AwaitVisitor;
 
-    while index < stmts.len() {
-        match stmts.get_mut(index) {
-            // Plain .await statement terminated by a ;
-            Some(ref stmt @ Stmt::Semi(Expr::Await(_), _)) => {
-                stmts[index] = parse_quote! {
-                    {
-                        guard_named.end();
-                        #stmt
-                        guard_named.begin();
+impl VisitMut for AwaitVisitor {
+    fn visit_stmt_mut(&mut self, stmt: &mut Stmt) {
+        if let Stmt::Semi(Expr::Await(_), _) = stmt {
+            *stmt = parse_quote! {
+                {
+                    lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+                    #stmt
+                    lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
+                };
+            };
+
+            return;
+        }
+
+        if let Stmt::Local(Local {
+            ref pat,
+            init: Some((_, ref expr)),
+            ..
+        }) = stmt
+        {
+            if let Expr::Await(_) = expr.as_ref() {
+                *stmt = parse_quote! {
+                    let #pat = {
+                        lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+                        let result = #expr;
+                        lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
+                        result
                     };
                 };
+
+                return;
             }
+        }
 
-            // Let binding that depends on an .await
-            Some(Stmt::Local(Local {
-                ref pat,
-                init: Some((_, ref expr)),
-                ..
-            })) => {
-                if let Expr::Await(_) = expr.as_ref() {
-                    stmts[index] = parse_quote! {
-                        let #pat = {
-                            guard_named.end();
-                            let result = #expr;
-                            guard_named.begin();
-                            result
-                        };
-                    };
-                }
-            }
-
-            Some(
-                Stmt::Expr(
-                    Expr::Block(ExprBlock { ref mut block, .. })
-                    | Expr::Loop(ExprLoop {
-                        body: ref mut block,
-                        ..
-                    })
-                    | Expr::While(ExprWhile {
-                        body: ref mut block,
-                        ..
-                    })
-                    | Expr::If(ExprIf {
-                        then_branch: ref mut block,
-
-                        else_branch: None,
-                        ..
-                    }),
-                )
-                | Stmt::Semi(Expr::Block(ExprBlock { ref mut block, .. }), _),
-            ) => {
-                decorate_await(&mut block.stmts);
-            }
-
-            _ => {}
-        };
-
-        index += 1;
+        visit_mut::visit_stmt_mut(self, stmt);
     }
 }
 
@@ -137,19 +114,42 @@ pub fn span_fn(
     function.block.stmts.insert(
         1,
         parse_quote! {
-            let mut guard_named = lgn_tracing::guards::ThreadSpanGuard::new(&_METADATA_FUNC);
+            lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
         },
     );
 
-    decorate_await(&mut function.block.stmts);
+    AwaitVisitor.visit_block_mut(&mut function.block);
 
-    // println!(
-    //     "{}",
-    //     proc_macro::TokenStream::from(quote! {
-    //         #function
-    //     })
-    //     .to_string()
-    // );
+    if let Some(last_stmt) = function.block.stmts.last_mut() {
+        if let Stmt::Semi(Expr::Return(ExprReturn { attrs: _, expr, .. }), _) = last_stmt {
+            // TODO: Handle attrs?
+            if let Some(expr) = expr {
+                *last_stmt = parse_quote! {
+                    {
+                        let __lgn_tracing_returned_value = #expr;
+
+                        lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+
+                        return __lgn_tracing_returned_value;
+                    };
+                }
+            } else {
+                *last_stmt = parse_quote! {
+                    lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+                }
+            }
+        } else {
+            *last_stmt = parse_quote! {
+                {
+                    let __lgn_tracing_returned_value = #last_stmt;
+
+                    lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+
+                    return __lgn_tracing_returned_value;
+                };
+            }
+        };
+    };
 
     proc_macro::TokenStream::from(quote! {
         #function

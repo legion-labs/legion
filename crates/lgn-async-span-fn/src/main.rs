@@ -1,10 +1,19 @@
 //! Dumb binary to test async span fn
 
+#![allow(clippy::never_loop)]
+
 use std::time::Duration;
 
 use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::span_fn;
 use tokio::time::sleep;
+
+#[span_fn]
+async fn empty_return() {
+    sleep(Duration::from_millis(1)).await;
+
+    return;
+}
 
 #[span_fn]
 async fn iteration_with_cond() {
@@ -13,7 +22,7 @@ async fn iteration_with_cond() {
     loop {
         if a == 3 {
             println!("a was 3");
-            sleep(Duration::from_millis(10)).await;
+            sleep(Duration::from_millis(1)).await;
         }
 
         break;
@@ -22,7 +31,7 @@ async fn iteration_with_cond() {
 
 #[span_fn]
 async fn delayed_value() -> String {
-    sleep(Duration::from_millis(10)).await;
+    sleep(Duration::from_millis(1)).await;
 
     "After".into()
 }
@@ -31,7 +40,7 @@ async fn delayed_value() -> String {
 async fn delayed() {
     println!("Before");
 
-    sleep(Duration::from_millis(10)).await;
+    sleep(Duration::from_millis(1)).await;
 
     println!("Second");
 
@@ -47,4 +56,6 @@ async fn main() {
     delayed().await;
 
     iteration_with_cond().await;
+
+    empty_return().await;
 }
