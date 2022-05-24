@@ -94,18 +94,26 @@ pub struct ThreadSpanGuard {
 
 impl ThreadSpanGuard {
     pub fn new(thread_span_desc: &'static SpanMetadata) -> Self {
-        let guard = Self {
+        let mut guard = Self {
             thread_span_desc,
             _dummy_ptr: std::marker::PhantomData::default(),
         };
-        on_begin_scope(guard.thread_span_desc);
+        guard.begin();
         guard
+    }
+
+    pub fn end(&mut self) {
+        on_end_scope(self.thread_span_desc);
+    }
+
+    pub fn begin(&mut self) {
+        on_begin_scope(self.thread_span_desc);
     }
 }
 
 impl Drop for ThreadSpanGuard {
     fn drop(&mut self) {
-        on_end_scope(self.thread_span_desc);
+        self.end();
     }
 }
 
