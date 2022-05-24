@@ -30,19 +30,19 @@ static HALF_TYPESTRINGS: [&str; 4] = ["Half1", "Half2", "Half3", "Half4"];
 impl NativeType {
     pub fn name(&self) -> &str {
         match self {
-            NativeType::Float(n) => {
+            Self::Float(n) => {
                 assert!(*n >= 1 && *n <= 4);
                 FLOAT_TYPESTRINGS[n - 1]
             }
-            NativeType::Uint(n) => {
+            Self::Uint(n) => {
                 assert!(*n >= 1 && *n <= 4);
                 UINT_TYPESTRINGS[n - 1]
             }
-            NativeType::Half(n) => {
+            Self::Half(n) => {
                 assert!(*n >= 1 && *n <= 4);
                 HALF_TYPESTRINGS[n - 1]
             }
-            NativeType::Float4x4 => "Float4x4",
+            Self::Float4x4 => "Float4x4",
         }
     }
 }

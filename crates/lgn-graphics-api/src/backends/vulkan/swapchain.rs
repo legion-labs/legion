@@ -51,10 +51,10 @@ impl VkPresentMode {
     /// Convert to `vk::PresentModeKHR`
     pub fn to_vk(self) -> vk::PresentModeKHR {
         match self {
-            VkPresentMode::Immediate => vk::PresentModeKHR::IMMEDIATE,
-            VkPresentMode::Mailbox => vk::PresentModeKHR::MAILBOX,
-            VkPresentMode::Fifo => vk::PresentModeKHR::FIFO,
-            VkPresentMode::FifoRelaxed => vk::PresentModeKHR::FIFO_RELAXED,
+            Self::Immediate => vk::PresentModeKHR::IMMEDIATE,
+            Self::Mailbox => vk::PresentModeKHR::MAILBOX,
+            Self::Fifo => vk::PresentModeKHR::FIFO,
+            Self::FifoRelaxed => vk::PresentModeKHR::FIFO_RELAXED,
         }
     }
 }
