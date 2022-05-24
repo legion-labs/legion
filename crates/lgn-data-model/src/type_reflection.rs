@@ -47,25 +47,17 @@ impl TypeDefinition {
     /// Return the name of the type
     pub fn get_type_name(&self) -> &str {
         match *self {
-            TypeDefinition::Array(array_descriptor) => {
-                array_descriptor.base_descriptor.type_name.as_str()
-            }
-            TypeDefinition::Struct(struct_descriptor) => {
-                struct_descriptor.base_descriptor.type_name.as_str()
-            }
-            TypeDefinition::Primitive(primitive_descriptor) => {
+            Self::Array(array_descriptor) => array_descriptor.base_descriptor.type_name.as_str(),
+            Self::Struct(struct_descriptor) => struct_descriptor.base_descriptor.type_name.as_str(),
+            Self::Primitive(primitive_descriptor) => {
                 primitive_descriptor.base_descriptor.type_name.as_str()
             }
-            TypeDefinition::Option(option_descriptor) => {
-                option_descriptor.base_descriptor.type_name.as_str()
-            }
-            TypeDefinition::BoxDyn(box_dyn_descriptor) => {
+            Self::Option(option_descriptor) => option_descriptor.base_descriptor.type_name.as_str(),
+            Self::BoxDyn(box_dyn_descriptor) => {
                 box_dyn_descriptor.base_descriptor.type_name.as_str()
             }
-            TypeDefinition::Enum(enum_descriptor) => {
-                enum_descriptor.base_descriptor.type_name.as_str()
-            }
-            TypeDefinition::None => "None",
+            Self::Enum(enum_descriptor) => enum_descriptor.base_descriptor.type_name.as_str(),
+            Self::None => "None",
         }
     }
 
@@ -75,27 +67,25 @@ impl TypeDefinition {
         serializer: &mut dyn ::erased_serde::Serializer,
     ) -> Result<(), crate::ReflectionError> {
         match *self {
-            TypeDefinition::Array(array_descriptor) => {
+            Self::Array(array_descriptor) => {
                 (array_descriptor.base_descriptor.serialize_new_instance)(serializer)
             }
-            TypeDefinition::Struct(struct_descriptor) => {
+            Self::Struct(struct_descriptor) => {
                 (struct_descriptor.base_descriptor.serialize_new_instance)(serializer)
             }
-            TypeDefinition::Primitive(primitive_descriptor) => {
+            Self::Primitive(primitive_descriptor) => {
                 (primitive_descriptor.base_descriptor.serialize_new_instance)(serializer)
             }
-            TypeDefinition::Option(option_descriptor) => {
+            Self::Option(option_descriptor) => {
                 (option_descriptor.base_descriptor.serialize_new_instance)(serializer)
             }
-            TypeDefinition::BoxDyn(box_dyn_descriptor) => {
+            Self::BoxDyn(box_dyn_descriptor) => {
                 (box_dyn_descriptor.base_descriptor.serialize_new_instance)(serializer)
             }
-            TypeDefinition::Enum(enum_descriptor) => {
+            Self::Enum(enum_descriptor) => {
                 (enum_descriptor.base_descriptor.serialize_new_instance)(serializer)
             }
-            TypeDefinition::None => {
-                Err(crate::ReflectionError::InvalidTypeDescriptor("None".into()))
-            }
+            Self::None => Err(crate::ReflectionError::InvalidTypeDescriptor("None".into())),
         }
     }
 }

@@ -21,14 +21,14 @@ pub enum CGenVariant {
 impl CGenVariant {
     pub fn get_file_ext(self) -> &'static str {
         match self {
-            CGenVariant::Hlsl => "hlsl",
-            CGenVariant::Rust => "rs",
+            Self::Hlsl => "hlsl",
+            Self::Rust => "rs",
         }
     }
     pub fn dir(self) -> &'static str {
         match self {
-            CGenVariant::Hlsl => "hlsl",
-            CGenVariant::Rust => "rust",
+            Self::Hlsl => "hlsl",
+            Self::Rust => "rust",
         }
     }
 }

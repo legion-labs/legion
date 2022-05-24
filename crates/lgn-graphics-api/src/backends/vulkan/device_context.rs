@@ -25,11 +25,11 @@ impl PhysicalDeviceType {
     /// Convert to `vk::PhysicalDeviceType`
     pub(crate) fn to_vk(self) -> vk::PhysicalDeviceType {
         match self {
-            PhysicalDeviceType::Other => vk::PhysicalDeviceType::OTHER,
-            PhysicalDeviceType::IntegratedGpu => vk::PhysicalDeviceType::INTEGRATED_GPU,
-            PhysicalDeviceType::DiscreteGpu => vk::PhysicalDeviceType::DISCRETE_GPU,
-            PhysicalDeviceType::VirtualGpu => vk::PhysicalDeviceType::VIRTUAL_GPU,
-            PhysicalDeviceType::Cpu => vk::PhysicalDeviceType::CPU,
+            Self::Other => vk::PhysicalDeviceType::OTHER,
+            Self::IntegratedGpu => vk::PhysicalDeviceType::INTEGRATED_GPU,
+            Self::DiscreteGpu => vk::PhysicalDeviceType::DISCRETE_GPU,
+            Self::VirtualGpu => vk::PhysicalDeviceType::VIRTUAL_GPU,
+            Self::Cpu => vk::PhysicalDeviceType::CPU,
         }
     }
 }

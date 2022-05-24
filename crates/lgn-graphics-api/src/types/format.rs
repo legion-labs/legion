@@ -605,9 +605,7 @@ impl Format {
 
     pub fn is_depth_and_stencil(self) -> bool {
         match self {
-            Format::D16_UNORM_S8_UINT | Format::D24_UNORM_S8_UINT | Format::D32_SFLOAT_S8_UINT => {
-                true
-            }
+            Self::D16_UNORM_S8_UINT | Self::D24_UNORM_S8_UINT | Self::D32_SFLOAT_S8_UINT => true,
             _ => false,
         }
     }
