@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::{Debug, Display},
+    sync::Arc,
 };
 
 use async_recursion::async_recursion;
@@ -24,7 +25,7 @@ pub struct Provider {
     content_provider: ContentProviderMonitor<Box<dyn ContentProvider>>,
     alias_provider: Box<dyn AliasProvider>,
     chunk_size: usize,
-    parent: Option<Box<Provider>>,
+    parent: Option<Arc<Provider>>,
     refs: Mutex<RefCounter<Identifier>>,
 }
 
@@ -111,22 +112,22 @@ impl Provider {
     /// # Returns
     ///
     /// The old fallback provider, if any.
-    fn set_parent(&mut self, fallback: Option<Self>) -> Option<Self> {
-        std::mem::replace(&mut self.parent, fallback.map(Box::new)).map(|provider| *provider)
+    fn set_parent(&mut self, fallback: Option<Arc<Self>>) -> Option<Arc<Self>> {
+        std::mem::replace(&mut self.parent, fallback)
     }
 
     /// Get the parent provider.
     ///
     /// # Returns
     /// The parent provider, if any.
-    pub fn parent(&self) -> Option<&Self> {
-        self.parent.as_ref().map(AsRef::as_ref)
+    pub fn parent(&self) -> Option<&Arc<Self>> {
+        self.parent.as_ref()
     }
 
     /// Begin a transaction with the specified provider that will use `self` as
     /// its parent provider.
     #[must_use]
-    pub fn begin_transaction(self, mut provider: Self) -> Self {
+    pub fn begin_transaction(self: Arc<Self>, mut provider: Self) -> Self {
         // Should we reorganize the potential already set fallback providers in
         // `self` and/or `provider`?
 
@@ -140,7 +141,7 @@ impl Provider {
     ///
     /// This is a helper method.
     #[must_use]
-    pub fn begin_transaction_in_memory(self) -> Self {
+    pub fn begin_transaction_in_memory(self: Arc<Self>) -> Self {
         self.begin_transaction(Self::new_in_memory())
     }
 
@@ -157,8 +158,8 @@ impl Provider {
     ///
     /// The parent provider.
     #[must_use]
-    pub fn abort_transaction(self) -> Self {
-        *self.parent.expect("no parent provider")
+    pub fn abort_transaction(self) -> Arc<Self> {
+        self.parent.expect("no parent provider")
     }
 
     /// Commit a transaction.
@@ -177,8 +178,8 @@ impl Provider {
     /// # Returns
     ///
     /// The parent provider.
-    pub async fn commit_transaction(mut self) -> Result<Self, (Self, Error)> {
-        let parent = *self.parent.take().expect("no parent provider");
+    pub async fn commit_transaction(mut self) -> Result<Arc<Self>, (Arc<Self>, Error)> {
+        let parent = self.parent.take().expect("no parent provider");
 
         let ids = self.referenced().await;
 
@@ -987,6 +988,7 @@ mod tests {
 
         let mut provider = Provider::new(content_provider, alias_provider);
         provider.set_chunk_size(1024);
+        let provider = Arc::new(provider);
 
         const BEFORE: &[u8] = &[0x40; 8192];
         const SMALL: &[u8] = &[0x41; 32];

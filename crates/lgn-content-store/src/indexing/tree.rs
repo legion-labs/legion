@@ -641,6 +641,15 @@ impl Display for TreeLeafNode {
 }
 
 impl TreeLeafNode {
+    pub fn unwrap_resource(self) -> ResourceIdentifier {
+        match self {
+            TreeLeafNode::Resource(id) => id,
+            TreeLeafNode::TreeRoot(_) => {
+                panic!("TreeLeafNode::unwrap_resource called on a TreeRoot")
+            }
+        }
+    }
+
     pub(crate) fn as_identifier(&self) -> &Identifier {
         match self {
             TreeLeafNode::Resource(resource) => resource.as_identifier(),
