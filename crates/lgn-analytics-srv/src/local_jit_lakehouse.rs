@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use lgn_analytics::{prelude::*, time::ConvertTicks};
 use lgn_blob_storage::BlobStorage;
 use lgn_tracing::prelude::*;
+use std::sync::mpsc::channel;
 use tokio::fs;
 
 pub struct LocalJitLakehouse {
@@ -43,15 +44,24 @@ impl JitLakehouse for LocalJitLakehouse {
 
         let mut writer = SpanTableLocalWriter::create(&spans_table_path.join("spans.parquet"))?;
 
+        let (sender, receiver) = channel();
+        let join_sending_task = tokio::spawn(async move {
+            while let Ok(row_group) = receiver.recv() {
+                writer.append(&row_group)?;
+            }
+            writer.close().with_context(|| "closing parquet writer")?;
+            Ok(()) as Result<(), anyhow::Error>
+        });
+
         make_span_row_groups(
-            &mut connection,
+            self.pool.clone(),
             self.blob_storage.clone(),
             process_id,
             &convert_ticks,
-            |rows| writer.append(&rows),
+            sender,
         )
         .await?;
-        writer.close().with_context(|| "closing parquet writer")?;
+        join_sending_task.await??;
         Ok(())
     }
 }

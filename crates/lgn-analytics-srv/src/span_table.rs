@@ -3,11 +3,14 @@ use lgn_analytics::prelude::*;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTreeNode;
+use lgn_tracing::info;
 use parquet::file::properties::WriterProperties;
 use parquet::file::writer::FileWriter;
 use parquet::file::writer::SerializedFileWriter;
 use parquet::schema::parser::parse_message_type;
 use std::path::Path;
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use crate::call_tree::CallTreeBuilder;
@@ -128,14 +131,13 @@ fn make_rows_from_tree_impl<RowFun>(
     tree: &CallTreeNode,
     parent: u64,
     depth: u32,
-    next_id: &mut u64,
+    next_id: &AtomicU64,
     process_row: &mut RowFun,
 ) where
     RowFun: FnMut(SpanRow),
 {
     assert!(tree.hash != 0);
-    let span_id = *next_id;
-    *next_id += 1;
+    let span_id = next_id.fetch_add(1, Ordering::Relaxed);
     let span = SpanRow {
         hash: tree.hash,
         depth,
@@ -150,7 +152,7 @@ fn make_rows_from_tree_impl<RowFun>(
     }
 }
 
-fn make_rows_from_tree(tree: &CallTreeNode, next_id: &mut u64, table: &mut SpanRowGroup) {
+fn make_rows_from_tree(tree: &CallTreeNode, next_id: &AtomicU64, table: &mut SpanRowGroup) {
     if tree.hash == 0 {
         for child in &tree.children {
             make_rows_from_tree_impl(child, 0, 0, next_id, &mut |row| table.append(&row));
@@ -160,38 +162,50 @@ fn make_rows_from_tree(tree: &CallTreeNode, next_id: &mut u64, table: &mut SpanR
     }
 }
 
-pub async fn make_span_row_groups<F>(
-    connection: &mut sqlx::AnyConnection,
+pub async fn make_span_row_groups(
+    pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
     convert_ticks: &ConvertTicks,
-    mut fun: F,
-) -> Result<()>
-where
-    F: FnMut(SpanRowGroup) -> Result<()>,
-{
-    let mut next_id = 1;
-    let streams = find_process_thread_streams(connection, process_id).await?;
+    row_group_sender: std::sync::mpsc::Sender<SpanRowGroup>,
+) -> Result<()> {
+    let mut handles = vec![];
+    let next_id = Arc::new(AtomicU64::new(1));
+    let mut connection = pool.acquire().await?;
+    let streams = find_process_thread_streams(&mut connection, process_id).await?;
     for stream in streams {
-        let blocks = find_stream_blocks(connection, &stream.stream_id).await?;
+        let blocks = find_stream_blocks(&mut connection, &stream.stream_id).await?;
         for block in blocks {
-            let mut builder =
-                CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks.clone());
-            parse_thread_block(
-                connection,
-                blob_storage.clone(),
-                &stream,
-                block.block_id.clone(),
-                &mut builder,
-            )
-            .await?;
-            let processed = builder.finish();
-            if let Some(root) = processed.call_tree_root {
-                let mut rows = SpanRowGroup::new();
-                make_rows_from_tree(&root, &mut next_id, &mut rows);
-                fun(rows)?;
-            }
+            let convert_ticks = convert_ticks.clone();
+            let mut connection = pool.acquire().await?;
+            let blob_storage = blob_storage.clone();
+            let stream = stream.clone();
+            let next_id = next_id.clone();
+            let row_group_sender = row_group_sender.clone();
+            handles.push(tokio::spawn(async move {
+                info!("processing block {}", &block.block_id);
+                let mut builder =
+                    CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks);
+                parse_thread_block(
+                    &mut connection,
+                    blob_storage,
+                    &stream,
+                    block.block_id.clone(),
+                    &mut builder,
+                )
+                .await?;
+                let processed_block = builder.finish();
+                if let Some(root) = processed_block.call_tree_root {
+                    let mut rows = SpanRowGroup::new();
+                    make_rows_from_tree(&root, &*next_id, &mut rows);
+                    row_group_sender.send(rows)?;
+                }
+                Ok(()) as Result<(), anyhow::Error>
+            }));
         }
+    }
+    for h in handles {
+        h.await??;
     }
     Ok(())
 }
