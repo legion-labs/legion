@@ -6,6 +6,11 @@ pub fn snake_case<T: std::fmt::Display>(s: T) -> ::askama::Result<String> {
 }
 
 #[allow(clippy::unnecessary_wraps)]
+pub fn camel_case<T: std::fmt::Display>(s: T) -> ::askama::Result<String> {
+    Ok(s.to_string().to_case(Case::Camel))
+}
+
+#[allow(clippy::unnecessary_wraps)]
 pub fn pascal_case<T: std::fmt::Display>(s: T) -> ::askama::Result<String> {
     Ok(s.to_string().to_case(Case::Pascal))
 }

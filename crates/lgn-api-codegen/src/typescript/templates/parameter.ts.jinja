@@ -1,0 +1,5 @@
+{%- if parameter.required -%}
+    "{{ parameter.name }}": {{ parameter.type_|fmt_type }};
+{%- else -%}
+    "{{ parameter.name }}"?: {{ parameter.type_|fmt_type }};
+{%- endif -%}

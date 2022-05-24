@@ -1,5 +1,6 @@
 ---
 source: crates/lgn-api-codegen/src/rust/mod.rs
+assertion_line: 48
 expression: content
 ---
 // Auto-generated file for Api: Test API : 1.0.0
@@ -31,6 +32,7 @@ pub mod api {
 
         async fn test_binary(
             &self,
+            space_id: String,
             body: ByteArray,
             extra: Extra,
         ) -> Result<responses::TestBinaryResponse>;
@@ -158,10 +160,14 @@ pub mod client {
 
         async fn test_binary(
             &self,
+            space_id: String,
             body: ByteArray,
             extra: Extra,
         ) -> Result<responses::TestBinaryResponse> {
-            let uri = format!("{}/spaces/{}/car-service/test-binary", self.base_uri);
+            let uri = format!(
+                "{}/spaces/{}/car-service/test-binary",
+                self.base_uri, space_id
+            );
 
             let mut headers = extra.headers;
 
@@ -264,13 +270,16 @@ pub mod server {
 
     async fn test_binary<T>(
         Extension(api): Extension<T>,
+        Path(space_id): Path<String>,
         body: Bytes,
         headers: HeaderMap,
     ) -> Response
     where
         T: api::Api + Send + Sync + 'static,
     {
-        let resp = api.test_binary(body.into(), Extra { headers }).await;
+        let resp = api
+            .test_binary(space_id, body.into(), Extra { headers })
+            .await;
         match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
@@ -304,7 +313,7 @@ pub mod models {
         Yellow,
     }
 
-    #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Car {
         #[serde(rename = "id")]
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -327,7 +336,7 @@ pub mod models {
         pub extra: Option<ByteArray>,
     }
 
-    #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Pet {
         #[serde(rename = "name")]
         #[serde(skip_serializing_if = "Option::is_none")]
