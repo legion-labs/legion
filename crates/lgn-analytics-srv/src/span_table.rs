@@ -46,7 +46,7 @@ impl SpanTableLocalWriter {
         Ok(())
     }
 
-    pub fn append(&mut self, spans: SpanRowGroup) -> Result<()> {
+    pub fn append(&mut self, spans: &SpanRowGroup) -> Result<()> {
         let mut row_group_writer = self
             .file_writer
             .next_row_group()
@@ -193,7 +193,7 @@ pub async fn make_span_table(
 }
 
 #[span_fn]
-pub fn write_parquet(file_path: &Path, spans: SpanRowGroup) -> Result<()> {
+pub fn write_parquet(file_path: &Path, spans: &SpanRowGroup) -> Result<()> {
     let mut writer = SpanTableLocalWriter::create(file_path)?;
     writer.append(spans)?;
     writer.close().with_context(|| "closing parquet writer")?;
