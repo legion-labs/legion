@@ -3,7 +3,6 @@ use lgn_analytics::prelude::*;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTreeNode;
-use lgn_tracing::prelude::*;
 use parquet::file::properties::WriterProperties;
 use parquet::file::writer::FileWriter;
 use parquet::file::writer::SerializedFileWriter;
@@ -161,14 +160,17 @@ fn make_rows_from_tree(tree: &CallTreeNode, next_id: &mut u64, table: &mut SpanR
     }
 }
 
-pub async fn make_span_table(
+pub async fn make_span_row_groups<F>(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     process_id: &str,
     convert_ticks: &ConvertTicks,
-) -> Result<SpanRowGroup> {
+    mut fun: F,
+) -> Result<()>
+where
+    F: FnMut(SpanRowGroup) -> Result<()>,
+{
     let mut next_id = 1;
-    let mut table = SpanRowGroup::new(); //todo: don't keep the whole table in memory, only row groups
     let streams = find_process_thread_streams(connection, process_id).await?;
     for stream in streams {
         let blocks = find_stream_blocks(connection, &stream.stream_id).await?;
@@ -185,17 +187,11 @@ pub async fn make_span_table(
             .await?;
             let processed = builder.finish();
             if let Some(root) = processed.call_tree_root {
-                make_rows_from_tree(&root, &mut next_id, &mut table);
+                let mut rows = SpanRowGroup::new();
+                make_rows_from_tree(&root, &mut next_id, &mut rows);
+                fun(rows)?;
             }
         }
     }
-    Ok(table)
-}
-
-#[span_fn]
-pub fn write_parquet(file_path: &Path, spans: &SpanRowGroup) -> Result<()> {
-    let mut writer = SpanTableLocalWriter::create(file_path)?;
-    writer.append(spans)?;
-    writer.close().with_context(|| "closing parquet writer")?;
     Ok(())
 }
