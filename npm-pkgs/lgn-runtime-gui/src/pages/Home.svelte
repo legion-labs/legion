@@ -9,7 +9,7 @@
 </script>
 
 <div class="root">
-  <TopBar />
+  <TopBar mainMenuItemDescriptions={[]} />
   <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
       <div class="main-content">

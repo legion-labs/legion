@@ -1,15 +1,38 @@
+<script lang="ts" context="module">
+  export type RootContext = {
+    getLayout: () => Layout;
+  };
+</script>
+
 <script lang="ts">
   import { onMount } from "svelte";
+  import { setContext } from "svelte";
 
+  import Log from "@lgn/web-client/src/components/Log.svelte";
+  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
+  import Layout from "@lgn/web-client/src/components/layout/Layout.svelte";
+  import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
   import { EmptyPanel, Panel } from "@lgn/web-client/src/components/panel";
 
+  import { closeScene } from "@/api";
   import DynamicPanel from "@/components/DynamicPanel.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
+  import SceneExplorer from "@/components/SceneExplorer.svelte";
+  import {
+    AppComponentMap as appComponentMap,
+    defaultLayoutConfig,
+  } from "@/components/layout/LayoutConfig";
+  import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
+  import { fileName } from "@/lib/path";
+  import {
+    allActiveScenes,
+    fetchAllActiveScenes,
+  } from "@/orchestrators/allActiveScenes";
   import {
     allResourcesError,
     fetchAllResources,
@@ -27,9 +50,30 @@
     });
   }
 
-  onMount(() => {
+  onMount(async () => {
     refetchResources().catch(() => {
       // TODO: Handle errors
+    });
+
+    await fetchAllActiveScenes();
+
+    return allActiveScenes.subscribe((scenes) => {
+      scenes?.forEach((s) => {
+        layout.addComponent(
+          SceneExplorer.name,
+          {
+            state: {
+              activeScenes: s.scenes,
+            },
+            onDestroyed: async () => {
+              await closeScene({ id: s.rootScene.id });
+              await fetchAllActiveScenes();
+            },
+          },
+          fileName(s.rootScene.path) ?? "undefined",
+          s.rootScene.id
+        );
+      });
     });
   });
 
@@ -39,72 +83,145 @@
 
     return fetchAllResources();
   }
+
+  const mainMenuItemDescriptions: MenuItemDescription[] = [
+    {
+      title: "Window",
+      children: [
+        {
+          title: "Editor",
+          action: () => {
+            layout.addComponent(
+              RemoteWindow.name,
+              {
+                state: {
+                  serverType: "editor",
+                },
+              },
+              "Editor"
+            );
+          },
+        },
+        {
+          title: "Runtime",
+          action: () => {
+            layout.addComponent(
+              RemoteWindow.name,
+              {
+                state: {
+                  serverType: "runtime",
+                },
+              },
+              "Runtime"
+            );
+          },
+        },
+        {
+          title: "Property Grid",
+          action: () => {
+            layout.addComponent(PropertyGrid.name);
+          },
+        },
+        {
+          title: "Resource Browser",
+          action: () => {
+            layout.addComponent(ResourceBrowser.name);
+          },
+        },
+        {
+          title: "Local Changes",
+          action: () => {
+            layout.addComponent(LocalChanges.name);
+          },
+        },
+        {
+          title: "Logs",
+          action: () => {
+            layout.addComponent(Log.name);
+          },
+        },
+      ],
+    },
+  ];
+
+  let layout: Layout;
+
+  setContext<RootContext>("root", {
+    getLayout() {
+      return layout;
+    },
+  });
+
+  const enableOld = false;
 </script>
 
 <div class="root">
-  <TopBar devSettings={$devSettings} />
+  <TopBar devSettings={$devSettings} {mainMenuItemDescriptions} />
   <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
-      <div class="secondary-contents">
-        <div class="scene-explorer">
+      <Layout
+        layoutConfig={defaultLayoutConfig}
+        componentMap={appComponentMap}
+        bind:this={layout}
+      />
+      {#if enableOld}
+        <div class="secondary-contents">
+          <div class="scene-explorer">
+            <!-- TODO: Move this into a dedicated component DynamicTile -->
+            <Tile id={sceneExplorerTileId} {workspace}>
+              <div class="h-full w-full" slot="default" let:tile>
+                {#if tile?.panel?.type === "populatedPanel"}
+                  <DynamicPanel panel={tile.panel} />
+                {:else}
+                  <EmptyPanel>
+                    <div class="empty-panel">
+                      <em>No open scenes</em>
+                    </div>
+                  </EmptyPanel>
+                {/if}
+              </div>
+            </Tile>
+          </div>
+          <div class="h-separator" />
+          <div class="resource-browser">
+            <ResourceBrowser />
+          </div>
+        </div>
+        <div class="v-separator" />
+        <div class="main-content">
           <!-- TODO: Move this into a dedicated component DynamicTile -->
-          <Tile id={sceneExplorerTileId} {workspace}>
+          <Tile id={viewportTileId} {workspace}>
             <div class="h-full w-full" slot="default" let:tile>
               {#if tile?.panel?.type === "populatedPanel"}
                 <DynamicPanel panel={tile.panel} />
               {:else}
                 <EmptyPanel>
                   <div class="empty-panel">
-                    <em>No open scenes</em>
+                    <em>No open videos</em>
                   </div>
                 </EmptyPanel>
               {/if}
             </div>
           </Tile>
-        </div>
-        <div class="h-separator" />
-        <div class="resource-browser">
-          <ResourceBrowser />
-        </div>
-      </div>
-      <div class="v-separator" />
-      <div class="main-content">
-        <!-- TODO: Move this into a dedicated component DynamicTile -->
-        <Tile id={viewportTileId} {workspace}>
-          <div class="h-full w-full" slot="default" let:tile>
-            {#if tile?.panel?.type === "populatedPanel"}
-              <DynamicPanel panel={tile.panel} />
-            {:else}
-              <EmptyPanel>
-                <div class="empty-panel">
-                  <em>No open videos</em>
-                </div>
-              </EmptyPanel>
-            {/if}
+          <div class="h-separator" />
+          <div class="extra-panel">
+            <ExtraPanel />
           </div>
-        </Tile>
-        <div class="h-separator" />
-        <div class="extra-panel">
-          <ExtraPanel />
         </div>
-      </div>
-      <div class="v-separator" />
-      <div class="secondary-contents">
-        <div class="property-grid">
-          <Panel tabs={["Property Grid"]}>
-            <div slot="tab" let:tab>
-              {tab}
-            </div>
-            <div class="property-grid-content" slot="content">
-              {#if $currentResource}
-                {#key $currentResource.id}
-                  <PropertyGrid />
-                {/key}
-              {/if}
-            </div>
-          </Panel>
+        <div class="v-separator" />
+        <div class="secondary-contents">
+          <div class="property-grid">
+            <Panel tabs={["Property Grid"]}>
+              <div slot="tab" let:tab>
+                {tab}
+              </div>
+              <div class="property-grid-content" slot="content">
+                <PropertyGrid />
+              </div>
+            </Panel>
+          </div>
         </div>
-      </div>
+      {/if}
     </div>
   </div>
   <StatusBar {syncFromMain} stagedResources={$stagedResources || []} />

@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
   import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
@@ -21,4 +21,4 @@
     readonly={payload.readonly}
     lang={payload.lang}
   />
-{/key}
+{/key} -->

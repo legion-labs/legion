@@ -7,8 +7,8 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
-aws-config = "0.9"
-aws-sdk-s3 = "0.9"
+aws-config = "0.12"
+aws-sdk-s3 = "0.12"
 bytes = "1"
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lz4 = "1.23"

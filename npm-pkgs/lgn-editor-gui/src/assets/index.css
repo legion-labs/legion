@@ -61,3 +61,26 @@ input[type="color"]::-webkit-color-swatch {
 ::-moz-color-swatch {
   @apply border-none;
 }
+
+.lm_header .lm_tab {
+  font-family: "Inter" !important;
+  @apply text-white !important;
+}
+
+.lm_header .lm_tab.lm_active {
+  @apply bg-gray-700 !important;
+  border-bottom: 2px solid !important;
+  @apply border-orange-700 !important;
+}
+
+.lm_header .lm_tab .lm_title {
+  white-space: nowrap;
+}
+
+.lm_goldenlayout {
+  background: #2c2c2c !important;
+}
+
+.lm_header .lm_tab.lm_active {
+  box-shadow: none !important;
+}

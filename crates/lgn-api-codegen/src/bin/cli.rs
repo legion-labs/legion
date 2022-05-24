@@ -4,7 +4,7 @@
 //!
 
 use clap::Parser;
-use lgn_api_codegen::generate;
+use lgn_api_codegen::{generate, Language};
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::LevelFilter;
 
@@ -20,8 +20,13 @@ struct Args {
     #[clap(name = "debug", short, long, help = "Enable debug logging")]
     debug: bool,
 
-    #[clap(name = "language", long, help = "The language to generate code for.")]
-    language: String,
+    #[clap(
+        arg_enum,
+        name = "language",
+        long,
+        help = "The language to generate code for."
+    )]
+    language: Language,
     #[clap(
         name = "openapi-file",
         long,
@@ -46,5 +51,6 @@ fn main() -> anyhow::Result<()> {
         .build();
 
     let res = generate(&args.language, &args.openapi_file, &args.output_dir)?;
+
     Ok(res)
 }

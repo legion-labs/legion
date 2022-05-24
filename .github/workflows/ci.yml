@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - demo
   pull_request:
 
 jobs:
@@ -45,7 +44,7 @@ jobs:
     uses: ./.github/workflows/reusable_node_ecosystem.yml
     with:
       image: ${{ needs.image_setup.outputs.image }}
-      deploy_editor: ${{ github.ref == 'refs/heads/demo' }}
+      deploy_editor: ${{ github.ref == 'refs/heads/main' }}
       deploy_analytics: ${{ github.ref == 'refs/heads/main' }}
     secrets:
       analytics-deploy-key: ${{ secrets.ANALYTICS_DEPLOY_KEY }}
