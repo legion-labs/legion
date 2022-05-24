@@ -25,7 +25,7 @@ pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
         Type::Date => "chrono::Date::<chrono::Utc>".to_string(),
         Type::Array(inner) => format!("Vec<{}>", fmt_type(inner).unwrap()),
         Type::HashSet(inner) => format!("std::collections::HashSet<{}>", fmt_type(inner).unwrap()),
-        Type::Struct(struct_) => format!("crate::models::{}", struct_),
+        Type::Struct(struct_) => format!("super::models::{}", struct_),
     })
 }
 

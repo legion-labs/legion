@@ -1,6 +1,5 @@
-use crate::{api};
-use crate::params;
-use crate::errors::{Error, Result};
+use super::params;
+use super::errors::{Error, Result};
 use axum::{
     body::Bytes, extract::Json, extract::Path, extract::Query, http::HeaderMap, response::{IntoResponse, Response}, routing, Extension, Router,
 };
@@ -12,7 +11,7 @@ use lgn_tracing::error;
 #[must_use]
 pub fn register_routes<T>(router: Router, api: T) -> Router
 where
-    T: api::Api + Clone + Send + Sync + 'static,
+    T: super::Api + Clone + Send + Sync + 'static,
 {
     router
     {% for (path, routes) in api.paths %}
@@ -51,7 +50,7 @@ where
             headers: HeaderMap,
         ) -> Response
         where
-            T: api::Api + Send + Sync + 'static,
+            T: super::Api + Send + Sync + 'static,
         {
             {%- for parameter in route.parameters.header -%}
             {% let param_name = "{}"|format(parameter.name|snake_case) %}

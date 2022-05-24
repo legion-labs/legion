@@ -1,4 +1,4 @@
-use crate::{api, errors::{Error, Result}, params, responses};
+use super::{errors::{Error, Result}, params, responses};
 use http::{header::CONTENT_TYPE, HeaderValue};
 use lgn_online::codegen::{ByteArray, Extra};
 
@@ -16,7 +16,7 @@ impl Client {
 }
 
 #[async_trait::async_trait]
-impl api::Api for Client {
+impl super::Api for Client {
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}

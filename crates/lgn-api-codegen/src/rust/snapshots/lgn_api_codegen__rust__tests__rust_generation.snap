@@ -8,37 +8,34 @@ expression: content
 //
 
 // ---------- Api ----------
-pub mod api {
-    use crate::errors::Result;
-    use crate::responses;
-    use lgn_online::codegen::{ByteArray, Extra};
+use errors::Result;
+use lgn_online::codegen::{ByteArray, Extra};
 
-    #[async_trait::async_trait]
-    pub trait Api {
-        async fn get_cars(
-            &self,
-            space_id: String,
-            names: Option<Vec<String>>,
-            q: Option<String>,
-            extra: Extra,
-        ) -> Result<responses::GetCarsResponse>;
+#[async_trait::async_trait]
+pub trait Api {
+    async fn get_cars(
+        &self,
+        space_id: String,
+        names: Option<Vec<String>>,
+        q: Option<String>,
+        extra: Extra,
+    ) -> Result<responses::GetCarsResponse>;
 
-        async fn create_car(
-            &self,
-            space_id: String,
-            body: crate::models::Car,
-            extra: Extra,
-        ) -> Result<responses::CreateCarResponse>;
+    async fn create_car(
+        &self,
+        space_id: String,
+        body: super::models::Car,
+        extra: Extra,
+    ) -> Result<responses::CreateCarResponse>;
 
-        async fn test_binary(
-            &self,
-            space_id: String,
-            body: ByteArray,
-            extra: Extra,
-        ) -> Result<responses::TestBinaryResponse>;
+    async fn test_binary(
+        &self,
+        space_id: String,
+        body: ByteArray,
+        extra: Extra,
+    ) -> Result<responses::TestBinaryResponse>;
 
-        async fn test_one_of(&self, extra: Extra) -> Result<responses::TestOneOfResponse>;
-    }
+    async fn test_one_of(&self, extra: Extra) -> Result<responses::TestOneOfResponse>;
 }
 
 // ---------- Errors ----------
@@ -89,8 +86,7 @@ pub mod errors {
 
 // ---------- Client ----------
 pub mod client {
-    use crate::{
-        api,
+    use super::{
         errors::{Error, Result},
         params, responses,
     };
@@ -111,7 +107,7 @@ pub mod client {
     }
 
     #[async_trait::async_trait]
-    impl api::Api for Client {
+    impl super::Api for Client {
         async fn get_cars(
             &self,
             space_id: String,
@@ -139,7 +135,7 @@ pub mod client {
         async fn create_car(
             &self,
             space_id: String,
-            body: crate::models::Car,
+            body: super::models::Car,
             extra: Extra,
         ) -> Result<responses::CreateCarResponse> {
             let uri = format!("{}/spaces/{}/car-service/cars", self.base_uri, space_id);
@@ -202,9 +198,8 @@ pub mod client {
 
 // ---------- Server ----------
 pub mod server {
-    use crate::api;
-    use crate::errors::{Error, Result};
-    use crate::params;
+    use super::errors::{Error, Result};
+    use super::params;
     use axum::{
         body::Bytes,
         extract::Json,
@@ -222,7 +217,7 @@ pub mod server {
     #[must_use]
     pub fn register_routes<T>(router: Router, api: T) -> Router
     where
-        T: api::Api + Clone + Send + Sync + 'static,
+        T: super::Api + Clone + Send + Sync + 'static,
     {
         router
             .route(
@@ -244,7 +239,7 @@ pub mod server {
         headers: HeaderMap,
     ) -> Response
     where
-        T: api::Api + Send + Sync + 'static,
+        T: super::Api + Send + Sync + 'static,
     {
         let resp = api
             .get_cars(space_id, query.names, query.q, Extra { headers })
@@ -258,11 +253,11 @@ pub mod server {
     async fn create_car<T>(
         Extension(api): Extension<T>,
         Path(space_id): Path<String>,
-        Json(body): Json<crate::models::Car>,
+        Json(body): Json<super::models::Car>,
         headers: HeaderMap,
     ) -> Response
     where
-        T: api::Api + Send + Sync + 'static,
+        T: super::Api + Send + Sync + 'static,
     {
         let resp = api.create_car(space_id, body, Extra { headers }).await;
         match resp {
@@ -278,7 +273,7 @@ pub mod server {
         headers: HeaderMap,
     ) -> Response
     where
-        T: api::Api + Send + Sync + 'static,
+        T: super::Api + Send + Sync + 'static,
     {
         let resp = api
             .test_binary(space_id, body.into(), Extra { headers })
@@ -291,7 +286,7 @@ pub mod server {
 
     async fn test_one_of<T>(Extension(api): Extension<T>, headers: HeaderMap) -> Response
     where
-        T: api::Api + Send + Sync + 'static,
+        T: super::Api + Send + Sync + 'static,
     {
         let resp = api.test_one_of(Extra { headers }).await;
         match resp {
@@ -328,7 +323,7 @@ pub mod models {
         /// The car color.
         #[serde(rename = "color")]
         #[serde(skip_serializing_if = "Option::is_none")]
-        pub color: Option<crate::models::CarColor>,
+        pub color: Option<super::models::CarColor>,
 
         #[serde(rename = "is_new")]
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -349,9 +344,9 @@ pub mod models {
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub enum TestOneOfResponse {
         #[serde(rename = "option1")]
-        Option1(crate::models::Pet),
+        Option1(super::models::Pet),
         #[serde(rename = "option2")]
-        Option2(crate::models::Car),
+        Option2(super::models::Car),
     }
 }
 
@@ -369,7 +364,7 @@ pub(crate) mod params {
 
 // ---------- Responses ----------
 pub mod responses {
-    use crate::errors::{Error, Result};
+    use super::errors::{Error, Result};
     use axum::{
         http::StatusCode,
         response::{IntoResponse, Response},
@@ -380,7 +375,7 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub enum GetCarsResponse {
         /// List of cars.
-        Ok(Vec<crate::models::Car>),
+        Ok(Vec<super::models::Car>),
     }
 
     impl GetCarsResponse {
@@ -407,7 +402,7 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub enum CreateCarResponse {
         /// Created.
-        Created(crate::models::Car),
+        Created(super::models::Car),
     }
 
     impl CreateCarResponse {
@@ -461,7 +456,7 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub enum TestOneOfResponse {
         /// Ok.
-        Ok(crate::models::TestOneOfResponse),
+        Ok(super::models::TestOneOfResponse),
     }
 
     impl TestOneOfResponse {
