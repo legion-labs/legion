@@ -1,6 +1,6 @@
-use std::path::Path;
 #[cfg(feature = "typescript-format")]
 use std::sync::Arc;
+use std::{ffi::OsStr, path::Path};
 
 #[cfg(feature = "typescript-format")]
 use anyhow::anyhow;
@@ -29,14 +29,22 @@ struct TypeScriptTemplate<'a> {
 pub(crate) struct TypeScriptGenerator {}
 
 impl Generator for TypeScriptGenerator {
-    fn generate(&self, api: &Api, output_dir: &Path) -> Result<()> {
+    fn generate(&self, api: &Api, openapi_file: &Path, output_dir: &Path) -> Result<()> {
         let content = generate(api)?;
 
         #[cfg(feature = "typescript-format")]
         let content = format(content)?;
 
+        let output_file = output_dir.join(
+            openapi_file
+                .to_path_buf()
+                .with_extension("ts")
+                .file_name()
+                .unwrap_or_else(|| OsStr::new("index.ts")),
+        );
+
         std::fs::create_dir_all(output_dir)?;
-        std::fs::write(output_dir.join("index.ts"), content)?;
+        std::fs::write(output_file, content)?;
 
         Ok(())
     }

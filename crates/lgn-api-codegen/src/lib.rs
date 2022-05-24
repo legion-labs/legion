@@ -37,16 +37,17 @@ pub fn generate(
     openapi_file: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
 ) -> Result<()> {
-    let openapi_file = std::fs::File::open(openapi_file)?;
-    let openapi: openapiv3::OpenAPI = serde_yaml::from_reader(&openapi_file)?;
+    let openapi_file = openapi_file.as_ref();
+    let openapi_reader = std::fs::File::open(openapi_file)?;
+    let openapi: openapiv3::OpenAPI = serde_yaml::from_reader(&openapi_reader)?;
     let api = Api::try_from(&openapi)?;
 
     let generator = load_generator_for_language(language);
-    generator.generate(&api, output_dir.as_ref())
+    generator.generate(&api, openapi_file, output_dir.as_ref())
 }
 
 pub(crate) trait Generator {
-    fn generate(&self, api: &Api, output_dir: &Path) -> Result<()>;
+    fn generate(&self, api: &Api, openapi_file: &Path, output_dir: &Path) -> Result<()>;
 }
 
 fn load_generator_for_language(language: &Language) -> Box<dyn Generator> {
