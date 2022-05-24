@@ -1,12 +1,11 @@
 use std::str::FromStr;
+use std::time::Duration;
 
 use lgn_content_store::Identifier;
 use lgn_data_compiler::CompiledResource;
 use lgn_data_runtime::ResourcePathId;
 use lgn_data_runtime::ResourceTypeAndId;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use sqlx::Connection;
-use sqlx::SqliteConnection;
 use sqlx::{migrate::MigrateDatabase, Executor, Row};
 
 use crate::Error;
@@ -58,21 +57,23 @@ struct LinkedResource {
 
 #[derive(Debug)]
 pub(crate) struct OutputIndex {
-    uri: String,
+    database: sqlx::AnyPool,
 }
 
 impl OutputIndex {
     pub(crate) async fn create_new(db_uri: String) -> Result<Self, Error> {
-        sqlx::Any::create_database(&db_uri)
-            .await
-            .map_err(Error::Database)?;
-        let connection = sqlx::any::AnyPoolOptions::new()
-            .max_connections(10)
-            .connect(&db_uri)
-            .await
-            .map_err(Error::Database)?;
+        let database = {
+            sqlx::Any::create_database(&db_uri)
+                .await
+                .map_err(Error::Database)?;
+            let connection = sqlx::any::AnyPoolOptions::new()
+                .max_connections(10)
+                .connect_timeout(Duration::from_secs(60 * 60)) // One hour timeout, workaround for PoolTimedOut
+                .connect(&db_uri)
+                .await
+                .map_err(Error::Database)?;
 
-        let statement = "
+            let statement = "
                 CREATE TABLE compiled_output(
                     compile_path VARCHAR(255),
                     context_hash BIGINT,
@@ -94,23 +95,27 @@ impl OutputIndex {
                     resource_id VARCHAR(255), 
                     resource_path_id VARCHAR(255));";
 
-        connection
-            .execute(statement)
-            .await
-            .map_err(Error::Database)?;
+            connection
+                .execute(statement)
+                .await
+                .map_err(Error::Database)?;
 
-        Ok(Self { uri: db_uri })
+            connection
+        };
+        Ok(Self { database })
     }
 
     async fn load(db_uri: String) -> Result<Self, Error> {
-        if sqlx::Any::database_exists(&db_uri)
-            .await
-            .map_err(Error::Database)?
-        {
-            Ok(Self { uri: db_uri })
-        } else {
-            Err(Error::NotFound(db_uri))
-        }
+        let database = {
+            sqlx::any::AnyPoolOptions::new()
+                .max_connections(10)
+                .connect_timeout(Duration::from_secs(60 * 60))
+                .connect(&db_uri)
+                .await
+                .map_err(Error::Database)?
+        };
+
+        Ok(Self { database })
     }
 
     pub(crate) async fn open(db_uri: String) -> Result<Self, Error> {
@@ -146,10 +151,6 @@ impl OutputIndex {
         // NOTE: all inserts could be done in one statement instead of for loops
         // but sqlx API doesn't support inserting multiple values in one query
         // at the moment.
-
-        let mut conn = SqliteConnection::connect(&self.uri)
-            .await
-            .map_err(Error::Database)?;
         {
             for resource in compiled_resources {
                 let query = sqlx::query("INSERT into compiled_output VALUES(?, ?, ?, ?, ?);")
@@ -159,7 +160,10 @@ impl OutputIndex {
                     .bind(resource.path.to_string())
                     .bind(resource.content_id.to_string());
 
-                conn.execute(query).await.map_err(Error::Database)?;
+                self.database
+                    .execute(query)
+                    .await
+                    .map_err(Error::Database)?;
             }
 
             for (source, dest) in compiled_references {
@@ -170,7 +174,10 @@ impl OutputIndex {
                     .bind(source.to_string())
                     .bind(dest.to_string());
 
-                conn.execute(query).await.map_err(Error::Database)?;
+                self.database
+                    .execute(query)
+                    .await
+                    .map_err(Error::Database)?;
             }
         }
 
@@ -192,9 +199,7 @@ impl OutputIndex {
         .bind(context_hash.into_i64())
         .bind(source_hash.into_i64());
 
-        let mut conn = SqliteConnection::connect(&self.uri).await.unwrap();
-
-        let result: Vec<(String, String)> = statement.fetch_all(&mut conn).await.unwrap();
+        let result: Vec<(String, String)> = statement.fetch_all(&self.database).await.unwrap();
         let compiled = result
             .into_iter()
             .map(|(id, checksum)| CompiledResourceInfo {
@@ -220,7 +225,7 @@ impl OutputIndex {
             .bind(context_hash.into_i64())
             .bind(source_hash.into_i64());
 
-            let result: Vec<(String, String)> = statement.fetch_all(&mut conn).await.unwrap();
+            let result: Vec<(String, String)> = statement.fetch_all(&self.database).await.unwrap();
 
             result
                 .into_iter()
@@ -245,9 +250,6 @@ impl OutputIndex {
         source_hash: AssetHash,
     ) -> Result<Option<Identifier>, Error> {
         let output = {
-            let mut conn = SqliteConnection::connect(&self.uri)
-                .await
-                .map_err(Error::Database)?;
             let statement = sqlx::query_as(
                 "SELECT checksum
                     FROM linked_output
@@ -258,7 +260,7 @@ impl OutputIndex {
             .bind(source_hash.into_i64());
 
             let result: Option<(String,)> = statement
-                .fetch_optional(&mut conn)
+                .fetch_optional(&self.database)
                 .await
                 .map_err(Error::Database)?;
 
@@ -275,16 +277,16 @@ impl OutputIndex {
         source_hash: AssetHash,
         content_id: Identifier,
     ) -> Result<(), Error> {
-        let mut conn = SqliteConnection::connect(&self.uri)
-            .await
-            .map_err(Error::Database)?;
         let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?);")
             .bind(id.to_string())
             .bind(context_hash.into_i64())
             .bind(source_hash.into_i64())
             .bind(content_id.to_string());
 
-        conn.execute(query).await.map_err(Error::Database)?;
+        self.database
+            .execute(query)
+            .await
+            .map_err(Error::Database)?;
 
         Ok(())
     }
@@ -294,11 +296,10 @@ impl OutputIndex {
             .bind(id.resource_id().to_string())
             .bind(id.to_string());
 
-        let mut conn = SqliteConnection::connect(&self.uri)
+        self.database
+            .execute(query)
             .await
             .map_err(Error::Database)?;
-
-        conn.execute(query).await.map_err(Error::Database)?;
 
         Ok(())
     }
@@ -307,9 +308,6 @@ impl OutputIndex {
         &self,
         id: ResourceTypeAndId,
     ) -> Result<Option<ResourcePathId>, Error> {
-        let mut conn = SqliteConnection::connect(&self.uri)
-            .await
-            .map_err(Error::Database)?;
         let output = {
             let statement = sqlx::query(
                 "SELECT resource_path_id
@@ -319,7 +317,7 @@ impl OutputIndex {
             .bind(id.to_string());
 
             let result = statement
-                .fetch_optional(&mut conn)
+                .fetch_optional(&self.database)
                 .await
                 .map_err(Error::Database)?;
 
