@@ -8,7 +8,7 @@ pub struct SamplerManager {
     device_context: DeviceContext,
 
     samplers: Vec<(
-        lgn_graphics_data::runtime::Sampler,
+        lgn_graphics_data::runtime::SamplerData,
         lgn_graphics_api::Sampler,
     )>,
 }
@@ -24,13 +24,13 @@ impl SamplerManager {
     pub fn get_index(
         &mut self,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
-        sampler: Option<&lgn_graphics_data::runtime::Sampler>,
+        sampler_data: Option<&lgn_graphics_data::runtime::SamplerData>,
     ) -> u32 {
-        if let Some(sampler) = sampler {
+        if let Some(sampler_data) = sampler_data {
             if let Some(idx) = self
                 .samplers
                 .iter()
-                .position(|s| s.0 == *sampler)
+                .position(|s| s.0 == *sampler_data)
                 .map(|idx| idx as u32)
             {
                 return idx as u32;
@@ -40,36 +40,28 @@ impl SamplerManager {
 
             #[allow(clippy::match_same_arms)]
             let gpu_sampler = self.device_context.create_sampler(&SamplerDef {
-                min_filter: match sampler.min_filter {
-                    lgn_graphics_data::MinFilter::Nearest
-                    | lgn_graphics_data::MinFilter::NearestMipmapNearest
-                    | lgn_graphics_data::MinFilter::NearestMipmapLinear => FilterType::Nearest,
-                    lgn_graphics_data::MinFilter::Linear
-                    | lgn_graphics_data::MinFilter::LinearMipmapNearest
-                    | lgn_graphics_data::MinFilter::LinearMipmapLinear => FilterType::Linear,
+                min_filter: match sampler_data.min_filter {
+                    lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
+                    lgn_graphics_data::Filter::Linear => FilterType::Linear,
                     _ => FilterType::Linear,
                 },
-                mag_filter: match sampler.mag_filter {
-                    lgn_graphics_data::MagFilter::Nearest => FilterType::Nearest,
-                    lgn_graphics_data::MagFilter::Linear => FilterType::Linear,
+                mag_filter: match sampler_data.mag_filter {
+                    lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
+                    lgn_graphics_data::Filter::Linear => FilterType::Linear,
                     _ => FilterType::Linear,
                 },
-                mip_map_mode: match sampler.min_filter {
-                    lgn_graphics_data::MinFilter::Nearest => MipMapMode::Linear,
-                    lgn_graphics_data::MinFilter::Linear => MipMapMode::Linear,
-                    lgn_graphics_data::MinFilter::NearestMipmapLinear => MipMapMode::Linear,
-                    lgn_graphics_data::MinFilter::LinearMipmapLinear => MipMapMode::Linear,
-                    lgn_graphics_data::MinFilter::NearestMipmapNearest => MipMapMode::Nearest,
-                    lgn_graphics_data::MinFilter::LinearMipmapNearest => MipMapMode::Nearest,
+                mip_map_mode: match sampler_data.mip_filter {
+                    lgn_graphics_data::Filter::Nearest => MipMapMode::Nearest,
+                    lgn_graphics_data::Filter::Linear => MipMapMode::Linear,
                     _ => MipMapMode::Linear,
                 },
-                address_mode_u: match sampler.wrap_u {
+                address_mode_u: match sampler_data.wrap_u {
                     lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
                     lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
                     lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
                     _ => AddressMode::Repeat,
                 },
-                address_mode_v: match sampler.wrap_v {
+                address_mode_v: match sampler_data.wrap_v {
                     lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
                     lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
                     lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
@@ -82,7 +74,7 @@ impl SamplerManager {
             });
             let idx = self.samplers.len() as u32;
             persistent_descriptor_set_manager.set_sampler(idx, &gpu_sampler);
-            self.samplers.push((sampler.clone(), gpu_sampler));
+            self.samplers.push((sampler_data.clone(), gpu_sampler));
 
             return idx;
         }

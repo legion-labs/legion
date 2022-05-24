@@ -310,7 +310,7 @@ impl MaterialManager {
             sampler_manager
                 .get_index(
                     persistent_descriptor_set_manager,
-                    material_component.sampler.as_ref(),
+                    material_component.sampler_data.as_ref(),
                 )
                 .into(),
         );
@@ -410,7 +410,7 @@ impl MaterialManager {
                 sampler_manager
                     .get_index(
                         persistent_descriptor_set_manager,
-                        Some(&lgn_graphics_data::runtime::Sampler::default()),
+                        Some(&lgn_graphics_data::runtime::SamplerData::default()),
                     )
                     .into(),
             );

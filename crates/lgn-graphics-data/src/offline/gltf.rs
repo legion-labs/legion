@@ -1,9 +1,9 @@
 use std::{cell::RefCell, io, str::FromStr};
 
 use crate::{
-    offline::{Material, Mesh, Model, Sampler},
+    offline::{Material, Mesh, Model, SamplerData},
     offline_texture::{Texture, TextureType},
-    Color, MagFilter, MinFilter, WrappingMode,
+    Color, Filter, WrappingMode,
 };
 use gltf::{
     image::Format,
@@ -351,27 +351,38 @@ fn samplers_differ(sampler1: &texture::Sampler<'_>, sampler2: &texture::Sampler<
         || sampler1.wrap_t() != sampler2.wrap_t()
 }
 
-fn build_sampler(sampler: &texture::Sampler<'_>) -> Sampler {
-    Sampler {
+fn build_sampler(sampler: &texture::Sampler<'_>) -> SamplerData {
+    SamplerData {
         mag_filter: if let Some(mag_filter) = sampler.mag_filter() {
             match mag_filter {
-                texture::MagFilter::Nearest => MagFilter::Nearest,
-                texture::MagFilter::Linear => MagFilter::Linear,
+                texture::MagFilter::Nearest => Filter::Nearest,
+                texture::MagFilter::Linear => Filter::Linear,
             }
         } else {
-            MagFilter::Linear
+            Filter::Linear
         },
         min_filter: if let Some(min_filter) = sampler.min_filter() {
             match min_filter {
-                texture::MinFilter::Nearest => MinFilter::Nearest,
-                texture::MinFilter::Linear => MinFilter::Linear,
-                texture::MinFilter::NearestMipmapNearest => MinFilter::NearestMipmapNearest,
-                texture::MinFilter::LinearMipmapNearest => MinFilter::LinearMipmapNearest,
-                texture::MinFilter::NearestMipmapLinear => MinFilter::NearestMipmapLinear,
-                texture::MinFilter::LinearMipmapLinear => MinFilter::LinearMipmapLinear,
+                texture::MinFilter::Nearest
+                | texture::MinFilter::NearestMipmapNearest
+                | texture::MinFilter::NearestMipmapLinear => Filter::Nearest,
+                texture::MinFilter::Linear
+                | texture::MinFilter::LinearMipmapNearest
+                | texture::MinFilter::LinearMipmapLinear => Filter::Linear,
             }
         } else {
-            MinFilter::Linear
+            Filter::Linear
+        },
+        mip_filter: if let Some(min_filter) = sampler.min_filter() {
+            match min_filter {
+                texture::MinFilter::NearestMipmapNearest
+                | texture::MinFilter::LinearMipmapNearest => Filter::Nearest,
+                texture::MinFilter::LinearMipmapLinear
+                | texture::MinFilter::NearestMipmapLinear => Filter::Linear,
+                _ => Filter::Linear,
+            }
+        } else {
+            Filter::Linear
         },
         wrap_u: match sampler.wrap_s() {
             texture::WrappingMode::ClampToEdge => WrappingMode::ClampToEdge,

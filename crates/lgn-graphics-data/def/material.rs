@@ -1,15 +1,6 @@
-pub enum MagFilter {
+pub enum Filter {
     Nearest,
     Linear,
-}
-
-pub enum MinFilter {
-    Nearest,
-    Linear,
-    NearestMipmapNearest,
-    LinearMipmapNearest,
-    NearestMipmapLinear,
-    LinearMipmapLinear,
 }
 
 pub enum WrappingMode {
@@ -18,9 +9,10 @@ pub enum WrappingMode {
     Repeat,
 }
 
-pub struct Sampler {
-    mag_filter: MagFilter,
-    min_filter: MinFilter,
+pub struct SamplerData {
+    mag_filter: Filter,
+    min_filter: Filter,
+    mip_filter: Filter,
     wrap_u: WrappingMode,
     wrap_v: WrappingMode,
 }
@@ -52,5 +44,5 @@ pub struct Material {
     #[legion(default = 0.0)]
     pub reflectance: f32,
 
-    pub sampler: Option<Sampler>,
+    pub sampler: Option<SamplerData>,
 }
