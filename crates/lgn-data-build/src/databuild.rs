@@ -418,17 +418,20 @@ impl DataBuild {
     ///
     /// `std::string::ToString::to_string` can be used as a default
     /// `name_parser`.
-    pub fn print_build_graph(
+    pub async fn print_build_graph<R>(
         &self,
         compile_path: ResourcePathId,
-        name_parser: impl Fn(&ResourcePathId) -> String,
-    ) -> String {
+        name_parser: impl Fn(&ResourcePathId) -> R,
+    ) -> String
+    where
+        R: Future<Output = String>,
+    {
         if let Some(source_index) = self.source_index.current() {
             let build_graph = source_index.generate_build_graph(compile_path);
             #[rustfmt::skip]
-        let inner_getter = |_g: &Graph<ResourcePathId, ()>,
+        let inner_getter = async move |_g: &Graph<ResourcePathId, ()>,
                             nr: <&petgraph::Graph<lgn_data_runtime::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
-            format!("label = \"{}\"", (name_parser)(nr.1))
+            format!("label = \"{}\"", (name_parser)(nr.1).await)
         };
             let dot = petgraph::dot::Dot::with_attr_getters(
                 &build_graph,

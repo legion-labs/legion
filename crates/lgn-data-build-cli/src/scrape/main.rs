@@ -528,7 +528,7 @@ async fn main() -> Result<(), String> {
                             .map_err(|_e| format!("Invalid ResourcePathId '{}'", id))?
                     }
                 };
-                let output = build.print_build_graph(rid, |rid| {
+                let output = build.print_build_graph(rid, |rid| async {
                     pretty_name_from_pathid(rid, &project, &config).await
                 });
                 println!("{}", output);
