@@ -1,29 +1,10 @@
 #include "crate://lgn-graphics-renderer/gpu/pipeline_layout/final_resolve_pipeline_layout.hlsl"
 
 #include "crate://lgn-graphics-renderer/gpu/include/common.hsh"
+#include "crate://lgn-graphics-renderer/gpu/include/fullscreen_triangle.hsh"
 
-struct VertexOut {  
-    float4 hpos : SV_POSITION;
-    float2 uv : TEXCOORD;
-};
-
-VertexOut main_vs(in uint vertexId : SV_VertexID) {
-    VertexOut vertex_out;
-
-    if (vertexId == 0) {
-        vertex_out.hpos = float4(-1.0, -3.0, 0.0, 1.0);
-        vertex_out.uv = float2(0.0, 2.0);
-    }
-    if (vertexId == 1) {
-        vertex_out.hpos = float4(3.0, 1.0, 0.0, 1.0);
-        vertex_out.uv = float2(2.0, 0.0);
-    }
-    if (vertexId == 2) {
-        vertex_out.hpos = float4(-1.0, 1.0, 0.0, 1.0);
-        vertex_out.uv = float2(0.0, 0.0);
-    }
-
-    return vertex_out;
+VertexOut main_vs(in uint id : SV_VERTEXID) {
+    return fullscreen_triangle_vertex(id);
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {

@@ -243,7 +243,7 @@ impl RenderSurface {
                     depth_store_op: StoreOp::Store,
                     stencil_store_op: StoreOp::DontCare,
                     clear_value: DepthStencilClearValue {
-                        depth: 1.0,
+                        depth: 0.0,
                         stencil: 0,
                     },
                 }),

@@ -20,7 +20,7 @@ export function createTimelineStateStore(state: TimelineState) {
 
   const keyboardZoom = (positive: boolean) => {
     update((s) => {
-      const range = s.getViewRange();
+      const range = s.viewRange;
       const length = range[1] - range[0];
       const change = ((positive ? 1 : -1) * length) / 10;
       s.viewRange = [range[0] + change, range[1] - change];
@@ -30,7 +30,7 @@ export function createTimelineStateStore(state: TimelineState) {
 
   const keyboardTranslate = (positive: boolean) => {
     update((s) => {
-      const range = s.getViewRange();
+      const range = s.viewRange;
       const length = range[1] - range[0];
       const delta = ((positive ? 1 : -1) * length) / 10;
       s.viewRange = [range[0] + delta, range[1] + delta];
@@ -42,7 +42,7 @@ export function createTimelineStateStore(state: TimelineState) {
     const speed = 0.75;
     const factor = event.deltaY > 0 ? 1.0 / speed : speed;
     update((s) => {
-      const range = s.getViewRange();
+      const range = s.viewRange;
       const length = range[1] - range[0];
       const newLength = length * factor;
       const pctCursor = event.offsetX / s.canvasWidth;
@@ -212,7 +212,7 @@ export function createTimelineStateStore(state: TimelineState) {
 
   const updateSelection = (x: number) => {
     updateState((s) => {
-      if (s.beginRange) {
+      if (s.beginRange !== null) {
         const viewRange = s.viewRange;
         const factor = (viewRange[1] - viewRange[0]) / s.canvasWidth;
         const first = viewRange[0] + factor * s.beginRange;

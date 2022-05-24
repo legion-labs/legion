@@ -13,7 +13,7 @@ path = "src/remote_service/main.rs"
 async-trait = "0.1"
 anyhow = "1.0"
 bincode = "1.3.1"
-chacha20poly1305 = "0.9.0"
+chacha20poly1305 = "0.10.0-pre"
 clap = { version = "3.0", features = ["derive"] }
 freelist = "0.1.0"
 futures = "0.3"

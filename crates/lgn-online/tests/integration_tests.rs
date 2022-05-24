@@ -31,12 +31,12 @@ use echo::{
     echoer_server::{Echoer, EchoerServer},
     EchoRequest, EchoResponse,
 };
+use lgn_auth::{
+    jwt::{signature_validation::NoSignatureValidation, RequestAuthorizer, Validation},
+    Authenticator, ClientTokenSet,
+};
 use lgn_online::{
-    authentication::{
-        self,
-        jwt::{signature_validation::NoSignatureValidation, RequestAuthorizer, Validation},
-        Authenticator, ClientTokenSet,
-    },
+    self,
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
 };
 use lgn_tracing::{error, info};
@@ -104,7 +104,7 @@ impl Authenticator for MockAuthenticator {
         &self,
         _scopes: &[String],
         _extra_params: &Option<HashMap<String, String>>,
-    ) -> authentication::Result<ClientTokenSet> {
+    ) -> lgn_auth::Result<ClientTokenSet> {
         Ok(ClientTokenSet {
             access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjEyMywic3ViIjoiMTIzNDU2Nzg5MCIsIm5hbWUiOiJKb2huIERvZSIsImlhdCI6MTUxNjIzOTAyMn0.9P2Lckmb0Kmy-5lVME8CzHeKDQJ_pAsCJVRIRFsDcZ8".into(),
             refresh_token: None,
@@ -118,11 +118,11 @@ impl Authenticator for MockAuthenticator {
     async fn refresh_login(
         &self,
         _client_token_set: ClientTokenSet,
-    ) -> authentication::Result<ClientTokenSet> {
+    ) -> lgn_auth::Result<ClientTokenSet> {
         self.login(&[], &None).await
     }
 
-    async fn logout(&self) -> authentication::Result<()> {
+    async fn logout(&self) -> lgn_auth::Result<()> {
         Ok(())
     }
 }

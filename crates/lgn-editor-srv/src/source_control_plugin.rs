@@ -22,10 +22,12 @@ use lgn_editor_proto::source_control::{
     staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
     CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
     GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
-    InitUploadRawFileResponse, ResourceDescription, RevertResourcesRequest,
-    RevertResourcesResponse, StagedResource, SyncLatestResponse, SyncLatestResquest,
-    UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse, UploadStatus,
+    InitUploadRawFileResponse, PullAssetRequest, PullAssetResponse, ResourceDescription,
+    RevertResourcesRequest, RevertResourcesResponse, StagedResource, SyncLatestResponse,
+    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
+    UploadStatus,
 };
+use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
 use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
 use lgn_tracing::error;
@@ -105,7 +107,7 @@ impl RawFile {
 
         let dir_path = path.join(file_id.to_string());
 
-        fs::create_dir(&dir_path)
+        fs::create_dir_all(&dir_path)
             .map_err(|error| SourceControlError::FileCreation(dir_path.clone(), Box::new(error)))?;
 
         let file_path = dir_path.join(&name);
@@ -711,5 +713,28 @@ impl SourceControl for SourceControlRPC {
         }
 
         Ok(Response::new(RevertResourcesResponse {}))
+    }
+
+    async fn pull_asset(
+        &self,
+        request: Request<PullAssetRequest>,
+    ) -> Result<Response<PullAssetResponse>, Status> {
+        let message = request.into_inner();
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let id = ResourceTypeAndId::from_str(message.id.as_str()).map_err(Status::unknown)?;
+        if id.kind != GltfFile::TYPE {
+            return Err(Status::internal(
+                "pull_asset supports GltfFile only at the moment",
+            ));
+        }
+        let resource = ctx.asset_registry.load_sync::<GltfFile>(id);
+        if let Some(gltf_file) = resource.get(&ctx.asset_registry) {
+            return Ok(Response::new(PullAssetResponse {
+                size: gltf_file.bytes().len() as u32,
+                content: gltf_file.bytes().to_vec(),
+            }));
+        }
+        return Err(Status::internal(format!("Failed to get an asset {}", id)));
     }
 }

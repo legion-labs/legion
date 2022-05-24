@@ -99,7 +99,7 @@
   }
 
   function updateViewport() {
-    const viewRange = $stateStore.getViewRange();
+    const viewRange = $stateStore.viewRange;
     const maxViewRange = viewRange[1] - viewRange[0];
     const maxRange = $stateStore.getMaxRange();
     let x = viewRange[0] / maxRange;

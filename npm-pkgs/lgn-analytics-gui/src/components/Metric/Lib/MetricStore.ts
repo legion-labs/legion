@@ -12,7 +12,7 @@ export type MetricStore = ReturnType<typeof getMetricStore>;
 function getMetricConfig(): MetricConfig[] {
   const jsonData = localStorage.getItem(localStorageKey);
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const data: MetricConfig[] = jsonData ? JSON.parse(jsonData) : [];
+  const data: MetricConfig[] = jsonData !== null ? JSON.parse(jsonData) : [];
   return data.sort((a, b) => a.lastUse - b.lastUse);
 }
 
@@ -43,7 +43,7 @@ export function getMetricStore() {
       const data = s.filter((s) => s.selected);
       const config: MetricConfig[] = [];
       data.forEach((m) => {
-        if (m.lastUse) {
+        if (m.lastUse !== null) {
           config.push({
             name: m.name,
             lastUse: m.lastUse,

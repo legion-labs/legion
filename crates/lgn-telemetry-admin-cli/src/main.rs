@@ -153,7 +153,7 @@ async fn main() -> Result<()> {
             print_logs_by_process(&mut connection, blob_storage).await?;
         }
         Commands::ProcessLog { process_id } => {
-            print_process_log(&mut connection, blob_storage, &process_id).await?;
+            print_process_log(&mut connection, blob_storage, process_id).await?;
         }
         Commands::ProcessThreadEvents { process_id } => {
             print_process_thread_events(&mut connection, blob_storage, &process_id).await?;

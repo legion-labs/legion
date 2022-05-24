@@ -42,7 +42,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
                 #{ name:"iaabb", ty:"Uint4" },
                 #{ name:"lod", ty:"Float1" },
                 #{ name:"depth", ty:"Float1" },
-                #{ name:"max_z", ty:"Float1" },
+                #{ name:"min_z", ty:"Float1" },
                 #{ name:"gpu_instance", ty:"Uint1" },
             ]
         },

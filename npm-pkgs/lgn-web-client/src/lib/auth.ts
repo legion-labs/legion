@@ -1,6 +1,7 @@
 import getPkce from "oauth-pkce";
 
 import userInfo from "../orchestrators/userInfo";
+import accessToken from "../stores/accessToken";
 import type { NonEmptyArray } from "./array";
 import { getCookie, setCookie } from "./cookie";
 import { displayError } from "./errors";
@@ -454,11 +455,6 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   async getClientTokenSet(url: URL | string): Promise<ClientTokenSet | null> {
-    if (window.isElectron) {
-      // TODO: When the application is running on Electron
-      // it should use the node native module
-    }
-
     const parsedUrl = url instanceof URL ? url : new URL(url);
 
     const searchParams = new URLSearchParams(parsedUrl.search);
@@ -497,12 +493,10 @@ export class LegionClient extends Client<UserInfo> {
   }
 
   override async userInfo(): Promise<UserInfo> {
-    if (window.isElectron) {
-      // TODO: When the application is running on Electron
-      // it should use the node native module
-    }
-
-    const accessToken = getCookie(this.#cookieStorage.accessTokenName);
+    const accessToken =
+      globalThis.isElectron && globalThis.electron
+        ? globalThis.electron.auth.getAccessToken()
+        : getCookie(this.#cookieStorage.accessTokenName);
 
     if (!accessToken) {
       throw new Error("Access token not found");
@@ -544,12 +538,12 @@ export type InitAuthUserConfig = {
   url?: URL | Location;
   /**
    * Function used after the user is logged and is redirected to the provided `redirectUri`
-   * Defaults to `window.history.replaceState`.
+   * Defaults to `globalThis.history.replaceState`.
    *
    * The `url` argument will have the same value as `InitAuthUserConfig.url`.
    *
    * If you provide your own function it's strongly adviced to use an alternative that's close
-   * to  `window.history.replaceState` with history state replacement.
+   * to  `globalThis.history.replaceState` with history state replacement.
    */
   redirectFunction?: (url: URL) => Promise<void> | void;
 };
@@ -580,9 +574,33 @@ export async function initAuth({
     authClient = client;
   }
 
-  if (window.isElectron) {
-    // TODO: When the application is running on Electron
-    // it should use the node native module
+  if (globalThis.isElectron && globalThis.electron) {
+    await globalThis.electron.auth.initOAuthClient();
+
+    try {
+      await userInfo.run(async () => {
+        if (!globalThis.electron) {
+          // Should never happen
+          throw new Error("Not in Electron");
+        }
+
+        const userInfo = await globalThis.electron?.auth.authenticate(
+          authClient.loginConfig.scopes,
+          authClient.loginConfig.extraParams
+        );
+
+        log.debug("auth", userInfo);
+
+        return userInfo;
+      });
+    } catch {
+      return {
+        type: "error",
+        authorizationUrl: await authClient.getAuthorizationUrl(),
+      };
+    }
+
+    return { type: "success" };
   }
 
   // Try to get the code from the url, if present and an error occurs
@@ -609,7 +627,7 @@ export async function initAuth({
         if (redirectFunction) {
           await redirectFunction(targetUrl);
         } else {
-          window.history.replaceState(null, "", targetUrl);
+          globalThis.history.replaceState(null, "", targetUrl);
         }
       }
     }
@@ -655,6 +673,7 @@ export async function initAuth({
   // At that point this request should not fail
   try {
     await userInfo.run(() => authClient.userInfo());
+    accessToken.set(authClient.accessToken);
   } catch (error) {
     log.warn(
       log.json`An error occured while trying to get the user info ${error}`

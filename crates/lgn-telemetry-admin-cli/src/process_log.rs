@@ -3,14 +3,23 @@ use std::sync::Arc;
 use anyhow::Result;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
+use lgn_telemetry_proto::telemetry::Process as ProcessInfo;
 
 pub async fn print_process_log(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
-    process_id: &str,
+    process_id: impl Into<String>,
 ) -> Result<()> {
-    for_each_process_log_entry(connection, blob_storage, process_id, |_time, entry| {
-        println!("{}", entry);
+    let process = ProcessInfo {
+        process_id: process_id.into(),
+        ..ProcessInfo::default()
+    };
+
+    for_each_process_log_entry(connection, blob_storage, &process, |log_entry| {
+        println!(
+            "[{}][{}] {}",
+            log_entry.level, log_entry.target, log_entry.msg
+        );
     })
     .await?;
     Ok(())

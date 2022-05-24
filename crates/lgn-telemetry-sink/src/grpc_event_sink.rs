@@ -7,7 +7,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use lgn_online::authentication::{Authenticator, ClientTokenSet};
+use lgn_auth::{Authenticator, ClientTokenSet};
 use tonic::codegen::http::Uri;
 
 use lgn_telemetry_proto::{
@@ -43,7 +43,7 @@ impl Authenticator for StaticApiKey {
         &self,
         _scopes: &[String],
         _extra_params: &Option<HashMap<String, String>>,
-    ) -> lgn_online::authentication::Result<ClientTokenSet> {
+    ) -> lgn_auth::Result<ClientTokenSet> {
         Ok(ClientTokenSet {
             access_token: env!("LGN_TELEMETRY_GRPC_API_KEY").to_owned(),
             refresh_token: None,
@@ -56,10 +56,10 @@ impl Authenticator for StaticApiKey {
     async fn refresh_login(
         &self,
         _client_token_set: ClientTokenSet,
-    ) -> lgn_online::authentication::Result<ClientTokenSet> {
+    ) -> lgn_auth::Result<ClientTokenSet> {
         self.login(&[], &None).await
     }
-    async fn logout(&self) -> lgn_online::authentication::Result<()> {
+    async fn logout(&self) -> lgn_auth::Result<()> {
         Ok(())
     }
 }

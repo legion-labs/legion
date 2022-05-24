@@ -1,0 +1,474 @@
+---
+source: crates/lgn-api-codegen/src/rust/mod.rs
+expression: content
+---
+// Auto-generated file for Api: Test API : 1.0.0
+//
+// This is a sample OpenAPI 3.0 specification.
+//
+
+// ---------- Api ----------
+pub mod api {
+    use crate::errors::Result;
+    use crate::responses;
+    use lgn_online::codegen::{ByteArray, Extra};
+
+    #[async_trait::async_trait]
+    pub trait Api {
+        async fn get_cars(
+            &self,
+            space_id: String,
+            names: Option<Vec<String>>,
+            extra: Extra,
+        ) -> Result<responses::GetCarsResponse>;
+
+        async fn create_car(
+            &self,
+            space_id: String,
+            body: crate::models::Car,
+            extra: Extra,
+        ) -> Result<responses::CreateCarResponse>;
+
+        async fn test_binary(
+            &self,
+            body: ByteArray,
+            extra: Extra,
+        ) -> Result<responses::TestBinaryResponse>;
+
+        async fn test_one_of(&self, extra: Extra) -> Result<responses::TestOneOfResponse>;
+    }
+}
+
+// ---------- Errors ----------
+pub mod errors {
+    use axum::{
+        http::StatusCode,
+        response::{IntoResponse, Response},
+    };
+    use lgn_tracing::error;
+
+    #[derive(thiserror::Error, Debug)]
+    pub enum Error {
+        #[error("internal: {0}")]
+        Internal(String),
+        #[error("reqwest: {0}")]
+        Reqwest(#[from] reqwest::Error),
+        #[error("invalid header: {0}")]
+        InvalidHeader(String),
+        #[error("missing header: {0}")]
+        MissingHeader(String),
+    }
+
+    pub type Result<T> = std::result::Result<T, Error>;
+
+    impl IntoResponse for Error {
+        fn into_response(self) -> Response {
+            match self {
+                Self::Internal(err) => {
+                    error!("Internal server error: {}", err);
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                }
+                Self::Reqwest(err) => {
+                    error!("Reqwest error: {:?}", err);
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                }
+                Self::InvalidHeader(err) => {
+                    error!("Invalid header: {}", err);
+                    StatusCode::BAD_REQUEST.into_response()
+                }
+                Self::MissingHeader(err) => {
+                    error!("Missing header: {}", err);
+                    StatusCode::BAD_REQUEST.into_response()
+                }
+            }
+        }
+    }
+}
+
+// ---------- Client ----------
+pub mod client {
+    use crate::{
+        api,
+        errors::{Error, Result},
+        params, responses,
+    };
+    use http::{header::CONTENT_TYPE, HeaderValue};
+    use lgn_online::codegen::{ByteArray, Extra};
+
+    pub struct Client {
+        inner: reqwest::Client,
+        base_uri: String,
+    }
+
+    impl Client {
+        pub fn new(base_uri: &str) -> Self {
+            let inner = reqwest::Client::new();
+            let base_uri = base_uri.to_string();
+            Self { inner, base_uri }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl api::Api for Client {
+        async fn get_cars(
+            &self,
+            space_id: String,
+            names: Option<Vec<String>>,
+            extra: Extra,
+        ) -> Result<responses::GetCarsResponse> {
+            let uri = format!("{}/spaces/{}/car-service/cars", self.base_uri, space_id);
+
+            let mut headers = extra.headers;
+
+            let query = params::GetCarsQuery { names };
+
+            let resp = self
+                .inner
+                .get(&uri)
+                .headers(headers)
+                .query(&query)
+                .send()
+                .await?;
+
+            responses::GetCarsResponse::from_reqwest(resp).await
+        }
+
+        async fn create_car(
+            &self,
+            space_id: String,
+            body: crate::models::Car,
+            extra: Extra,
+        ) -> Result<responses::CreateCarResponse> {
+            let uri = format!("{}/spaces/{}/car-service/cars", self.base_uri, space_id);
+
+            let mut headers = extra.headers;
+
+            headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+
+            let resp = self
+                .inner
+                .post(&uri)
+                .headers(headers)
+                .json(&body)
+                .send()
+                .await?;
+
+            responses::CreateCarResponse::from_reqwest(resp).await
+        }
+
+        async fn test_binary(
+            &self,
+            body: ByteArray,
+            extra: Extra,
+        ) -> Result<responses::TestBinaryResponse> {
+            let uri = format!("{}/spaces/{}/car-service/test-binary", self.base_uri);
+
+            let mut headers = extra.headers;
+
+            headers.insert(
+                CONTENT_TYPE,
+                HeaderValue::from_static("application/octet-stream"),
+            );
+
+            let resp = self
+                .inner
+                .post(&uri)
+                .headers(headers)
+                .body(body)
+                .send()
+                .await?;
+
+            responses::TestBinaryResponse::from_reqwest(resp).await
+        }
+
+        async fn test_one_of(&self, extra: Extra) -> Result<responses::TestOneOfResponse> {
+            let uri = format!("{}/test-one-of", self.base_uri);
+
+            let mut headers = extra.headers;
+
+            let resp = self.inner.get(&uri).headers(headers).send().await?;
+
+            responses::TestOneOfResponse::from_reqwest(resp).await
+        }
+    }
+}
+
+// ---------- Server ----------
+pub mod server {
+    use crate::api;
+    use crate::errors::{Error, Result};
+    use crate::params;
+    use axum::{
+        body::Bytes,
+        extract::Json,
+        extract::Path,
+        extract::Query,
+        http::HeaderMap,
+        response::{IntoResponse, Response},
+        routing, Extension, Router,
+    };
+    use http::header::HeaderName;
+    use lgn_online::codegen::{ByteArray, Extra};
+    use lgn_tracing::error;
+
+    /// Register all the routes for that API to the specified Router.
+    #[must_use]
+    pub fn register_routes<T>(router: Router, api: T) -> Router
+    where
+        T: api::Api + Clone + Send + Sync + 'static,
+    {
+        router
+            .route(
+                "/spaces/:space-id/car-service/cars",
+                routing::get(get_cars::<T>).post(create_car::<T>),
+            )
+            .route(
+                "/spaces/:space-id/car-service/test-binary",
+                routing::post(test_binary::<T>),
+            )
+            .route("/test-one-of", routing::get(test_one_of::<T>))
+            .layer(Extension(api))
+    }
+
+    async fn get_cars<T>(
+        Extension(api): Extension<T>,
+        Path(space_id): Path<String>,
+        Query(query): Query<params::GetCarsQuery>,
+        headers: HeaderMap,
+    ) -> Response
+    where
+        T: api::Api + Send + Sync + 'static,
+    {
+        let resp = api.get_cars(space_id, query.names, Extra { headers }).await;
+        match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
+
+    async fn create_car<T>(
+        Extension(api): Extension<T>,
+        Path(space_id): Path<String>,
+        Json(body): Json<crate::models::Car>,
+        headers: HeaderMap,
+    ) -> Response
+    where
+        T: api::Api + Send + Sync + 'static,
+    {
+        let resp = api.create_car(space_id, body, Extra { headers }).await;
+        match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
+
+    async fn test_binary<T>(
+        Extension(api): Extension<T>,
+        body: Bytes,
+        headers: HeaderMap,
+    ) -> Response
+    where
+        T: api::Api + Send + Sync + 'static,
+    {
+        let resp = api.test_binary(body.into(), Extra { headers }).await;
+        match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
+
+    async fn test_one_of<T>(Extension(api): Extension<T>, headers: HeaderMap) -> Response
+    where
+        T: api::Api + Send + Sync + 'static,
+    {
+        let resp = api.test_one_of(Extra { headers }).await;
+        match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        }
+    }
+}
+
+// ---------- Models ----------
+pub mod models {
+    use lgn_online::codegen::ByteArray;
+
+    /// The car color.
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub enum CarColor {
+        #[serde(rename = "red")]
+        Red,
+        #[serde(rename = "blue")]
+        Blue,
+        #[serde(rename = "yellow")]
+        Yellow,
+    }
+
+    #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Car {
+        #[serde(rename = "id")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub id: Option<i64>,
+
+        #[serde(rename = "name")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub name: Option<String>,
+        /// The car color.
+        #[serde(rename = "color")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub color: Option<crate::models::CarColor>,
+
+        #[serde(rename = "is_new")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub is_new: Option<bool>,
+
+        #[serde(rename = "extra")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub extra: Option<ByteArray>,
+    }
+
+    #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Pet {
+        #[serde(rename = "name")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub name: Option<String>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub enum TestOneOfResponse {
+        #[serde(rename = "option1")]
+        Option1(crate::models::Pet),
+        #[serde(rename = "option2")]
+        Option2(crate::models::Car),
+    }
+}
+
+// ---------- Parameters ----------
+pub(crate) mod params {
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct GetCarsQuery {
+        #[serde(rename = "names")]
+        pub names: Option<Vec<String>>,
+    }
+}
+
+// ---------- Responses ----------
+pub mod responses {
+    use crate::errors::{Error, Result};
+    use axum::{
+        http::StatusCode,
+        response::{IntoResponse, Response},
+        Json,
+    };
+    use lgn_online::codegen::ByteArray;
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub enum GetCarsResponse {
+        /// List of cars.
+        Ok(Vec<crate::models::Car>),
+    }
+
+    impl GetCarsResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                GetCarsResponse::Ok(inner) => {
+                    let inner = Json(inner);
+                    (StatusCode::from_u16(200).unwrap(), inner).into_response()
+                }
+            }
+        }
+
+        pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
+            match response.status().as_u16() {
+                200 => Ok(Self::Ok(response.json().await?)),
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub enum CreateCarResponse {
+        /// Created.
+        Created(crate::models::Car),
+    }
+
+    impl CreateCarResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                CreateCarResponse::Created(inner) => {
+                    let inner = Json(inner);
+                    (StatusCode::from_u16(201).unwrap(), inner).into_response()
+                }
+            }
+        }
+
+        pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
+            match response.status().as_u16() {
+                201 => Ok(Self::Created(response.json().await?)),
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub enum TestBinaryResponse {
+        /// Ok.
+        Ok(ByteArray),
+    }
+
+    impl TestBinaryResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                TestBinaryResponse::Ok(inner) => {
+                    let inner: Vec<u8> = inner.into();
+                    (StatusCode::from_u16(200).unwrap(), inner).into_response()
+                }
+            }
+        }
+
+        pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
+            match response.status().as_u16() {
+                200 => Ok(Self::Ok(response.bytes().await?.into())),
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub enum TestOneOfResponse {
+        /// Ok.
+        Ok(crate::models::TestOneOfResponse),
+    }
+
+    impl TestOneOfResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                TestOneOfResponse::Ok(inner) => {
+                    let inner = Json(inner);
+                    (StatusCode::from_u16(200).unwrap(), inner).into_response()
+                }
+            }
+        }
+
+        pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
+            match response.status().as_u16() {
+                200 => Ok(Self::Ok(response.json().await?)),
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
+}
+

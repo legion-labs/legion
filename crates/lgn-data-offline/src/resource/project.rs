@@ -161,7 +161,8 @@ impl Project {
     ) -> Result<Self, Error> {
         let resource_dir = project_dir.as_ref().join("offline");
         if !resource_dir.exists() {
-            std::fs::create_dir(&resource_dir).map_err(|e| Error::Io(resource_dir.clone(), e))?;
+            std::fs::create_dir_all(&resource_dir)
+                .map_err(|e| Error::Io(resource_dir.clone(), e))?;
         }
 
         let workspace = Workspace::init(

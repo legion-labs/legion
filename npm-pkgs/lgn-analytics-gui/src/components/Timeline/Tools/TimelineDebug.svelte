@@ -15,7 +15,7 @@
   let title: string;
 
   $: {
-    const [begin, end] = $store.getViewRange();
+    const [begin, end] = $store.viewRange;
 
     pixelSize = (end - begin) / $store.canvasWidth;
     lod = getLodFromPixelSizeMs(pixelSize);

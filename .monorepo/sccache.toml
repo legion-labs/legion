@@ -1,5 +1,5 @@
 [sccache]
-bucket = "legionlabs-ci-artefacts"
+bucket = "legionlabs-governance-ci-artefacts"
 prefix = "sccache/legion/"
 public = false
 region = "ca-central-1"

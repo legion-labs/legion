@@ -50,7 +50,7 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       return;
     }
 
-    const [begin, end] = state.getViewRange();
+    const [begin, end] = state.viewRange;
     const invTimeSpan = 1.0 / (end - begin);
     const msToPixelsFactor = invTimeSpan * canvasWidth;
     const context = { begin, end, msToPixelsFactor, search };
@@ -136,15 +136,15 @@ export abstract class TimelineTrackCanvasBaseDrawer {
       );
       const endPixels = (endSpan - beginViewRange) * msToPixelsFactor;
       const callWidth = endPixels - beginPixels;
-      // if less than half a pixel, clip it
-      if (callWidth < 0.5) {
+      // should not be necessary with lods - we should fix the lods instead
+      if (callWidth < 0.1) {
         continue;
       }
       ctx.globalAlpha = span.alpha / 255;
       if (span.scopeHash !== 0) {
         let name = "<unknown_scope>";
         const scope = state.scopes[span.scopeHash];
-        if (scope) {
+        if (scope !== undefined) {
           name = scope.name;
         }
         ctx.fillStyle =

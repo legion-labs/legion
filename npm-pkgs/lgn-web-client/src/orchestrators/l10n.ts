@@ -12,6 +12,8 @@ import type { TranslateStore } from "../stores/translate";
 import { createTranslateStore } from "../stores/translate";
 import type { FluentBase } from "../types/fluent";
 
+const defaultLocale = "en-US";
+
 export type L10nOrchestrator<Fluent extends FluentBase> = {
   bundles: BundlesStore;
   availableLocales: AvailableLocalesStore;
@@ -26,6 +28,8 @@ export type Locales = {
 
 export type L10nConfig = {
   local?: LocalConfig & {
+    /** Default locale used, if not provided defaults to `en-US` */
+    defaultLocale?: string;
     /** Passed down to the `FluentBundle` constructor */
     functions?: Record<string, FluentFunction>;
     /** Passed down to the `FluentBundle` constructor (defaults to `true`) */
@@ -67,7 +71,11 @@ export function createL10nOrchestrator<Fluent extends FluentBase>(
 
   const availableLocales = createAvailableLocalesStore(bundles);
 
-  const locale = createLocaleStore(availableLocales, "en-US", config.local);
+  const locale = createLocaleStore(
+    availableLocales,
+    config.local?.defaultLocale ?? defaultLocale,
+    config.local
+  );
 
   const t = createTranslateStore<Fluent>(locale, bundles);
 

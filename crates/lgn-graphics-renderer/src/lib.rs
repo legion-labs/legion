@@ -152,6 +152,7 @@ impl Plugin for RendererPlugin {
         EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_BRDF);
         EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_COMMON);
         EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_MESH);
+        EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_FULLSCREEN_TRIANGLE);
         EMBEDDED_FS.add_file(&gpu_renderer::INCLUDE_TRANSFORM);
         EMBEDDED_FS.add_file(&gpu_renderer::SHADER_SHADER);
 

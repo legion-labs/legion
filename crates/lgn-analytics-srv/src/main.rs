@@ -17,12 +17,18 @@ mod auth;
 mod cache;
 mod call_tree;
 mod call_tree_store;
+mod column;
 mod cumulative_call_graph;
 mod cumulative_call_graph_handler;
 mod cumulative_call_graph_node;
 mod health_check_service;
+mod jit_lakehouse;
+mod local_jit_lakehouse;
+mod log_entry;
 mod metrics;
+mod remote_jit_lakehouse;
 mod scope;
+mod span_table;
 mod thread_block_processor;
 
 use std::str::FromStr;
@@ -41,6 +47,8 @@ use std::net::SocketAddr;
 use tonic::transport::Server;
 
 use crate::health_check_service::HealthCheckService;
+use crate::local_jit_lakehouse::LocalJitLakehouse;
+use crate::remote_jit_lakehouse::RemoteJitLakehouse;
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Performance Analytics Server")]
@@ -79,7 +87,7 @@ pub async fn connect_to_local_data_lake(
     let blocks_folder = data_lake_path.join("blobs");
     let data_lake_blobs = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
     let cache_blobs = Arc::new(Lz4BlobStorageAdapter::new(
-        LocalBlobStorage::new(cache_path).await?,
+        LocalBlobStorage::new(cache_path.clone()).await?,
     ));
     let db_path = data_lake_path.join("telemetry.db3");
     let db_uri = format!("sqlite://{}", db_path.to_str().unwrap().replace('\\', "/"));
@@ -87,7 +95,17 @@ pub async fn connect_to_local_data_lake(
         .connect(&db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
-    Ok(AnalyticsService::new(pool, data_lake_blobs, cache_blobs))
+    let lakehouse = Arc::new(LocalJitLakehouse::new(
+        pool.clone(),
+        data_lake_blobs.clone(),
+        cache_path.join("tables"),
+    ));
+    Ok(AnalyticsService::new(
+        pool,
+        data_lake_blobs,
+        cache_blobs,
+        lakehouse,
+    ))
 }
 
 /// ``connect_to_remote_data_lake`` serves a remote data lake through mysql and s3
@@ -111,7 +129,12 @@ pub async fn connect_to_remote_data_lake(
         .connect(db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
-    Ok(AnalyticsService::new(pool, data_lake_blobs, cache_blobs))
+    Ok(AnalyticsService::new(
+        pool,
+        data_lake_blobs,
+        cache_blobs,
+        Arc::new(RemoteJitLakehouse {}),
+    ))
 }
 
 #[tokio::main]

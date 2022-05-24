@@ -68,17 +68,6 @@ impl FinalResolveRenderPass {
                 descriptor_set_handle,
             );
 
-            #[rustfmt::skip]
-            let vertex_data: [f32; 12] = [  0.0, 2.0, 0.0, 2.0,
-                                            2.0, 0.0, 2.0, 0.0,
-                                            0.0, 0.0, 0.0, 0.0 ];
-
-            let sub_allocation = render_context
-                .transient_buffer_allocator
-                .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
-
-            cmd_buffer.cmd_bind_vertex_buffer(0, sub_allocation.vertex_buffer_binding());
-
             cmd_buffer.cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: resolve_rtv,
@@ -117,7 +106,7 @@ fn build_final_resolve_pso(pipeline_manager: &PipelineManager) -> PipelineHandle
     };
 
     let rasterizer_state = lgn_graphics_api::RasterizerState {
-        cull_mode: CullMode::Front,
+        cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 

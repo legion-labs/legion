@@ -37,7 +37,7 @@ impl DebugRenderPass {
         let depth_state_enabled = DepthState {
             depth_test_enable: true,
             depth_write_enable: true,
-            depth_compare_op: CompareOp::LessOrEqual,
+            depth_compare_op: CompareOp::GreaterOrEqual,
             stencil_test_enable: false,
             stencil_read_mask: 0xFF,
             stencil_write_mask: 0xFF,
@@ -54,7 +54,7 @@ impl DebugRenderPass {
         let depth_state_disabled = DepthState {
             depth_test_enable: false,
             depth_write_enable: false,
-            depth_compare_op: CompareOp::Less,
+            depth_compare_op: CompareOp::Greater,
             stencil_test_enable: false,
             stencil_read_mask: 0xFF,
             stencil_write_mask: 0xFF,
@@ -329,7 +329,7 @@ impl DebugRenderPass {
                     depth_store_op: StoreOp::Store,
                     stencil_store_op: StoreOp::DontCare,
                     clear_value: DepthStencilClearValue {
-                        depth: 1.0,
+                        depth: 0.0,
                         stencil: 0,
                     },
                 }),

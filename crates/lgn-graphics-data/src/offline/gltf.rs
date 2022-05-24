@@ -1,7 +1,6 @@
-use std::{io, path::Path, str::FromStr};
+use std::{io, str::FromStr};
 
 use crate::{
-    helpers::{read_u32, write_u32},
     offline::{Material, Mesh, Model},
     offline_texture::{Texture, TextureType},
     Color,
@@ -19,24 +18,29 @@ use lgn_data_runtime::{
     ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceTypeAndId,
 };
 
-use crate::helpers::{read_usize, read_usize_and_buffer, write_usize, write_usize_and_buffer};
-
 #[resource("gltf")]
 #[derive(Default, Clone)]
 pub struct GltfFile {
-    pub document: Option<Document>,
-    pub buffers: Vec<gltf::buffer::Data>,
-    pub images: Vec<gltf::image::Data>,
+    bytes: Vec<u8>,
+
+    document: Option<Document>,
+    buffers: Vec<gltf::buffer::Data>,
+    images: Vec<gltf::image::Data>,
 }
 
 impl GltfFile {
-    pub fn from_path(path: &Path) -> Self {
-        let (document, buffers, images) = gltf::import(path).unwrap();
+    pub fn from_bytes(bytes: Vec<u8>) -> Self {
+        let (document, buffers, images) = gltf::import_slice(&bytes).unwrap();
         Self {
+            bytes,
             document: Some(document),
             buffers,
             images,
         }
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
     }
 
     pub fn gather_models(&self, resource_id: ResourceTypeAndId) -> Vec<(Model, String)> {
@@ -173,7 +177,7 @@ impl GltfFile {
                     ResourcePathId::from(resource_id)
                         .push_named(
                             crate::offline_texture::Texture::TYPE,
-                            texture_name(&info).unwrap().as_str(),
+                            texture_name(&info.texture()).unwrap().as_str(),
                         )
                         .push_named(crate::runtime_texture::Texture::TYPE, "Albedo")
                 });
@@ -195,7 +199,8 @@ impl GltfFile {
                     ResourcePathId::from(resource_id)
                         .push_named(
                             crate::offline_texture::Texture::TYPE,
-                            format!("{}_Roughness", texture_name(&info).unwrap()).as_str(),
+                            format!("{}_Roughness", texture_name(&info.texture()).unwrap())
+                                .as_str(),
                         )
                         .push_named(crate::runtime_texture::Texture::TYPE, "Roughness")
                 });
@@ -206,7 +211,8 @@ impl GltfFile {
                     ResourcePathId::from(resource_id)
                         .push_named(
                             crate::offline_texture::Texture::TYPE,
-                            format!("{}_Metalness", texture_name(&info).unwrap()).as_str(),
+                            format!("{}_Metalness", texture_name(&info.texture()).unwrap())
+                                .as_str(),
                         )
                         .push_named(crate::runtime_texture::Texture::TYPE, "Metalness")
                 });
@@ -228,13 +234,20 @@ impl GltfFile {
     }
 
     pub fn gather_textures(&self) -> Vec<(Texture, String)> {
+        let mut metallic_roughness_textures = Vec::new();
+        for material in self.document.as_ref().unwrap().materials() {
+            if let Some(info) = material
+                .pbr_metallic_roughness()
+                .metallic_roughness_texture()
+            {
+                metallic_roughness_textures.push(texture_name(&info.texture()).unwrap());
+            }
+        }
         let mut textures = Vec::new();
         for texture in self.document.as_ref().unwrap().textures() {
-            let name = texture.name().map_or(texture.index().to_string(), |name| {
-                String::from_str(name).unwrap()
-            });
+            let name = texture_name(&texture).unwrap();
             let image = &self.images[texture.source().index()];
-            if name.contains("OcclusionRoughMetal") {
+            if metallic_roughness_textures.contains(&name) {
                 let mut roughness = Vec::new();
                 let mut metalness = Vec::new();
                 for i in 0..(image.width * image.height) as usize {
@@ -246,10 +259,7 @@ impl GltfFile {
                         kind: TextureType::_2D,
                         width: image.width,
                         height: image.height,
-                        rgba: match image.format {
-                            Format::R8G8B8A8 => roughness,
-                            _ => unreachable!(),
-                        },
+                        rgba: roughness,
                     },
                     format!("{}_Roughness", name),
                 ));
@@ -258,10 +268,7 @@ impl GltfFile {
                         kind: TextureType::_2D,
                         width: image.width,
                         height: image.height,
-                        rgba: match image.format {
-                            Format::R8G8B8A8 => metalness,
-                            _ => unreachable!(),
-                        },
+                        rgba: metalness,
                     },
                     format!("{}_Metalness", name),
                 ));
@@ -273,7 +280,8 @@ impl GltfFile {
                         height: image.height,
                         rgba: match image.format {
                             //Format::R8 => image.pixels.clone().iter().flat_map(|v| vec![*v, 0, 0, 0]).collect(),
-                            Format::R8G8B8A8 => {
+                            Format::R8G8B8A8 => image.pixels.clone(),
+                            Format::R8G8B8 => {
                                 let mut rgba = Vec::new();
                                 for i in 0..(image.width * image.height) as usize {
                                     rgba.push(image.pixels[i * 3]);
@@ -295,57 +303,12 @@ impl GltfFile {
 
     /// # Errors
     ///
-    /// Will return error if:
-    /// - If zip failed to start or finish a zip file inside of the archive.
-    /// - One of the write functions fails.
-    /// - JSON fails to serialize.
+    /// Will return error if the write fails
     pub fn write(&self, writer: &mut dyn std::io::Write) -> Result<usize, ResourceProcessorError> {
-        if self.document.is_none() {
+        if self.bytes.is_empty() {
             return Ok(0);
         }
-        let mut buffer = Vec::new();
-        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buffer));
-        let options =
-            zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-        zip.start_file("GltfFile.zip", options).map_err(|err| {
-            ResourceProcessorError::ResourceSerializationFailed(
-                "GLTF",
-                format!("Couldn't start zip: {}", err),
-            )
-        })?;
-        let document_bytes = gltf::json::serialize::to_vec(
-            &self.document.clone().unwrap().into_json(),
-        )
-        .map_err(|err| {
-            ResourceProcessorError::ResourceSerializationFailed(
-                "GLTF",
-                format!("Couldn't serialize JSON: {}", err),
-            )
-        })?;
-        let mut written = write_usize_and_buffer(&mut zip, &document_bytes)?;
-        let buffer_length = self.buffers.len();
-        written += write_usize(&mut zip, buffer_length)?;
-        for buffer in &self.buffers {
-            written += write_usize_and_buffer(&mut zip, &buffer.0)?;
-        }
-
-        let image_length = self.images.len();
-        written += write_usize(&mut zip, image_length)?;
-        for image in &self.images {
-            written += write_u32(&mut zip, &image.width)?;
-            written += write_u32(&mut zip, &image.height)?;
-            //TODO: written += format
-            written += write_usize_and_buffer(&mut zip, &image.pixels)?;
-        }
-        zip.finish().map_err(|err| {
-            ResourceProcessorError::ResourceSerializationFailed(
-                "GLTF",
-                format!("Couldn't finish zip: {}", err),
-            )
-        })?;
-        drop(zip);
-        written = writer.write(&buffer)?;
-        Ok(written)
+        Ok(writer.write(&self.bytes)?)
     }
 }
 
@@ -362,58 +325,10 @@ pub struct GltfFileProcessor {}
 
 impl AssetLoader for GltfFileProcessor {
     fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
-        let mut buffer = Vec::new();
-        reader.read_to_end(&mut buffer)?;
-        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(&mut buffer)).map_err(|err| {
-            AssetLoaderError::ErrorLoading("GLTF", format!("Couldn't read zip archive: {}", err))
-        })?;
-        let mut zip_file = zip.by_index(0).map_err(|err| {
-            AssetLoaderError::ErrorLoading("GLTF", format!("No file in zip archive: {}", err))
-        })?;
-        let document_bytes = read_usize_and_buffer(&mut zip_file)?;
-        let buffers_length = read_usize(&mut zip_file)?;
-        let mut buffers = Vec::with_capacity(buffers_length);
-        for _i in 0..buffers_length {
-            let buffer = read_usize_and_buffer(&mut zip_file)?;
-            buffers.push(gltf::buffer::Data(buffer));
-        }
-        let images_length = read_usize(&mut zip_file)?;
-        let mut images = Vec::with_capacity(images_length);
-        for _i in 0..images_length {
-            let mut image = gltf::image::Data {
-                format: Format::R8G8B8A8,
-                width: 0,
-                height: 0,
-                pixels: Vec::new(),
-            };
-            image.width = read_u32(&mut zip_file)?;
-            image.height = read_u32(&mut zip_file)?;
-            //TODO: read format
-            image.pixels = read_usize_and_buffer(&mut zip_file)?;
-            images.push(image);
-        }
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes)?;
 
-        let document = Document::from_json(
-            gltf::json::deserialize::from_slice::<'_, gltf::json::Root>(&document_bytes).map_err(
-                |err| {
-                    AssetLoaderError::ErrorLoading(
-                        "GLTF",
-                        format!("Couldn't deserialize json: {}", err),
-                    )
-                },
-            )?,
-        )
-        .map_err(|err| {
-            AssetLoaderError::ErrorLoading(
-                "GLTF",
-                format!("Couldn't create document out of json: {}", err),
-            )
-        })?;
-        Ok(Box::new(GltfFile {
-            document: Some(document),
-            buffers,
-            images,
-        }))
+        Ok(Box::new(GltfFile::from_bytes(bytes)))
     }
 
     fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
@@ -453,10 +368,10 @@ impl ResourceProcessor for GltfFileProcessor {
     }
 }
 
-fn texture_name(info: &texture::Info<'_>) -> Result<String, <String as FromStr>::Err> {
-    info.texture()
+fn texture_name(texture: &texture::Texture<'_>) -> Result<String, <String as FromStr>::Err> {
+    texture
         .name()
-        .map_or(Ok(info.texture().index().to_string()), |texture_name| {
+        .map_or(Ok(texture.index().to_string()), |texture_name| {
             String::from_str(texture_name)
         })
 }

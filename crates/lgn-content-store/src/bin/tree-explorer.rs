@@ -10,15 +10,14 @@ use clap::Parser;
 use http::StatusCode;
 use lgn_content_store::{
     indexing::{
-        IndexKey, IndexableResource, JsonVisitor, ResourceWriter, StaticIndexer, Tree,
-        TreeIdentifier, TreeLeafNode, TreeWriter,
+        BasicIndexer, IndexKey, IndexKeyDisplayFormat, IndexableResource, JsonVisitor,
+        ResourceWriter, StaticIndexer, Tree, TreeIdentifier, TreeLeafNode, TreeVisitor, TreeWriter,
     },
     Provider, Result,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, error, info, LevelFilter};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DisplayFromStr};
 use tokio::sync::Mutex;
 
 #[derive(Parser, Debug)]
@@ -33,16 +32,20 @@ struct Args {
         default_value = "127.0.0.1:3000"
     )]
     listen_endpoint: SocketAddr,
+
+    #[clap(short = 'f', long = "display-format", default_value = "hex")]
+    display_format: IndexKeyDisplayFormat,
 }
 
 struct State {
     provider: Provider,
     indexer: StaticIndexer,
     tree_id: Mutex<TreeIdentifier>,
+    display_format: IndexKeyDisplayFormat,
 }
 
 impl State {
-    async fn new() -> Result<Self> {
+    async fn new(display_format: IndexKeyDisplayFormat) -> Result<Self> {
         let provider = Provider::new_in_memory();
         let mut indexer = StaticIndexer::new(4);
         indexer.set_layer_constraints(2, 4);
@@ -52,6 +55,7 @@ impl State {
             provider,
             indexer,
             tree_id,
+            display_format,
         })
     }
 }
@@ -70,7 +74,12 @@ async fn main() -> anyhow::Result<()> {
     //let provider = Config::load_and_instantiate_persistent_provider()
     //    .await
     //    .map_err(|err| anyhow::anyhow!("failed to create content provider: {}", err))?;
-    let state = Arc::new(State::new().await?);
+    info!(
+        "Using tree with index key display format: {}",
+        args.display_format
+    );
+
+    let state = Arc::new(State::new(args.display_format).await?);
 
     // build our application with a single route
     let app = Router::new()
@@ -106,13 +115,10 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-
 struct AddNode {
-    #[serde_as(as = "DisplayFromStr")]
-    index_key: IndexKey,
+    index_key: String,
     data: Data,
 }
 
@@ -138,10 +144,15 @@ async fn add_node(
         })?;
 
     let leaf_node = TreeLeafNode::Resource(resource_id);
+    let index_key = IndexKey::parse(state.display_format, &body.index_key).map_err(|err| {
+        error!("failed to parse index key: {}", err);
+
+        StatusCode::BAD_REQUEST
+    })?;
 
     *tree_id = state
         .indexer
-        .add_leaf(&state.provider, &*tree_id, &body.index_key, leaf_node)
+        .add_leaf(&state.provider, &*tree_id, &index_key, leaf_node)
         .await
         .map_err(|err| match err {
             lgn_content_store::indexing::Error::IndexTreeLeafNodeAlreadyExists(..) => {
@@ -151,8 +162,8 @@ async fn add_node(
         })?;
 
     Ok(Json(
-        tree_id
-            .visit(&state.provider, JsonVisitor::default())
+        JsonVisitor::new(state.display_format)
+            .visit(&state.provider, &tree_id)
             .await
             .map_err(|err| {
                 error!("failed to visit tree: {}", err);
@@ -167,8 +178,8 @@ async fn graph(state: Arc<State>) -> Result<Json<impl Serialize>, StatusCode> {
     let tree_id = state.tree_id.lock().await.clone();
 
     Ok(Json(
-        tree_id
-            .visit(&state.provider, JsonVisitor::default())
+        JsonVisitor::new(state.display_format)
+            .visit(&state.provider, &tree_id)
             .await
             .map_err(|err| {
                 error!("failed to visit tree: {}", err);

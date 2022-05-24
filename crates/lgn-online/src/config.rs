@@ -1,17 +1,18 @@
 use http::Uri;
+pub use lgn_auth::OAuthClientConfig;
+use lgn_auth::{
+    jwt::{
+        signature_validation::{
+            AwsCognitoSignatureValidation, BoxedSignatureValidation, NoSignatureValidation,
+            RsaSignatureValidation,
+        },
+        Validation,
+    },
+    BoxedAuthenticator,
+};
 use serde::Deserialize;
 
 use crate::{
-    authentication::{
-        jwt::{
-            signature_validation::{
-                AwsCognitoSignatureValidation, BoxedSignatureValidation, NoSignatureValidation,
-                RsaSignatureValidation,
-            },
-            Validation,
-        },
-        BoxedAuthenticator, OAuthClient, TokenCache,
-    },
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
     Result,
 };
@@ -138,40 +139,8 @@ impl AuthenticationConfig {
     /// If the configuration is invalid, an error is returned.
     pub async fn instantiate_authenticator(&self) -> Result<BoxedAuthenticator> {
         match self {
-            Self::OAuth(config) => config.instantiate_authenticator().await,
+            Self::OAuth(config) => config.instantiate_authenticator().await.map_err(Into::into),
         }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct OAuthClientConfig {
-    pub issuer_url: String,
-    pub client_id: String,
-    pub client_secret: Option<String>,
-    #[serde(default, with = "http_serde::uri")]
-    pub redirect_uri: Uri,
-
-    #[serde(default = "OAuthClientConfig::default_token_cache_application_name")]
-    pub token_cache_application_name: String,
-}
-
-impl OAuthClientConfig {
-    fn default_token_cache_application_name() -> String {
-        "lgn-online".to_string()
-    }
-
-    /// Instantiate the authenticator from the configuration.
-    ///
-    /// # Errors
-    ///
-    /// If the configuration is invalid, an error is returned.
-    pub async fn instantiate_authenticator(&self) -> Result<BoxedAuthenticator> {
-        Ok(BoxedAuthenticator(Box::new(
-            TokenCache::new_with_application_name(
-                OAuthClient::new_from_config(self).await?,
-                &self.token_cache_application_name,
-            ),
-        )))
     }
 }
 

@@ -24,9 +24,9 @@ use lgn_data_runtime::{
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
 use lgn_graphics_renderer::components::Mesh;
-use lgn_math::prelude::*;
+use lgn_math::prelude::Vec3;
 use lgn_scripting_data::ScriptType;
-use lgn_tracing::LevelFilter;
+use lgn_tracing::{info, LevelFilter};
 use sample_data::{
     offline::{Light, Transform, Visual},
     LightType,
@@ -153,11 +153,12 @@ async fn main() -> anyhow::Result<()> {
     .unwrap();
 
     for id in resource_ids {
-        build_manager.build_all_derived(id, &project).await.unwrap();
+        let derived_result = build_manager.build_all_derived(id, &project).await.unwrap();
+        info!("{} -> {}", id, derived_result.0.resource_id());
     }
 
     let runtime_dir = project_dir.join("runtime");
-    std::fs::create_dir(&runtime_dir).unwrap();
+    std::fs::create_dir_all(&runtime_dir).unwrap();
     let runtime_manifest_path = runtime_dir.join("game.manifest");
 
     let mut file = OpenOptions::new()

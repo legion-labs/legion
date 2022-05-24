@@ -26,7 +26,7 @@ export class MetricBlockState {
     if (this.hasLod(lod)) {
       return false;
     }
-    if (this.inFlight.get(lod)) {
+    if (this.inFlight.get(lod) !== undefined) {
       return false;
     }
     this.inFlight.set(lod, true);
@@ -61,25 +61,31 @@ export class MetricBlockState {
     if (withBoundaries) {
       if (points.length > 0) {
         const boundaryInPoint = data[data.indexOf(points[0]) - 1];
-        if (boundaryInPoint && !points.includes(boundaryInPoint)) {
+        if (
+          boundaryInPoint !== undefined &&
+          !points.includes(boundaryInPoint)
+        ) {
           points.unshift(boundaryInPoint);
         }
         const boundaryOutPoint =
           data[data.indexOf(points[points.length - 1]) + 1];
-        if (boundaryOutPoint && !points.includes(boundaryOutPoint)) {
+        if (
+          boundaryOutPoint !== undefined &&
+          !points.includes(boundaryOutPoint)
+        ) {
           points.push(boundaryOutPoint);
         }
       } else {
         const nextMinPoint = data
           .filter((p) => p.time <= min)
           .sort((a, b) => (a > b ? -1 : 1))[0];
-        if (nextMinPoint && !points.includes(nextMinPoint)) {
+        if (nextMinPoint !== undefined && !points.includes(nextMinPoint)) {
           points.push(nextMinPoint);
         }
         const nextMaxPoint = data
           .filter((p) => p.time >= max)
           .sort((a, b) => (a > b ? 1 : -1))[0];
-        if (nextMaxPoint && !points.includes(nextMaxPoint)) {
+        if (nextMaxPoint !== undefined && !points.includes(nextMaxPoint)) {
           points.push(nextMaxPoint);
         }
       }

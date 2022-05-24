@@ -41,10 +41,7 @@ impl TmpRenderPass {
                     stencil_load_op: LoadOp::DontCare,
                     depth_store_op: StoreOp::Store,
                     stencil_store_op: StoreOp::DontCare,
-                    clear_value: DepthStencilClearValue {
-                        depth: 1.0,
-                        stencil: 0,
-                    },
+                    clear_value: DepthStencilClearValue::default(),
                 }),
             );
 

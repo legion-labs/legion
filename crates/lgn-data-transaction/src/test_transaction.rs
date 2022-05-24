@@ -138,7 +138,7 @@ async fn test_array_reorder_operation(
 async fn test_transaction_system() -> Result<(), Error> {
     let project_dir = tempfile::tempdir().unwrap();
     let build_dir = project_dir.path().join("temp");
-    std::fs::create_dir(&build_dir).unwrap();
+    std::fs::create_dir_all(&build_dir).unwrap();
 
     let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
         Arc::new(Box::new(MemoryContentProvider::new()));

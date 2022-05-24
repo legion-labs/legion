@@ -31,6 +31,19 @@ pub enum Level {
     Trace,
 }
 
+impl Level {
+    pub fn from_value(value: u32) -> Option<Self> {
+        match value {
+            1 => Some(Self::Error),
+            2 => Some(Self::Warn),
+            3 => Some(Self::Info),
+            4 => Some(Self::Debug),
+            5 => Some(Self::Trace),
+            _ => None,
+        }
+    }
+}
+
 /// An enum representing the available verbosity level filters of the logger.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
