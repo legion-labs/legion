@@ -10,6 +10,7 @@ pub(crate) mod api_types;
 pub(crate) mod errors;
 pub(crate) mod filters;
 pub(crate) mod openapi_loader;
+pub(crate) mod python;
 pub(crate) mod rust;
 pub(crate) mod typescript;
 pub(crate) mod visitor;
@@ -19,6 +20,7 @@ pub use api_types::{GenerationOptions, ModulePath};
 use clap::ArgEnum;
 use errors::{Error, Result};
 use openapi_loader::{OpenApi, OpenApiElement, OpenApiLoader, OpenApiRefLocation};
+use python::PythonGenerator;
 use rust::RustGenerator;
 use std::path::{Path, PathBuf};
 use typescript::TypeScriptGenerator;
@@ -29,6 +31,7 @@ pub enum Language {
     Rust,
     #[clap(name = "typescript")]
     TypeScript,
+    Python,
 }
 
 /// Generates the code for the specificed language and the specified APIs.
@@ -131,5 +134,6 @@ fn load_generator_for_language(language: Language) -> Box<dyn Generator> {
     match language {
         Language::Rust => Box::new(RustGenerator::default()),
         Language::TypeScript => Box::new(TypeScriptGenerator::default()),
+        Language::Python => Box::new(PythonGenerator::default()),
     }
 }
