@@ -2,7 +2,7 @@ use lgn_app::App;
 use lgn_ecs::prelude::ResMut;
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSet, DescriptorSetWriter,
-    DeviceContext, Sampler, SamplerDef, TextureView,
+    DeviceContext, Sampler, TextureView,
 };
 
 use crate::{cgen, labels::RenderStage, resources::IndexAllocator};
@@ -18,7 +18,6 @@ pub struct PersistentDescriptorSetManager {
     render_frame_capacity: usize,
     bindless_index_allocator: IndexAllocator,
     removed_indices: Vec<Vec<u32>>,
-    samplers: Vec<Sampler>,
 
     material_textures_index: u32,
     material_samplers_index: u32,
@@ -55,37 +54,15 @@ impl PersistentDescriptorSetManager {
             DescriptorHeapPartition::new(descriptor_heap_manager.descriptor_heap(), false, &def)
                 .unwrap();
 
-        let descriptor_set = persistent_partition.alloc(layout).unwrap();
-        let mut writer = DescriptorSetWriter::new(
-            device_context,
-            descriptor_set.handle(),
-            descriptor_set.layout(),
-        );
-
-        let sampler_def = SamplerDef::default();
-        let mut samplers = Vec::new();
-        let mut descriptor_refs = Vec::new();
-        for _ in 0..64 {
-            samplers.push(device_context.create_sampler(&sampler_def));
-        }
-        for sampler in &samplers {
-            descriptor_refs.push(DescriptorRef::Sampler(sampler));
-        }
-        writer.set_descriptors_by_index(
-            material_samplers_index,
-            &descriptor_refs, //[DescriptorRef::Sampler(&device_context.create_sampler(&sampler_def)); 64],
-        );
-
         Self {
             device_context: device_context.clone(),
-            descriptor_set,
+            descriptor_set: persistent_partition.alloc(layout).unwrap(),
             render_frame: 0,
             render_frame_capacity,
             bindless_index_allocator: IndexAllocator::new(BINDLESS_TEXTURE_ARRAY_LEN),
             removed_indices: (0..render_frame_capacity)
                 .map(|_| Vec::new())
                 .collect::<Vec<_>>(),
-            samplers,
             material_textures_index,
             material_samplers_index,
         }
@@ -114,7 +91,7 @@ impl PersistentDescriptorSetManager {
         index
     }
 
-    pub fn set_sampler(&mut self, idx: u32, sampler_def: SamplerDef) {
+    pub fn set_sampler(&mut self, idx: u32, sampler: &Sampler) {
         let mut writer = DescriptorSetWriter::new(
             &self.device_context,
             self.descriptor_set.handle(),
@@ -124,9 +101,7 @@ impl PersistentDescriptorSetManager {
         writer.set_descriptors_by_index_and_offset(
             self.material_samplers_index,
             idx,
-            &[DescriptorRef::Sampler(
-                &self.device_context.create_sampler(&sampler_def),
-            )],
+            &[DescriptorRef::Sampler(sampler)],
         );
     }
 

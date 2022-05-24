@@ -25,7 +25,7 @@ pub use labels::*;
 mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
-use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
+use lgn_graphics_api::ResourceUsage;
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::Vec2;
 pub use renderer::*;
@@ -145,7 +145,7 @@ impl Plugin for RendererPlugin {
 
         let material_manager = MaterialManager::new();
 
-        let sampler_manager = SamplerManager::new();
+        let sampler_manager = SamplerManager::new(renderer.device_context());
 
         let shared_resources_manager =
             SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
