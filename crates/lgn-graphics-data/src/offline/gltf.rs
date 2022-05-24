@@ -374,6 +374,7 @@ fn build_sampler(sampler: &texture::Sampler<'_>) -> SamplerData {
             Filter::Linear
         },
         mip_filter: if let Some(min_filter) = sampler.min_filter() {
+            #[allow(clippy::match_same_arms)]
             match min_filter {
                 texture::MinFilter::NearestMipmapNearest
                 | texture::MinFilter::LinearMipmapNearest => Filter::Nearest,
