@@ -376,7 +376,12 @@ mod tests {
             let resource_content = data_content_provider
                 .read_resource_as_bytes(&checksum)
                 .await
-                .expect("resource content");
+                .unwrap());
+            let resource_content = data_content_provider
+                .read_resource::<ResourceByteReader>(&checksum)
+                .await
+                .expect("resource content")
+                .into_vec();
 
             let mut creator = TextResourceProc {};
             let resource = creator
@@ -400,7 +405,12 @@ mod tests {
             let resource_content = data_content_provider
                 .read_resource_as_bytes(&checksum)
                 .await
-                .expect("asset content");
+                .unwrap());
+            let resource_content = data_content_provider
+                .read_resource::<ResourceByteReader>(&checksum)
+                .await
+                .expect("asset content")
+                .into_vec();
 
             let mut loader = IntegerAssetLoader {};
             let resource = loader
@@ -619,7 +629,12 @@ mod tests {
             let resource_content = data_content_provider
                 .read_resource_as_bytes(&checksum)
                 .await
-                .expect("asset content");
+                .unwrap());
+            let resource_content = data_content_provider
+                .read_resource::<ResourceByteReader>(&checksum)
+                .await
+                .expect("asset content")
+                .into_vec();
 
             let mut loader = IntegerAssetLoader {};
             let resource = loader

@@ -124,11 +124,10 @@ impl DataBuild {
     async fn default_asset_registry(
         data_provider: Arc<Provider>,
         compilers: &CompilerRegistry,
-        manifest: Option<Manifest>,
     ) -> Result<Arc<AssetRegistry>, Error> {
-        let manifest = manifest.unwrap_or_default();
-
-        let mut options = AssetRegistryOptions::new().add_device_cas(data_provider, manifest);
+        let mut options = AssetRegistryOptions::new()
+            .add_device_cas_with_empty_manifest(data_provider)
+            .await;
 
         options = compilers.init_all(options).await;
 
@@ -144,12 +143,8 @@ impl DataBuild {
         let registry = match config.registry {
             Some(r) => Ok(r),
             None => {
-                Self::default_asset_registry(
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                    config.manifest,
-                )
-                .await
+                Self::default_asset_registry(Arc::clone(&config.data_content_provider), &compilers)
+                    .await
             }
         }?;
 
@@ -169,12 +164,8 @@ impl DataBuild {
         let registry = match config.registry {
             Some(t) => Ok(t),
             None => {
-                Self::default_asset_registry(
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                    config.manifest,
-                )
-                .await
+                Self::default_asset_registry(Arc::clone(&config.data_content_provider), &compilers)
+                    .await
             }
         }?;
 
@@ -212,12 +203,8 @@ impl DataBuild {
         let registry = match config.registry {
             Some(r) => r,
             None => {
-                Self::default_asset_registry(
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                    config.manifest,
-                )
-                .await
+                Self::default_asset_registry(Arc::clone(&config.data_content_provider), &compilers)
+                    .await
             }
         };
 
@@ -421,7 +408,7 @@ impl DataBuild {
     pub async fn print_build_graph<R>(
         &self,
         compile_path: ResourcePathId,
-        name_parser: impl Fn(&ResourcePathId) -> R,
+        _name_parser: impl Fn(&ResourcePathId) -> R,
     ) -> String
     where
         R: Future<Output = String>,
@@ -429,9 +416,9 @@ impl DataBuild {
         if let Some(source_index) = self.source_index.current() {
             let build_graph = source_index.generate_build_graph(compile_path);
             #[rustfmt::skip]
-        let inner_getter = async move |_g: &Graph<ResourcePathId, ()>,
-                            nr: <&petgraph::Graph<lgn_data_runtime::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
-            format!("label = \"{}\"", (name_parser)(nr.1).await)
+        let inner_getter = |_g: &Graph<ResourcePathId, ()>,
+                            _nr: <&petgraph::Graph<lgn_data_runtime::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
+            format!("label = \"{}\"", "todo"/*(name_parser)(nr.1)*/)
         };
             let dot = petgraph::dot::Dot::with_attr_getters(
                 &build_graph,

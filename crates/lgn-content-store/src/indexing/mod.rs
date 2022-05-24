@@ -22,11 +22,13 @@ use tokio_stream::StreamExt;
 
 pub use composite_indexer::CompositeIndexer;
 pub use errors::{Error, Result};
+use futures::Stream;
 pub use graphviz_visitor::GraphvizVisitor;
 pub use index_key::{IndexKey, IndexKeyBound, IndexKeyDisplayFormat};
 pub(crate) use index_path::{IndexPath, IndexPathItem};
 pub use indexable_resource::{
-    IndexableResource, ResourceExists, ResourceIdentifier, ResourceReader, ResourceWriter,
+    IndexableResource, ResourceByteReader, ResourceByteWriter, ResourceExists, ResourceIdentifier,
+    ResourceReader, ResourceWriter,
 };
 pub use json_visitor::JsonVisitor;
 pub(crate) use search_result::SearchResult;

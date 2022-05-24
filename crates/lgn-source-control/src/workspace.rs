@@ -1,10 +1,10 @@
-use std::{collections::BTreeSet, fmt::Formatter};
+use std::collections::BTreeSet;
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, IndexableResource, ResourceIdentifier, ResourceReader,
-        ResourceWriter, StaticIndexer, StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode,
-        TreeWriter,
+        BasicIndexer, IndexKey, ResourceByteReader, ResourceByteWriter, ResourceIdentifier,
+        ResourceReader, ResourceWriter, StaticIndexer, StringPathIndexer, Tree, TreeIdentifier,
+        TreeLeafNode, TreeWriter,
     },
     Provider,
 };
@@ -143,6 +143,11 @@ impl Workspace {
         self.index.get_commit(current_branch.head).await
     }
 
+    /// Get the current transaction/provider
+    pub fn get_provider(&self) -> &Provider {
+        &self.transaction
+    }
+
     /*
     /// Get the list of staged changes, regardless of the actual content of the
     /// files or their existence on disk or in the current tree.
@@ -174,13 +179,13 @@ impl Workspace {
 
     pub async fn load_resource(&self, id: &IndexKey) -> Result<Vec<u8>> {
         if let Some(resource_id) = self.get_resource_identifier(id).await? {
-            let resource = self
+            let resource_bytes = self
                 .transaction
-                .read_resource::<WorkspaceResourceReader>(&resource_id)
+                .read_resource::<ResourceByteReader>(&resource_id)
                 .await
                 .map_err(Error::ContentStoreIndexing)?;
 
-            Ok(resource.0)
+            Ok(resource_bytes.into_vec())
         } else {
             Err(Error::ResourceNotFound { id: id.clone() })
         }
@@ -228,7 +233,7 @@ impl Workspace {
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
-        let resource_contents = WorkspaceResourceWriter(contents);
+        let resource_contents = ResourceByteWriter::new(contents);
 
         let resource_identifier = self
             .transaction
@@ -1098,47 +1103,4 @@ impl Workspace {
         Ok(tempfile::TempPath::from_path(temp_file_path))
     }
     */
-}
-
-struct WorkspaceResourceWriter<'a>(&'a [u8]);
-
-impl<'a> IndexableResource for WorkspaceResourceWriter<'a> {}
-
-impl<'a> serde::Serialize for WorkspaceResourceWriter<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_bytes(self.0)
-    }
-}
-
-struct WorkspaceResourceReader(Vec<u8>);
-
-impl IndexableResource for WorkspaceResourceReader {}
-
-struct WorkspaceResourceReaderVisitor;
-
-impl<'de> serde::de::Visitor<'de> for WorkspaceResourceReaderVisitor {
-    type Value = WorkspaceResourceReader;
-
-    fn expecting(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("a byte array")
-    }
-
-    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        Ok(WorkspaceResourceReader(v.to_vec()))
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for WorkspaceResourceReader {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_bytes(WorkspaceResourceReaderVisitor)
-    }
 }

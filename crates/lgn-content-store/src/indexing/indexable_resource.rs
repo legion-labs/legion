@@ -1,4 +1,7 @@
-use std::{fmt::Display, str::FromStr};
+use std::{
+    fmt::{Display, Formatter},
+    str::FromStr,
+};
 
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -106,5 +109,60 @@ impl ResourceWriter for Provider {
 
     async fn unwrite_resource(&self, id: &ResourceIdentifier) -> Result<()> {
         self.unwrite(id.as_identifier()).await.map_err(Into::into)
+    }
+}
+
+pub struct ResourceByteWriter<'a>(&'a [u8]);
+
+impl<'a> IndexableResource for ResourceByteWriter<'a> {}
+
+impl<'a> ResourceByteWriter<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self(bytes)
+    }
+}
+
+impl<'a> serde::Serialize for ResourceByteWriter<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_bytes(self.0)
+    }
+}
+
+pub struct ResourceByteReader(Vec<u8>);
+
+impl IndexableResource for ResourceByteReader {}
+
+impl ResourceByteReader {
+    pub fn into_vec(self) -> Vec<u8> {
+        self.0
+    }
+}
+
+struct ResourceByteReaderVisitor;
+
+impl<'de> serde::de::Visitor<'de> for ResourceByteReaderVisitor {
+    type Value = ResourceByteReader;
+
+    fn expecting(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("a byte array")
+    }
+
+    fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(ResourceByteReader(v.to_vec()))
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for ResourceByteReader {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_bytes(ResourceByteReaderVisitor)
     }
 }

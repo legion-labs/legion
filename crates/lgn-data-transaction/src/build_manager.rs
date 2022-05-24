@@ -41,6 +41,7 @@ impl BuildManager {
 
     /// New instance of `BuildManager`.
     pub async fn new(
+        project: &Project,
         options: DataBuildOptions,
         project: &Project,
         runtime_manifest_id: SharedTreeIdentifier,
@@ -68,6 +69,7 @@ impl BuildManager {
     ) -> Result<(ResourcePathId, Vec<ResourceTypeAndId>), Error> {
         let start = std::time::Instant::now();
 
+        let provider = project.get_provider();
         let derived_id = Self::get_derived_id(resource_id);
 
         let indexer = new_resource_type_and_id_indexer();

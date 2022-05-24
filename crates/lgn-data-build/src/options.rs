@@ -5,7 +5,7 @@ use std::{
 
 use lgn_content_store::Provider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_runtime::{manifest::Manifest, AssetRegistry};
+use lgn_data_runtime::AssetRegistry;
 
 use crate::{DataBuild, Error};
 

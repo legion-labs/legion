@@ -152,7 +152,8 @@ async fn test_transaction_system() -> Result<(), Error> {
 
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_dir(&resource_dir)
-        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default())
+        .add_device_cas_with_empty_manifest(Arc::clone(&data_content_provider))
+        .await
         .add_loader::<TestEntity>();
     generic_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;

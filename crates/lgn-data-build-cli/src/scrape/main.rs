@@ -516,7 +516,7 @@ async fn main() -> Result<(), String> {
                     .await
                     .map_err(|e| format!("Source pull failed: {}", e))?;
 
-                let rid = {
+                let _rid = {
                     if let Ok(resource_id) = id.parse() {
                         build
                             .lookup_pathid(resource_id)
@@ -528,10 +528,12 @@ async fn main() -> Result<(), String> {
                             .map_err(|_e| format!("Invalid ResourcePathId '{}'", id))?
                     }
                 };
-                let output = build.print_build_graph(rid, |rid| async {
-                    pretty_name_from_pathid(rid, &project, &config).await
-                });
-                println!("{}", output);
+                // let output = build
+                //     .print_build_graph(rid, |rid| async {
+                //         pretty_name_from_pathid(rid, &project, &config).await
+                //     })
+                //     .await;
+                // println!("{}", output);
             } else {
                 return Err(
                     "Configuration not found. Run 'data-scrape configure' first.".to_string(),

@@ -81,7 +81,8 @@ async fn compile_atoi() {
     let resource_content = volatile_content_provider
         .read_resource_as_bytes(content_id)
         .await
-        .expect("asset content");
+        .expect("asset content")
+        .into_vec();
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
@@ -167,7 +168,8 @@ async fn compile_intermediate() {
     let resource_content = volatile_content_provider
         .read_resource_as_bytes(content_id)
         .await
-        .expect("asset content");
+        .expect("asset content")
+        .into_vec();
 
     let mut loader = IntegerAssetLoader {};
     let asset = loader
@@ -251,7 +253,8 @@ async fn compile_multi_resource() {
         let resource_content = volatile_content_provider
             .read_resource_as_bytes(&resource.content_id)
             .await
-            .expect("asset content");
+            .expect("asset content")
+            .into_vec();
         let mut proc = text_resource::TextResourceProc {};
         let resource = proc
             .read_resource(&mut &resource_content[..])
@@ -320,7 +323,8 @@ async fn compile_base64() {
     let resource_content = volatile_content_provider
         .read_resource_as_bytes(content_id)
         .await
-        .expect("asset content");
+        .expect("asset content")
+        .into_vec();
 
     let base64str = String::from_utf8_lossy(&resource_content);
     assert_eq!(base64str, expected_base64_value);

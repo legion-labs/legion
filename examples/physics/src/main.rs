@@ -97,7 +97,8 @@ async fn main() -> anyhow::Result<()> {
     .expect("failed to create a project");
 
     let mut asset_registry = AssetRegistryOptions::new()
-        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
+        .add_device_cas_with_empty_manifest(Arc::clone(&data_content_provider))
+        .await;
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
@@ -139,9 +140,7 @@ async fn main() -> anyhow::Result<()> {
     )
     .asset_registry(asset_registry.clone());
 
-    let mut build_manager = BuildManager::new(data_build, Manifest::default(), Manifest::default())
-        .await
-        .unwrap();
+    let mut build_manager = BuildManager::new(&project, data_build, None).await.unwrap();
 
     for id in resource_ids {
         let derived_result = build_manager.build_all_derived(id, &project).await.unwrap();

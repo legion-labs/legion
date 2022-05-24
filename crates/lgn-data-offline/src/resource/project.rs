@@ -384,7 +384,7 @@ impl Project {
         offline_content.content.append(&mut content.into_inner());
 
         let resource_bytes =
-            rmp_serde::to_vec(&offline_content).expect("failed to encode resource contents");
+            bincode::serialize(&offline_content).expect("failed to encode resource contents");
 
         self.workspace
             .add_resource(
@@ -480,7 +480,7 @@ impl Project {
             .await?;
 
         let offline_content: OfflineContent =
-            rmp_serde::from_slice(&resource_bytes).expect("failed to decode resource contents");
+            bincode::deserialize(&resource_bytes).expect("failed to decode resource contents");
 
         let mut reader = std::io::Cursor::new(offline_content.content);
 
@@ -605,6 +605,11 @@ impl Project {
         self.workspace.branch_name()
     }
 
+    /// Returns the provider associated with the current source-control workspace
+    pub fn get_provider(&self) -> &Provider {
+        self.workspace.get_provider()
+    }
+
     /// Moves a `remote` resources to the list of `local` resources.
     pub async fn checkout(&mut self, _id: ResourceTypeAndId) -> Result<(), Error> {
         // let metadata_path = self.metadata_path(id.id);
@@ -622,7 +627,7 @@ impl Project {
         let resource_bytes = self.workspace.load_resource(&id.as_raw().into()).await?;
 
         let offline_content: OfflineContent =
-            rmp_serde::from_slice(&resource_bytes).expect("failed to decode resource contents");
+            bincode::deserialize(&resource_bytes).expect("failed to decode resource contents");
 
         Ok(offline_content.metadata)
     }
