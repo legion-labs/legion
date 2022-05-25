@@ -1,0 +1,18 @@
+openapi: 3.1.0
+info:
+  title: "Governance API"
+  description: "The OpenAPI specification for the Legion Labs governance service."
+  version: 1.0.0
+paths:
+  /v1/current-user/spaces:
+    get:
+      description: List all the spaces that the current user has access to.
+      operationId: listCurrentUserSpaces
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/SpaceList"
+components: {}

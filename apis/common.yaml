@@ -1,0 +1,82 @@
+# Common parameters and schemas used throughout the Legion Labs APIs.
+parameters:
+  space_id:
+    name: space-id
+    in: path
+    description: The space identifier.
+    required: true
+    schema:
+      $ref: "#/schemas/SpaceId"
+  workspace_id:
+    name: workspace-id
+    in: path
+    description: The workspace identifier.
+    required: true
+    schema:
+      $ref: "#/schemas/WorkspaceId"
+schemas:
+  SpaceId:
+    description: An identifier to a unique data space.
+    type: string
+  UserId:
+    description: An identifier to a unique user.
+    type: string
+  Space:
+    type: object
+    description: A data space.
+    properties:
+      name:
+        type: string
+  WorkspaceId:
+    description: An identifier to a unique workspace.
+    type: string
+  Workspace:
+    description: A workspace.
+    type: object
+    properties:
+      id:
+        $ref: "#/schemas/WorkspaceId"
+      created_at:
+        type: string
+        format: date-time
+      last_updated_at:
+        type: string
+        format: date-time
+    required:
+      - id
+      - created_at
+      - last_updated_at
+  Session:
+    description: A session.
+    type: object
+    properties:
+      user_id:
+        $ref: "#/schemas/UserId"
+      workspace_id:
+        $ref: "#/schemas/WorkspaceId"
+      created_at:
+        type: string
+        format: date-time
+      last_updated_at:
+        type: string
+        format: date-time
+    required:
+      - user_id
+      - workspace_id
+      - created_at
+      - last_updated_at
+  SpaceList:
+    description: A list of space ids.
+    type: array
+    items:
+      $ref: "#/schemas/Space"
+  WorkspaceList:
+    description: A list of workspace ids.
+    type: array
+    items:
+      $ref: "#/schemas/Workspace"
+  SessionList:
+    description: A list of sessions.
+    type: array
+    items:
+      $ref: "#/schemas/Session"

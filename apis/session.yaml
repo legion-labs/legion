@@ -1,0 +1,93 @@
+openapi: 3.1.0
+info:
+  title: "Session API"
+  description: "The OpenAPI specification for the Legion Labs session service."
+  version: 1.0.0
+paths:
+  /v1/current-user/spaces/{space-id}/sessions:
+    parameters:
+      - $ref: "./common.yaml#/parameters/space_id"
+    get:
+      description: List all the sessions for the current user in the specified space.
+      operationId: listCurrentUserSessions
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/SessionList"
+  /v1/current-user/spaces/{space-id}/workspaces:
+    parameters:
+      - $ref: "./common.yaml#/parameters/space_id"
+    get:
+      description: List all the workspaces for the current user in the specified space.
+      operationId: listCurrentUserWorkspaces
+      responses:
+        "200":
+          description: The list of workspaces.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/WorkspaceList"
+  /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}:
+    parameters:
+      - $ref: "./common.yaml#/parameters/space_id"
+      - $ref: "./common.yaml#/parameters/workspace_id"
+    get:
+      description: Get the workspace for the current user in the specified space, with the specified workspace ID.
+      operationId: getCurrentUserWorkspace
+      responses:
+        "200":
+          description: The workspace was found.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Workspace"
+        "404":
+          description: The workspace was not found.
+  /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}/session:
+    parameters:
+      - $ref: "./common.yaml#/parameters/space_id"
+      - $ref: "./common.yaml#/parameters/workspace_id"
+    get:
+      description: Get the session in the specified workspace for the current user.
+      operationId: getCurrentUserWorkspaceSession
+      responses:
+        "200":
+          description: The session was retrieved.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Session"
+        "404":
+          description: The session does not exist.
+    put:
+      description: Create a new session in the specified workspace for the current user. If the session already exists, it is returned.
+      operationId: createCurrentUserWorkspaceSession
+      responses:
+        "201":
+          description: The session was created.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Session"
+        "409":
+          description: The session already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Session"
+    delete:
+      description: Delete the session in the specified workspace for the current user.
+      operationId: deleteCurrentUserWorkspaceSession
+      responses:
+        "200":
+          description: The session was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Session"
+        "404":
+          description: The session does not exist.
+components: {}
