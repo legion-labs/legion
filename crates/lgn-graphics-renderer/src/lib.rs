@@ -145,7 +145,10 @@ impl Plugin for RendererPlugin {
 
         let material_manager = MaterialManager::new();
 
-        let sampler_manager = SamplerManager::new(renderer.device_context());
+        let sampler_manager = SamplerManager::new(
+            renderer.device_context(),
+            &mut persistent_descriptor_set_manager,
+        );
 
         let shared_resources_manager =
             SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
@@ -207,6 +210,7 @@ impl Plugin for RendererPlugin {
         // Init ecs
         TextureManager::init_ecs(app);
         MaterialManager::init_ecs(app);
+        SamplerManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);

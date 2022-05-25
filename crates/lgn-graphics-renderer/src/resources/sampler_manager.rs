@@ -1,4 +1,8 @@
-use lgn_graphics_api::{AddressMode, CompareOp, DeviceContext, FilterType, MipMapMode, SamplerDef};
+use lgn_app::App;
+use lgn_ecs::{prelude::ResMut, schedule::SystemSet};
+use lgn_graphics_api::{DeviceContext, SamplerDef};
+
+use crate::{labels::RenderStage, ResourceStageLabel};
 
 use super::PersistentDescriptorSetManager;
 
@@ -7,77 +11,72 @@ const SAMPLER_ARRAY_SIZE: usize = 64; // When changing this number make sure to 
 pub struct SamplerManager {
     device_context: DeviceContext,
 
-    samplers: Vec<(
-        lgn_graphics_data::runtime::SamplerData,
-        lgn_graphics_api::Sampler,
-    )>,
+    samplers: Vec<(SamplerDef, lgn_graphics_api::Sampler)>,
+    scheduled_upload: Vec<u32>,
 }
 
 impl SamplerManager {
-    pub fn new(device_context: &DeviceContext) -> Self {
-        Self {
+    pub fn new(
+        device_context: &DeviceContext,
+        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
+    ) -> Self {
+        let mut sampler_manager = Self {
             device_context: device_context.clone(),
             samplers: Vec::new(),
-        }
+            scheduled_upload: Vec::new(),
+        };
+        sampler_manager.get_index(&SamplerDef::default());
+        sampler_manager.upload(persistent_descriptor_set_manager);
+        sampler_manager
     }
 
-    pub fn get_index(
+    pub fn init_ecs(app: &mut App) {
+        app.add_system_set_to_stage(
+            RenderStage::Resource,
+            SystemSet::new()
+                .with_system(upload_sampler_data)
+                .label(ResourceStageLabel::Sampler)
+                .after(ResourceStageLabel::Material),
+        );
+    }
+
+    pub fn get_index(&mut self, sampler_definition: &SamplerDef) -> u32 {
+        if let Some(idx) = self
+            .samplers
+            .iter()
+            .position(|s| s.0 == *sampler_definition)
+            .map(|idx| idx as u32)
+        {
+            return idx as u32;
+        }
+        assert!(self.samplers.len() < SAMPLER_ARRAY_SIZE);
+        let idx = self.samplers.len() as u32;
+        self.samplers.push((
+            sampler_definition.clone(),
+            self.device_context.create_sampler(sampler_definition),
+        ));
+        self.scheduled_upload.push(idx);
+        idx
+    }
+
+    pub fn upload(
         &mut self,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
-        sampler_data: Option<&lgn_graphics_data::runtime::SamplerData>,
-    ) -> u32 {
-        if let Some(sampler_data) = sampler_data {
-            if let Some(idx) = self
-                .samplers
-                .iter()
-                .position(|s| s.0 == *sampler_data)
-                .map(|idx| idx as u32)
-            {
-                return idx as u32;
-            }
+    ) {
+        self.scheduled_upload.iter().for_each(|idx| {
+            persistent_descriptor_set_manager.set_sampler(*idx, &self.samplers[*idx as usize].1);
+        });
+        self.scheduled_upload.clear();
+    }
 
-            assert!(self.samplers.len() < SAMPLER_ARRAY_SIZE);
-
-            #[allow(clippy::match_same_arms)]
-            let gpu_sampler = self.device_context.create_sampler(&SamplerDef {
-                min_filter: match sampler_data.min_filter {
-                    lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
-                    lgn_graphics_data::Filter::Linear => FilterType::Linear,
-                    _ => FilterType::Linear,
-                },
-                mag_filter: match sampler_data.mag_filter {
-                    lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
-                    lgn_graphics_data::Filter::Linear => FilterType::Linear,
-                    _ => FilterType::Linear,
-                },
-                mip_map_mode: match sampler_data.mip_filter {
-                    lgn_graphics_data::Filter::Nearest => MipMapMode::Nearest,
-                    lgn_graphics_data::Filter::Linear => MipMapMode::Linear,
-                    _ => MipMapMode::Linear,
-                },
-                address_mode_u: match sampler_data.wrap_u {
-                    lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
-                    lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
-                    lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
-                    _ => AddressMode::Repeat,
-                },
-                address_mode_v: match sampler_data.wrap_v {
-                    lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
-                    lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
-                    lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
-                    _ => AddressMode::Repeat,
-                },
-                address_mode_w: AddressMode::Repeat,
-                mip_lod_bias: 0.0,
-                max_anisotropy: 1.0,
-                compare_op: CompareOp::LessOrEqual,
-            });
-            let idx = self.samplers.len() as u32;
-            persistent_descriptor_set_manager.set_sampler(idx, &gpu_sampler);
-            self.samplers.push((sampler_data.clone(), gpu_sampler));
-
-            return idx;
-        }
+    pub fn get_default_sampler_index() -> u32 {
         0
     }
+}
+
+pub(crate) fn upload_sampler_data(
+    mut sampler_manager: ResMut<'_, SamplerManager>,
+    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
+) {
+    sampler_manager.upload(&mut persistent_descriptor_set_manager);
 }

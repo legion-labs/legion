@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use lgn_app::App;
 use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
-use lgn_graphics_data::runtime_texture::TextureReferenceType;
+use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, SamplerDef};
+use lgn_graphics_data::{runtime::SamplerData, runtime_texture::TextureReferenceType};
 use lgn_math::Vec4;
 use lgn_utils::{memory::round_size_up_to_alignment_u32, HashSet};
 
@@ -15,9 +16,8 @@ use crate::{
 };
 
 use super::{
-    GpuDataManager, IndexAllocator, MissingVisualTracker, PersistentDescriptorSetManager,
-    SamplerManager, SharedResourcesManager, TextureEvent, TextureManager,
-    UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+    GpuDataManager, IndexAllocator, MissingVisualTracker, SamplerManager, SharedResourcesManager,
+    TextureEvent, TextureManager, UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
 };
 
 type GpuMaterialData = GpuDataManager<MaterialId, crate::cgen::cgen_type::MaterialData>;
@@ -52,6 +52,7 @@ pub struct Material {
     va: u64,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 enum MaterialSlot {
     Empty,
@@ -256,7 +257,6 @@ impl MaterialManager {
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
         sampler_manager: &mut SamplerManager,
-        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) -> crate::cgen::cgen_type::MaterialData {
         let mut material_data = crate::cgen::cgen_type::MaterialData::default();
 
@@ -307,11 +307,7 @@ impl MaterialManager {
             .into(),
         );
         material_data.set_sampler(
-            sampler_manager
-                .get_index(
-                    persistent_descriptor_set_manager,
-                    material_component.sampler_data.as_ref(),
-                )
+            Self::get_sampler_index(sampler_manager, material_component.sampler_data.as_ref())
                 .into(),
         );
 
@@ -335,13 +331,56 @@ impl MaterialManager {
         }
     }
 
+    fn get_sampler_index(
+        sampler_manager: &mut SamplerManager,
+        sampler_data: Option<&SamplerData>,
+    ) -> u32 {
+        if let Some(sampler_data) = sampler_data {
+            #[allow(clippy::match_same_arms)]
+            sampler_manager.get_index(&SamplerDef {
+                min_filter: match sampler_data.min_filter {
+                    lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
+                    lgn_graphics_data::Filter::Linear => FilterType::Linear,
+                    _ => FilterType::Linear,
+                },
+                mag_filter: match sampler_data.mag_filter {
+                    lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
+                    lgn_graphics_data::Filter::Linear => FilterType::Linear,
+                    _ => FilterType::Linear,
+                },
+                mip_map_mode: match sampler_data.mip_filter {
+                    lgn_graphics_data::Filter::Nearest => MipMapMode::Nearest,
+                    lgn_graphics_data::Filter::Linear => MipMapMode::Linear,
+                    _ => MipMapMode::Linear,
+                },
+                address_mode_u: match sampler_data.wrap_u {
+                    lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
+                    lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
+                    lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
+                    _ => AddressMode::Repeat,
+                },
+                address_mode_v: match sampler_data.wrap_v {
+                    lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
+                    lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
+                    lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
+                    _ => AddressMode::Repeat,
+                },
+                address_mode_w: AddressMode::Repeat,
+                mip_lod_bias: 0.0,
+                max_anisotropy: 1.0,
+                compare_op: CompareOp::LessOrEqual,
+            })
+        } else {
+            SamplerManager::get_default_sampler_index()
+        }
+    }
+
     fn upload_material_data(
         &mut self,
         renderer: &Renderer,
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
-        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
         sampler_manager: &mut SamplerManager,
     ) {
         let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
@@ -355,7 +394,6 @@ impl MaterialManager {
                 texture_manager,
                 shared_resources_manager,
                 sampler_manager,
-                persistent_descriptor_set_manager,
             );
             self.gpu_material_data
                 .update_gpu_data(material_id, &gpu_material_data, &mut updater);
@@ -373,8 +411,6 @@ impl MaterialManager {
         &mut self,
         renderer: &Renderer,
         shared_resources_manager: &SharedResourcesManager,
-        sampler_manager: &mut SamplerManager,
-        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) {
         if !self.default_uploaded {
             let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
@@ -406,14 +442,7 @@ impl MaterialManager {
                     .default_texture_bindless_index(SharedTextureId::Roughness)
                     .into(),
             );
-            default_material_data.set_sampler(
-                sampler_manager
-                    .get_index(
-                        persistent_descriptor_set_manager,
-                        Some(&lgn_graphics_data::runtime::SamplerData::default()),
-                    )
-                    .into(),
-            );
+            default_material_data.set_sampler(SamplerManager::get_default_sampler_index().into());
 
             self.alloc_material(
                 self.default_material_id,
@@ -526,15 +555,8 @@ fn upload_default_material(
     mut material_manager: ResMut<'_, MaterialManager>,
     renderer: Res<'_, Renderer>,
     shared_resources_manager: Res<'_, SharedResourcesManager>,
-    mut sampler_manager: ResMut<'_, SamplerManager>,
-    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
 ) {
-    material_manager.upload_default_material(
-        &renderer,
-        &shared_resources_manager,
-        &mut sampler_manager,
-        &mut persistent_descriptor_set_manager,
-    );
+    material_manager.upload_default_material(&renderer, &shared_resources_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -545,14 +567,12 @@ fn upload_material_data(
     shared_resources_manager: Res<'_, SharedResourcesManager>,
     mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
     mut sampler_manager: ResMut<'_, SamplerManager>,
-    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
 ) {
     material_manager.upload_material_data(
         &renderer,
         &texture_manager,
         &shared_resources_manager,
         &mut missing_visuals_tracker,
-        &mut persistent_descriptor_set_manager,
         &mut sampler_manager,
     );
 }
