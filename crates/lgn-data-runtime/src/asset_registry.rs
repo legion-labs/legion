@@ -14,6 +14,7 @@ use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
+    manifest::ManifestId,
     vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, OfflineResource, Resource,
     ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor, ResourceProcessorError,
     ResourceType, ResourceTypeAndId,

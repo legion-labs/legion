@@ -92,14 +92,17 @@ async fn main() -> anyhow::Result<()> {
         absolute_project_dir,
         &repository_index,
         &repository_name,
-        source_control_content_provider,
+        Arc::clone(&source_control_content_provider),
     )
     .await
     .expect("failed to create a project");
 
     let mut asset_registry = AssetRegistryOptions::new()
         .add_device_cas_with_empty_manifest(Arc::clone(&data_content_provider))
-        .await;
+        .await
+        .add_device_persistent_cs(Arc::clone(&source_control_content_provider), || {
+            (&project).get_manifest_id().clone()
+        });
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);

@@ -91,7 +91,7 @@ use lgn_content_store::{
 };
 use lgn_data_model::ReflectionError;
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
+    manifest::ManifestId, AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
     ResourceProcessorError, Transform,
 };
 use serde::{Deserialize, Serialize};

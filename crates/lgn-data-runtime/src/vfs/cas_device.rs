@@ -25,6 +25,10 @@ impl CasDevice {
             manifest_id,
         }
     }
+
+    pub(crate) async fn get_empty_manifest_id(provider: &Provider) -> ManifestId {
+        ManifestId(provider.write_tree(&Tree::default()).await.unwrap())
+    }
 }
 
 #[async_trait]

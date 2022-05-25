@@ -125,9 +125,10 @@ impl DataBuild {
         data_provider: Arc<Provider>,
         compilers: &CompilerRegistry,
     ) -> Result<Arc<AssetRegistry>, Error> {
-        let mut options = AssetRegistryOptions::new()
-            .add_device_cas_with_empty_manifest(data_provider)
-            .await;
+        let empty_manifest_id =
+            AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_provider).await;
+        let mut options =
+            AssetRegistryOptions::new().add_device_cas(data_provider, Arc::new(empty_manifest_id));
 
         options = compilers.init_all(options).await;
 
