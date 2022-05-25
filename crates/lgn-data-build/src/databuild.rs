@@ -19,7 +19,7 @@ use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
-use lgn_tracing::{async_span_scope, info};
+use lgn_tracing::{async_span_scope, debug, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, Graph};
 
@@ -521,11 +521,31 @@ impl DataBuild {
 
         let mut compiled_at_node = HashMap::<ResourcePathId, _>::new();
         let mut compiled = HashSet::<petgraph::graph::NodeIndex>::new();
-        let mut compiling = HashSet::<ResourcePathId>::new();
+
+        let mut compiled_unnamed = HashSet::<ResourcePathId>::new();
+        let mut compiling_unnamed = HashSet::<ResourcePathId>::new();
 
         let mut work = vec![];
 
         let to_compile = topological_order.len();
+
+        for node in &topological_order {
+            debug!(
+                "Node {:?} -> {}",
+                node,
+                build_graph.node_weight(*node).unwrap()
+            );
+        }
+
+        for node in &topological_order {
+            debug!(
+                "Dependency List {:?}:{}",
+                node,
+                build_graph
+                    .neighbors_directed(*node, petgraph::Incoming)
+                    .fold("".to_string(), |acc, d| acc + &format!(" {:?}", d))
+            );
+        }
 
         while compiled.len() < to_compile {
             let (ready, pending) =
@@ -540,12 +560,16 @@ impl DataBuild {
                         let compile_node = build_graph.node_weight(compile_node_index).unwrap();
                         let compile_node_unnamed = compile_node.to_unnamed();
 
-                        if compiling.contains(&compile_node_unnamed) {
-                            return false;
-                        }
-
-                        if all_deps_compiled {
-                            compiling.insert(compile_node_unnamed);
+                        // make sure we only schedule one compilation of a node. the rest will be pending until that one completes.
+                        {
+                            if compiling_unnamed.contains(&compile_node_unnamed) {
+                                return false;
+                            }
+                            if all_deps_compiled
+                                && !compiled_unnamed.contains(&compile_node_unnamed)
+                            {
+                                compiling_unnamed.insert(compile_node_unnamed);
+                            }
                         }
 
                         all_deps_compiled
@@ -560,11 +584,46 @@ impl DataBuild {
             );
             topological_order = pending;
 
+            for node in &topological_order {
+                let dep_status = build_graph
+                    .neighbors_directed(*node, petgraph::Incoming)
+                    .fold("".to_string(), |acc, d| {
+                        let dd = build_graph.node_weight(d).unwrap();
+                        let completion_status = if compiled.contains(&d) {
+                            'x'
+                        } else if compiling_unnamed.contains(&dd.to_unnamed()) {
+                            '~'
+                        } else {
+                            ' '
+                        };
+                        acc + &format!(" {:?}({})", d, completion_status)
+                    });
+                let name = build_graph.node_weight(*node).unwrap().to_unnamed();
+                let unnamed_status = if compiling_unnamed.contains(&name) {
+                    '~'
+                } else if compiled_unnamed.contains(&name) {
+                    'x'
+                } else {
+                    ' '
+                };
+                debug!(
+                    "Pending '{:?}': Status: '{}'. Deps:{}",
+                    node, unnamed_status, dep_status
+                );
+            }
+
+            debug!("Compiled: {:?}", compiled);
+            debug!("Compiling Unnamed {:?}", compiling_unnamed);
+            debug!("Compiled Unnamed {:?}", compiled_unnamed);
+
             let mut new_work = vec![];
             let num_ready = ready.len();
             for compile_node_index in ready {
                 let compile_node = build_graph.node_weight(compile_node_index).unwrap();
-                info!("Progress: {:?} is ready", compile_node);
+                info!(
+                    "Progress({:?}): {:?} is ready",
+                    compile_node_index, compile_node
+                );
                 // compile non-source dependencies.
                 if let Some(direct_dependency) = compile_node.direct_dependency() {
                     let mut n =
@@ -590,7 +649,6 @@ impl DataBuild {
                     if let Some(node_index) = compiled_at_node.get(&compile_node) {
                         node_hash.insert(compile_node_index, *node_hash.get(node_index).unwrap());
                         compiled.insert(compile_node_index);
-                        compiling.remove(&compile_node);
                         continue;
                     }
 
@@ -678,7 +736,10 @@ impl DataBuild {
                     let acc_deps = accumulated_dependencies.clone();
 
                     let work: Pin<Box<dyn Future<Output = Result<_, Error>> + Send>> = async move {
-                        info!("Compiling {} ({:?}) ...", compile_node, expected_name);
+                        info!(
+                            "Compiling({:?}) {} ({:?}) ...",
+                            compile_node_index, compile_node, expected_name
+                        );
                         let start = std::time::Instant::now();
 
                         let (resource_infos, resource_references, stats) = Self::compile_node(
@@ -696,7 +757,12 @@ impl DataBuild {
                         )
                         .await?;
 
-                        info!("Compiled {} ended in {:?}.", compile_node, start.elapsed());
+                        info!(
+                            "Compiled({:?}) {:?} ended in {:?}.",
+                            compile_node_index,
+                            compile_node,
+                            start.elapsed()
+                        );
 
                         // update the CAS manifest with new content in order to make new resources
                         // visible to the next compilation node
@@ -723,8 +789,11 @@ impl DataBuild {
                     .boxed();
                     new_work.push(work);
                 } else {
+                    let unnamed = compile_node.to_unnamed();
+                    info!("Source({:?}) Completed '{}'", compile_node_index, unnamed);
                     compiled.insert(compile_node_index);
-                    compiling.remove(&compile_node.to_unnamed());
+                    compiling_unnamed.remove(&unnamed);
+                    compiled_unnamed.insert(unnamed);
                 }
             }
 
@@ -750,8 +819,15 @@ impl DataBuild {
 
             if let Ok((node_index, resource_infos, resource_references, stats)) = result {
                 let compile_node = build_graph.node_weight(node_index).unwrap();
-                compiling.remove(&compile_node.to_unnamed());
-                info!("Progress: done: {}", compile_node);
+
+                let unnamed = compile_node.to_unnamed();
+                info!(
+                    "Progress({:?}): done: {} ({})",
+                    node_index, compile_node, unnamed
+                );
+                compiling_unnamed.remove(&unnamed);
+                compiled_unnamed.insert(unnamed);
+
                 accumulated_dependencies.extend(resource_infos.iter().map(|res| {
                     CompiledResource {
                         path: res.compiled_path.clone(),

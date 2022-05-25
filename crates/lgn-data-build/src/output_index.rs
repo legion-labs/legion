@@ -60,6 +60,9 @@ pub(crate) struct OutputIndex {
     database: sqlx::AnyPool,
 }
 
+const MAX_CONNECTIONS: u32 = 10;
+const CONNECTION_TIMEOUT: Duration = Duration::from_secs(60*60); // One hour timeout, workaround for PoolTimedOut
+
 impl OutputIndex {
     pub(crate) async fn create_new(db_uri: String) -> Result<Self, Error> {
         let database = {
@@ -67,8 +70,8 @@ impl OutputIndex {
                 .await
                 .map_err(Error::Database)?;
             let connection = sqlx::any::AnyPoolOptions::new()
-                .max_connections(10)
-                .connect_timeout(Duration::from_secs(60 * 60)) // One hour timeout, workaround for PoolTimedOut
+                .max_connections(MAX_CONNECTIONS)
+                .connect_timeout(CONNECTION_TIMEOUT)
                 .connect(&db_uri)
                 .await
                 .map_err(Error::Database)?;
@@ -108,8 +111,8 @@ impl OutputIndex {
     async fn load(db_uri: String) -> Result<Self, Error> {
         let database = {
             sqlx::any::AnyPoolOptions::new()
-                .max_connections(10)
-                .connect_timeout(Duration::from_secs(60 * 60))
+                .max_connections(MAX_CONNECTIONS)
+                .connect_timeout(CONNECTION_TIMEOUT)
                 .connect(&db_uri)
                 .await
                 .map_err(Error::Database)?
