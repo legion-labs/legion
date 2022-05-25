@@ -190,23 +190,28 @@ impl CommandBuilder {
 
     /// Executes the process returning the stdio output or an error on non-zero
     /// exit status.
-    fn exec(&self) -> io::Result<std::process::Output> {
+    async fn exec(&self) -> io::Result<std::process::Output> {
         self.exec_with_cwd(env::current_dir().unwrap().as_path())
+            .await
     }
 
     /// Executes the process returning the stdio output or an error on non-zero
     /// exit status.
-    fn exec_with_cwd(&self, current_dir: impl AsRef<Path>) -> io::Result<std::process::Output> {
+    async fn exec_with_cwd(
+        &self,
+        current_dir: impl AsRef<Path>,
+    ) -> io::Result<std::process::Output> {
         info!(
             "Executing: {} {:?} in cwd {:?}",
             self.command,
             self.args,
             current_dir.as_ref()
         );
-        let output = std::process::Command::new(&self.command)
+        let output = tokio::process::Command::new(&self.command)
             .current_dir(current_dir)
             .args(&self.args)
-            .output()?;
+            .output()
+            .await?;
         info!("Output: {:?}", output);
         if output.status.success() {
             Ok(output)
@@ -280,8 +285,8 @@ impl CompilerInfoCmd {
 
     /// Runs the command on compiler process located at `compiler_path`, waits
     /// for completion, returns the result.
-    pub fn execute(&self) -> io::Result<CompilerInfoCmdOutput> {
-        let output = self.0.exec()?;
+    pub async fn execute(&self) -> io::Result<CompilerInfoCmdOutput> {
+        let output = self.0.exec().await?;
         CompilerInfoCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -344,8 +349,8 @@ impl CompilerHashCmd {
 
     /// Runs the command on compiler process located at `compiler_path`, waits
     /// for completion, returns the result.
-    pub fn execute(&self) -> io::Result<CompilerHashCmdOutput> {
-        let output = self.0.exec()?;
+    pub async fn execute(&self) -> io::Result<CompilerHashCmdOutput> {
+        let output = self.0.exec().await?;
         CompilerHashCmdOutput::from_bytes(output.stdout.as_slice()).ok_or_else(|| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
@@ -397,15 +402,18 @@ impl CompilerCompileCmd {
     /// Runs the command on compiler process located at `compiler_path` setting
     /// the current working directory of the compiler to `cwd`, waits for
     /// completion, returns the result.
-    pub fn execute(&self) -> io::Result<CompilationOutput> {
-        self.execute_with_cwd(env::current_dir().unwrap())
+    pub async fn execute(&self) -> io::Result<CompilationOutput> {
+        self.execute_with_cwd(env::current_dir().unwrap()).await
     }
 
     /// Runs the command on compiler process located at `compiler_path` setting
     /// the current working directory of the compiler to `cwd`, waits for
     /// completion, returns the result.
-    pub fn execute_with_cwd(&self, current_dir: impl AsRef<Path>) -> io::Result<CompilationOutput> {
-        match self.0.exec_with_cwd(current_dir) {
+    pub async fn execute_with_cwd(
+        &self,
+        current_dir: impl AsRef<Path>,
+    ) -> io::Result<CompilationOutput> {
+        match self.0.exec_with_cwd(current_dir).await {
             Ok(output) => CompilationOutput::from_bytes(&output.stdout).map_err(|_e| {
                 eprintln!(
                     "Cannot parse compiler output, {:?} {:?}\nError: {:?}",

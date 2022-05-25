@@ -31,7 +31,10 @@ impl CompilerStub for RemoteCompilerStub {
         // FIXME: We should cache it in the CAS, and only run it once every time a compiler changes.
 
         let cmd = CompilerHashCmd::new(&self.bin_path, env, Some(transform));
-        let transforms = cmd.execute().map(|output| output.compiler_hash_list)?;
+        let transforms = cmd
+            .execute()
+            .await
+            .map(|output| output.compiler_hash_list)?;
 
         if transforms.len() == 1 && transforms[0].0 == transform {
             return Ok(transforms[0].1);
@@ -88,6 +91,7 @@ impl CompilerStub for RemoteCompilerStub {
 
         CompilerInfoCmd::new(&self.bin_path)
             .execute()
+            .await
             .map(CompilerInfoCmdOutput::take)
     }
 }
