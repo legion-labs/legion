@@ -339,16 +339,19 @@ impl OutputIndex {
 #[cfg(test)]
 mod tests {
 
-    use std::{path::Path, str::FromStr, thread, time::Duration};
+    use std::{path::Path, str::FromStr};
 
-    use futures::future::join_all;
     use lgn_content_store::Identifier;
     use lgn_data_compiler::CompiledResource;
     use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
-    use sqlx::{migrate::MigrateDatabase, Executor};
     use text_resource::TextResource;
 
     use crate::output_index::{AssetHash, OutputIndex};
+
+    /*
+    use std::{thread, time::Duration};
+    use futures::future::join_all;
+    use sqlx::{migrate::MigrateDatabase, Executor};
 
     #[tokio::test]
     async fn sqlx_timeout() {
@@ -385,6 +388,7 @@ mod tests {
         // sqlx will return PoolTimedOut here
         let _results = join_all(vec_future).await;
     }
+    */
 
     fn test_database_uri(buildindex_dir: impl AsRef<Path>, version: &str) -> String {
         let db_path = buildindex_dir
