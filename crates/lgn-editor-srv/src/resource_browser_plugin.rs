@@ -348,39 +348,33 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let request = request.get_ref();
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
-        let descriptors = ctx
-            .project
-            .resource_list()
-            .await
-            .into_iter()
-            .filter_map(|resource_id| {
-                let path: String = ctx
-                    .project
-                    .resource_name(resource_id)
-                    .await
-                    .unwrap_or_else(|_err| "".into())
-                    .to_string();
+        let resources = ctx.project.resource_list().await;
+        let mut descriptors = Vec::new();
+        for resource_id in resources {
+            let path: String = ctx
+                .project
+                .resource_name(resource_id)
+                .await
+                .unwrap_or_else(|_err| "".into())
+                .to_string();
 
-                // Basic Filter
-                if !request.search_token.is_empty() {
-                    path.find(&request.search_token)?;
-                }
+            // Basic Filter
+            if !request.search_token.is_empty() && !path.contains(&request.search_token) {
+                continue;
+            }
 
-                if let Ok(kind) = ctx.project.resource_type(resource_id).await {
-                    Some(ResourceDescription {
-                        id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                            kind,
-                            id: resource_id,
-                        }),
-                        path,
-                        r#type: kind.as_pretty().trim_start_matches("offline_").into(),
-                        version: 1,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<ResourceDescription>>();
+            if let Ok(kind) = ctx.project.resource_type(resource_id).await {
+                descriptors.push(ResourceDescription {
+                    id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
+                        kind,
+                        id: resource_id,
+                    }),
+                    path,
+                    r#type: kind.as_pretty().trim_start_matches("offline_").into(),
+                    version: 1,
+                });
+            }
+        }
 
         Ok(Response::new(SearchResourcesResponse {
             next_search_token: "".to_string(),
@@ -907,35 +901,27 @@ impl ResourceBrowser for ResourceBrowserRPC {
                     .map_err(|err| Status::internal(err.to_string()))?,
             );
         }
-        let assets = ctx
-            .project
-            .resource_list()
-            .await
-            .into_iter()
-            .filter_map(|resource_id| {
-                if let Ok(kind) = ctx.project.resource_type(resource_id).await {
-                    if asset_types.contains(&kind) {
-                        let path: String = ctx
-                            .project
-                            .resource_name(resource_id)
-                            .await
-                            .unwrap_or_else(|_err| "".into())
-                            .to_string();
-                        Some(Asset {
-                            id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                                kind,
-                                id: resource_id,
-                            }),
-                            asset_name: path,
-                        })
-                    } else {
-                        None
-                    }
-                } else {
-                    None
+        let resources = ctx.project.resource_list().await;
+        let mut assets = Vec::new();
+        for resource_id in resources {
+            if let Ok(kind) = ctx.project.resource_type(resource_id).await {
+                if asset_types.contains(&kind) {
+                    let path: String = ctx
+                        .project
+                        .resource_name(resource_id)
+                        .await
+                        .unwrap_or_else(|_err| "".into())
+                        .to_string();
+                    assets.push(Asset {
+                        id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
+                            kind,
+                            id: resource_id,
+                        }),
+                        asset_name: path,
+                    });
                 }
-            })
-            .collect::<Vec<Asset>>();
+            }
+        }
 
         Ok(Response::new(ListAssetsResponse { assets }))
     }
