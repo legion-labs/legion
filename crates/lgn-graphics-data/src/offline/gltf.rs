@@ -191,7 +191,7 @@ impl GltfFile {
             let normal = material.normal_texture().map(|info| {
                 let normal_sampler = info.texture().sampler();
                 if let Some(sampler) = &*material_sampler.borrow() {
-                    if samplers_differ(sampler, &normal_sampler) {
+                    if !samplers_equal(sampler, &normal_sampler) {
                         warn!("Material {} uses more than one sampler", material_name);
                     }
                 } else {
@@ -213,7 +213,7 @@ impl GltfFile {
                 .map(|info| {
                     let roughness_sampler = info.texture().sampler();
                     if let Some(sampler) = &*material_sampler.borrow() {
-                        if samplers_differ(sampler, &roughness_sampler) {
+                        if !samplers_equal(sampler, &roughness_sampler) {
                             warn!("Material {} uses more than one sampler", material_name);
                         }
                     } else {
@@ -233,7 +233,7 @@ impl GltfFile {
                 .map(|info| {
                     let metalness_sampler = info.texture().sampler();
                     if let Some(sampler) = &*material_sampler.borrow() {
-                        if samplers_differ(sampler, &metalness_sampler) {
+                        if !samplers_equal(sampler, &metalness_sampler) {
                             warn!("Material {} uses more than one sampler", material_name);
                         }
                     } else {
@@ -344,11 +344,11 @@ impl GltfFile {
     }
 }
 
-fn samplers_differ(sampler1: &texture::Sampler<'_>, sampler2: &texture::Sampler<'_>) -> bool {
-    sampler1.mag_filter() != sampler2.mag_filter()
-        || sampler1.min_filter() != sampler2.min_filter()
-        || sampler1.wrap_s() != sampler2.wrap_s()
-        || sampler1.wrap_t() != sampler2.wrap_t()
+fn samplers_equal(sampler1: &texture::Sampler<'_>, sampler2: &texture::Sampler<'_>) -> bool {
+    sampler1.mag_filter() == sampler2.mag_filter()
+        && sampler1.min_filter() == sampler2.min_filter()
+        && sampler1.wrap_s() == sampler2.wrap_s()
+        && sampler1.wrap_t() == sampler2.wrap_t()
 }
 
 fn build_sampler(sampler: &texture::Sampler<'_>) -> SamplerData {
