@@ -15,6 +15,7 @@ export class MetricAxisCollection {
     metrics: MetricState[]
   ): d3.ScaleLinear<number, number, never> {
     const bestAxis = this.getBestAxis(metrics);
+
     return bestAxis
       ? bestAxis.scale.range(range)
       : d3.scaleLinear().range(range).nice();

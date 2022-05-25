@@ -60,46 +60,46 @@
     <i class="bi bi-caret-{!show ? 'down' : 'up'}-fill" />
   </div>
   {#if show}
-    <div class="on-surface shadow-md border-2 main p-4 absolute z-10">
-      <div style="width:850px">
-        <div class="flex justify-between pb-4">
-          <div>
-            <input
-              type="text"
-              class="h-8 w-96 placeholder rounded-sm pl-2 surface"
-              placeholder={$t("metrics-search-placeholder")}
-              bind:value={$searchString}
+    <div class="main">
+      <div class="flex justify-between pb-4 flex-shrink-0">
+        <div>
+          <input
+            type="text"
+            class="h-8 w-96 placeholder rounded-sm pl-2 surface"
+            placeholder={$t("metrics-search-placeholder")}
+            bind:value={$searchString}
+          />
+        </div>
+        <div class="flex space-x-3 select-none">
+          <div class="text-gray-400">
+            <L10n
+              id="metrics-search-result-number"
+              variables={{ selectedMetricCount: $selectedMetricCount }}
             />
           </div>
-          <div class="flex space-x-3 select-none">
-            <div class="text-gray-400">
-              <L10n
-                id="metrics-search-result-number"
-                variables={{ selectedMetricCount: $selectedMetricCount }}
-              />
-            </div>
-            <div on:click={() => metricStore.clearSelection()}>
-              <i class="bi bi-x-circle" />
-              <L10n id="metrics-search-clear" />
-            </div>
+          <div on:click={() => metricStore.clearSelection()}>
+            <i class="bi bi-x-circle" />
+            <L10n id="metrics-search-clear" />
           </div>
         </div>
-        <div class="grid grid-cols-3">
-          <div class=" metric-scrollable ">
-            <div class="metric-category-header select-none">
-              <L10n id="metrics-recently-used" />
-            </div>
-            <div class="grid grid-cols-1 justify-items-start">
-              {#each $recentlyUsedMetrics as metric}
-                <MetricSelectionItem {metricStore} {metric} />
-              {/each}
-            </div>
+      </div>
+      <div class="metrics">
+        <div class="metric w-1/3">
+          <div class="metric-category-header">
+            <L10n id="metrics-recently-used" />
           </div>
-          <div class="col-span-2 metric-scrollable">
-            <div class="metric-category-header select-none">
-              <L10n id="metrics-all-metrics" />
-            </div>
-            <div class="grid grid-cols-2 justify-items-start">
+          <div class="metric-list">
+            {#each $recentlyUsedMetrics as metric}
+              <MetricSelectionItem {metricStore} {metric} />
+            {/each}
+          </div>
+        </div>
+        <div class="metric w-2/3">
+          <div class="metric-category-header">
+            <L10n id="metrics-all-metrics" />
+          </div>
+          <div class="metric-list">
+            <div class="columns">
               {#each $filteredMetrics as metric}
                 <MetricSelectionItem {metricStore} {metric} />
               {/each}
@@ -112,16 +112,27 @@
 </div>
 
 <style lang="postcss">
-  .metric-category-header {
-    @apply font-semibold text-left;
-  }
-
-  .metric-scrollable {
-    height: 200px;
-    overflow: auto;
-  }
-
   .main {
-    width: fit-content;
+    @apply on-surface shadow-xl px-2 py-4 absolute z-10 h-80 w-[60rem] flex flex-col;
+  }
+
+  .metrics {
+    @apply flex flex-row space-x-4 flex-grow overflow-hidden;
+  }
+
+  .metric {
+    @apply flex flex-col;
+  }
+
+  .metric-category-header {
+    @apply font-semibold text-left select-none h-10;
+  }
+
+  .metric-list {
+    @apply overflow-y-auto;
+  }
+
+  .columns {
+    @apply columns-2 gap-4;
   }
 </style>

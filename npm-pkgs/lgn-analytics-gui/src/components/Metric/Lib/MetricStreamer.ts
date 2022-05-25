@@ -4,24 +4,26 @@ import { get } from "svelte/store";
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 
 import { MetricState } from "./MetricState";
-import { getMetricStore } from "./MetricStore";
 import type { MetricStore } from "./MetricStore";
 
 export class MetricStreamer {
   currentMinMs = -Infinity;
   currentMaxMs = Infinity;
-  metricStore: MetricStore;
 
   #semaphore: Semaphore;
   #processId: string;
   #client: PerformanceAnalyticsClientImpl;
+  #metricStore: MetricStore;
 
-  constructor(client: PerformanceAnalyticsClientImpl, processId: string) {
+  constructor(
+    client: PerformanceAnalyticsClientImpl,
+    processId: string,
+    metricStore: MetricStore
+  ) {
     this.#processId = processId;
     this.#client = client;
     this.#semaphore = new Semaphore(8);
-
-    this.metricStore = getMetricStore();
+    this.#metricStore = metricStore;
   }
 
   async initialize() {
@@ -48,16 +50,19 @@ export class MetricStreamer {
     for (const blockManifest of blockManifests) {
       for (const metricDesc of blockManifest.metrics) {
         if (!metricStates.get(metricDesc.name)) {
-          metricStates.set(metricDesc.name, new MetricState(metricDesc));
+          metricStates.set(
+            metricDesc.name,
+            new MetricState(metricDesc, { selected: false })
+          );
         }
         const metricState = metricStates.get(metricDesc.name);
         metricState?.registerBlock(blockManifest);
       }
     }
 
-    this.metricStore.registerMetrics(Array.from(metricStates.values()));
-    this.currentMinMs = Math.min(...get(this.metricStore).map((s) => s.min));
-    this.currentMaxMs = Math.max(...get(this.metricStore).map((s) => s.max));
+    this.#metricStore.registerMetrics(Array.from(metricStates.values()));
+    this.currentMinMs = Math.min(...get(this.#metricStore).map((s) => s.min));
+    this.currentMaxMs = Math.max(...get(this.#metricStore).map((s) => s.max));
   }
 
   tick(lod: number, min: number, max: number) {
@@ -67,7 +72,7 @@ export class MetricStreamer {
   }
 
   fetchSelectedMetrics(lod: number) {
-    const metrics = get(this.metricStore).filter((m) => m.canBeDisplayed());
+    const metrics = get(this.#metricStore).filter((m) => m.canBeDisplayed());
 
     const missingBlocks = metrics.map((m) => {
       return {
@@ -96,7 +101,7 @@ export class MetricStreamer {
           });
           // TODO: Is this really correct? It seems the value is guaranteed not to be undefined
           if (blockData !== undefined) {
-            this.metricStore.registerBlock(
+            this.#metricStore.registerBlock(
               blockData,
               block.blockId,
               metric.name
