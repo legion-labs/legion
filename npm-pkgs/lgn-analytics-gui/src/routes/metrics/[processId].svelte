@@ -9,7 +9,10 @@
   import { getMetricColor } from "@/components/Metric/Lib/MetricColor";
   import type { MetricSlice } from "@/components/Metric/Lib/MetricSlice";
   import type { MetricState } from "@/components/Metric/Lib/MetricState";
-  import { getMetricStore } from "@/components/Metric/Lib/MetricStore";
+  import {
+    getLastMetricsUsedStore,
+    getMetricStore,
+  } from "@/components/Metric/Lib/MetricStore";
   import { MetricStreamer } from "@/components/Metric/Lib/MetricStreamer";
   import MetricDebugDisplay from "@/components/Metric/MetricDebugDisplay.svelte";
   import MetricLegendGroup from "@/components/Metric/MetricLegendGroup.svelte";
@@ -26,7 +29,11 @@
   let metricStreamer: MetricStreamer;
   let axisCollection: MetricAxisCollection;
 
-  const metricStore = getMetricStore();
+  const lastMetricsUsedStore = getLastMetricsUsedStore();
+
+  lastMetricsUsedStore.initProcess(processId);
+
+  const metricStore = getMetricStore(processId, lastMetricsUsedStore);
 
   const defaultLineWidth = 1;
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
@@ -130,7 +137,12 @@
   }
 
   async function fetchMetrics() {
-    metricStreamer = new MetricStreamer(client, processId, metricStore);
+    metricStreamer = new MetricStreamer(
+      client,
+      processId,
+      metricStore,
+      lastMetricsUsedStore
+    );
     await metricStreamer.initialize();
 
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;

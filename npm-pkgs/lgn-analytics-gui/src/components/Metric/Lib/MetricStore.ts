@@ -1,13 +1,23 @@
 import { derived, writable } from "svelte/store";
 
 import type { MetricBlockData } from "@lgn/proto-telemetry/dist/metric";
+import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
+import { connected } from "@lgn/web-client/src/lib/store";
 
 import type { MetricConfig } from "./MetricConfig";
 import type { MetricState } from "./MetricState";
 
+/** All the recently used metrics  */
 const localStorageKey = "metric-config";
 
+/** Last used metrics for each process ids */
+const recentlyUsedMetricStoreKey = "last-used-metric-store-key";
+
 export type MetricStore = ReturnType<typeof getMetricStore>;
+
+export type RecentlyUsedMetricStore = ReturnType<typeof getRecentlyUsedStore>;
+
+export type LastMetricsUsedStore = ReturnType<typeof getLastMetricsUsedStore>;
 
 function getMetricConfig(): MetricConfig[] {
   const jsonData = localStorage.getItem(localStorageKey);
@@ -29,8 +39,57 @@ export function getRecentlyUsedStore(metricStore: MetricStore) {
   });
 }
 
-export function getMetricStore() {
-  const { subscribe, set, update } = writable<MetricState[]>();
+export function getLastMetricsUsedStore() {
+  const store = connected<
+    typeof recentlyUsedMetricStoreKey,
+    Record<string, string[] | undefined>
+  >(new DefaultLocalStorage(), recentlyUsedMetricStoreKey, {});
+
+  return {
+    ...store,
+    initProcess(processId: string) {
+      store.update((processes) => {
+        const metrics = processes[processId];
+
+        return {
+          ...processes,
+          [processId]: Array.isArray(metrics) ? metrics : [],
+        };
+      });
+    },
+
+    toggleMetricForProcess(processId: string, metricName: string) {
+      store.update((processes) => {
+        const metrics = processes[processId];
+
+        if (!metrics) {
+          return {
+            ...processes,
+            [processId]: [metricName],
+          };
+        }
+
+        if (metrics.includes(metricName)) {
+          return {
+            ...processes,
+            [processId]: metrics.filter((metric) => metric !== metricName),
+          };
+        }
+
+        return {
+          ...processes,
+          [processId]: [...metrics, metricName],
+        };
+      });
+    },
+  };
+}
+
+export function getMetricStore(
+  processId: string,
+  lastMetricsUsedStore: LastMetricsUsedStore
+) {
+  const { subscribe, set, update } = writable<MetricState[]>([]);
 
   const registerMetrics = (metrics: MetricState[]) => {
     // Todo : apply the selected status using the local storage config
@@ -74,6 +133,8 @@ export function getMetricStore() {
   };
 
   const switchSelection = (name: string) => {
+    lastMetricsUsedStore.toggleMetricForProcess(processId, name);
+
     updateSerialize((s) => {
       const metric = s.find((d) => d.name === name);
       if (metric) {

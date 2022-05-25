@@ -4,7 +4,7 @@ import { get } from "svelte/store";
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 
 import { MetricState } from "./MetricState";
-import type { MetricStore } from "./MetricStore";
+import type { LastMetricsUsedStore, MetricStore } from "./MetricStore";
 
 export class MetricStreamer {
   currentMinMs = -Infinity;
@@ -14,19 +14,28 @@ export class MetricStreamer {
   #processId: string;
   #client: PerformanceAnalyticsClientImpl;
   #metricStore: MetricStore;
+  #lastMetricsUsedStore: LastMetricsUsedStore;
 
   constructor(
     client: PerformanceAnalyticsClientImpl,
     processId: string,
-    metricStore: MetricStore
+    metricStore: MetricStore,
+    lastMetricsUsedStore: LastMetricsUsedStore
   ) {
     this.#processId = processId;
     this.#client = client;
     this.#semaphore = new Semaphore(8);
     this.#metricStore = metricStore;
+    this.#lastMetricsUsedStore = lastMetricsUsedStore;
   }
 
   async initialize() {
+    const recentlyUsedMetricNames = get(this.#lastMetricsUsedStore)[
+      this.#processId
+    ];
+
+    console.log(recentlyUsedMetricNames);
+
     const blocks = (
       await this.#client.list_process_blocks({
         processId: this.#processId,
@@ -52,7 +61,9 @@ export class MetricStreamer {
         if (!metricStates.get(metricDesc.name)) {
           metricStates.set(
             metricDesc.name,
-            new MetricState(metricDesc, { selected: false })
+            new MetricState(metricDesc, {
+              selected: recentlyUsedMetricNames?.includes(metricDesc.name),
+            })
           );
         }
         const metricState = metricStates.get(metricDesc.name);
