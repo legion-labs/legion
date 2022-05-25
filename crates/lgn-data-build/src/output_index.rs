@@ -61,7 +61,7 @@ pub(crate) struct OutputIndex {
 }
 
 const MAX_CONNECTIONS: u32 = 10;
-const CONNECTION_TIMEOUT: Duration = Duration::from_secs(60*60); // One hour timeout, workaround for PoolTimedOut
+const CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
 
 impl OutputIndex {
     pub(crate) async fn create_new(db_uri: String) -> Result<Self, Error> {
