@@ -204,7 +204,7 @@ impl Workspace {
             .await
     }
 
-    async fn get_resources_for_tree_id(
+    pub async fn get_resources_for_tree_id(
         &self,
         tree_id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {

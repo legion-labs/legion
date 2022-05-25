@@ -33,7 +33,7 @@ pub async fn build_offline(
     repository_index: impl RepositoryIndex,
     repository_name: &RepositoryName,
     branch_name: &str,
-    source_control_content_provider: Provider,
+    source_control_content_provider: Arc<Provider>,
     incremental: bool,
 ) -> Project {
     let raw_dir = {

@@ -10,7 +10,7 @@ use std::{
 
 use async_recursion::async_recursion;
 use lgn_content_store::{
-    indexing::{IndexKey, ResourceIdentifier},
+    indexing::{IndexKey, ResourceIdentifier, TreeIdentifier},
     Provider,
 };
 use lgn_data_runtime::{
@@ -722,6 +722,17 @@ impl Project {
     pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
         self.workspace
             .get_resources()
+            .await
+            .map_err(Error::SourceControl)
+    }
+
+    /// Returns list of resources stored in the content store, for a specified content-store index identifier
+    pub async fn get_resources_for_index_id(
+        &self,
+        id: &TreeIdentifier,
+    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
+        self.workspace
+            .get_resources_for_tree_id(id)
             .await
             .map_err(Error::SourceControl)
     }
