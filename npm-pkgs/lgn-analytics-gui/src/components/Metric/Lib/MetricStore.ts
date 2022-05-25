@@ -89,15 +89,19 @@ export function getMetricStore(
   processId: string,
   lastMetricsUsedStore: LastMetricsUsedStore
 ) {
-  const { subscribe, set, update } = writable<MetricState[]>([]);
+  const metricsStore = writable<MetricState[]>([]);
+
+  const { subscribe } = derived(metricsStore, ($metrics) =>
+    $metrics.sort((metric1, metric2) => (metric1.name > metric2.name ? 1 : -1))
+  );
 
   const registerMetrics = (metrics: MetricState[]) => {
     // Todo : apply the selected status using the local storage config
-    set(metrics);
+    metricsStore.set(metrics);
   };
 
   const updateSerialize = (action: (state: MetricState[]) => void) => {
-    update((s) => {
+    metricsStore.update((s) => {
       action(s);
       const data = s.filter((s) => s.selected);
       const config: MetricConfig[] = [];
@@ -120,7 +124,7 @@ export function getMetricStore(
     blockId: string,
     metricName: string
   ) => {
-    update((metrics) => {
+    metricsStore.update((metrics) => {
       const m = metrics.find((m) => m.name === metricName);
       if (m) {
         const index = metrics.indexOf(m);
@@ -149,7 +153,7 @@ export function getMetricStore(
   };
 
   const clearSelection = () => {
-    update((s) => {
+    metricsStore.update((s) => {
       s.forEach((e) => {
         e.selected = false;
       });
@@ -158,7 +162,7 @@ export function getMetricStore(
   };
 
   const switchHidden = (name: string) => {
-    update((s) => {
+    metricsStore.update((s) => {
       const metric = s.find((d) => d.name === name);
       if (metric) {
         metric.hidden = !metric.hidden;
