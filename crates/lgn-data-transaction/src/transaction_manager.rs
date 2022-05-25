@@ -162,6 +162,12 @@ impl TransactionManager {
         // Reload runtime asset (just entity for now)
         for asset_id in changed_assets {
             // Try to reload, if it doesn't exist, load normally
+            let kind = ctx
+                .project
+                .resource_type(asset_id)
+                .await
+                .map_err(|err| Error::ResourceTypeLookup(asset_id, err))?;
+            let asset_id = ResourceTypeAndId { kind, id: asset_id };
             if asset_id.kind.as_pretty().starts_with("runtime_")
                 && !ctx.asset_registry.reload(asset_id)
             {
