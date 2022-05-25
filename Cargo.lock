@@ -181,6 +181,7 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "async-trait",
+ "blake3",
  "chrono",
  "clap 3.1.18",
  "datafusion",
