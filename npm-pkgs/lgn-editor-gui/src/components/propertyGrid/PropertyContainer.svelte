@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
+  import type { Writable } from "svelte/store";
 
   import type { PropertyUpdate } from "@/api";
   import { propertyIsBag } from "@/components/propertyGrid/lib/propertyGrid";
@@ -20,6 +21,7 @@
     input: PropertyUpdate;
     addVectorSubProperty: AddVectorSubPropertyEvent;
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
+    displayable: boolean;
   }>();
 
   export let propertyGridStore: PropertyGridStore;
@@ -35,6 +37,8 @@
 
   /** The property index (only used in vectors) */
   export let index: number;
+
+  export let search: Writable<string>;
 </script>
 
 <div>
@@ -43,6 +47,7 @@
       PropertyBag: <span class="text-red-500">{property.ptype}</span>
     </div> -->
     <PropertyBag
+      on:displayable
       on:input={(event) => dispatch("input", event.detail)}
       on:addVectorSubProperty={(event) =>
         dispatch("addVectorSubProperty", event.detail)}
@@ -51,17 +56,20 @@
       bind:parentProperty
       {property}
       {level}
+      {search}
       {pathParts}
       {propertyGridStore}
     />
   {:else}
     <PropertyUnit
+      on:displayable
       on:input={(event) => dispatch("input", event.detail)}
       on:removeVectorSubProperty={(event) =>
         dispatch("removeVectorSubProperty", event.detail)}
       {property}
       bind:parentProperty
       {pathParts}
+      {search}
       {index}
       {level}
     />

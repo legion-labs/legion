@@ -1,9 +1,15 @@
 <script lang="ts">
   import type { PropertyUpdate } from "@/api";
-  import type {
-    BagResourceProperty,
-    ResourceProperty,
+  import {
+    isPropertyDisplayable,
+    propertyIsVec,
+    type BagResourceProperty,
+    type ResourceProperty,
   } from "@/components/propertyGrid/lib/propertyGrid";
+  import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
+  import { createEventDispatcher } from "svelte";
+  import type { Writable } from "svelte/store";
 
   import PropertyInput from "./PropertyInput.svelte";
   import type { RemoveVectorSubPropertyEvent } from "./types";
@@ -11,7 +17,12 @@
   type $$Events = {
     input: CustomEvent<PropertyUpdate>;
     removeVectorSubProperty: CustomEvent<RemoveVectorSubPropertyEvent>;
+    displayable: CustomEvent<boolean>;
   };
+
+  const dispatch = createEventDispatcher<{
+    displayable: boolean;
+  }>();
 
   export let property: ResourceProperty;
 
@@ -25,6 +36,15 @@
 
   export let level: number;
 
+  export let search: Writable<string>;
+
+  let displayable = true;
+
+  $: if (parentProperty && !propertyIsVec(parentProperty)) {
+    displayable = isPropertyDisplayable(property.name, $search);
+    dispatch("displayable", displayable);
+  }
+
   function beautifyPropertyName(name: string) {
     const split = name.split("_");
 
@@ -36,30 +56,39 @@
   }
 </script>
 
-<div
-  class="property-unit-root"
-  style="padding-left:{level / 4}rem"
-  class:bg-surface-700={index % 2 === 0}
-  class:bg-surface-800={index % 2 !== 0}
->
-  {#if property.name}
-    <div class="property-name" title={property.name}>
-      {beautifyPropertyName(property.name)}
-    </div>
-  {/if}
-  <div class="property-input-container">
-    <div class="property-input">
-      <PropertyInput
-        on:input
-        on:removeVectorSubProperty
-        pathParts={property.name ? [...pathParts, property.name] : pathParts}
-        {property}
-        {index}
-        bind:parentProperty
-      />
+{#if displayable}
+  <div
+    class="property-unit-root"
+    style="padding-left:{level / 4}rem"
+    class:bg-surface-700={index % 2 === 0}
+    class:bg-surface-800={index % 2 !== 0}
+  >
+    {#if property.name}
+      <div class="property-name" title={property.name}>
+        {#if search}
+          <HighlightedText
+            pattern={stringToSafeRegExp($search, "gi")}
+            text={beautifyPropertyName(property.name)}
+          />
+        {:else}
+          {beautifyPropertyName(property.name)}
+        {/if}
+      </div>
+    {/if}
+    <div class="property-input-container">
+      <div class="property-input">
+        <PropertyInput
+          on:input
+          on:removeVectorSubProperty
+          pathParts={property.name ? [...pathParts, property.name] : pathParts}
+          {property}
+          {index}
+          bind:parentProperty
+        />
+      </div>
     </div>
   </div>
-</div>
+{/if}
 
 <style lang="postcss">
   .property-unit-root {

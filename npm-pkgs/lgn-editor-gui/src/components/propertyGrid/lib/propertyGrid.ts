@@ -661,3 +661,7 @@ export function getResourceType(
 
   return typeof resourceType === "string" ? resourceType : null;
 }
+
+export function isPropertyDisplayable(propertyName: string, value: string) {
+  return propertyName.toLocaleLowerCase().includes(value.toLocaleLowerCase());
+}

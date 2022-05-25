@@ -35,6 +35,7 @@
 
   export let layoutConfig: LayoutConfig;
   export let componentMap: Record<string, typeof SvelteComponentDev>;
+  export let componentBackgroundClass: string | null;
 
   let height: number;
   let width: number;
@@ -189,7 +190,7 @@
   <div class="virtual-layout-container" use:initializeLayout />
   {#each layoutComponents as c (c.container)}
     <div
-      class="component"
+      class={`component ${componentBackgroundClass}`}
       class:hidden={!c.visible}
       style:z-index={c.zIndex}
       style:left={`${c.rect.left}px`}
@@ -219,7 +220,7 @@
   }
 
   .component {
-    @apply bg-surface-700 absolute;
+    @apply absolute;
     overflow: visible;
   }
 

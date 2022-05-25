@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import type { Writable } from "svelte/store";
 
   import MenuBar from "@lgn/web-client/src/components/menu/MenuBar.svelte";
 
@@ -15,6 +16,7 @@
   const componentKey = "components";
 
   export let resources: ResourceWithProperties[];
+  export let search: Writable<string>;
 
   function onAddComponentClicked() {
     // Since we dont' support multi edition for now we pick the first entity
@@ -79,7 +81,7 @@
     </div>
   </div>
   <div class="search">
-    <input type="text" placeholder="Search property" />
+    <input type="text" placeholder="Search property" bind:value={$search} />
     <div class="icon">
       <Icon class="text-item-mid" icon="ic:sharp-search" />
     </div>

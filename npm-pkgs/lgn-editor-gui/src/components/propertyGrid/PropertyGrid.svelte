@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { writable } from "svelte/store";
+
   import log from "@lgn/web-client/src/lib/log";
 
   import {
@@ -31,6 +33,8 @@
   const propertyUpdateDebounceTimeout = 100;
 
   const propertyGridStore = createPropertyGridStore();
+
+  const search = writable<string>("");
 
   let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -131,7 +135,7 @@
 
 <div class="property-grid-root">
   {#if $currentResource}
-    <PropertyGridHeader resources={[$currentResource]} />
+    <PropertyGridHeader resources={[$currentResource]} {search} />
   {/if}
   {#if $currentResourceError}
     <div class="italic">An error occured</div>
@@ -151,6 +155,7 @@
             : [property.name]}
           {property}
           {index}
+          {search}
           {propertyGridStore}
           parentProperty={null}
         />

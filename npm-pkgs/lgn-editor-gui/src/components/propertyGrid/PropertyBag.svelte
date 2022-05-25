@@ -1,11 +1,15 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
   import { createEventDispatcher } from "svelte";
+  import type { Writable } from "svelte/store";
 
+  import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
 
   import type { PropertyUpdate } from "@/api";
   import {
+    isPropertyDisplayable,
     propertyIsDynComponent,
     propertyIsGroup,
     propertyIsOption,
@@ -23,10 +27,18 @@
     RemoveVectorSubPropertyEvent,
   } from "./types";
 
+  type $$Events = {
+    input: CustomEvent<PropertyUpdate>;
+    addVectorSubProperty: CustomEvent<AddVectorSubPropertyEvent>;
+    removeVectorSubProperty: CustomEvent<RemoveVectorSubPropertyEvent>;
+    displayable: CustomEvent<boolean>;
+  };
+
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;
     addVectorSubProperty: AddVectorSubPropertyEvent;
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
+    displayable: boolean;
   }>();
 
   // TODO: Optional property bags are disabled until they're properly supported
@@ -46,7 +58,11 @@
 
   export let propertyGridStore: PropertyGridStore;
 
+  export let search: Writable<string>;
+
   let removePromptId: symbol | null = null;
+
+  let childDisplayable = true;
 
   $: collapsed = propertyGridStore
     ? $propertyGridStore.get(propertyBagKey)
@@ -121,11 +137,33 @@
   function beautifyComponentName(name: string) {
     return name.replace("[", "").replace("]", "");
   }
+
+  let displayable = true;
+
+  function onChildDisplayable(e: boolean) {
+    if (e) {
+      childDisplayable = e;
+      dispatch("displayable", e);
+    }
+  }
+
+  $: {
+    childDisplayable = false;
+    displayable = isPropertyDisplayable(property.name, $search);
+
+    if (displayable) {
+      dispatch("displayable", displayable);
+    }
+  }
 </script>
 
 <svelte:window on:prompt-answer={removeComponent} />
 
-<div class="property-root">
+<div
+  class:flex={childDisplayable || displayable}
+  hidden={!(childDisplayable && displayable)}
+  class="property-root"
+>
   {#if property.name}
     <div
       on:click={(_) => propertyGridStore.switchCollapse(propertyBagKey)}
@@ -144,7 +182,14 @@
           }`}
         />
         <div class="truncate my-auto" title={property.ptype}>
-          {beautifyComponentName(property.name)}
+          {#if search}
+            <HighlightedText
+              pattern={stringToSafeRegExp($search, "gi")}
+              text={beautifyComponentName(property.name)}
+            />
+          {:else}
+            {beautifyComponentName(property.name)}
+          {/if}
         </div>
       </div>
       {#if parentProperty && propertyIsDynComponent(parentProperty)}
@@ -176,6 +221,7 @@
     {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
       {#if !subProperty.attributes.hidden}
         <PropertyContainer
+          on:displayable={(e) => onChildDisplayable(e.detail)}
           on:input
           on:addVectorSubProperty
           on:removeVectorSubProperty
@@ -185,6 +231,7 @@
           property={subProperty}
           bind:parentProperty={property}
           level={level + 1}
+          {search}
           {index}
           {propertyGridStore}
         />
@@ -195,7 +242,7 @@
 
 <style lang="postcss">
   .property-root {
-    @apply flex flex-col justify-between bg-surface-600;
+    @apply flex-col justify-between bg-surface-600;
   }
 
   .property-header {
