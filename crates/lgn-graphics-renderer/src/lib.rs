@@ -25,7 +25,7 @@ pub use labels::*;
 mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
-use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, ResourceUsage, SamplerDef};
+use lgn_graphics_api::ResourceUsage;
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_math::Vec2;
 pub use renderer::*;
@@ -86,7 +86,7 @@ use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 use crate::debug_display::DebugDisplay;
 
 use crate::resources::{
-    ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions,
+    ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions, SamplerManager,
     SharedResourcesManager,
 };
 
@@ -145,6 +145,11 @@ impl Plugin for RendererPlugin {
 
         let material_manager = MaterialManager::new();
 
+        let sampler_manager = SamplerManager::new(
+            renderer.device_context(),
+            &mut persistent_descriptor_set_manager,
+        );
+
         let shared_resources_manager =
             SharedResourcesManager::new(&renderer, &mut persistent_descriptor_set_manager);
 
@@ -197,6 +202,7 @@ impl Plugin for RendererPlugin {
         app.insert_resource(persistent_descriptor_set_manager);
         app.insert_resource(shared_resources_manager);
         app.insert_resource(texture_manager);
+        app.insert_resource(sampler_manager);
         app.insert_resource(material_manager);
         app.insert_resource(mesh_renderer);
         app.insert_resource(RendererOptions::default());
@@ -204,6 +210,7 @@ impl Plugin for RendererPlugin {
         // Init ecs
         TextureManager::init_ecs(app);
         MaterialManager::init_ecs(app);
+        SamplerManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
@@ -488,20 +495,6 @@ fn render_update(
             let va_table_address_buffer = instance_manager
                 .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
             frame_descriptor_set.set_va_table_address_buffer(&va_table_address_buffer);
-
-            let sampler_def = SamplerDef {
-                min_filter: FilterType::Linear,
-                mag_filter: FilterType::Linear,
-                mip_map_mode: MipMapMode::Linear,
-                address_mode_u: AddressMode::ClampToEdge,
-                address_mode_v: AddressMode::ClampToEdge,
-                address_mode_w: AddressMode::ClampToEdge,
-                mip_lod_bias: 0.0,
-                max_anisotropy: 1.0,
-                compare_op: CompareOp::LessOrEqual,
-            };
-            let material_sampler = renderer.device_context().create_sampler(&sampler_def);
-            frame_descriptor_set.set_material_sampler(&material_sampler);
 
             let frame_descriptor_set_handle = render_context.write_descriptor_set(
                 cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
