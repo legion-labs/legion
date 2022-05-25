@@ -118,7 +118,6 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
 #[tokio::test]
 async fn test_resource_browser() -> anyhow::Result<()> {
     //let project_dir = std::path::PathBuf::from("d:/local_db/");
-    //std::fs::remove_dir_all(&project_dir.join("offline")).ok();
     //std::fs::remove_dir_all(&project_dir.join("remote")).ok();
     let project_dir = tempfile::tempdir().unwrap();
 

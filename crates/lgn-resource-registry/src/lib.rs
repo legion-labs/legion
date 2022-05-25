@@ -41,7 +41,6 @@ impl Plugin for ResourceRegistryPlugin {
                 .after(AssetRegistryScheduling::AssetRegistryCreated)
                 .label(ResourceRegistryPluginScheduling::ResourceRegistryCreated),
         );
-        app.add_startup_system(register_resource_dir);
     }
 }
 
@@ -129,13 +128,4 @@ impl ResourceRegistryPlugin {
 
         world.insert_resource(transaction_manager);
     }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn register_resource_dir(
-    settings: Res<'_, ResourceRegistrySettings>,
-    mut registry: NonSendMut<'_, lgn_data_runtime::AssetRegistryOptions>,
-) {
-    let project_dir = settings.root_folder.join("offline");
-    registry.add_device_dir_mut(project_dir);
 }

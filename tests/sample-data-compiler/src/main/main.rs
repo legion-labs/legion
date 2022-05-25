@@ -143,7 +143,6 @@ fn clean_folders(project_dir: &str) {
     let builddb_dir = workspace_dir().join("target").join("build_db");
 
     delete("VERSION", false);
-    delete("offline", true);
     delete("runtime", true);
     delete("temp", true);
     delete(builddb_dir.as_os_str().to_str().unwrap(), true);

@@ -72,7 +72,7 @@ pub async fn build_offline(
         };
 
         let generated_checksum = {
-            if !root_folder.as_ref().join("offline").exists() {
+            if !root_folder.as_ref().join("VERSION").exists() {
                 None
             } else {
                 std::fs::read_to_string(root_folder.as_ref().join("VERSION"))
@@ -88,8 +88,6 @@ pub async fn build_offline(
         }
 
         if !incremental {
-            std::fs::remove_dir_all(root_folder.as_ref().join("offline")).unwrap_or_default();
-
             std::fs::remove_file(root_folder.as_ref().join("VERSION")).unwrap_or_default();
         }
 

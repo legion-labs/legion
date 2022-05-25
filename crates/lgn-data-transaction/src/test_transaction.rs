@@ -151,7 +151,6 @@ async fn test_transaction_system() -> Result<(), Error> {
     let resource_dir = project.resource_dir();
 
     let mut asset_registry = AssetRegistryOptions::new()
-        .add_device_dir(&resource_dir)
         .add_device_cas_with_empty_manifest(Arc::clone(&data_content_provider))
         .await
         .add_loader::<TestEntity>();
