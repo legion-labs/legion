@@ -79,6 +79,7 @@ pub use reference::Reference;
 
 mod asset;
 pub use asset::*;
+pub mod manifest;
 
 mod component;
 pub use component::*;
