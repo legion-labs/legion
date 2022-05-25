@@ -28,12 +28,14 @@ mod tests {
     use crate::databuild::CompileOutput;
     use crate::DataBuildOptions;
 
-    pub(crate) fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf, Provider, Arc<Provider>) {
+    pub(crate) fn setup_dir(
+        work_dir: &TempDir,
+    ) -> (PathBuf, PathBuf, Arc<Provider>, Arc<Provider>) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
         std::fs::create_dir_all(&output_dir).unwrap();
 
-        let source_control_content_provider = Provider::new_in_memory();
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
         let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (
@@ -260,7 +262,7 @@ mod tests {
     //
     async fn setup_project(
         project_dir: impl AsRef<Path>,
-        source_control_content_provider: Provider,
+        source_control_content_provider: Arc<Provider>,
     ) -> (Project, [ResourceTypeAndId; 5]) {
         let mut project =
             Project::create_with_remote_mock(project_dir.as_ref(), source_control_content_provider)

@@ -215,7 +215,7 @@ async fn setup_project(
     repository_index: impl RepositoryIndex,
     repository_name: &RepositoryName,
     branch_name: &str,
-    source_control_content_provider: Provider,
+    source_control_content_provider: Arc<Provider>,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
     let project = Project::open(

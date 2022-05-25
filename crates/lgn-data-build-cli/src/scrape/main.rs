@@ -327,10 +327,11 @@ async fn main() -> Result<(), String> {
     // try opening the configuration file first.
     //
     let config = Config::read(Config::default_path()).ok();
-    let source_control_content_provider =
+    let source_control_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?,
+    );
     let data_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await

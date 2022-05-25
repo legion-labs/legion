@@ -34,10 +34,11 @@ async fn build_device() {
         .create_repository(&repository_name)
         .await
         .unwrap();
-    let source_control_content_provider =
+    let source_control_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
-            .unwrap();
+            .unwrap(),
+    );
     let data_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
@@ -226,10 +227,11 @@ async fn no_intermediate_resource() {
         .create_repository(&repository_name)
         .await
         .unwrap();
-    let source_control_content_provider =
+    let source_control_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
-            .unwrap();
+            .unwrap(),
+    );
     let data_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await
@@ -340,10 +342,11 @@ async fn with_intermediate_resource() {
         .await
         .unwrap();
 
-    let source_control_content_provider =
+    let source_control_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
             .await
-            .unwrap();
+            .unwrap(),
+    );
     let data_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_volatile_provider()
             .await

@@ -12,12 +12,14 @@ mod tests {
 
     use crate::DataBuildOptions;
 
-    pub(crate) fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf, Provider, Arc<Provider>) {
+    pub(crate) fn setup_dir(
+        work_dir: &TempDir,
+    ) -> (PathBuf, PathBuf, Arc<Provider>, Arc<Provider>) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
         std::fs::create_dir_all(&output_dir).unwrap();
 
-        let source_control_content_provider = Provider::new_in_memory();
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
         let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (

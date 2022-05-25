@@ -16,7 +16,7 @@ mod tests {
         PathBuf,
         PathBuf,
         LocalRepositoryIndex,
-        Provider,
+        Arc<Provider>,
         Arc<Provider>,
     ) {
         let project_dir = work_dir.path();
@@ -26,7 +26,7 @@ mod tests {
         let repository_index = LocalRepositoryIndex::new(project_dir.join("remote"))
             .await
             .unwrap();
-        let source_control_content_provider = Provider::new_in_memory();
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
         let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (

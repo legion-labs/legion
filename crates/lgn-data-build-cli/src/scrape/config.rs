@@ -41,7 +41,7 @@ impl Config {
         &self,
         repository_name: &RepositoryName,
         branch_name: &str,
-        source_control_content_provider: Provider,
+        source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,
         repository_index: impl RepositoryIndex,
     ) -> Result<(DataBuild, Project), String> {

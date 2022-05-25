@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
@@ -71,7 +71,7 @@ impl Workspace {
     pub async fn init(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        provider: Provider,
+        provider: Arc<Provider>,
     ) -> Result<Self> {
         let workspace = Self::new(repository_index, repository_name, provider, "main").await?;
 
@@ -89,7 +89,7 @@ impl Workspace {
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
         branch_name: &str,
-        provider: Provider,
+        provider: Arc<Provider>,
     ) -> Result<Self> {
         Self::new(repository_index, repository_name, provider, branch_name).await
     }
@@ -111,7 +111,7 @@ impl Workspace {
     async fn new(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        provider: Provider,
+        provider: Arc<Provider>,
         branch_name: &str,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
