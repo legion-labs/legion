@@ -193,6 +193,7 @@ importers:
     specifiers:
       '@fluent/bundle': ^0.17.1
       '@improbable-eng/grpc-web': ^0.15.0
+      '@lgn/config': workspace:^0.1.0
       '@lgn/proto-telemetry': ^0.1.0
       '@lgn/vite-plugin-ts-proto': workspace:^0.1.0
       '@lgn/web-client': ^0.1.0
@@ -272,6 +273,7 @@ importers:
       svelte-loading-spinners: 0.1.7
       uuid-random: 1.3.2
     devDependencies:
+      '@lgn/config': link:../../crates/lgn-config-node
       '@lgn/vite-plugin-ts-proto': link:../vite-plugin-ts-proto
       '@sveltejs/adapter-static': 1.0.0-next.29
       '@sveltejs/kit': 1.0.0-next.327_svelte@3.48.0
