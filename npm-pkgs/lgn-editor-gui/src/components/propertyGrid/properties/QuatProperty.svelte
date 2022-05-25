@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
-  import type { Quat } from "@/lib/propertyGrid";
+  import type { Quat } from "@/components/propertyGrid/lib/propertyGrid";
 
   import VectorNumberInput from "./VectorNumberInput.svelte";
 

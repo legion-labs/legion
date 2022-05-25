@@ -10,8 +10,8 @@
     propertyIsGroup,
     propertyIsOption,
     propertyIsVec,
-  } from "@/lib/propertyGrid";
-  import type { BagResourceProperty } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
+  import type { BagResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
   import { currentResource } from "@/orchestrators/currentResource";
   import modal from "@/stores/modal";
   import type { PropertyGridStore } from "@/stores/propertyGrid";
@@ -131,17 +131,19 @@
       on:click={(_) => propertyGridStore.switchCollapse(propertyBagKey)}
       class="property-header"
       style="padding-left:{level / 4}rem"
-      title={property.name}
     >
       <div>
         <Icon
           class="float-left"
           width={"1.5em"}
           icon={`ic:baseline-arrow-${
-            $propertyGridStore.get(propertyBagKey) ? "right" : "drop-down"
+            $propertyGridStore.get(propertyBagKey) !== undefined &&
+            $propertyGridStore.get(propertyBagKey) !== false
+              ? "right"
+              : "drop-down"
           }`}
         />
-        <div class="truncate my-auto">
+        <div class="truncate my-auto" title={property.ptype}>
           {beautifyComponentName(property.name)}
         </div>
       </div>
@@ -193,11 +195,11 @@
 
 <style lang="postcss">
   .property-root {
-    @apply flex flex-col justify-between;
+    @apply flex flex-col justify-between bg-surface-600;
   }
 
   .property-header {
-    @apply flex flex-row items-center justify-between pl-0 h-8 font-semibold rounded-sm cursor-pointer bg-surface-900;
+    @apply flex flex-row items-center justify-between pl-0 h-8 font-semibold rounded-sm cursor-pointer;
   }
 
   .optional {

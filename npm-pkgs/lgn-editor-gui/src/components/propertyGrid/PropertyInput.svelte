@@ -18,11 +18,11 @@
     propertyIsString,
     propertyIsVec,
     propertyIsVec3,
-  } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import type {
     BagResourceProperty,
     ResourceProperty,
-  } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import { currentResource } from "@/orchestrators/currentResource";
 
   import PropertyInputOption from "./PropertyInputOption.svelte";

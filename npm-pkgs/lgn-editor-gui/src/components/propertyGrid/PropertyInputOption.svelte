@@ -7,8 +7,8 @@
     extractOptionPType,
     propertyIsOption,
     ptypeBelongsToPrimitive,
-  } from "@/lib/propertyGrid";
-  import type { OptionResourceProperty } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
+  import type { OptionResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
 
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyInput from "./PropertyInput.svelte";

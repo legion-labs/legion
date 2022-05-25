@@ -2,11 +2,11 @@
   import { createEventDispatcher } from "svelte";
 
   import type { PropertyUpdate } from "@/api";
-  import { propertyIsBag } from "@/lib/propertyGrid";
+  import { propertyIsBag } from "@/components/propertyGrid/lib/propertyGrid";
   import type {
     BagResourceProperty,
     ResourceProperty,
-  } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import type { PropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyBag from "./PropertyBag.svelte";
@@ -39,6 +39,9 @@
 
 <div>
   {#if propertyIsBag(property)}
+    <!-- <div>
+      PropertyBag: <span class="text-red-500">{property.ptype}</span>
+    </div> -->
     <PropertyBag
       on:input={(event) => dispatch("input", event.detail)}
       on:addVectorSubProperty={(event) =>

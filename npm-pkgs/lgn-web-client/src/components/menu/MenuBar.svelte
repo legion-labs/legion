@@ -6,8 +6,9 @@
   const menuContext = getMenuContextStore();
 
   export let items: MenuItemDescription[] = [];
+  export let enableHover = true;
 </script>
 
 {#each items as menu (menu.title)}
-  <MenuRoot desc={menu} {menuContext} />
+  <MenuRoot desc={menu} {menuContext} {enableHover} />
 {/each}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
-  import type { Vec3 } from "@/lib/propertyGrid";
+  import type { Vec3 } from "@/components/propertyGrid/lib/propertyGrid";
 
   import VectorNumberInput from "./VectorNumberInput.svelte";
 

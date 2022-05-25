@@ -3,7 +3,7 @@
   import type {
     BagResourceProperty,
     ResourceProperty,
-  } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
 
   import PropertyInput from "./PropertyInput.svelte";
   import type { RemoveVectorSubPropertyEvent } from "./types";

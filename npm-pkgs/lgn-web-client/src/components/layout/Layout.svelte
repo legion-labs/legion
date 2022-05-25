@@ -219,9 +219,8 @@
   }
 
   .component {
-    @apply bg-gray-700;
-    overflow: auto;
-    position: absolute;
+    @apply bg-surface-700 absolute;
+    overflow: visible;
   }
 
   .component.hidden {

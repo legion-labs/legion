@@ -24,7 +24,7 @@ import {
   propertyIsVec,
   propertyIsVec3,
   ptypeBelongsToPrimitive,
-} from "@/lib/propertyGrid";
+} from "@/components/propertyGrid/lib/propertyGrid";
 import propertiesResponse from "@/resources/propertiesResponse.json";
 
 describe("formatProperties", () => {

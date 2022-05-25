@@ -7,8 +7,11 @@
     updateResourceProperties,
   } from "@/api";
   import type { PropertyUpdate } from "@/api";
+  import {
+    propertyIsDynComponent,
+    propertyIsGroup,
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import CreateComponentModal from "@/components/resources/CreateComponentModal.svelte";
-  import { propertyIsDynComponent, propertyIsGroup } from "@/lib/propertyGrid";
   import {
     currentResource,
     currentResourceError,
@@ -17,6 +20,7 @@
   import { createPropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyContainer from "./PropertyContainer.svelte";
+  import PropertyGridHeader from "./PropertyGridHeader.svelte";
   import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
@@ -31,6 +35,8 @@
   let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
   let propertyUpdates: PropertyUpdate[] = [];
+
+  // $: currentResource && console.log($currentResource);
 
   function onInput({ detail: propertyUpdate }: CustomEvent<PropertyUpdate>) {
     if (updateTimeout) {
@@ -123,7 +129,10 @@
   }
 </script>
 
-<div class="h-full w-full overflow-y-auto overflow-x-hidden bg-surface-900">
+<div class="property-grid-root">
+  {#if $currentResource}
+    <PropertyGridHeader resources={[$currentResource]} />
+  {/if}
   {#if $currentResourceError}
     <div class="italic">An error occured</div>
   {:else if !$currentResource}
@@ -149,3 +158,9 @@
     {/each}
   {/if}
 </div>
+
+<style lang="postcss">
+  .property-grid-root {
+    @apply h-full w-full overflow-y-auto overflow-x-hidden bg-surface-900 flex flex-col gap-y-0.5;
+  }
+</style>

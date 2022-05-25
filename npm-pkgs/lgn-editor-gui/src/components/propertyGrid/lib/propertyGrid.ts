@@ -6,7 +6,7 @@ import type {
 import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import { filterMap } from "@lgn/web-client/src/lib/array";
 
-import type { Entries } from "./hierarchyTree";
+import type { Entries } from "@/lib/hierarchyTree";
 
 type SafeRawResourceProperty = Omit<
   RawResourceProperty,
@@ -254,6 +254,12 @@ export function propertyIsComponent(
     propertyIsOption,
     propertyIsGroup,
   ].some((predicate) => predicate(property));
+}
+
+export function propertiesAreEntities(property: ResourceWithProperties[]) {
+  return property.every(
+    (p) => p.description.type.localeCompare("entity") === 0
+  );
 }
 
 export function propertyIsDynComponent(
