@@ -246,7 +246,7 @@
   }
 
   .property-header {
-    @apply flex flex-row items-center justify-between pl-0 h-8 font-semibold rounded-sm cursor-pointer;
+    @apply flex flex-row items-center justify-between pl-0 h-8 font-semibold rounded-sm cursor-pointer border-t-[1px] border-content-max;
   }
 
   .optional {

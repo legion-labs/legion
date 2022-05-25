@@ -83,7 +83,7 @@
   <div class="search">
     <input type="text" placeholder="Search property" bind:value={$search} />
     <div class="icon">
-      <Icon class="text-item-mid" icon="ic:sharp-search" />
+      <Icon class="text-item-low" icon="ic:sharp-search" />
     </div>
   </div>
   {#if propertiesAreEntities(resources)}
@@ -109,7 +109,7 @@
   }
 
   .action {
-    @apply text-item-mid cursor-pointer self-center;
+    @apply text-item-low cursor-pointer self-center;
   }
 
   .search {
@@ -125,6 +125,6 @@
   }
 
   button {
-    @apply w-full bg-surface-500 rounded-sm border border-content-max text-item-mid;
+    @apply w-full bg-surface-500 rounded-sm border border-content-max text-item-low;
   }
 </style>

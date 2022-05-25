@@ -96,7 +96,7 @@
   }
 
   .property-name {
-    @apply my-auto truncate;
+    @apply my-auto truncate text-item-mid;
   }
 
   .property-input-container {

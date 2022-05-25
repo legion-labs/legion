@@ -74,7 +74,7 @@
   }
 
   .menu-dropdown {
-    @apply absolute top-7 rounded-b-sm shadow-lg shadow-gray-800 z-[10];
+    @apply absolute top-7 rounded-b-sm z-[10];
   }
 
   .menu-dropdown.electron {
@@ -82,6 +82,7 @@
   }
 
   .menu-dropdown-items {
+    box-shadow: 0px 2px 10px -2px rgba(0, 0, 0, 0.7);
     @apply bg-gray-800 py-1 rounded-b-sm absolute;
   }
 
