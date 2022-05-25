@@ -541,7 +541,7 @@ async fn main() -> anyhow::Result<()> {
 
                     let index: Pin<Box<dyn Future<Output = anyhow::Result<_>>>> =
                         Box::pin(async move {
-                            let mut provider = provider.begin_transaction_in_memory();
+                            let provider = provider.begin_transaction_in_memory();
                             let mut tree_id = provider.write_tree(&Tree::default()).await?;
 
                             let seq_len = sequence_length.try_into().unwrap();
@@ -559,13 +559,6 @@ async fn main() -> anyhow::Result<()> {
                                         .get(&bar_id)
                                         .unwrap()
                                         .set_position(indexed_count.try_into().unwrap());
-
-                                    provider = match provider.commit_transaction().await {
-                                        Ok(provider) => provider.begin_transaction_in_memory(),
-                                        Err((_, err)) => {
-                                            return Err(err.into());
-                                        }
-                                    };
                                 }
 
                                 if word.len() < seq_len {

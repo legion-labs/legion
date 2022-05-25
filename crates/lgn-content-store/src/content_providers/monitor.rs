@@ -179,6 +179,14 @@ impl<Inner: ContentWriter + Send + Sync> ContentWriter for ContentProviderMonito
             writer
         })
     }
+
+    fn supports_unwrite(&self) -> bool {
+        self.inner.supports_unwrite()
+    }
+
+    async fn unwrite_content(&self, id: &HashRef) -> Result<()> {
+        self.inner.unwrite_content(id).await
+    }
 }
 
 #[pin_project]

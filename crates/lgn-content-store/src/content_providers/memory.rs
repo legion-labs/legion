@@ -9,12 +9,10 @@ use super::{
     HashRef, Origin, Result, Uploader, UploaderImpl, WithOriginAndSize,
 };
 
-type RefCountedData = (usize, Vec<u8>);
-
 /// A `MemoryContentProvider` is a provider that stores content in RAM.
 #[derive(Default, Debug, Clone)]
 pub struct MemoryContentProvider {
-    content_map: Arc<RwLock<HashMap<HashRef, RefCountedData>>>,
+    content_map: Arc<RwLock<HashMap<HashRef, Vec<u8>>>>,
 }
 
 impl MemoryContentProvider {
@@ -39,7 +37,7 @@ impl ContentReader for MemoryContentProvider {
         let map = self.content_map.read().await;
 
         match map.get(id) {
-            Some((_, content)) => Ok(std::io::Cursor::new(content.clone())
+            Some(content) => Ok(std::io::Cursor::new(content.clone())
                 .with_origin_and_size(Origin::Memory {}, id.data_size())),
             None => Err(Error::HashRefNotFound(id.clone())),
         }
@@ -51,13 +49,26 @@ impl ContentWriter for MemoryContentProvider {
     async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
         async_span_scope!("MemoryContentProvider::get_content_writer");
 
-        if let Some((refcount, _)) = self.content_map.write().await.get_mut(id) {
-            *refcount += 1;
+        if self.content_map.read().await.get(id).is_some() {
             Err(Error::HashRefAlreadyExists(id.clone()))
         } else {
             Ok(Box::pin(MemoryUploader::new(MemoryUploaderImpl {
                 map: Arc::clone(&self.content_map),
             })))
+        }
+    }
+
+    fn supports_unwrite(&self) -> bool {
+        true
+    }
+
+    async fn unwrite_content(&self, id: &HashRef) -> Result<()> {
+        async_span_scope!("MemoryContentProvider::unwrite");
+
+        if self.content_map.write().await.remove(id).is_some() {
+            Ok(())
+        } else {
+            Err(Error::HashRefNotFound(id.clone()))
         }
     }
 }
@@ -66,7 +77,7 @@ type MemoryUploader = Uploader<MemoryUploaderImpl>;
 
 #[derive(Debug)]
 struct MemoryUploaderImpl {
-    map: Arc<RwLock<HashMap<HashRef, RefCountedData>>>,
+    map: Arc<RwLock<HashMap<HashRef, Vec<u8>>>>,
 }
 
 #[async_trait]
@@ -81,14 +92,12 @@ impl UploaderImpl for MemoryUploaderImpl {
         // Let's make sure we handle the case where a concurrent write created the value before us.
         //
         // In that case we must increment the refcount properly.
-        if let Some((refcount, content)) = map.get_mut(&id) {
+        if let Some(content) = map.get_mut(&id) {
             if content != &data {
                 return Err(Error::CorruptedHashRef(id));
             }
-
-            *refcount += 1;
         } else {
-            map.insert(id, (1, data));
+            map.insert(id, data);
         }
 
         Ok(())
