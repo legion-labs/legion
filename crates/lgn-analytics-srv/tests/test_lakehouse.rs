@@ -6,7 +6,7 @@ use datafusion::execution::context::SessionContext;
 use lgn_telemetry_sink::TelemetryGuard;
 
 #[tokio::test]
-//#[ignore]
+#[ignore]
 async fn test_lakehouse_query() -> Result<()> {
     let _telemetry_guard = TelemetryGuard::default().unwrap();
     let table_path = "d:/temp/cache/tables/3F5F22FF-445B-2156-96F6-3F8CA984968E/spans";
