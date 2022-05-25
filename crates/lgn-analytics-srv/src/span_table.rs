@@ -237,6 +237,7 @@ async fn make_delta_table(table_uri: &str) -> Result<DeltaTable> {
     Ok(table)
 }
 
+#[allow(clippy::cast_possible_wrap)]
 pub async fn make_span_partitions(
     pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
@@ -278,11 +279,22 @@ pub async fn make_span_partitions(
                     let mut rows = SpanRowGroup::new();
                     make_rows_from_tree(&root, &*next_id, &mut rows);
                     let filename = format!("spans_block_id={}.parquet", &block.block_id);
-                    let mut writer =
-                        SpanTableLocalWriter::create(&spans_table_path.join(&filename))?;
+                    let parquet_full_path = spans_table_path.join(&filename);
+                    let mut writer = SpanTableLocalWriter::create(&parquet_full_path)?;
                     writer.append(&rows)?;
                     writer.close()?;
-                    sender.send(filename)?;
+                    let attr = std::fs::metadata(&parquet_full_path)?; //that's not cool, we should already know how big the file is
+                    sender.send(deltalake::action::Action::add(deltalake::action::Add {
+                        path: filename,
+                        size: attr.len() as i64,
+                        partition_values: HashMap::new(),
+                        partition_values_parsed: None,
+                        modification_time: 0,
+                        data_change: false,
+                        stats: None,
+                        stats_parsed: None,
+                        tags: None,
+                    }))?;
                 }
                 Ok(()) as Result<(), anyhow::Error>
             }));
@@ -295,22 +307,7 @@ pub async fn make_span_partitions(
 
     let storage_uri = format!("{}", spans_table_path.display());
     let mut table = make_delta_table(&storage_uri).await?;
-    let actions: Vec<deltalake::action::Action> = receiver
-        .iter()
-        .map(|f| {
-            deltalake::action::Action::add(deltalake::action::Add {
-                path: f,
-                size: 0,
-                partition_values: HashMap::new(),
-                partition_values_parsed: None,
-                modification_time: 0,
-                data_change: false,
-                stats: None,
-                stats_parsed: None,
-                tags: None,
-            })
-        })
-        .collect();
+    let actions: Vec<deltalake::action::Action> = receiver.iter().collect();
     let mut transaction = table.create_transaction(None);
     transaction.add_actions(actions);
     transaction

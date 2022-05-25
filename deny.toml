@@ -201,6 +201,8 @@ skip = [
   { name = "heck", version = "=0.3.3" },
   # Introduced by parquet
   { name = "ordered-float", version = "=1.1.1" },
+  # Introduced by serde-value
+  { name = "ordered-float", version = "=2.10.0" },
 ] #{ name = "ansi_term", version = "=0.11.0" },
 # Similarly to `skip` allows you to skip certain crates during duplicate 
 # detection. Unlike skip, it also includes the entire tree of transitive 
@@ -226,7 +228,7 @@ allow-git = []
 
 [sources.allow-org]
 # 1 or more github.com organizations to allow git sources for
-github = ["legion-labs"]
+github = ["legion-labs", "apache", "delta-io"]
 # 1 or more gitlab.com organizations to allow git sources for
 #gitlab = [""]
 # 1 or more bitbucket.org organizations to allow git sources for
