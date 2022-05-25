@@ -205,6 +205,42 @@ pub trait ContentWriter: Display + Debug + Send + Sync {
     /// If the data already exists, `Error::HashRefAlreadyExists` is returned and the
     /// caller should consider that the write operation is not necessary.
     async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite>;
+
+    /// Query the provider for their support of unwritting.
+    ///
+    /// Unwriting is not exactly the same as deleting. The content-store is
+    /// designed as a persistent storage solution, in which deleting data is not
+    /// possible.
+    ///
+    /// However, many content provider implementations are designed to be
+    /// ephemeral caches in which data would not be persisted anyway. Such
+    /// providers are actually able to delete data, mainly to reduce processes
+    /// memory usage.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the provider supports unwriting. `false` otherwise. This
+    /// return value is not expected to change for a provider during its
+    /// lifetime. As such, implementors are encourage to only call this method
+    /// once and store the result.
+    fn supports_unwrite(&self) -> bool {
+        false
+    }
+
+    /// Unwrite the content referenced by the specified identifier.
+    ///
+    /// # Errors
+    ///
+    /// If the value does not exist, `Error::HashRefNotFound` is returned.
+    ///
+    /// If the provider does not support unwriting, this method will return
+    /// `Error::UnwriteNotSupported`.
+    ///
+    /// Implementors should first call `supports_unwrite` to check whether the
+    /// provider actually supports unwriting.
+    async fn unwrite_content(&self, _id: &HashRef) -> Result<()> {
+        Err(Error::UnwriteNotSupported)
+    }
 }
 
 #[async_trait]
@@ -282,6 +318,14 @@ impl<T: ContentWriter> ContentWriter for Arc<T> {
     async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
         self.as_ref().get_content_writer(id).await
     }
+
+    fn supports_unwrite(&self) -> bool {
+        self.as_ref().supports_unwrite()
+    }
+
+    async fn unwrite_content(&self, id: &HashRef) -> Result<()> {
+        self.as_ref().unwrite_content(id).await
+    }
 }
 
 #[async_trait]
@@ -312,6 +356,14 @@ impl<T: ContentWriter + ?Sized> ContentWriter for Box<T> {
     async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
         self.as_ref().get_content_writer(id).await
     }
+
+    fn supports_unwrite(&self) -> bool {
+        self.as_ref().supports_unwrite()
+    }
+
+    async fn unwrite_content(&self, id: &HashRef) -> Result<()> {
+        self.as_ref().unwrite_content(id).await
+    }
 }
 
 #[async_trait]
@@ -341,6 +393,14 @@ impl<T: ContentReader + ?Sized> ContentReader for &T {
 impl<T: ContentWriter + ?Sized> ContentWriter for &T {
     async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
         (**self).get_content_writer(id).await
+    }
+
+    fn supports_unwrite(&self) -> bool {
+        (**self).supports_unwrite()
+    }
+
+    async fn unwrite_content(&self, id: &HashRef) -> Result<()> {
+        (**self).unwrite_content(id).await
     }
 }
 

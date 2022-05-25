@@ -22,6 +22,7 @@ use crate::{
 /// A `Provider` is a provider that implements the small-content optimization or delegates to a specified provider.
 #[derive(Debug)]
 pub struct Provider {
+    content_provider_supports_unwrite: bool,
     content_provider: ContentProviderMonitor<Box<dyn ContentProvider>>,
     alias_provider: Box<dyn AliasProvider>,
     chunk_size: usize,
@@ -46,17 +47,27 @@ impl Provider {
     /// the in-memory alias provider.
     ///
     /// This is mostly useful for tests.
+    ///
+    /// # Errors
+    ///
+    /// If the provider instancation fails, an error is returned.
     pub fn new_in_memory() -> Self {
         Self::new(MemoryContentProvider::new(), MemoryAliasProvider::new())
     }
 
     /// Instantiate a new small content provider that wraps the specified
     /// provider using the default identifier size threshold.
+    ///
+    /// # Errors
+    ///
+    /// If the unwrite support for the specified content-provider cannot be
+    /// determined, an error is returned.
     pub fn new(
         content_provider: impl ContentProvider + 'static,
         alias_provider: impl AliasProvider + 'static,
     ) -> Self {
         Self {
+            content_provider_supports_unwrite: content_provider.supports_unwrite(),
             content_provider: ContentProviderMonitor::new(Box::new(content_provider)),
             alias_provider: Box::new(alias_provider),
             chunk_size: DEFAULT_CHUNK_SIZE, // 8MB
@@ -140,7 +151,10 @@ impl Provider {
     /// its parent provider.
     ///
     /// This is a helper method.
-    #[must_use]
+    ///
+    /// # Errors
+    ///
+    /// If the unwrite support cannot be determined, an error is returned.
     pub fn begin_transaction_in_memory(self: Arc<Self>) -> Self {
         self.begin_transaction(Self::new_in_memory())
     }
@@ -605,11 +619,39 @@ impl Provider {
 
     /// Unwrite the specified content from the content-store.
     ///
-    /// Unwriting doesn't actually delete anything, but it decrements the
-    /// reference count of the content which can avoid the content being copied
-    /// to a more persistent data-store.
-    pub async fn unwrite(&self, id: &Identifier) {
-        self.refs.lock().await.dec(id);
+    /// Unwriting may not always delete the content, but in any case, it
+    /// decrements the reference count of the content which can avoid the
+    /// content being copied to a more persistent data-store.
+    ///
+    /// If the configured content-provider supports unwritting, and the
+    /// reference count reaches 0, the content is unwritten.
+    #[async_recursion]
+    pub async fn unwrite(&self, id: &Identifier) -> Result<()> {
+        let must_unwrite_content =
+            self.refs.lock().await.dec(id) && self.content_provider_supports_unwrite;
+
+        match id {
+            Identifier::Data(_) | Identifier::Alias(_) => {}
+            Identifier::HashRef(id) => {
+                if must_unwrite_content {
+                    // The reference count reached 0: let's unwrite the content.
+                    self.content_provider.unwrite_content(id).await?;
+                }
+            }
+            Identifier::ManifestRef(_, id) => {
+                if must_unwrite_content {
+                    let manifest = self.read_manifest(id).await?;
+
+                    self.unwrite(id).await?;
+
+                    for id in manifest.identifiers() {
+                        self.unwrite(id).await?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Get the list of referenced identifiers.
@@ -1030,8 +1072,8 @@ mod tests {
         assert!(alias_id.is_alias());
 
         // Make sure reference counting works properly too.
-        transaction.unwrite(&double_ref_hashref_id).await;
-        transaction.unwrite(&unused_hashref_id).await;
+        transaction.unwrite(&double_ref_hashref_id).await.unwrap();
+        transaction.unwrite(&unused_hashref_id).await.unwrap();
 
         // Let's make sure all reads fall back to the parent.
         assert!(transaction.exists(&before_id).await.unwrap());

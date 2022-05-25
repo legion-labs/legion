@@ -28,15 +28,24 @@ impl<T: Eq + Hash + Clone> RefCounter<T> {
 
     /// Decrement the reference count for the specified value.
     ///
-    /// If the value is not referenced or has a reference count of zero, nothing
-    /// happens.
-    pub fn dec(&mut self, k: &T) {
+    /// # Returns
+    ///
+    /// If the value is referenced and still has a strictly positive reference
+    /// count after the decrement, `false` is returned.
+    ///
+    /// If the value is no longer referenced, `true` is returned. This just
+    /// happens the first time.
+    pub fn dec(&mut self, k: &T) -> bool {
         if let Some(v) = self.refs.get_mut(k) {
             if *v > 1 {
                 *v -= 1;
+                false
             } else {
                 self.refs.remove(k);
+                true
             }
+        } else {
+            false
         }
     }
 
@@ -74,8 +83,11 @@ mod tests {
         );
 
         rc.inc(&"apple");
-        rc.dec(&"apple");
-        rc.dec(&"banana");
+        assert!(!rc.dec(&"apple"));
+        assert!(rc.dec(&"banana"));
+
+        // A second time should not return `true`.
+        assert!(!rc.dec(&"banana"));
 
         assert_eq!(
             rc.referenced().into_iter().sorted().collect::<Vec<_>>(),
