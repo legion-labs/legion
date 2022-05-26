@@ -94,9 +94,12 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to create a project");
 
-    let mut asset_registry = AssetRegistryOptions::new()
-        .add_device_cas_with_empty_manifest(Arc::clone(&data_content_provider))
-        .await;
+    let empty_manifest_id =
+        AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_content_provider).await;
+    let mut asset_registry = AssetRegistryOptions::new().add_device_cas(
+        Arc::clone(&data_content_provider),
+        Arc::new(empty_manifest_id),
+    );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
