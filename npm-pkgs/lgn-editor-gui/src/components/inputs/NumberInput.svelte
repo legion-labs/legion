@@ -86,7 +86,7 @@
 <style lang="postcss">
   .input {
     /* rounded-r-sm should be exposed as a feature */
-    @apply bg-surface-900 outline-none pl-1 rounded-r-sm;
+    @apply bg-surface-max outline-none pl-1 rounded-r-sm;
   }
 
   .disabled {

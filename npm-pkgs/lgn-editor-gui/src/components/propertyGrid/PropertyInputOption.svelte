@@ -12,6 +12,7 @@
 
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyInput from "./PropertyInput.svelte";
+  import Icon from "@iconify/svelte";
 
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;
@@ -25,7 +26,7 @@
   /** The property index (only used in vectors) */
   export let index: number;
 
-  function setOptionProperty({ detail: isSome }: CustomEvent<boolean>) {
+  function setOptionProperty(optionEnabled: boolean) {
     // TODO: Send an input event that be can sent to the server
 
     // Not supposed to happen, we can consider casting
@@ -34,7 +35,7 @@
       return;
     }
 
-    if (isSome) {
+    if (optionEnabled) {
       const innerPType = extractOptionPType(property);
 
       // TODO: Handle non primitives
@@ -64,38 +65,22 @@
       {pathParts}
       {index}
     />
-    <div class="option-property-checkbox">
-      <Checkbox on:change={setOptionProperty} value={true} />
+    <div class="action-button" on:click={(_) => setOptionProperty(false)}>
+      <Icon icon="ic:baseline-subdirectory-arrow-left" />
     </div>
   </div>
 {:else}
-  <div class="option-property">
-    <div
-      class="cursor-help"
-      title="This property's value is optional and no value has been set yet"
-    >
-      <div class="cursor-help-icon">?</div>
-    </div>
-    <div class="option-property-checkbox">
-      <Checkbox on:change={setOptionProperty} value={false} />
-    </div>
+  <div class="action-button" on:click={(_) => setOptionProperty(true)}>
+    <Icon icon="ic:baseline-add-circle-outline" />
   </div>
 {/if}
 
 <style lang="postcss">
   .option-property {
-    @apply flex flex-row justify-between h-full w-full;
+    @apply flex flex-row justify-between gap-x-1;
   }
 
-  .option-property-checkbox {
-    @apply flex items-center flex-shrink-0 h-full pl-1;
-  }
-
-  .cursor-help {
-    @apply flex flex-row h-8 pt-1;
-  }
-
-  .cursor-help-icon {
-    @apply flex flex-row self-start justify-center items-center text-xs h-4 w-4 bg-gray-500 rounded-full;
+  .action-button {
+    @apply h-6 w-6 bg-surface-500 flex justify-center items-center cursor-pointer border-[1px] border-black;
   }
 </style>

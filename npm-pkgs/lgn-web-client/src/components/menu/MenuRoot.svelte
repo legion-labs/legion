@@ -16,6 +16,7 @@
 
   $: overflow = pageX + itemsWidth > window.innerWidth;
   $: selected = $menuContext.current === desc;
+  $: displayable = desc.children?.some((c) => c.visible) ?? false;
 
   function onClick(e: MouseEvent) {
     menuContext.onRootClick(desc);
@@ -24,6 +25,8 @@
 </script>
 
 <div
+  hidden={!displayable}
+  class:flex={displayable}
   class:bg-gray-400={enableHover && selected}
   class={`menu ${enableHover ? "hover:bg-gray-500" : ""}`}
   use:clickOutside
@@ -66,7 +69,7 @@
 
 <style>
   .menu {
-    @apply hidden sm:flex items-center cursor-pointer z-[10];
+    @apply items-center cursor-pointer z-[10];
   }
 
   .menu-title {

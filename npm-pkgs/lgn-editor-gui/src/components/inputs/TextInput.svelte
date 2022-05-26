@@ -135,9 +135,9 @@
     @apply text-gray-400;
   }
 
-  .root.default {
-    @apply h-6;
-  }
+  /* .root.default {
+    @apply h-8;
+  } */
 
   .root.sm {
     @apply h-6 text-sm;
