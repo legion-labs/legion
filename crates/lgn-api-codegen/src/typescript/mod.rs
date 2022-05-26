@@ -1,14 +1,8 @@
-#[cfg(feature = "typescript-format")]
-use std::sync::Arc;
 use std::{ffi::OsStr, path::Path};
 
 #[cfg(feature = "typescript-format")]
 use anyhow::anyhow;
 use askama::Template;
-#[cfg(feature = "typescript-format")]
-use deno_ast::{parse_module, MediaType as DenoAstMediaType, ParseParams, SourceTextInfo};
-#[cfg(feature = "typescript-format")]
-use dprint_plugin_typescript::{configuration::ConfigurationBuilder, format_parsed_source};
 
 #[cfg(feature = "typescript-format")]
 use crate::Error;
@@ -58,15 +52,19 @@ fn generate(api: &Api) -> Result<String> {
 
 #[cfg(feature = "typescript-format")]
 fn format(content: String) -> Result<String> {
-    let source = SourceTextInfo::new(Arc::new(content));
+    use deno_ast::parse_module;
+    use deno_ast::{MediaType as DenoAstMediaType, ParseParams, SourceTextInfo};
+    use dprint_plugin_typescript::{configuration::ConfigurationBuilder, format_parsed_source};
+
+    let text_info = SourceTextInfo::new(content.into());
 
     let parsed_source = parse_module(ParseParams {
         specifier: "".to_string(),
         media_type: DenoAstMediaType::TypeScript,
-        source,
         capture_tokens: true,
         maybe_syntax: None,
         scope_analysis: false,
+        text_info,
     })?;
 
     let configuration = ConfigurationBuilder::new().build();
