@@ -155,7 +155,7 @@ pub(crate) async fn execute_sandbox_compiler(input_msg: &str) -> Result<String, 
     deploy_files(&content_provider, &msg.files_to_package, out_folder.path()).await?;
 
     // Run
-    let output = msg.build_script.execute_with_cwd(&out_folder)?;
+    let output = msg.build_script.execute_with_cwd(&out_folder).await?;
 
     // Compress the outcome
     Ok(serde_json::to_string_pretty(&output)?)
