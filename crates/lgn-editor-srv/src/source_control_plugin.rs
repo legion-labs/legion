@@ -586,19 +586,14 @@ impl SourceControl for SourceControlRPC {
                 Status::internal(err.to_string())
             })?;
 
-            for (id, change_type) in changes {
-                if let Ok(kind) = ctx.project.resource_type(id).await {
-                    let resource_id = ResourceTypeAndId { kind, id };
-                    match change_type {
-                        ChangeType::Add | ChangeType::Edit => {
-                            resource_to_build.push(resource_id);
-                        }
-                        ChangeType::Delete => {
-                            resource_to_unload.push(resource_id);
-                        }
+            for (resource_id, change_type) in changes {
+                match change_type {
+                    ChangeType::Add | ChangeType::Edit => {
+                        resource_to_build.push(resource_id);
                     }
-                } else {
-                    error!("Failed to retrieve resource type for {}", id);
+                    ChangeType::Delete => {
+                        resource_to_unload.push(resource_id);
+                    }
                 }
             }
             (resource_to_build, resource_to_unload)
@@ -694,7 +689,7 @@ impl SourceControl for SourceControlRPC {
         let mut need_rebuild = Vec::new();
         for id in &request.ids {
             if let Ok(id) = ResourceTypeAndId::from_str(id) {
-                match ctx.project.revert_resource(id.id).await {
+                match ctx.project.revert_resource(id).await {
                     Ok(()) => need_rebuild.push(id),
                     Err(err) => lgn_tracing::error!("Failed to revert {}: {}", id, err),
                 }

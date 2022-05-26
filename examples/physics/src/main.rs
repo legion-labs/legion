@@ -417,7 +417,7 @@ async fn create_offline_entity(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let exists = project.exists(id).await;
+    let exists = project.exists(type_id).await;
     let handle = if exists {
         project
             .load_resource(type_id, resources)
@@ -476,7 +476,7 @@ async fn create_offline_model(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let exists = project.exists(id).await;
+    let exists = project.exists(type_id).await;
     let handle = if exists {
         project
             .load_resource(type_id, resources)

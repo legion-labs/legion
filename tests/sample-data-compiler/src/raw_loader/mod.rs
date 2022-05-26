@@ -95,8 +95,8 @@ pub async fn build_offline(
         if !incremental {
             let all_resources = project.resource_list().await;
             if !all_resources.is_empty() {
-                for id in all_resources {
-                    project.delete_resource(id).await.unwrap();
+                for type_id in all_resources {
+                    project.delete_resource(type_id).await.unwrap();
                 }
 
                 project.commit("cleanup resources").await.unwrap();
@@ -146,7 +146,7 @@ pub async fn build_offline(
                     if let Some(entity) = handle.instantiate(&resources) {
                         if let Some(parent_id) = &entity.parent {
                             let mut raw_name =
-                                project.raw_resource_name(resource_id.id).await.unwrap();
+                                project.raw_resource_name(resource_id).await.unwrap();
                             raw_name.replace_parent_info(Some(parent_id.source_resource()), None);
                             project
                                 .rename_resource(resource_id, &raw_name)
@@ -318,8 +318,8 @@ async fn build_resource_from_raw(
                     id: in_resources[i].1,
                 };
 
-                if project.exists(id.id).await {
-                    project.delete_resource(id.id).await.unwrap();
+                if project.exists(id).await {
+                    project.delete_resource(id).await.unwrap();
                 }
 
                 project

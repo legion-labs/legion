@@ -276,7 +276,7 @@ impl PropertyInspector for PropertyInspectorRPC {
                 id: ResourceTypeAndId::to_string(&resource_id),
                 path: ctx
                     .project
-                    .resource_name(resource_id.id)
+                    .resource_name(resource_id)
                     .await
                     .unwrap_or_else(|_err| "".into())
                     .to_string(),

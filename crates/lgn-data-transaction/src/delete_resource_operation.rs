@@ -40,7 +40,7 @@ impl TransactionOperation for DeleteResourceOperation {
 
                 self.old_resource_name = Some(
                     ctx.project
-                        .raw_resource_name(self.resource_id.id)
+                        .raw_resource_name(self.resource_id)
                         .await
                         .map_err(|err| Error::Project(self.resource_id, err))?,
                 );
@@ -48,7 +48,7 @@ impl TransactionOperation for DeleteResourceOperation {
             }
         }
         ctx.project
-            .delete_resource(self.resource_id.id)
+            .delete_resource(self.resource_id)
             .await
             .map_err(|err| Error::Project(self.resource_id, err))?;
         Ok(())

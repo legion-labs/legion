@@ -7,7 +7,7 @@ use std::{
 use hex::ToHex;
 use lgn_content_store::Provider;
 use lgn_data_offline::resource::Project;
-use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceTypeAndId};
+use lgn_data_runtime::{ResourcePathId, ResourceTypeAndId};
 use lgn_source_control::ContentId;
 use lgn_tracing::span_scope;
 use lgn_utils::{DefaultHasher, DefaultHasher256};
@@ -303,20 +303,17 @@ impl SourceIndex {
             let mut content = SourceContent::new(version);
 
             for (index_key, content_store_resource_id) in resources {
-                let resource_id = ResourceId::from_raw(index_key.into());
+                let resource_type_id: ResourceTypeAndId = index_key.into();
                 let resource_hash = {
                     let mut hasher = DefaultHasher256::new();
                     content_store_resource_id.hash(&mut hasher);
                     hasher.finish_256().encode_hex::<String>()
                 };
 
-                let (kind, resource_deps) = project.resource_info(resource_id).await?;
+                let resource_deps = project.resource_dependencies(resource_type_id).await?;
 
                 content.update_resource(
-                    ResourcePathId::from(ResourceTypeAndId {
-                        id: resource_id,
-                        kind,
-                    }),
+                    ResourcePathId::from(resource_type_id),
                     Some(resource_hash),
                     resource_deps.clone(),
                 );

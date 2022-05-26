@@ -162,12 +162,6 @@ impl TransactionManager {
         // Reload runtime asset (just entity for now)
         for asset_id in changed_assets {
             // Try to reload, if it doesn't exist, load normally
-            let kind = ctx
-                .project
-                .resource_type(asset_id)
-                .await
-                .map_err(|err| Error::ResourceTypeLookup(asset_id, err))?;
-            let asset_id = ResourceTypeAndId { kind, id: asset_id };
             if asset_id.kind.as_pretty().starts_with("runtime_")
                 && !ctx.asset_registry.reload(asset_id)
             {
@@ -182,24 +176,16 @@ impl TransactionManager {
         let project = self.project.lock().await;
         let mut resource_handles = self.loaded_resource_handles.lock().await;
 
-        for resource_id in project.resource_list().await {
-            let kind = project.resource_type(resource_id).await.ok();
-
-            if kinds.iter().any(|k| Some(*k) == kind) {
-                let kind = kind.unwrap();
-                let type_id = ResourceTypeAndId {
-                    kind,
-                    id: resource_id,
-                };
-
-                if let Entry::Vacant(entry) = resource_handles.entry(type_id) {
+        for resource_type_id in project.resource_list().await {
+            if kinds.iter().any(|k| *k == resource_type_id.kind) {
+                if let Entry::Vacant(entry) = resource_handles.entry(resource_type_id) {
                     let start = std::time::Instant::now();
                     project
-                        .load_resource(type_id, &self.asset_registry)
+                        .load_resource(resource_type_id, &self.asset_registry)
                         .await
                         .map_or_else(
                             |err| {
-                                warn!("Failed to load {}: {}", type_id, err);
+                                warn!("Failed to load {}: {}", resource_type_id, err);
                             },
                             |handle| {
                                 entry.insert(handle);
@@ -207,8 +193,8 @@ impl TransactionManager {
                         );
                     info!(
                         "Loaded resource {} {} in ({:?})",
-                        resource_id,
-                        kind.as_pretty(),
+                        resource_type_id.id,
+                        resource_type_id.kind.as_pretty(),
                         start.elapsed(),
                     );
                 };

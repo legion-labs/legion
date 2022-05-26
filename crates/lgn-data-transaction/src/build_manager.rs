@@ -66,7 +66,7 @@ impl BuildManager {
         &mut self,
         resource_id: ResourceTypeAndId,
         project: &Project,
-    ) -> Result<(ResourcePathId, Vec<ResourceId>), Error> {
+    ) -> Result<(ResourcePathId, Vec<ResourceTypeAndId>), Error> {
         let start = std::time::Instant::now();
 
         let derived_id = Self::get_derived_id(resource_id);

@@ -4,7 +4,6 @@ use std::{
     // fs::{self, File, OpenOptions},
     // io::Seek,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::Arc,
 };
 
@@ -229,7 +228,7 @@ impl Project {
     */
 
     /// Return the list of local resources
-    pub async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
+    pub async fn local_resource_list(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
         /*
         let local_changes = self.workspace.get_staged_changes().await?;
 
@@ -245,7 +244,7 @@ impl Project {
         Err(Error::FileNotFound("todo".to_owned()))
     }
 
-    async fn remote_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
+    async fn remote_resource_list(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
         /*
             let tree = self.workspace.get_current_tree().await?;
 
@@ -264,7 +263,7 @@ impl Project {
     /// Returns an iterator on the list of resources.
     ///
     /// This method flattens the `remote` and `local` resources into one list.
-    pub async fn resource_list(&self) -> Vec<ResourceId> {
+    pub async fn resource_list(&self) -> Vec<ResourceTypeAndId> {
         let mut all = self.local_resource_list().await.unwrap();
         match self.remote_resource_list().await {
             Ok(remote) => all.extend(remote),
@@ -275,14 +274,11 @@ impl Project {
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
     pub async fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
-        for id in self.resource_list().await {
-            let metadata = self.read_meta(id).await;
+        for type_id in self.resource_list().await {
+            let metadata = self.read_meta(type_id).await;
             if let Ok(metadata) = metadata {
                 if &metadata.name == name {
-                    return Ok(ResourceTypeAndId {
-                        id,
-                        kind: metadata.type_id,
-                    });
+                    return Ok(type_id);
                 }
             }
         }
@@ -295,9 +291,9 @@ impl Project {
     }
 
     /// Checks if a resource is part of the project.
-    pub async fn exists(&self, id: ResourceId) -> bool {
+    pub async fn exists(&self, type_id: ResourceTypeAndId) -> bool {
         self.workspace
-            .resource_exists(&id.as_raw().into())
+            .resource_exists(&type_id.into())
             .await
             .unwrap()
     }
@@ -416,14 +412,14 @@ impl Project {
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub async fn delete_resource(&mut self, id: ResourceId) -> Result<(), Error> {
-        self.workspace.delete_resource(&id.as_raw().into()).await?;
+    pub async fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
+        self.workspace.delete_resource(&type_id.into()).await?;
 
         Ok(())
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub async fn revert_resource(&mut self, _id: ResourceId) -> Result<(), Error> {
+    pub async fn revert_resource(&mut self, _type_id: ResourceTypeAndId) -> Result<(), Error> {
         // let resource_path = self.resource_path(id);
         // let metadata_path = self.metadata_path(id);
 
@@ -506,26 +502,29 @@ impl Project {
     }
 
     /// Returns information about a given resource from its `.meta` file.
-    pub async fn resource_info(
+    pub async fn resource_dependencies(
         &self,
-        id: ResourceId,
-    ) -> Result<(ResourceType, Vec<ResourcePathId>), Error> {
-        let meta = self.read_meta(id).await?;
+        type_id: ResourceTypeAndId,
+    ) -> Result<Vec<ResourcePathId>, Error> {
+        let meta = self.read_meta(type_id).await?;
         let dependencies = meta.dependencies;
 
-        Ok((meta.type_id, dependencies))
+        Ok(dependencies)
     }
 
-    /// Returns type of the resource.
-    pub async fn resource_type(&self, id: ResourceId) -> Result<ResourceType, Error> {
-        let meta = self.read_meta(id).await?;
-        Ok(meta.type_id)
-    }
+    // /// Returns type of the resource.
+    // pub async fn resource_type(&self, id: ResourceId) -> Result<ResourceType, Error> {
+    //     let meta = self.read_meta(id).await?;
+    //     Ok(meta.type_id)
+    // }
 
     /// Returns the name of the resource from its `.meta` file.
     #[async_recursion]
-    pub async fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(id).await?;
+    pub async fn resource_name(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<ResourcePathName, Error> {
+        let meta = self.read_meta(type_id).await?;
         if let Some((resource_id, suffix)) = meta
             .name
             .as_str()
@@ -533,7 +532,7 @@ impl Project {
             .and_then(|v| v.split_once('/'))
         {
             if let Ok(type_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id) {
-                if let Ok(mut parent_path) = self.resource_name(type_id.id).await {
+                if let Ok(mut parent_path) = self.resource_name(type_id).await {
                     parent_path.push(suffix);
                     return Ok(parent_path);
                 }
@@ -593,14 +592,17 @@ impl Project {
     }
 
     /// Returns the raw name of the resource from its `.meta` file.
-    pub async fn raw_resource_name(&self, type_id: ResourceId) -> Result<ResourcePathName, Error> {
+    pub async fn raw_resource_name(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<ResourcePathName, Error> {
         let meta = self.read_meta(type_id).await?;
         Ok(meta.name)
     }
 
     /// Returns the type name of the resource from its `.meta` file.
-    pub async fn resource_type_name(&self, id: ResourceId) -> Result<String, Error> {
-        let meta = self.read_meta(id).await?;
+    pub async fn resource_type_name(&self, type_id: ResourceTypeAndId) -> Result<String, Error> {
+        let meta = self.read_meta(type_id).await?;
         Ok(meta.type_name)
     }
 
@@ -639,8 +641,8 @@ impl Project {
         Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
-    async fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
-        let resource_bytes = self.workspace.load_resource(&id.as_raw().into()).await?;
+    async fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
+        let resource_bytes = self.workspace.load_resource(&type_id.into()).await?;
 
         let offline_content: OfflineContent =
             bincode::deserialize(&resource_bytes).expect("failed to decode resource contents");
@@ -715,22 +717,24 @@ impl Project {
     }
 
     /// Pulls all changes from the origin.
-    pub async fn sync_latest(&mut self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
-        let (_, changed) = self.workspace.sync().await.map_err(Error::SourceControl)?;
+    pub async fn sync_latest(&mut self) -> Result<Vec<(ResourceTypeAndId, ChangeType)>, Error> {
+        // let (_, changed) = self.workspace.sync().await.map_err(Error::SourceControl)?;
 
-        let resources = changed
-            .iter()
-            .filter_map(|change| {
-                let id = change
-                    .canonical_path()
-                    .name()
-                    .filter(|filename| !filename.contains('.')) // skip .meta files
-                    .map(|filename| (ResourceId::from_str(filename).unwrap()));
+        // let resources = changed
+        //     .iter()
+        //     .filter_map(|change| {
+        //         let id = change
+        //             .canonical_path()
+        //             .name()
+        //             .filter(|filename| !filename.contains('.')) // skip .meta files
+        //             .map(|filename| (ResourceId::from_str(filename).unwrap()));
 
-                id.map(|id| (id, change.change_type().into()))
-            })
-            .collect::<Vec<_>>();
-        Ok(resources)
+        //         id.map(|id| (id, change.change_type().into()))
+        //     })
+        //     .collect::<Vec<_>>();
+        // Ok(resources)
+
+        Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
     /// Returns list of resources stored in the content store
@@ -1161,7 +1165,10 @@ mod tests {
             .await
             .unwrap();
 
-        let (_, dependencies) = project.resource_info(top_level_resource.id).await.unwrap();
+        let dependencies = project
+            .resource_dependencies(top_level_resource)
+            .await
+            .unwrap();
 
         assert_eq!(dependencies.len(), 2);
     }

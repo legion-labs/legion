@@ -31,7 +31,7 @@ impl TransactionOperation for ReparentResourceOperation {
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
         let raw_name = ctx
             .project
-            .raw_resource_name(self.resource_id.id)
+            .raw_resource_name(self.resource_id)
             .await
             .map_err(|err| Error::Project(self.resource_id, err))?;
 

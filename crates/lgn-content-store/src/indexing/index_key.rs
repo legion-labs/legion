@@ -297,6 +297,12 @@ impl From<IndexKey> for u64 {
     }
 }
 
+impl From<IndexKey> for u64 {
+    fn from(key: IndexKey) -> Self {
+        byteorder::BigEndian::read_u64(key.as_slice())
+    }
+}
+
 impl From<i64> for IndexKey {
     fn from(v: i64) -> Self {
         let mut buf = SmallVec::<[u8; 16]>::new();

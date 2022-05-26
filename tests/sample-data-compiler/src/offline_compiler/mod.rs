@@ -79,7 +79,7 @@ pub async fn build(
     if let Ok(resource_id) = project.find_resource(resource_name).await {
         let asset_path = find_derived_path(&ResourcePathId::from(resource_id));
         let source_name = project
-            .resource_name(asset_path.source_resource().id)
+            .resource_name(asset_path.source_resource())
             .await
             .ok()
             .unwrap();

@@ -52,7 +52,7 @@ impl TransactionOperation for CloneResourceOperation {
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
         let mut source_raw_name = ctx
             .project
-            .raw_resource_name(self.source_resource_id.id)
+            .raw_resource_name(self.source_resource_id)
             .await
             .map_err(|err| Error::Project(self.source_resource_id, err))?;
         source_raw_name.replace_parent_info(self.target_parent_id, None);
@@ -99,7 +99,7 @@ impl TransactionOperation for CloneResourceOperation {
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         ctx.loaded_resource_handles.remove(self.clone_resource_id);
         ctx.project
-            .delete_resource(self.clone_resource_id.id)
+            .delete_resource(self.clone_resource_id)
             .await
             .map_err(|err| Error::Project(self.clone_resource_id, err))?;
         Ok(())

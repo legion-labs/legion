@@ -80,16 +80,13 @@ impl IndexSnapshot {
         let mut entity_to_names = HashMap::new();
         let mut name_to_entity = HashMap::new();
 
-        for id in ctx.project.resource_list().await {
+        for res_id in ctx.project.resource_list().await {
             if let (Ok(raw_name), Ok(res_name)) = (
-                ctx.project.raw_resource_name(id).await,
-                ctx.project.resource_name(id).await,
+                ctx.project.raw_resource_name(res_id).await,
+                ctx.project.resource_name(res_id).await,
             ) {
-                let kind = ctx.project.resource_type(id).await.unwrap();
-                let res_id = ResourceTypeAndId { kind, id };
-
                 let mut parent_id = raw_name.extract_parent_info().0;
-                if parent_id.is_none() && kind == sample_data::offline::Entity::TYPE {
+                if parent_id.is_none() && res_id.kind == sample_data::offline::Entity::TYPE {
                     if let Ok(handle) = ctx.get_or_load(res_id).await {
                         if let Some(entity) =
                             handle.get::<sample_data::offline::Entity>(&ctx.asset_registry)
@@ -363,17 +360,16 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 continue;
             }
 
-            if let Ok(kind) = ctx.project.resource_type(resource_id).await {
-                descriptors.push(ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                        kind,
-                        id: resource_id,
-                    }),
-                    path,
-                    r#type: kind.as_pretty().trim_start_matches("offline_").into(),
-                    version: 1,
-                });
-            }
+            descriptors.push(ResourceDescription {
+                id: ResourceTypeAndId::to_string(&resource_id),
+                path,
+                r#type: resource_id
+                    .kind
+                    .as_pretty()
+                    .trim_start_matches("offline_")
+                    .into(),
+                version: 1,
+            });
         }
 
         Ok(Response::new(SearchResourcesResponse {
@@ -694,7 +690,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
             let guard = LockContext::new(&transaction_manager).await;
             guard
                 .project
-                .resource_name(clone_id.id)
+                .resource_name(*clone_id)
                 .await
                 .map_err(|err| Status::internal(err.to_string()))?
                 .as_str()
@@ -904,22 +900,17 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let resources = ctx.project.resource_list().await;
         let mut assets = Vec::new();
         for resource_id in resources {
-            if let Ok(kind) = ctx.project.resource_type(resource_id).await {
-                if asset_types.contains(&kind) {
-                    let path: String = ctx
-                        .project
-                        .resource_name(resource_id)
-                        .await
-                        .unwrap_or_else(|_err| "".into())
-                        .to_string();
-                    assets.push(Asset {
-                        id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                            kind,
-                            id: resource_id,
-                        }),
-                        asset_name: path,
-                    });
-                }
+            if asset_types.contains(&resource_id.kind) {
+                let path: String = ctx
+                    .project
+                    .resource_name(resource_id)
+                    .await
+                    .unwrap_or_else(|_err| "".into())
+                    .to_string();
+                assets.push(Asset {
+                    id: ResourceTypeAndId::to_string(&resource_id),
+                    asset_name: path,
+                });
             }
         }
 

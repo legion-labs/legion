@@ -451,7 +451,7 @@ async fn main() -> Result<(), String> {
                     let type_id = id
                         .parse::<ResourceTypeAndId>()
                         .map_err(std::string::ToString::to_string)?;
-                    if let Ok(name) = project.resource_name(type_id.id).await {
+                    if let Ok(name) = project.resource_name(type_id).await {
                         println!("{} = {}", name, type_id);
                     } else {
                         println!("None");
@@ -814,7 +814,7 @@ async fn pretty_name_from_pathid(
 ) -> String {
     let mut output_text = String::new();
 
-    if let Ok(source_name) = project.resource_name(rid.source_resource().id).await {
+    if let Ok(source_name) = project.resource_name(rid.source_resource()).await {
         output_text.push_str(&source_name.to_string());
     } else {
         output_text.push_str(&rid.source_resource().to_string());

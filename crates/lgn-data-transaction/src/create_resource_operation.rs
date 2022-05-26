@@ -51,7 +51,7 @@ impl TransactionOperation for CreateResourceOperation {
         };
 
         // Validate duplicate id/name
-        if ctx.project.exists(self.resource_id.id).await {
+        if ctx.project.exists(self.resource_id).await {
             return Err(Error::ResourceIdAlreadyExist(self.resource_id));
         }
 
@@ -90,7 +90,7 @@ impl TransactionOperation for CreateResourceOperation {
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         ctx.loaded_resource_handles.remove(self.resource_id);
         ctx.project
-            .delete_resource(self.resource_id.id)
+            .delete_resource(self.resource_id)
             .await
             .map_err(|err| Error::Project(self.resource_id, err))?;
         Ok(())
