@@ -134,7 +134,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let build_dir = project_dir.join("temp");
-    std::fs::create_dir_all(&build_dir).unwrap();
+    std::fs::create_dir(&build_dir).unwrap();
     let absolute_build_dir = {
         if !build_dir.is_absolute() {
             std::env::current_dir().unwrap().join(&build_dir)
@@ -152,7 +152,10 @@ async fn main() -> anyhow::Result<()> {
     let mut build_manager = BuildManager::new(&project, data_build, None).await.unwrap();
 
     for id in resource_ids {
-        let derived_result = build_manager.build_all_derived(id, &project).await.unwrap();
+        let derived_result = build_manager
+            .build_all_derived(id, &project, &data_content_provider)
+            .await
+            .unwrap();
         info!("{} -> {}", id, derived_result.0.resource_id());
     }
 

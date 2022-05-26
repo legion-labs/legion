@@ -89,17 +89,22 @@ async fn main() -> anyhow::Result<()> {
         absolute_project_dir,
         &repository_index,
         &repository_name,
-        source_control_content_provider,
+        Arc::clone(&source_control_content_provider),
     )
     .await
     .expect("failed to create a project");
 
     let empty_manifest_id =
         AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_content_provider).await;
-    let mut asset_registry = AssetRegistryOptions::new().add_device_cas(
-        Arc::clone(&data_content_provider),
-        Arc::new(empty_manifest_id),
-    );
+    let mut asset_registry = AssetRegistryOptions::new()
+        .add_device_cas(
+            Arc::clone(&data_content_provider),
+            Arc::new(empty_manifest_id),
+        )
+        .add_device_cas(
+            Arc::clone(&source_control_content_provider),
+            Arc::clone(project.offline_manifest_id()),
+        );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
@@ -146,7 +151,10 @@ async fn main() -> anyhow::Result<()> {
     let mut build_manager = BuildManager::new(&project, data_build, None).await.unwrap();
 
     for id in resource_ids {
-        let derived_result = build_manager.build_all_derived(id, &project).await.unwrap();
+        let derived_result = build_manager
+            .build_all_derived(id, &project, &data_content_provider)
+            .await
+            .unwrap();
         info!("{} -> {}", id, derived_result.0.resource_id());
     }
 
