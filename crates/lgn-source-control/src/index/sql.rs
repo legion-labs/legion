@@ -183,7 +183,7 @@ impl SqlRepositoryIndex {
         driver: &SqlDatabaseDriver,
     ) -> Result<()> {
         let sql: &str = &format!(
-        "CREATE TABLE `{}` (repository_id INTEGER NOT NULL, id INTEGER NOT NULL {} PRIMARY KEY, owner VARCHAR(255), message TEXT, main_index_tree_id CHAR(64), path_index_tree_id CHAR(64), date_time_utc VARCHAR(255), FOREIGN KEY (repository_id) REFERENCES `{}`(id) ON DELETE CASCADE);
+        "CREATE TABLE `{}` (repository_id INTEGER NOT NULL, id INTEGER NOT NULL {} PRIMARY KEY, owner VARCHAR(255), message TEXT, main_index_tree_id CHAR(64), path_index_tree_id CHAR(64), metadata_index_tree_id CHAR(64), date_time_utc VARCHAR(255), FOREIGN KEY (repository_id) REFERENCES `{}`(id) ON DELETE CASCADE);
          CREATE INDEX repository_id_commit on `{}`(repository_id, id);
          CREATE TABLE `{}` (id INTEGER NOT NULL, parent_id INTEGER NOT NULL);
          CREATE INDEX commit_parents_id on `{}`(id);
@@ -394,6 +394,7 @@ impl SqlIndex {
             whoami::username(),
             String::from("initial commit"),
             BTreeSet::new(),
+            empty_tree_id.clone(),
             empty_tree_id.clone(),
             empty_tree_id,
             BTreeSet::new(),
@@ -689,7 +690,7 @@ impl SqlIndex {
 
             result.push(
                 match sqlx::query(&format!(
-                    "SELECT owner, message, main_index_tree_id, path_index_tree_id, date_time_utc 
+                    "SELECT owner, message, main_index_tree_id, path_index_tree_id, metadata_index_tree_id, date_time_utc 
              FROM `{}`
              WHERE repository_id=?
              AND id=?;",
@@ -729,6 +730,9 @@ impl SqlIndex {
                             row.get::<String, &str>("path_index_tree_id")
                                 .parse()
                                 .unwrap(),
+                                row.get::<String, &str>("metadata_index_tree_id")
+                                .parse()
+                                .unwrap(),
                             parents,
                             timestamp,
                         )
@@ -756,7 +760,7 @@ impl SqlIndex {
         commit: &Commit,
     ) -> Result<CommitId> {
         let result = sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(?, NULL, ?, ?, ?, ?, ?);",
+            "INSERT INTO `{}` VALUES(?, NULL, ?, ?, ?, ?, ?, ?);",
             TABLE_COMMITS
         ))
         .bind(repository_id)
@@ -764,6 +768,7 @@ impl SqlIndex {
         .bind(commit.message.clone())
         .bind(commit.main_index_tree_id.to_string())
         .bind(commit.path_index_tree_id.to_string())
+        .bind(commit.metadata_index_tree_id.to_string())
         .bind(commit.timestamp.to_rfc3339())
         .execute(&mut *transaction)
         .await

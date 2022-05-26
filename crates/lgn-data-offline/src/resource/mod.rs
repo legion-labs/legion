@@ -8,6 +8,8 @@ mod project;
 
 pub use self::project::*;
 
+mod metadata;
+
 mod path_name;
 pub use self::path_name::*;
 

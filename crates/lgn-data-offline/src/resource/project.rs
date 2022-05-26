@@ -1,12 +1,11 @@
-use core::fmt;
 use std::{
     collections::HashMap,
-    // fs::{self, File, OpenOptions},
-    // io::Seek,
+    fmt,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
+use async_recursion::async_recursion;
 use lgn_content_store::{
     indexing::{IndexKey, ResourceIdentifier, TreeIdentifier},
     Provider,
@@ -22,7 +21,7 @@ use lgn_source_control::{
 use lgn_tracing::error;
 use thiserror::Error;
 
-use crate::resource::ResourcePathName;
+use crate::resource::{metadata::Metadata, ResourcePathName};
 
 /// A source-control-backed state of the project
 ///
@@ -274,14 +273,14 @@ impl Project {
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
     pub async fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
-        // for type_id in self.resource_list().await {
-        //     let metadata = self.read_meta(type_id).await;
-        //     if let Ok(metadata) = metadata {
-        //         if &metadata.name == name {
-        //             return Ok(type_id);
-        //         }
-        //     }
-        // }
+        for type_id in self.resource_list().await {
+            let metadata = self.read_meta(type_id).await;
+            if let Ok(metadata) = metadata {
+                if &metadata.name == name {
+                    return Ok(type_id);
+                }
+            }
+        }
         Err(Error::FileNotFound(name.to_string()))
     }
 
@@ -382,14 +381,23 @@ impl Project {
         registry: &AssetRegistry,
     ) -> Result<(), Error> {
         let mut content = std::io::Cursor::new(Vec::new());
-        let (_written, _build_dependencies) = registry
+        let (_written, dependencies) = registry
             .serialize_resource(type_id.kind, handle, &mut content)
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
+        let metadata = Metadata { name, dependencies };
+        let metadata_bytes = bincode::serialize(&metadata).expect("failed to encode dependencies");
+
         self.workspace
-            .add_resource(&type_id.into(), name.as_str(), &content.into_inner())
+            .add_resource(
+                &type_id.into(),
+                metadata.name.as_str(),
+                &content.into_inner(),
+                &metadata_bytes,
+            )
             .await?;
 
+        // update shared manifest-id, since content has possibly changed
         self.offline_manifest_id
             .write(self.workspace.get_main_index_id());
 
@@ -483,37 +491,33 @@ impl Project {
     /// Returns information about a given resource from its `.meta` file.
     pub async fn resource_dependencies(
         &self,
-        _type_id: ResourceTypeAndId,
+        type_id: ResourceTypeAndId,
     ) -> Result<Vec<ResourcePathId>, Error> {
-        // let meta = self.read_meta(type_id).await?;
-        // let dependencies = meta.dependencies;
-
-        // Ok(dependencies)
-        Ok(Vec::new())
+        let meta = self.read_meta(type_id).await?;
+        Ok(meta.dependencies)
     }
 
     /// Returns the name of the resource from its `.meta` file.
-    #[allow(clippy::unused_self)]
+    #[async_recursion]
     pub async fn resource_name(
         &self,
-        _type_id: ResourceTypeAndId,
+        type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        // let meta = self.read_meta(type_id).await?;
-        // if let Some((resource_id, suffix)) = meta
-        //     .name
-        //     .as_str()
-        //     .strip_prefix("/!")
-        //     .and_then(|v| v.split_once('/'))
-        // {
-        //     if let Ok(type_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id) {
-        //         if let Ok(mut parent_path) = self.resource_name(type_id).await {
-        //             parent_path.push(suffix);
-        //             return Ok(parent_path);
-        //         }
-        //     }
-        // }
-        // Ok(meta.name)
-        Err(Error::FileNotFound("not implemented".to_owned()))
+        let meta = self.read_meta(type_id).await?;
+        if let Some((resource_id, suffix)) = meta
+            .name
+            .as_str()
+            .strip_prefix("/!")
+            .and_then(|v| v.split_once('/'))
+        {
+            if let Ok(type_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id) {
+                if let Ok(mut parent_path) = self.resource_name(type_id).await {
+                    parent_path.push(suffix);
+                    return Ok(parent_path);
+                }
+            }
+        }
+        Ok(meta.name)
     }
 
     /// Returns the name of the resource from its `.meta` file.
@@ -569,11 +573,10 @@ impl Project {
     /// Returns the raw name of the resource from its `.meta` file.
     pub async fn raw_resource_name(
         &self,
-        _type_id: ResourceTypeAndId,
+        type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        // let meta = self.read_meta(type_id).await?;
-        // Ok(meta.name)
-        Err(Error::FileNotFound("not implemented".to_owned()))
+        let meta = self.read_meta(type_id).await?;
+        Ok(meta.name)
     }
 
     /// Returns the name of the repository that is used by the source control provider in the active workspace
@@ -602,6 +605,15 @@ impl Project {
         //     .map(|_e| ())
 
         Err(Error::FileNotFound("not implemented".to_owned()))
+    }
+
+    async fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
+        let metadata_bytes = self.workspace.load_metadata(&type_id.into()).await?;
+
+        let metadata =
+            bincode::deserialize(&metadata_bytes).expect("failed to decode metadata contents");
+
+        Ok(metadata)
     }
 
     /// Change the name of the resource.
