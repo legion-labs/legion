@@ -1,64 +1,88 @@
-use super::{errors::{Error, Result}, params, responses};
+use super::{errors::{Error, Result}, params, responses, requests};
 use http::{header::CONTENT_TYPE, HeaderValue};
-use lgn_online::codegen::{ByteArray, Extra};
+use hyper::{Body, Method, Request};
+use lgn_online::codegen::{Bytes, Context};
 
-pub struct Client {
-    inner: reqwest::Client,
+pub struct Client<C> {
+    inner: hyper::Client<C>,
     base_uri: String,
 }
 
-impl Client {
-    pub fn new(base_uri: &str) -> Self {
-        let inner = reqwest::Client::new();
-        let base_uri = base_uri.to_string();
-        Self { inner, base_uri }
+impl<C> Client<C> {
+    pub fn new(inner: hyper::Client<C>, base_uri: &str) -> Self {
+        Self { 
+            inner, 
+            base_uri: base_uri.to_string(),
+        }
     }
 }
 
 #[async_trait::async_trait]
-impl super::Api for Client {
+impl<C> super::Api for Client<C> 
+where
+    C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
 
         {% include "signature.rs.jinja" %}{
-            let uri = format!(
+            let mut uri = format!(
                 "{}{{ path|fmt_rust_path }}", 
                 self.base_uri
                 {% for parameter in route.parameters.path -%}
-                    , {{ parameter.name|snake_case }}
+                    , request.{{ parameter.name|snake_case }}
                 {% endfor -%}
-            );
+            );            
 
-            let mut headers = extra.headers;
+            {% if !route.parameters.query.is_empty() %}
+                let query = params::{{ route.name|pascal_case }}Query { 
+                    {% for parameter in route.parameters.query -%}
+                        {{ parameter.name|snake_case }}: request.{{ parameter.name|snake_case }},
+                    {% endfor -%}
+                };
+                let query_string = serde_qs::to_string(&query)?;
+                if !query_string.is_empty() {
+                    uri += &format!("?{}", query_string);
+                }        
+            {% endif -%}
+
+            let mut req = Request::builder()
+                .method(Method::{{ route.method|uppercase }})
+                .uri(uri)
             {% if let Some(request_body) = route.request_body %}
-                headers.insert(
+                {% match request_body.content.media_type %}
+                    {% when MediaType::Json %}
+                        .body(Body::from(serde_json::to_string(&request.body)?))
+                            .map_err(|err| Error::InvalidBody(err.to_string()))?;
+                    {% when MediaType::Bytes %}
+                        .body(Body::from(request.body)).map_err(|err| {
+                            Error::InvalidBody(err.to_string())
+                        })?;
+                {% endmatch %}
+            {% else %}
+                .body(Body::empty()).unwrap();
+            {% endif -%}
+
+            {% if let Some(request_body) = route.request_body -%}
+                req.headers_mut().insert(
                     CONTENT_TYPE,
                     HeaderValue::from_static("{{ request_body.content.media_type }}"),
                 );
-            {% endif %}
+            {% endif -%}
 
-            {% if !route.parameters.query.is_empty() -%}
-                let query = params::{{ route.name|pascal_case }}Query { 
-                    {% for parameter in route.parameters.query -%}
-                        {{ parameter.name|snake_case }},
-                    {% endfor -%}
-                 };                
-            {% endif %}
-
-            {% if !route.parameters.header.is_empty() -%}
+            {% if !route.parameters.header.is_empty() %}
                 {%- for parameter in route.parameters.header -%}
                     {% let param_name = "{}"|format(parameter.name|snake_case) %}
                     {% if parameter.required -%}
-                        headers.insert(
+                        req.headers_mut().insert(
                             "{{ parameter.name }}",
-                            HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
+                            HeaderValue::from_str(&request.{{ param_name }}).map_err(|err| {
                                 Error::InvalidHeader(format!("{{ parameter.name }}: {}", err))
                             })?,
-                        ); 
-                    {% else %}
-                        if let Some({{ param_name }}) = {{ param_name }} {
-                            headers.insert(
+                        );
+                    {% else -%}
+                        if let Some({{ param_name }}) = request.{{ param_name }} {
+                            req.headers_mut().insert(
                                 "{{ parameter.name }}",
                                 HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
                                     Error::InvalidHeader(format!("{{ parameter.name }}: {}", err))
@@ -66,28 +90,16 @@ impl super::Api for Client {
                             );
                         }
                     {% endif -%}                
-                {% endfor %}
+                {% endfor -%}
             {% endif -%}
-
-            let resp = self
-                .inner
-                .{{ route.method|lowercase }}(&uri)
-                .headers(headers)
-                {% if !route.parameters.query.is_empty() -%}
-                    .query(&query)
-                {% endif -%}
-                {% if let Some(request_body) = route.request_body %}
-                    {% match request_body.content.media_type %}
-                        {% when MediaType::Json %}
-                            .json(&body)
-                        {% when MediaType::Bytes %}
-                            .body(body)
-                    {% endmatch %}
-                {% endif -%}
-                .send()
-                .await?;
             
-            responses::{{ enum_name }}::from_reqwest(resp).await
+            let resp = self.inner.request(req).await?;
+
+            let (resp_parts, resp_body) = resp.into_parts();
+            let resp_status = resp_parts.status;
+            context.set_response(resp_parts.into());
+
+            responses::{{ enum_name }}::from_response(resp_status, resp_body).await
         }
     {% endfor %}
 {% endfor %}

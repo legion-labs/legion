@@ -1,6 +1,5 @@
 ---
 source: crates/lgn-api-codegen/src/typescript/mod.rs
-assertion_line: 86
 expression: content
 ---
 // Auto-generated file for Api: Test API : 1.0.0
@@ -39,6 +38,19 @@ export interface Api {
     
     
     body: CarModel,}): Promise<CreateCarResponse>;
+    
+
+    
+        
+        getCar(input: {
+    params: {
+        "space-id": string;
+        "car-id": bigint;
+        },
+    
+    
+    
+    }): Promise<GetCarResponse>;
     
 
     
@@ -188,6 +200,39 @@ export class Client implements Api {
         
             
 
+            async getCar(input: {
+    params: {
+        "space-id": string;
+        "car-id": bigint;
+        },
+    
+    
+    
+    }): Promise<GetCarResponse> {
+                const url = new URL(`${this.#baseUri}/spaces/${input.params["space-id"]}/car-service/cars/${input.params["car-id"]}`);
+
+                
+
+                const headers = new Headers();
+
+                
+
+
+                
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "GET",
+                    headers,
+                    
+                });
+
+                return GetCarResponse.fromResponse(response);
+            }
+        
+    
+        
+            
+
             async testBinary(input: {
     params: {
         "space-id": string;
@@ -273,13 +318,13 @@ export class Client implements Api {
             export type CarModel = {
                 
                     
-                    "id"?: bigint;
+                    "id": bigint;
                     
-                    "name"?: string;
+                    "name": string;
                     /** The car color. */
-                    "color"?: CarColorModel;
+                    "color": CarColorModel;
                     
-                    "is_new"?: boolean;
+                    "is_new": boolean;
                     
                     "extra"?: Blob;
             };
@@ -322,6 +367,10 @@ export class Client implements Api {
         
     
 
+        
+        
+    
+
 
 // ---------- Responses ----------
 
@@ -329,7 +378,7 @@ export class Client implements Api {
     
         
         
-        export type GetCarsResponse = (| { /** List of cars. */ type: "Ok", value: CarModel[] });
+        export type GetCarsResponse = (| { /** List of cars. */ type: "200", value: CarModel[] });
 
         export const GetCarsResponse = {
             async fromResponse(response: Response): Promise<GetCarsResponse> {
@@ -337,7 +386,7 @@ export class Client implements Api {
                     switch (response.status) {
                         
                             case 200: { 
-                                return {type: "Ok", value:
+                                return {type: "200", value:
                                                 await response.json()
                                             }
                             }default: {
@@ -350,7 +399,7 @@ export class Client implements Api {
     
         
         
-        export type CreateCarResponse = (| { /** Created. */ type: "Created", value: CarModel });
+        export type CreateCarResponse = (| { /** Created. */ type: "201", value: CarModel });
 
         export const CreateCarResponse = {
             async fromResponse(response: Response): Promise<CreateCarResponse> {
@@ -358,7 +407,7 @@ export class Client implements Api {
                     switch (response.status) {
                         
                             case 201: { 
-                                return {type: "Created", value:
+                                return {type: "201", value:
                                                 await response.json()
                                             }
                             }default: {
@@ -373,7 +422,33 @@ export class Client implements Api {
     
         
         
-        export type TestBinaryResponse = (| { /** Ok. */ type: "Ok", value: Blob });
+        export type GetCarResponse = (| { /** A car. */ type: "200", value: CarModel }| { /** Car not found. */ type: "404" });
+
+        export const GetCarResponse = {
+            async fromResponse(response: Response): Promise<GetCarResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:
+                                                await response.json()
+                                            }
+                            }
+                            case 404: { 
+                                return {type: "404", value:}
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+
+    
+        
+        
+        export type TestBinaryResponse = (| { /** Ok. */ type: "200", value: Blob });
 
         export const TestBinaryResponse = {
             async fromResponse(response: Response): Promise<TestBinaryResponse> {
@@ -381,7 +456,7 @@ export class Client implements Api {
                     switch (response.status) {
                         
                             case 200: { 
-                                return {type: "Ok", value:
+                                return {type: "200", value:
                                                 await response.blob()
                                         }
                             }default: {
@@ -396,7 +471,7 @@ export class Client implements Api {
     
         
         
-        export type TestOneOfResponse = (| { /** Ok. */ type: "Ok", value: TestOneOfResponseModel });
+        export type TestOneOfResponse = (| { /** Ok. */ type: "200", value: TestOneOfResponseModel });
 
         export const TestOneOfResponse = {
             async fromResponse(response: Response): Promise<TestOneOfResponse> {
@@ -404,7 +479,7 @@ export class Client implements Api {
                     switch (response.status) {
                         
                             case 200: { 
-                                return {type: "Ok", value:
+                                return {type: "200", value:
                                                 await response.json()
                                             }
                             }default: {

@@ -1,5 +1,6 @@
+use std::{iter::Chain, slice::Iter};
+
 use crate::{openapi_ext::OpenAPIPath, visitor, Error, Result};
-use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 
 #[derive(Debug, PartialEq)]
@@ -115,6 +116,22 @@ pub struct Parameters {
     pub cookie: Vec<Parameter>,
 }
 
+impl<'a> IntoIterator for &'a Parameters {
+    type Item = &'a Parameter;
+    type IntoIter = Chain<
+        Chain<Chain<Iter<'a, Parameter>, Iter<'a, Parameter>>, Iter<'a, Parameter>>,
+        Iter<'a, Parameter>,
+    >;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.path
+            .iter()
+            .chain(self.query.iter())
+            .chain(self.header.iter())
+            .chain(self.cookie.iter())
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct StatusCode(http::StatusCode);
 
@@ -126,13 +143,7 @@ impl From<http::StatusCode> for StatusCode {
 
 impl std::fmt::Display for StatusCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(
-            self.0
-                .canonical_reason()
-                .unwrap_or(&format!("Status{}", self.0.as_u16()))
-                .to_case(Case::Pascal)
-                .as_str(),
-        )
+        f.write_str(&format!("{}", self.0.as_u16()))
     }
 }
 
@@ -146,11 +157,18 @@ impl StatusCode {
 pub struct Response {
     pub description: String,
     pub content: Option<Content>,
+    pub headers: IndexMap<String, Header>,
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Content {
     pub media_type: MediaType,
+    pub type_: Type,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Header {
+    pub description: Option<String>,
     pub type_: Type,
 }
 

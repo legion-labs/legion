@@ -53,6 +53,22 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/Car"
+  /spaces/{space-id}/car-service/cars/{car-id}:
+    get:
+      description: Get car.
+      operationId: getCar
+      parameters:
+        - $ref: "#/components/parameters/SpaceId"
+        - $ref: "#/components/parameters/CarId"
+      responses:
+        "200":
+          description: A car.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Car"
+        "404":
+          description: Car not found.
   /spaces/{space-id}/car-service/test-binary:
     post:
       operationId: testBinary
@@ -94,6 +110,14 @@ components:
       required: true
       schema:
         type: string
+    CarId:
+      name: car-id
+      in: path
+      description: The car identifier.
+      required: true
+      schema:
+        type: integer
+        format: int64
   schemas:
     Cars:
       type: array
@@ -119,6 +143,11 @@ components:
         extra:
           type: string
           format: byte
+      required:
+        - id
+        - name
+        - color
+        - is_new
     Pet:
       type: object
       properties:

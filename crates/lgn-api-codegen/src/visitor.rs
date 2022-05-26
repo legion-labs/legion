@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use indexmap::IndexMap;
 
 use super::api::{
@@ -7,7 +5,7 @@ use super::api::{
     Type,
 };
 use crate::{
-    api::{Content, OneOf, Parameters},
+    api::{Content, Header, OneOf, Parameters},
     openapi_ext::{OpenAPIExt, OpenAPIPath},
     Error, Result,
 };
@@ -50,7 +48,7 @@ impl<'a> Visitor<'a> {
                 match schema_ref {
                     openapiv3::ReferenceOr::Item(schema) => {
                         // Mandatory call to generate all models during visit.
-                        self.resolve_type(&path, schema)?;
+                        self.resolve_schema(&path, schema)?;
                     }
                     openapiv3::ReferenceOr::Reference { reference } => {
                         return Err(Error::Unsupported(format!("reference: {}", reference)));
@@ -123,7 +121,7 @@ impl<'a> Visitor<'a> {
                 }
                 .map(|parameter| (parameter.parameter_data_ref().name.clone(), parameter))
             })
-            .collect::<Result<BTreeMap<_, _>>>()?;
+            .collect::<Result<IndexMap<_, _>>>()?;
 
         for parameter in raw_parameters.into_values() {
             match parameter {
@@ -180,7 +178,7 @@ impl<'a> Visitor<'a> {
                                     // Use the operation id and the body suffix to generate the type name.
                                     let mut path = OpenAPIPath::from(operation_name.as_str());
                                     path.push("body");
-                                    self.resolve_type(&path, schema)?
+                                    self.resolve_schema(&path, schema)?
                                 }
                                 openapiv3::ReferenceOr::Reference { reference } => {
                                     self.resolve_schema_ref(path, reference)?
@@ -232,7 +230,7 @@ impl<'a> Visitor<'a> {
                                 // Use the operation id and the response suffix to generate the type name.
                                 let mut path = OpenAPIPath::from(operation_name.as_str());
                                 path.push("response");
-                                self.resolve_type(&path, schema)?
+                                self.resolve_schema(&path, schema)?
                             }
                             openapiv3::ReferenceOr::Reference { reference } => {
                                 self.resolve_schema_ref(path, reference)?
@@ -263,6 +261,41 @@ impl<'a> Visitor<'a> {
                 }
             };
 
+            let mut headers = IndexMap::new();
+            for (header_name, header_ref) in &response.headers {
+                let header = match header_ref {
+                    openapiv3::ReferenceOr::Item(header) => header,
+                    openapiv3::ReferenceOr::Reference { reference } => {
+                        self.oas.find_header(reference)?.1
+                    }
+                };
+
+                headers.insert(
+                    header_name.clone(),
+                    Header {
+                        description: header.description.clone(),
+                        type_: match &header.format {
+                            openapiv3::ParameterSchemaOrContent::Schema(shema_ref) => {
+                                match &shema_ref {
+                                    openapiv3::ReferenceOr::Item(schema) => {
+                                        self.resolve_schema(path, schema)?
+                                    }
+                                    openapiv3::ReferenceOr::Reference { reference } => {
+                                        self.resolve_schema_ref(path, reference)?
+                                    }
+                                }
+                            }
+                            openapiv3::ParameterSchemaOrContent::Content(_) => {
+                                return Err(Error::Unsupported(format!(
+                                    "header content format: {}",
+                                    header_name
+                                )));
+                            }
+                        },
+                    },
+                );
+            }
+
             responses.insert(
                 status_code,
                 Response {
@@ -276,6 +309,7 @@ impl<'a> Visitor<'a> {
                         }),
                         None => None,
                     },
+                    headers,
                 },
             );
         }
@@ -306,7 +340,7 @@ impl<'a> Visitor<'a> {
     ) -> Result<Parameter> {
         let type_ = match &parameter_data.format {
             openapiv3::ParameterSchemaOrContent::Schema(schema_ref) => match schema_ref {
-                openapiv3::ReferenceOr::Item(schema) => self.resolve_type(path, schema)?,
+                openapiv3::ReferenceOr::Item(schema) => self.resolve_schema(path, schema)?,
                 openapiv3::ReferenceOr::Reference { reference } => {
                     self.resolve_schema_ref(path, reference)?
                 }
@@ -357,7 +391,7 @@ impl<'a> Visitor<'a> {
                 openapiv3::ReferenceOr::Item(schema) => Field {
                     name: property_name.to_string(),
                     description: schema.schema_data.description.clone(),
-                    type_: self.resolve_type(&path, schema)?,
+                    type_: self.resolve_schema(&path, schema)?,
                     required,
                 },
                 openapiv3::ReferenceOr::Reference { reference } => Field {
@@ -386,11 +420,15 @@ impl<'a> Visitor<'a> {
         ) {
             Ok(Type::Struct(schema_path.to_pascal_case()))
         } else {
-            self.resolve_type(path, schema)
+            self.resolve_schema(path, schema)
         }
     }
 
-    fn resolve_type(&mut self, path: &OpenAPIPath, schema: &'a openapiv3::Schema) -> Result<Type> {
+    fn resolve_schema(
+        &mut self,
+        path: &OpenAPIPath,
+        schema: &'a openapiv3::Schema,
+    ) -> Result<Type> {
         Ok(match &schema.schema_kind {
             openapiv3::SchemaKind::Type(type_) => match type_ {
                 openapiv3::Type::Boolean {} => Type::Boolean,
@@ -457,7 +495,7 @@ impl<'a> Visitor<'a> {
 
         let inner_schema_ref = array_type.items.as_ref().unwrap();
         let type_ = match inner_schema_ref {
-            openapiv3::ReferenceOr::Item(schema) => self.resolve_type(path, schema)?,
+            openapiv3::ReferenceOr::Item(schema) => self.resolve_schema(path, schema)?,
             openapiv3::ReferenceOr::Reference { reference } => {
                 self.resolve_schema_ref(path, reference)?
             }
@@ -533,7 +571,7 @@ impl<'a> Visitor<'a> {
             types: one_of
                 .iter()
                 .map(|schema_ref| match schema_ref {
-                    openapiv3::ReferenceOr::Item(schema) => self.resolve_type(path, schema),
+                    openapiv3::ReferenceOr::Item(schema) => self.resolve_schema(path, schema),
                     openapiv3::ReferenceOr::Reference { reference } => {
                         self.resolve_schema_ref(path, reference)
                     }
@@ -1030,6 +1068,7 @@ mod tests {
                         media_type: MediaType::Json,
                         type_: Type::Array(Box::new(Type::Struct("Pet".to_string()))),
                     }),
+                    headers: IndexMap::new(),
                 },
             )]),
         };
@@ -1125,6 +1164,7 @@ mod tests {
                 Response {
                     description: "Successful".to_string(),
                     content: None,
+                    headers: IndexMap::new(),
                 },
             )]),
         };
@@ -1221,6 +1261,7 @@ mod tests {
                             media_type: MediaType::Json,
                             type_: Type::Struct("Pet".to_string()),
                         }),
+                        headers: IndexMap::new(),
                     },
                 ),
                 (
@@ -1228,6 +1269,7 @@ mod tests {
                     Response {
                         description: "Invalid input".to_string(),
                         content: None,
+                        headers: IndexMap::new(),
                     },
                 ),
             ]),
@@ -1403,6 +1445,7 @@ mod tests {
                 Response {
                     description: "Successful".to_string(),
                     content: None,
+                    headers: IndexMap::new(),
                 },
             )]),
         };

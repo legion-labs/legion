@@ -8,8 +8,14 @@ use lgn_tracing::error;
 pub enum Error {
     #[error("internal: {0}")]
     Internal(String),
-    #[error("reqwest: {0}")]
-    Reqwest(#[from] reqwest::Error),
+    #[error("hyper: {0}")]
+    Hyper(#[from] hyper::Error),
+    #[error("serde json: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("serde qs: {0}")]
+    SerdeQs(#[from] serde_qs::Error),
+    #[error("invalid body: {0}")]
+    InvalidBody(String),
     #[error("invalid header: {0}")]
     InvalidHeader(String),
     #[error("missing header: {0}")]
@@ -25,9 +31,21 @@ impl IntoResponse for Error {
                 error!("Internal server error: {}", err);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
-            Self::Reqwest(err) => {
-                error!("Reqwest error: {:?}", err);
+            Self::Hyper(err) => {
+                error!("Hyper error: {:?}", err);
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+            Self::SerdeJson(err) => {
+                error!("Serde Json error: {:?}", err);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+            Self::SerdeQs(err) => {
+                error!("Serde Qs error: {:?}", err);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+            Self::InvalidBody(err) => {
+                error!("Invalid body: {}", err);
+                StatusCode::BAD_REQUEST.into_response()
             }
             Self::InvalidHeader(err) => {
                 error!("Invalid header: {}", err);
