@@ -1,7 +1,12 @@
 use std::{ffi::OsStr, path::Path};
 
-use crate::{api::Api, Generator, Result};
+use crate::{
+    api::{Api, Model},
+    Generator, Result,
+};
 use askama::Template;
+
+mod filters;
 
 #[derive(askama::Template)]
 #[template(path = "__init__.py.jinja", escape = "none")]

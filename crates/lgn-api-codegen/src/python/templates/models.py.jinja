@@ -1,0 +1,31 @@
+from enum import Enum
+
+{% for model in api.models %}
+
+{% match model %}
+
+{% when Model::Enum with (enum_) %}
+{% if let Some(description) = enum_.description %}# {{ description }}{% endif %}
+class {{ enum_.name }}(Enum):
+{% for variant in enum_.variants %}
+    {{ variant|upper }} = auto()
+{% endfor %}
+
+{% when Model::OneOf with (one_of) %}
+{% if let Some(description) = one_of.description %}# {{ description }}{% endif %}
+class {{ one_of.name }}(Enum):
+{% for type_ in one_of.types %}
+    OPTION_{{loop.index}} # {{type_|fmt_type}}
+{% endfor %}
+                
+{% when Model::Struct with (struct_) %}
+{% if let Some(description) = struct_.description %}# {{ description }}{% endif %}
+class {{ struct_.name }}:
+    def __init__(self):
+    {% for field in struct_.fields %}
+        {% if let Some(description) = field.description -%}# {{ description }}{%- endif %}
+        self.{{ field.name }} = None # {{ field.type_|fmt_type }}
+    {% endfor %}
+            
+{% endmatch %}
+{% endfor %}
