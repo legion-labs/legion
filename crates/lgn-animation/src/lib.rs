@@ -14,10 +14,11 @@ mod animation_system;
 pub mod components;
 mod debug_display;
 mod labels;
+pub mod runtime_graph;
 
 use crate::{
-    animation_options::AnimationOptions, animation_system::update,
-    debug_display::display_animation, labels::AnimationStage,
+    animation_options::AnimationOptions, animation_system::graph_update,
+    debug_display::display_animation_2, labels::AnimationStage,
 };
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::schedule::SystemStage;
@@ -34,8 +35,8 @@ impl Plugin for AnimationPlugin {
             SystemStage::parallel(),
         );
 
-        // Run animation clip
-        app.add_system_to_stage(AnimationStage::Update, update);
+        // Update animation graph
+        app.add_system_to_stage(AnimationStage::Update, graph_update);
 
         // Debug display
         app.init_resource::<AnimationOptions>()
@@ -43,7 +44,7 @@ impl Plugin for AnimationPlugin {
                 RenderStage::Prepare,
                 animation_options::ui_animation_options,
             )
-            .add_system_to_stage(RenderStage::Prepare, display_animation);
+            .add_system_to_stage(RenderStage::Prepare, display_animation_2);
     }
 }
 

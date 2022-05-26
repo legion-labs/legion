@@ -1,4 +1,4 @@
-use std::ops::Mul;
+use std::ops::{Add, Mul};
 
 use lgn_ecs::component::Component;
 use lgn_math::{const_vec3, Affine3A, Mat3, Mat4, Quat, Vec3};
@@ -231,6 +231,20 @@ impl GlobalTransform {
         value
     }
 
+    /// Adds `self` to `transform` component by component, returning the
+    /// resulting [`GlobalTransform`]
+    #[inline]
+    #[must_use]
+    pub fn add_transform(&self, transform: Transform) -> Self {
+        let translation: Vec3 = self.translation + transform.translation;
+        let rotation: Quat = self.rotation + transform.rotation;
+        Self {
+            translation,
+            rotation,
+            scale: transform.scale,
+        }
+    }
+
     #[doc(hidden)]
     #[inline]
     pub fn apply_non_uniform_scale(&mut self, scale: Vec3) {
@@ -287,5 +301,23 @@ impl Mul<Vec3> for GlobalTransform {
     #[inline]
     fn mul(self, value: Vec3) -> Self::Output {
         self.mul_vec3(value)
+    }
+}
+
+impl Add<Self> for GlobalTransform {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, global_transform: Self) -> Self::Output {
+        self.add_transform(global_transform.into())
+    }
+}
+
+impl Add<Transform> for GlobalTransform {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, transform: Transform) -> Self::Output {
+        self.add_transform(transform)
     }
 }
