@@ -1,15 +1,15 @@
 <script lang="ts">
   import * as d3 from "d3";
   import { onMount } from "svelte";
+  import { getContext } from "svelte";
 
-  import { getThreadItemLengthContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
 
   import type { TimelineStateStore } from "../Stores/TimelineStateStore";
 
   export let stateStore: TimelineStateStore;
 
-  const threadItemLength = getThreadItemLengthContext();
+  const threadItemLength = getContext("thread-item-length");
 
   const height = 20;
   const padding = 4;

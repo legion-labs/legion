@@ -3,20 +3,15 @@
   import { derived, writable } from "svelte/store";
 
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
-
-  import { getL10nOrchestratorContext } from "@/contexts";
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
 
   import L10n from "../Misc/L10n.svelte";
-  import type { MetricStore, RecentlyUsedMetricStore } from "./Lib/MetricStore";
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
 
-  const { t } = getL10nOrchestratorContext();
+  const { t } = getContext(l10nOrchestratorContextKey);
+  const metricStore = getContext("metrics-store");
 
-  const metricStore = getContext<MetricStore>("metrics-store");
-
-  const recentlyUsedMetrics = getContext<RecentlyUsedMetricStore>(
-    "recently-used-metrics-store"
-  );
+  const recentlyUsedMetrics = getContext("recently-used-metrics-store");
 
   const selectedMetricCount = derived(
     metricStore,

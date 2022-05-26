@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { getL10nOrchestratorContext } from "@/contexts";
+  import { getContext } from "svelte";
 
-  const { t } = getL10nOrchestratorContext();
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
 
+  const { t } = getContext(l10nOrchestratorContextKey);
   export let begin: number;
 
   export let end: number;

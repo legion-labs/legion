@@ -4,6 +4,7 @@
   import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
   import { setContext } from "svelte";
+  import { getContext } from "svelte";
   import type { Unsubscriber } from "svelte/store";
 
   import { MetricAxisCollection } from "@/components/Metric/Lib/MetricAxisCollection";
@@ -24,7 +25,6 @@
   import MetricTooltip from "@/components/Metric/MetricTooltip.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
   import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
-  import { getDebugContext, getHttpClientContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
@@ -57,8 +57,8 @@
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
 
-  const client = getHttpClientContext();
-  const debug = getDebugContext();
+  const client = getContext("http-client");
+  const debug = getContext("debug");
 
   let mainWidth = 0;
   $: width = mainWidth - margin.left - margin.right;

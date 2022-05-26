@@ -3,11 +3,10 @@
 
   import { getMetricColor } from "./Lib/MetricColor";
   import type { MetricState } from "./Lib/MetricState";
-  import type { MetricStore } from "./Lib/MetricStore";
 
   export let metric: MetricState;
 
-  const metricStore = getContext<MetricStore>("metrics-store");
+  const metricStore = getContext("metrics-store");
 
   $: color = getMetricColor(metric.name);
 </script>
