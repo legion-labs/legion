@@ -3,7 +3,7 @@ use std::{
     env,
     hash::{Hash, Hasher},
     io,
-    path::{Path, PathBuf},
+    path::PathBuf,
     pin::Pin,
     sync::Arc,
     time::SystemTime,
@@ -718,7 +718,6 @@ impl DataBuild {
 
                     let output_index = &self.output_index;
                     let data_content_provider = &self.data_content_provider;
-                    let project_dir = &self.resource_dir;
                     let runtime_manifest_id = &self.runtime_manifest_id;
                     let resources = self.compilers.registry();
                     let acc_deps = accumulated_dependencies.clone();
@@ -736,7 +735,6 @@ impl DataBuild {
                         let (resource_infos, resource_references, stats) = Self::compile_node(
                             output_index,
                             data_content_provider,
-                            project_dir,
                             runtime_manifest_id,
                             &compile_node,
                             context_hash,
