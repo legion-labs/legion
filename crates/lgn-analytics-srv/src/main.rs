@@ -17,7 +17,6 @@ mod auth;
 mod cache;
 mod call_tree;
 mod call_tree_store;
-mod column;
 mod cumulative_call_graph;
 mod cumulative_call_graph_handler;
 mod cumulative_call_graph_node;
