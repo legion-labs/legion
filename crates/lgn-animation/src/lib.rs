@@ -37,7 +37,7 @@ impl Plugin for AnimationPlugin {
             SystemStage::parallel(),
         );
 
-        // Run animation clip
+        // Update animation graph
         app.add_system_to_stage(AnimationStage::Update, graph_update);
         // .add_system_to_stage(AnimationStage::Update, clip_update.after(graph_update));
 
@@ -47,6 +47,6 @@ impl Plugin for AnimationPlugin {
                 RenderStage::Prepare,
                 animation_options::ui_animation_options,
             )
-            .add_system_to_stage(RenderStage::Prepare, display_animation);
+            .add_system_to_stage(RenderStage::Prepare, display_animation_2);
     }
 }
