@@ -159,7 +159,7 @@ impl Workspace {
     async fn get_resource_identifier(&self, id: &IndexKey) -> Result<Option<ResourceIdentifier>> {
         let leaf_node = self
             .main_index
-            .get_leaf(&self.transaction, &self.content_id.main_index_tree_id, id)
+            .get_leaf(&self.transaction, self.get_main_index_id(), id)
             .await
             .map_err(Error::ContentStoreIndexing)?;
 
@@ -200,8 +200,12 @@ impl Workspace {
     }
 
     pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.get_resources_for_tree_id(&self.content_id.main_index_tree_id)
+        self.get_resources_for_tree_id(self.get_main_index_id())
             .await
+    }
+
+    pub fn get_main_index_id(&self) -> &TreeIdentifier {
+        &self.content_id.main_index_tree_id
     }
 
     pub async fn get_resources_for_tree_id(
@@ -245,7 +249,7 @@ impl Workspace {
             .main_index
             .add_leaf(
                 &self.transaction,
-                &self.content_id.main_index_tree_id,
+                self.get_main_index_id(),
                 id,
                 TreeLeafNode::Resource(resource_identifier.clone()),
             )
@@ -695,7 +699,7 @@ impl Workspace {
                 whoami::username(),
                 message,
                 commit.changes.clone(),
-                self.content_id.main_index_tree_id.clone(),
+                self.get_main_index_id().clone(),
                 self.content_id.path_index_tree_id.clone(),
                 BTreeSet::from([commit.id]),
             );

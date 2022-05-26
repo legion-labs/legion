@@ -99,10 +99,15 @@ async fn main() -> anyhow::Result<()> {
 
     let empty_manifest_id =
         AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_content_provider).await;
-    let mut asset_registry = AssetRegistryOptions::new().add_device_cas(
-        Arc::clone(&data_content_provider),
-        Arc::new(empty_manifest_id),
-    );
+    let mut asset_registry = AssetRegistryOptions::new()
+        .add_device_cas(
+            Arc::clone(&data_content_provider),
+            Arc::new(empty_manifest_id),
+        )
+        .add_device_cas(
+            Arc::clone(&source_control_content_provider),
+            Arc::clone(project.offline_manifest_id()),
+        );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);

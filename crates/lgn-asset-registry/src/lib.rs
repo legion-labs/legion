@@ -230,7 +230,7 @@ impl AssetRegistryPlugin {
             match event {
                 AssetRegistryRequest::LoadManifest(new_manifest_id) => {
                     info!("received request to load manifest \"{}\"", new_manifest_id);
-                    manifest_id.write(new_manifest_id.clone());
+                    manifest_id.write(new_manifest_id);
                 }
                 AssetRegistryRequest::LoadAsset(asset_id) => {
                     info!("received request to load asset \"{}\"", asset_id);

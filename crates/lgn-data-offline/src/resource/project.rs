@@ -14,8 +14,8 @@ use lgn_content_store::{
     Provider,
 };
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId, ResourcePathId, ResourceType,
-    ResourceTypeAndId,
+    manifest::ManifestId, AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId,
+    ResourcePathId, ResourceType, ResourceTypeAndId,
 };
 use lgn_source_control::{
     CommitMode, ContentId, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
@@ -75,6 +75,7 @@ pub struct Project {
     project_dir: PathBuf,
     workspace: Workspace,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
+    offline_manifest_id: Arc<ManifestId>,
 }
 
 #[derive(Error, Debug)]
@@ -130,6 +131,11 @@ impl Project {
         &self.project_dir
     }
 
+    /// Returns current manifest (main index) of the workspace associated with the project
+    pub fn offline_manifest_id(&self) -> &Arc<ManifestId> {
+        &self.offline_manifest_id
+    }
+
     /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
     pub async fn create_with_remote_mock(
         project_dir: impl AsRef<Path>,
@@ -165,10 +171,13 @@ impl Project {
         )
         .await?;
 
+        let manifest_id = workspace.get_main_index_id().clone();
+
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
             workspace,
             deleted_pending: HashMap::new(),
+            offline_manifest_id: Arc::new(ManifestId::new(manifest_id)),
         })
     }
 
@@ -188,10 +197,13 @@ impl Project {
         )
         .await?;
 
+        let manifest_id = workspace.get_main_index_id().clone();
+
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
             workspace,
             deleted_pending: HashMap::new(),
+            offline_manifest_id: Arc::new(ManifestId::new(manifest_id)),
         })
     }
 
@@ -394,6 +406,9 @@ impl Project {
                 &resource_bytes,
             )
             .await?;
+
+        self.offline_manifest_id
+            .write(self.workspace.get_main_index_id());
 
         let type_id = ResourceTypeAndId { kind, id };
 

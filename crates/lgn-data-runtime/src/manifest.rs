@@ -19,7 +19,7 @@ impl ManifestId {
     }
 
     /// Update manifest id
-    pub fn write(&self, tree_id: TreeIdentifier) {
-        *self.0.write().expect("lock is poisoned") = tree_id;
+    pub fn write(&self, tree_id: &TreeIdentifier) {
+        *self.0.write().expect("lock is poisoned") = tree_id.clone();
     }
 }
