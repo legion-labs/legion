@@ -126,12 +126,8 @@
   });
 
   onDestroy(() => {
-    if (canvas) {
-      canvas.replaceChildren();
-    }
-    if (pointSubscription) {
-      pointSubscription();
-    }
+    canvas?.replaceChildren();
+    pointSubscription?.();
   });
 
   function updateLod() {
@@ -203,6 +199,18 @@
 
   function createChart() {
     container = d3.select("#metric-canvas");
+
+    // Forwards click event to the document's body
+    // so that the clickOutside action can work properly
+    container.on("click", () =>
+      document.body.dispatchEvent(
+        new MouseEvent("mouseup", {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    );
 
     svgGroup = container
       .append("svg")
