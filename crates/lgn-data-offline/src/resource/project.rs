@@ -352,13 +352,17 @@ impl Project {
     pub async fn add_resource(
         &mut self,
         name: ResourcePathName,
-        kind_name: &str,
         kind: ResourceType,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        self.add_resource_with_id(name, kind_name, kind, ResourceId::new(), handle, registry)
-            .await
+        let type_id = ResourceTypeAndId {
+            kind,
+            id: ResourceId::new(),
+        };
+        self.add_resource_with_id(name, type_id, handle, registry)
+            .await?;
+        Ok(type_id)
     }
 
     /// Add a given resource of a given type and id with an associated `.meta`.
@@ -373,18 +377,16 @@ impl Project {
     pub async fn add_resource_with_id(
         &mut self,
         name: ResourcePathName,
-        kind_name: &str,
-        kind: ResourceType,
-        id: ResourceId,
+        type_id: ResourceTypeAndId,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
-    ) -> Result<ResourceTypeAndId, Error> {
-        let mut offline_content = OfflineContent::new(name, kind_name, kind);
+    ) -> Result<(), Error> {
+        let mut offline_content = OfflineContent::new(name);
 
         let mut content = std::io::Cursor::new(Vec::new());
         let (_written, mut build_dependencies) = registry
-            .serialize_resource(kind, handle, &mut content)
-            .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
+            .serialize_resource(type_id.kind, handle, &mut content)
+            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
         offline_content
             .metadata
@@ -397,7 +399,7 @@ impl Project {
 
         self.workspace
             .add_resource(
-                &id.as_raw().into(),
+                &type_id.into(),
                 offline_content.metadata.name.as_str(),
                 &resource_bytes,
             )
@@ -406,9 +408,7 @@ impl Project {
         self.offline_manifest_id
             .write(self.workspace.get_main_index_id());
 
-        let type_id = ResourceTypeAndId { kind, id };
-
-        Ok(type_id)
+        Ok(())
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
@@ -486,10 +486,7 @@ impl Project {
         type_id: ResourceTypeAndId,
         resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
-        let resource_bytes = self
-            .workspace
-            .load_resource(&type_id.id.as_raw().into())
-            .await?;
+        let resource_bytes = self.workspace.load_resource(&type_id.into()).await?;
 
         let offline_content: OfflineContent =
             bincode::deserialize(&resource_bytes).expect("failed to decode resource contents");
@@ -511,12 +508,6 @@ impl Project {
 
         Ok(dependencies)
     }
-
-    // /// Returns type of the resource.
-    // pub async fn resource_type(&self, id: ResourceId) -> Result<ResourceType, Error> {
-    //     let meta = self.read_meta(id).await?;
-    //     Ok(meta.type_id)
-    // }
 
     /// Returns the name of the resource from its `.meta` file.
     #[async_recursion]
@@ -599,19 +590,6 @@ impl Project {
         let meta = self.read_meta(type_id).await?;
         Ok(meta.name)
     }
-
-    /// Returns the type name of the resource from its `.meta` file.
-    pub async fn resource_type_name(&self, type_id: ResourceTypeAndId) -> Result<String, Error> {
-        let meta = self.read_meta(type_id).await?;
-        Ok(meta.type_name)
-    }
-
-    /*
-    /// Returns the root directory where resources are located.
-    pub fn resource_dir(&self) -> PathBuf {
-        self.resource_dir.clone()
-    }
-    */
 
     /// Returns the name of the repository that is used by the source control provider in the active workspace
     pub fn repository_name(&self) -> &RepositoryName {
@@ -899,7 +877,6 @@ mod tests {
         let texture = project
             .add_resource(
                 ResourcePathName::new("albedo.texture"),
-                RESOURCE_TEXTURE,
                 texture_type,
                 resources.new_resource(texture_type).unwrap(),
                 &resources,
@@ -919,7 +896,6 @@ mod tests {
         let material = project
             .add_resource(
                 ResourcePathName::new("body.material"),
-                RESOURCE_MATERIAL,
                 material_type,
                 &material,
                 &resources,
@@ -938,7 +914,6 @@ mod tests {
         let geometry = project
             .add_resource(
                 ResourcePathName::new("hero.geometry"),
-                RESOURCE_GEOMETRY,
                 geometry_type,
                 &geometry,
                 &resources,
@@ -950,7 +925,6 @@ mod tests {
         let skeleton = project
             .add_resource(
                 ResourcePathName::new("hero.skeleton"),
-                RESOURCE_SKELETON,
                 skeleton_type,
                 &resources.new_resource(skeleton_type).unwrap(),
                 &resources,
@@ -972,7 +946,6 @@ mod tests {
         let _actor = project
             .add_resource(
                 ResourcePathName::new("hero.actor"),
-                RESOURCE_ACTOR,
                 actor_type,
                 &actor,
                 &resources,
@@ -988,7 +961,6 @@ mod tests {
         let texture = project
             .add_resource(
                 ResourcePathName::new("sky.texture"),
-                RESOURCE_TEXTURE,
                 texture_type,
                 &resources.new_resource(texture_type).unwrap(),
                 resources,
@@ -1008,7 +980,6 @@ mod tests {
         let _material = project
             .add_resource(
                 ResourcePathName::new("sky.material"),
-                RESOURCE_MATERIAL,
                 material_type,
                 &material,
                 resources,

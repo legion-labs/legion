@@ -44,11 +44,6 @@ impl TransactionOperation for CloneResourceOperation {
             .deserialize_resource(self.clone_resource_id, &mut buffer.as_slice())
             .map_err(|err| Error::InvalidResourceDeserialization(self.clone_resource_id, err))?;
 
-        let resource_type_name = ctx
-            .asset_registry
-            .get_resource_type_name(self.source_resource_id.kind)
-            .ok_or(Error::InvalidResourceType(self.source_resource_id.kind))?;
-
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
         let mut source_raw_name = ctx
             .project
@@ -82,9 +77,7 @@ impl TransactionOperation for CloneResourceOperation {
         ctx.project
             .add_resource_with_id(
                 source_raw_name,
-                resource_type_name,
-                self.clone_resource_id.kind,
-                self.clone_resource_id.id,
+                self.clone_resource_id,
                 clone_handle.clone(),
                 &ctx.asset_registry,
             )

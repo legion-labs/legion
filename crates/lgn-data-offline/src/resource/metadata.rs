@@ -1,4 +1,4 @@
-use lgn_data_runtime::{ResourcePathId, ResourceType};
+use lgn_data_runtime::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
 use crate::resource::ResourcePathName;
@@ -6,8 +6,6 @@ use crate::resource::ResourcePathName;
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Metadata {
     pub(crate) name: ResourcePathName,
-    pub(crate) type_name: String,
-    pub(crate) type_id: ResourceType,
     pub(crate) dependencies: Vec<ResourcePathId>,
 }
 

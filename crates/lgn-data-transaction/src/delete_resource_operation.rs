@@ -70,23 +70,17 @@ impl TransactionOperation for DeleteResourceOperation {
             .deserialize_resource(self.resource_id, &mut old_resource_data.as_slice())
             .map_err(|err| Error::InvalidResourceDeserialization(self.resource_id, err))?;
 
-        if let Some(resource_type_name) = ctx
-            .asset_registry
-            .get_resource_type_name(self.resource_id.kind)
-        {
-            ctx.project
-                .add_resource_with_id(
-                    old_resource_name.clone(),
-                    resource_type_name,
-                    self.resource_id.kind,
-                    self.resource_id.id,
-                    &handle,
-                    &ctx.asset_registry,
-                )
-                .await
-                .map_err(|err| Error::Project(self.resource_id, err))?;
-            ctx.loaded_resource_handles.insert(self.resource_id, handle);
-        }
+        ctx.project
+            .add_resource_with_id(
+                old_resource_name.clone(),
+                self.resource_id,
+                &handle,
+                &ctx.asset_registry,
+            )
+            .await
+            .map_err(|err| Error::Project(self.resource_id, err))?;
+        ctx.loaded_resource_handles.insert(self.resource_id, handle);
+
         Ok(())
     }
 }

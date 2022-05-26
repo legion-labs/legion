@@ -542,14 +542,7 @@ async fn create_offline_entity(
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(
-                name,
-                sample_data::offline::Entity::TYPENAME,
-                kind,
-                id,
-                handle,
-                resources,
-            )
+            .add_resource_with_id(name, type_id, handle, resources)
             .await
             .expect("failed to add new resource");
     }
@@ -611,14 +604,7 @@ async fn create_offline_model(
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(
-                name,
-                lgn_graphics_data::offline::Model::TYPENAME,
-                kind,
-                id,
-                handle,
-                resources,
-            )
+            .add_resource_with_id(name, type_id, handle, resources)
             .await
             .expect("failed to add new resource");
     }
@@ -669,14 +655,7 @@ async fn create_offline_script(
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(
-                name,
-                lgn_scripting_data::offline::Script::TYPENAME,
-                kind,
-                id,
-                handle,
-                resources,
-            )
+            .add_resource_with_id(name, type_id, handle, resources)
             .await
             .expect("failed to add new resource");
     }

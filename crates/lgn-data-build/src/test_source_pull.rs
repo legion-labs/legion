@@ -53,7 +53,6 @@ mod tests {
             project
                 .add_resource(
                     ResourcePathName::new("resource"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resources
                         .new_resource(refs_resource::TestResource::TYPE)
@@ -97,7 +96,6 @@ mod tests {
             let child_id = project
                 .add_resource(
                     ResourcePathName::new("child"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resources
                         .new_resource(refs_resource::TestResource::TYPE)
@@ -121,7 +119,6 @@ mod tests {
             let parent_id = project
                 .add_resource(
                     ResourcePathName::new("parent"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &parent_handle,
                     &resources,

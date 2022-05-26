@@ -88,7 +88,6 @@ mod tests {
         project
             .add_resource(
                 name,
-                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resource_b,
                 resources,
@@ -143,7 +142,6 @@ mod tests {
             let resource_id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resource_handle,
                     &resources,
@@ -331,7 +329,6 @@ mod tests {
             project
                 .add_resource(
                     ResourcePathName::new("resource"),
-                    text_resource::TextResource::TYPENAME,
                     text_resource::TextResource::TYPE,
                     &resource_handle,
                     &resources,
@@ -559,7 +556,6 @@ mod tests {
             project
                 .add_resource(
                     ResourcePathName::new("resource"),
-                    multitext_resource::MultiTextResource::TYPENAME,
                     multitext_resource::MultiTextResource::TYPE,
                     &resource_handle,
                     &resources,
@@ -816,7 +812,6 @@ mod tests {
             let child_id = project
                 .add_resource(
                     ResourcePathName::new("child"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &child_handle,
                     &resources,
@@ -839,7 +834,6 @@ mod tests {
             project
                 .add_resource(
                     ResourcePathName::new("parent"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &parent_handle,
                     &resources,
@@ -916,7 +910,6 @@ mod tests {
             let child_id = project
                 .add_resource(
                     ResourcePathName::new("child"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resources
                         .new_resource(refs_resource::TestResource::TYPE)
@@ -938,7 +931,6 @@ mod tests {
             project
                 .add_resource(
                     ResourcePathName::new("parent"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &child_handle,
                     &resources,

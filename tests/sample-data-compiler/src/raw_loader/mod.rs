@@ -307,14 +307,14 @@ async fn build_resource_from_raw(
 ) {
     for (i, path) in file_paths.iter().enumerate() {
         let name = &in_resources[i].0;
-        let kind = ext_to_resource_kind(path.extension().unwrap().to_str().unwrap());
+        let (_kind_name, kind) = ext_to_resource_kind(path.extension().unwrap().to_str().unwrap());
 
         let id = {
             if let Ok(id) = project.find_resource(name).await {
                 id
             } else {
                 let id = ResourceTypeAndId {
-                    kind: kind.1,
+                    kind,
                     id: in_resources[i].1,
                 };
 
@@ -325,14 +325,14 @@ async fn build_resource_from_raw(
                 project
                     .add_resource_with_id(
                         name.clone(),
-                        kind.0,
-                        kind.1,
-                        id.id,
+                        id,
                         resources.new_resource_with_id(id).unwrap(),
                         resources,
                     )
                     .await
-                    .unwrap()
+                    .unwrap();
+
+                id
             }
         };
         ids.insert(name.clone(), id);
@@ -350,7 +350,6 @@ async fn build_test_entity(
         if let Ok(id) = project.find_resource(&name).await {
             id
         } else {
-            let kind_name = TestEntity::TYPENAME;
             let kind = TestEntity::TYPE;
             let id = ResourceTypeAndId {
                 kind,
@@ -378,16 +377,11 @@ async fn build_test_entity(
             test_entity_handle.apply(test_entity, resources);
 
             project
-                .add_resource_with_id(
-                    name.clone(),
-                    kind_name,
-                    kind,
-                    id.id,
-                    test_entity_handle,
-                    resources,
-                )
+                .add_resource_with_id(name.clone(), id, test_entity_handle, resources)
                 .await
-                .unwrap()
+                .unwrap();
+
+            id
         }
     };
     ids.insert(name, id);
