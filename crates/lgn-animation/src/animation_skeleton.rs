@@ -7,6 +7,7 @@ pub struct Skeleton {
 }
 
 impl Skeleton {
+    /* Bone info */
     #[inline]
     pub fn get_num_bones(&self) -> usize {
         self.bone_ids.len()
@@ -109,4 +110,26 @@ impl Skeleton {
         }
         n_total_parents
     }
+
+    /* Pose info */
+    // !TODO: change methods to get the poses and not the local_reference
+    // #[inline]
+    // fn get_bone_transform(&self, idx: i32) -> Transform {
+    //     assert!(idx >= 0 && idx < self.local_reference_pose.len() as i32);
+
+    //     self.local_reference_pose[idx as usize]
+    // }
+
+    // fn get_bone_global_transform(&self, idx: i32) {
+    //     assert!(idx >= 0 && idx < self.local_reference_pose.len() as i32);
+
+    //     let mut bone_global_transform = self.local_reference_pose[idx as usize];
+    //     let mut parent_idx = self.get_parent_bone_idx(idx);
+
+    //     while parent_idx != -1 {
+    //         bone_global_transform =
+    //             bone_global_transform * self.local_reference_pose[parent_idx as usize];
+    //         parent_idx = self.get_parent_bone_idx(parent_idx);
+    //     }
+    // }
 }

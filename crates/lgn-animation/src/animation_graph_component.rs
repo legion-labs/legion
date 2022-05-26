@@ -16,28 +16,18 @@ pub struct AnimationGraphComponent {
 }
 
 impl AnimationGraphComponent {
-    fn get_skeleton() {
-        /* */
-    }
+    fn initialize() {}
 
-    fn get_pose() {
-        /* */
-    }
+    fn get_skeleton() {}
+
+    fn get_pose() {}
 
     #[inline]
-    fn get_root_motion_delta() {
-        /* */
-    }
+    fn get_root_motion_delta() {}
 
-    fn evaluate_graph() {
-        /* */
-    }
+    fn evaluate_graph() {}
 
-    fn execute_pre_physics_tasks() {
-        /* */
-    }
+    fn execute_pre_physics_tasks() {}
 
-    fn execute_post_physics_tasks() {
-        /* */
-    }
+    fn execute_post_physics_tasks() {}
 }
