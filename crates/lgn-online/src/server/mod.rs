@@ -157,6 +157,7 @@ impl RouterExt for Router {
     }
 }
 
+#[allow(clippy::unused_async)]
 async fn handle_timeout_error(err: BoxError) -> (StatusCode, String) {
     if err.is::<tower::timeout::error::Elapsed>() {
         (
