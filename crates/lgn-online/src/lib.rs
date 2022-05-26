@@ -6,7 +6,6 @@
 pub mod cloud;
 pub mod codegen;
 pub mod grpc;
-pub mod server;
 
 mod config;
 mod errors;
