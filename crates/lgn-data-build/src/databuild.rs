@@ -590,21 +590,21 @@ impl DataBuild {
                     .fold("".to_string(), |acc, d| {
                         let dd = build_graph.node_weight(d).unwrap();
                         let completion_status = if compiled.contains(&d) {
-                            'x'
+                            "compiled"
                         } else if compiling_unnamed.contains(&dd.to_unnamed()) {
-                            '~'
+                            "compiling"
                         } else {
-                            ' '
+                            "pending"
                         };
-                        acc + &format!(" {:?}({})", d, completion_status)
+                        acc + &format!(" {:?} - {},", d, completion_status)
                     });
                 let name = build_graph.node_weight(*node).unwrap().to_unnamed();
                 let unnamed_status = if compiling_unnamed.contains(&name) {
-                    '~'
+                    "compiling"
                 } else if compiled_unnamed.contains(&name) {
-                    'x'
+                    "compiled"
                 } else {
-                    ' '
+                    "pending"
                 };
                 debug!(
                     "Pending '{:?}': Status: '{}'. Deps:{}",
