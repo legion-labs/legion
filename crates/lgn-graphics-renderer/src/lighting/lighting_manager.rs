@@ -1,3 +1,4 @@
+use egui::Slider;
 use frame_descriptor_set::FrameDescriptorSet;
 
 use lgn_graphics_api::{BufferViewDef, ResourceUsage, TransientBufferView};
@@ -13,6 +14,7 @@ use crate::{
     },
     components::LightType,
     core::{RenderObjectQuery, RenderObjects},
+    egui::Egui,
     resources::TransientBufferAllocator,
     UP_VECTOR,
 };
@@ -33,7 +35,8 @@ pub struct RenderLightTestData {
 }
 
 pub struct LightingManager {
-    pub default_ambient: Vec3,
+    pub default_ambient_color: Color,
+    pub default_ambient_intensity: f32,
     pub apply_diffuse: bool,
     pub apply_specular: bool,
 }
@@ -105,10 +108,31 @@ impl AsGpuLight<OmniDirectionalLight> for OmniLightWriter {
 impl LightingManager {
     pub fn new() -> Self {
         Self {
-            default_ambient: Vec3::new(0.0, 0.0, 0.0),
+            default_ambient_color: Color::WHITE,
+            default_ambient_intensity: 0.0,
             apply_diffuse: true,
             apply_specular: true,
         }
+    }
+
+    pub(crate) fn debug_ui(&mut self, egui: &mut Egui) {
+        egui.window("Lights", |ui| {
+            let mut default_ambient_color: [u8; 3] = [
+                self.default_ambient_color.r,
+                self.default_ambient_color.g,
+                self.default_ambient_color.b,
+            ];
+
+            ui.label("Ambient");
+            ui.color_edit_button_srgb(&mut default_ambient_color);
+            ui.add(Slider::new(&mut self.default_ambient_intensity, 0.0..=10.0));
+            ui.checkbox(&mut self.apply_diffuse, "Diffuse");
+            ui.checkbox(&mut self.apply_specular, "Specular");
+
+            self.default_ambient_color.r = default_ambient_color[0];
+            self.default_ambient_color.g = default_ambient_color[1];
+            self.default_ambient_color.b = default_ambient_color[2];
+        });
     }
 
     pub(crate) fn per_frame_render(
@@ -140,7 +164,14 @@ impl LightingManager {
         lighting_data.set_num_directional_lights(Uint1::from(directional_light_count));
         lighting_data.set_num_omni_directional_lights(Uint1::from(omni_light_count));
         lighting_data.set_num_spot_lights(Uint1::from(spot_light_count));
-        lighting_data.set_default_ambient(self.default_ambient.into());
+        lighting_data.set_default_ambient(
+            Vec3::new(
+                self.default_ambient_intensity * self.default_ambient_color.r as f32 / 255.0,
+                self.default_ambient_intensity * self.default_ambient_color.g as f32 / 255.0,
+                self.default_ambient_intensity * self.default_ambient_color.b as f32 / 255.0,
+            )
+            .into(),
+        );
         lighting_data.set_apply_diffuse(if self.apply_diffuse { 1 } else { 0 }.into());
         lighting_data.set_apply_specular(if self.apply_specular { 1 } else { 0 }.into());
 

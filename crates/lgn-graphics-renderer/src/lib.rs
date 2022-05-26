@@ -588,7 +588,7 @@ fn render_update(
         TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
         let render_objects = render_resources.get::<RenderObjects>();
-        // render_resources.get::<LightingManager>().frame_update(&mut transient_buffer_allocator, &render_objects);
+        
         persistent_descriptor_set_manager.frame_update();
         pipeline_manager.frame_update(&device_context);
 
@@ -604,10 +604,15 @@ fn render_update(
         );
 
         //
-        // Render
+        // Egui (not thread safe as is)
+        // we need to call the end_frame in the sync window I guess and transfer the data to the render thread
         //
-
+        render_resources.get_mut::<LightingManager>().debug_ui(egui.as_mut());
         crate::egui::egui_plugin::end_frame(&mut egui);
+
+        //
+        // Render
+        //        
 
         let mut renderdoc_manager = render_resources.get_mut::<RenderDocManager>();
         renderdoc_manager.start_frame_capture();
