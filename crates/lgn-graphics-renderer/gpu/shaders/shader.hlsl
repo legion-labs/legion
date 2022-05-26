@@ -108,17 +108,17 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
 
     lightingMaterial.albedo = material.base_albedo.rgb;
     if (material.albedo_texture != 0xFFFFFFFF) {
-        lightingMaterial.albedo = material_textures[material.albedo_texture].Sample(material_sampler, vertex_out.uv_coord).rgb;
+        lightingMaterial.albedo = material_textures[material.albedo_texture].Sample(material_samplers[material.sampler], vertex_out.uv_coord).rgb;
     }
     
     lightingMaterial.metalness = material.base_metalness;
     if (material.metalness_texture != 0xFFFFFFFF) {
-        lightingMaterial.metalness = material_textures[material.metalness_texture].Sample(material_sampler, vertex_out.uv_coord).r;
+        lightingMaterial.metalness = material_textures[material.metalness_texture].Sample(material_samplers[material.sampler], vertex_out.uv_coord).r;
     }
 
     lightingMaterial.roughness = material.base_roughness;
     if (material.roughness_texture != 0xFFFFFFFF) {
-        lightingMaterial.roughness = material_textures[material.roughness_texture].Sample(material_sampler, vertex_out.uv_coord).r;
+        lightingMaterial.roughness = material_textures[material.roughness_texture].Sample(material_samplers[material.sampler], vertex_out.uv_coord).r;
     }
 
     lightingMaterial.reflectance = material.reflectance;
@@ -136,7 +136,7 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
                                                   float3(view_tangent.y, view_binormal.y, view_normal.y),
                                                   float3(view_tangent.z, view_binormal.z, view_normal.z));
 
-        material_normal = material_textures[material.normal_texture].Sample(material_sampler, vertex_out.uv_coord).rgb;
+        material_normal = material_textures[material.normal_texture].Sample(material_samplers[material.sampler], vertex_out.uv_coord).rgb;
 
         material_normal = (material_normal * 2.0 - 1);
 

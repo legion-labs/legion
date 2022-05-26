@@ -75,6 +75,7 @@ pub(crate) fn create_material(
         material.normal.clone(),
         material.metalness.clone(),
         material.roughness.clone(),
+        material.sampler.clone(),
     ));
 
     info!(
