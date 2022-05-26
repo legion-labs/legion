@@ -19,9 +19,7 @@
     class:bg-vector-y={kind === "Y"}
     class:bg-vector-w={kind === "W"}
     class:bg-vector-z={kind === "Z"}
-  >
-    {kind}
-  </div>
+  />
   <NumberInput
     on:input={(event) => dispatch("input", event.detail)}
     bind:value
@@ -34,10 +32,10 @@
 
 <style lang="postcss">
   .vector-value {
-    @apply flex rounded-sm w-16;
+    @apply flex rounded-sm w-20;
   }
 
   .vector-value-name {
-    @apply text-center text-xs my-auto w-6 h-5 rounded-l-sm;
+    @apply text-center text-xs my-auto w-[1px] h-5 rounded-l-sm;
   }
 </style>
