@@ -464,7 +464,7 @@ fn render_update(
     resources: (
         ResMut<'_, Renderer>,
         ResMut<'_, PipelineManager>,
-        Res<'_, PickingManager>,
+        ResMut<'_, PickingManager>,
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
         ResMut<'_, PersistentDescriptorSetManager>,
@@ -474,14 +474,13 @@ fn render_update(
         Query<'_, '_, &mut RenderSurface>,
         Query<'_, '_, (&VisualComponent, &GlobalTransform), With<PickedComponent>>,
         Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,
-        Query<'_, '_, (&LightComponent, &GlobalTransform)>,
         Query<'_, '_, &CameraComponent>,
     ),
 ) {
     // resources
     let mut renderer = resources.0;
     let mut pipeline_manager = resources.1;
-    let picking_manager = resources.2;
+    let mut picking_manager = resources.2;
     let mut egui = resources.3;
     let mut debug_display = resources.4;
     let mut persistent_descriptor_set_manager = resources.5;
@@ -491,8 +490,7 @@ fn render_update(
     let mut q_render_surfaces = queries.0;
     let q_picked_drawables = queries.1;
     let q_manipulator_drawables = queries.2;
-    let q_lights = queries.3;
-    let q_cameras = queries.4;
+    let q_cameras = queries.3;
 
     //
     // Simulation thread
@@ -516,9 +514,6 @@ fn render_update(
     let manipulator_drawables = q_manipulator_drawables
         .iter()
         .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
-    let lights = q_lights
-        .iter()
-        .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
 
     //
     // Wait for render thread
@@ -763,8 +758,8 @@ fn render_update(
                     cmd_buffer,
                     render_surface.as_mut(),
                     &instance_manager,
-                        manipulator_drawables.as_slice(),
-                        lights.as_slice(),
+                    manipulator_drawables.as_slice(),
+                    &render_objects,
                     &mesh_manager,
                     camera_component,
                     &mesh_renderer,
