@@ -57,7 +57,7 @@ use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
-use crate::jit_lakehouse::JitLakehouse;
+use crate::lakehouse::jit_lakehouse::JitLakehouse;
 use crate::log_entry::Searchable;
 use crate::metrics::MetricHandler;
 

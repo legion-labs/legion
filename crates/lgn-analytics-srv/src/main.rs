@@ -22,13 +22,10 @@ mod cumulative_call_graph;
 mod cumulative_call_graph_handler;
 mod cumulative_call_graph_node;
 mod health_check_service;
-mod jit_lakehouse;
-mod local_jit_lakehouse;
+mod lakehouse;
 mod log_entry;
 mod metrics;
-mod remote_jit_lakehouse;
 mod scope;
-mod span_table;
 mod thread_block_processor;
 
 use std::str::FromStr;
@@ -47,8 +44,8 @@ use std::net::SocketAddr;
 use tonic::transport::Server;
 
 use crate::health_check_service::HealthCheckService;
-use crate::local_jit_lakehouse::LocalJitLakehouse;
-use crate::remote_jit_lakehouse::RemoteJitLakehouse;
+use crate::lakehouse::local_jit_lakehouse::LocalJitLakehouse;
+use crate::lakehouse::remote_jit_lakehouse::RemoteJitLakehouse;
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Performance Analytics Server")]
