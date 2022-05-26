@@ -5,7 +5,6 @@ import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-import { loadAll } from "@lgn/config";
 import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
 /** @type {"jsdom"} */
@@ -30,13 +29,6 @@ if ("VITEST" in process.env) {
 
 // https://vitejs.dev/config/
 export default defineConfig(() => {
-  loadAll({
-    VITE_LEGION_ANALYTICS_ONLINE_AUTHENTICATION_OAUTH_ISSUER_URL:
-      "online.authentication.issuer_url",
-    VITE_LEGION_ANALYTICS_ONLINE_AUTHENTICATION_OAUTH_CLIENT_ID:
-      "online.authentication.client_id",
-  });
-
   return {
     // TODO: Drop this option when vite-tsconfig-paths
     // will work properly with SvelteKit
