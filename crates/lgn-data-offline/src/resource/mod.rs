@@ -8,10 +8,6 @@ mod project;
 
 pub use self::project::*;
 
-mod metadata;
-
-mod offline_content;
-
 mod path_name;
 pub use self::path_name::*;
 
