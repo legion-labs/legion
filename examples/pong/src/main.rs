@@ -151,10 +151,7 @@ async fn main() -> anyhow::Result<()> {
     let mut build_manager = BuildManager::new(&project, data_build, None).await.unwrap();
 
     for id in resource_ids {
-        let derived_result = build_manager
-            .build_all_derived(id, &project, &data_content_provider)
-            .await
-            .unwrap();
+        let derived_result = build_manager.build_all_derived(id, &project).await.unwrap();
         info!("{} -> {}", id, derived_result.0.resource_id());
     }
 

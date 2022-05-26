@@ -66,7 +66,6 @@ impl BuildManager {
         &mut self,
         resource_id: ResourceTypeAndId,
         project: &Project,
-        data_provider: &Provider,
     ) -> Result<(ResourcePathId, Vec<ResourceTypeAndId>), Error> {
         let start = std::time::Instant::now();
 
