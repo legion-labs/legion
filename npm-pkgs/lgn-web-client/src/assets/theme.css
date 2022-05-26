@@ -21,7 +21,7 @@
   /* White/60 */
   --color-item-low: rgba(255, 255, 255, 0.6);
   /* White/20 */
-  --color-item-min: rgba(255, 255, 255, 0.2);
+  --color-item-min: rgba(255, 255, 255, 0.38);
 
   /* Charcoal 700 */
   --list-item-bg-even: rgba(32, 32, 32, 1);

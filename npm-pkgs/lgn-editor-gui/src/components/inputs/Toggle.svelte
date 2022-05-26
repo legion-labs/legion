@@ -15,7 +15,12 @@
   }
 </script>
 
-<div class="root group" class:disabled on:click={disabled ? null : toggle}>
+<div
+  class="root group"
+  class:enabled={value}
+  class:disabled
+  on:click={disabled ? null : toggle}
+>
   <div
     class="handler"
     class:disabled
@@ -26,7 +31,11 @@
 
 <style lang="postcss">
   .root {
-    @apply flex h-7 w-12 rounded-full bg-gray-800 items-center px-0.5 cursor-pointer;
+    @apply flex h-[16px] w-[26px] rounded-full bg-surface-500 items-center px-0.5 cursor-pointer;
+  }
+
+  .root.enabled {
+    @apply bg-orange-700;
   }
 
   .disabled {
@@ -34,18 +43,19 @@
   }
 
   .handler {
-    @apply h-6 w-6 rounded-full bg-gray-700 group-hover:bg-gray-500 transition-all;
+    /* group-hover:bg-orange-700 */
+    @apply h-4 w-4 rounded-full transition-all;
   }
 
-  .handler.disabled {
+  /* .handler.disabled {
     @apply group-hover:bg-gray-400;
-  }
+  } */
 
   .handler-off {
-    @apply ml-0;
+    @apply ml-[2px] bg-item-max;
   }
 
   .handler-on {
-    @apply ml-5 bg-gray-400;
+    @apply ml-[10px] bg-item-max;
   }
 </style>
