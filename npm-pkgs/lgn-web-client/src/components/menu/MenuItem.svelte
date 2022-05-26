@@ -5,7 +5,7 @@
   export let desc: MenuItemDescription;
   export let menuContext: MenuContextStore;
 
-  function onClick(e: MouseEvent) {
+  function onClick() {
     menuContext.close();
 
     if (desc.action) {
