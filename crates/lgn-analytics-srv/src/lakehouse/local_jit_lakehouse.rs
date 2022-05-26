@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
-use crate::jit_lakehouse::JitLakehouse;
-use crate::span_table::make_span_partitions;
+use crate::lakehouse::jit_lakehouse::JitLakehouse;
+use crate::lakehouse::span_table::make_span_partitions;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::{prelude::*, time::ConvertTicks};

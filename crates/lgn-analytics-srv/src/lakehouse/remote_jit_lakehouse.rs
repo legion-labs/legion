@@ -1,4 +1,4 @@
-use crate::jit_lakehouse::JitLakehouse;
+use crate::lakehouse::jit_lakehouse::JitLakehouse;
 use anyhow::Result;
 use async_trait::async_trait;
 
