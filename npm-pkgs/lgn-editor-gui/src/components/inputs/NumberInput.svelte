@@ -85,8 +85,8 @@
 
 <style lang="postcss">
   .input {
-    /* rounded-r-sm should be exposed as a feature */
-    @apply bg-surface-max outline-none pl-1 rounded-r-sm;
+    /* maybe rounded-r-sm should be exposed as a <NumberInput> component feature */
+    @apply bg-surface-max outline-none px-2 rounded-r-sm text-item-low;
   }
 
   .disabled {

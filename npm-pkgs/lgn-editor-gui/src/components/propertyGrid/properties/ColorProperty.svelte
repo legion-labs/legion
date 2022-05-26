@@ -54,7 +54,7 @@
     {readonly}
   >
     <div
-      class="h-full w-full flex items-center justify-center text-xl font-bold"
+      class="h-full w-full flex items-center justify-center"
       slot="leftExtension"
       title="Hexadecimal color value"
     >
