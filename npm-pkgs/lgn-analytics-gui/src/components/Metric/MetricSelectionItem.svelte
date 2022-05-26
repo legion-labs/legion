@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { getContext } from "svelte";
+
   import { getMetricColor } from "./Lib/MetricColor";
   import type { MetricState } from "./Lib/MetricState";
   import type { MetricStore } from "./Lib/MetricStore";
 
-  export let metricStore: MetricStore;
   export let metric: MetricState;
+
+  const metricStore = getContext<MetricStore>("metrics-store");
 
   $: color = getMetricColor(metric.name);
 </script>
@@ -32,6 +35,6 @@
 
 <style lang="postcss">
   .metric-selection-item {
-    @apply flex space-x-1 break-all select-none w-full border-b border-[#3d3d3d] border-dotted;
+    @apply flex space-x-1 break-all select-none w-full border-b border-[#3d3d3d] border-dotted cursor-pointer;
   }
 </style>

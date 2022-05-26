@@ -1,4 +1,5 @@
-import { derived, writable } from "svelte/store";
+import { derived, get, writable } from "svelte/store";
+import type { Writable } from "svelte/store";
 
 import type { MetricBlockData } from "@lgn/proto-telemetry/dist/metric";
 import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
@@ -8,86 +9,96 @@ import type { MetricConfig } from "./MetricConfig";
 import type { MetricState } from "./MetricState";
 
 /** All the recently used metrics  */
-const localStorageKey = "metric-config";
+const recentlyUsedMetricsStoreKey = "recently-used-metric-store-key";
 
 /** Last used metrics for each process ids */
-const recentlyUsedMetricStoreKey = "last-used-metric-store-key";
+const lastUsedMetricStoreKey = "last-used-metric-store-key";
 
 export type MetricStore = ReturnType<typeof getMetricStore>;
 
-export type RecentlyUsedMetricStore = ReturnType<typeof getRecentlyUsedStore>;
+export type RecentlyUsedMetricStore = ReturnType<
+  typeof getRecentlyUsedMetricsStore
+>;
 
-export type LastMetricsUsedStore = ReturnType<typeof getLastMetricsUsedStore>;
+export type LastUsedMetricsStore = ReturnType<typeof getLastUsedMetricsStore>;
 
-function getMetricConfig(): MetricConfig[] {
-  const jsonData = localStorage.getItem(localStorageKey);
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const data: MetricConfig[] = jsonData !== null ? JSON.parse(jsonData) : [];
-  return data.sort((a, b) => a.lastUse - b.lastUse);
+export type MetricConfigStore = ReturnType<typeof getMetricConfigStore>;
+
+export function getMetricConfigStore(): Writable<MetricConfig[]> {
+  const store = connected<typeof recentlyUsedMetricsStoreKey, MetricConfig[]>(
+    new DefaultLocalStorage(),
+    recentlyUsedMetricsStoreKey,
+    []
+  );
+
+  const { subscribe } = derived(store, ($recentlyUsedMetrics) =>
+    [...$recentlyUsedMetrics].sort((a, b) => a.lastUse - b.lastUse)
+  );
+
+  return {
+    update: store.update,
+    set: store.set,
+    subscribe,
+  };
 }
 
-export function getRecentlyUsedStore(metricStore: MetricStore) {
-  return derived(metricStore, (data) => {
-    const local = getMetricConfig();
-    const result: MetricState[] = [];
-    data.forEach((m) => {
-      if (local.some((l) => l.name === m.name)) {
-        result.push(m);
-      }
-    });
-    return result.slice(0, 5);
-  });
-}
-
-export function getLastMetricsUsedStore() {
-  const store = connected<
-    typeof recentlyUsedMetricStoreKey,
-    Record<string, string[] | undefined>
-  >(new DefaultLocalStorage(), recentlyUsedMetricStoreKey, {});
+export function getLastUsedMetricsStore() {
+  const store = connected<typeof lastUsedMetricStoreKey, string[]>(
+    new DefaultLocalStorage(),
+    lastUsedMetricStoreKey,
+    []
+  );
 
   return {
     ...store,
-    initProcess(processId: string) {
-      store.update((processes) => {
-        const metrics = processes[processId];
 
-        return {
-          ...processes,
-          [processId]: Array.isArray(metrics) ? metrics : [],
-        };
-      });
+    clearMetrics(clearedMetricNames: string[]) {
+      store.update((metricNames) =>
+        metricNames.filter(
+          (metricName) => !clearedMetricNames.includes(metricName)
+        )
+      );
     },
 
-    toggleMetricForProcess(processId: string, metricName: string) {
-      store.update((processes) => {
-        const metrics = processes[processId];
-
-        if (!metrics) {
-          return {
-            ...processes,
-            [processId]: [metricName],
-          };
+    toggleMetric(toggledMetricName: string) {
+      store.update((metricNames) => {
+        if (metricNames.includes(toggledMetricName)) {
+          return metricNames.filter(
+            (metricName) => metricName !== toggledMetricName
+          );
         }
 
-        if (metrics.includes(metricName)) {
-          return {
-            ...processes,
-            [processId]: metrics.filter((metric) => metric !== metricName),
-          };
-        }
-
-        return {
-          ...processes,
-          [processId]: [...metrics, metricName],
-        };
+        return [...metricNames, toggledMetricName];
       });
     },
   };
 }
 
+export function getRecentlyUsedMetricsStore(
+  metricStore: MetricStore,
+  metricConfigStore: MetricConfigStore
+) {
+  return derived(
+    [metricStore, metricConfigStore],
+    ([$metrics, $metricConfig]) => {
+      const result: MetricState[] = [];
+
+      [...$metrics]
+        .sort((a, b) => (b.lastUse ?? 0) - (a.lastUse ?? 0))
+        .forEach((m) => {
+          if ($metricConfig.some((l) => l.name === m.name)) {
+            result.push(m);
+          }
+        });
+
+      return result.slice(0, 5);
+    }
+  );
+}
+
 export function getMetricStore(
-  processId: string,
-  lastMetricsUsedStore: LastMetricsUsedStore
+  lastUsedMetricsStore: LastUsedMetricsStore,
+  metricConfigStore: MetricConfigStore
 ) {
   const metricsStore = writable<MetricState[]>([]);
 
@@ -113,8 +124,8 @@ export function getMetricStore(
           });
         }
       });
-      const merge = getMetricConfig().concat(config);
-      localStorage.setItem(localStorageKey, JSON.stringify(merge));
+      const merge = get(metricConfigStore).concat(config);
+      metricConfigStore.set(merge);
       return s;
     });
   };
@@ -137,7 +148,7 @@ export function getMetricStore(
   };
 
   const switchSelection = (name: string) => {
-    lastMetricsUsedStore.toggleMetricForProcess(processId, name);
+    lastUsedMetricsStore.toggleMetric(name);
 
     updateSerialize((s) => {
       const metric = s.find((d) => d.name === name);
@@ -154,6 +165,8 @@ export function getMetricStore(
 
   const clearSelection = () => {
     metricsStore.update((s) => {
+      lastUsedMetricsStore.clearMetrics(s.map((m) => m.name));
+
       s.forEach((e) => {
         e.selected = false;
       });

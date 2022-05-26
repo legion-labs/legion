@@ -3,6 +3,7 @@
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
+  import { setContext } from "svelte";
   import type { Unsubscriber } from "svelte/store";
 
   import { MetricAxisCollection } from "@/components/Metric/Lib/MetricAxisCollection";
@@ -10,8 +11,10 @@
   import type { MetricSlice } from "@/components/Metric/Lib/MetricSlice";
   import type { MetricState } from "@/components/Metric/Lib/MetricState";
   import {
-    getLastMetricsUsedStore,
+    getLastUsedMetricsStore,
+    getMetricConfigStore,
     getMetricStore,
+    getRecentlyUsedMetricsStore,
   } from "@/components/Metric/Lib/MetricStore";
   import { MetricStreamer } from "@/components/Metric/Lib/MetricStreamer";
   import MetricDebugDisplay from "@/components/Metric/MetricDebugDisplay.svelte";
@@ -29,11 +32,22 @@
   let metricStreamer: MetricStreamer;
   let axisCollection: MetricAxisCollection;
 
-  const lastMetricsUsedStore = getLastMetricsUsedStore();
+  const lastUsedMetricsStore = getLastUsedMetricsStore();
 
-  lastMetricsUsedStore.initProcess(processId);
+  const metricConfigStore = getMetricConfigStore();
 
-  const metricStore = getMetricStore(processId, lastMetricsUsedStore);
+  const metricStore = getMetricStore(lastUsedMetricsStore, metricConfigStore);
+
+  const recentlyUsedMetricsStore = getRecentlyUsedMetricsStore(
+    metricStore,
+    metricConfigStore
+  );
+
+  setContext("metrics-store", metricStore);
+
+  setContext("metrics-config-store", metricConfigStore);
+
+  setContext("recently-used-metrics-store", recentlyUsedMetricsStore);
 
   const defaultLineWidth = 1;
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
@@ -141,7 +155,7 @@
       client,
       processId,
       metricStore,
-      lastMetricsUsedStore
+      lastUsedMetricsStore
     );
     await metricStreamer.initialize();
 
@@ -377,7 +391,7 @@
 <Layout>
   <div class="metrics" slot="content">
     {#if !loading}
-      <MetricSelection {metricStore} />
+      <MetricSelection />
       <MetricTooltip
         bind:this={metricTooltip}
         {metricStore}

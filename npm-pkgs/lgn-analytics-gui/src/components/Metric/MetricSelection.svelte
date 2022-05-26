@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getContext } from "svelte";
   import { derived, writable } from "svelte/store";
 
   import clickOutside from "@lgn/web-client/src/actions/clickOutside";
@@ -6,21 +7,24 @@
   import { getL10nOrchestratorContext } from "@/contexts";
 
   import L10n from "../Misc/L10n.svelte";
-  import { getRecentlyUsedStore } from "./Lib/MetricStore";
-  import type { MetricStore } from "./Lib/MetricStore";
+  import type { MetricStore, RecentlyUsedMetricStore } from "./Lib/MetricStore";
   import MetricSelectionItem from "./MetricSelectionItem.svelte";
 
   const { t } = getL10nOrchestratorContext();
 
-  export let metricStore: MetricStore;
+  const metricStore = getContext<MetricStore>("metrics-store");
 
-  let show = false;
-  let searchString = writable<string | null>(null);
-  let recentlyUsedMetrics = getRecentlyUsedStore(metricStore);
-  let selectedMetricCount = derived(
+  const recentlyUsedMetrics = getContext<RecentlyUsedMetricStore>(
+    "recently-used-metrics-store"
+  );
+
+  const selectedMetricCount = derived(
     metricStore,
     (s) => s.filter((m) => m.selected).length
   );
+
+  let show = false;
+  let searchString = writable<string | null>(null);
   let filteredMetrics = derived(
     [metricStore, searchString],
     ([data, search]) => {
@@ -90,7 +94,7 @@
           </div>
           <div class="metric-list">
             {#each $recentlyUsedMetrics as metric}
-              <MetricSelectionItem {metricStore} {metric} />
+              <MetricSelectionItem {metric} />
             {/each}
           </div>
         </div>
@@ -101,7 +105,7 @@
           <div class="metric-list">
             <div class="columns">
               {#each $filteredMetrics as metric}
-                <MetricSelectionItem {metricStore} {metric} />
+                <MetricSelectionItem {metric} />
               {/each}
             </div>
           </div>
