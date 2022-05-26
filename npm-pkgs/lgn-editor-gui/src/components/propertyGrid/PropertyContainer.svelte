@@ -43,9 +43,6 @@
 
 <div>
   {#if propertyIsBag(property)}
-    <!-- <div>
-      PropertyBag: <span class="text-red-500">{property.ptype}</span>
-    </div> -->
     <PropertyBag
       on:displayable
       on:input={(event) => dispatch("input", event.detail)}
