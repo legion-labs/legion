@@ -29,7 +29,7 @@
   use:clickOutside
   on:click-outside={menuContext.close}
   on:mouseenter={() => menuContext.mouseEnter(desc)}
-  on:click|capture|stopPropagation={onClick}
+  on:click|stopPropagation={onClick}
 >
   <div class="menu-title" bind:clientWidth={menuWidth}>
     {#if desc.icon}
