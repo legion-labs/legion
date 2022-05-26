@@ -1,4 +1,4 @@
-import { derived, get, writable } from "svelte/store";
+import { derived, get, readable, writable } from "svelte/store";
 import type { Writable } from "svelte/store";
 
 import type { MetricBlockData } from "@lgn/proto-telemetry/dist/metric";
@@ -23,6 +23,20 @@ export type RecentlyUsedMetricStore = ReturnType<
 export type LastUsedMetricsStore = ReturnType<typeof getLastUsedMetricsStore>;
 
 export type MetricConfigStore = ReturnType<typeof getMetricConfigStore>;
+
+export type MetricNamesStore = ReturnType<typeof getMetricNames>;
+
+export function getMetricNames() {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const names: Record<string, string> = (import.meta.env
+    .VITE_LEGION_ANALYTICS_METRICS_NAMES_MAP as string)
+    ? JSON.parse(
+        import.meta.env.VITE_LEGION_ANALYTICS_METRICS_NAMES_MAP as string
+      )
+    : {};
+
+  return readable(names);
+}
 
 export function getMetricConfigStore(): Writable<MetricConfig[]> {
   const store = connected<typeof recentlyUsedMetricsStoreKey, MetricConfig[]>(

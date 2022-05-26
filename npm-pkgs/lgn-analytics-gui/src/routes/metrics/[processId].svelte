@@ -13,6 +13,7 @@
   import {
     getLastUsedMetricsStore,
     getMetricConfigStore,
+    getMetricNames,
     getMetricStore,
     getRecentlyUsedMetricsStore,
   } from "@/components/Metric/Lib/MetricStore";
@@ -42,6 +43,8 @@
     metricStore,
     metricConfigStore
   );
+
+  const metricNames = getMetricNames();
 
   setContext("metrics-store", metricStore);
 
@@ -151,7 +154,8 @@
       client,
       processId,
       metricStore,
-      lastUsedMetricsStore
+      lastUsedMetricsStore,
+      metricNames
     );
     await metricStreamer.initialize();
 
