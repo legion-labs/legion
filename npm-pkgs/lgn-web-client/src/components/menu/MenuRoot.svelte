@@ -69,7 +69,7 @@
 
 <style>
   .menu {
-    @apply items-center cursor-pointer z-[10];
+    @apply items-center cursor-pointer;
   }
 
   .menu-title {
