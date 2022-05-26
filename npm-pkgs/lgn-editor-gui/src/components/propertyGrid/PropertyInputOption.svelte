@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from "@iconify/svelte";
   import { createEventDispatcher } from "svelte";
 
   import type { PropertyUpdate } from "@/api";
@@ -12,7 +13,6 @@
 
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyInput from "./PropertyInput.svelte";
-  import Icon from "@iconify/svelte";
 
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;

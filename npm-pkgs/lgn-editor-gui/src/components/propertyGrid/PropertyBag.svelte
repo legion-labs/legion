@@ -4,6 +4,8 @@
   import type { Writable } from "svelte/store";
 
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import MenuBar from "@lgn/web-client/src/components/menu/MenuBar.svelte";
+  import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
   import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
 
@@ -26,8 +28,6 @@
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";
-  import MenuBar from "@lgn/web-client/src/components/menu/MenuBar.svelte";
-  import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
 
   type $$Events = {
     input: CustomEvent<PropertyUpdate>;

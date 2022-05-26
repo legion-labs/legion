@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { writable } from "svelte/store";
+
   import log from "@lgn/web-client/src/lib/log";
 
   import {
@@ -25,7 +27,6 @@
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";
-  import { writable } from "svelte/store";
 
   const createComponentModalId = Symbol();
 
