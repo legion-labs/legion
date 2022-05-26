@@ -219,29 +219,11 @@
         </div>
       </div>
       <MenuBar enableHover={false} items={menuItems} />
-      <!-- {#if parentProperty && propertyIsDynComponent(parentProperty)}
-        <div
-          class="delete-button"
-          on:click={requestRemoveComponent}
-          title="Remove Component"
-        >
-          &#215;
-        </div>
-      {/if} -->
       {#if !disabledOptionalProperty && propertyIsOption(property)}
         <div class="optional">
           <Checkbox value={true} />
         </div>
       {/if}
-      <!-- {#if propertyIsVec(property)}
-        <div
-          class="add-vector"
-          on:click={addVectorSubProperty}
-          title="Add property to vector"
-        >
-          +
-        </div>
-      {/if} -->
     </div>
   {/if}
   <div hidden={collapsed}>
@@ -273,18 +255,14 @@
   }
 
   .property-header {
-    @apply flex flex-row items-center justify-between pl-0 h-8 font-semibold rounded-sm cursor-pointer border-t-[1px] border-content-max relative;
+    @apply pl-0 h-8;
+    @apply border-t-[1px] border-content-max;
+    @apply flex flex-row items-center justify-between;
+    @apply font-semibold rounded-sm cursor-pointer;
+    @apply relative;
   }
 
   .optional {
     @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 cursor-pointer;
   }
-
-  /* .add-vector {
-    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-green-800 bg-opacity-70 rounded-r-sm cursor-pointer;
-  }
-
-  .delete-button {
-    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-red-800 bg-opacity-70 rounded-r-sm cursor-pointer;
-  } */
 </style>
