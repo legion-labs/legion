@@ -14,7 +14,9 @@ use std::{
     sync::Arc,
 };
 
-use lgn_animation::offline::AnimationComponent;
+use lgn_animation::offline::{
+    AnimationTrack, AnimationTransform, AnimationTransformBundle, VecAnimationTransform,
+};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName};
@@ -26,10 +28,8 @@ use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::{Quat, Vec3};
-use lgn_physics::{
-    offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere, PhysicsSceneSettings},
-    RigidActorType,
-};
+use lgn_physics::offline::PhysicsSceneSettings;
+
 use lgn_tracing::LevelFilter;
 use sample_data::{
     offline::{Light, Transform, Visual},
@@ -201,32 +201,118 @@ async fn create_offline_data(
     project: &mut Project,
     resource_registry: &AssetRegistry,
 ) -> Vec<ResourceTypeAndId> {
-    let sphere_model_id = create_offline_model(
+    /* Animation skeleton */
+    let cube_model_id = create_offline_model(
         project,
         resource_registry,
-        "53db2f32-ce66-4e01-b06f-960aaa7712e4",
-        "/scene/models/sphere.mod",
-        Mesh::new_sphere(0.25, 64, 64),
+        "84510591-4ccd-4818-bf73-15375e6b140a",
+        "/scene/models/skeleton.mod",
+        Mesh::new_cube(0.1),
     )
     .await;
 
-    let animation_data = create_offline_entity(
+    let light_id = create_offline_entity(
         project,
         resource_registry,
-        "719c8d5b-d320-4102-a92a-b3fa5240e140",
-        "/scene/animation.ent",
+        "85701c5f-f9f8-4ca0-9111-8243c4ea2cd6",
+        "/scene/light.ent",
         vec![
             Box::new(Transform {
-                position: (0.2_f32, 2.3_f32, 0.5_f32).into(),
+                position: (0_f32, 10_f32, 2_f32).into(),
+                ..Transform::default()
+            }),
+            Box::new(Light {
+                light_type: LightType::Directional,
+                color: (0xFF, 0xFF, 0xEF).into(),
+                radiance: 12_f32,
+                enabled: true,
+                ..Light::default()
+            }),
+        ],
+        vec![],
+    )
+    .await;
+
+    let skeleton = create_offline_entity(
+        project,
+        resource_registry,
+        "825f5f93-7a86-4616-81aa-ce3e146248ab",
+        "/scene/skeleton.ent",
+        vec![
+            Box::new(Transform {
+                position: (-0.5_f32, 0.0_f32, 0.0_f32).into(),
                 ..Transform::default()
             }),
             Box::new(Visual {
-                renderable_geometry: Some(sphere_model_id.clone()),
+                renderable_geometry: Some(cube_model_id.clone()),
                 color: (0x20, 0xFF, 0xFF).into(),
                 ..Visual::default()
             }),
-            Box::new(AnimationComponent {
-                track_data: Vec3::new(0.0, 1.2, -3.0),
+            Box::new(AnimationTrack {
+                key_frames: vec![
+                    VecAnimationTransform {
+                        anim_transform_vec: vec![
+                            AnimationTransformBundle {
+                                local: AnimationTransform {
+                                    translation: Vec3::new(0.2, 0.0, 0.0),
+                                    rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+                                    scale: Vec3::new(0.5, 0.5, 0.5),
+                                },
+                                global: AnimationTransform {
+                                    translation: Vec3::new(0.2, 0.0, 0.0),
+                                    rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+                                    scale: Vec3::new(0.5, 0.5, 0.5),
+                                },
+                            },
+                            AnimationTransformBundle {
+                                local: AnimationTransform {
+                                    translation: Vec3::new(-0.5, 0.0, 0.0),
+                                    rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+                                    scale: Vec3::new(0.5, 0.5, 0.5),
+                                },
+                                global: AnimationTransform {
+                                    translation: Vec3::new(0.0, 0.0, 0.0),
+                                    rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+                                    scale: Vec3::new(0.5, 0.5, 0.5),
+                                },
+                            },
+                        ],
+                    },
+                    VecAnimationTransform {
+                        anim_transform_vec: vec![
+                            AnimationTransformBundle {
+                                local: AnimationTransform {
+                                    translation: Vec3::new(0.4, 0.0, 0.0),
+                                    rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+                                    scale: Vec3::new(0.5, 0.5, 0.5),
+                                },
+                                global: AnimationTransform {
+                                    translation: Vec3::new(0.4, 0.0, 0.0),
+                                    rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+                                    scale: Vec3::new(0.5, 0.5, 0.5),
+                                },
+                            },
+                            AnimationTransformBundle {
+                                local: AnimationTransform {
+                                    translation: Vec3::new(-0.5, 0.0, 0.0),
+                                    rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+                                    scale: Vec3::new(0.5, 0.5, 0.5),
+                                },
+                                global: AnimationTransform {
+                                    translation: Vec3::new(0.0, 0.0, 0.0),
+                                    rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+                                    scale: Vec3::new(0.5, 0.5, 0.5),
+                                },
+                            },
+                        ],
+                    },
+                ],
+                current_key_frame_index: 0,
+                duration_key_frames: vec![1.0, 1.0, 1.0, 1.0, 1.0],
+                time_since_last_tick: 0.0,
+                looping: true,
+                bone_ids: vec![0, 1],
+                parent_indices: vec![-1, 0], // Stores the bone idx of every bones parent, if -1: root bone
             }),
         ],
         vec![],
@@ -241,13 +327,13 @@ async fn create_offline_data(
         vec![
             Box::new(CameraSetup {
                 eye: Vec3::new(0.0, 1.2, -3.0),
-                look_at: Vec3::ZERO,
+                look_at: Vec3::new(0.0, 0.5, 0.0),
             }),
             Box::new(PhysicsSceneSettings {
                 gravity: Vec3::new(0.0, -1.0, 0.0),
             }),
         ],
-        vec![animation_data],
+        vec![light_id, skeleton],
     )
     .await;
 
@@ -342,6 +428,7 @@ async fn create_offline_model(
         .instantiate::<lgn_graphics_data::offline::Model>(resources)
         .unwrap();
     model.meshes.clear();
+
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
         normals: mesh.normals.unwrap(),
@@ -380,3 +467,173 @@ async fn create_offline_model(
     let path: ResourcePathId = type_id.into();
     path.push(lgn_graphics_data::runtime::Model::TYPE)
 }
+
+// let body_model_id = create_offline_model(
+//     project,
+//     resource_registry,
+//     "c26b19b2-e80a-4db5-a53c-ba24492d8015",
+//     "/scene/models/body.mod",
+//     Mesh::new_cylinder(0.25, 1.0, 60),
+// )
+// .await;
+
+// let arm_model_id = create_offline_model(
+//     project,
+//     resource_registry,
+//     "11b56c2e-a3d7-4ecc-99c8-2b0153c5feb0",
+//     "/scene/models/arm.mod",
+//     Mesh::new_cylinder(0.1, 0.5, 60),
+// )
+// .await;
+
+// let cube_model_id = create_offline_model(
+//     project,
+//     resource_registry,
+//     "c26b19b2-e80a-4db5-a53c-ba24492d8015",
+//     "/scene/models/body.mod",
+//     Mesh::new_cube(0.5),
+// )
+// .await;
+
+// let sphere_model_id = create_offline_model(
+//     project,
+//     resource_registry,
+//     "53db2f32-ce66-4e01-b06f-960aaa7712e4",
+//     "/scene/models/sphere.mod",
+//     Mesh::new_sphere(0.25, 64, 64),
+// )
+// .await;
+
+// let ball_a_id = create_offline_entity(
+//     project,
+//     resource_registry,
+//     "4dd86281-c3d0-4040-aa59-b3c6cc84eb83",
+//     "/scene/ball-a.ent",
+//     vec![
+//         Box::new(Transform {
+//             position: (0.2_f32, 1.25_f32, 0.5_f32).into(),
+//             ..Transform::default()
+//         }),
+//         Box::new(Visual {
+//             renderable_geometry: Some(sphere_model_id.clone()),
+//             color: (0x20, 0x4F, 0xFF).into(),
+//             ..Visual::default()
+//         }),
+//     ],
+//     vec![],
+// )
+// .await;
+
+// let arm = create_offline_entity(
+//     project,
+//     resource_registry,
+//     "d6681749-9d52-4092-b49c-676a8da53540",
+//     "/scene/arm.ent",
+//     vec![
+//         Box::new(Transform {
+//             position: (0.55_f32, 0.5_f32, 0.5_f32).into(),
+//             ..Transform::default()
+//         }),
+//         Box::new(Visual {
+//             renderable_geometry: Some(arm_model_id.clone()),
+//             color: (0xFF, 0x4F, 0xFF).into(),
+//             ..Visual::default()
+//         }),
+//         Box::new(AnimationTrack {
+//             key_frames: vec![
+//                 Vec3::new(0.5, -0.5, -0.5),
+//                 Vec3::new(0.5, -0.5, 0.5),
+//                 Vec3::new(-0.5, -0.5, -0.5),
+//                 Vec3::new(-0.5, -0.5, 0.5),
+//                 Vec3::new(0.0, 0.0, 0.0),
+//             ],
+//             current_key_frame_index: 0,
+//             duration_key_frames: vec![1.0, 1.0, 1.0, 1.0, 1.0],
+//             time_since_last_tick: 0.0,
+//             looping: true,
+//         }),
+//     ],
+//     vec![],
+// )
+// .await;
+
+// let cube_2 = create_offline_entity(
+//     project,
+//     resource_registry,
+//     "5882f9f5-6ed2-4d25-8cf3-bfcea61134e8",
+//     "/scene/cube_2.ent",
+//     vec![
+//         Box::new(Transform {
+//             position: (-0.2_f32, 0.0_f32, -0.5_f32).into(),
+//             ..Transform::default()
+//         }),
+//         Box::new(Visual {
+//             renderable_geometry: Some(cube_model_id.clone()),
+//             color: (0x2F, 0xFF, 0xFF).into(),
+//             ..Visual::default()
+//         }),
+//         Box::new(AnimationTrack {
+//             key_frames: vec![
+//                 Vec3::new(0.2, 0.0, 0.0),
+//                 Vec3::new(0.4, -0.0, 0.0),
+//                 Vec3::new(0.2, -0.0, -0.0),
+//                 Vec3::new(0.0, -0.0, 0.0),
+//                 Vec3::new(-0.2, 0.0, 0.0),
+//                 Vec3::new(0.0, 0.0, 0.0),
+//             ],
+//             current_key_frame_index: 0,
+//             duration_key_frames: vec![1.0, 1.0, 1.0, 1.0, 1.0],
+//             time_since_last_tick: 0.0,
+//             looping: true,
+//             bone_ids: vec![0, 1],
+//             parent_indices: vec![-1, 0], // Stores the bone idx of every bones parent, if -1: root bone
+//             local_reference_pose: vec![AnimationTransform {
+//                 translation: vec![0.0, 0.0, 0.0, 0.0],
+//                 rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+//                 scale: vec![0.0, 0.0, 0.0, 0.0],
+//             }],
+//             global_reference_pose: vec![AnimationTransform {
+//                 translation: vec![0.0, 0.0, 0.0, 0.0],
+//                 rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+//                 scale: vec![0.0, 0.0, 0.0, 0.0],
+//             }],
+//         }),
+//     ],
+//     vec![],
+// )
+// .await;
+
+// let animation_data = create_offline_entity(
+//     project,
+//     resource_registry,
+//     "12e04cd1-5c7f-4ade-9565-56e554268b9f",
+//     "/scene/animation.ent",
+//     vec![Box::new(AnimationTrack {
+//         key_frames: vec![
+//             Vec3::new(0.2, 0.0, 0.0),
+//             Vec3::new(0.4, -0.0, 0.0),
+//             Vec3::new(0.2, -0.0, -0.0),
+//             Vec3::new(0.0, -0.0, 0.0),
+//             Vec3::new(-0.2, 0.0, 0.0),
+//             Vec3::new(0.0, 0.0, 0.0),
+//         ],
+//         current_key_frame_index: 0,
+//         duration_key_frames: vec![1.0, 1.0, 1.0, 1.0, 1.0],
+//         time_since_last_tick: 0.0,
+//         looping: true,
+//         bone_ids: vec![0, 1],
+//         parent_indices: vec![-1, 0], // Stores the bone idx of every bones parent, if -1: root bone
+//         local_reference_pose: vec![AnimationTransform {
+//             translation: vec![0.0, 0.0, 0.0, 0.0],
+//             rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+//             scale: vec![0.0, 0.0, 0.0, 0.0],
+//         }],
+//         global_reference_pose: vec![AnimationTransform {
+//             translation: vec![0.0, 0.0, 0.0, 0.0],
+//             rotation: Quat::from_xyzw(0.0, 0.0, 0.0, 0.0),
+//             scale: vec![0.0, 0.0, 0.0, 0.0],
+//         }],
+//     })],
+//     vec![],
+// )
+// .await;

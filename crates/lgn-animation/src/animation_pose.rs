@@ -27,64 +27,38 @@ pub struct Pose {
 
 impl Pose {
     #[inline]
-    fn get_num_bones() {
-        /* */
-    }
+    fn get_num_bones() {}
 
-    fn reset() {
-        /* */
-    }
+    fn reset() {}
 
     #[inline]
-    fn is_pose_set() {
-        /* */
-    }
+    fn is_pose_set() {}
 
     #[inline]
-    fn is_reference_pose() {
-        /* */
-    }
+    fn is_reference_pose() {}
 
     #[inline]
-    fn is_zero_pose() {
-        /* */
-    }
+    fn is_zero_pose() {}
 
     #[inline]
-    fn is_additive_pose() {
-        /* */
-    }
+    fn is_additive_pose() {}
 
     #[inline]
-    fn get_transform() {
-        /* */
-    }
+    fn get_transform() {}
 
     #[inline]
-    fn set_transform() {
-        /* */
-    }
+    pub(crate) fn set_transform(&self, bone_idx: usize, bone_transform: Transform) {}
 
     #[inline]
-    fn set_rotation() {
-        /* */
-    }
+    fn set_rotation() {}
 
     #[inline]
-    fn set_translation() {
-        /* */
-    }
+    fn set_translation() {}
 
     #[inline]
-    fn set_scale() {
-        /* */
-    }
+    fn set_scale() {}
 
-    fn calculate_global_transforms() {
-        /* */
-    }
+    fn calculate_global_transforms() {}
 
-    fn get_global_transform() {
-        /* */
-    }
+    fn get_global_transform() {}
 }
