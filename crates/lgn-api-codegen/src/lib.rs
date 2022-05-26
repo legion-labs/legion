@@ -48,9 +48,22 @@ pub fn generate(
 
 #[macro_export]
 macro_rules! generate {
-    ($language:expr, $openapi_file:expr) => {
-        lgn_api_codegen::generate($language, $openapi_file, std::env::var("OUT_DIR")?)
-    };
+    ($language:ident, $apis_path:expr, $api_name:ident, $($api_names:ident),+) => {{
+        lgn_api_codegen::generate!($language, $apis_path, $($api_names),+)?;
+        lgn_api_codegen::generate!($language, $apis_path, $api_name)
+    }};
+    ($language:ident, $apis_path:expr, $api_name:ident) => {{
+        let openapi_file =
+            std::path::PathBuf::from($apis_path).join(concat!(stringify!($api_name), ".yaml"));
+
+        println!("cargo:rerun-if-changed={}", openapi_file.display());
+
+        lgn_api_codegen::generate(
+            lgn_api_codegen::Language::$language,
+            openapi_file,
+            std::env::var("OUT_DIR")?,
+        )
+    }};
 }
 
 pub(crate) trait Generator {
