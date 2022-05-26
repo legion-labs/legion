@@ -272,7 +272,7 @@ async fn main() -> anyhow::Result<()> {
     //     ColorChoice::Never
     // };
 
-    let provider =
+    let _provider =
         Arc::new(lgn_content_store::Config::load_and_instantiate_persistent_provider().await?);
     let repository_index = Config::load_and_instantiate_repository_index().await?;
 
@@ -330,6 +330,7 @@ async fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
+        /*
         Commands::InitWorkspace { repository_name } => {
             info!("init-workspace");
 
@@ -338,7 +339,6 @@ async fn main() -> anyhow::Result<()> {
                 .map_err(Into::into)
                 .map(|_| ())
         }
-        /*
         Commands::Add { paths } => {
             let workspace =
                 Workspace::find_in_current_directory(repository_index, provider).await?;

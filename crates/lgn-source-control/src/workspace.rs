@@ -3,8 +3,8 @@ use std::{collections::BTreeSet, sync::Arc};
 use lgn_content_store::{
     indexing::{
         BasicIndexer, IndexKey, ResourceByteReader, ResourceByteWriter, ResourceIdentifier,
-        ResourceReader, ResourceWriter, StaticIndexer, StringPathIndexer, Tree, TreeIdentifier,
-        TreeLeafNode, TreeWriter,
+        ResourceReader, ResourceWriter, StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode,
+        TreeWriter,
     },
     Provider,
 };
@@ -17,12 +17,12 @@ use crate::{
 };
 
 /// Represents a workspace.
-pub struct Workspace {
+pub struct Workspace<MainIndexer> {
     index: Box<dyn Index>,
     transaction: Provider,
     branch_name: String,
-    main_index: StaticIndexer,
-    path_index: StringPathIndexer,
+    main_indexer: MainIndexer,
+    path_indexer: StringPathIndexer,
     content_id: ContentId,
 }
 
@@ -63,7 +63,10 @@ impl Staging {
     }
 }
 
-impl Workspace {
+impl<MainIndexer> Workspace<MainIndexer>
+where
+    MainIndexer: BasicIndexer + Sync,
+{
     /// Create a new workspace pointing at the given directory and using the
     /// given configuration.
     ///
@@ -72,8 +75,16 @@ impl Workspace {
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
         provider: Arc<Provider>,
+        main_indexer: MainIndexer,
     ) -> Result<Self> {
-        let workspace = Self::new(repository_index, repository_name, provider, "main").await?;
+        let workspace = Self::new(
+            repository_index,
+            repository_name,
+            provider,
+            "main",
+            main_indexer,
+        )
+        .await?;
 
         workspace.initial_checkout().await?;
 
@@ -90,8 +101,16 @@ impl Workspace {
         repository_name: &RepositoryName,
         branch_name: &str,
         provider: Arc<Provider>,
+        main_indexer: MainIndexer,
     ) -> Result<Self> {
-        Self::new(repository_index, repository_name, provider, branch_name).await
+        Self::new(
+            repository_index,
+            repository_name,
+            provider,
+            branch_name,
+            main_indexer,
+        )
+        .await
     }
 
     /// Return the repository name of the workspace.
@@ -113,6 +132,7 @@ impl Workspace {
         repository_name: &RepositoryName,
         provider: Arc<Provider>,
         branch_name: &str,
+        main_indexer: MainIndexer,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
         let branch = index.get_branch(branch_name).await?;
@@ -122,8 +142,8 @@ impl Workspace {
             index,
             transaction: provider.begin_transaction_in_memory(),
             branch_name: branch_name.to_owned(),
-            main_index: StaticIndexer::new(std::mem::size_of::<u128>()),
-            path_index: StringPathIndexer::default(),
+            main_indexer,
+            path_indexer: StringPathIndexer::default(),
             content_id: ContentId {
                 main_index_tree_id: commit.main_index_tree_id,
                 path_index_tree_id: commit.path_index_tree_id,
@@ -158,7 +178,7 @@ impl Workspace {
 
     async fn get_resource_identifier(&self, id: &IndexKey) -> Result<Option<ResourceIdentifier>> {
         let leaf_node = self
-            .main_index
+            .main_indexer
             .get_leaf(&self.transaction, self.get_main_index_id(), id)
             .await
             .map_err(Error::ContentStoreIndexing)?;
@@ -212,7 +232,7 @@ impl Workspace {
         &self,
         tree_id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.main_index
+        self.main_indexer
             .enumerate_leaves(&self.transaction, tree_id)
             .await
             .map_err(Error::ContentStoreIndexing)?
@@ -246,7 +266,7 @@ impl Workspace {
             .map_err(Error::ContentStoreIndexing)?;
 
         self.content_id.main_index_tree_id = self
-            .main_index
+            .main_indexer
             .add_leaf(
                 &self.transaction,
                 self.get_main_index_id(),
@@ -257,7 +277,7 @@ impl Workspace {
             .map_err(Error::ContentStoreIndexing)?;
 
         self.content_id.path_index_tree_id = self
-            .path_index
+            .path_indexer
             .add_leaf(
                 &self.transaction,
                 &self.content_id.path_index_tree_id,

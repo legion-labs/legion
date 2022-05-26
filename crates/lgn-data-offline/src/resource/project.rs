@@ -13,8 +13,9 @@ use lgn_content_store::{
     Provider,
 };
 use lgn_data_runtime::{
-    manifest::ManifestId, AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId,
-    ResourcePathId, ResourceType, ResourceTypeAndId,
+    manifest::ManifestId, new_resource_type_and_id_indexer, AssetRegistry, AssetRegistryError,
+    HandleUntyped, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
+    ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
     CommitMode, ContentId, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
@@ -23,8 +24,6 @@ use lgn_tracing::error;
 use thiserror::Error;
 
 use crate::resource::{metadata::Metadata, offline_content::OfflineContent, ResourcePathName};
-
-// const METADATA_EXT: &str = "meta";
 
 /// A source-control-backed state of the project
 ///
@@ -72,7 +71,7 @@ use crate::resource::{metadata::Metadata, offline_content::OfflineContent, Resou
 /// can be changed freely.
 pub struct Project {
     project_dir: PathBuf,
-    workspace: Workspace,
+    workspace: Workspace<ResourceTypeAndIdIndexer>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
     offline_manifest_id: Arc<ManifestId>,
 }
@@ -167,6 +166,7 @@ impl Project {
             repository_index,
             repository_name,
             source_control_content_provider,
+            new_resource_type_and_id_indexer(),
         )
         .await?;
 
@@ -193,6 +193,7 @@ impl Project {
             repository_name,
             branch_name,
             source_control_content_provider,
+            new_resource_type_and_id_indexer(),
         )
         .await?;
 
