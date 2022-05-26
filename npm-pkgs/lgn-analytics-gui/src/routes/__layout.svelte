@@ -14,11 +14,9 @@
 
   const notifications = createNotificationsStore<Fluent>();
 
-  const issuerUrl = import.meta.env
-    .VITE_LEGION_ANALYTICS_ONLINE_AUTHENTICATION_OAUTH_ISSUER_URL as string;
+  const issuerUrl = import.meta.env.VITE_LEGION_ANALYTICS_ISSUER_URL as string;
 
-  const clientId = import.meta.env
-    .VITE_LEGION_ANALYTICS_ONLINE_AUTHENTICATION_OAUTH_CLIENT_ID as string;
+  const clientId = import.meta.env.VITE_LEGION_ANALYTICS_CLIENT_ID as string;
 
   let loaded = false;
 
