@@ -1,5 +1,7 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use lgn_graphics_api::{DeviceContext, SamplerDef};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 
 use super::PersistentDescriptorSetManager;
 
@@ -17,8 +19,8 @@ const DEFAULT_SAMPLER_ID: SamplerId = SamplerId(0);
 pub struct SamplerManager {
     device_context: DeviceContext,
 
-    samplers: Mutex<Vec<(SamplerDef, lgn_graphics_api::Sampler)>>,
-    scheduled_upload: Mutex<Vec<SamplerId>>,
+    samplers: RwLock<Vec<(u64, lgn_graphics_api::Sampler)>>,
+    uploaded: AtomicUsize,
 }
 
 impl SamplerManager {
@@ -28,8 +30,8 @@ impl SamplerManager {
     ) -> Self {
         let sampler_manager = Self {
             device_context: device_context.clone(),
-            samplers: Mutex::new(Vec::new()),
-            scheduled_upload: Mutex::new(Vec::new()),
+            samplers: RwLock::new(Vec::new()),
+            uploaded: AtomicUsize::new(0),
         };
         let idx = sampler_manager.get_index(&SamplerDef::default());
         assert_eq!(idx, DEFAULT_SAMPLER_ID);
@@ -38,31 +40,32 @@ impl SamplerManager {
     }
 
     pub fn get_index(&self, sampler_definition: &SamplerDef) -> SamplerId {
-        let mut samplers = self.samplers.lock();
-        let mut scheduled_upload = self.scheduled_upload.lock();
+        let samplers = self.samplers.read();
         if let Some(idx) = samplers
             .iter()
-            .position(|s| s.0 == *sampler_definition)
+            .position(|s| s.0 == sampler_definition.get_hash())
             .map(|idx| idx as u32)
         {
+            assert_eq!(sampler_definition, samplers[idx as usize].1.definition());
             return SamplerId(idx);
         }
-        let sampler_id = SamplerId(samplers.to_owned().len() as u32);
+        drop(samplers);
+
+        let mut samplers = self.samplers.write();
+        let sampler_id = SamplerId(samplers.len() as u32);
         samplers.push((
-            *sampler_definition,
+            sampler_definition.get_hash(),
             self.device_context.create_sampler(*sampler_definition),
         ));
-        scheduled_upload.push(sampler_id);
         sampler_id
     }
 
     pub fn upload(&self, persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager) {
-        let samplers = self.samplers.lock();
-        let mut scheduled_upload = self.scheduled_upload.lock();
-        scheduled_upload.iter().for_each(|idx| {
-            persistent_descriptor_set_manager.set_sampler(idx.0, &samplers[idx.0 as usize].1);
-        });
-        scheduled_upload.clear();
+        let samplers = self.samplers.read();
+        for idx in self.uploaded.load(Ordering::Acquire)..samplers.len() {
+            persistent_descriptor_set_manager.set_sampler(idx as u32, &samplers[idx].1);
+        }
+        self.uploaded.store(samplers.len(), Ordering::Release);
     }
 
     pub fn get_default_sampler_index() -> SamplerId {

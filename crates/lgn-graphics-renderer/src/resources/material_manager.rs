@@ -16,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    GpuDataManager, IndexAllocator, MissingVisualTracker, SamplerManager, SharedResourcesManager,
-    TextureEvent, TextureManager, UnifiedStaticBufferAllocator,
+    GpuDataManager, IndexAllocator, MissingVisualTracker, SamplerId, SamplerManager,
+    SharedResourcesManager, TextureEvent, TextureManager, UnifiedStaticBufferAllocator,
 };
 
 type GpuMaterialData = GpuDataManager<MaterialId, crate::cgen::cgen_type::MaterialData>;
@@ -303,6 +303,7 @@ impl MaterialManager {
         );
         material_data.set_sampler(
             Self::get_sampler_index(sampler_manager, material_component.sampler_data.as_ref())
+                .as_index()
                 .into(),
         );
 
@@ -329,46 +330,44 @@ impl MaterialManager {
     fn get_sampler_index(
         sampler_manager: &SamplerManager,
         sampler_data: Option<&SamplerData>,
-    ) -> u32 {
+    ) -> SamplerId {
         if let Some(sampler_data) = sampler_data {
             #[allow(clippy::match_same_arms)]
-            sampler_manager
-                .get_index(&SamplerDef {
-                    min_filter: match sampler_data.min_filter {
-                        lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
-                        lgn_graphics_data::Filter::Linear => FilterType::Linear,
-                        _ => FilterType::Linear,
-                    },
-                    mag_filter: match sampler_data.mag_filter {
-                        lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
-                        lgn_graphics_data::Filter::Linear => FilterType::Linear,
-                        _ => FilterType::Linear,
-                    },
-                    mip_map_mode: match sampler_data.mip_filter {
-                        lgn_graphics_data::Filter::Nearest => MipMapMode::Nearest,
-                        lgn_graphics_data::Filter::Linear => MipMapMode::Linear,
-                        _ => MipMapMode::Linear,
-                    },
-                    address_mode_u: match sampler_data.wrap_u {
-                        lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
-                        lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
-                        lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
-                        _ => AddressMode::Repeat,
-                    },
-                    address_mode_v: match sampler_data.wrap_v {
-                        lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
-                        lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
-                        lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
-                        _ => AddressMode::Repeat,
-                    },
-                    address_mode_w: AddressMode::Repeat,
-                    mip_lod_bias: 0.0,
-                    max_anisotropy: 1.0,
-                    compare_op: CompareOp::LessOrEqual,
-                })
-                .as_index()
+            sampler_manager.get_index(&SamplerDef {
+                min_filter: match sampler_data.min_filter {
+                    lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
+                    lgn_graphics_data::Filter::Linear => FilterType::Linear,
+                    _ => FilterType::Linear,
+                },
+                mag_filter: match sampler_data.mag_filter {
+                    lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
+                    lgn_graphics_data::Filter::Linear => FilterType::Linear,
+                    _ => FilterType::Linear,
+                },
+                mip_map_mode: match sampler_data.mip_filter {
+                    lgn_graphics_data::Filter::Nearest => MipMapMode::Nearest,
+                    lgn_graphics_data::Filter::Linear => MipMapMode::Linear,
+                    _ => MipMapMode::Linear,
+                },
+                address_mode_u: match sampler_data.wrap_u {
+                    lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
+                    lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
+                    lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
+                    _ => AddressMode::Repeat,
+                },
+                address_mode_v: match sampler_data.wrap_v {
+                    lgn_graphics_data::WrappingMode::ClampToEdge => AddressMode::ClampToEdge,
+                    lgn_graphics_data::WrappingMode::MirroredRepeat => AddressMode::Mirror,
+                    lgn_graphics_data::WrappingMode::Repeat => AddressMode::Repeat,
+                    _ => AddressMode::Repeat,
+                },
+                address_mode_w: AddressMode::Repeat,
+                mip_lod_bias: 0.0,
+                max_anisotropy: 1.0,
+                compare_op: CompareOp::LessOrEqual,
+            })
         } else {
-            SamplerManager::get_default_sampler_index().as_index()
+            SamplerManager::get_default_sampler_index()
         }
     }
 
