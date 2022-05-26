@@ -57,9 +57,10 @@
         items={[
           {
             icon: "ic:outline-more-vert",
+            visible: true,
             children: [
               {
-                hidden: resources.length > 1,
+                visible: resources.length >= 2,
                 title: "Copy Ids",
                 action: async () => {
                   await navigator.clipboard.writeText(
@@ -68,7 +69,7 @@
                 },
               },
               {
-                hidden: resources.length === 1,
+                visible: resources.length === 1,
                 title: "Copy Id",
                 action: async () => {
                   await navigator.clipboard.writeText(resources[0].id);

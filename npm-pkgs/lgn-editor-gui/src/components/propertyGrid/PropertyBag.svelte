@@ -26,6 +26,8 @@
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";
+  import MenuBar from "@lgn/web-client/src/components/menu/MenuBar.svelte";
+  import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
 
   type $$Events = {
     input: CustomEvent<PropertyUpdate>;
@@ -155,6 +157,30 @@
       dispatch("displayable", displayable);
     }
   }
+
+  const menuItems = [
+    {
+      visible: true,
+      icon: "ic:outline-more-vert",
+      children: [
+        {
+          title: "Delete component",
+          visible:
+            (parentProperty && propertyIsDynComponent(parentProperty)) ?? false,
+          action: () => {
+            requestRemoveComponent();
+          },
+        },
+        {
+          title: "Add property to vector",
+          visible: propertyIsVec(property),
+          action: () => {
+            addVectorSubProperty();
+          },
+        },
+      ],
+    },
+  ] as MenuItemDescription[];
 </script>
 
 <svelte:window on:prompt-answer={removeComponent} />
@@ -192,7 +218,8 @@
           {/if}
         </div>
       </div>
-      {#if parentProperty && propertyIsDynComponent(parentProperty)}
+      <MenuBar enableHover={false} items={menuItems} />
+      <!-- {#if parentProperty && propertyIsDynComponent(parentProperty)}
         <div
           class="delete-button"
           on:click={requestRemoveComponent}
@@ -200,13 +227,13 @@
         >
           &#215;
         </div>
-      {/if}
+      {/if} -->
       {#if !disabledOptionalProperty && propertyIsOption(property)}
         <div class="optional">
           <Checkbox value={true} />
         </div>
       {/if}
-      {#if propertyIsVec(property)}
+      <!-- {#if propertyIsVec(property)}
         <div
           class="add-vector"
           on:click={addVectorSubProperty}
@@ -214,7 +241,7 @@
         >
           +
         </div>
-      {/if}
+      {/if} -->
     </div>
   {/if}
   <div hidden={collapsed}>
@@ -246,18 +273,18 @@
   }
 
   .property-header {
-    @apply flex flex-row items-center justify-between pl-0 h-8 font-semibold rounded-sm cursor-pointer border-t-[1px] border-content-max;
+    @apply flex flex-row items-center justify-between pl-0 h-8 font-semibold rounded-sm cursor-pointer border-t-[1px] border-content-max relative;
   }
 
   .optional {
     @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 cursor-pointer;
   }
 
-  .add-vector {
+  /* .add-vector {
     @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-green-800 bg-opacity-70 rounded-r-sm cursor-pointer;
   }
 
   .delete-button {
     @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-red-800 bg-opacity-70 rounded-r-sm cursor-pointer;
-  }
+  } */
 </style>

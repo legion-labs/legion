@@ -5,7 +5,7 @@
   export let desc: MenuItemDescription;
   export let menuContext: MenuContextStore;
 
-  function onClick() {
+  function onClick(e: MouseEvent) {
     menuContext.close();
 
     if (desc.action) {
@@ -14,12 +14,12 @@
   }
 </script>
 
-<div class="menu-dropdown-item" on:click={onClick}>
+<div class="menu-dropdown-item" on:click|stopPropagation={onClick}>
   {desc.title}
 </div>
 
 <style lang="postcss">
   .menu-dropdown-item {
-    @apply hover:bg-gray-500 cursor-pointer px-6 py-0.5 whitespace-nowrap;
+    @apply hover:bg-gray-500 cursor-pointer px-6 py-0.5 whitespace-nowrap text-item-low font-normal;
   }
 </style>

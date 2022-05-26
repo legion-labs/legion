@@ -29,7 +29,7 @@
   use:clickOutside
   on:click-outside={menuContext.close}
   on:mouseenter={() => menuContext.mouseEnter(desc)}
-  on:click|capture={onClick}
+  on:click|capture|stopPropagation={onClick}
 >
   <div class="menu-title" bind:clientWidth={menuWidth}>
     {#if desc.icon}
@@ -55,7 +55,7 @@
     >
       {#if desc.children}
         {#each desc.children as item}
-          {#if item.hidden === undefined || (item.hidden !== undefined && item.hidden !== false)}
+          {#if item.visible}
             <MenuItem desc={item} {menuContext} />
           {/if}
         {/each}
@@ -83,7 +83,7 @@
 
   .menu-dropdown-items {
     box-shadow: 0px 2px 10px -2px rgba(0, 0, 0, 0.7);
-    @apply bg-gray-800 py-1 rounded-b-sm absolute;
+    @apply bg-gray-800 py-1 rounded-b-sm absolute z-10;
   }
 
   .left {
