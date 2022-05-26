@@ -28,5 +28,5 @@ VertexOut main_vs(uint vertexId: SV_VertexID) {
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    return lerp(vertex_out.color, unpack_linear(push_constant.color), push_constant.color_blend); 
+    return lerp(vertex_out.color, unpack_srgb2linear( push_constant.color ), push_constant.color_blend); 
 }

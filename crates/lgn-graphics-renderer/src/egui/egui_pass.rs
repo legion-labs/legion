@@ -34,13 +34,13 @@ impl EguiPass {
             byte_offset: 8,
         });
         vertex_layout.attributes[2] = Some(VertexLayoutAttribute {
-            format: Format::R32G32B32A32_SFLOAT,
+            format: Format::R32_UINT,
             buffer_index: 0,
             location: 2,
             byte_offset: 16,
         });
         vertex_layout.buffers[0] = Some(VertexLayoutBuffer {
-            stride: 32,
+            stride: 20,
             rate: VertexAttributeRate::Vertex,
         });
 
@@ -111,7 +111,7 @@ impl EguiPass {
                 },
                 array_length: 1,
                 mip_count: 1,
-                format: Format::R8_UNORM,
+                format: Format::R8_SRGB,
                 usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
                 resource_flags: ResourceFlags::empty(),
                 memory_usage: MemoryUsage::GpuOnly,
@@ -203,25 +203,9 @@ impl EguiPass {
                     continue;
                 }
 
-                let vertex_data: Vec<f32> = mesh
-                    .vertices
-                    .iter()
-                    .flat_map(|v| {
-                        let mut color = v
-                            .color
-                            .to_array()
-                            .into_iter()
-                            .map(f32::from)
-                            .collect::<Vec<f32>>();
-                        let mut vertex = vec![v.pos.x, v.pos.y, v.uv.x, v.uv.y];
-                        vertex.append(&mut color);
-                        vertex
-                    })
-                    .collect();
-
                 let transient_buffer = render_context
                     .transient_buffer_allocator
-                    .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
+                    .copy_data_slice(&mesh.vertices, ResourceUsage::AS_VERTEX_BUFFER);
 
                 cmd_buffer.cmd_bind_vertex_buffer(0, transient_buffer.vertex_buffer_binding());
 

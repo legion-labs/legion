@@ -12,6 +12,7 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
+use crate::components::EcsToRender;
 use crate::core::RenderObjects;
 use crate::lighting::{RenderLight, RenderLightTestData};
 use std::sync::Arc;
@@ -208,7 +209,7 @@ impl Plugin for RendererPlugin {
         let model_manager = ModelManager::new(&mesh_manager, &material_manager);
         let missing_visuals_tracker = MissingVisualTracker::default();
 
-        let light_manager = LightingManager::new(device_context);
+        let light_manager = LightingManager::new();
 
         let renderdoc_manager = RenderDocManager::default();
 
@@ -245,18 +246,25 @@ impl Plugin for RendererPlugin {
         app.add_startup_system(create_camera);
 
         //
+        // RenderObjects
+        //
+        app.insert_resource(EcsToRender::<LightComponent, RenderLight>::new())
+            .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+
+        //
         // Resources
         //
-        app.insert_resource(pipeline_manager);
-        app.insert_resource(manipulation_manager.clone());
-        app.insert_resource(cgen_registry_list);
-        app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(DebugDisplay::default());
-        app.insert_resource(persistent_descriptor_set_manager);
-        app.insert_resource(shared_resources_manager);
-        app.insert_resource(texture_manager);
-        app.insert_resource(RendererOptions::default());
-        app.insert_resource(picking_manager.clone());
+
+        app.insert_resource(pipeline_manager)
+            .insert_resource(manipulation_manager.clone())
+            .insert_resource(cgen_registry_list)
+            .insert_resource(RenderSurfaces::new())
+            .insert_resource(DebugDisplay::default())
+            .insert_resource(persistent_descriptor_set_manager)
+            .insert_resource(shared_resources_manager)
+            .insert_resource(texture_manager)
+            .insert_resource(RendererOptions::default())
+            .insert_resource(picking_manager.clone());
 
         // Init ecs
         TextureManager::init_ecs(app);
@@ -306,7 +314,6 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
         app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
-        app.add_system_to_stage(RenderStage::Prepare, reflect_light_components);
         app.add_system_to_stage(
             RenderStage::Prepare,
             camera_control.exclusive_system().at_start(),
@@ -407,7 +414,7 @@ fn on_window_resized(
             if let Some(mut render_surface) = render_surface {
                 let wnd = wnd_list.get(ev.id).unwrap();
                 render_surface.resize(
-                    &device_context,
+                    device_context,
                     RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                     &pipeline_manager,
                 );
@@ -528,7 +535,7 @@ fn render_update(
     render_resources
         .get_mut::<RenderCommandManager>()
         .sync_update(renderer.render_command_queue_pool());
-    // render_resources.get_mut::<RenderObjectSet<RenderLight>>().sync_update( &mut render_resources.get_mut::<RenderObjectSetAllocator<RenderLight>>()  );
+
     render_resources.get_mut::<RenderObjects>().sync_update();
 
     // objectives: drop all resources/queries
@@ -582,8 +589,11 @@ fn render_update(
             .get_mut::<RenderCommandManager>()
             .apply(&render_resources);
 
+        let mut transient_buffer_allocator =
+        TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
+
         let render_objects = render_resources.get::<RenderObjects>();
-        render_resources.get::<LightingManager>().frame_update(&render_objects);
+        // render_resources.get::<LightingManager>().frame_update(&mut transient_buffer_allocator, &render_objects);
         persistent_descriptor_set_manager.frame_update();
         pipeline_manager.frame_update(&device_context);
 
@@ -591,9 +601,6 @@ fn render_update(
             TransientCommandBufferAllocator::new(&transient_commandbuffer_manager);
 
         let graphics_queue = render_resources.get::<GraphicsQueue>();
-
-        let mut transient_buffer_allocator =
-        TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
         render_resources.get_mut::<GpuUploadManager>().upload(
             &mut transient_commandbuffer_allocator,
@@ -635,7 +642,8 @@ fn render_update(
         {
             let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
 
-                render_resources.get::<LightingManager>().per_frame_render(
+            render_resources.get::<LightingManager>().per_frame_render(
+                &render_objects,
                 render_context.transient_buffer_allocator,
                 &mut frame_descriptor_set,
             );
@@ -732,7 +740,7 @@ fn render_update(
                 let model_manager = render_resources.get::<ModelManager>();
 
                 let mut cmd_buffer_handle =
-                    render_context.transient_commandbuffer_allocator.acquire();                    
+                    render_context.transient_commandbuffer_allocator.acquire();
                 let cmd_buffer = cmd_buffer_handle.as_mut();
 
                 cmd_buffer.begin();

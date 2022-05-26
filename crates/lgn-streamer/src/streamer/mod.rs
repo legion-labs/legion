@@ -353,7 +353,7 @@ pub(crate) fn on_render_surface_created_for_window(
     mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
     async_rt: Res<'_, TokioAsyncRuntime>,
 ) {
-    let devicee_context = renderer.device_context();
+    let device_context = renderer.device_context();
 
     for event in event_render_surface_created.iter() {
         let render_surface = render_surfaces
@@ -367,7 +367,7 @@ pub(crate) fn on_render_surface_created_for_window(
                 .unwrap();
 
             let video_stream = VideoStream::new(
-                &devicee_context,
+                device_context,
                 &pipeline_manager,
                 Resolution::new(wnd.physical_width(), wnd.physical_height()),
                 &stream_encoder,

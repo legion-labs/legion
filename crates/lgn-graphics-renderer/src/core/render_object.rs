@@ -1,23 +1,21 @@
 use atomic_refcell::{AtomicRef, AtomicRefCell};
 use bit_set::BitSet;
 
+use lgn_transform::prelude::GlobalTransform;
 use lgn_utils::HashMap;
 
-use std::{
-    alloc::Layout, any::TypeId, marker::PhantomData, mem::MaybeUninit, ptr::NonNull,
-    sync::atomic::AtomicI32,
-};
+use std::{alloc::Layout, any::TypeId, marker::PhantomData, ptr::NonNull, sync::atomic::AtomicI32};
 
 use super::RenderCommand;
 
-///
-/// RenderObjectId
-///
-pub trait AsRenderObject<R>
+//
+// RenderObjectId
+//
+pub trait AsSpatialRenderObject<R>
 where
     R: RenderObject,
 {
-    fn as_render_object(&self) -> R;
+    fn as_spatial_render_object(&self, transform: GlobalTransform) -> R;
 }
 
 pub trait RenderObject: 'static + Send {}
@@ -44,9 +42,9 @@ impl RenderObjectKey {
     }
 }
 
-///
-/// RenderObjectId
-///
+//
+// RenderObjectId
+//
 #[derive(Copy, Eq, PartialEq, Hash, Clone, Debug)]
 pub struct RenderObjectId {
     render_object_key: RenderObjectKey,
@@ -69,7 +67,7 @@ impl PartialOrd for RenderObjectId {
 }
 
 //
-//
+// RenderObjectStorage
 //
 
 struct RenderObjectStorage {
@@ -89,6 +87,10 @@ impl RenderObjectStorage {
         };
         result.resize(initial_capacity);
         result
+    }
+
+    fn get_base_ptr(&self) -> *const u8 {
+        self.get_value(0)
     }
 
     #[allow(unsafe_code)]
@@ -160,26 +162,9 @@ impl RenderObjectStorage {
     }
 }
 
-///
-/// Slot
-///
-struct Slot<R> {
-    value: MaybeUninit<R>,
-    generation: u32,
-}
-
-impl<R> Default for Slot<R> {
-    fn default() -> Self {
-        Self {
-            value: MaybeUninit::uninit(),
-            generation: 0,
-        }
-    }
-}
-
-///
-/// RenderObjectSetAllocator
-///
+//
+// RenderObjectSetAllocator
+//
 struct RenderObjectSetAllocator {
     render_object_key: RenderObjectKey,
     free_slot_index: AtomicI32,      // updated during sync window
@@ -217,9 +202,9 @@ impl RenderObjectSetAllocator {
     }
 }
 
-///
-/// RenderObjectSet
-///
+//
+// RenderObjectSet
+//
 struct RenderObjectSet {
     len: usize,
     storage: RenderObjectStorage,
@@ -456,11 +441,46 @@ struct SecondaryTable {
 }
 
 //
+// RenderObjectQueryIter
 //
+pub struct RenderObjectQueryIter<'a, R> {
+    storage_ptr: *const R,
+    iter: bit_set::Iter<'a, u32>,
+    phantom: PhantomData<R>,
+}
+
+impl<'a, R> RenderObjectQueryIter<'a, R> {
+    fn new(query: &'a RenderObjectQuery<'a, R>) -> Self {
+        let storage_ptr = query.set.storage.get_base_ptr().cast::<R>();
+        let iter = query.set.allocated.iter();
+        // fn new(storage_ptr: *const R, iter: bit_set::Iter<'a, u32>) -> Self {
+        Self {
+            storage_ptr,
+            iter,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, R> Iterator for RenderObjectQueryIter<'a, R>
+where
+    R: 'a,
+{
+    type Item = &'a R;
+
+    #[allow(unsafe_code)]
+    fn next(&mut self) -> Option<&'a R> {
+        unsafe { self.iter.next().map(|index| &*self.storage_ptr.add(index)) }
+    }
+}
+
+//
+// RenderObjectQuery
 //
 
 pub struct RenderObjectQuery<'a, R> {
-    render_objects: &'a RenderObjects,
+    set: AtomicRef<'a, RenderObjectSet>,
+    // .. render_objects: &'a RenderObjects,
     phantom: PhantomData<R>,
 }
 
@@ -469,61 +489,41 @@ where
     R: RenderObject,
 {
     pub fn new(render_objects: &'a RenderObjects) -> Self {
+        let render_object_key = RenderObjectKey::new::<R>();
+        let primary_table = render_objects
+            .primary_tables
+            .get(&render_object_key)
+            .unwrap();
+        let set = primary_table.set.borrow();
         Self {
-            render_objects,
+            set,
+            // render_objects,
             phantom: PhantomData,
         }
     }
 
+    pub fn iter(&self) -> RenderObjectQueryIter<'_, R> {
+        // let primary_table = self.render_objects.primary_table::<R>();
+        // let storage = &primary_table.set.borrow().storage;
+        // let iter = primary_table.set.borrow().allocated.iter();
+        // RenderObjectQueryIter::new(storage.get_base_ptr().cast::<R>(), iter)
+        RenderObjectQueryIter::new(self)
+    }
+
     #[allow(unsafe_code)]
-    pub fn for_each<F>(mut self, f: F)
+    pub fn for_each<F>(self, mut f: F)
     where
-        F: Fn(usize, &R),
+        F: FnMut(usize, &R),
     {
-        let primary_table = self.render_objects.primary_table::<R>();
-        let set = primary_table.set.borrow();
+        // let primary_table = self.render_objects.primary_table::<R>();
+        // let set = self.set.allocated
         unsafe {
-            for index in &set.allocated {
-                f(index, &*(set.storage.get_value(index) as *const R));
+            for index in &self.set.allocated {
+                f(index, &*(self.set.storage.get_value(index).cast::<R>()));
             }
         }
     }
 }
-
-//
-//
-//
-
-// struct RenderObjectIterator<'a, R> {
-//     // set: AtomicRef<'a, RenderObjectSet>,
-// // cur: Iter<u32>,
-// // phantom: PhantomData<R>,
-// }
-
-// impl<'a, R> RenderObjectIterator<'a, R>
-// where
-//     R: RenderObject,
-// {
-//     fn new(set: AtomicRef<'a, RenderObjectSet>) -> Self {
-//         Self {
-//             set,
-//             cur: set.allocated.iter(),
-//             phantom: PhantomData,
-//         }
-//     }
-// }
-
-// impl<'a, R> Iterator for RenderObjectIterator<'a, R>
-// where
-//     R: RenderObject,
-// {
-//     type Item = &'a R;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         let index = self.cur.next();
-//         todo!()
-//     }
-// }
 
 //
 // RenderObjects
@@ -535,7 +535,7 @@ pub struct RenderObjects {
 }
 
 impl RenderObjects {
-    pub fn create_allocator<'s, R>(&'s self) -> RenderObjectAllocator<'s, R>
+    pub fn create_allocator<R>(&self) -> RenderObjectAllocator<'_, R>
     where
         R: RenderObject,
     {
@@ -584,7 +584,7 @@ impl RenderObjects {
         primary_table
             .set
             .borrow_mut()
-            .insert(render_object_id, &data as *const R as *const u8);
+            .insert(render_object_id, std::ptr::addr_of!(data).cast::<u8>());
         std::mem::forget(data);
     }
 
@@ -598,7 +598,7 @@ impl RenderObjects {
         primary_table
             .set
             .borrow_mut()
-            .update(render_object_id, &data as *const R as *const u8);
+            .update(render_object_id, std::ptr::addr_of!(data).cast::<u8>());
         std::mem::forget(data);
     }
 
@@ -615,9 +615,9 @@ unsafe impl Send for RenderObjects {}
 #[allow(unsafe_code)]
 unsafe impl Sync for RenderObjects {}
 
-///
-/// AddRenderObjectCommand
-///
+//
+// AddRenderObjectCommand
+//
 pub struct InsertRenderObjectCommand<R> {
     pub render_object_id: RenderObjectId,
     pub data: R,
@@ -632,9 +632,9 @@ where
         set.insert(self.render_object_id, self.data);
     }
 }
-///
-/// UpdateRenderObjectCommand
-///
+//
+// UpdateRenderObjectCommand
+//
 pub struct UpdateRenderObjectCommand<R> {
     pub render_object_id: RenderObjectId,
     pub data: R,
@@ -645,21 +645,21 @@ where
     R: RenderObject,
 {
     fn execute(self, render_resources: &super::RenderResources) {
-        let mut set = render_resources.get::<RenderObjects>();
+        let set = render_resources.get::<RenderObjects>();
         set.update(self.render_object_id, self.data);
     }
 }
 
-///
-/// RemoveRenderObjectCommand
-///
+//
+// RemoveRenderObjectCommand
+//
 pub struct RemoveRenderObjectCommand {
     pub render_object_id: RenderObjectId,
 }
 
 impl RenderCommand for RemoveRenderObjectCommand {
     fn execute(self, render_resources: &super::RenderResources) {
-        let mut set = render_resources.get::<RenderObjects>();
+        let set = render_resources.get::<RenderObjects>();
         set.remove(self.render_object_id);
     }
 }

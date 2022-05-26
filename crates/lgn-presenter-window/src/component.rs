@@ -31,7 +31,7 @@ impl PresenterWindow {
         );
 
         Self {
-            swapchain_helper: SwapchainHelper::new(&device_context, swapchain, None),
+            swapchain_helper: SwapchainHelper::new(device_context, swapchain, None),
             extents,
         }
     }

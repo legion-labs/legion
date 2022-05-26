@@ -337,18 +337,15 @@ impl RenderSurface {
         Self {
             id,
             extents,
-            resources: SizeDependentResources::new(&device_context, extents, pipeline_manager),
+            resources: SizeDependentResources::new(device_context, extents, pipeline_manager),
             num_render_frames,
             render_frame_idx: 0,
             presenter_sems,
-            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(&device_context))),
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
-            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(
-                &device_context,
-                pipeline_manager,
-            ))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
             final_resolve_render_pass: Arc::new(RwLock::new(FinalResolveRenderPass::new(
-                &device_context,
+                device_context,
                 pipeline_manager,
             ))),
             presenters: Vec::new(),

@@ -39,13 +39,19 @@ impl TransientBufferAllocation {
     }
 
     #[allow(unsafe_code)]
-    pub fn ptr(&self) -> *mut u8 {
+    pub fn mapped_ptr(&self) -> *mut u8 {
         unsafe {
             self.buffer
                 .as_ref()
                 .mapped_ptr()
                 .add(self.byte_offset as usize)
         }
+    }
+
+    #[allow(unsafe_code)]
+    pub fn mapped_ptr_typed<T: Sized>(&self) -> *mut T {
+        let ptr = self.mapped_ptr();
+        ptr.cast::<T>()
     }
 
     pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
@@ -171,7 +177,7 @@ impl TransientBuffer {
     }
 }
 
-pub(crate) struct TransientPagedBufferInner {
+struct Inner {
     device_context: DeviceContext,
     transient_buffers: GpuSafePool<TransientBuffer>,
     frame_pool: Vec<Handle<TransientBuffer>>,
@@ -179,13 +185,13 @@ pub(crate) struct TransientPagedBufferInner {
 
 #[derive(Clone)]
 pub struct TransientBufferManager {
-    inner: Arc<Mutex<TransientPagedBufferInner>>,
+    inner: Arc<Mutex<Inner>>,
 }
 
 impl TransientBufferManager {
     pub fn new(device_context: &DeviceContext, num_cpu_frames: u64) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(TransientPagedBufferInner {
+            inner: Arc::new(Mutex::new(Inner {
                 device_context: device_context.clone(),
                 transient_buffers: GpuSafePool::new(num_cpu_frames),
                 frame_pool: Vec::new(),
@@ -250,6 +256,30 @@ impl TransientBufferAllocator {
         }
     }
 
+    pub fn allocate(&mut self, size: u64) -> TransientBufferAllocation {
+        self.allocate_with_usage(size, ResourceUsage::empty())
+    }
+
+    pub fn allocate_with_usage(
+        &mut self,
+        size: u64,
+        resource_usage: ResourceUsage,
+    ) -> TransientBufferAllocation {
+        self.allocate_inner(size, resource_usage)
+    }
+
+    pub fn allocate_from_view(&mut self, view_def: BufferViewDef) -> TransientBufferAllocation {
+        let size = view_def.element_count * view_def.element_size;
+        let resource_usage = match view_def.gpu_view_type {
+            lgn_graphics_api::GPUViewType::ConstantBuffer => ResourceUsage::AS_CONST_BUFFER,
+            lgn_graphics_api::GPUViewType::ShaderResource => ResourceUsage::AS_SHADER_RESOURCE,
+            lgn_graphics_api::GPUViewType::UnorderedAccess => ResourceUsage::AS_UNORDERED_ACCESS,
+            lgn_graphics_api::GPUViewType::RenderTarget
+            | lgn_graphics_api::GPUViewType::DepthStencil => unreachable!(),
+        };
+        self.allocate_inner(size, resource_usage)
+    }
+
     pub fn copy_data<T>(
         &mut self,
         data: &T,
@@ -265,17 +295,21 @@ impl TransientBufferAllocator {
     ) -> TransientBufferAllocation {
         let src_size = std::mem::size_of_val(data);
         let src = data.as_ptr().cast::<u8>();
-        let dst = self.allocate(src_size as u64, resource_usage);
+        let dst = self.allocate_inner(src_size as u64, resource_usage);
 
         #[allow(unsafe_code)]
         unsafe {
-            std::ptr::copy_nonoverlapping(src, dst.ptr(), src_size);
+            std::ptr::copy_nonoverlapping(src, dst.mapped_ptr(), src_size);
         }
 
         dst
     }
 
-    fn allocate(&mut self, size: u64, resource_usage: ResourceUsage) -> TransientBufferAllocation {
+    fn allocate_inner(
+        &mut self,
+        size: u64,
+        resource_usage: ResourceUsage,
+    ) -> TransientBufferAllocation {
         let mut allocation = self.transient_buffer.allocate(size, resource_usage);
 
         while allocation.is_none() {

@@ -124,7 +124,6 @@ impl BufferViewDef {
                 } else {
                     assert!(self.element_size > 0);
                 };
-                assert!(self.element_count >= 1);
             }
             GPUViewType::RenderTarget | GPUViewType::DepthStencil => {
                 panic!();

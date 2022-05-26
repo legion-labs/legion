@@ -215,7 +215,7 @@ fn presenter_snapshot_system(
             PresenterSnapshot::new(
                 &snapshot_descriptor.setup_name,
                 frame_counter.frame_target,
-                &device_context,
+                device_context,
                 &pipeline_manager,
                 render_surface_id,
                 RenderSurfaceExtents::new(
@@ -292,7 +292,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
             1.0, 1.0, 0.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional,
+            light_type: LightType::OmniDirectional,
             radiance: 40.0,
             color: Color::WHITE,
             enabled: false,
@@ -306,7 +306,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
             -1.0, 1.0, 0.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional,
+            light_type: LightType::OmniDirectional,
             radiance: 40.0,
             color: Color::WHITE,
             enabled: false,
@@ -320,10 +320,9 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
             0.0, 1.0, 0.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::Spotlight {
-                cone_angle: std::f32::consts::PI / 4.0,
-            },
+            light_type: LightType::Spot,
             radiance: 40.0,
+            cone_angle: std::f32::consts::PI / 4.0,
             color: Color::WHITE,
             enabled: true,
             ..LightComponent::default()
@@ -373,7 +372,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             1.0, 1.0, 0.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional,
+            light_type: LightType::OmniDirectional,
             radiance: 10.0,
             color: Color::new(127, 127, 127, 255),
             enabled: true,
