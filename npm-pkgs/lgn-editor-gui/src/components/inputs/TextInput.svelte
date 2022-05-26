@@ -136,7 +136,7 @@
   }
 
   .root.default {
-    @apply h-8;
+    @apply h-6;
   }
 
   .root.sm {
@@ -152,20 +152,20 @@
   }
 
   .input {
-    @apply bg-gray-800 border-gray-400 px-2 rounded-sm outline-none w-full h-full;
+    @apply bg-surface-max border-gray-400 px-2 rounded-sm outline-none w-full;
   }
 
   .input.disabled {
     @apply cursor-not-allowed;
   }
 
-  .input.default {
+  /* .input.default {
     @apply py-1;
   }
 
   .input.sm {
     @apply py-0.5;
-  }
+  } */
 
   .input.lg {
     @apply py-1 text-base;

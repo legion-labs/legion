@@ -64,7 +64,7 @@
     class:bg-surface-800={index % 2 !== 0}
   >
     {#if property.name}
-      <div class="property-name" title={property.name}>
+      <div class="property-name" title={`${property.name} (${property.ptype})`}>
         {#if search}
           <HighlightedText
             pattern={stringToSafeRegExp($search, "gi")}

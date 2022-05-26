@@ -98,7 +98,7 @@
   }
 </script>
 
-<div class="root">
+<div class="property-input-root">
   {#if propertyIsBoolean(property)}
     <div class="boolean-property">
       <BooleanProperty
@@ -184,8 +184,8 @@
 </div>
 
 <style lang="postcss">
-  .root {
-    @apply flex items-center;
+  .property-input-root {
+    @apply flex items-center text-item-mid;
   }
 
   .boolean-property {
