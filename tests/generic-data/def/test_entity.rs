@@ -2,7 +2,7 @@ use lgn_data_runtime::Component;
 use lgn_graphics_data::Color;
 use lgn_math::prelude::*;
 
-#[resource()]
+#[resource]
 #[derive(Clone)]
 pub struct TestEntity {
     // Default with string literal

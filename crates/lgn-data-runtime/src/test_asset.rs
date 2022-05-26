@@ -5,7 +5,10 @@
 
 use std::io;
 
-use crate::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
+use crate::{
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, Resource, ResourceDescriptor,
+    ResourcePathName,
+};
 extern crate self as lgn_data_runtime;
 // Asset temporarily used for testing.
 ///
@@ -13,6 +16,7 @@ extern crate self as lgn_data_runtime;
 #[resource("test_asset")]
 #[derive(Clone)]
 pub struct TestAsset {
+    pub meta: Metadata,
     /// Test content.
     pub content: String,
 }
@@ -31,7 +35,14 @@ impl AssetLoader for TestAssetLoader {
     fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let mut content = String::new();
         reader.read_to_string(&mut content)?;
-        let asset = Box::new(TestAsset { content });
+        let asset = Box::new(TestAsset {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                TestAsset::TYPENAME,
+                TestAsset::TYPE,
+            ),
+            content,
+        });
         Ok(asset)
     }
 

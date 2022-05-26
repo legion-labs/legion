@@ -3,7 +3,10 @@
 use std::io;
 
 use lgn_data_model::implement_reference_type_def;
-use lgn_data_runtime::{resource, Asset, AssetLoader, AssetLoaderError, Resource};
+use lgn_data_runtime::{
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, Resource, ResourceDescriptor,
+    ResourcePathName,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{encode_mip_chain_from_offline_texture, TextureFormat};
@@ -12,6 +15,7 @@ use crate::{encode_mip_chain_from_offline_texture, TextureFormat};
 #[resource("runtime_texture")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Texture {
+    pub meta: Metadata,
     /// Texture width.
     pub width: u32,
     /// Texture height.
@@ -39,6 +43,11 @@ impl Texture {
         writer: &mut dyn std::io::Write,
     ) {
         let texture = Self {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                Texture::TYPENAME,
+                Texture::TYPE,
+            ),
             width,
             height,
             format,

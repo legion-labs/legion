@@ -3,8 +3,8 @@
 use std::io;
 
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceProcessor,
-    ResourceProcessorError,
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, OfflineResource, Resource,
+    ResourceDescriptor, ResourcePathName, ResourceProcessor, ResourceProcessorError,
 };
 
 use crate::offline_texture::{Texture, TextureType};
@@ -12,6 +12,7 @@ use crate::offline_texture::{Texture, TextureType};
 /// Photoshop Document file.
 #[resource("psd")]
 pub struct PsdFile {
+    meta: Metadata,
     content: Option<(psd::Psd, Vec<u8>)>,
 }
 
@@ -28,6 +29,7 @@ impl PsdFile {
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match psd::Psd::from_bytes(bytes) {
             Ok(psd) => Some(Self {
+                meta: Metadata::new(ResourcePathName::default(), Self::TYPENAME, Self::TYPE),
                 content: Some((psd, bytes.to_vec())),
             }),
             Err(e) => {
@@ -49,6 +51,11 @@ impl PsdFile {
         let layer = psd.layer_by_name(name)?;
 
         let texture = Texture {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                Texture::TYPENAME,
+                Texture::TYPE,
+            ),
             kind: TextureType::_2D,
             width: psd.width(),
             height: psd.height(),
@@ -62,6 +69,11 @@ impl PsdFile {
         let (psd, _) = self.content.as_ref()?;
 
         let texture = Texture {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                Texture::TYPENAME,
+                Texture::TYPE,
+            ),
             kind: TextureType::_2D,
             width: psd.width(),
             height: psd.height(),
@@ -74,11 +86,12 @@ impl PsdFile {
 
 impl Clone for PsdFile {
     fn clone(&self) -> Self {
-        match &self.content {
-            Some((_, bytes)) => Self {
-                content: Some((psd::Psd::from_bytes(bytes).unwrap(), bytes.clone())),
-            },
-            None => Self { content: None },
+        Self {
+            meta: Metadata::new(ResourcePathName::default(), Self::TYPENAME, Self::TYPE),
+            content: self
+                .content
+                .as_ref()
+                .map(|(_, bytes)| (psd::Psd::from_bytes(bytes).unwrap(), bytes.clone())),
         }
     }
 }
@@ -99,7 +112,14 @@ impl AssetLoader for PsdFileProcessor {
             })?;
             Some((psd, bytes))
         };
-        Ok(Box::new(PsdFile { content }))
+        Ok(Box::new(PsdFile {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                PsdFile::TYPENAME,
+                PsdFile::TYPE,
+            ),
+            content,
+        }))
     }
 
     fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
@@ -107,7 +127,14 @@ impl AssetLoader for PsdFileProcessor {
 
 impl ResourceProcessor for PsdFileProcessor {
     fn new_resource(&mut self) -> Box<dyn Resource> {
-        Box::new(PsdFile { content: None })
+        Box::new(PsdFile {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                PsdFile::TYPENAME,
+                PsdFile::TYPE,
+            ),
+            content: None,
+        })
     }
 
     fn extract_build_dependencies(

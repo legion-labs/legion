@@ -3,12 +3,14 @@
 //! It is used to test the data compilation process until we have a proper
 //! resource available.
 
-use std::{io, str::FromStr};
+use std::io;
+
+use serde::{Deserialize, Serialize};
 
 use super::OfflineResource;
 use crate::{
-    resource, Asset, AssetLoader, AssetLoaderError, Resource, ResourcePathId, ResourceProcessor,
-    ResourceProcessorError,
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, Resource, ResourceDescriptor,
+    ResourcePathId, ResourcePathName, ResourceProcessor, ResourceProcessorError,
 };
 extern crate self as lgn_data_runtime;
 
@@ -16,8 +18,9 @@ extern crate self as lgn_data_runtime;
 ///
 /// To be removed once real resource types exist.
 #[resource("test_resource")]
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TestResource {
+    pub meta: Metadata,
     /// Resource's content.
     pub content: String,
     /// Resource's build dependencies.
@@ -40,33 +43,9 @@ pub struct TestResourceProc {}
 
 impl AssetLoader for TestResourceProc {
     fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
-        let mut resource = Box::new(TestResource {
-            content: String::from(""),
-            build_deps: vec![],
-        });
-        let mut buf = 0usize.to_ne_bytes();
-        reader.read_exact(&mut buf[..])?;
-        let length = usize::from_ne_bytes(buf);
-
-        let mut buf = vec![0u8; length];
-        reader.read_exact(&mut buf[..])?;
-        resource.content = String::from_utf8(buf).unwrap();
-
-        let mut buf = resource.build_deps.len().to_ne_bytes();
-        reader.read_exact(&mut buf[..])?;
-        let dep_count = usize::from_ne_bytes(buf);
-
-        for _ in 0..dep_count {
-            let mut nbytes = 0u64.to_ne_bytes();
-            reader.read_exact(&mut nbytes[..])?;
-            let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
-            reader.read_exact(&mut buf)?;
-            resource
-                .build_deps
-                .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
-        }
-
-        Ok(resource)
+        let resource: TestResource = serde_json::from_reader(reader).unwrap();
+        let boxed = Box::new(resource);
+        Ok(boxed)
     }
 
     fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
@@ -75,6 +54,11 @@ impl AssetLoader for TestResourceProc {
 impl ResourceProcessor for TestResourceProc {
     fn new_resource(&mut self) -> Box<dyn Resource> {
         Box::new(TestResource {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                TestResource::TYPENAME,
+                TestResource::TYPE,
+            ),
             content: String::from("default content"),
             build_deps: vec![],
         })
@@ -94,31 +78,8 @@ impl ResourceProcessor for TestResourceProc {
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let resource = resource.downcast_ref::<TestResource>().unwrap();
-        let mut nbytes = 0;
-
-        let content_bytes = resource.content.as_bytes();
-
-        let bytes = content_bytes.len().to_ne_bytes();
-        nbytes += bytes.len();
-        writer.write_all(&bytes)?;
-        nbytes += content_bytes.len();
-        writer.write_all(content_bytes)?;
-
-        let bytes = resource.build_deps.len().to_ne_bytes();
-        nbytes += bytes.len();
-        writer.write_all(&bytes)?;
-
-        for dep in &resource.build_deps {
-            let str = dep.to_string();
-            let str = str.as_bytes();
-            let bytes = str.len().to_ne_bytes();
-            writer.write_all(&bytes)?;
-            nbytes += bytes.len();
-            writer.write_all(str)?;
-            nbytes += str.len();
-        }
-
-        Ok(nbytes)
+        serde_json::to_writer_pretty(writer, resource).unwrap();
+        Ok(1) // no bytes written exposed by serde.
     }
 
     fn read_resource(

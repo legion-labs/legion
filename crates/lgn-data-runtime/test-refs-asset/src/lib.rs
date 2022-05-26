@@ -7,8 +7,8 @@ use std::{any::Any, io, sync::Arc};
 
 use byteorder::{LittleEndian, ReadBytesExt};
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, AssetRegistry, Reference, Resource, ResourceId,
-    ResourceType, ResourceTypeAndId,
+    resource, Asset, AssetLoader, AssetLoaderError, AssetRegistry, Metadata, Reference, Resource,
+    ResourceDescriptor, ResourceId, ResourcePathName, ResourceType, ResourceTypeAndId,
 };
 /// Asset temporarily used for testing.
 ///
@@ -16,6 +16,7 @@ use lgn_data_runtime::{
 #[resource("refs_asset")]
 #[derive(Clone)]
 pub struct RefsAsset {
+    pub meta: Metadata,
     /// Test content.
     pub content: String,
     pub reference: Option<Reference<RefsAsset>>,
@@ -41,7 +42,15 @@ impl AssetLoader for RefsAssetLoader {
         reader.read_exact(&mut content)?;
         let content = String::from_utf8(content).expect("valid utf8");
         let reference = read_maybe_reference::<RefsAsset>(reader)?;
-        let asset = Box::new(RefsAsset { content, reference });
+        let asset = Box::new(RefsAsset {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                RefsAsset::TYPENAME,
+                RefsAsset::TYPE,
+            ),
+            content,
+            reference,
+        });
         Ok(asset)
     }
 

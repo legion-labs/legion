@@ -8,7 +8,10 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
+use lgn_data_runtime::{
+    AssetRegistryOptions, Metadata, ResourceDescriptor, ResourcePathName, ResourceProcessor,
+    Transform,
+};
 use lgn_graphics_data::{offline_texture::TextureProcessor, rgba_from_source, ColorChannels};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
@@ -88,6 +91,11 @@ impl Compiler for Png2TexCompiler {
                     png::ColorType::Rgba => ColorChannels::Rgba,
                 };
                 Ok(lgn_graphics_data::offline_texture::Texture {
+                    meta: Metadata::new(
+                        ResourcePathName::default(),
+                        lgn_graphics_data::offline_texture::Texture::TYPENAME,
+                        lgn_graphics_data::offline_texture::Texture::TYPE,
+                    ),
                     kind: lgn_graphics_data::offline_texture::TextureType::_2D,
                     width: info.width,
                     height: info.height,

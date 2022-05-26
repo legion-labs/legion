@@ -1,14 +1,16 @@
 use std::io;
 
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourcePathId,
-    ResourceProcessor, ResourceProcessorError,
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, OfflineResource, Resource,
+    ResourceDescriptor, ResourcePathId, ResourcePathName, ResourceProcessor,
+    ResourceProcessorError,
 };
 use serde::{Deserialize, Serialize};
 
 #[resource("multitext_resource")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MultiTextResource {
+    pub meta: Metadata,
     pub text_list: Vec<String>,
 }
 
@@ -35,7 +37,14 @@ impl AssetLoader for MultiTextResourceProc {
 
 impl ResourceProcessor for MultiTextResourceProc {
     fn new_resource(&mut self) -> Box<dyn Resource> {
-        Box::new(MultiTextResource { text_list: vec![] })
+        Box::new(MultiTextResource {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                MultiTextResource::TYPENAME,
+                MultiTextResource::TYPE,
+            ),
+            text_list: vec![],
+        })
     }
 
     fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {

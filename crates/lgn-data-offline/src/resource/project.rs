@@ -707,14 +707,14 @@ impl fmt::Debug for Project {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
     use std::sync::Arc;
 
     use lgn_content_store::Provider;
     use lgn_data_runtime::{
-        resource, AssetRegistry, AssetRegistryOptions, Resource, ResourcePathId, ResourcePathName,
-        ResourceProcessor, ResourceProcessorError, ResourceType,
+        resource, AssetRegistry, AssetRegistryOptions, Metadata, Resource, ResourceDescriptor,
+        ResourcePathId, ResourcePathName, ResourceProcessor, ResourceProcessorError, ResourceType,
     };
+    use serde::{Deserialize, Serialize};
 
     use crate::resource::project::Project;
 
@@ -725,8 +725,9 @@ mod tests {
     const RESOURCE_ACTOR: &str = "actor";
 
     #[resource("null")]
-    #[derive(Clone)]
+    #[derive(Clone, Serialize, Deserialize)]
     struct NullResource {
+        meta: Metadata,
         content: isize,
         dependencies: Vec<ResourcePathId>,
     }
@@ -735,6 +736,11 @@ mod tests {
     impl ResourceProcessor for NullResourceProc {
         fn new_resource(&mut self) -> Box<dyn Resource> {
             Box::new(NullResource {
+                meta: Metadata::new(
+                    ResourcePathName::default(),
+                    NullResource::TYPENAME,
+                    NullResource::TYPE,
+                ),
                 content: 0,
                 dependencies: vec![],
             })
@@ -754,53 +760,17 @@ mod tests {
             writer: &mut dyn std::io::Write,
         ) -> Result<usize, ResourceProcessorError> {
             let resource = resource.downcast_ref::<NullResource>().unwrap();
-            let mut nbytes = 0;
-
-            let bytes = resource.content.to_ne_bytes();
-            nbytes += bytes.len();
-            writer.write_all(&bytes)?;
-
-            let bytes = resource.dependencies.len().to_ne_bytes();
-            nbytes += bytes.len();
-            writer.write_all(&bytes)?;
-
-            for dep in &resource.dependencies {
-                let str = dep.to_string();
-                let str = str.as_bytes();
-                let bytes = str.len().to_ne_bytes();
-                writer.write_all(&bytes)?;
-                nbytes += bytes.len();
-                writer.write_all(str)?;
-                nbytes += str.len();
-            }
-
-            Ok(nbytes)
+            serde_json::to_writer_pretty(writer, resource).unwrap();
+            Ok(1) // no bytes written exposed by serde.
         }
 
         fn read_resource(
             &mut self,
             reader: &mut dyn std::io::Read,
         ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
-            let mut resource = self.new_resource();
-            let mut res = resource.downcast_mut::<NullResource>().unwrap();
-
-            let mut buf = res.content.to_ne_bytes();
-            reader.read_exact(&mut buf[..])?;
-            res.content = isize::from_ne_bytes(buf);
-
-            let mut buf = res.dependencies.len().to_ne_bytes();
-            reader.read_exact(&mut buf[..])?;
-
-            for _ in 0..usize::from_ne_bytes(buf) {
-                let mut nbytes = 0u64.to_ne_bytes();
-                reader.read_exact(&mut nbytes[..])?;
-                let mut buf = vec![0u8; usize::from_ne_bytes(nbytes)];
-                reader.read_exact(&mut buf)?;
-                res.dependencies
-                    .push(ResourcePathId::from_str(std::str::from_utf8(&buf).unwrap()).unwrap());
-            }
-
-            Ok(resource)
+            let resource: NullResource = serde_json::from_reader(reader).unwrap();
+            let boxed = Box::new(resource);
+            Ok(boxed)
         }
     }
 

@@ -6,8 +6,9 @@
 use std::io;
 
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourcePathId,
-    ResourceProcessor, ResourceProcessorError,
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, OfflineResource, Resource,
+    ResourceDescriptor, ResourcePathId, ResourcePathName, ResourceProcessor,
+    ResourceProcessorError,
 };
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +18,7 @@ use serde::{Deserialize, Serialize};
 #[resource("test_resource")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct TestResource {
+    pub meta: Metadata,
     /// Resource's content.
     pub content: String,
     /// Resource's build dependencies.
@@ -50,6 +52,11 @@ impl AssetLoader for TestResourceProc {
 impl ResourceProcessor for TestResourceProc {
     fn new_resource(&mut self) -> Box<dyn Resource> {
         Box::new(TestResource {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                TestResource::TYPENAME,
+                TestResource::TYPE,
+            ),
             content: String::from("default content"),
             build_deps: vec![],
         })

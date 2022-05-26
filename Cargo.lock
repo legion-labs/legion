@@ -897,6 +897,7 @@ checksum = "bc0455254eb5c6964c4545d8bac815e1a1be4f3afe0ae695ea539c12d728d44b"
 name = "binary-resource"
 version = "0.1.0"
 dependencies = [
+ "lgn-content-store",
  "lgn-data-model",
  "lgn-data-runtime",
  "serde",
@@ -4529,6 +4530,7 @@ name = "lgn-data-runtime"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "bincode",
  "byteorder",
  "crossbeam-channel",
  "erased-serde",

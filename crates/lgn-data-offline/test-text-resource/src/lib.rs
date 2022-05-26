@@ -1,14 +1,16 @@
 use std::io;
 
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourcePathId,
-    ResourceProcessor, ResourceProcessorError,
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, OfflineResource, Resource,
+    ResourceDescriptor, ResourcePathId, ResourcePathName, ResourceProcessor,
+    ResourceProcessorError,
 };
 use serde::{Deserialize, Serialize};
 
 #[resource("text")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct TextResource {
+    pub meta: Metadata,
     pub content: String,
 }
 
@@ -36,6 +38,11 @@ impl AssetLoader for TextResourceProc {
 impl ResourceProcessor for TextResourceProc {
     fn new_resource(&mut self) -> Box<dyn Resource> {
         Box::new(TextResource {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                TextResource::TYPENAME,
+                TextResource::TYPE,
+            ),
             content: String::from("7"),
         })
     }

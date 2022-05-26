@@ -11,7 +11,10 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
+use lgn_data_runtime::{
+    AssetRegistryOptions, Metadata, ResourceDescriptor, ResourcePathName, ResourceProcessor,
+    Transform,
+};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -56,6 +59,11 @@ impl Compiler for ReverseCompiler {
 
             let mut bytes = vec![];
             let output = text_resource::TextResource {
+                meta: Metadata::new(
+                    ResourcePathName::default(),
+                    text_resource::TextResource::TYPENAME,
+                    text_resource::TextResource::TYPE,
+                ),
                 content: resource.content.chars().rev().collect(),
             };
 

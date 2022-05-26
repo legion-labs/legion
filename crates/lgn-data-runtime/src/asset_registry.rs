@@ -600,7 +600,7 @@ impl AssetRegistry {
             let resource = inner
                 .assets
                 .get_mut(&id)
-                .ok_or_else(|| AssetRegistryError::ResourceNotFound(id))?
+                .ok_or(AssetRegistryError::ResourceNotFound(id))?
                 .as_mut();
 
             let build_deps = processor.extract_build_dependencies(&*resource);
@@ -655,8 +655,9 @@ mod tests {
         use byteorder::{LittleEndian, ReadBytesExt};
 
         use crate::{
-            resource, Asset, AssetLoader, AssetLoaderError, AssetRegistry, Reference, Resource,
-            ResourceId, ResourceType, ResourceTypeAndId,
+            resource, Asset, AssetLoader, AssetLoaderError, AssetRegistry, Metadata, Reference,
+            Resource, ResourceDescriptor, ResourceId, ResourcePathName, ResourceType,
+            ResourceTypeAndId,
         };
         extern crate self as lgn_data_runtime;
 
@@ -666,6 +667,7 @@ mod tests {
         #[resource("refs_asset")]
         #[derive(Clone)]
         pub struct RefsAsset {
+            pub meta: Metadata,
             /// Test content.
             pub content: String,
             pub reference: Option<Reference<RefsAsset>>,
@@ -695,6 +697,11 @@ mod tests {
 
                 let reference = read_maybe_reference::<RefsAsset>(reader)?;
                 let asset = Box::new(RefsAsset {
+                    meta: Metadata::new(
+                        ResourcePathName::default(),
+                        RefsAsset::TYPENAME,
+                        RefsAsset::TYPE,
+                    ),
                     content: String::from_utf8(content).unwrap(),
                     reference,
                 });

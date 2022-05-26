@@ -3,8 +3,8 @@
 use std::io;
 
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceProcessor,
-    ResourceProcessorError,
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, OfflineResource, Resource,
+    ResourceDescriptor, ResourcePathName, ResourceProcessor, ResourceProcessorError,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +19,7 @@ pub enum TextureType {
 #[resource("offline_texture")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Texture {
+    pub meta: Metadata,
     /// Texture type.
     pub kind: TextureType,
     /// Texture width.
@@ -54,6 +55,11 @@ impl AssetLoader for TextureProcessor {
 impl ResourceProcessor for TextureProcessor {
     fn new_resource(&mut self) -> Box<dyn Resource> {
         Box::new(Texture {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                Texture::TYPENAME,
+                Texture::TYPE,
+            ),
             kind: TextureType::_2D,
             width: 0,
             height: 0,

@@ -36,10 +36,10 @@ pub fn resource(attr: TokenStream, item: TokenStream) -> TokenStream {
                 Box::new(self.clone())
             }
             fn get_meta(&self) -> Option<&lgn_data_runtime::Metadata> {
-                None
+                Some(&self.meta)
             }
             fn get_meta_mut(&mut self) -> Option<&mut lgn_data_runtime::Metadata> {
-                None
+                Some(&mut self.meta)
             }
         }
 

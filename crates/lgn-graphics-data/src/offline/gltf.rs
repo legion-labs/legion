@@ -14,14 +14,16 @@ use gltf::{
 use lgn_math::{Vec2, Vec3, Vec4};
 
 use lgn_data_runtime::{
-    resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceDescriptor,
-    ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceTypeAndId,
+    resource, Asset, AssetLoader, AssetLoaderError, Metadata, OfflineResource, Resource,
+    ResourceDescriptor, ResourcePathId, ResourcePathName, ResourceProcessor,
+    ResourceProcessorError, ResourceTypeAndId,
 };
 use lgn_tracing::warn;
 
 #[resource("gltf")]
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct GltfFile {
+    meta: Metadata,
     bytes: Vec<u8>,
 
     document: Option<Document>,
@@ -29,10 +31,31 @@ pub struct GltfFile {
     images: Vec<gltf::image::Data>,
 }
 
+impl Default for GltfFile {
+    fn default() -> Self {
+        Self {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                GltfFile::TYPENAME,
+                GltfFile::TYPE,
+            ),
+            bytes: vec![],
+            document: None,
+            buffers: vec![],
+            images: vec![],
+        }
+    }
+}
+
 impl GltfFile {
     pub fn from_bytes(bytes: Vec<u8>) -> Self {
         let (document, buffers, images) = gltf::import_slice(&bytes).unwrap();
         Self {
+            meta: Metadata::new(
+                ResourcePathName::default(),
+                GltfFile::TYPENAME,
+                GltfFile::TYPE,
+            ),
             bytes,
             document: Some(document),
             buffers,
@@ -289,6 +312,11 @@ impl GltfFile {
                 }
                 textures.push((
                     Texture {
+                        meta: Metadata::new(
+                            ResourcePathName::default(),
+                            Texture::TYPENAME,
+                            Texture::TYPE,
+                        ),
                         kind: TextureType::_2D,
                         width: image.width,
                         height: image.height,
@@ -298,6 +326,11 @@ impl GltfFile {
                 ));
                 textures.push((
                     Texture {
+                        meta: Metadata::new(
+                            ResourcePathName::default(),
+                            Texture::TYPENAME,
+                            Texture::TYPE,
+                        ),
                         kind: TextureType::_2D,
                         width: image.width,
                         height: image.height,
@@ -308,6 +341,11 @@ impl GltfFile {
             } else {
                 textures.push((
                     Texture {
+                        meta: Metadata::new(
+                            ResourcePathName::default(),
+                            Texture::TYPENAME,
+                            Texture::TYPE,
+                        ),
                         kind: TextureType::_2D,
                         width: image.width,
                         height: image.height,
