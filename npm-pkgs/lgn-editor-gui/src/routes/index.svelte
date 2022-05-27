@@ -171,7 +171,7 @@
   <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
       <Layout
-        componentBackgroundClass="bg-surface-700"
+        surfaceClass="700"
         layoutConfig={defaultLayoutConfig}
         componentMap={appComponentMap}
         bind:this={layout}
