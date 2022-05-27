@@ -50,3 +50,7 @@ build/env/install/tools.toml
 dccs/blender/__pycache__
 dccs/blender/dependencies
 dccs/blender/generated
+
+# VS files
+/.vs
+CppProperties.json
