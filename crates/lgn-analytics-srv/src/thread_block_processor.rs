@@ -73,18 +73,12 @@ where
 }
 
 #[span_fn]
-pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
-    pool: sqlx::any::AnyPool,
-    blob_storage: Arc<dyn BlobStorage>,
+pub fn parse_thread_block_payload<Proc: ThreadBlockProcessor>(
+    payload: &lgn_telemetry_proto::telemetry::BlockPayload,
     stream: &lgn_telemetry_sink::StreamInfo,
-    block_id: String,
     processor: &mut Proc,
 ) -> Result<()> {
-    let payload = {
-        let mut connection = pool.acquire().await?;
-        fetch_block_payload(&mut connection, blob_storage, block_id).await?
-    };
-    parse_block(stream, &payload, |val| {
+    parse_block(stream, payload, |val| {
         if let Value::Object(obj) = val {
             match obj.type_name.as_str() {
                 "BeginThreadSpanEvent" => {
@@ -155,4 +149,19 @@ pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
         Ok(true) //continue
     })?;
     Ok(())
+}
+
+#[span_fn]
+pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
+    pool: sqlx::any::AnyPool,
+    blob_storage: Arc<dyn BlobStorage>,
+    stream: &lgn_telemetry_sink::StreamInfo,
+    block_id: String,
+    processor: &mut Proc,
+) -> Result<()> {
+    let payload = {
+        let mut connection = pool.acquire().await?;
+        fetch_block_payload(&mut connection, blob_storage, block_id).await?
+    };
+    parse_thread_block_payload(&payload, stream, processor)
 }

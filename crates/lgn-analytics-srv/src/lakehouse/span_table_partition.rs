@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
 use lgn_analytics::time::ConvertTicks;
-use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::telemetry::BlockMetadata;
 use lgn_telemetry_proto::telemetry::Stream;
@@ -11,13 +10,12 @@ use parquet::file::writer::SerializedFileWriter;
 use parquet::schema::parser::parse_message_type;
 use std::collections::HashMap;
 use std::path::Path;
-use std::path::PathBuf;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use crate::call_tree::CallTreeBuilder;
-use crate::thread_block_processor::parse_thread_block;
+use crate::thread_block_processor::parse_thread_block_payload;
 
 use super::column::Column;
 
@@ -26,6 +24,7 @@ pub struct SpanTablePartitionLocalWriter {
 }
 
 impl SpanTablePartitionLocalWriter {
+    #[span_fn]
     pub fn create(file_path: &Path) -> Result<Self> {
         let message_type = "
   message schema {
@@ -47,11 +46,13 @@ impl SpanTablePartitionLocalWriter {
         Ok(Self { file_writer })
     }
 
+    #[span_fn]
     pub fn close(mut self) -> Result<()> {
         self.file_writer.close()?;
         Ok(())
     }
 
+    #[span_fn]
     pub fn append(&mut self, spans: &SpanRowGroup) -> Result<()> {
         let mut row_group_writer = self
             .file_writer
@@ -167,30 +168,23 @@ pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &AtomicU64, table: &mut
 }
 
 #[allow(clippy::cast_possible_wrap)]
-pub async fn write_local_partition(
-    pool: sqlx::any::AnyPool,
-    blob_storage: Arc<dyn BlobStorage>,
-    stream: Stream,
-    block: BlockMetadata,
+#[span_fn]
+pub fn write_local_partition(
+    payload: &lgn_telemetry_proto::telemetry::BlockPayload,
+    stream: &Stream,
+    block: &BlockMetadata,
     convert_ticks: ConvertTicks,
-    next_id: Arc<AtomicU64>,
-    spans_table_path: PathBuf,
+    next_id: &AtomicU64,
+    spans_table_path: &Path,
 ) -> Result<Option<deltalake::action::Action>> {
     info!("processing block {}", &block.block_id);
     let mut builder = CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks);
-    parse_thread_block(
-        pool,
-        blob_storage,
-        &stream,
-        block.block_id.clone(),
-        &mut builder,
-    )
-    .await
-    .with_context(|| "parsing thread block")?;
+    parse_thread_block_payload(payload, stream, &mut builder)
+        .with_context(|| "parsing thread block payload")?;
     let processed_block = builder.finish();
     if let Some(root) = processed_block.call_tree_root {
         let mut rows = SpanRowGroup::new();
-        make_rows_from_tree(&root, &*next_id, &mut rows);
+        make_rows_from_tree(&root, next_id, &mut rows);
         let filename = format!("spans_block_id={}.parquet", &block.block_id);
         let parquet_full_path = spans_table_path.join(&filename);
         let mut writer = SpanTablePartitionLocalWriter::create(&parquet_full_path)?;
