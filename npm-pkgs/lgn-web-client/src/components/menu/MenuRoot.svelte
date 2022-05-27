@@ -9,18 +9,21 @@
   export let menuContext: MenuContextStore;
   export let desc: MenuItemDescription;
   export let enableHover: boolean;
+  export let container: HTMLElement;
+  export let parent: HTMLElement;
 
   let menuWidth: number;
   let itemsWidth: number;
-  let pageX: number;
+  let parentWidth: number;
+  let overflow: boolean;
 
-  $: overflow = pageX + itemsWidth > window.innerWidth;
+  $: overflow = parentWidth + itemsWidth > container?.clientWidth;
   $: selected = $menuContext.current === desc;
   $: displayable = desc.children?.some((c) => c.visible) ?? false;
 
-  function onClick(e: MouseEvent) {
+  function onClick() {
     menuContext.onRootClick(desc);
-    pageX = e.pageX;
+    parentWidth = parent.offsetLeft;
   }
 </script>
 
@@ -69,7 +72,7 @@
 
 <style>
   .menu {
-    @apply items-center cursor-pointer;
+    @apply items-center cursor-pointer h-full;
   }
 
   .menu-title {

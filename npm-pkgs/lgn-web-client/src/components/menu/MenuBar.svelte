@@ -7,8 +7,19 @@
 
   export let items: MenuItemDescription[] = [];
   export let enableHover = true;
+  export let container: HTMLElement;
+
+  let menuRoot: HTMLElement;
 </script>
 
-{#each items as menu (menu.title)}
-  <MenuRoot desc={menu} {menuContext} {enableHover} />
-{/each}
+<div bind:this={menuRoot}>
+  {#each items as menu (menu.title)}
+    <MenuRoot
+      desc={menu}
+      parent={menuRoot}
+      {menuContext}
+      {enableHover}
+      {container}
+    />
+  {/each}
+</div>

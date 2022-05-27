@@ -66,6 +66,8 @@
 
   let childDisplayable = true;
 
+  let div: HTMLElement;
+
   $: collapsed = propertyGridStore
     ? $propertyGridStore.get(propertyBagKey)
     : false;
@@ -154,6 +156,7 @@
     displayable = isPropertyDisplayable(property.name, $search);
 
     if (displayable) {
+      collapsed = false;
       dispatch("displayable", displayable);
     }
   }
@@ -186,6 +189,7 @@
 <svelte:window on:prompt-answer={removeComponent} />
 
 <div
+  bind:this={div}
   class:flex={childDisplayable || displayable}
   hidden={!(childDisplayable && displayable)}
   class="property-root"
@@ -218,7 +222,7 @@
           {/if}
         </div>
       </div>
-      <MenuBar enableHover={false} items={menuItems} />
+      <MenuBar enableHover={false} items={menuItems} container={div} />
       {#if !disabledOptionalProperty && propertyIsOption(property)}
         <div class="optional">
           <Checkbox value={true} />

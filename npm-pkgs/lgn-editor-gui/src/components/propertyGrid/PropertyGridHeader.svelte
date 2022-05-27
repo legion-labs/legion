@@ -18,6 +18,8 @@
   export let resources: ResourceWithProperties[];
   export let search: Writable<string>;
 
+  let div: HTMLElement;
+
   function onAddComponentClicked() {
     // Since we dont' support multi edition for now we pick the first entity
     const resource = resources[0];
@@ -48,11 +50,12 @@
   }
 </script>
 
-<div class="property-header-root">
+<div class="property-header-root" bind:this={div}>
   <div class="header-root">
     <div class="header-text">Properties</div>
     <div class="action">
       <MenuBar
+        container={div}
         enableHover={false}
         items={[
           {
