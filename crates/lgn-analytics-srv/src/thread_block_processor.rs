@@ -74,13 +74,16 @@ where
 
 #[span_fn]
 pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
-    connection: &mut sqlx::AnyConnection,
+    pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
     stream: &lgn_telemetry_sink::StreamInfo,
     block_id: String,
     processor: &mut Proc,
 ) -> Result<()> {
-    let payload = fetch_block_payload(connection, blob_storage, block_id).await?;
+    let payload = {
+        let mut connection = pool.acquire().await?;
+        fetch_block_payload(&mut connection, blob_storage, block_id).await?
+    };
     parse_block(stream, &payload, |val| {
         if let Value::Object(obj) = val {
             match obj.type_name.as_str() {
