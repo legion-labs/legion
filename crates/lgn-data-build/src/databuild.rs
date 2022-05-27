@@ -19,8 +19,9 @@ use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
-use lgn_tracing::{async_span_scope, debug, info};
+use lgn_tracing::{async_span_scope, debug, error, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
+use petgraph::graph::NodeIndex;
 use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
@@ -735,58 +736,61 @@ impl DataBuild {
                     let resources = self.compilers.registry();
                     let acc_deps = accumulated_dependencies.clone();
 
-                    let work: Pin<Box<dyn Future<Output = Result<_, Error>> + Send>> = async move {
-                        info!(
-                            "Compiling({:?}) {} ({:?}) ...",
-                            compile_node_index, compile_node, expected_name
-                        );
-                        let start = std::time::Instant::now();
+                    #[allow(clippy::type_complexity)]
+                    let work: Pin<Box<dyn Future<Output = Result<_, (NodeIndex, Error)>> + Send>> =
+                        async move {
+                            info!(
+                                "Compiling({:?}) {} ({:?}) ...",
+                                compile_node_index, compile_node, expected_name
+                            );
+                            let start = std::time::Instant::now();
 
-                        let (resource_infos, resource_references, stats) = Self::compile_node(
-                            output_index,
-                            data_content_provider,
-                            project_dir,
-                            &compile_node,
-                            context_hash,
-                            source_hash,
-                            &dependencies,
-                            &acc_deps,
-                            env,
-                            compiler,
-                            resources.clone(),
-                        )
-                        .await?;
+                            let (resource_infos, resource_references, stats) = Self::compile_node(
+                                output_index,
+                                data_content_provider,
+                                project_dir,
+                                &compile_node,
+                                context_hash,
+                                source_hash,
+                                &dependencies,
+                                &acc_deps,
+                                env,
+                                compiler,
+                                resources.clone(),
+                            )
+                            .await
+                            .map_err(|e| (compile_node_index, e))?;
 
-                        info!(
-                            "Compiled({:?}) {:?} ended in {:?}.",
-                            compile_node_index,
-                            compile_node,
-                            start.elapsed()
-                        );
+                            info!(
+                                "Compiled({:?}) {:?} ended in {:?}.",
+                                compile_node_index,
+                                compile_node,
+                                start.elapsed()
+                            );
 
-                        // update the CAS manifest with new content in order to make new resources
-                        // visible to the next compilation node
-                        // NOTE: right now all the resources are visible to all compilation nodes.
-                        if let Some(manifest) = &intermediate_output {
-                            for r in &resource_infos {
-                                manifest.insert(
-                                    r.compiled_path.resource_id(),
-                                    r.compiled_content_id.clone(),
-                                );
+                            // update the CAS manifest with new content in order to make new resources
+                            // visible to the next compilation node
+                            // NOTE: right now all the resources are visible to all compilation nodes.
+                            if let Some(manifest) = &intermediate_output {
+                                for r in &resource_infos {
+                                    manifest.insert(
+                                        r.compiled_path.resource_id(),
+                                        r.compiled_content_id.clone(),
+                                    );
+                                }
                             }
+
+                            // registry must be updated to release any resources that are no longer referenced.
+                            resources.update();
+
+                            Ok((
+                                compile_node_index,
+                                resource_infos,
+                                resource_references,
+                                stats,
+                            ))
                         }
-
-                        // registry must be updated to release any resources that are no longer referenced.
-                        resources.update();
-
-                        Ok((
-                            compile_node_index,
-                            resource_infos,
-                            resource_references,
-                            stats,
-                        ))
-                    }
-                    .boxed();
+                        .boxed();
                     new_work.push(work);
                 } else {
                     let unnamed = compile_node.to_unnamed();
@@ -817,41 +821,47 @@ impl DataBuild {
 
             let (result, _, remaining) = select_all(work).await;
 
-            if let Ok((node_index, resource_infos, resource_references, stats)) = result {
-                let compile_node = build_graph.node_weight(node_index).unwrap();
+            match result {
+                Ok((node_index, resource_infos, resource_references, stats)) => {
+                    let compile_node = build_graph.node_weight(node_index).unwrap();
 
-                let unnamed = compile_node.to_unnamed();
-                info!(
-                    "Progress({:?}): done: {} ({})",
-                    node_index, compile_node, unnamed
-                );
-                compiling_unnamed.remove(&unnamed);
-                compiled_unnamed.insert(unnamed);
+                    let unnamed = compile_node.to_unnamed();
+                    info!(
+                        "Progress({:?}): done: {} ({})",
+                        node_index, compile_node, unnamed
+                    );
+                    compiling_unnamed.remove(&unnamed);
+                    compiled_unnamed.insert(unnamed);
 
-                accumulated_dependencies.extend(resource_infos.iter().map(|res| {
-                    CompiledResource {
-                        path: res.compiled_path.clone(),
-                        content_id: res.compiled_content_id.clone(),
-                    }
-                }));
-                accumulated_dependencies.sort();
-                accumulated_dependencies.dedup();
+                    accumulated_dependencies.extend(resource_infos.iter().map(|res| {
+                        CompiledResource {
+                            path: res.compiled_path.clone(),
+                            content_id: res.compiled_content_id.clone(),
+                        }
+                    }));
+                    accumulated_dependencies.sort();
+                    accumulated_dependencies.dedup();
 
-                assert_eq!(
-                    compiled_resources
-                        .iter()
-                        .filter(|&info| resource_infos.iter().any(|a| a == info))
-                        .count(),
-                    0,
-                    "duplicate compilation output detected"
-                );
+                    assert_eq!(
+                        compiled_resources
+                            .iter()
+                            .filter(|&info| resource_infos.iter().any(|a| a == info))
+                            .count(),
+                        0,
+                        "duplicate compilation output detected"
+                    );
 
-                compiled_resources.extend(resource_infos);
-                compiled_references.extend(resource_references);
-                compile_stats.extend(stats);
+                    compiled_resources.extend(resource_infos);
+                    compiled_references.extend(resource_references);
+                    compile_stats.extend(stats);
 
-                compiled.insert(node_index);
-            }
+                    compiled.insert(node_index);
+                }
+                Err((node_index, e)) => {
+                    error!("Compilation of '{:?}' failed {}", node_index, e);
+                    compiled.insert(node_index);
+                }
+            };
 
             work = remaining;
         }
