@@ -635,7 +635,7 @@ fn render_update(
 
         // Persistent descriptor set
         {
-            render_resources.get::<SamplerManager>().upload(&mut persistent_descriptor_set_manager);
+            render_resources.get_mut::<SamplerManager>().upload(&mut persistent_descriptor_set_manager);
             let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
                     render_context.set_persistent_descriptor_set(
                         descriptor_set.layout(),

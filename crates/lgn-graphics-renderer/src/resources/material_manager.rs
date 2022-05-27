@@ -251,7 +251,7 @@ impl MaterialManager {
         material_component: &MaterialData,
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
-        sampler_manager: &mut SamplerManager,
+        sampler_manager: &SamplerManager,
     ) -> crate::cgen::cgen_type::MaterialData {
         let mut material_data = crate::cgen::cgen_type::MaterialData::default();
 
@@ -377,7 +377,7 @@ impl MaterialManager {
         texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
-        sampler_manager: &mut SamplerManager,
+        sampler_manager: &SamplerManager,
     ) {
         let mut render_commands = renderer.render_command_builder();
 
@@ -565,12 +565,12 @@ fn upload_material_data(
         .render_resources()
         .get_mut::<MissingVisualTracker>();
 
-    let mut sampler_manager = renderer.render_resources().get_mut::<SamplerManager>();
+    let sampler_manager = renderer.render_resources().get::<SamplerManager>();
     material_manager.upload_material_data(
         &renderer,
         &texture_manager,
         &shared_resources_manager,
         &mut missing_visuals_tracker,
-        &mut sampler_manager,
+        &sampler_manager,
     );
 }

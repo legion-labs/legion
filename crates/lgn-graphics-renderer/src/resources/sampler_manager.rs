@@ -1,5 +1,3 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
-
 use lgn_graphics_api::{DeviceContext, SamplerDef};
 use parking_lot::RwLock;
 
@@ -20,7 +18,7 @@ pub struct SamplerManager {
     device_context: DeviceContext,
 
     samplers: RwLock<Vec<(u64, lgn_graphics_api::Sampler)>>,
-    uploaded: AtomicUsize,
+    uploaded: usize,
 }
 
 impl SamplerManager {
@@ -28,10 +26,10 @@ impl SamplerManager {
         device_context: &DeviceContext,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) -> Self {
-        let sampler_manager = Self {
+        let mut sampler_manager = Self {
             device_context: device_context.clone(),
             samplers: RwLock::new(Vec::new()),
-            uploaded: AtomicUsize::new(0),
+            uploaded: 0,
         };
         let idx = sampler_manager.get_index(&SamplerDef::default());
         assert_eq!(idx, DEFAULT_SAMPLER_ID);
@@ -60,12 +58,15 @@ impl SamplerManager {
         sampler_id
     }
 
-    pub fn upload(&self, persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager) {
+    pub fn upload(
+        &mut self,
+        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
+    ) {
         let samplers = self.samplers.read();
-        for idx in self.uploaded.load(Ordering::Acquire)..samplers.len() {
+        for idx in self.uploaded..samplers.len() {
             persistent_descriptor_set_manager.set_sampler(idx as u32, &samplers[idx].1);
         }
-        self.uploaded.store(samplers.len(), Ordering::Release);
+        self.uploaded = samplers.len();
     }
 
     pub fn get_default_sampler_index() -> SamplerId {
