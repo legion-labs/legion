@@ -2,8 +2,16 @@ use super::params;
 use super::requests;
 use super::errors::{Error, Result};
 use axum::{
-    extract::Json, extract::Path, http::Request, response::{IntoResponse, Response}, routing, Extension, Router,
+    extract::ConnectInfo,
+    extract::Json,
+    extract::Path,
+    http::Request,
+    response::{IntoResponse, Response},
+    routing,
+    Extension,
+    Router,
 };
+use std::net::SocketAddr;
 use serde_qs::axum::QsQuery;
 use http::request::Parts;
 use http::header::HeaderName;
@@ -50,6 +58,7 @@ where
                         body: axum::body::Bytes,
                 {% endmatch -%}
             {% endif -%}
+            ConnectInfo(addr): ConnectInfo<SocketAddr>,
             parts: Parts,
         ) -> Response
         where
@@ -78,6 +87,7 @@ where
             {% endfor %}
 
             let mut context = Context::default();
+            context.set_request_addr(addr);
             context.set_request(parts);
             let request = requests::{{ route.name|pascal_case }}Request {
                 {%- for parameter in route.parameters.path -%}

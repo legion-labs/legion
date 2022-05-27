@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 #[derive(Debug, Default)]
 pub struct Context {
     // Initial headers and extensions provided by the client.
@@ -8,6 +10,8 @@ pub struct Context {
     response_headers: Option<http::HeaderMap>,
     response_extensions: Option<http::Extensions>,
 
+    // The request socket address.
+    request_addr: Option<SocketAddr>,
     // The full http request parts usable by the server.
     request: Option<http::request::Parts>,
     // The full http response parts usable by the client.
@@ -15,6 +19,14 @@ pub struct Context {
 }
 
 impl Context {
+    pub fn request_addr(&self) -> Option<&SocketAddr> {
+        self.request_addr.as_ref()
+    }
+
+    pub fn set_request_addr(&mut self, addr: SocketAddr) {
+        self.request_addr = Some(addr);
+    }
+
     pub fn request(&self) -> Option<&http::request::Parts> {
         self.request.as_ref()
     }

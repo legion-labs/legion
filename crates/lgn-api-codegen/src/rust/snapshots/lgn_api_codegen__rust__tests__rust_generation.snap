@@ -361,6 +361,7 @@ pub mod server {
     use super::params;
     use super::requests;
     use axum::{
+        extract::ConnectInfo,
         extract::Json,
         extract::Path,
         http::Request,
@@ -372,6 +373,7 @@ pub mod server {
     use lgn_online::codegen::{Bytes, Context};
     use lgn_tracing::error;
     use serde_qs::axum::QsQuery;
+    use std::net::SocketAddr;
 
     /// Register all the routes for that API to the specified Router.
     #[must_use]
@@ -400,12 +402,14 @@ pub mod server {
         Extension(api): Extension<T>,
         Path(space_id): Path<String>,
         QsQuery(query): QsQuery<params::GetCarsQuery>,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
         parts: Parts,
     ) -> Response
     where
         T: super::Api + Send + Sync + 'static,
     {
         let mut context = Context::default();
+        context.set_request_addr(addr);
         context.set_request(parts);
         let request = requests::GetCarsRequest {
             space_id,
@@ -434,6 +438,7 @@ pub mod server {
         Extension(api): Extension<T>,
         Path(space_id): Path<String>,
         Json(body): Json<super::models::Car>,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
         parts: Parts,
     ) -> Response
     where
@@ -452,6 +457,7 @@ pub mod server {
         });
 
         let mut context = Context::default();
+        context.set_request_addr(addr);
         context.set_request(parts);
         let request = requests::CreateCarRequest {
             space_id,
@@ -479,12 +485,14 @@ pub mod server {
     async fn get_car<T>(
         Extension(api): Extension<T>,
         Path((space_id, car_id)): Path<(String, i64)>,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
         parts: Parts,
     ) -> Response
     where
         T: super::Api + Send + Sync + 'static,
     {
         let mut context = Context::default();
+        context.set_request_addr(addr);
         context.set_request(parts);
         let request = requests::GetCarRequest { space_id, car_id };
 
@@ -508,12 +516,14 @@ pub mod server {
     async fn delete_car<T>(
         Extension(api): Extension<T>,
         Path((space_id, car_id)): Path<(String, i64)>,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
         parts: Parts,
     ) -> Response
     where
         T: super::Api + Send + Sync + 'static,
     {
         let mut context = Context::default();
+        context.set_request_addr(addr);
         context.set_request(parts);
         let request = requests::DeleteCarRequest { space_id, car_id };
 
@@ -538,12 +548,14 @@ pub mod server {
         Extension(api): Extension<T>,
         Path(space_id): Path<String>,
         body: axum::body::Bytes,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
         parts: Parts,
     ) -> Response
     where
         T: super::Api + Send + Sync + 'static,
     {
         let mut context = Context::default();
+        context.set_request_addr(addr);
         context.set_request(parts);
         let request = requests::TestBinaryRequest {
             space_id,
@@ -567,11 +579,16 @@ pub mod server {
         resp
     }
 
-    async fn test_one_of<T>(Extension(api): Extension<T>, parts: Parts) -> Response
+    async fn test_one_of<T>(
+        Extension(api): Extension<T>,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
+        parts: Parts,
+    ) -> Response
     where
         T: super::Api + Send + Sync + 'static,
     {
         let mut context = Context::default();
+        context.set_request_addr(addr);
         context.set_request(parts);
         let request = requests::TestOneOfRequest {};
 
