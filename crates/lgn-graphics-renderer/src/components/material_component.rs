@@ -1,6 +1,10 @@
 use lgn_data_runtime::Handle;
 use lgn_ecs::prelude::*;
-use lgn_graphics_data::{runtime::Material, runtime_texture::TextureReferenceType, Color};
+use lgn_graphics_data::{
+    runtime::{Material, SamplerData},
+    runtime_texture::TextureReferenceType,
+    Color,
+};
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum AlphaMode {
@@ -28,6 +32,7 @@ pub struct MaterialData {
     pub roughness_texture: Option<TextureReferenceType>,
     pub base_roughness: f32,
     pub alpha_mode: AlphaMode,
+    pub sampler_data: Option<SamplerData>,
 }
 
 #[derive(Component)]
@@ -43,6 +48,7 @@ impl MaterialComponent {
         normal_texture: Option<TextureReferenceType>,
         metalness_texture: Option<TextureReferenceType>,
         roughness_texture: Option<TextureReferenceType>,
+        sampler_data: Option<SamplerData>,
     ) -> Self {
         Self {
             resource,
@@ -56,6 +62,7 @@ impl MaterialComponent {
                 roughness_texture,
                 base_roughness: 0.4,
                 alpha_mode: AlphaMode::Opaque,
+                sampler_data,
             },
         }
     }

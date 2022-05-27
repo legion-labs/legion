@@ -3,8 +3,10 @@
 
 use std::{
     cmp::min,
-    collections::HashMap,
+    collections::{BTreeSet, HashMap, HashSet},
+    mem::size_of,
     path::PathBuf,
+    pin::Pin,
     sync::{Arc, RwLock},
 };
 
@@ -14,11 +16,16 @@ use console::style;
 use futures::Future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lgn_content_store::{
-    indexing::{IndexKeyDisplayFormat, TreeIdentifier, TreeLeafNode, TreeNode, TreeReader},
+    indexing::{
+        BasicIndexer, CompositeIndexer, IndexKey, IndexKeyDisplayFormat, IndexableResource,
+        ResourceReader, ResourceWriter, StaticIndexer, Tree, TreeIdentifier, TreeLeafNode,
+        TreeNode, TreeReader, TreeWriter,
+    },
     Config, Error, HashRef, Identifier, MonitorAsyncAdapter, Provider, TransferCallbacks,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, LevelFilter};
+use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Parser, Debug)]
@@ -78,6 +85,29 @@ enum TreeCommands {
             default_value_t = IndexKeyDisplayFormat::Hex
         )]
         display_format: IndexKeyDisplayFormat,
+    },
+    BuildSearchIndex {
+        #[clap(help = "The words file to build the tree from")]
+        file_path: PathBuf,
+        #[clap(
+            long = "min-sequence-length",
+            help = "The minimum length of sequences to index",
+            default_value_t = 3
+        )]
+        min_sequence_length: u32,
+        #[clap(
+            long = "max-sequence-length",
+            help = "The maximum length of sequences to index",
+            default_value_t = 5
+        )]
+        max_sequence_length: u32,
+    },
+    Search {
+        #[clap(help = "The tree root identifier")]
+        tree_id: TreeIdentifier,
+
+        #[clap(help = "The sequence to search for")]
+        sequence: String,
     },
 }
 
@@ -454,11 +484,209 @@ async fn main() -> anyhow::Result<()> {
                 .await;
                 println!("{}", tree);
             }
+            TreeCommands::BuildSearchIndex {
+                file_path,
+                min_sequence_length,
+                max_sequence_length,
+            } => {
+                if min_sequence_length > max_sequence_length {
+                    return Err(anyhow::anyhow!(
+                        "min_sequence_length must be less than or equal to max_sequence_length"
+                    ));
+                }
+
+                // Too verbose.
+                //provider.set_upload_callbacks(transfer_progress.clone());
+
+                let all_words = &tokio::fs::read_to_string(file_path)
+                    .await?
+                    .split('\n')
+                    .filter_map(|line| {
+                        let line = line.trim().to_lowercase();
+
+                        if line.len() >= min_sequence_length.try_into().unwrap() {
+                            Some(line)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<BTreeSet<_>>();
+
+                let provider = Arc::new(provider);
+
+                let mut indexes = Vec::new();
+
+                for sequence_length in min_sequence_length..=max_sequence_length {
+                    let provider = Arc::clone(&provider);
+                    let bar_id = {
+                        let bar = transfer_progress
+                            .progress
+                            .add(ProgressBar::new(all_words.len().try_into().unwrap()));
+                        let progress_style = ProgressStyle::default_bar()
+                .template("{prefix:32!} [{elapsed_precise}] {bar:40.yellow/blue} {pos}/{len} ({percent}%, {eta}) {msg}");
+                        bar.set_style(progress_style);
+                        bar.set_prefix(format!("{} chars seq.", sequence_length));
+
+                        let bar_id = format!("seq-{}", sequence_length);
+
+                        transfer_progress
+                            .bars
+                            .write()
+                            .unwrap()
+                            .insert(bar_id.clone(), bar);
+
+                        bar_id
+                    };
+                    let transfer_progress = transfer_progress.clone();
+
+                    let index: Pin<Box<dyn Future<Output = anyhow::Result<_>>>> =
+                        Box::pin(async move {
+                            let provider = provider.begin_transaction_in_memory();
+                            let mut tree_id = provider.write_tree(&Tree::default()).await?;
+
+                            let seq_len = sequence_length.try_into().unwrap();
+                            let indexer = StaticIndexer::new(seq_len);
+                            let mut indexed_count = 0;
+
+                            for word in all_words {
+                                indexed_count += 1;
+
+                                if indexed_count % 10000 == 0 {
+                                    transfer_progress
+                                        .bars
+                                        .read()
+                                        .unwrap()
+                                        .get(&bar_id)
+                                        .unwrap()
+                                        .set_position(indexed_count.try_into().unwrap());
+                                }
+
+                                if word.len() < seq_len {
+                                    continue;
+                                }
+
+                                for i in 0..=(word.len() - seq_len) {
+                                    let seq = word[i..i + seq_len].as_bytes();
+
+                                    if seq.len() != seq_len {
+                                        continue;
+                                    }
+
+                                    let index_key = seq.into();
+                                    match indexer.get_leaf(&provider, &tree_id, &index_key).await? {
+                                        Some(leaf) => {
+                                            let mut words: Words = provider
+                                                .read_resource(&leaf.unwrap_resource())
+                                                .await?;
+
+                                            words.0.insert(word.clone());
+
+                                            let leaf = TreeLeafNode::Resource(
+                                                provider.write_resource(&words).await?,
+                                            );
+
+                                            (tree_id, _) = indexer
+                                                .replace_leaf(&provider, &tree_id, &index_key, leaf)
+                                                .await?;
+                                        }
+                                        None => {
+                                            let mut words = Words::default();
+                                            words.0.insert(word.clone());
+
+                                            let leaf = TreeLeafNode::Resource(
+                                                provider.write_resource(&words).await?,
+                                            );
+
+                                            tree_id = indexer
+                                                .add_leaf(&provider, &tree_id, &index_key, leaf)
+                                                .await?;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if let Err((_, err)) = provider.commit_transaction().await {
+                                return Err(err.into());
+                            };
+
+                            transfer_progress
+                                .bars
+                                .read()
+                                .unwrap()
+                                .get(&bar_id)
+                                .unwrap()
+                                .finish_with_message("✔️");
+
+                            Ok((sequence_length, bar_id, tree_id))
+                        });
+
+                    indexes.push(index);
+                }
+
+                let index: Pin<Box<dyn Future<Output = anyhow::Result<_>>>> =
+                    Box::pin(async move {
+                        let res = futures::future::join_all(indexes)
+                            .await
+                            .into_iter()
+                            .collect::<anyhow::Result<Vec<_>>>()?;
+
+                        let mut root_tree_id = provider.write_tree(&Tree::default()).await?;
+                        let indexer = StaticIndexer::new(size_of::<u32>());
+
+                        for (sequence_length, bar_id, tree_id) in res {
+                            transfer_progress.bars.write().unwrap().remove(&bar_id);
+
+                            root_tree_id = indexer
+                                .add_leaf(
+                                    &provider,
+                                    &root_tree_id,
+                                    &sequence_length.into(),
+                                    TreeLeafNode::TreeRoot(tree_id),
+                                )
+                                .await?;
+                        }
+
+                        Ok(root_tree_id)
+                    });
+
+                let (res, _) = futures::join!(index, transfer_join);
+
+                let tree_id = res?;
+
+                println!("{}", tree_id);
+            }
+            TreeCommands::Search { tree_id, sequence } => {
+                let sequence_length = sequence.len();
+                let indexer = CompositeIndexer::new(
+                    StaticIndexer::new(size_of::<u32>()),
+                    StaticIndexer::new(sequence_length),
+                );
+                let seq_len: u32 = sequence.len().try_into().unwrap();
+                let index_key = IndexKey::compose(seq_len, sequence.as_bytes());
+
+                match indexer.get_leaf(&provider, &tree_id, &index_key).await? {
+                    Some(leaf) => {
+                        let words: Words = provider.read_resource(&leaf.unwrap_resource()).await?;
+
+                        for word in &words.0 {
+                            println!("{}", word);
+                        }
+                    }
+                    None => {
+                        eprintln!("No results found.");
+                    }
+                }
+            }
         },
     }
 
     Ok(())
 }
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+struct Words(HashSet<String>);
+
+impl IndexableResource for Words {}
 
 #[async_recursion]
 async fn read_tree(

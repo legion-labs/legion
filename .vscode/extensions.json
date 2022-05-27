@@ -4,7 +4,7 @@
     // List of extensions which should be recommended for users of this workspace.
     "recommendations": [
         // Rust language support.
-        "matklad.rust-analyzer",
+        "rust-lang.rust-analyzer",
         // Rust debugging
         "ms-vscode.cpptools",
         // Toml linting

@@ -34,9 +34,7 @@ export default function clickOutside(node: Node, ignoredNodes: Node[] = []) {
 
   return {
     update(newlyIgnoredNodes: Node[]) {
-      if (newlyIgnoredNodes) {
-        ignoredNodes = newlyIgnoredNodes;
-      }
+      ignoredNodes = newlyIgnoredNodes;
     },
     destroy() {
       window.removeEventListener("mouseup", handleMouseUp);

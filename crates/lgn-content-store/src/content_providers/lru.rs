@@ -92,6 +92,20 @@ impl ContentWriter for LruContentProvider {
             })))
         }
     }
+
+    fn supports_unwrite(&self) -> bool {
+        true
+    }
+
+    async fn unwrite_content(&self, id: &HashRef) -> Result<()> {
+        async_span_scope!("LruContentProvider::unwrite");
+
+        if self.content_map.lock().await.pop(id).is_some() {
+            Ok(())
+        } else {
+            Err(Error::HashRefNotFound(id.clone()))
+        }
+    }
 }
 
 type MemoryUploader = Uploader<LruUploaderImpl>;

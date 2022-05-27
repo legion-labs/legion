@@ -60,3 +60,6 @@ pub(crate) use readback_buffer::*;
 
 mod material_manager;
 pub(crate) use material_manager::*;
+
+mod sampler_manager;
+pub(crate) use sampler_manager::*;

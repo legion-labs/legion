@@ -12,9 +12,6 @@ pub enum Error {
     RustFormat(#[from] rust_format::Error),
     #[error("typescript format: {0}")]
     TypeScriptFormat(anyhow::Error),
-    #[cfg(feature = "typescript-format")]
-    #[error("typescript format: {0}")]
-    TypeScriptParse(#[from] deno_ast::Diagnostic),
     #[error("invalid: {0}")]
     Invalid(String),
     #[error("missing operation id: {0}")]

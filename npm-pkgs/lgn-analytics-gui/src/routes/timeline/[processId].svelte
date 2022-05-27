@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { afterUpdate, onMount, tick } from "svelte";
+  import { getContext } from "svelte";
   import { get } from "svelte/store";
 
   import CallGraph from "@/components/CallGraphHierachy/CallGraphHierachy.svelte";
@@ -16,14 +17,13 @@
   import TimelineRange from "@/components/Timeline/Tools/TimelineRange.svelte";
   import TimelineSearch from "@/components/Timeline/Tools/TimelineSearch.svelte";
   import { pixelMargin } from "@/components/Timeline/Values/TimelineValues";
-  import { getHttpClientContext, getThreadItemLengthContext } from "@/contexts";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
   const processId = $page.params.processId;
 
-  const client = getHttpClientContext();
-  const threadItemLength = getThreadItemLengthContext();
+  const client = getContext("http-client");
+  const threadItemLength = getContext("thread-item-length");
 
   let stateManager: TimelineStateManager;
   let windowInnerWidth: number;

@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use lgn_tracing::prelude::*;
 use parquet::{column::writer::ColumnWriter, file::writer::RowGroupWriter};
 
 #[derive(Debug)]
@@ -17,6 +18,7 @@ impl<T> Column<T> {
 }
 
 impl Column<i32> {
+    #[span_fn]
     pub fn write_batch(&self, row_group_writer: &mut dyn RowGroupWriter) -> Result<()> {
         if let Some(mut col_writer) = row_group_writer
             .next_column()
@@ -36,6 +38,7 @@ impl Column<i32> {
 }
 
 impl Column<i64> {
+    #[span_fn]
     pub fn write_batch(&self, row_group_writer: &mut dyn RowGroupWriter) -> Result<()> {
         if let Some(mut col_writer) = row_group_writer
             .next_column()
@@ -55,6 +58,7 @@ impl Column<i64> {
 }
 
 impl Column<f64> {
+    #[span_fn]
     pub fn write_batch(&self, row_group_writer: &mut dyn RowGroupWriter) -> Result<()> {
         if let Some(mut col_writer) = row_group_writer
             .next_column()

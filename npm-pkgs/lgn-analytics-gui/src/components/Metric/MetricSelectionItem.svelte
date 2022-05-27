@@ -1,23 +1,45 @@
 <script lang="ts">
+  import { getContext } from "svelte";
+
   import { getMetricColor } from "./Lib/MetricColor";
   import type { MetricState } from "./Lib/MetricState";
-  import type { MetricStore } from "./Lib/MetricStore";
 
-  export let metricStore: MetricStore;
   export let metric: MetricState;
+
+  const metricStore = getContext("metrics-store");
+
+  $: color = getMetricColor(metric.name);
 </script>
 
 <div
   on:click={() => metricStore.switchSelection(metric.name)}
-  class="select-none"
+  class="metric-selection-item-wrapper"
 >
-  <input
-    type="checkbox"
-    style="accent-color:{getMetricColor(metric.name)}"
-    checked={metric.selected}
-  />
-  {metric.name}
-  <span style="color:{getMetricColor(metric.name)}">
-    ({metric.unit})
-  </span>
+  <div class="metric-selection-item">
+    <div>
+      <input
+        type="checkbox"
+        style="accent-color:{color}"
+        checked={metric.selected}
+      />
+    </div>
+    <div>
+      {metric.name}
+      {#if metric.unit}
+        <span style="color:{color}">
+          ({metric.unit})
+        </span>
+      {/if}
+    </div>
+  </div>
 </div>
+
+<style lang="postcss">
+  .metric-selection-item-wrapper {
+    @apply select-none w-full border-b border-[#3d3d3d] py-0.5 border-dotted break-inside-avoid-column;
+  }
+
+  .metric-selection-item {
+    @apply flex space-x-1 break-all w-full cursor-pointer;
+  }
+</style>

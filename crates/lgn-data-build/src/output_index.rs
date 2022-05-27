@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::time::Duration;
 
 use lgn_content_store::Identifier;
 use lgn_data_compiler::CompiledResource;
@@ -59,6 +60,9 @@ pub(crate) struct OutputIndex {
     database: sqlx::AnyPool,
 }
 
+const MAX_CONNECTIONS: u32 = 10;
+const CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
+
 impl OutputIndex {
     pub(crate) async fn create_new(db_uri: String) -> Result<Self, Error> {
         let database = {
@@ -66,7 +70,8 @@ impl OutputIndex {
                 .await
                 .map_err(Error::Database)?;
             let connection = sqlx::any::AnyPoolOptions::new()
-                .max_connections(10)
+                .max_connections(MAX_CONNECTIONS)
+                .connect_timeout(CONNECTION_TIMEOUT)
                 .connect(&db_uri)
                 .await
                 .map_err(Error::Database)?;
@@ -106,7 +111,8 @@ impl OutputIndex {
     async fn load(db_uri: String) -> Result<Self, Error> {
         let database = {
             sqlx::any::AnyPoolOptions::new()
-                .max_connections(10)
+                .max_connections(MAX_CONNECTIONS)
+                .connect_timeout(CONNECTION_TIMEOUT)
                 .connect(&db_uri)
                 .await
                 .map_err(Error::Database)?
@@ -129,7 +135,7 @@ impl OutputIndex {
     }
 
     pub(crate) async fn insert_compiled(
-        &mut self,
+        &self,
         compile_path: &ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,
@@ -268,7 +274,7 @@ impl OutputIndex {
     }
 
     pub(crate) async fn insert_linked(
-        &mut self,
+        &self,
         id: ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,
@@ -342,6 +348,48 @@ mod tests {
 
     use crate::output_index::{AssetHash, OutputIndex};
 
+    /*
+    use std::{thread, time::Duration};
+    use futures::future::join_all;
+    use sqlx::{migrate::MigrateDatabase, Executor};
+
+    #[tokio::test]
+    async fn sqlx_timeout() {
+        let work_dir = tempfile::tempdir().unwrap();
+        let index_path = work_dir.path();
+        let index_db = test_database_uri(&index_path, "0.0.1");
+
+        sqlx::Any::create_database(&index_db).await.unwrap();
+
+        let connection = sqlx::any::AnyPoolOptions::new()
+            .max_connections(1)
+            .connect_timeout(Duration::from_millis(300))
+            .connect(&index_db)
+            .await
+            .unwrap();
+
+        connection
+            .execute("CREATE TABLE some_table(some_number BIGINT);")
+            .await
+            .unwrap();
+
+        let mut vec_future = Vec::new();
+
+        for _ in 1..3 {
+            vec_future.push(async {
+                connection
+                    .execute(sqlx::query("SELECT * FROM some_table"))
+                    .await
+                    .unwrap(); // thread 'tests::sqlx_timeout' panicked at 'called `Result::unwrap()` on an `Err` value: PoolTimedOut'
+                thread::sleep(Duration::from_secs(1));
+            });
+        }
+
+        // sqlx will return PoolTimedOut here
+        let _results = join_all(vec_future).await;
+    }
+    */
+
     fn test_database_uri(buildindex_dir: impl AsRef<Path>, version: &str) -> String {
         let db_path = buildindex_dir
             .as_ref()
@@ -384,7 +432,7 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let index_path = work_dir.path();
         let index_db = test_database_uri(&index_path, "0.0.1");
-        let mut index = OutputIndex::create_new(index_db).await.unwrap();
+        let index = OutputIndex::create_new(index_db).await.unwrap();
 
         // no dependencies and no references.
         let compile_path = ResourcePathId::from(ResourceTypeAndId {

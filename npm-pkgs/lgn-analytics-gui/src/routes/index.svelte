@@ -1,8 +1,10 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
+  import { getContext } from "svelte";
 
   import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
   import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
   import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
@@ -10,11 +12,9 @@
   import Loader from "@/components/Misc/Loader.svelte";
   import SearchInput from "@/components/Misc/SearchInput.svelte";
   import ProcessList from "@/components/Process/ProcessList.svelte";
-  import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
 
-  const { t } = getL10nOrchestratorContext();
-
-  const client = getHttpClientContext();
+  const { t } = getContext(l10nOrchestratorContextKey);
+  const client = getContext("http-client");
 
   const processesStore = createAsyncStoreOrchestrator<ProcessInstance[]>();
 

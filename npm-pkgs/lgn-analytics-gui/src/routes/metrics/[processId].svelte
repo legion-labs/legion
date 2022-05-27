@@ -3,14 +3,21 @@
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
+  import { setContext } from "svelte";
+  import { getContext } from "svelte";
   import type { Unsubscriber } from "svelte/store";
-  import { get } from "svelte/store";
 
   import { MetricAxisCollection } from "@/components/Metric/Lib/MetricAxisCollection";
   import { getMetricColor } from "@/components/Metric/Lib/MetricColor";
   import type { MetricSlice } from "@/components/Metric/Lib/MetricSlice";
   import type { MetricState } from "@/components/Metric/Lib/MetricState";
-  import type { MetricStore } from "@/components/Metric/Lib/MetricStore";
+  import {
+    getLastUsedMetricsStore,
+    getMetricConfigStore,
+    getMetricNames,
+    getMetricStore,
+    getRecentlyUsedMetricsStore,
+  } from "@/components/Metric/Lib/MetricStore";
   import { MetricStreamer } from "@/components/Metric/Lib/MetricStreamer";
   import MetricDebugDisplay from "@/components/Metric/MetricDebugDisplay.svelte";
   import MetricLegendGroup from "@/components/Metric/MetricLegendGroup.svelte";
@@ -18,7 +25,6 @@
   import MetricTooltip from "@/components/Metric/MetricTooltip.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
   import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
-  import { getDebugContext, getHttpClientContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
@@ -26,15 +32,33 @@
 
   let metricStreamer: MetricStreamer;
   let axisCollection: MetricAxisCollection;
-  let metricStore: MetricStore;
+
+  const lastUsedMetricsStore = getLastUsedMetricsStore();
+
+  const metricConfigStore = getMetricConfigStore();
+
+  const metricStore = getMetricStore(lastUsedMetricsStore, metricConfigStore);
+
+  const recentlyUsedMetricsStore = getRecentlyUsedMetricsStore(
+    metricStore,
+    metricConfigStore
+  );
+
+  const metricNames = getMetricNames();
+
+  setContext("metrics-store", metricStore);
+
+  setContext("metrics-config-store", metricConfigStore);
+
+  setContext("recently-used-metrics-store", recentlyUsedMetricsStore);
 
   const defaultLineWidth = 1;
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
 
-  const client = getHttpClientContext();
-  const debug = getDebugContext();
+  const client = getContext("http-client");
+  const debug = getContext("debug");
 
   let mainWidth = 0;
   $: width = mainWidth - margin.left - margin.right;
@@ -53,18 +77,18 @@
   let deltaMs: number;
   let pixelSizeNs: number;
   let x: d3.ScaleLinear<number, number, never>;
-  let bestY: d3.ScaleLinear<number, number, never>;
+  // let bestY: d3.ScaleLinear<number, number, never>;
 
   let brushFunction: d3.BrushBehavior<unknown>;
   let svgGroup: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
   let gxAxis: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
-  let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
+  // let gyAxis: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
   let container: d3.Selection<d3.BaseType, unknown, HTMLElement, unknown>;
   let zoomEvent: D3ZoomEvent<HTMLCanvasElement, unknown>;
   let brushSvg: d3.Selection<SVGGElement, unknown, HTMLElement, unknown>;
 
   let xAxis: d3.Axis<d3.NumberValue>;
-  let yAxis: d3.Axis<d3.NumberValue>;
+  // let yAxis: d3.Axis<d3.NumberValue>;
   let zoom: d3.ZoomBehavior<Element, unknown>;
 
   let context: CanvasRenderingContext2D;
@@ -75,7 +99,7 @@
   $: if (!loading) {
     if (transform) {
       updateLod();
-      updatePoints(get(metricStore));
+      updatePoints($metricStore);
       updateChart();
       tick();
     }
@@ -92,23 +116,21 @@
 
   onMount(async () => {
     axisCollection = new MetricAxisCollection();
-    await fetchMetrics().then(() => {
-      createChart();
-      updateLod();
-      updatePoints(get(metricStore));
-      updateChart();
-      tick();
-      loading = false;
-    });
+
+    await fetchMetrics();
+
+    createChart();
+    updateLod();
+    updatePoints($metricStore);
+    updateChart();
+    tick();
+
+    loading = false;
   });
 
   onDestroy(() => {
-    if (canvas) {
-      canvas.replaceChildren();
-    }
-    if (pointSubscription) {
-      pointSubscription();
-    }
+    canvas?.replaceChildren();
+    pointSubscription?.();
   });
 
   function updateLod() {
@@ -128,8 +150,13 @@
   }
 
   async function fetchMetrics() {
-    metricStreamer = new MetricStreamer(client, processId);
-    metricStore = metricStreamer.metricStore;
+    metricStreamer = new MetricStreamer(
+      client,
+      processId,
+      metricStore,
+      lastUsedMetricsStore,
+      metricNames
+    );
     await metricStreamer.initialize();
 
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;
@@ -177,6 +204,18 @@
   function createChart() {
     container = d3.select("#metric-canvas");
 
+    // Forwards click event to the document's body
+    // so that the clickOutside action can work properly
+    container.on("click", () =>
+      document.body.dispatchEvent(
+        new MouseEvent("mouseup", {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    );
+
     svgGroup = container
       .append("svg")
       .append("g")
@@ -219,8 +258,8 @@
       .axisBottom(x)
       .tickFormat((d) => formatExecutionTime(d.valueOf()));
 
-    bestY = axisCollection.getBestAxisScale([height, 0], get(metricStore));
-    yAxis = d3.axisLeft(bestY);
+    // bestY = axisCollection.getBestAxisScale([height, 0], $metricStore);
+    // yAxis = d3.axisLeft(bestY);
 
     gxAxis = svgGroup
       .append("g")
@@ -228,7 +267,8 @@
       .attr("transform", `translate(0, ${height})`)
       .call(xAxis);
 
-    gyAxis = svgGroup.append("g").style("user-select", "none").call(yAxis);
+    // Remove y axis for now
+    // gyAxis = svgGroup.append("g").style("user-select", "none").call(yAxis);
 
     zoom = d3
       .zoom()
@@ -294,7 +334,7 @@
     svgGroup.call(zoom as any);
     refreshZoom();
     updateChartWidth();
-    bestY = axisCollection.getBestAxisScale([height, 0], get(metricStore));
+    // bestY = axisCollection.getBestAxisScale([height, 0], $metricStore);
     draw();
     updateTime = Math.floor(performance.now() - startTime);
   }
@@ -345,7 +385,8 @@
     }
 
     gxAxis.call(xAxis.scale(scaleX));
-    gyAxis.call(yAxis.scale(bestY));
+    // Remove y axis for now
+    // gyAxis.call(yAxis.scale(bestY));
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -362,14 +403,13 @@
 <Layout>
   <div class="metrics" slot="content">
     {#if !loading}
-      <MetricSelection {metricStore} />
+      <MetricSelection />
       <MetricTooltip
         bind:this={metricTooltip}
         {metricStore}
         xScale={transform.rescaleX(x)}
         leftMargin={margin.left}
         {zoomEvent}
-        {metricStreamer}
       />
     {/if}
 

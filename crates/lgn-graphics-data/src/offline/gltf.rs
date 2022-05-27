@@ -1,9 +1,9 @@
-use std::{io, str::FromStr};
+use std::{cell::RefCell, io, str::FromStr};
 
 use crate::{
-    offline::{Material, Mesh, Model},
+    offline::{Material, Mesh, Model, SamplerData},
     offline_texture::{Texture, TextureType},
-    Color,
+    Color, Filter, WrappingMode,
 };
 use gltf::{
     image::Format,
@@ -17,6 +17,7 @@ use lgn_data_runtime::{
     resource, Asset, AssetLoader, AssetLoaderError, OfflineResource, Resource, ResourceDescriptor,
     ResourcePathId, ResourceProcessor, ResourceProcessorError, ResourceTypeAndId,
 };
+use lgn_tracing::warn;
 
 #[resource("gltf")]
 #[derive(Default, Clone)]
@@ -163,7 +164,9 @@ impl GltfFile {
 
     pub fn gather_materials(&self, resource_id: ResourceTypeAndId) -> Vec<(Material, String)> {
         let mut materials = Vec::new();
-        for material in self.document.as_ref().unwrap().materials() {
+        let document = self.document.as_ref().unwrap();
+        for material in document.materials() {
+            let material_name = material.name().unwrap();
             let base_albedo = material.pbr_metallic_roughness().base_color_factor();
             let base_albedo = Color::from((
                 (base_albedo[0] * 255.0) as u8,
@@ -171,10 +174,12 @@ impl GltfFile {
                 (base_albedo[2] * 255.0) as u8,
                 (base_albedo[3] * 255.0) as u8,
             ));
+            let material_sampler = RefCell::new(None);
             let albedo = material
                 .pbr_metallic_roughness()
                 .base_color_texture()
                 .map(|info| {
+                    *material_sampler.borrow_mut() = Some(info.texture().sampler());
                     ResourcePathId::from(resource_id)
                         .push_named(
                             crate::offline_texture::Texture::TYPE,
@@ -184,6 +189,15 @@ impl GltfFile {
                 });
 
             let normal = material.normal_texture().map(|info| {
+                let normal_sampler = info.texture().sampler();
+                if let Some(sampler) = &*material_sampler.borrow() {
+                    if !samplers_equal(sampler, &normal_sampler) {
+                        warn!("Material {} uses more than one sampler", material_name);
+                    }
+                } else {
+                    *material_sampler.borrow_mut() = Some(normal_sampler);
+                }
+
                 ResourcePathId::from(resource_id)
                     .push_named(
                         crate::offline_texture::Texture::TYPE,
@@ -197,6 +211,14 @@ impl GltfFile {
                 .pbr_metallic_roughness()
                 .metallic_roughness_texture()
                 .map(|info| {
+                    let roughness_sampler = info.texture().sampler();
+                    if let Some(sampler) = &*material_sampler.borrow() {
+                        if !samplers_equal(sampler, &roughness_sampler) {
+                            warn!("Material {} uses more than one sampler", material_name);
+                        }
+                    } else {
+                        *material_sampler.borrow_mut() = Some(roughness_sampler);
+                    }
                     ResourcePathId::from(resource_id)
                         .push_named(
                             crate::offline_texture::Texture::TYPE,
@@ -209,6 +231,14 @@ impl GltfFile {
                 .pbr_metallic_roughness()
                 .metallic_roughness_texture()
                 .map(|info| {
+                    let metalness_sampler = info.texture().sampler();
+                    if let Some(sampler) = &*material_sampler.borrow() {
+                        if !samplers_equal(sampler, &metalness_sampler) {
+                            warn!("Material {} uses more than one sampler", material_name);
+                        }
+                    } else {
+                        *material_sampler.borrow_mut() = Some(metalness_sampler);
+                    }
                     ResourcePathId::from(resource_id)
                         .push_named(
                             crate::offline_texture::Texture::TYPE,
@@ -226,9 +256,10 @@ impl GltfFile {
                     base_albedo,
                     base_metalness,
                     base_roughness,
+                    sampler: material_sampler.borrow().as_ref().map(build_sampler),
                     ..Material::default()
                 },
-                String::from(material.name().unwrap()),
+                String::from(material_name),
             ));
         }
         materials
@@ -310,6 +341,60 @@ impl GltfFile {
             return Ok(0);
         }
         Ok(writer.write(&self.bytes)?)
+    }
+}
+
+fn samplers_equal(sampler1: &texture::Sampler<'_>, sampler2: &texture::Sampler<'_>) -> bool {
+    sampler1.mag_filter() == sampler2.mag_filter()
+        && sampler1.min_filter() == sampler2.min_filter()
+        && sampler1.wrap_s() == sampler2.wrap_s()
+        && sampler1.wrap_t() == sampler2.wrap_t()
+}
+
+fn build_sampler(sampler: &texture::Sampler<'_>) -> SamplerData {
+    SamplerData {
+        mag_filter: if let Some(mag_filter) = sampler.mag_filter() {
+            match mag_filter {
+                texture::MagFilter::Nearest => Filter::Nearest,
+                texture::MagFilter::Linear => Filter::Linear,
+            }
+        } else {
+            Filter::Linear
+        },
+        min_filter: if let Some(min_filter) = sampler.min_filter() {
+            match min_filter {
+                texture::MinFilter::Nearest
+                | texture::MinFilter::NearestMipmapNearest
+                | texture::MinFilter::NearestMipmapLinear => Filter::Nearest,
+                texture::MinFilter::Linear
+                | texture::MinFilter::LinearMipmapNearest
+                | texture::MinFilter::LinearMipmapLinear => Filter::Linear,
+            }
+        } else {
+            Filter::Linear
+        },
+        mip_filter: if let Some(min_filter) = sampler.min_filter() {
+            #[allow(clippy::match_same_arms)]
+            match min_filter {
+                texture::MinFilter::NearestMipmapNearest
+                | texture::MinFilter::LinearMipmapNearest => Filter::Nearest,
+                texture::MinFilter::LinearMipmapLinear
+                | texture::MinFilter::NearestMipmapLinear => Filter::Linear,
+                _ => Filter::Linear,
+            }
+        } else {
+            Filter::Linear
+        },
+        wrap_u: match sampler.wrap_s() {
+            texture::WrappingMode::ClampToEdge => WrappingMode::ClampToEdge,
+            texture::WrappingMode::MirroredRepeat => WrappingMode::MirroredRepeat,
+            texture::WrappingMode::Repeat => WrappingMode::Repeat,
+        },
+        wrap_v: match sampler.wrap_t() {
+            texture::WrappingMode::ClampToEdge => WrappingMode::ClampToEdge,
+            texture::WrappingMode::MirroredRepeat => WrappingMode::MirroredRepeat,
+            texture::WrappingMode::Repeat => WrappingMode::Repeat,
+        },
     }
 }
 

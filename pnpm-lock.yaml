@@ -4,10 +4,18 @@ importers:
 
   .:
     specifiers:
+      '@types/tailwindcss': ^3.0.10
+      autoprefixer: ^10.4.4
+      postcss: ^8.4.12
       rimraf: ^3.0.2
+      tailwindcss: ^3.0.24
       wasm-pack: 0.10.2
     devDependencies:
+      '@types/tailwindcss': 3.0.10
+      autoprefixer: 10.4.7_postcss@8.4.13
+      postcss: 8.4.13
       rimraf: 3.0.2
+      tailwindcss: 3.0.24
       wasm-pack: 0.10.2
 
   crates/lgn-auth-node:
@@ -652,7 +660,7 @@ importers:
       svelte-check: 2.7.0_lhgjd277matnne4wn224wtgbie
       svelte-preprocess: 4.10.6_j5vltbetf5b3hvn3gkit4y4tee
       tailwindcss: 3.0.24
-      type-fest: 2.12.2
+      type-fest: 2.13.0
       typescript: 4.6.4
       vite: 2.9.9
       vitest: 0.12.4_c8@7.11.3+jsdom@19.0.0
@@ -5176,8 +5184,8 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  /type-fest/2.12.2:
-    resolution: {integrity: sha512-qt6ylCGpLjZ7AaODxbpyBZSs9fCI9SkL3Z9q2oxMBQhs/uyY+VD8jHA8ULCGmWQJlBgqvO3EJeAngOHD8zQCrQ==}
+  /type-fest/2.13.0:
+    resolution: {integrity: sha512-lPfAm42MxE4/456+QyIaaVBAwgpJb6xZ8PRu09utnhPdWwcyj9vgy6Sq0Z5yNbJ21EdxB5dRU/Qg8bsyAMtlcw==}
     engines: {node: '>=12.20'}
     dev: true
 

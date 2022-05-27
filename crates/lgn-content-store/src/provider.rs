@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::{Debug, Display},
+    sync::Arc,
 };
 
 use async_recursion::async_recursion;
@@ -21,10 +22,11 @@ use crate::{
 /// A `Provider` is a provider that implements the small-content optimization or delegates to a specified provider.
 #[derive(Debug)]
 pub struct Provider {
+    content_provider_supports_unwrite: bool,
     content_provider: ContentProviderMonitor<Box<dyn ContentProvider>>,
     alias_provider: Box<dyn AliasProvider>,
     chunk_size: usize,
-    parent: Option<Box<Provider>>,
+    parent: Option<Arc<Provider>>,
     refs: Mutex<RefCounter<Identifier>>,
 }
 
@@ -45,17 +47,27 @@ impl Provider {
     /// the in-memory alias provider.
     ///
     /// This is mostly useful for tests.
+    ///
+    /// # Errors
+    ///
+    /// If the provider instancation fails, an error is returned.
     pub fn new_in_memory() -> Self {
         Self::new(MemoryContentProvider::new(), MemoryAliasProvider::new())
     }
 
     /// Instantiate a new small content provider that wraps the specified
     /// provider using the default identifier size threshold.
+    ///
+    /// # Errors
+    ///
+    /// If the unwrite support for the specified content-provider cannot be
+    /// determined, an error is returned.
     pub fn new(
         content_provider: impl ContentProvider + 'static,
         alias_provider: impl AliasProvider + 'static,
     ) -> Self {
         Self {
+            content_provider_supports_unwrite: content_provider.supports_unwrite(),
             content_provider: ContentProviderMonitor::new(Box::new(content_provider)),
             alias_provider: Box::new(alias_provider),
             chunk_size: DEFAULT_CHUNK_SIZE, // 8MB
@@ -111,22 +123,22 @@ impl Provider {
     /// # Returns
     ///
     /// The old fallback provider, if any.
-    fn set_parent(&mut self, fallback: Option<Self>) -> Option<Self> {
-        std::mem::replace(&mut self.parent, fallback.map(Box::new)).map(|provider| *provider)
+    fn set_parent(&mut self, fallback: Option<Arc<Self>>) -> Option<Arc<Self>> {
+        std::mem::replace(&mut self.parent, fallback)
     }
 
     /// Get the parent provider.
     ///
     /// # Returns
     /// The parent provider, if any.
-    pub fn parent(&self) -> Option<&Self> {
-        self.parent.as_ref().map(AsRef::as_ref)
+    pub fn parent(&self) -> Option<&Arc<Self>> {
+        self.parent.as_ref()
     }
 
     /// Begin a transaction with the specified provider that will use `self` as
     /// its parent provider.
     #[must_use]
-    pub fn begin_transaction(self, mut provider: Self) -> Self {
+    pub fn begin_transaction(self: Arc<Self>, mut provider: Self) -> Self {
         // Should we reorganize the potential already set fallback providers in
         // `self` and/or `provider`?
 
@@ -139,8 +151,11 @@ impl Provider {
     /// its parent provider.
     ///
     /// This is a helper method.
-    #[must_use]
-    pub fn begin_transaction_in_memory(self) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// If the unwrite support cannot be determined, an error is returned.
+    pub fn begin_transaction_in_memory(self: Arc<Self>) -> Self {
         self.begin_transaction(Self::new_in_memory())
     }
 
@@ -157,8 +172,8 @@ impl Provider {
     ///
     /// The parent provider.
     #[must_use]
-    pub fn abort_transaction(self) -> Self {
-        *self.parent.expect("no parent provider")
+    pub fn abort_transaction(self) -> Arc<Self> {
+        self.parent.expect("no parent provider")
     }
 
     /// Commit a transaction.
@@ -177,8 +192,8 @@ impl Provider {
     /// # Returns
     ///
     /// The parent provider.
-    pub async fn commit_transaction(mut self) -> Result<Self, (Self, Error)> {
-        let parent = *self.parent.take().expect("no parent provider");
+    pub async fn commit_transaction(mut self) -> Result<Arc<Self>, (Arc<Self>, Error)> {
+        let parent = self.parent.take().expect("no parent provider");
 
         let ids = self.referenced().await;
 
@@ -604,11 +619,39 @@ impl Provider {
 
     /// Unwrite the specified content from the content-store.
     ///
-    /// Unwriting doesn't actually delete anything, but it decrements the
-    /// reference count of the content which can avoid the content being copied
-    /// to a more persistent data-store.
-    pub async fn unwrite(&self, id: &Identifier) {
-        self.refs.lock().await.dec(id);
+    /// Unwriting may not always delete the content, but in any case, it
+    /// decrements the reference count of the content which can avoid the
+    /// content being copied to a more persistent data-store.
+    ///
+    /// If the configured content-provider supports unwritting, and the
+    /// reference count reaches 0, the content is unwritten.
+    #[async_recursion]
+    pub async fn unwrite(&self, id: &Identifier) -> Result<()> {
+        let must_unwrite_content =
+            self.refs.lock().await.dec(id) && self.content_provider_supports_unwrite;
+
+        match id {
+            Identifier::Data(_) | Identifier::Alias(_) => {}
+            Identifier::HashRef(id) => {
+                if must_unwrite_content {
+                    // The reference count reached 0: let's unwrite the content.
+                    self.content_provider.unwrite_content(id).await?;
+                }
+            }
+            Identifier::ManifestRef(_, id) => {
+                if must_unwrite_content {
+                    let manifest = self.read_manifest(id).await?;
+
+                    self.unwrite(id).await?;
+
+                    for id in manifest.identifiers() {
+                        self.unwrite(id).await?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 
     /// Get the list of referenced identifiers.
@@ -987,6 +1030,7 @@ mod tests {
 
         let mut provider = Provider::new(content_provider, alias_provider);
         provider.set_chunk_size(1024);
+        let provider = Arc::new(provider);
 
         const BEFORE: &[u8] = &[0x40; 8192];
         const SMALL: &[u8] = &[0x41; 32];
@@ -1028,8 +1072,8 @@ mod tests {
         assert!(alias_id.is_alias());
 
         // Make sure reference counting works properly too.
-        transaction.unwrite(&double_ref_hashref_id).await;
-        transaction.unwrite(&unused_hashref_id).await;
+        transaction.unwrite(&double_ref_hashref_id).await.unwrap();
+        transaction.unwrite(&unused_hashref_id).await.unwrap();
 
         // Let's make sure all reads fall back to the parent.
         assert!(transaction.exists(&before_id).await.unwrap());

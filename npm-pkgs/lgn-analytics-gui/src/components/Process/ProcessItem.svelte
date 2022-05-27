@@ -1,10 +1,11 @@
 <script lang="ts">
   import { formatDistance } from "date-fns";
+  import { getContext } from "svelte";
 
   import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
 
-  import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatProcessName } from "@/lib/format";
 
   import ProcessComputer from "./ProcessComputer.svelte";
@@ -12,8 +13,8 @@
   import ProcessPlatform from "./ProcessPlatform.svelte";
   import User from "./User.svelte";
 
-  const { locale } = getL10nOrchestratorContext();
-  const client = getHttpClientContext();
+  const { locale } = getContext(l10nOrchestratorContextKey);
+  const client = getContext("http-client");
 
   export let columns: Record<
     "user" | "process" | "computer" | "platform" | "start-time" | "statistics",

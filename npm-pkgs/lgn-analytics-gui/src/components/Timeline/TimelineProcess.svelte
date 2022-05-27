@@ -1,9 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from "svelte";
+  import { getContext } from "svelte";
 
   import type { Process } from "@lgn/proto-telemetry/dist/process";
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
 
-  import { getDebugContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatExecutionTime, formatProcessName } from "@/lib/format";
 
   import L10n from "../Misc/L10n.svelte";
@@ -25,9 +26,8 @@
 
   const wheelDispatcher = createEventDispatcher<{ zoom: WheelEvent }>();
   const processOffsetMs = Date.parse(process.startTime) - rootStartTime;
-  const debug = getDebugContext();
-  const { t } = getL10nOrchestratorContext();
-
+  const debug = getContext("debug");
+  const { t } = getContext(l10nOrchestratorContextKey);
   let collapsed = false;
   let components: TimelineRow[] = [];
 
