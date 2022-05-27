@@ -5,7 +5,7 @@
 struct VertexInUi {
     float2 pos : POSITION;
     float2 uv : TEXCOORD;
-    float4 color : COLOR;
+    uint color : COLOR;
 };
 
 struct VertexOut {  
@@ -20,10 +20,13 @@ VertexOut main_vs(in VertexInUi vertex_in) {
         2*vertex_in.pos.x/push_constant.width - 1.0,
         1.0 - 2*vertex_in.pos.y/push_constant.height) * push_constant.scale + push_constant.translation, 0.0, 1.0);
     vertex_out.uv = vertex_in.uv;
-    vertex_out.color = linear_from_srgba(vertex_in.color); //TODO: sRGB
+    vertex_out.color = unpack_srgb2linear( vertex_in.color  );
     return vertex_out;
 }
 
 float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
-    return vertex_out.color*font_texture.Sample(font_sampler, vertex_out.uv).r;
+    // 1) vertex_out.color is interpolated in linear space
+    // 2) font_texture is automatically transformed to linear space when sampling
+    // = output is in linear space and will be gamma corrected in the final resolve
+    return vertex_out.color * font_texture.Sample(font_sampler, vertex_out.uv).r ;
 }

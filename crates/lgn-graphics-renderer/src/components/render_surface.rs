@@ -1,3 +1,4 @@
+use std::collections::hash_map::{Values, ValuesMut};
 use std::{cmp::max, sync::Arc};
 
 use lgn_ecs::prelude::Component;
@@ -62,29 +63,108 @@ impl RenderSurfaceExtents {
     }
 }
 
+pub struct RenderSurfaceIterator<'a> {
+    values: Values<'a, RenderSurfaceId, Box<RenderSurface>>,
+}
+
+impl<'a> Iterator for RenderSurfaceIterator<'a> {
+    type Item = &'a RenderSurface;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.values.next().map(std::convert::AsRef::as_ref)
+    }
+}
+
+pub struct RenderSurfaceIteratorMut<'a> {
+    values: ValuesMut<'a, RenderSurfaceId, Box<RenderSurface>>,
+}
+
+impl<'a> Iterator for RenderSurfaceIteratorMut<'a> {
+    type Item = &'a mut RenderSurface;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.values.next().map(std::convert::AsMut::as_mut)
+    }
+}
+
 pub struct RenderSurfaces {
+    surfaces: HashMap<RenderSurfaceId, Box<RenderSurface>>,
     window_id_mapper: HashMap<WindowId, RenderSurfaceId>,
 }
 
 impl RenderSurfaces {
     pub fn new() -> Self {
         Self {
+            surfaces: HashMap::new(),
             window_id_mapper: HashMap::new(),
         }
     }
 
-    pub fn insert(&mut self, window_id: WindowId, render_surface_id: RenderSurfaceId) {
-        let result = self.window_id_mapper.insert(window_id, render_surface_id);
-        assert!(result.is_none());
+    pub fn insert(&mut self, render_surface: RenderSurface) {
+        let id = render_surface.id();
+        let window_id = render_surface.window_id();
+        assert!(!self.surfaces.contains_key(&id));
+        self.surfaces.insert(id, Box::new(render_surface));
+        if let Some(window_id) = window_id {
+            self.window_id_mapper.insert(window_id, id);
+        }
     }
 
-    pub fn remove(&mut self, window_id: WindowId) {
-        let result = self.window_id_mapper.remove(&window_id);
+    pub fn remove_from_window_id(&mut self, window_id: WindowId) {
+        let id = self.window_id_mapper.remove(&window_id).unwrap();
+        let result = self.surfaces.remove(&id);
         assert!(result.is_some());
     }
 
-    pub fn get_from_window_id(&self, window_id: WindowId) -> Option<&RenderSurfaceId> {
-        self.window_id_mapper.get(&window_id)
+    pub fn get_from_window_id(&self, window_id: WindowId) -> &RenderSurface {
+        let id = self.window_id_mapper.get(&window_id).unwrap();
+        let surface = self.surfaces.get(id).unwrap();
+        surface.as_ref()
+    }
+
+    pub fn try_get_from_window_id(&self, window_id: WindowId) -> Option<&RenderSurface> {
+        self.window_id_mapper
+            .get(&window_id)
+            .map(|x| self.surfaces.get(x).unwrap().as_ref())
+    }
+
+    pub fn get_from_window_id_mut(&mut self, window_id: WindowId) -> &mut RenderSurface {
+        let id = self.window_id_mapper.get(&window_id).unwrap();
+        let surface = self.surfaces.get_mut(id).unwrap();
+        surface.as_mut()
+    }
+
+    pub fn try_get_from_window_id_mut(
+        &mut self,
+        window_id: WindowId,
+    ) -> Option<&mut RenderSurface> {
+        self.window_id_mapper
+            .get(&window_id)
+            .map(|x| self.surfaces.get_mut(x).unwrap().as_mut())
+    }
+
+    pub fn for_each(&self, func: impl Fn(&RenderSurface)) {
+        self.surfaces.iter().for_each(|(_, render_surface)| {
+            func(render_surface.as_ref());
+        });
+    }
+
+    pub fn for_each_mut(&mut self, func: impl Fn(&mut RenderSurface)) {
+        self.surfaces.iter_mut().for_each(|(_, render_surface)| {
+            func(render_surface.as_mut());
+        });
+    }
+
+    pub fn iter(&self) -> RenderSurfaceIterator<'_> {
+        RenderSurfaceIterator {
+            values: self.surfaces.values(),
+        }
+    }
+
+    pub fn iter_mut(&mut self) -> RenderSurfaceIteratorMut<'_> {
+        RenderSurfaceIteratorMut {
+            values: self.surfaces.values_mut(),
+        }
     }
 }
 
@@ -92,7 +172,6 @@ impl RenderSurfaces {
 #[derive(Debug, Clone)]
 pub struct RenderSurfaceCreatedForWindow {
     pub window_id: WindowId,
-    pub render_surface_id: RenderSurfaceId,
 }
 
 #[allow(dead_code)]
@@ -142,13 +221,14 @@ pub enum RenderSurfacePresentingStatus {
 #[derive(Component)]
 pub struct RenderSurface {
     id: RenderSurfaceId,
+    window_id: Option<WindowId>,
     extents: RenderSurfaceExtents,
     resources: SizeDependentResources,
     presenters: Vec<Box<dyn Presenter>>,
     // tmp
     num_render_frames: u64,
     render_frame_idx: u64,
-    presenter_sems: Vec<Semaphore>,
+    presenter_semaphores: Vec<Semaphore>,
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
     debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
@@ -164,11 +244,100 @@ pub struct RenderSurface {
 
 impl RenderSurface {
     pub fn new(
+        window_id: WindowId,
         renderer: &Renderer,
         pipeline_manager: &PipelineManager,
-        extents: RenderSurfaceExtents,
+        render_surface_extents: RenderSurfaceExtents,
     ) -> Self {
-        Self::new_with_id(RenderSurfaceId::new(), renderer, pipeline_manager, extents)
+        Self::new_internal(
+            Some(window_id),
+            renderer,
+            pipeline_manager,
+            render_surface_extents,
+        )
+    }
+
+    pub fn new_offscreen_window(
+        renderer: &Renderer,
+        pipeline_manager: &PipelineManager,
+        render_surface_extents: RenderSurfaceExtents,
+    ) -> Self {
+        Self::new_internal(None, renderer, pipeline_manager, render_surface_extents)
+    }
+
+    fn new_internal(
+        window_id: Option<WindowId>,
+        renderer: &Renderer,
+        pipeline_manager: &PipelineManager,
+        render_surface_extents: RenderSurfaceExtents,
+    ) -> Self {
+        let num_render_frames = renderer.num_render_frames();
+        let device_context = renderer.device_context();
+        let presenter_semaphores = (0..num_render_frames)
+            .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
+            .collect();
+
+        let extents = Extents3D {
+            width: render_surface_extents.width(),
+            height: render_surface_extents.height(),
+            depth: 1,
+        };
+        let view_desc = TextureDef {
+            extents,
+            array_length: 1,
+            mip_count: 1,
+            format: Format::B8G8R8A8_UNORM,
+            usage_flags: ResourceUsage::AS_RENDER_TARGET
+                | ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_UNORDERED_ACCESS
+                | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
+        };
+        let view_target = device_context.create_texture(view_desc, "ViewBuffer");
+
+        let hzb_desc = Self::make_hzb_desc(&extents);
+
+        let hzb = [
+            device_context.create_texture(hzb_desc, "HZB 0"),
+            device_context.create_texture(hzb_desc, "HZB 1"),
+        ];
+
+        Self {
+            id: RenderSurfaceId::new(),
+            window_id: window_id,
+            extents: render_surface_extents,
+            resources: SizeDependentResources::new(
+                device_context,
+                render_surface_extents,
+                pipeline_manager,
+            ),
+            num_render_frames,
+            render_frame_idx: 0,
+            presenter_semaphores,
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
+            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
+            final_resolve_render_pass: Arc::new(RwLock::new(FinalResolveRenderPass::new(
+                device_context,
+                pipeline_manager,
+            ))),
+            presenters: Vec::new(),
+            presenting_status: RenderSurfacePresentingStatus::Presenting,
+            view_target,
+            hzb,
+            hzb_cleared: false,
+            use_view_target: false,
+        }
+    }
+
+    pub fn id(&self) -> RenderSurfaceId {
+        self.id
+    }
+
+    pub fn window_id(&self) -> Option<WindowId> {
+        self.window_id
     }
 
     pub fn extents(&self) -> RenderSurfaceExtents {
@@ -209,10 +378,6 @@ impl RenderSurface {
     pub fn register_presenter<T: 'static + Presenter>(&mut self, create_fn: impl FnOnce() -> T) {
         let presenter = create_fn();
         self.presenters.push(Box::new(presenter));
-    }
-
-    pub fn id(&self) -> RenderSurfaceId {
-        self.id
     }
 
     pub fn hdr_rt(&self) -> &RenderTarget {
@@ -310,14 +475,14 @@ impl RenderSurface {
     //
     pub fn acquire(&mut self) -> &Semaphore {
         let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
-        let presenter_sem = &self.presenter_sems[render_frame_idx as usize];
+        let presenter_sem = &self.presenter_semaphores[render_frame_idx as usize];
         self.render_frame_idx = render_frame_idx;
 
         presenter_sem
     }
 
     pub fn presenter_sem(&self) -> &Semaphore {
-        &self.presenter_sems[self.render_frame_idx as usize]
+        &self.presenter_semaphores[self.render_frame_idx as usize]
     }
 
     pub fn pause(&mut self) -> &mut Self {
@@ -417,72 +582,6 @@ impl RenderSurface {
                     }
                 }
             });
-        }
-    }
-
-    fn new_with_id(
-        id: RenderSurfaceId,
-        renderer: &Renderer,
-        pipeline_manager: &PipelineManager,
-        render_surface_extents: RenderSurfaceExtents,
-    ) -> Self {
-        let num_render_frames = renderer.num_render_frames();
-        let device_context = renderer.device_context();
-        let presenter_sems = (0..num_render_frames)
-            .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
-            .collect();
-
-        let extents = Extents3D {
-            width: render_surface_extents.width(),
-            height: render_surface_extents.height(),
-            depth: 1,
-        };
-        let view_desc = TextureDef {
-            extents,
-            array_length: 1,
-            mip_count: 1,
-            format: Format::B8G8R8A8_UNORM,
-            usage_flags: ResourceUsage::AS_RENDER_TARGET
-                | ResourceUsage::AS_SHADER_RESOURCE
-                | ResourceUsage::AS_UNORDERED_ACCESS
-                | ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
-            memory_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-        };
-        let view_target = device_context.create_texture(view_desc, "ViewBuffer");
-
-        let hzb_desc = Self::make_hzb_desc(&extents);
-
-        let hzb = [
-            device_context.create_texture(hzb_desc, "HZB 0"),
-            device_context.create_texture(hzb_desc, "HZB 1"),
-        ];
-
-        Self {
-            id,
-            extents: render_surface_extents,
-            resources: SizeDependentResources::new(
-                device_context,
-                render_surface_extents,
-                pipeline_manager,
-            ),
-            num_render_frames,
-            render_frame_idx: 0,
-            presenter_sems,
-            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
-            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
-            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
-            final_resolve_render_pass: Arc::new(RwLock::new(FinalResolveRenderPass::new(
-                device_context,
-                pipeline_manager,
-            ))),
-            presenters: Vec::new(),
-            presenting_status: RenderSurfacePresentingStatus::Presenting,
-            view_target,
-            hzb,
-            hzb_cleared: false,
-            use_view_target: false,
         }
     }
 }

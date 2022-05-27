@@ -10,8 +10,10 @@ use crate::{
         self,
         cgen_type::{PickingData, TransformData},
     },
-    components::{CameraComponent, LightComponent, ManipulatorComponent, RenderSurface},
+    components::{CameraComponent, ManipulatorComponent, RenderSurface},
+    core::{RenderObjectQuery, RenderObjects},
     gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
+    lighting::RenderLight,
     picking::{ManipulatorManager, PickingManager, PickingState},
     resources::{DefaultMeshType, GpuBufferWithReadback, MeshManager, MeshMetaData},
     RenderContext,
@@ -42,7 +44,8 @@ impl PickingRenderPass {
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
-        lights: &[(&LightComponent, &GlobalTransform)],
+        // lights: &[(&LightComponent, &GlobalTransform)],
+        render_objects: &RenderObjects,
         mesh_manager: &MeshManager,
         camera: &CameraComponent,
         mesh_renderer: &MeshRenderer,
@@ -145,12 +148,16 @@ impl PickingRenderPass {
                     }
                 }
 
-                for (light, transform) in lights {
+                let render_lights = RenderObjectQuery::<RenderLight>::new(render_objects);
+
+                for render_light in render_lights.iter() {
                     let picking_distance = 1.0;
-                    let custom_world = transform.with_scale(transform.scale * 0.2);
+                    let custom_world = render_light
+                        .transform
+                        .with_scale(render_light.transform.scale * 0.2);
                     render_mesh(
                         &custom_world,
-                        light.picking_id,
+                        render_light.picking_id,
                         picking_distance,
                         mesh_manager.get_default_mesh(DefaultMeshType::Sphere),
                         cmd_buffer,

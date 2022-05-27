@@ -12,6 +12,7 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
+use crate::components::EcsToRender;
 use crate::core::{DebugStuff, RenderObjects};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::{Config, RenderScript, RenderView};
@@ -209,7 +210,7 @@ impl Plugin for RendererPlugin {
         let model_manager = ModelManager::new(&mesh_manager, &material_manager);
         let missing_visuals_tracker = MissingVisualTracker::default();
 
-        let light_manager = LightingManager::new(device_context);
+        let light_manager = LightingManager::new();
 
         let renderdoc_manager = RenderDocManager::default();
 
@@ -246,18 +247,25 @@ impl Plugin for RendererPlugin {
         app.add_startup_system(create_camera);
 
         //
+        // RenderObjects
+        //
+        app.insert_resource(EcsToRender::<LightComponent, RenderLight>::new())
+            .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+
+        //
         // Resources
         //
-        app.insert_resource(pipeline_manager);
-        app.insert_resource(manipulation_manager.clone());
-        app.insert_resource(cgen_registry_list);
-        app.insert_resource(RenderSurfaces::new());
-        app.insert_resource(DebugDisplay::default());
-        app.insert_resource(persistent_descriptor_set_manager);
-        app.insert_resource(shared_resources_manager);
-        app.insert_resource(texture_manager);
-        app.insert_resource(RendererOptions::default());
-        app.insert_resource(picking_manager.clone());
+
+        app.insert_resource(pipeline_manager)
+            .insert_resource(manipulation_manager.clone())
+            .insert_resource(cgen_registry_list)
+            .insert_resource(RenderSurfaces::new())
+            .insert_resource(DebugDisplay::default())
+            .insert_resource(persistent_descriptor_set_manager)
+            .insert_resource(shared_resources_manager)
+            .insert_resource(texture_manager)
+            .insert_resource(RendererOptions::default())
+            .insert_resource(picking_manager.clone());
 
         // Init ecs
         TextureManager::init_ecs(app);
@@ -307,7 +315,6 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
         app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
-        app.add_system_to_stage(RenderStage::Prepare, reflect_light_components);
         app.add_system_to_stage(
             RenderStage::Prepare,
             camera_control.exclusive_system().at_start(),
@@ -365,7 +372,6 @@ impl Plugin for RendererPlugin {
 
 #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
 fn on_window_created(
-    mut commands: Commands<'_, '_>,
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
@@ -376,16 +382,11 @@ fn on_window_created(
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(&renderer, &pipeline_manager, extents);
+        let render_surface = RenderSurface::new(wnd.id(), &renderer, &pipeline_manager, extents);
 
-        render_surfaces.insert(ev.id, render_surface.id());
+        render_surfaces.insert(render_surface);
 
-        event_render_surface_created.send(RenderSurfaceCreatedForWindow {
-            window_id: ev.id,
-            render_surface_id: render_surface.id(),
-        });
-
-        commands.spawn().insert(render_surface);
+        event_render_surface_created.send(RenderSurfaceCreatedForWindow { window_id: ev.id });
     }
 }
 
@@ -394,47 +395,30 @@ fn on_window_resized(
     mut ev_wnd_resized: EventReader<'_, '_, WindowResized>,
     wnd_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
-    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    render_surfaces: Res<'_, RenderSurfaces>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
     pipeline_manager: Res<'_, PipelineManager>,
 ) {
     let device_context = renderer.device_context();
     for ev in ev_wnd_resized.iter() {
-        let render_surface_id = render_surfaces.get_from_window_id(ev.id);
-        if let Some(render_surface_id) = render_surface_id {
-            let render_surface = q_render_surfaces
-                .iter_mut()
-                .find(|x| x.id() == *render_surface_id);
-            if let Some(mut render_surface) = render_surface {
-                let wnd = wnd_list.get(ev.id).unwrap();
-                render_surface.resize(
-                    device_context,
-                    RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
-                    &pipeline_manager,
-                );
-            }
+        let wnd = wnd_list.get(ev.id).unwrap();
+        let render_surface = render_surfaces.try_get_from_window_id_mut(ev.id);
+        if let Some(render_surface) = render_surface {
+            render_surface.resize(
+                device_context,
+                RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
+                &pipeline_manager,
+            );
         }
     }
 }
 
 #[allow(clippy::needless_pass_by_value)]
 fn on_window_close_requested(
-    mut commands: Commands<'_, '_>,
     mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,
-    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     for ev in ev_wnd_destroyed.iter() {
-        let render_surface_id = render_surfaces.get_from_window_id(ev.id);
-        if let Some(render_surface_id) = render_surface_id {
-            let query_result = query_render_surface
-                .iter()
-                .find(|x| x.1.id() == *render_surface_id);
-            if let Some(query_result) = query_result {
-                commands.entity(query_result.0).despawn();
-            }
-            render_surfaces.remove(ev.id);
-        }
+        render_surfaces.remove_from_window_id(ev.id);
     }
 }
 
@@ -458,17 +442,16 @@ fn render_update(
     resources: (
         ResMut<'_, Renderer>,
         ResMut<'_, PipelineManager>,
-        Res<'_, PickingManager>,
+        ResMut<'_, PickingManager>,
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
         ResMut<'_, PersistentDescriptorSetManager>,
+        ResMut<'_, RenderSurfaces>,
         EventReader<'_, '_, KeyboardInput>,
     ),
     queries: (
-        Query<'_, '_, &mut RenderSurface>,
         Query<'_, '_, (&VisualComponent, &GlobalTransform), With<PickedComponent>>,
         Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,
-        Query<'_, '_, (&LightComponent, &GlobalTransform)>,
         Query<'_, '_, &CameraComponent>,
     ),
 ) {
@@ -479,14 +462,13 @@ fn render_update(
     let mut egui = resources.3;
     let mut debug_display = resources.4;
     let mut persistent_descriptor_set_manager = resources.5;
-    let mut keyboard_input_events = resources.6;
+    let mut render_surfaces = resources.6;
+    let mut keyboard_input_events = resources.7;
 
     // queries
-    let mut q_render_surfaces = queries.0;
-    let q_picked_drawables = queries.1;
-    let q_manipulator_drawables = queries.2;
-    let q_lights = queries.3;
-    let q_cameras = queries.4;
+    let q_picked_drawables = queries.0;
+    let q_manipulator_drawables = queries.1;
+    let q_cameras = queries.2;
 
     //
     // Simulation thread
@@ -510,9 +492,6 @@ fn render_update(
     let manipulator_drawables = q_manipulator_drawables
         .iter()
         .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
-    let lights = q_lights
-        .iter()
-        .collect::<Vec<(&LightComponent, &GlobalTransform)>>();
 
     //
     // Wait for render thread
@@ -529,7 +508,7 @@ fn render_update(
     render_resources
         .get_mut::<RenderCommandManager>()
         .sync_update(renderer.render_command_queue_pool());
-    // render_resources.get_mut::<RenderObjectSet<RenderLight>>().sync_update( &mut render_resources.get_mut::<RenderObjectSetAllocator<RenderLight>>()  );
+
     render_resources.get_mut::<RenderObjects>().sync_update();
 
     // objectives: drop all resources/queries
@@ -584,9 +563,7 @@ fn render_update(
                 .apply(&render_resources);
 
             let render_objects = render_resources.get::<RenderObjects>();
-            render_resources
-                .get::<LightingManager>()
-                .frame_update(&render_objects);
+
             persistent_descriptor_set_manager.frame_update();
             pipeline_manager.frame_update(&device_context);
 
@@ -642,6 +619,7 @@ fn render_update(
                         cgen::descriptor_set::FrameDescriptorSet::default();
 
                     render_resources.get::<LightingManager>().per_frame_render(
+                        &render_objects,
                         render_context.transient_buffer_allocator,
                         &mut frame_descriptor_set,
                     );
@@ -680,7 +658,7 @@ fn render_update(
                 }
 
                 // For each surface/view, we have to execute the render graph
-                for mut render_surface in q_render_surfaces.iter_mut() {
+                for render_surface in render_surfaces.iter_mut() {
                     // View descriptor set
                     {
                         let mut screen_rect = picking_manager.screen_rect();
@@ -749,7 +727,7 @@ fn render_update(
                         mesh_renderer.gen_occlusion_and_cull(
                             &mut render_context,
                             cmd_buffer,
-                            &mut render_surface,
+                            render_surface,
                             &instance_manager,
                         );
 
@@ -763,10 +741,10 @@ fn render_update(
                             &picking_manager,
                             &render_context,
                             cmd_buffer,
-                            render_surface.as_mut(),
+                            render_surface,
                             &instance_manager,
                             manipulator_drawables.as_slice(),
-                            lights.as_slice(),
+                            &render_objects,
                             &mesh_manager,
                             camera_component,
                             &mesh_renderer,
@@ -779,7 +757,7 @@ fn render_update(
                         TmpRenderPass::render(
                             &render_context,
                             cmd_buffer,
-                            render_surface.as_mut(),
+                            render_surface,
                             &mesh_renderer,
                         );
 
@@ -788,7 +766,7 @@ fn render_update(
                         debug_renderpass.render(
                             &render_context,
                             cmd_buffer,
-                            render_surface.as_mut(),
+                            render_surface,
                             picked_drawables.as_slice(),
                             manipulator_drawables.as_slice(),
                             camera_component,
@@ -804,7 +782,7 @@ fn render_update(
                             egui_pass.render(
                                 &mut render_context,
                                 cmd_buffer,
-                                render_surface.as_mut(),
+                                render_surface,
                                 &egui,
                             );
                         }

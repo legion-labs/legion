@@ -6,7 +6,7 @@ use lgn_async::TokioAsyncRuntime;
 use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_ecs::prelude::*;
 use lgn_graphics_renderer::{
-    components::{RenderSurface, RenderSurfaceCreatedForWindow},
+    components::{RenderSurface, RenderSurfaceCreatedForWindow, RenderSurfaces},
     resources::PipelineManager,
     Renderer,
 };
@@ -203,21 +203,21 @@ pub(crate) fn handle_stream_events(
 
 pub(crate) fn handle_control_events(
     mut control_events: EventReader<'_, '_, ControlEvent>,
-    mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     for event in control_events.iter() {
         match &event.info {
             ControlEventInfo::Pause => {
                 trace!("Received control Pause event, pausing stream");
 
-                render_surfaces.for_each_mut(|mut render_surface| {
+                render_surfaces.for_each_mut(|render_surface| {
                     render_surface.pause();
                 });
             }
             ControlEventInfo::Resume => {
                 trace!("Received control Resume event, resuming stream");
 
-                render_surfaces.for_each_mut(|mut render_surface| {
+                render_surfaces.for_each_mut(|render_surface| {
                     render_surface.resume();
                 });
             }
@@ -350,35 +350,30 @@ pub(crate) fn on_render_surface_created_for_window(
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
     stream_encoder: Res<'_, StreamEncoder>,
-    mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
     async_rt: Res<'_, TokioAsyncRuntime>,
 ) {
     let device_context = renderer.device_context();
 
     for event in event_render_surface_created.iter() {
-        let render_surface = render_surfaces
-            .iter_mut()
-            .find(|x| x.id() == event.render_surface_id);
-        if let Some(mut render_surface) = render_surface {
-            let wnd = wnd_list.get(event.window_id).unwrap();
+        let render_surface = render_surfaces.get_from_window_id_mut(event.window_id);
+        let wnd = wnd_list.get(event.window_id).unwrap();
 
-            let video_data_channel = streamer_windows
-                .get_video_data_channel(event.window_id)
-                .unwrap();
-
-            let video_stream = VideoStream::new(
-                device_context,
-                &pipeline_manager,
-                Resolution::new(wnd.physical_width(), wnd.physical_height()),
-                &stream_encoder,
-                video_data_channel.clone(),
-                async_rt.handle(),
-            )
+        let video_data_channel = streamer_windows
+            .get_video_data_channel(event.window_id)
             .unwrap();
-            render_surface.register_presenter(|| video_stream);
 
-            let _ =
-                video_data_channel.send(&Bytes::from(json!({ "type": "initialized"}).to_string()));
-        }
+        let video_stream = VideoStream::new(
+            device_context,
+            &pipeline_manager,
+            Resolution::new(wnd.physical_width(), wnd.physical_height()),
+            &stream_encoder,
+            video_data_channel.clone(),
+            async_rt.handle(),
+        )
+        .unwrap();
+        render_surface.register_presenter(|| video_stream);
+
+        let _ = video_data_channel.send(&Bytes::from(json!({ "type": "initialized"}).to_string()));
     }
 }

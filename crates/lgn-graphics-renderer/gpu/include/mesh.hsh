@@ -35,7 +35,7 @@ TVertexIn LoadVertex(MeshDescription mesh_desc, uint mesh_desc_addr,  uint verte
     }
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_COLOR)) {
         uint packed_color = static_buffer.Load<uint>(mesh_desc_addr + mesh_desc.color_offset + vertexId * 4);       
-        vertex_in.color = unpack_linear(packed_color);
+        vertex_in.color = unpack_srgb2linear( packed_color );
     }
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_TEX_COORD)) {   
         vertex_in.uv_coord = static_buffer.Load<float2>(mesh_desc_addr + mesh_desc.tex_coord_offset + vertexId * 8);

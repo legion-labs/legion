@@ -19,11 +19,10 @@ use crate::{
     DepthStencilRenderTargetBinding, Descriptor, DescriptorHeapDef, DescriptorHeapPartition,
     DescriptorRef, DescriptorSet, DescriptorSetHandle, DescriptorSetLayout, DescriptorSetWriter,
     DeviceContext, DeviceInfo, ExtensionMode, ExternalResourceHandle, Fence, FenceStatus, Format,
-    GfxResult, GraphicsPipelineDef, IndexBufferBinding, MemoryAllocation, MemoryAllocationDef,
-    PagedBufferAllocation, Pipeline, PipelineType, PlaneSlice, PresentSuccessResult, Queue,
-    QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore, SemaphoreDef,
-    ShaderModuleDef, Swapchain, SwapchainDef, SwapchainImage, Texture, TextureBarrier, TextureDef,
-    TextureSubResource, TextureViewDef, VertexBufferBinding,
+    GfxResult, GraphicsPipelineDef, IndexBufferBinding, Pipeline, PipelineType, PlaneSlice,
+    PresentSuccessResult, Queue, QueueType, RootSignature, RootSignatureDef, SamplerDef, Semaphore,
+    SemaphoreDef, ShaderModuleDef, Swapchain, SwapchainDef, SwapchainImage, Texture,
+    TextureBarrier, TextureDef, TextureSubResource, TextureViewDef, VertexBufferBinding,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +83,7 @@ impl NullDeviceContext {
 pub(crate) struct NullBuffer;
 
 impl NullBuffer {
-    pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> Self {
+    pub fn new(device_context: &DeviceContext, buffer_def: BufferDef) -> Self {
         unimplemented!()
     }
 
@@ -94,9 +93,17 @@ impl NullBuffer {
 }
 
 impl Buffer {
-    // pub(crate) fn backend_required_alignment(&self) -> u64 {
-    //     unimplemented!()
-    // }
+    pub(crate) fn backend_map_buffer(&self) -> BufferMappingInfo<'_> {
+        unimplemented!()
+    }
+
+    pub(crate) fn backend_unmap_buffer(&self) {
+        unimplemented!()
+    }
+
+    pub(crate) fn backend_mapped_ptr(&self) -> *mut u8 {
+        unimplemented!()
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,20 +111,17 @@ impl Buffer {
 pub(crate) struct NullCommandBuffer;
 
 impl NullCommandBuffer {
-    pub(crate) fn new(
-        command_pool: &CommandPool,
-        command_buffer_def: CommandBufferDef,
-    ) -> GfxResult<Self> {
+    pub(crate) fn new(command_pool: &CommandPool, command_buffer_def: CommandBufferDef) -> Self {
         unimplemented!()
     }
 }
 
 impl CommandBuffer {
-    pub(crate) fn backend_begin(&self) -> GfxResult<()> {
+    pub(crate) fn backend_begin(&self) {
         unimplemented!()
     }
 
-    pub(crate) fn backend_end(&self) -> GfxResult<()> {
+    pub(crate) fn backend_end(&self) {
         unimplemented!()
     }
 
@@ -125,7 +129,7 @@ impl CommandBuffer {
         &self,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
-    ) -> GfxResult<()> {
+    ) {
         unimplemented!()
     }
 
@@ -166,7 +170,7 @@ impl CommandBuffer {
         unimplemented!()
     }
 
-    pub(crate) fn backend_cmd_bind_index_buffer(&self, binding: &IndexBufferBinding) {
+    pub(crate) fn backend_cmd_bind_index_buffer(&self, binding: IndexBufferBinding) {
         unimplemented!()
     }
 
@@ -351,8 +355,8 @@ impl NullCommandPool {
     pub(crate) fn new(
         device_context: &DeviceContext,
         queue: &Queue,
-        command_pool_def: &CommandPoolDef,
-    ) -> GfxResult<Self> {
+        command_pool_def: CommandPoolDef,
+    ) -> Self {
         unimplemented!()
     }
 
@@ -372,10 +376,7 @@ impl CommandPool {
 #[derive(Debug)]
 pub(crate) struct NullDescriptorHeap;
 impl NullDescriptorHeap {
-    pub(crate) fn new(
-        device_context: &DeviceContext,
-        definition: &DescriptorHeapDef,
-    ) -> GfxResult<Self> {
+    pub(crate) fn new(device_context: &DeviceContext, definition: DescriptorHeapDef) -> Self {
         unimplemented!()
     }
 
@@ -390,8 +391,8 @@ impl NullDescriptorHeapPartition {
     pub(crate) fn new(
         device_context: &DeviceContext,
         transient: bool,
-        definition: &DescriptorHeapDef,
-    ) -> GfxResult<Self> {
+        definition: DescriptorHeapDef,
+    ) -> Self {
         unimplemented!()
     }
 
@@ -424,10 +425,7 @@ impl DescriptorHeapPartition {
 pub(crate) struct NullDescriptorSetLayout;
 
 impl NullDescriptorSetLayout {
-    pub(crate) fn new(
-        device_context: &DeviceContext,
-        descriptors: &[Descriptor],
-    ) -> GfxResult<Self> {
+    pub(crate) fn new(device_context: &DeviceContext, descriptors: &[Descriptor]) -> Self {
         unimplemented!()
     }
 
@@ -461,7 +459,7 @@ impl<'a> DescriptorSetWriter<'a> {
 pub(crate) struct NullFence;
 
 impl NullFence {
-    pub(crate) fn new(device_context: &DeviceContext) -> GfxResult<Self> {
+    pub(crate) fn new(device_context: &DeviceContext) -> Self {
         unimplemented!()
     }
 
@@ -485,77 +483,21 @@ impl Fence {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-pub(crate) struct NullMemoryAllocation;
-
-impl NullMemoryAllocation {
-    pub(crate) fn from_buffer(
-        device_context: &DeviceContext,
-        buffer: &Buffer,
-        alloc_def: &MemoryAllocationDef,
-    ) -> Self {
-        unimplemented!()
-    }
-
-    pub(crate) fn destroy(&self, device_context: &DeviceContext) {
-        unimplemented!()
-    }
-}
-
-impl MemoryAllocation {
-    pub(crate) fn backend_map_buffer(&self, device_context: &DeviceContext) -> BufferMappingInfo {
-        unimplemented!()
-    }
-
-    pub(crate) fn backend_unmap_buffer(&self, device_context: &DeviceContext) {
-        unimplemented!()
-    }
-
-    pub(crate) fn backend_mapped_ptr(&self) -> *mut u8 {
-        unimplemented!()
-    }
-
-    pub(crate) fn backend_size(&self) -> usize {
-        unimplemented!()
-    }
-}
-
-pub(crate) struct NullMemoryPagesAllocation;
-
-impl NullMemoryPagesAllocation {
-    pub fn for_sparse_buffer(
-        device_context: &DeviceContext,
-        buffer: &Buffer,
-        page_count: u64,
-    ) -> Self {
-        unimplemented!()
-    }
-
-    pub fn empty_allocation() -> Self {
-        unimplemented!()
-    }
-
-    pub fn destroy(&mut self, device_context: &DeviceContext) {
-        unimplemented!()
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #[derive(Debug)]
 pub(crate) struct NullPipeline;
 
 impl NullPipeline {
     pub fn new_graphics_pipeline(
         device_context: &DeviceContext,
-        pipeline_def: &GraphicsPipelineDef<'_>,
-    ) -> GfxResult<Self> {
+        pipeline_def: GraphicsPipelineDef,
+    ) -> Self {
         unimplemented!()
     }
 
     pub fn new_compute_pipeline(
         device_context: &DeviceContext,
-        pipeline_def: &ComputePipelineDef<'_>,
-    ) -> GfxResult<Self> {
+        pipeline_def: ComputePipelineDef,
+    ) -> Self {
         unimplemented!()
     }
 
@@ -569,7 +511,7 @@ impl NullPipeline {
 pub(crate) struct NullQueue;
 
 impl NullQueue {
-    pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> GfxResult<Self> {
+    pub fn new(device_context: &DeviceContext, queue_type: QueueType) -> Self {
         unimplemented!()
     }
 }
@@ -581,12 +523,12 @@ impl Queue {
 
     pub fn backend_submit(
         &self,
-        command_buffers: &mut [&mut CommandBuffer],
+        command_buffers: &[&CommandBuffer],
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
         current_cpu_frame: u64,
-    ) -> GfxResult<()> {
+    ) {
         unimplemented!()
     }
 
@@ -600,32 +542,18 @@ impl Queue {
         unimplemented!()
     }
 
-    pub fn backend_wait_for_queue_idle(&self) -> GfxResult<()> {
+    pub fn backend_wait_for_queue_idle(&self) {
         unimplemented!()
     }
-
-    // pub fn backend_commit_sparse_bindings<'a>(
-    //     &self,
-    //     prev_frame_semaphore: &'a Semaphore,
-    //     unbind_pages: &[PagedBufferAllocation],
-    //     unbind_semaphore: &'a Semaphore,
-    //     bind_pages: &[PagedBufferAllocation],
-    //     bind_semaphore: &'a Semaphore,
-    // ) -> &'a Semaphore {
-    //     unimplemented!()
-    // }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct NullRootSignature;
 
 impl NullRootSignature {
-    pub(crate) fn new(
-        device_context: &DeviceContext,
-        definition: &RootSignatureDef,
-    ) -> GfxResult<Self> {
+    pub(crate) fn new(device_context: &DeviceContext, definition: RootSignatureDef) -> Self {
         unimplemented!()
     }
 
@@ -640,7 +568,7 @@ impl NullRootSignature {
 pub(crate) struct NullSampler;
 
 impl NullSampler {
-    pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> Self {
+    pub fn new(device_context: &DeviceContext, sampler_def: SamplerDef) -> Self {
         unimplemented!()
     }
 
@@ -672,7 +600,7 @@ impl NullSemaphore {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct NullShaderModule;
 
 impl NullShaderModule {
@@ -693,8 +621,8 @@ impl NullSwapchain {
     pub fn new(
         device_context: &DeviceContext,
         raw_window_handle: &dyn HasRawWindowHandle,
-        swapchain_def: &SwapchainDef,
-    ) -> GfxResult<Self> {
+        swapchain_def: SwapchainDef,
+    ) -> Self {
         unimplemented!()
     }
 
@@ -728,7 +656,7 @@ impl Swapchain {
         unimplemented!()
     }
 
-    pub(crate) fn backend_rebuild(&mut self, swapchain_def: &SwapchainDef) -> GfxResult<()> {
+    pub(crate) fn backend_rebuild(&mut self, swapchain_def: SwapchainDef) {
         unimplemented!()
     }
 }
@@ -739,7 +667,7 @@ impl Swapchain {
 pub(crate) struct NullTextureView;
 
 impl NullTextureView {
-    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> Self {
+    pub(crate) fn new(texture: &Texture, view_def: TextureViewDef) -> Self {
         unimplemented!()
     }
 
@@ -761,14 +689,14 @@ impl NullTexture {
     pub fn from_existing(
         device_context: &DeviceContext,
         existing_image: Option<NullRawImage>,
-        texture_def: &TextureDef,
+        texture_def: TextureDef,
     ) -> (Self, u32) {
         unimplemented!()
     }
 
     pub fn new_export_capable(
         device_context: &DeviceContext,
-        texture_def: &TextureDef,
+        texture_def: TextureDef,
     ) -> (Self, u32) {
         unimplemented!()
     }
@@ -809,8 +737,6 @@ pub(crate) mod backend_impl {
     pub(crate) type BackendDescriptorHeapPartition = super::NullDescriptorHeapPartition;
     pub(crate) type BackendDescriptorSetLayout = super::NullDescriptorSetLayout;
     pub(crate) type BackendFence = super::NullFence;
-    pub(crate) type BackendMemoryAllocation = super::NullMemoryAllocation;
-    pub(crate) type BackendMemoryPagesAllocation = super::NullMemoryPagesAllocation;
     pub(crate) type BackendPipeline = super::NullPipeline;
     pub(crate) type BackendQueue = super::NullQueue;
     pub(crate) type BackendRootSignature = super::NullRootSignature;

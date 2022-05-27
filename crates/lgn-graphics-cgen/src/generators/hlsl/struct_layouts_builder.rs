@@ -98,12 +98,16 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
         let ds = ds.object();
         for d in &ds.descriptors {
             match &d.def {
-                crate::db::DescriptorDef::ConstantBuffer(ty) => {
-                    ty_requirements.set_used_as_cb(ty.ty_handle.id());
+                crate::db::DescriptorDef::ConstantBuffer(cb_def) => {
+                    if cb_def.ty_handle.get(model).is_struct_type() {
+                        ty_requirements.set_used_as_cb(cb_def.ty_handle.id());
+                    }
                 }
-                crate::db::DescriptorDef::StructuredBuffer(ty)
-                | crate::db::DescriptorDef::RWStructuredBuffer(ty) => {
-                    ty_requirements.set_used_as_sb(ty.ty_handle.id());
+                crate::db::DescriptorDef::StructuredBuffer(sb_def)
+                | crate::db::DescriptorDef::RWStructuredBuffer(sb_def) => {
+                    if sb_def.ty_handle.get(model).is_struct_type() {
+                        ty_requirements.set_used_as_sb(sb_def.ty_handle.id());
+                    }
                 }
 
                 crate::db::DescriptorDef::Sampler
@@ -124,31 +128,30 @@ pub fn run(model: &Model) -> Result<StructLayouts> {
     for pl in model.object_iter::<PipelineLayout>() {
         let pl = pl.object();
         if let Some(pc) = &pl.push_constant {
-            ty_requirements.set_used_as_sb(pc.id());
+            if pc.get(model).is_struct_type() {
+                ty_requirements.set_used_as_sb(pc.id());
+            }
         }
     }
 
     // All the types not referenced by a ConstBuffer or a [RW]StructuredBuffer are potentially
     // used by a [RW]ByteAdressBuffer. Mark them as 'sb'.
     for ty in model.object_iter::<CGenType>() {
-        match ty.object() {
-            CGenType::Native(_) | CGenType::BitField(_) => (),
-            CGenType::Struct(_) => {
-                if !ty_requirements.used_as_cb_or_sb(ty.id()) {
-                    ty_requirements.set_used_as_sb(ty.id());
-                }
-            }
+        if ty.object().is_struct_type() && !ty_requirements.used_as_cb_or_sb(ty.id()) {
+            ty_requirements.set_used_as_sb(ty.id());
         }
     }
 
     // Propagate requirements in topological order
     for id in &ordered {
         let id = *id;
+        let used_as_cb = ty_requirements.used_as_cb(id);
+        let used_as_sb = ty_requirements.used_as_sb(id);
         for n in graph.neighbors_directed(id, Outgoing) {
-            if ty_requirements.used_as_cb(id) {
+            if used_as_cb {
                 ty_requirements.set_used_as_cb(n);
             }
-            if ty_requirements.used_as_sb(id) {
+            if used_as_sb {
                 ty_requirements.set_used_as_sb(n);
             }
         }

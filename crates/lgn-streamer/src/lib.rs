@@ -74,7 +74,7 @@ fn init_cgen(
     mut cgen_registries: ResMut<'_, CGenRegistryList>,
 ) {
     let device_context = renderer.device_context();
-    let cgen_registry = Arc::new(cgen::initialize(&device_context));
+    let cgen_registry = Arc::new(cgen::initialize(device_context));
     pipeline_manager.register_shader_families(&cgen_registry);
     cgen_registries.push(cgen_registry);
 }

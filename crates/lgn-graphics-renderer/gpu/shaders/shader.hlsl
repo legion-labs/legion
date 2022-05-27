@@ -49,8 +49,8 @@ Lighting CalculateIncidentDirectionalLight(DirectionalLight light, float3 pos, f
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material);
     }
 
-    lighting.diffuse *= unpack_linear(light.color).rgb * light.radiance;
-    lighting.specular *= unpack_linear(light.color).rgb * light.radiance;
+    lighting.diffuse *= unpack_srgb2linear( light.color).rgb * light.radiance;
+    lighting.specular *= unpack_srgb2linear( light.color).rgb * light.radiance;
 
     return lighting;
 }
@@ -68,8 +68,8 @@ Lighting CalculateIncidentOmniDirectionalLight(OmniDirectionalLight light, float
         lighting = DefaultBRDF(normal, normalize(-pos), light_dir, NoL, material);
     }
 
-    lighting.diffuse *= unpack_linear(light.color).rgb * light.radiance / distance;
-    lighting.specular *= unpack_linear(light.color).rgb * light.radiance / distance;
+    lighting.diffuse *= unpack_srgb2linear( light.color).rgb * light.radiance / distance;
+    lighting.specular *= unpack_srgb2linear( light.color).rgb * light.radiance / distance;
 
     return lighting;
 }
@@ -92,8 +92,8 @@ Lighting CalculateIncidentSpotLight(SpotLight light, float3 pos, float3 normal, 
     float diff = 1.0 - cos_half_angle;
     float factor = saturate((cos_between_dir - cos_half_angle)/diff);
 
-    lighting.diffuse *= factor * unpack_linear(light.color).rgb * light.radiance / distance;
-    lighting.specular *= factor * unpack_linear(light.color).rgb * light.radiance / distance;
+    lighting.diffuse *= factor * unpack_srgb2linear( light.color).rgb * light.radiance / distance;
+    lighting.specular *= factor * unpack_srgb2linear( light.color).rgb * light.radiance / distance;
 
     return lighting;
 }
@@ -143,9 +143,9 @@ float4 main_ps(in VertexOut vertex_out) : SV_TARGET {
         lighting_normal = mul(tangent_to_view_space, material_normal);
     }
 
-    lightingMaterial.albedo = lerp(lightingMaterial.albedo.rgb, unpack_linear(instance_color.color).rgb, instance_color.color_blend); 
+    lightingMaterial.albedo = lerp(lightingMaterial.albedo.rgb, unpack_srgb2linear( instance_color.color).rgb, instance_color.color_blend); 
 
-    const float3 ambient_color = lighting_data.apply_ambient ?  lightingMaterial.albedo : (float3)0;
+    const float3 ambient_color = lighting_data.default_ambient;
     const float3 diffuse_color = lighting_data.apply_diffuse ?  float3(1.f,1.f,1.f) : float3(0.f,0.f,0.f);
     const float3 spec_color = lighting_data.apply_specular ?  float3(1.f,1.f,1.f) : float3(0.f,0.f,0.f);
 
