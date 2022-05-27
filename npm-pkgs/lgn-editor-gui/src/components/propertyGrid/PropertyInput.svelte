@@ -18,11 +18,11 @@
     propertyIsString,
     propertyIsVec,
     propertyIsVec3,
-  } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import type {
     BagResourceProperty,
     ResourceProperty,
-  } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import { currentResource } from "@/orchestrators/currentResource";
 
   import PropertyInputOption from "./PropertyInputOption.svelte";
@@ -98,7 +98,7 @@
   }
 </script>
 
-<div class="root">
+<div class="property-input-root">
   {#if propertyIsBoolean(property)}
     <div class="boolean-property">
       <BooleanProperty
@@ -184,8 +184,8 @@
 </div>
 
 <style lang="postcss">
-  .root {
-    @apply flex flex-row h-full w-full items-center;
+  .property-input-root {
+    @apply flex items-center text-item-mid;
   }
 
   .boolean-property {
@@ -197,6 +197,6 @@
   }
 
   .close-button {
-    @apply flex flex-row flex-shrink-0 items-center justify-center h-6 w-6 rounded-sm text-xl bg-gray-800 ml-1 cursor-pointer;
+    @apply flex flex-row flex-shrink-0 items-center justify-center h-6 w-6 rounded-sm text-xl bg-surface-500 ml-1 cursor-pointer border-[1px] border-black;
   }
 </style>

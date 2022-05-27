@@ -135,41 +135,43 @@
     @apply text-gray-400;
   }
 
-  .root.default {
+  /* To be re-enabled and tweaked once we are working on project-agnostic components using our design system  */
+  /* .root.default {
     @apply h-8;
-  }
+  } */
 
-  .root.sm {
+  /* .root.sm {
     @apply h-6 text-sm;
   }
 
   .root.lg {
     @apply h-10 text-sm;
-  }
+  } */
 
   .root.error {
     @apply border border-red-700;
   }
 
   .input {
-    @apply bg-gray-800 border-gray-400 px-2 rounded-sm outline-none w-full h-full;
+    @apply bg-surface-max border-gray-400 px-2 rounded-sm outline-none w-full;
   }
 
   .input.disabled {
     @apply cursor-not-allowed;
   }
 
-  .input.default {
+  /* To be re-enabled and tweaked once we are working on project-agnostic components using our design system  */
+  /* .input.default {
     @apply py-1;
   }
 
   .input.sm {
     @apply py-0.5;
-  }
+  } */
 
-  .input.lg {
+  /* .input.lg {
     @apply py-1 text-base;
-  }
+  } */
 
   .input.with-right-extension {
     @apply rounded-r-none;
@@ -191,7 +193,7 @@
     @apply border-l rounded-r-sm;
   }
 
-  .extension-default {
+  /* .extension-default {
     @apply w-8 flex-shrink-0;
   }
 
@@ -201,5 +203,5 @@
 
   .extension-lg {
     @apply w-10 flex-shrink-0;
-  }
+  } */
 </style>

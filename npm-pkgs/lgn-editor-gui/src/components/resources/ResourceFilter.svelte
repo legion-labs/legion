@@ -38,10 +38,10 @@
 
 <style lang="postcss">
   .root {
-    @apply flex items-center h-10 w-full justify-end py-2 px-1;
+    @apply flex h-8 w-full justify-end py-1 px-1;
   }
 
   .clear {
-    @apply flex justify-center items-center h-full w-full cursor-pointer;
+    @apply flex justify-center items-center h-full cursor-pointer;
   }
 </style>

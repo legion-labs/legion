@@ -28,11 +28,11 @@ import {
 } from "@lgn/proto-runtime/dist/runtime";
 import log from "@lgn/web-client/src/lib/log";
 
-import { formatProperties } from "../lib/propertyGrid";
+import { formatProperties } from "../components/propertyGrid/lib/propertyGrid";
 import type {
   ResourcePropertyWithValue,
   ResourceWithProperties,
-} from "../lib/propertyGrid";
+} from "../components/propertyGrid/lib/propertyGrid";
 
 const defaultEditorServerURL = "http://[::1]:50051";
 const defaultRuntimeServerURL = "http://[::1]:50052";

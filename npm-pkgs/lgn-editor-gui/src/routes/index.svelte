@@ -87,9 +87,11 @@
   const mainMenuItemDescriptions: MenuItemDescription[] = [
     {
       title: "Window",
+      visible: true,
       children: [
         {
           title: "Editor",
+          visible: true,
           action: () => {
             layout.addComponent(
               RemoteWindow.name,
@@ -104,6 +106,8 @@
         },
         {
           title: "Runtime",
+          visible: true,
+
           action: () => {
             layout.addComponent(
               RemoteWindow.name,
@@ -118,24 +122,31 @@
         },
         {
           title: "Property Grid",
+          visible: true,
+
           action: () => {
             layout.addComponent(PropertyGrid.name);
           },
         },
         {
           title: "Resource Browser",
+          visible: true,
+
           action: () => {
             layout.addComponent(ResourceBrowser.name);
           },
         },
         {
           title: "Local Changes",
+          visible: true,
+
           action: () => {
             layout.addComponent(LocalChanges.name);
           },
         },
         {
           title: "Logs",
+          visible: true,
           action: () => {
             layout.addComponent(Log.name);
           },
@@ -160,6 +171,7 @@
   <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
       <Layout
+        surfaceClass="700"
         layoutConfig={defaultLayoutConfig}
         componentMap={appComponentMap}
         bind:this={layout}

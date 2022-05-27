@@ -3,12 +3,13 @@
   import { getContext } from "svelte";
   import { writable } from "svelte/store";
 
-  import Button from "@lgn/web-client/src/components/Button.svelte";
   import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
 
   import { fileName } from "@/lib/path";
   import { currentResource } from "@/orchestrators/currentResource";
   import type { RootContext } from "@/routes/index.svelte";
+
+  import PropertyActionButton from "../PropertyActionButton.svelte";
 
   // export let name: string;
   // export let path: string;
@@ -80,14 +81,4 @@
   }
 </script>
 
-<div class="root">
-  <Button fluid on:click={openTab}>
-    <i>Edit...</i>
-  </Button>
-</div>
-
-<style lang="postcss">
-  .root {
-    @apply flex flex-row justify-end w-full cursor-pointer;
-  }
-</style>
+<PropertyActionButton icon="ic:baseline-edit" on:click={openTab} />

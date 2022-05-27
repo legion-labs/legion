@@ -9,13 +9,11 @@ import ResourceBrowser from "../ResourceBrowser.svelte";
 import SceneExplorer from "../SceneExplorer.svelte";
 import LocalChanges from "../localChanges/LocalChanges.svelte";
 import PropertyGrid from "../propertyGrid/PropertyGrid.svelte";
-import OrangeSvelte from "./Orange.svelte";
 
 export const AppComponentMap: Record<string, typeof SvelteComponentDev> = {
   PropertyGrid: PropertyGrid,
   ResourceBrowser: ResourceBrowser,
   SceneExplorer: SceneExplorer,
-  Orange: OrangeSvelte,
   RemoteWindow: RemoteWindowSvelte,
   LocalChanges: LocalChanges,
   Log: Log,

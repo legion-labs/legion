@@ -27,14 +27,14 @@
     revertResources,
     streamFileUpload,
   } from "@/api";
+  import { formatProperties } from "@/components/propertyGrid/lib/propertyGrid";
+  import type { ResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
+  import type { BagResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
   import { resourceDragAndDropType } from "@/constants";
   import { Entries } from "@/lib/hierarchyTree";
   import type { Entry } from "@/lib/hierarchyTree";
   import { isEntry } from "@/lib/hierarchyTree";
   import { components, join } from "@/lib/path";
-  import { formatProperties } from "@/lib/propertyGrid";
-  import type { ResourceProperty } from "@/lib/propertyGrid";
-  import type { BagResourceProperty } from "@/lib/propertyGrid";
   import { iconFor } from "@/lib/resourceBrowser";
   import { fetchAllActiveScenes } from "@/orchestrators/allActiveScenes";
   import {
@@ -643,7 +643,7 @@
 </Panel> -->
 <style lang="postcss">
   .header {
-    @apply w-full bg-gray-500 bg-opacity-100 border-b border-gray-800 sticky top-0 z-10;
+    @apply w-full bg-gray-500 bg-opacity-100 border-b border-gray-800 sticky top-0;
   }
 
   /* .content {
@@ -651,7 +651,7 @@
   } */
 
   .hierarchy-tree {
-    @apply flex-1 overflow-auto;
+    @apply flex-1 overflow-auto h-full;
   }
 
   .entry {

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
-  import type { Quat } from "@/lib/propertyGrid";
+  import type { Quat } from "@/components/propertyGrid/lib/propertyGrid";
 
-  import NumberInput from "../../inputs/NumberInput.svelte";
+  import VectorNumberInput from "./VectorNumberInput.svelte";
 
   const dispatch = createEventDispatcher<{ input: Quat }>();
 
@@ -19,51 +19,35 @@
   }
 </script>
 
-<div class="root">
-  <div>
-    <NumberInput
-      on:input={(event) => updateVectorAt(0, event)}
-      bind:value={value[0]}
-      noArrow
-      fluid
-      autoSelect
-      {readonly}
-    />
-  </div>
-  <div>
-    <NumberInput
-      on:input={(event) => updateVectorAt(1, event)}
-      bind:value={value[1]}
-      noArrow
-      fluid
-      autoSelect
-      {readonly}
-    />
-  </div>
-  <div>
-    <NumberInput
-      on:input={(event) => updateVectorAt(2, event)}
-      bind:value={value[2]}
-      noArrow
-      fluid
-      autoSelect
-      {readonly}
-    />
-  </div>
-  <div>
-    <NumberInput
-      on:input={(event) => updateVectorAt(3, event)}
-      bind:value={value[3]}
-      noArrow
-      fluid
-      autoSelect
-      {readonly}
-    />
-  </div>
+<div class="quaternion-root">
+  <VectorNumberInput
+    kind="W"
+    bind:value={value[3]}
+    on:input={(event) => updateVectorAt(3, event)}
+    {readonly}
+  />
+  <VectorNumberInput
+    kind="X"
+    bind:value={value[0]}
+    on:input={(event) => updateVectorAt(0, event)}
+    {readonly}
+  />
+  <VectorNumberInput
+    kind="Y"
+    bind:value={value[1]}
+    on:input={(event) => updateVectorAt(1, event)}
+    {readonly}
+  />
+  <VectorNumberInput
+    kind="Z"
+    bind:value={value[2]}
+    on:input={(event) => updateVectorAt(2, event)}
+    {readonly}
+  />
 </div>
 
 <style lang="postcss">
-  .root {
-    @apply flex flex-row space-x-1;
+  .quaternion-root {
+    @apply flex justify-end gap-x-2 my-auto;
   }
 </style>

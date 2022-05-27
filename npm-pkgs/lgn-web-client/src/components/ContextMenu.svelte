@@ -184,7 +184,7 @@ export default buildContextMenu<ContextMenuEntryRecord>();
         ? view.innerHeight - heightPx - (view.innerHeight - clientY) - marginPx
         : clientY + marginPx;
 
-    return { x: x, y };
+    return { x, y };
   }
 
   async function handleDefaultContextMenu(event: MouseEvent) {

@@ -4,7 +4,7 @@ import { render } from "@testing-library/svelte";
 import type { ResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
 
 import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
-import { formatProperties } from "@/lib/propertyGrid";
+import { formatProperties } from "@/components/propertyGrid/lib/propertyGrid";
 import currentResource from "@/orchestrators/currentResource";
 import properties from "@/resources/propertiesResponse.json";
 
