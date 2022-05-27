@@ -49,7 +49,7 @@ mod tests {
 
     #[test]
     fn test_ts_generation() {
-        let data = include_str!("../fixtures/openapi.yaml");
+        let data = include_str!("../../../../tests/api-codegen/cars.yaml");
         let api = Api::try_from(&serde_yaml::from_str(data).unwrap()).unwrap();
         let content = generate(&api).unwrap();
 

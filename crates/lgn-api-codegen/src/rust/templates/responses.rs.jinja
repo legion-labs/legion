@@ -1,5 +1,5 @@
 use super::errors::{Error, Result};
-use lgn_online::codegen::ByteArray;
+use lgn_online::codegen::{Bytes};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -10,61 +10,79 @@ use axum::{
     {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
         
-        #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum {{ enum_name }} {
-            {%- for (status_code, response) in route.responses -%}
+            {% for (status_code, response) in route.responses -%}
                 /// {{ response.description }}
                 {% if let Some(content) = response.content -%}
-                    {{ status_code }}({{ content.type_|fmt_type }}),
-                {%- else -%}
-                    {{ status_code }},
-                {%- endif -%}
-            {%- endfor -%}
+                    Status{{ status_code }}({{ route.name|pascal_case }}{{ status_code }}Response),
+                {% else -%}
+                    Status{{ status_code }},
+                {% endif -%}
+            {% endfor -%}
         }
+
+        {% for (status_code, response) in route.responses -%}
+            {% if let Some(content) = response.content -%}
+                {% let response_name = "{}{}Response"|format(route.name|pascal_case, status_code) %}
+                #[derive(Debug, Clone, PartialEq, Eq)]
+                pub struct {{ response_name }} {
+                        pub body: {{ content.type_|fmt_type }},
+                }
+            {% endif -%}
+        {% endfor %}
 
         impl {{ enum_name }} {
             pub(crate) fn into_response(self) -> Response {
                 match self {
                     {% for (status_code, response) in route.responses %}
                         {%- if let Some(content) = response.content -%}
-                            {{ enum_name }}::{{ status_code }}(inner) => {
-                                {% match content.media_type -%}
-                                    {% when MediaType::Json -%}
-                                        let inner = Json(inner);
-                                    {% when MediaType::Bytes -%}
-                                        let inner: Vec<u8> = inner.into();
-                                {% endmatch -%}
-                                (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), inner).into_response()
-                        },
+                            {{ enum_name }}::Status{{ status_code }}(r) => {
+                                    {% match content.media_type -%}
+                                        {% when MediaType::Json -%}
+                                            let body = Json(r.body);
+                                        {% when MediaType::Bytes -%}
+                                            let body: Vec<u8> = r.body.into();
+                                    {% endmatch -%}
+                                    (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), body).into_response()
+                            },
                         {%- else -%}
-                            {{ enum_name }}::{{ status_code }} => {
+                            {{ enum_name }}::Status{{ status_code }} => {
                                 StatusCode::from_u16({{ status_code.as_u16() }}).unwrap().into_response()
-                        },
-                        {%- endif -%}                     
+                            },
+                        {%- endif -%}
                     {% endfor %}
                 }
             }
 
-            pub(crate) async fn from_reqwest(response: reqwest::Response) -> Result<Self> {
+            pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
                 {% if route.responses.is_empty() %}
                     Err(Error::Internal(format!(
                         "unexpected status code: {}",
-                        response.status().as_u16()
+                        status.as_u16()
                     )))
                 {% else %}
-                    match response.status().as_u16() {
+                    match status.as_u16() {
                         {% for (status_code, response) in route.responses %}
+                            {% let response_name = "{}{}Response"|format(route.name|pascal_case, status_code) %}
                             {{ status_code.as_u16() }} => 
-                                Ok(Self::{{ status_code }}
+                                {
                                     {%- if let Some(content) = response.content -%}
-                                        {% match content.media_type %}
-                                            {% when MediaType::Json %}
-                                                (response.json().await?)
-                                            {% when MediaType::Bytes %}
-                                                (response.bytes().await?.into())
-                                        {% endmatch %}
+                                        let bytes = hyper::body::to_bytes(body).await?;
+                                        let resp = {{ response_name }} {
+                                                {% match content.media_type %}
+                                                    {% when MediaType::Json %}
+                                                        body: serde_json::from_slice(&bytes)?,
+                                                    {% when MediaType::Bytes %}
+                                                        body: bytes.into(),
+                                                {% endmatch %}
+
+                                        };
+                                        Ok(Self::Status{{ status_code }}(resp))
+                                    {%- else -%}
+                                        Ok(Self::Status{{ status_code }})
                                     {%- endif -%}
-                                ),              
+                                },
                         {%- endfor -%}
                         status => Err(Error::Internal(format!(
                             "unexpected status code: {}",
@@ -72,9 +90,7 @@ use axum::{
                         ))),
                     }
                 {% endif %}
-
-                
-            } 
+            }
         }
     {% endfor %}
 {% endfor %}

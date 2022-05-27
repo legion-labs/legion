@@ -1,8 +1,8 @@
-pub mod byte_array;
-pub mod extra;
+pub mod bytes;
+pub mod context;
 
-pub use byte_array::ByteArray;
-pub use extra::Extra;
+pub use self::bytes::Bytes;
+pub use context::Context;
 
 #[macro_export]
 macro_rules! include_api {

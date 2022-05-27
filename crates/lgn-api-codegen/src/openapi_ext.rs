@@ -1,6 +1,7 @@
 use crate::{Error, Result};
 use convert_case::{Case, Casing};
 
+const HEADERS_PREFIX: &str = "#/components/headers/";
 const PARAMETERS_PREFIX: &str = "#/components/parameters/";
 const REQUEST_BODIES_PREFIX: &str = "#/components/requestBodies/";
 const RESPONSES_PREFIX: &str = "#/components/responses/";
@@ -34,6 +35,7 @@ impl From<&str> for OpenAPIPath {
 }
 
 pub(crate) trait OpenAPIExt {
+    fn find_header(&self, reference: &str) -> Result<(OpenAPIPath, &openapiv3::Header)>;
     fn find_parameter(&self, reference: &str) -> Result<(OpenAPIPath, &openapiv3::Parameter)>;
     fn find_response(&self, reference: &str) -> Result<(OpenAPIPath, &openapiv3::Response)>;
     fn find_request_body(&self, reference: &str) -> Result<(OpenAPIPath, &openapiv3::RequestBody)>;
@@ -41,6 +43,26 @@ pub(crate) trait OpenAPIExt {
 }
 
 impl OpenAPIExt for openapiv3::OpenAPI {
+    fn find_header(&self, reference: &str) -> Result<(OpenAPIPath, &openapiv3::Header)> {
+        if self.components.is_some() {
+            let header_name = reference.trim_start_matches(HEADERS_PREFIX);
+            let header_ref = self.components.as_ref().unwrap().headers.get(header_name);
+
+            if let Some(header_ref) = header_ref {
+                let schema = match header_ref {
+                    openapiv3::ReferenceOr::Item(header) => header,
+                    openapiv3::ReferenceOr::Reference { reference } => {
+                        return self.find_header(reference);
+                    }
+                };
+
+                return Ok((OpenAPIPath::from(header_name), schema));
+            }
+        }
+
+        Err(Error::Invalid(format!("reference: {}", reference)))
+    }
+
     fn find_parameter(&self, reference: &str) -> Result<(OpenAPIPath, &openapiv3::Parameter)> {
         if self.components.is_some() {
             let parameter_name = reference.trim_start_matches(PARAMETERS_PREFIX);
