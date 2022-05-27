@@ -12,10 +12,14 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
-use crate::components::EcsToRender;
+use crate::components::{tmp_debug_display_lights, EcsToRender};
 use crate::core::{DebugStuff, RenderObjects};
 use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
+use crate::script::render_passes::{
+    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    PostProcessPass, SSAOPass, UiPass,
+};
 use crate::script::{Config, RenderScript, RenderView};
 use std::sync::Arc;
 
@@ -85,10 +89,6 @@ use crate::{
     components::{
         reflect_light_components, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
-    },
-    core::render_graph::render_passes::{
-        AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
-        PostProcessPass, SSAOPass, UiPass,
     },
     egui::{egui_plugin::EguiPlugin, Egui},
     lighting::LightingManager,
@@ -319,6 +319,7 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
         app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
+        app.add_system_to_stage(RenderStage::Prepare, tmp_debug_display_lights);
         app.add_system_to_stage(
             RenderStage::Prepare,
             camera_control.exclusive_system().at_start(),

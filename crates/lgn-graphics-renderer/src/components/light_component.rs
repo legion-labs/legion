@@ -1,8 +1,10 @@
 use std::marker::PhantomData;
 
+use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 
+use lgn_math::Vec3;
 use lgn_transform::prelude::GlobalTransform;
 use lgn_utils::HashMap;
 
@@ -11,7 +13,9 @@ use crate::{
         AsSpatialRenderObject, InsertRenderObjectCommand, RemoveRenderObjectCommand, RenderObject,
         RenderObjectAllocator, RenderObjectId, UpdateRenderObjectCommand,
     },
+    debug_display::DebugDisplay,
     lighting::RenderLight,
+    resources::DefaultMeshType,
     Renderer,
 };
 
@@ -87,7 +91,7 @@ pub(crate) fn reflect_light_components(
         '_,
         '_,
         (Entity, &GlobalTransform, &mut LightComponent),
-        Changed<LightComponent>,
+        Or<(Changed<GlobalTransform>, Changed<LightComponent>)>,
     >,
     q_removals: RemovedComponents<'_, LightComponent>,
     mut ecs_to_render: ResMut<'_, EcsToRender<LightComponent, RenderLight>>,
@@ -123,5 +127,59 @@ pub(crate) fn reflect_light_components(
                 });
             };
         }
+    });
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub(crate) fn tmp_debug_display_lights(
+    debug_display: Res<'_, DebugDisplay>,
+    bump_allocator_pool: Res<'_, BumpAllocatorPool>,
+    lights: Query<'_, '_, (&LightComponent, &GlobalTransform)>,
+) {
+    if lights.is_empty() {
+        return;
+    }
+
+    bump_allocator_pool.scoped_bump(|bump| {
+        debug_display.create_display_list(bump, |builder| {
+            for (light, transform) in lights.iter() {
+                builder.add_default_mesh(
+                    &GlobalTransform::identity()
+                        .with_translation(transform.translation)
+                        .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
+                        .with_rotation(transform.rotation),
+                    DefaultMeshType::Sphere,
+                    Color::WHITE,
+                );
+                match light.light_type {
+                    LightType::Directional => {
+                        builder.add_default_mesh(
+                            &GlobalTransform::identity()
+                                .with_translation(
+                                    transform.translation
+                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
+                                )
+                                .with_rotation(transform.rotation),
+                            DefaultMeshType::Arrow,
+                            Color::WHITE,
+                        );
+                    }
+                    LightType::Spot => {
+                        let factor = 4.0 * (light.cone_angle / 2.0).tan(); // assumes that default cone mesh has 1 to 4 ratio between radius and height
+                        builder.add_default_mesh(
+                            &GlobalTransform::identity()
+                                .with_translation(
+                                    transform.translation - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
+                                )
+                                .with_scale(Vec3::new(factor, 1.0, factor))
+                                .with_rotation(transform.rotation),
+                            DefaultMeshType::Cone,
+                            Color::WHITE,
+                        );
+                    }
+                    LightType::OmniDirectional => (),
+                }
+            }
+        });
     });
 }
