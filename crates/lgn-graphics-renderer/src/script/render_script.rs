@@ -1,13 +1,7 @@
 use crate::{
     cgen,
     core::render_graph::RenderGraphBuilder,
-    core::{
-        render_graph::render_passes::{
-            AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
-            PostProcessPass, SSAOPass, UiPass,
-        },
-        RenderGraphLoadState,
-    },
+    core::RenderGraphLoadState,
     core::{
         render_graph::{
             RenderGraph, RenderGraphResourceDef, RenderGraphResourceId, RenderGraphTextureDef,
@@ -26,6 +20,11 @@ use lgn_graphics_api::{
     RasterizerState, ResourceState, SampleCount, SamplerDef, StencilOp, Texture, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
+
+use super::render_passes::{
+    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    PostProcessPass, SSAOPass, UiPass,
+};
 
 ///
 ///

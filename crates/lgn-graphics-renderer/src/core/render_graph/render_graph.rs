@@ -586,6 +586,10 @@ pub(crate) struct RenderGraph {
     pub(crate) views: Vec<RenderGraphViewDef>,
 }
 
+pub(crate) struct RenderGraphPersistentState {
+    resources: HashMap<RenderGraphResourceDef, RenderGraphResource>,
+}
+
 struct ResourceBarrier {
     view_id: RenderGraphViewId,
     mip: u8,
