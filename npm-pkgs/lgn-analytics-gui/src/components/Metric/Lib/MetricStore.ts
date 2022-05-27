@@ -1,44 +1,132 @@
-import { derived, writable } from "svelte/store";
+import { derived, get, readable, writable } from "svelte/store";
+import type { Writable } from "svelte/store";
 
 import type { MetricBlockData } from "@lgn/proto-telemetry/dist/metric";
+import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
+import { connected } from "@lgn/web-client/src/lib/store";
 
 import type { MetricConfig } from "./MetricConfig";
 import type { MetricState } from "./MetricState";
 
-const localStorageKey = "metric-config";
+/** All the recently used metrics  */
+const recentlyUsedMetricsStoreKey = "recently-used-metric-store-key";
+
+/** Last used metrics for each process ids */
+const lastUsedMetricStoreKey = "last-used-metric-store-key";
 
 export type MetricStore = ReturnType<typeof getMetricStore>;
 
-function getMetricConfig(): MetricConfig[] {
-  const jsonData = localStorage.getItem(localStorageKey);
+export type RecentlyUsedMetricStore = ReturnType<
+  typeof getRecentlyUsedMetricsStore
+>;
+
+export type LastUsedMetricsStore = ReturnType<typeof getLastUsedMetricsStore>;
+
+export type MetricConfigStore = ReturnType<typeof getMetricConfigStore>;
+
+export type MetricNamesStore = ReturnType<typeof getMetricNames>;
+
+export function getMetricNames() {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-  const data: MetricConfig[] = jsonData !== null ? JSON.parse(jsonData) : [];
-  return data.sort((a, b) => a.lastUse - b.lastUse);
+  const names: Record<string, string> = (import.meta.env
+    .VITE_LEGION_ANALYTICS_METRICS_NAMES_MAP as string)
+    ? JSON.parse(
+        import.meta.env.VITE_LEGION_ANALYTICS_METRICS_NAMES_MAP as string
+      )
+    : {};
+
+  return readable(names);
 }
 
-export function getRecentlyUsedStore(metricStore: MetricStore) {
-  return derived(metricStore, (data) => {
-    const local = getMetricConfig();
-    const result: MetricState[] = [];
-    data.forEach((m) => {
-      if (local.some((l) => l.name === m.name)) {
-        result.push(m);
-      }
-    });
-    return result.slice(0, 5);
-  });
+export function getMetricConfigStore(): Writable<MetricConfig[]> {
+  const store = connected<typeof recentlyUsedMetricsStoreKey, MetricConfig[]>(
+    new DefaultLocalStorage(),
+    recentlyUsedMetricsStoreKey,
+    []
+  );
+
+  const { subscribe } = derived(store, ($recentlyUsedMetrics) =>
+    [...$recentlyUsedMetrics].sort((a, b) => a.lastUse - b.lastUse)
+  );
+
+  return {
+    update: store.update,
+    set: store.set,
+    subscribe,
+  };
 }
 
-export function getMetricStore() {
-  const { subscribe, set, update } = writable<MetricState[]>();
+export function getLastUsedMetricsStore() {
+  const store = connected<typeof lastUsedMetricStoreKey, string[]>(
+    new DefaultLocalStorage(),
+    lastUsedMetricStoreKey,
+    []
+  );
+
+  return {
+    ...store,
+
+    clearMetrics(clearedMetricNames: string[]) {
+      store.update((metricNames) =>
+        metricNames.filter(
+          (metricName) => !clearedMetricNames.includes(metricName)
+        )
+      );
+    },
+
+    toggleMetric(toggledMetricName: string) {
+      store.update((metricNames) => {
+        if (metricNames.includes(toggledMetricName)) {
+          return metricNames.filter(
+            (metricName) => metricName !== toggledMetricName
+          );
+        }
+
+        return [...metricNames, toggledMetricName];
+      });
+    },
+  };
+}
+
+export function getRecentlyUsedMetricsStore(
+  metricStore: MetricStore,
+  metricConfigStore: MetricConfigStore
+) {
+  return derived(
+    [metricStore, metricConfigStore],
+    ([$metrics, $metricConfig]) => {
+      const result: MetricState[] = [];
+
+      [...$metrics]
+        .sort((a, b) => (b.lastUse ?? 0) - (a.lastUse ?? 0))
+        .forEach((m) => {
+          if ($metricConfig.some((l) => l.name === m.name)) {
+            result.push(m);
+          }
+        });
+
+      return result.slice(0, 5);
+    }
+  );
+}
+
+export function getMetricStore(
+  lastUsedMetricsStore: LastUsedMetricsStore,
+  metricConfigStore: MetricConfigStore
+) {
+  const metricsStore = writable<MetricState[]>([]);
+
+  const { subscribe } = derived(metricsStore, ($metrics) =>
+    $metrics.sort((metric1, metric2) => (metric1.name > metric2.name ? 1 : -1))
+  );
 
   const registerMetrics = (metrics: MetricState[]) => {
     // Todo : apply the selected status using the local storage config
-    set(metrics);
+    metricsStore.set(metrics);
   };
 
   const updateSerialize = (action: (state: MetricState[]) => void) => {
-    update((s) => {
+    metricsStore.update((s) => {
       action(s);
       const data = s.filter((s) => s.selected);
       const config: MetricConfig[] = [];
@@ -50,8 +138,8 @@ export function getMetricStore() {
           });
         }
       });
-      const merge = getMetricConfig().concat(config);
-      localStorage.setItem(localStorageKey, JSON.stringify(merge));
+      const merge = get(metricConfigStore).concat(config);
+      metricConfigStore.set(merge);
       return s;
     });
   };
@@ -61,7 +149,7 @@ export function getMetricStore() {
     blockId: string,
     metricName: string
   ) => {
-    update((metrics) => {
+    metricsStore.update((metrics) => {
       const m = metrics.find((m) => m.name === metricName);
       if (m) {
         const index = metrics.indexOf(m);
@@ -74,6 +162,8 @@ export function getMetricStore() {
   };
 
   const switchSelection = (name: string) => {
+    lastUsedMetricsStore.toggleMetric(name);
+
     updateSerialize((s) => {
       const metric = s.find((d) => d.name === name);
       if (metric) {
@@ -88,7 +178,9 @@ export function getMetricStore() {
   };
 
   const clearSelection = () => {
-    update((s) => {
+    metricsStore.update((s) => {
+      lastUsedMetricsStore.clearMetrics(s.map((m) => m.name));
+
       s.forEach((e) => {
         e.selected = false;
       });
@@ -97,7 +189,7 @@ export function getMetricStore() {
   };
 
   const switchHidden = (name: string) => {
-    update((s) => {
+    metricsStore.update((s) => {
       const metric = s.find((d) => d.name === name);
       if (metric) {
         metric.hidden = !metric.hidden;

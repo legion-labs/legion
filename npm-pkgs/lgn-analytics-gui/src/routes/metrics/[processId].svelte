@@ -3,13 +3,21 @@
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
   import { onDestroy, onMount } from "svelte";
+  import { setContext } from "svelte";
+  import { getContext } from "svelte";
   import type { Unsubscriber } from "svelte/store";
 
   import { MetricAxisCollection } from "@/components/Metric/Lib/MetricAxisCollection";
   import { getMetricColor } from "@/components/Metric/Lib/MetricColor";
   import type { MetricSlice } from "@/components/Metric/Lib/MetricSlice";
   import type { MetricState } from "@/components/Metric/Lib/MetricState";
-  import { getMetricStore } from "@/components/Metric/Lib/MetricStore";
+  import {
+    getLastUsedMetricsStore,
+    getMetricConfigStore,
+    getMetricNames,
+    getMetricStore,
+    getRecentlyUsedMetricsStore,
+  } from "@/components/Metric/Lib/MetricStore";
   import { MetricStreamer } from "@/components/Metric/Lib/MetricStreamer";
   import MetricDebugDisplay from "@/components/Metric/MetricDebugDisplay.svelte";
   import MetricLegendGroup from "@/components/Metric/MetricLegendGroup.svelte";
@@ -17,7 +25,6 @@
   import MetricTooltip from "@/components/Metric/MetricTooltip.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
   import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
-  import { getDebugContext, getHttpClientContext } from "@/contexts";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
 
@@ -26,15 +33,32 @@
   let metricStreamer: MetricStreamer;
   let axisCollection: MetricAxisCollection;
 
-  const metricStore = getMetricStore();
+  const lastUsedMetricsStore = getLastUsedMetricsStore();
+
+  const metricConfigStore = getMetricConfigStore();
+
+  const metricStore = getMetricStore(lastUsedMetricsStore, metricConfigStore);
+
+  const recentlyUsedMetricsStore = getRecentlyUsedMetricsStore(
+    metricStore,
+    metricConfigStore
+  );
+
+  const metricNames = getMetricNames();
+
+  setContext("metrics-store", metricStore);
+
+  setContext("metrics-config-store", metricConfigStore);
+
+  setContext("recently-used-metrics-store", recentlyUsedMetricsStore);
 
   const defaultLineWidth = 1;
   const margin = { top: 20, right: 50, bottom: 40, left: 70 };
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
 
-  const client = getHttpClientContext();
-  const debug = getDebugContext();
+  const client = getContext("http-client");
+  const debug = getContext("debug");
 
   let mainWidth = 0;
   $: width = mainWidth - margin.left - margin.right;
@@ -105,12 +129,8 @@
   });
 
   onDestroy(() => {
-    if (canvas) {
-      canvas.replaceChildren();
-    }
-    if (pointSubscription) {
-      pointSubscription();
-    }
+    canvas?.replaceChildren();
+    pointSubscription?.();
   });
 
   function updateLod() {
@@ -130,7 +150,13 @@
   }
 
   async function fetchMetrics() {
-    metricStreamer = new MetricStreamer(client, processId, metricStore);
+    metricStreamer = new MetricStreamer(
+      client,
+      processId,
+      metricStore,
+      lastUsedMetricsStore,
+      metricNames
+    );
     await metricStreamer.initialize();
 
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;
@@ -177,6 +203,18 @@
 
   function createChart() {
     container = d3.select("#metric-canvas");
+
+    // Forwards click event to the document's body
+    // so that the clickOutside action can work properly
+    container.on("click", () =>
+      document.body.dispatchEvent(
+        new MouseEvent("mouseup", {
+          view: window,
+          bubbles: true,
+          cancelable: true,
+        })
+      )
+    );
 
     svgGroup = container
       .append("svg")
@@ -365,7 +403,7 @@
 <Layout>
   <div class="metrics" slot="content">
     {#if !loading}
-      <MetricSelection {metricStore} />
+      <MetricSelection />
       <MetricTooltip
         bind:this={metricTooltip}
         {metricStore}

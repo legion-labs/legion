@@ -75,6 +75,7 @@
   import { writable } from "svelte/store";
 
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
@@ -90,14 +91,8 @@
   import LoadingBar from "@/components/Misc/LoadingBar.svelte";
   import { getThreadItemLength } from "@/components/Timeline/Values/TimelineValues";
   import {
-    debugContextKey,
-    httpClientContextKey,
-    l10nOrchestratorContextKey,
     localeStorageKey,
-    notificationsContextKey,
-    themeContextKey,
     themeStorageKey,
-    threadItemLengthContextKey,
     threadItemLengthFallback,
   } from "@/constants";
   import { makeGrpcClient } from "@/lib/client";
@@ -112,7 +107,7 @@
 
   const theme = createThemeStore(themeStorageKey, "dark");
 
-  const l10n = createL10nOrchestrator(
+  const l10n = createL10nOrchestrator<Fluent>(
     [
       {
         names: ["en-US", "en"],
@@ -142,21 +137,21 @@
     }
   );
 
-  setContext(themeContextKey, theme);
+  setContext("theme", theme);
 
   setContext(l10nOrchestratorContextKey, l10n);
 
-  setContext(httpClientContextKey, makeGrpcClient($accessToken));
+  setContext("http-client", makeGrpcClient($accessToken));
 
-  setContext(notificationsContextKey, notifications);
+  setContext("notifications", notifications);
 
   setContext(
-    debugContextKey,
+    "debug",
     writable(import.meta.env.VITE_LEGION_ANALYTICS_DEBUG === "true")
   );
 
   try {
-    setContext(threadItemLengthContextKey, getThreadItemLength());
+    setContext("thread-item-length", getThreadItemLength());
   } catch (error) {
     log.warn(
       `Couldn't get the proper thread item length, defaulting to the arbitrary value "${threadItemLengthFallback}": ${displayError(
@@ -164,7 +159,7 @@
       )}`
     );
 
-    setContext(threadItemLengthContextKey, threadItemLengthFallback);
+    setContext("thread-item-length", threadItemLengthFallback);
   }
 
   // TODO: Here we can control the UI and display a modal like in the Editor
