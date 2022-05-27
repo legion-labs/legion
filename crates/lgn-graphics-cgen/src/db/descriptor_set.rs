@@ -176,8 +176,8 @@ impl<'mdl> DescriptorSetBuilder<'mdl> {
     ///
     /// # Errors
     /// todo
-    pub fn add_samplers(self, name: &str, array_len: Option<u32>) -> Result<Self> {
-        self.add_descriptor(name, false, array_len, DescriptorDef::Sampler)
+    pub fn add_samplers(self, name: &str, bindless: bool, array_len: Option<u32>) -> Result<Self> {
+        self.add_descriptor(name, bindless, array_len, DescriptorDef::Sampler)
     }
 
     /// Add `ConstantBuffers`.

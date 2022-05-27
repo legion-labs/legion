@@ -1,4 +1,5 @@
 use lgn_utils::decimal::DecimalF32;
+use lgn_utils::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use crate::backends::BackendSampler;
@@ -49,7 +50,16 @@ impl Hash for SamplerDef {
     }
 }
 
+impl SamplerDef {
+    pub fn get_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
 pub(crate) struct SamplerInner {
+    pub(crate) definition: SamplerDef,
     device_context: DeviceContext,
     pub(crate) backend_sampler: BackendSampler,
 }
@@ -69,6 +79,7 @@ impl Sampler {
     pub fn new(device_context: &DeviceContext, sampler_def: SamplerDef) -> Self {
         let platform_sampler = BackendSampler::new(device_context, sampler_def);
         let inner = SamplerInner {
+            definition: sampler_def,
             device_context: device_context.clone(),
             backend_sampler: platform_sampler,
         };
@@ -76,5 +87,9 @@ impl Sampler {
         Self {
             inner: device_context.deferred_dropper().new_drc(inner),
         }
+    }
+
+    pub fn definition(&self) -> &SamplerDef {
+        &self.inner.definition
     }
 }
