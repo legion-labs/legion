@@ -106,7 +106,3 @@ metrics-recently-used = Mesures récemment utilisées
 metrics-all-metrics = Liste des mesures
 metrics-open-cumulative-call-graph = Ouvrir le { LOWERCASE(global-cumulative-call-graph) }
 metrics-open-timeline = Ouvrir la page contenant les { LOWERCASE(global-timeline) }
-metrics-selected-time-range = Plage temporelle sélectionnée
-metrics-selected-time-range-duration = Durée :
-metrics-selected-time-range-beginning = Début :
-metrics-selected-time-range-end = Fin :

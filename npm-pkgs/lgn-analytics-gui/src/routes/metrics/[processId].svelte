@@ -24,6 +24,7 @@
   import MetricSelection from "@/components/Metric/MetricSelection.svelte";
   import MetricTooltip from "@/components/Metric/MetricTooltip.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
+  import TimeRange from "@/components/Misc/TimeRange.svelte";
   import TimeRangeDetails from "@/components/Misc/TimeRangeDetails.svelte";
   import { formatExecutionTime } from "@/lib/format";
   import { getLodFromPixelSizeNs } from "@/lib/lod";
@@ -53,7 +54,7 @@
   setContext("recently-used-metrics-store", recentlyUsedMetricsStore);
 
   const defaultLineWidth = 1;
-  const margin = { top: 20, right: 50, bottom: 40, left: 70 };
+  const margin = { top: 10, right: 10, bottom: 10, left: 10 };
   const outerHeight = 600;
   const height = outerHeight - margin.top - margin.bottom;
 
@@ -61,7 +62,6 @@
   const debug = getContext("debug");
 
   let mainWidth = 0;
-  $: width = mainWidth - margin.left - margin.right;
 
   let metricTooltip: MetricTooltip;
   let totalMinMs = -Infinity;
@@ -105,14 +105,12 @@
     }
   }
 
-  $: {
-    if (mainWidth) {
-      transform = transform;
-    }
+  $: if (mainWidth) {
+    transform = transform;
   }
 
   const getDeltaMs = () => currentMaxMs - currentMinMs;
-  const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / width;
+  const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / mainWidth;
 
   onMount(async () => {
     axisCollection = new MetricAxisCollection();
@@ -138,7 +136,7 @@
     pixelSizeNs = getPixelSizeNs();
     lod = getLodFromPixelSizeNs(pixelSizeNs);
     if (x) {
-      x.range([0, width]);
+      x.range([0, mainWidth]);
       const scaleX = transform.rescaleX(x);
       currentMinMs = scaleX.domain()[0].valueOf();
       currentMaxMs = scaleX.domain()[1].valueOf();
@@ -195,7 +193,7 @@
   }
 
   function refreshZoom() {
-    const extent = [width, outerHeight] as [number, number];
+    const extent = [mainWidth, outerHeight] as [number, number];
     const origin = [0, 0] as [number, number];
     zoom.translateExtent([origin, extent]);
     zoom.extent([origin, extent]);
@@ -219,18 +217,19 @@
     svgGroup = container
       .append("svg")
       .append("g")
-      .attr("transform", `translate(${margin.left}, ${margin.top})`);
+      .attr("width", "100%")
+      .attr("height", height - margin.top);
 
     let fo = svgGroup
       .append("foreignObject")
       .attr("x", 0)
       .attr("y", 0)
-      .attr("width", width)
+      .attr("width", "100%")
       .attr("height", height);
 
     var foBody = fo
       .append("xhtml:body")
-      .style("width", `${width}px`)
+      .style("width", `${mainWidth}px`)
       .style("height", `${height}px`);
 
     const canvasChart = foBody.append("canvas");
@@ -281,10 +280,7 @@
           const scaleX = transform.rescaleX(x);
           const start = scaleX(brushStart).valueOf();
           const end = scaleX(brushEnd).valueOf();
-          brushSvg.call(brushFunction.move, [
-            Math.max(0, start),
-            Math.max(0, end),
-          ]);
+          brushSvg.call(brushFunction.move, [start, end]);
         }
       });
 
@@ -298,9 +294,9 @@
       .filter((e) => e.shiftKey)
       .extent([
         [1, 0],
-        [width - margin.left, height - 1],
+        [mainWidth, height - 1],
       ])
-      .on("end", (e: d3.D3BrushEvent<number>) => {
+      .on("brush end", (e: d3.D3BrushEvent<number>) => {
         const scaleX = transform.rescaleX(x);
         const selection = e.selection as [number, number];
         brushStart = scaleX.invert(selection[0]).valueOf();
@@ -309,17 +305,19 @@
 
     brushSvg = svgGroup.append("g");
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    brushSvg.call(brushFunction as any);
+    brushSvg.call(brushFunction);
   }
 
   function updateChartWidth() {
     if (container) {
-      container.select("svg").attr("height", outerHeight).attr("width", width);
+      container
+        .select("svg")
+        .attr("height", outerHeight)
+        .attr("width", mainWidth);
       container
         .select("canvas")
         .attr("height", height)
-        .attr("width", width - margin.left);
+        .attr("width", mainWidth);
     }
   }
 
@@ -329,7 +327,7 @@
     }
 
     var startTime = performance.now();
-    x.range([0, width]);
+    x.range([0, mainWidth]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     svgGroup.call(zoom as any);
     refreshZoom();
@@ -391,33 +389,45 @@
 
   function handleKeydown(event: KeyboardEvent) {
     if (brushStart && brushEnd && event.code == "Escape") {
-      brushSvg.call(d3.brush().clear);
-      brushStart = NaN;
-      brushEnd = NaN;
+      clearBrush();
     }
+  }
+
+  function clearBrush() {
+    brushSvg.call(d3.brush().clear);
+    brushStart = NaN;
+    brushEnd = NaN;
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window on:keydown={handleKeydown} on:resize={clearBrush} />
 
 <Layout>
   <div class="metrics" slot="content">
-    {#if !loading}
-      <MetricSelection />
-      <MetricTooltip
-        bind:this={metricTooltip}
-        {metricStore}
-        xScale={transform.rescaleX(x)}
-        leftMargin={margin.left}
-        {zoomEvent}
-      />
-    {/if}
-
-    <div bind:clientWidth={mainWidth}>
-      <div id="metric-canvas" class="relative" />
-
+    <div class="flex flex-col space-y-2">
       {#if !loading}
-        <div style="padding-left:{margin.left}px">
+        <div>
+          <MetricSelection />
+          <MetricTooltip
+            bind:this={metricTooltip}
+            {metricStore}
+            xScale={transform.rescaleX(x)}
+            {zoomEvent}
+          />
+        </div>
+      {/if}
+      <div id="metric-canvas" bind:clientWidth={mainWidth} />
+      {#if !loading}
+        {#if !isNaN(brushStart) && !isNaN(brushEnd)}
+          <div>
+            <TimeRange
+              width={mainWidth}
+              selectionRange={[brushStart, brushEnd]}
+              viewRange={[currentMinMs, currentMaxMs]}
+            />
+          </div>
+        {/if}
+        <div>
           <MetricLegendGroup {metricStore} />
         </div>
         <div>
@@ -426,7 +436,7 @@
         {#if $debug}
           <div style="display:inherit;padding-top:40px">
             <MetricDebugDisplay
-              {width}
+              width={mainWidth}
               {mainWidth}
               {transform}
               {updateTime}
@@ -451,6 +461,7 @@
 
 <style lang="postcss">
   .metrics {
-    @apply pt-4 px-2;
+    /* TODO: Find a better way to prevent the scroll bar to be displayed */
+    @apply pt-4 px-2 overflow-x-hidden;
   }
 </style>

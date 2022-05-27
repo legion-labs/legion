@@ -9,7 +9,6 @@
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let zoomEvent: D3ZoomEvent<HTMLCanvasElement, any>;
   export let xScale: d3.ScaleLinear<number, number, never>;
-  export let leftMargin: number;
   export let metricStore: MetricStore;
 
   const margin = 15;
@@ -36,7 +35,7 @@
     displayed = false;
   }
 
-  $: time = xScale.invert(xValue - leftMargin);
+  $: time = xScale.invert(xValue);
 
   $: side = xValue < (2 * width) / 3;
 

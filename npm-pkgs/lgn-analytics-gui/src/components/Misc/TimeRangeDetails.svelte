@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { formatExecutionTime } from "@/lib/format";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
   import L10n from "./L10n.svelte";
@@ -31,30 +30,6 @@
         >
           <L10n id="metrics-open-timeline" />
         </a>
-      </div>
-    </div>
-    <!-- TODO: Display the following the same way as in the timeline -->
-    <div class="text-sm text-right">
-      <div>
-        <L10n id="metrics-selected-time-range" />
-      </div>
-      <div>
-        <span class="font-bold"
-          ><L10n id="metrics-selected-time-range-duration" />
-        </span>
-        <span>{formatExecutionTime(brushEnd - brushStart)}<span /></span>
-      </div>
-      <div>
-        <span class="font-bold"
-          ><L10n id="metrics-selected-time-range-beginning" />
-        </span>
-        <span>{formatExecutionTime(brushStart)}<span /></span>
-      </div>
-      <div>
-        <span class="font-bold"
-          ><L10n id="metrics-selected-time-range-end" />
-        </span>
-        <span>{formatExecutionTime(brushEnd)}<span /></span>
       </div>
     </div>
   </div>
