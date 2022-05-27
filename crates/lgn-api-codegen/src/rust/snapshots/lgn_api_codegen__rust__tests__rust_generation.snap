@@ -13,6 +13,12 @@ use lgn_online::codegen::Context;
 
 #[async_trait::async_trait]
 pub trait Api {
+    async fn test_one_of(
+        &self,
+        context: &mut Context,
+        request: requests::TestOneOfRequest,
+    ) -> Result<responses::TestOneOfResponse>;
+
     async fn get_cars(
         &self,
         context: &mut Context,
@@ -42,12 +48,6 @@ pub trait Api {
         context: &mut Context,
         request: requests::TestBinaryRequest,
     ) -> Result<responses::TestBinaryResponse>;
-
-    async fn test_one_of(
-        &self,
-        context: &mut Context,
-        request: requests::TestOneOfRequest,
-    ) -> Result<responses::TestOneOfResponse>;
 }
 
 // ---------- Errors ----------
@@ -140,6 +140,35 @@ pub mod client {
     where
         C: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
     {
+        async fn test_one_of(
+            &self,
+            context: &mut Context,
+            request: requests::TestOneOfRequest,
+        ) -> Result<responses::TestOneOfResponse> {
+            let mut uri = format!("{}/test-one-of", self.base_uri);
+
+            let mut req = Request::builder()
+                .method(Method::GET)
+                .uri(uri)
+                .body(Body::empty())
+                .unwrap();
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
+            let resp = self.inner.request(req).await?;
+
+            let (parts, body) = resp.into_parts();
+            let status = parts.status;
+            context.set_response(parts);
+
+            responses::TestOneOfResponse::from_response(status, body).await
+        }
+
         async fn get_cars(
             &self,
             context: &mut Context,
@@ -323,35 +352,6 @@ pub mod client {
 
             responses::TestBinaryResponse::from_response(status, body).await
         }
-
-        async fn test_one_of(
-            &self,
-            context: &mut Context,
-            request: requests::TestOneOfRequest,
-        ) -> Result<responses::TestOneOfResponse> {
-            let mut uri = format!("{}/test-one-of", self.base_uri);
-
-            let mut req = Request::builder()
-                .method(Method::GET)
-                .uri(uri)
-                .body(Body::empty())
-                .unwrap();
-            if let Some(extensions) = context.request_extensions() {
-                req.extensions_mut().extend(extensions);
-            }
-
-            if let Some(headers) = context.request_headers() {
-                req.headers_mut().extend(headers);
-            }
-
-            let resp = self.inner.request(req).await?;
-
-            let (parts, body) = resp.into_parts();
-            let status = parts.status;
-            context.set_response(parts);
-
-            responses::TestOneOfResponse::from_response(status, body).await
-        }
     }
 }
 
@@ -382,6 +382,7 @@ pub mod server {
         T: super::Api + Clone + Send + Sync + 'static,
     {
         router
+            .route("/test-one-of", routing::get(test_one_of::<T>))
             .route(
                 "/v1/spaces/:space-id/car-service/cars",
                 routing::get(get_cars::<T>).post(create_car::<T>),
@@ -394,8 +395,37 @@ pub mod server {
                 "/v1/spaces/:space-id/car-service/test-binary",
                 routing::post(test_binary::<T>),
             )
-            .route("/test-one-of", routing::get(test_one_of::<T>))
             .layer(Extension(api))
+    }
+
+    async fn test_one_of<T>(
+        Extension(api): Extension<T>,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
+        parts: Parts,
+    ) -> Response
+    where
+        T: super::Api + Send + Sync + 'static,
+    {
+        let mut context = Context::default();
+        context.set_request_addr(addr);
+        context.set_request(parts);
+        let request = requests::TestOneOfRequest {};
+
+        let resp = api.test_one_of(&mut context, request).await;
+        let mut resp = match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
+        }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
     }
 
     async fn get_cars<T>(
@@ -578,36 +608,6 @@ pub mod server {
 
         resp
     }
-
-    async fn test_one_of<T>(
-        Extension(api): Extension<T>,
-        ConnectInfo(addr): ConnectInfo<SocketAddr>,
-        parts: Parts,
-    ) -> Response
-    where
-        T: super::Api + Send + Sync + 'static,
-    {
-        let mut context = Context::default();
-        context.set_request_addr(addr);
-        context.set_request(parts);
-        let request = requests::TestOneOfRequest {};
-
-        let resp = api.test_one_of(&mut context, request).await;
-        let mut resp = match resp {
-            Ok(resp) => resp.into_response(),
-            Err(err) => err.into_response(),
-        };
-
-        if let Some(extensions) = context.response_extensions() {
-            resp.extensions_mut().extend(extensions);
-        }
-
-        if let Some(headers) = context.response_headers() {
-            resp.headers_mut().extend(headers);
-        }
-
-        resp
-    }
 }
 
 // ---------- Models ----------
@@ -627,22 +627,25 @@ pub mod models {
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Car {
-        #[serde(rename = "id")]
-        pub id: i64,
-
-        #[serde(rename = "name")]
-        pub name: String,
-        /// The car color.
         #[serde(rename = "color")]
         pub color: super::models::CarColor,
-
-        #[serde(rename = "is_new")]
-        pub is_new: bool,
 
         #[serde(rename = "extra")]
         #[serde(skip_serializing_if = "Option::is_none")]
         pub extra: Option<Bytes>,
+
+        #[serde(rename = "id")]
+        pub id: i64,
+
+        #[serde(rename = "is_new")]
+        pub is_new: bool,
+
+        #[serde(rename = "name")]
+        pub name: String,
     }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Cars(pub Vec<super::models::Car>);
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Pet {
@@ -680,6 +683,9 @@ pub mod requests {
     use lgn_online::codegen::Bytes;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct TestOneOfRequest {}
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct GetCarsRequest {
         pub space_id: String,
         pub names: Option<Vec<String>>,
@@ -710,9 +716,6 @@ pub mod requests {
         pub space_id: String,
         pub body: Bytes,
     }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct TestOneOfRequest {}
 }
 
 // ---------- Responses ----------
@@ -726,6 +729,44 @@ pub mod responses {
     use lgn_online::codegen::Bytes;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum TestOneOfResponse {
+        /// Ok.
+        Status200(TestOneOf200Response),
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct TestOneOf200Response {
+        pub body: super::models::TestOneOfResponse,
+    }
+
+    impl TestOneOfResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                TestOneOfResponse::Status200(r) => {
+                    let body = Json(r.body);
+                    (StatusCode::from_u16(200).unwrap(), body).into_response()
+                }
+            }
+        }
+
+        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
+            match status.as_u16() {
+                200 => {
+                    let bytes = hyper::body::to_bytes(body).await?;
+                    let resp = TestOneOf200Response {
+                        body: serde_json::from_slice(&bytes)?,
+                    };
+                    Ok(Self::Status200(resp))
+                }
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum GetCarsResponse {
         /// List of cars.
         Status200(GetCars200Response),
@@ -733,7 +774,7 @@ pub mod responses {
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct GetCars200Response {
-        pub body: Vec<super::models::Car>,
+        pub body: super::models::Cars,
     }
 
     impl GetCarsResponse {
@@ -885,44 +926,6 @@ pub mod responses {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
                     let resp = TestBinary200Response { body: bytes.into() };
-                    Ok(Self::Status200(resp))
-                }
-                status => Err(Error::Internal(format!(
-                    "unexpected status code: {}",
-                    status
-                ))),
-            }
-        }
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub enum TestOneOfResponse {
-        /// Ok.
-        Status200(TestOneOf200Response),
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct TestOneOf200Response {
-        pub body: super::models::TestOneOfResponse,
-    }
-
-    impl TestOneOfResponse {
-        pub(crate) fn into_response(self) -> Response {
-            match self {
-                TestOneOfResponse::Status200(r) => {
-                    let body = Json(r.body);
-                    (StatusCode::from_u16(200).unwrap(), body).into_response()
-                }
-            }
-        }
-
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
-                200 => {
-                    let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = TestOneOf200Response {
-                        body: serde_json::from_slice(&bytes)?,
-                    };
                     Ok(Self::Status200(resp))
                 }
                 status => Err(Error::Internal(format!(

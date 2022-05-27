@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use api_codegen::cars::{
     client,
-    models::{self, CarColor},
+    models::{self, CarColor, Cars},
     requests::{
         CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
         TestOneOfRequest,
@@ -52,7 +52,7 @@ async fn test_crud() -> anyhow::Result<()> {
     assert_eq!(
         resp,
         GetCarsResponse::Status200(GetCars200Response {
-            body: vec![car.clone()]
+            body: Cars(vec![car.clone()])
         })
     );
 

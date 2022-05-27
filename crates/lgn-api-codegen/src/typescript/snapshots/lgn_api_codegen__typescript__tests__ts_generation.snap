@@ -15,6 +15,17 @@ export interface Api {
 
     
         
+        testOneOf(input: {
+    params: {
+        },
+    
+    
+    
+    }): Promise<TestOneOfResponse>;
+    
+
+    
+        
         getCars(input: {
     params: {
         "space-id": string;
@@ -80,17 +91,6 @@ export interface Api {
     body: Blob,}): Promise<TestBinaryResponse>;
     
 
-    
-        
-        testOneOf(input: {
-    params: {
-        },
-    
-    
-    
-    }): Promise<TestOneOfResponse>;
-    
-
 }
 
 // ---------- Errors ----------
@@ -128,6 +128,37 @@ export class Client implements Api {
         this.#fetch = fetch;
     }
 
+    
+        
+            
+
+            async testOneOf(input: {
+    params: {
+        },
+    
+    
+    
+    }): Promise<TestOneOfResponse> {
+                const url = new URL(`${this.#baseUri}/test-one-of`);
+
+                
+
+                const headers = new Headers();
+
+                
+
+
+                
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "GET",
+                    headers,
+                    
+                });
+
+                return TestOneOfResponse.fromResponse(response);
+            }
+        
     
         
             
@@ -322,81 +353,54 @@ export class Client implements Api {
             }
         
     
-        
-            
-
-            async testOneOf(input: {
-    params: {
-        },
-    
-    
-    
-    }): Promise<TestOneOfResponse> {
-                const url = new URL(`${this.#baseUri}/test-one-of`);
-
-                
-
-                const headers = new Headers();
-
-                
-
-
-                
-
-                const response = await this.#fetch(url.toString(), {
-                    method: "GET",
-                    headers,
-                    
-                });
-
-                return TestOneOfResponse.fromResponse(response);
-            }
-        
-    
 }
 
 // ---------- Models ----------
 
 
-    
-            /** The car color. */
+    /** The car color. */
             export type CarColorModel = (| "red"| "blue"| "yellow");
         
 
     
-            
             export type CarModel = {
                 
                     
-                    "id": bigint;
-                    
-                    "name": string;
-                    /** The car color. */
                     "color": CarColorModel;
+                    
+                    "extra"?: Blob;
+                    
+                    "id": bigint;
                     
                     "is_new": boolean;
                     
-                    "extra"?: Blob;
+                    "name": string;
             };
+        
+
+    
+            export type CarsModel = CarModel[];
     
 
     
-            
             export type PetModel = {
                 
                     
                     "name"?: string;
             };
-    
+        
 
     
-            
             export type TestOneOfResponseModel = (| { type: "option1", value: PetModel }| { type: "option2", value: CarModel });
         
 
 
 // ---------- Parameters ----------
 
+
+        
+        
+    
 
         
         export type GetCarsQuery = {
@@ -419,10 +423,6 @@ export class Client implements Api {
         
     
 
-        
-        
-    
-
 
 // ---------- Responses ----------
 
@@ -430,7 +430,30 @@ export class Client implements Api {
     
         
         
-        export type GetCarsResponse = (| { /** List of cars. */ type: "200", value: CarModel[] });
+        export type TestOneOfResponse = (| { /** Ok. */ type: "200", value: TestOneOfResponseModel });
+
+        export const TestOneOfResponse = {
+            async fromResponse(response: Response): Promise<TestOneOfResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:
+                                                await response.json()
+                                            }
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+
+    
+        
+        
+        export type GetCarsResponse = (| { /** List of cars. */ type: "200", value: CarsModel });
 
         export const GetCarsResponse = {
             async fromResponse(response: Response): Promise<GetCarsResponse> {
@@ -531,29 +554,6 @@ export class Client implements Api {
                                 return {type: "200", value:
                                                 await response.blob()
                                         }
-                            }default: {
-                            throw new InternalError(`unexpected status code: ${status}`);
-                        }
-                    }
-                
-            } 
-        }
-    
-
-    
-        
-        
-        export type TestOneOfResponse = (| { /** Ok. */ type: "200", value: TestOneOfResponseModel });
-
-        export const TestOneOfResponse = {
-            async fromResponse(response: Response): Promise<TestOneOfResponse> {
-                
-                    switch (response.status) {
-                        
-                            case 200: { 
-                                return {type: "200", value:
-                                                await response.json()
-                                            }
                             }default: {
                             throw new InternalError(`unexpected status code: ${status}`);
                         }

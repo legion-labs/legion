@@ -1,23 +1,17 @@
 use std::{iter::Chain, slice::Iter};
 
-use crate::{openapi_ext::OpenAPIPath, visitor, Error, Result};
+use crate::{Error, OpenAPIPath, Result};
 use indexmap::IndexMap;
 
-#[derive(Debug, PartialEq)]
+/// API is the resolved type that is fed to templates and contains helper
+/// methods to ease their writing.
+#[derive(Debug, Default, PartialEq)]
 pub struct Api {
     pub title: String,
     pub description: Option<String>,
     pub version: String,
     pub models: Vec<Model>,
     pub paths: IndexMap<Path, Vec<Route>>,
-}
-
-impl TryFrom<&openapiv3::OpenAPI> for Api {
-    type Error = Error;
-
-    fn try_from(openapi: &openapiv3::OpenAPI) -> Result<Self> {
-        visitor::visit(openapi)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -34,48 +28,35 @@ pub enum Type {
     Binary,
     Array(Box<Type>),
     HashSet(Box<Type>),
-    Struct(String),
+    Named(String),
+    Enum { variants: Vec<String> },
+    Struct { fields: Vec<Field> },
+    OneOf { types: Vec<Type> },
 }
 
-#[derive(Debug, PartialEq)]
-pub enum Model {
-    Enum(Enum),
-    Struct(Struct),
-    OneOf(OneOf),
-}
-
-impl Model {
-    pub fn name(&self) -> &str {
-        match self {
-            Model::Enum(enum_) => &enum_.name,
-            Model::Struct(struct_) => &struct_.name,
-            Model::OneOf(oneof) => &oneof.name,
-        }
+impl Type {
+    pub fn requires_model(&self) -> bool {
+        matches!(
+            self,
+            Type::Enum { .. } | Type::Struct { .. } | Type::OneOf { .. }
+        )
     }
 }
 
-#[derive(Debug, PartialEq, Default)]
-pub struct Enum {
-    pub name: String,
-    pub description: Option<String>,
-    pub variants: Vec<String>,
-}
-
-#[derive(Debug, PartialEq, Default)]
-pub struct OneOf {
-    pub name: String,
-    pub description: Option<String>,
-    pub types: Vec<Type>,
-}
-
-#[derive(Debug, PartialEq, Default)]
-pub struct Struct {
-    pub name: String,
-    pub description: Option<String>,
-    pub fields: Vec<Field>,
-}
-
 #[derive(Debug, PartialEq)]
+pub struct Model {
+    pub name: String,
+    pub description: Option<String>,
+    pub type_: Type,
+}
+
+impl Model {
+    pub fn to_named_type(&self) -> Type {
+        Type::Named(self.name.clone())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     pub name: String,
     pub description: Option<String>,
