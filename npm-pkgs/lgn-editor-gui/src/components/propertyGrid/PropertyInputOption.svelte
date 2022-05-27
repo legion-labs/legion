@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Icon from "@iconify/svelte";
   import { createEventDispatcher } from "svelte";
 
   import type { PropertyUpdate } from "@/api";
@@ -12,6 +11,7 @@
   import type { OptionResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
 
   import PropertyInput from "./PropertyInput.svelte";
+  import PropertyActionButton from "./PropertyActionButton.svelte";
 
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;
@@ -64,22 +64,20 @@
       {pathParts}
       {index}
     />
-    <div class="action-button" on:click={(_) => setOptionProperty(false)}>
-      <Icon icon="ic:baseline-subdirectory-arrow-left" />
-    </div>
+    <PropertyActionButton
+      icon="ic:baseline-subdirectory-arrow-left"
+      on:click={(_) => setOptionProperty(false)}
+    />
   </div>
 {:else}
-  <div class="action-button" on:click={(_) => setOptionProperty(true)}>
-    <Icon icon="ic:baseline-add-circle-outline" />
-  </div>
+  <PropertyActionButton
+    icon="ic:baseline-add-circle-outline"
+    on:click={(_) => setOptionProperty(true)}
+  />
 {/if}
 
 <style lang="postcss">
   .option-property {
     @apply flex flex-row justify-between gap-x-1;
-  }
-
-  .action-button {
-    @apply h-6 w-6 bg-surface-500 flex justify-center items-center cursor-pointer border-[1px] border-black;
   }
 </style>

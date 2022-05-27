@@ -197,6 +197,6 @@
   }
 
   .close-button {
-    @apply flex flex-row flex-shrink-0 items-center justify-center h-6 w-6 rounded-sm text-xl bg-gray-800 ml-1 cursor-pointer;
+    @apply flex flex-row flex-shrink-0 items-center justify-center h-6 w-6 rounded-sm text-xl bg-surface-500 ml-1 cursor-pointer border-[1px] border-black;
   }
 </style>

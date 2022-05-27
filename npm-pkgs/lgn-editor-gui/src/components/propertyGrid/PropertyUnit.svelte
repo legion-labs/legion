@@ -1,15 +1,19 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+  import type { Writable } from "svelte/store";
+
+  import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
+
   import type { PropertyUpdate } from "@/api";
   import {
     isPropertyDisplayable,
     propertyIsVec,
-    type BagResourceProperty,
-    type ResourceProperty,
   } from "@/components/propertyGrid/lib/propertyGrid";
-  import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
-  import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
-  import { createEventDispatcher } from "svelte";
-  import type { Writable } from "svelte/store";
+  import type {
+    BagResourceProperty,
+    ResourceProperty,
+  } from "@/components/propertyGrid/lib/propertyGrid";
 
   import PropertyInput from "./PropertyInput.svelte";
   import type { RemoveVectorSubPropertyEvent } from "./types";
