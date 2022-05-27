@@ -45,8 +45,8 @@ impl Texture {
         let texture = Self {
             meta: Metadata::new(
                 ResourcePathName::default(),
-                Texture::TYPENAME,
-                Texture::TYPE,
+                Self::TYPENAME,
+                Self::TYPE,
             ),
             width,
             height,

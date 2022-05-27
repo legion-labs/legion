@@ -5,7 +5,7 @@ mod tests {
     use std::{env, vec};
 
     use integer_asset::{IntegerAsset, IntegerAssetLoader};
-    use lgn_content_store::Provider;
+    use lgn_content_store::{Config, Provider};
     use lgn_data_compiler::compiler_api::CompilationEnv;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_compiler::{Locale, Platform, Target};
@@ -357,9 +357,19 @@ mod tests {
             output_dir,
             repository_index,
             source_control_content_provider,
-            data_content_provider,
+            _data_content_provider,
         ) = setup_dir(&work_dir).await;
         let resources = setup_registry().await;
+
+        // Can't use the in-memory provider since we're calling data-build.exe a bit later
+        // and we can't pass it a in-memory provider.
+        let data_content_provider = Arc::new(
+            Config::load_volatile()
+                .unwrap()
+                .instantiate_provider()
+                .await
+                .unwrap(),
+        );
 
         let source_magic_value = String::from("47");
 
