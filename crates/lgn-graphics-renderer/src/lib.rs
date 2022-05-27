@@ -33,8 +33,8 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    ApiDef, BufferViewDef, DescriptorHeapDef, DeviceContext,
-    MipMapMode, Queue, QueueType, ResourceUsage, BACKBUFFER_COUNT,
+    ApiDef, BufferViewDef, DescriptorHeapDef, DeviceContext, Extents3D,
+    Format, MemoryUsage, Queue, QueueType, ResourceFlags, ResourceUsage,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
@@ -197,10 +197,9 @@ impl Plugin for RendererPlugin {
         let texture_manager = TextureManager::new(device_context);
 
         let material_manager = MaterialManager::new(static_buffer.allocator());
-	
-        let sampler_manager = SamplerManager::new(device_context,
-            &mut persistent_descriptor_set_manager,
-        );
+
+        let sampler_manager =
+            SamplerManager::new(device_context, &mut persistent_descriptor_set_manager);
 
         let shared_resources_manager = SharedResourcesManager::new(
             &mut render_commands,
