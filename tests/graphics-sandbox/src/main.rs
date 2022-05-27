@@ -377,7 +377,6 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
 }
 
 fn on_snapshot_app_exit(
-    mut commands: Commands<'_, '_>,
     mut app_exit: EventReader<'_, '_, AppExit>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
