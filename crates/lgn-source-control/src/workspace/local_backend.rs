@@ -71,11 +71,11 @@ impl LocalWorkspaceBackend {
             Self::TABLE_CONFIG
         );
 
-        self.sql_connection
-            .lock()
-            .await
-            .execute(sql)
-            .await
+        let mut connection = self.sql_connection.lock().await;
+
+        let result = connection.execute(sql).await;
+
+        result
             .map_other_err("failed to create current branch table")
             .map(|_| ())
     }
@@ -87,11 +87,11 @@ impl LocalWorkspaceBackend {
             Self::TABLE_CHANGES
         );
 
-        self.sql_connection
-            .lock()
-            .await
-            .execute(sql)
-            .await
+        let mut connection = self.sql_connection.lock().await;
+
+        let result = connection.execute(sql).await;
+
+        result
             .map_other_err("failed to create changes table")
             .map(|_| ())
     }
@@ -103,11 +103,11 @@ impl LocalWorkspaceBackend {
             Self::TABLE_RESOLVES_PENDING
         );
 
-        self.sql_connection
-            .lock()
-            .await
-            .execute(sql)
-            .await
+        let mut connection = self.sql_connection.lock().await;
+
+        let result = connection.execute(sql).await;
+
+        result
             .map_other_err("failed to create resolves pending table")
             .map(|_| ())
     }
@@ -119,11 +119,11 @@ impl LocalWorkspaceBackend {
             Self::TABLE_BRANCH_MERGES_PENDING,
         );
 
-        self.sql_connection
-            .lock()
-            .await
-            .execute(sql)
-            .await
+        let mut connection = self.sql_connection.lock().await;
+
+        let result = connection.execute(sql).await;
+
+        result
             .map_other_err("failed to create branch merges pending table")
             .map(|_| ())
     }

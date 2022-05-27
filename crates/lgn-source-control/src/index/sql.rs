@@ -509,13 +509,12 @@ impl SqlIndex {
         repository_name: RepositoryName,
         driver: &SqlDatabaseDriver,
     ) -> Result<i64> {
-        let result = match sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(NULL, ?);",
-            TABLE_REPOSITORIES
-        ))
-        .bind(repository_name.to_string())
-        .execute(transaction)
-        .await
+        let query = format!("INSERT INTO `{}` VALUES(NULL, ?);", TABLE_REPOSITORIES);
+
+        let result = match sqlx::query(&query)
+            .bind(repository_name.to_string())
+            .execute(transaction)
+            .await
         {
             Ok(result) => result,
             Err(sqlx::Error::Database(db_err)) => {
@@ -549,7 +548,9 @@ impl SqlIndex {
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
     ) -> Result<()> {
-        sqlx::query(&format!("DELETE FROM `{}` WHERE id=?;", TABLE_REPOSITORIES))
+        let query = format!("DELETE FROM `{}` WHERE id=?;", TABLE_REPOSITORIES);
+
+        sqlx::query(&query)
             .bind(repository_id)
             .execute(transaction)
             .await
@@ -565,15 +566,17 @@ impl SqlIndex {
         conn: &mut sqlx::pool::PoolConnection<sqlx::Any>,
         repository_name: RepositoryName,
     ) -> Result<i64> {
-        match sqlx::query(&format!(
+        let query = format!(
             "SELECT id
              FROM `{}`
              WHERE name = ?;",
             TABLE_REPOSITORIES,
-        ))
-        .bind(repository_name.to_string())
-        .fetch_one(conn)
-        .await
+        );
+
+        match sqlx::query(&query)
+            .bind(repository_name.to_string())
+            .fetch_one(conn)
+            .await
         {
             Ok(row) => Ok(row.get::<i64, _>("id")),
             Err(sqlx::Error::RowNotFound) => Err(Error::repository_does_not_exist(repository_name)),
@@ -595,21 +598,20 @@ impl SqlIndex {
             .try_into()
             .map_other_err("failed to convert the head")?;
 
-        sqlx::query(&format!(
-            "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-            TABLE_BRANCHES
-        ))
-        .bind(repository_id)
-        .bind(&branch.name)
-        .bind(head)
-        .bind(&branch.lock_domain_id)
-        .execute(transaction)
-        .await
-        .map_other_err(&format!(
-            "failed to insert the branch `{}` in repository {}",
-            &branch.name, repository_id
-        ))
-        .map(|_| ())
+        let query = format!("INSERT INTO `{}` VALUES(?, ?, ?, ?);", TABLE_BRANCHES);
+
+        sqlx::query(&query)
+            .bind(repository_id)
+            .bind(&branch.name)
+            .bind(head)
+            .bind(&branch.lock_domain_id)
+            .execute(transaction)
+            .await
+            .map_other_err(&format!(
+                "failed to insert the branch `{}` in repository {}",
+                &branch.name, repository_id
+            ))
+            .map(|_| ())
     }
 
     #[span_fn]
@@ -645,88 +647,94 @@ impl SqlIndex {
                 *depth -= 1;
             }
 
-            let changes = sqlx::query(&format!(
+            let query = format!(
                 "SELECT canonical_path, old_cs_id, new_cs_id
              FROM `{}`
              WHERE commit_id=?;",
                 TABLE_COMMIT_CHANGES,
-            ))
-            .bind(&commit_id)
-            .fetch_all(&mut *transaction)
-            .await
-            .map_other_err(format!(
-                "failed to fetch commit changes for commit `{}`",
-                &commit_id
-            ))?
-            .into_iter()
-            .filter_map(|row| {
-                if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
-                    let old_cs_id: String = row.get("old_cs_id");
+            );
 
-                    let old_cs_id = if !old_cs_id.is_empty() {
-                        match old_cs_id
-                            .parse()
-                            .map_other_err("failed to parse the old chunk id")
-                        {
-                            Ok(id) => Some(id),
-                            Err(err) => return Some(Err(err)),
-                        }
+            let changes = sqlx::query(&query)
+                .bind(&commit_id)
+                .fetch_all(&mut *transaction)
+                .await
+                .map_other_err(format!(
+                    "failed to fetch commit changes for commit `{}`",
+                    &commit_id
+                ))?
+                .into_iter()
+                .filter_map(|row| {
+                    if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
+                        let old_cs_id: String = row.get("old_cs_id");
+
+                        let old_cs_id = if !old_cs_id.is_empty() {
+                            match old_cs_id
+                                .parse()
+                                .map_other_err("failed to parse the old chunk id")
+                            {
+                                Ok(id) => Some(id),
+                                Err(err) => return Some(Err(err)),
+                            }
+                        } else {
+                            None
+                        };
+
+                        let new_cs_id: String = row.get("new_cs_id");
+                        let new_cs_id = if !new_cs_id.is_empty() {
+                            match new_cs_id
+                                .parse()
+                                .map_other_err("failed to parse the new chunk id")
+                            {
+                                Ok(id) => Some(id),
+                                Err(err) => return Some(Err(err)),
+                            }
+                        } else {
+                            None
+                        };
+
+                        ChangeType::new(old_cs_id, new_cs_id)
+                            .map(|change_type| Ok(Change::new(canonical_path, change_type)))
                     } else {
                         None
-                    };
+                    }
+                })
+                .collect::<Result<BTreeSet<_>>>()?;
 
-                    let new_cs_id: String = row.get("new_cs_id");
-                    let new_cs_id = if !new_cs_id.is_empty() {
-                        match new_cs_id
-                            .parse()
-                            .map_other_err("failed to parse the new chunk id")
-                        {
-                            Ok(id) => Some(id),
-                            Err(err) => return Some(Err(err)),
-                        }
-                    } else {
-                        None
-                    };
-
-                    ChangeType::new(old_cs_id, new_cs_id)
-                        .map(|change_type| Ok(Change::new(canonical_path, change_type)))
-                } else {
-                    None
-                }
-            })
-            .collect::<Result<BTreeSet<_>>>()?;
-
-            let parents: BTreeSet<i64> = sqlx::query(&format!(
+            let query = format!(
                 "SELECT parent_id
                 FROM `{}`
                 WHERE id = ?;",
                 TABLE_COMMIT_PARENTS,
-            ))
-            .bind(&commit_id)
-            .fetch_all(&mut *transaction)
-            .await
-            .map_other_err(format!(
-                "failed to fetch parents for commit `{}`",
-                &commit_id
-            ))?
-            .into_iter()
-            .map(|row| row.get("parent_id"))
-            .collect();
+            );
+
+            let parents: BTreeSet<i64> = sqlx::query(&query)
+                .bind(&commit_id)
+                .fetch_all(&mut *transaction)
+                .await
+                .map_other_err(format!(
+                    "failed to fetch parents for commit `{}`",
+                    &commit_id
+                ))?
+                .into_iter()
+                .map(|row| row.get("parent_id"))
+                .collect();
 
             next_commit_ids.extend(&parents);
 
+            let query = format!(
+                "SELECT owner, message, root_hash, date_time_utc 
+         FROM `{}`
+         WHERE repository_id=?
+         AND id=?;",
+                TABLE_COMMITS
+            );
+
             result.push(
-                match sqlx::query(&format!(
-                    "SELECT owner, message, root_hash, date_time_utc 
-             FROM `{}`
-             WHERE repository_id=?
-             AND id=?;",
-                    TABLE_COMMITS
-                ))
-                .bind(repository_id)
-                .bind(&commit_id)
-                .fetch_one(&mut *transaction)
-                .await
+                match sqlx::query(&query)
+                    .bind(repository_id)
+                    .bind(&commit_id)
+                    .fetch_one(&mut *transaction)
+                    .await
                 {
                     Ok(row) => {
                         let timestamp = DateTime::parse_from_rfc3339(row.get("date_time_utc"))
@@ -778,21 +786,23 @@ impl SqlIndex {
         repository_id: i64,
         commit: &Commit,
     ) -> Result<CommitId> {
-        let result = sqlx::query(&format!(
+        let query = format!(
             "INSERT INTO `{}` VALUES(?, NULL, ?, ?, ?, ?);",
             TABLE_COMMITS
-        ))
-        .bind(repository_id)
-        .bind(commit.owner.clone())
-        .bind(commit.message.clone())
-        .bind(commit.root_tree_id.clone())
-        .bind(commit.timestamp.to_rfc3339())
-        .execute(&mut *transaction)
-        .await
-        .map_other_err(format!(
-            "failed to insert the commit in repository {}",
-            repository_id
-        ))?;
+        );
+
+        let result = sqlx::query(&query)
+            .bind(repository_id)
+            .bind(commit.owner.clone())
+            .bind(commit.message.clone())
+            .bind(commit.root_tree_id.clone())
+            .bind(commit.timestamp.to_rfc3339())
+            .execute(&mut *transaction)
+            .await
+            .map_other_err(format!(
+                "failed to insert the commit in repository {}",
+                repository_id
+            ))?;
 
         let commit_id = result.last_insert_id().unwrap();
 
@@ -802,47 +812,45 @@ impl SqlIndex {
                 .try_into()
                 .map_other_err("failed to convert commit id")?;
 
-            sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?);",
-                TABLE_COMMIT_PARENTS
-            ))
-            .bind(commit_id)
-            .bind(parent_id)
-            .execute(&mut *transaction)
-            .await
-            .map_other_err(format!(
-                "failed to insert the commit parent `{}` for commit `{}`",
-                parent_id, &commit.id
-            ))?;
+            let query = format!("INSERT INTO `{}` VALUES(?, ?);", TABLE_COMMIT_PARENTS);
+
+            sqlx::query(&query)
+                .bind(commit_id)
+                .bind(parent_id)
+                .execute(&mut *transaction)
+                .await
+                .map_other_err(format!(
+                    "failed to insert the commit parent `{}` for commit `{}`",
+                    parent_id, &commit.id
+                ))?;
         }
 
         for change in &commit.changes {
-            sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-                TABLE_COMMIT_CHANGES
-            ))
-            .bind(commit_id)
-            .bind(change.canonical_path().to_string())
-            .bind(
-                change
-                    .change_type()
-                    .old_id()
-                    .map(std::string::ToString::to_string)
-                    .unwrap_or_default(),
-            )
-            .bind(
-                change
-                    .change_type()
-                    .new_id()
-                    .map(std::string::ToString::to_string)
-                    .unwrap_or_default(),
-            )
-            .execute(&mut *transaction)
-            .await
-            .map_other_err(format!(
-                "failed to insert the commit change for commit `{}`",
-                &commit.id
-            ))?;
+            let query = format!("INSERT INTO `{}` VALUES(?, ?, ?, ?);", TABLE_COMMIT_CHANGES);
+
+            sqlx::query(&query)
+                .bind(commit_id)
+                .bind(change.canonical_path().to_string())
+                .bind(
+                    change
+                        .change_type()
+                        .old_id()
+                        .map(std::string::ToString::to_string)
+                        .unwrap_or_default(),
+                )
+                .bind(
+                    change
+                        .change_type()
+                        .new_id()
+                        .map(std::string::ToString::to_string)
+                        .unwrap_or_default(),
+                )
+                .execute(&mut *transaction)
+                .await
+                .map_other_err(format!(
+                    "failed to insert the commit change for commit `{}`",
+                    &commit.id
+                ))?;
         }
 
         Ok(CommitId(

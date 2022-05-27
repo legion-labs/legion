@@ -101,18 +101,15 @@ async fn record_process_call_graph(
         .with_context(|| String::from("parsing process start time"))?;
     let begin_offset_ns = begin_ms * 1_000_000.0;
     let begin_time = start_time + chrono::Duration::nanoseconds(begin_offset_ns as i64);
+    let begin_time = begin_time.to_rfc3339();
 
     let end_offset_ns = end_ms * 1_000_000.0;
     let end_time = start_time + chrono::Duration::nanoseconds(end_offset_ns as i64);
+    let end_time = end_time.to_rfc3339();
     let streams = find_process_thread_streams(connection, &process.process_id).await?;
     for s in streams {
-        let blocks = find_stream_blocks_in_range(
-            connection,
-            &s.stream_id,
-            &begin_time.to_rfc3339(),
-            &end_time.to_rfc3339(),
-        )
-        .await?;
+        let blocks =
+            find_stream_blocks_in_range(connection, &s.stream_id, &begin_time, &end_time).await?;
 
         for b in blocks {
             let tree = call_trees

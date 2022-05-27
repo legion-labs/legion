@@ -15,7 +15,7 @@ use syn::{
     parse_macro_input, parse_quote,
     punctuated::Punctuated,
     visit_mut::{self, VisitMut},
-    Expr, ExprReturn, Ident, ItemFn, Stmt, Token,
+    Expr, ExprAwait, ExprReturn, Ident, ItemFn, Stmt, Token,
 };
 
 struct TraceArgs {
@@ -40,11 +40,12 @@ struct AwaitVisitor;
 
 impl VisitMut for AwaitVisitor {
     fn visit_expr_mut(&mut self, expr: &mut Expr) {
-        if let Expr::Await(_) = expr {
+        if let Expr::Await(ExprAwait { attrs: _, base, .. }) = expr {
             *expr = parse_quote! {
                 {
+                    let __lgn_tracing_await = #base;
                     lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
-                    let __lgn_tracing_temp_await_value = #expr;
+                    let __lgn_tracing_temp_await_value = __lgn_tracing_await.await;
                     lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
                     __lgn_tracing_temp_await_value
                 }
