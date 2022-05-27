@@ -369,6 +369,7 @@ impl MeshRenderer {
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
                 MemoryUsage::GpuOnly,
+                "draw_count",
             );
         }
 
@@ -382,6 +383,7 @@ impl MeshRenderer {
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
                 MemoryUsage::GpuOnly,
+                "draw_args",
             );
         }
 
@@ -395,6 +397,7 @@ impl MeshRenderer {
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS,
             MemoryUsage::GpuOnly,
+            "culled_count",
         );
 
         create_or_replace_buffer(
@@ -407,6 +410,7 @@ impl MeshRenderer {
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS,
             MemoryUsage::GpuOnly,
+            "tmp_culled_count",
         );
 
         create_or_replace_buffer(
@@ -419,6 +423,7 @@ impl MeshRenderer {
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS,
             MemoryUsage::GpuOnly,
+            "culled_args",
         );
 
         create_or_replace_buffer(
@@ -431,6 +436,7 @@ impl MeshRenderer {
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS,
             MemoryUsage::GpuOnly,
+            "tmp_culled_args",
         );
 
         if !self.gpu_instance_data.is_empty() {
@@ -443,17 +449,7 @@ impl MeshRenderer {
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
                 MemoryUsage::GpuOnly,
-            );
-
-            create_or_replace_buffer(
-                device_context,
-                &mut self.culling_buffers.culling_debug,
-                std::mem::size_of::<CullingDebugData>() as u64,
-                self.gpu_instance_data.len() as u64,
-                ResourceUsage::AS_INDIRECT_BUFFER
-                    | ResourceUsage::AS_SHADER_RESOURCE
-                    | ResourceUsage::AS_UNORDERED_ACCESS,
-                MemoryUsage::GpuOnly,
+                "culled_instances",
             );
 
             create_or_replace_buffer(
@@ -465,6 +461,19 @@ impl MeshRenderer {
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
                 MemoryUsage::GpuOnly,
+                "tmp_culled_instances",
+            );
+
+            create_or_replace_buffer(
+                device_context,
+                &mut self.culling_buffers.culling_debug,
+                std::mem::size_of::<CullingDebugData>() as u64,
+                self.gpu_instance_data.len() as u64,
+                ResourceUsage::AS_INDIRECT_BUFFER
+                    | ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_UNORDERED_ACCESS,
+                MemoryUsage::GpuOnly,
+                "culling_debug",
             );
         }
     }
@@ -923,6 +932,7 @@ fn create_or_replace_buffer(
     element_count: u64,
     usage_flags: ResourceUsage,
     memory_usage: MemoryUsage,
+    name: &str,
 ) {
     let required_size = element_count * element_size;
 
@@ -941,7 +951,7 @@ fn create_or_replace_buffer(
                 memory_usage,
                 always_mapped: false,
             },
-            "culling_args",
+            name,
         );
 
         let srv_view = new_buffer.create_view(BufferViewDef::as_structured_buffer_with_offset(

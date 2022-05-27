@@ -105,6 +105,11 @@ impl GpuCullingPass {
             draw_count_buffer_desc,
             GPUViewType::UnorderedAccess,
         ));
+        let draw_count_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
+            draw_count_buffer_id,
+            draw_count_buffer_desc,
+            GPUViewType::ShaderResource,
+        ));
 
         let draw_args_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
             draw_args_buffer_id,
@@ -263,6 +268,7 @@ impl GpuCullingPass {
                                 stencil: 0,
                             }),
                         )
+                        .read(draw_count_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
                             Self::execute_depth_layer_pass(
                                 context,
@@ -367,6 +373,7 @@ impl GpuCullingPass {
 
                     graphics_pass_builder
                         .depth_stencil(depth_view_id, RenderGraphLoadState::Load)
+                        .read(draw_count_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
                             Self::execute_depth_layer_pass(
                                 context,
