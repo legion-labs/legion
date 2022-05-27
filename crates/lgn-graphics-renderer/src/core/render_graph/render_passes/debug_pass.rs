@@ -1,7 +1,8 @@
 use crate::{
     components::RenderSurfaceExtents,
-    core::{RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId, RenderView},
+    core::{RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId},
     resources::{MeshManager, ModelManager},
+    script::RenderView,
 };
 
 pub struct DebugPass;

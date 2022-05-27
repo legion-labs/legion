@@ -14,6 +14,7 @@ mod cgen {
 
 use crate::core::{DebugStuff, RenderObjects};
 use crate::lighting::{RenderLight, RenderLightTestData};
+use crate::script::{Config, RenderScript, RenderView};
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
@@ -65,6 +66,7 @@ pub mod render_pass;
 
 pub mod core;
 pub mod features;
+pub mod script;
 pub mod shared;
 
 mod renderdoc;
@@ -82,9 +84,9 @@ use crate::{
         reflect_light_components, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
-    core::render_graph::{
-        AlphaBlendedLayerPass, Config, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
-        PostProcessPass, RenderScript, RenderView, SSAOPass, UiPass,
+    core::render_graph::render_passes::{
+        AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+        PostProcessPass, SSAOPass, UiPass,
     },
     egui::{egui_plugin::EguiPlugin, Egui},
     lighting::LightingManager,
@@ -724,7 +726,7 @@ fn render_update(
                         );
                     }
 
-                    let test_render_graph = true;
+                    let test_render_graph = false;
                     let frame_idx = render_scope.frame_idx();
                     if !test_render_graph || frame_idx % 2 == 0 {
                         render_surface.set_use_view_target(false);

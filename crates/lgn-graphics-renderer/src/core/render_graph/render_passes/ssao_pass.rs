@@ -1,8 +1,11 @@
 use lgn_graphics_api::{Format, GPUViewType};
 
-use crate::core::{
-    RenderGraphBuilder, RenderGraphLoadState, RenderGraphResourceDef, RenderGraphViewDef,
-    RenderGraphViewId, RenderView,
+use crate::{
+    core::{
+        RenderGraphBuilder, RenderGraphLoadState, RenderGraphResourceDef, RenderGraphViewDef,
+        RenderGraphViewId,
+    },
+    script::RenderView,
 };
 
 pub struct SSAOPass;
