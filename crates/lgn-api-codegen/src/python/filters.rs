@@ -1,5 +1,7 @@
 use crate::api::Type;
 
+pub use crate::filters::*;
+
 #[allow(clippy::unnecessary_wraps)]
 pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
     Ok(match type_ {

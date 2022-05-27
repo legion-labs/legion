@@ -1,5 +1,5 @@
 # ---------- Models ----------
-from enum import Enum
+from enum import Enum, auto
 
 
 
@@ -63,3 +63,33 @@ class TestOneOfResponse(Enum):
 
                 
 
+
+
+# ---------- Parameters -------
+
+
+        
+        GetCarsQuery
+                def __init__():
+                self.names = None # [str]                 
+                self.q = None # str                 
+                
+        
+        
+    
+
+        
+        
+    
+
+        
+        
+    
+
+
+# ---------- Client -------
+import requests
+response = requests.get('https://api.github.com')
+print(response)
+
+# ---------- Responses -------
