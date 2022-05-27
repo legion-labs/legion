@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use crate::lakehouse::jit_lakehouse::JitLakehouse;
-use crate::lakehouse::span_table::make_span_partitions;
+use crate::lakehouse::span_table::update_spans_delta_table;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::{prelude::*, time::ConvertTicks};
@@ -41,7 +41,7 @@ impl JitLakehouse for LocalJitLakehouse {
             .await
             .with_context(|| format!("creating folder {}", spans_table_path.display()))?;
 
-        make_span_partitions(
+        update_spans_delta_table(
             self.pool.clone(),
             self.blob_storage.clone(),
             process_id,

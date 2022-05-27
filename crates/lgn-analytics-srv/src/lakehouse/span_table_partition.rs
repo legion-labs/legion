@@ -1,13 +1,23 @@
 use anyhow::{Context, Result};
+use lgn_analytics::time::ConvertTicks;
+use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::CallTreeNode;
+use lgn_telemetry_proto::telemetry::BlockMetadata;
+use lgn_telemetry_proto::telemetry::Stream;
+use lgn_tracing::prelude::*;
 use parquet::file::properties::WriterProperties;
 use parquet::file::writer::FileWriter;
 use parquet::file::writer::SerializedFileWriter;
 use parquet::schema::parser::parse_message_type;
+use std::collections::HashMap;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+
+use crate::call_tree::CallTreeBuilder;
+use crate::thread_block_processor::parse_thread_block;
 
 use super::column::Column;
 
@@ -153,5 +163,54 @@ pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &AtomicU64, table: &mut
         }
     } else {
         make_rows_from_tree_impl(tree, 0, 0, next_id, &mut |row| table.append(&row));
+    }
+}
+
+#[allow(clippy::cast_possible_wrap)]
+pub async fn write_local_partition(
+    pool: sqlx::any::AnyPool,
+    blob_storage: Arc<dyn BlobStorage>,
+    stream: Stream,
+    block: BlockMetadata,
+    convert_ticks: ConvertTicks,
+    next_id: Arc<AtomicU64>,
+    spans_table_path: PathBuf,
+) -> Result<Option<deltalake::action::Action>> {
+    info!("processing block {}", &block.block_id);
+    let mut builder = CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks);
+    parse_thread_block(
+        pool,
+        blob_storage,
+        &stream,
+        block.block_id.clone(),
+        &mut builder,
+    )
+    .await
+    .with_context(|| "parsing thread block")?;
+    let processed_block = builder.finish();
+    if let Some(root) = processed_block.call_tree_root {
+        let mut rows = SpanRowGroup::new();
+        make_rows_from_tree(&root, &*next_id, &mut rows);
+        let filename = format!("spans_block_id={}.parquet", &block.block_id);
+        let parquet_full_path = spans_table_path.join(&filename);
+        let mut writer = SpanTablePartitionLocalWriter::create(&parquet_full_path)?;
+        writer.append(&rows)?;
+        writer.close()?;
+        let attr = std::fs::metadata(&parquet_full_path)?; //that's not cool, we should already know how big the file is
+        Ok(Some(deltalake::action::Action::add(
+            deltalake::action::Add {
+                path: filename,
+                size: attr.len() as i64,
+                partition_values: HashMap::new(),
+                partition_values_parsed: None,
+                modification_time: 0,
+                data_change: false,
+                stats: None,
+                stats_parsed: None,
+                tags: None,
+            },
+        )))
+    } else {
+        Ok(None)
     }
 }
