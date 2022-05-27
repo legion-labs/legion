@@ -36,7 +36,7 @@ fn on_render_surface_created_for_window(
     wnd_list: Res<'_, Windows>,
     winit_wnd_list: NonSend<'_, WinitWindows>,
     renderer: Res<'_, Renderer>,
-    mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     for event in event_render_surface_created.iter() {
         let render_surface = render_surfaces

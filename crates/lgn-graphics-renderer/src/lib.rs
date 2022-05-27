@@ -370,8 +370,7 @@ impl Plugin for RendererPlugin {
 }
 
 #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
-fn on_window_created(
-    mut commands: Commands<'_, '_>,
+fn on_window_created(    
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
@@ -382,16 +381,13 @@ fn on_window_created(
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(&renderer, &pipeline_manager, extents);
+        let render_surface = RenderSurface::new(wnd.id(), &renderer, &pipeline_manager, extents);
 
-        render_surfaces.insert(ev.id, render_surface.id());
+        render_surfaces.insert(render_surface);
 
         event_render_surface_created.send(RenderSurfaceCreatedForWindow {
-            window_id: ev.id,
-            render_surface_id: render_surface.id(),
+            window_id: ev.id,            
         });
-
-        commands.spawn().insert(render_surface);
     }
 }
 
@@ -399,48 +395,31 @@ fn on_window_created(
 fn on_window_resized(
     mut ev_wnd_resized: EventReader<'_, '_, WindowResized>,
     wnd_list: Res<'_, Windows>,
-    renderer: Res<'_, Renderer>,
-    mut q_render_surfaces: Query<'_, '_, &mut RenderSurface>,
-    render_surfaces: Res<'_, RenderSurfaces>,
+    renderer: Res<'_, Renderer>,    
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
     pipeline_manager: Res<'_, PipelineManager>,
 ) {
     let device_context = renderer.device_context();
-    for ev in ev_wnd_resized.iter() {
-        let render_surface_id = render_surfaces.get_from_window_id(ev.id);
-        if let Some(render_surface_id) = render_surface_id {
-            let render_surface = q_render_surfaces
-                .iter_mut()
-                .find(|x| x.id() == *render_surface_id);
-            if let Some(mut render_surface) = render_surface {
-                let wnd = wnd_list.get(ev.id).unwrap();
-                render_surface.resize(
-                    device_context,
-                    RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
-                    &pipeline_manager,
-                );
-            }
-        }
+    for ev in ev_wnd_resized.iter() {        
+        let wnd = wnd_list.get(ev.id).unwrap();
+        let render_surface = render_surfaces.try_get_from_window_id_mut(ev.id);
+        if let Some(render_surface) = render_surface {
+            render_surface.resize(
+                device_context,
+                RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
+                &pipeline_manager,
+            );            
+        }        
     }
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn on_window_close_requested(
-    mut commands: Commands<'_, '_>,
-    mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,
-    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
+fn on_window_close_requested(    
+    mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,    
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
-    for ev in ev_wnd_destroyed.iter() {
-        let render_surface_id = render_surfaces.get_from_window_id(ev.id);
-        if let Some(render_surface_id) = render_surface_id {
-            let query_result = query_render_surface
-                .iter()
-                .find(|x| x.1.id() == *render_surface_id);
-            if let Some(query_result) = query_result {
-                commands.entity(query_result.0).despawn();
-            }
-            render_surfaces.remove(ev.id);
-        }
+    for ev in ev_wnd_destroyed.iter() {        
+        render_surfaces.remove_from_window_id(ev.id);
     }
 }
 
@@ -468,10 +447,11 @@ fn render_update(
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
         ResMut<'_, PersistentDescriptorSetManager>,
+        ResMut<'_, RenderSurfaces>,
         EventReader<'_, '_, KeyboardInput>,
     ),
     queries: (
-        Query<'_, '_, &mut RenderSurface>,
+        
         Query<'_, '_, (&VisualComponent, &GlobalTransform), With<PickedComponent>>,
         Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,
         Query<'_, '_, &CameraComponent>,
@@ -484,13 +464,13 @@ fn render_update(
     let mut egui = resources.3;
     let mut debug_display = resources.4;
     let mut persistent_descriptor_set_manager = resources.5;
-    let mut keyboard_input_events = resources.6;
+    let mut render_surfaces = resources.6;
+    let mut keyboard_input_events = resources.7;
 
-    // queries
-    let mut q_render_surfaces = queries.0;
-    let q_picked_drawables = queries.1;
-    let q_manipulator_drawables = queries.2;
-    let q_cameras = queries.3;
+    // queries    
+    let q_picked_drawables = queries.0;
+    let q_manipulator_drawables = queries.1;
+    let q_cameras = queries.2;
 
     //
     // Simulation thread
@@ -681,7 +661,7 @@ fn render_update(
         }
 
         // For each surface/view, we have to execute the render graph
-        for mut render_surface in q_render_surfaces.iter_mut() {
+        for mut render_surface in render_surfaces.iter_mut() {
             // View descriptor set
             {
                 let mut screen_rect = picking_manager.screen_rect();
@@ -761,7 +741,7 @@ fn render_update(
                     &picking_manager,
                     &render_context,
                     cmd_buffer,
-                    render_surface.as_mut(),
+                    render_surface,
                     &instance_manager,
                     manipulator_drawables.as_slice(),
                     &render_objects,
@@ -776,7 +756,7 @@ fn render_update(
                 TmpRenderPass::render(
                     &render_context,
                     cmd_buffer,
-                    render_surface.as_mut(),
+                    render_surface,
                     &mesh_renderer,
                 );
 
@@ -785,7 +765,7 @@ fn render_update(
                 debug_renderpass.render(
                     &render_context,
                     cmd_buffer,
-                    render_surface.as_mut(),
+                    render_surface,
                         picked_drawables.as_slice(),
                         manipulator_drawables.as_slice(),
                     camera_component,
@@ -801,7 +781,7 @@ fn render_update(
                     egui_pass.render(
                         &mut render_context,
                         cmd_buffer,
-                        render_surface.as_mut(),
+                        render_surface,
                         &egui,
                     );
                 }
