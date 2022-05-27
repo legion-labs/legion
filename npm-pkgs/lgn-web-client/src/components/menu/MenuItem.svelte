@@ -20,6 +20,6 @@
 
 <style lang="postcss">
   .menu-dropdown-item {
-    @apply hover:bg-gray-500 cursor-pointer px-6 py-0.5 whitespace-nowrap text-item-low font-normal;
+    @apply hover:bg-gray-500 cursor-pointer px-6 py-0.5 whitespace-nowrap font-normal;
   }
 </style>
