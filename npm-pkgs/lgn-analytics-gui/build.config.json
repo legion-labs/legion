@@ -1,6 +1,6 @@
 {
   "appId": "com.legion.analytics",
-  "productName": "Performance & Analytics",
+  "productName": "Legion Performance Analytics",
   "directories": {
     "output": "dist"
   },
