@@ -20,10 +20,10 @@
   import type { BagResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
   import { currentResource } from "@/orchestrators/currentResource";
   import modal from "@/stores/modal";
-  import type { PropertyGridStore } from "@/stores/propertyGrid";
 
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyContainer from "./PropertyContainer.svelte";
+  import type { PropertyGridStore } from "./lib/propertyGridStore";
   import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,

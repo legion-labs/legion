@@ -19,10 +19,10 @@
     currentResourceError,
   } from "@/orchestrators/currentResource";
   import modal from "@/stores/modal";
-  import { createPropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyContainer from "./PropertyContainer.svelte";
   import PropertyGridHeader from "./PropertyGridHeader.svelte";
+  import { createPropertyGridStore } from "./lib/propertyGridStore";
   import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,

@@ -8,10 +8,10 @@
     BagResourceProperty,
     ResourceProperty,
   } from "@/components/propertyGrid/lib/propertyGrid";
-  import type { PropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyBag from "./PropertyBag.svelte";
   import PropertyUnit from "./PropertyUnit.svelte";
+  import type { PropertyGridStore } from "./lib/propertyGridStore";
   import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
