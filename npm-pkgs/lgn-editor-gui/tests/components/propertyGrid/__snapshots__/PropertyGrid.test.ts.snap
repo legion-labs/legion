@@ -71,12 +71,6 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                     <div
                       class="menu-dropdown-item svelte-1ozv7s8"
                     >
-                      Collapse All
-                    </div>
-                    
-                    <div
-                      class="menu-dropdown-item svelte-1ozv7s8"
-                    >
                       Copy Id
                     </div>
                     
