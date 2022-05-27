@@ -30,7 +30,7 @@ use lgn_online::codegen::Bytes;
                     {% if let Some(description) = field.description -%}/// {{ description }}{%- endif %}
                     #[serde(rename = "{{ field.name }}")]
                     {%- if field.required -%}
-                    pub {{ field.name|fmt_field }}: {{ field.type_|fmt_type }},    
+                    pub {{ field.name|fmt_field }}: {{ field.type_|fmt_type }},
                     {%- else -%}
                     #[serde(skip_serializing_if = "Option::is_none")]
                     pub {{ field.name|fmt_field }}: Option<{{ field.type_|fmt_type }}>,

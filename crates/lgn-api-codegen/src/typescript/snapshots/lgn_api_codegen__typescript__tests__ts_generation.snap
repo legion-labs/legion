@@ -36,6 +36,10 @@ export interface Api {
         },
     
     
+    headers: {
+        "span-id"?: string;
+        },
+    
     
     body: CarModel,}): Promise<CreateCarResponse>;
     
@@ -51,6 +55,17 @@ export interface Api {
     
     
     }): Promise<GetCarResponse>;
+    
+        
+        deleteCar(input: {
+    params: {
+        "space-id": string;
+        "car-id": bigint;
+        },
+    
+    
+    
+    }): Promise<DeleteCarResponse>;
     
 
     
@@ -130,7 +145,7 @@ export class Client implements Api {
     
     
     }): Promise<GetCarsResponse> {
-                const url = new URL(`${this.#baseUri}/spaces/${input.params["space-id"]}/car-service/cars`);
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/cars`);
 
                 const query: GetCarsQuery = { 
                         "names": input.query["names"],
@@ -164,9 +179,13 @@ export class Client implements Api {
         },
     
     
+    headers: {
+        "span-id"?: string;
+        },
+    
     
     body: CarModel,}): Promise<CreateCarResponse> {
-                const url = new URL(`${this.#baseUri}/spaces/${input.params["space-id"]}/car-service/cars`);
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/cars`);
 
                 
 
@@ -209,7 +228,7 @@ export class Client implements Api {
     
     
     }): Promise<GetCarResponse> {
-                const url = new URL(`${this.#baseUri}/spaces/${input.params["space-id"]}/car-service/cars/${input.params["car-id"]}`);
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/cars/${input.params["car-id"]}`);
 
                 
 
@@ -229,6 +248,37 @@ export class Client implements Api {
                 return GetCarResponse.fromResponse(response);
             }
         
+            
+
+            async deleteCar(input: {
+    params: {
+        "space-id": string;
+        "car-id": bigint;
+        },
+    
+    
+    
+    }): Promise<DeleteCarResponse> {
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/cars/${input.params["car-id"]}`);
+
+                
+
+                const headers = new Headers();
+
+                
+
+
+                
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "DELETE",
+                    headers,
+                    
+                });
+
+                return DeleteCarResponse.fromResponse(response);
+            }
+        
     
         
             
@@ -241,7 +291,7 @@ export class Client implements Api {
     
     
     body: Blob,}): Promise<TestBinaryResponse> {
-                const url = new URL(`${this.#baseUri}/spaces/${input.params["space-id"]}/car-service/test-binary`);
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/test-binary`);
 
                 
 
@@ -361,6 +411,8 @@ export class Client implements Api {
 
         
         
+        
+        
     
 
         
@@ -399,7 +451,7 @@ export class Client implements Api {
     
         
         
-        export type CreateCarResponse = (| { /** Created. */ type: "201", value: CarModel });
+        export type CreateCarResponse = (| { /** Created. */ type: "201" });
 
         export const CreateCarResponse = {
             async fromResponse(response: Response): Promise<CreateCarResponse> {
@@ -407,9 +459,7 @@ export class Client implements Api {
                     switch (response.status) {
                         
                             case 201: { 
-                                return {type: "201", value:
-                                                await response.json()
-                                            }
+                                return {type: "201", value:}
                             }default: {
                             throw new InternalError(`unexpected status code: ${status}`);
                         }
@@ -433,6 +483,28 @@ export class Client implements Api {
                                 return {type: "200", value:
                                                 await response.json()
                                             }
+                            }
+                            case 404: { 
+                                return {type: "404", value:}
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+        
+        
+        export type DeleteCarResponse = (| { /** Car deleted. */ type: "200" }| { /** Car not found. */ type: "404" });
+
+        export const DeleteCarResponse = {
+            async fromResponse(response: Response): Promise<DeleteCarResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:}
                             }
                             case 404: { 
                                 return {type: "404", value:}

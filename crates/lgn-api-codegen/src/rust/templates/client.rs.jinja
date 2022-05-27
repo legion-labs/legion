@@ -9,16 +9,16 @@ pub struct Client<C> {
 }
 
 impl<C> Client<C> {
-    pub fn new(inner: hyper::Client<C>, base_uri: &str) -> Self {
-        Self { 
-            inner, 
-            base_uri: base_uri.to_string(),
+    pub fn new(inner: hyper::Client<C>, base_uri: String) -> Self {
+        Self {
+            inner,
+            base_uri,
         }
     }
 }
 
 #[async_trait::async_trait]
-impl<C> super::Api for Client<C> 
+impl<C> super::Api for Client<C>
 where
     C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
 {% for (path, routes) in api.paths %}
@@ -27,15 +27,15 @@ where
 
         {% include "signature.rs.jinja" %}{
             let mut uri = format!(
-                "{}{{ path|fmt_rust_path }}", 
+                "{}{{ path|fmt_rust_path }}",
                 self.base_uri
                 {% for parameter in route.parameters.path -%}
                     , request.{{ parameter.name|snake_case }}
                 {% endfor -%}
-            );            
+            );
 
             {% if !route.parameters.query.is_empty() %}
-                let query = params::{{ route.name|pascal_case }}Query { 
+                let query = params::{{ route.name|pascal_case }}Query {
                     {% for parameter in route.parameters.query -%}
                         {{ parameter.name|snake_case }}: request.{{ parameter.name|snake_case }},
                     {% endfor -%}
@@ -43,7 +43,7 @@ where
                 let query_string = serde_qs::to_string(&query)?;
                 if !query_string.is_empty() {
                     uri += &format!("?{}", query_string);
-                }        
+                }
             {% endif -%}
 
             let mut req = Request::builder()
@@ -62,6 +62,14 @@ where
             {% else %}
                 .body(Body::empty()).unwrap();
             {% endif -%}
+
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
 
             {% if let Some(request_body) = route.request_body -%}
                 req.headers_mut().insert(
@@ -89,17 +97,17 @@ where
                                 })?,
                             );
                         }
-                    {% endif -%}                
+                    {% endif -%}
                 {% endfor -%}
             {% endif -%}
-            
+
             let resp = self.inner.request(req).await?;
 
-            let (resp_parts, resp_body) = resp.into_parts();
-            let resp_status = resp_parts.status;
-            context.set_response(resp_parts.into());
+            let (parts, body) = resp.into_parts();
+            let status = parts.status;
+            context.set_response(parts);
 
-            responses::{{ enum_name }}::from_response(resp_status, resp_body).await
+            responses::{{ enum_name }}::from_response(status, body).await
         }
     {% endfor %}
 {% endfor %}

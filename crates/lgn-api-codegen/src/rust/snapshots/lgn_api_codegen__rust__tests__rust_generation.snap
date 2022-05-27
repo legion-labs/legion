@@ -31,6 +31,12 @@ pub trait Api {
         request: requests::GetCarRequest,
     ) -> Result<responses::GetCarResponse>;
 
+    async fn delete_car(
+        &self,
+        context: &mut Context,
+        request: requests::DeleteCarRequest,
+    ) -> Result<responses::DeleteCarResponse>;
+
     async fn test_binary(
         &self,
         context: &mut Context,
@@ -124,11 +130,8 @@ pub mod client {
     }
 
     impl<C> Client<C> {
-        pub fn new(inner: hyper::Client<C>, base_uri: &str) -> Self {
-            Self {
-                inner,
-                base_uri: base_uri.to_string(),
-            }
+        pub fn new(inner: hyper::Client<C>, base_uri: String) -> Self {
+            Self { inner, base_uri }
         }
     }
 
@@ -143,7 +146,7 @@ pub mod client {
             request: requests::GetCarsRequest,
         ) -> Result<responses::GetCarsResponse> {
             let mut uri = format!(
-                "{}/spaces/{}/car-service/cars",
+                "{}/v1/spaces/{}/car-service/cars",
                 self.base_uri, request.space_id
             );
 
@@ -160,13 +163,21 @@ pub mod client {
                 .uri(uri)
                 .body(Body::empty())
                 .unwrap();
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
             let resp = self.inner.request(req).await?;
 
-            let (resp_parts, resp_body) = resp.into_parts();
-            let resp_status = resp_parts.status;
-            context.set_response(resp_parts.into());
+            let (parts, body) = resp.into_parts();
+            let status = parts.status;
+            context.set_response(parts);
 
-            responses::GetCarsResponse::from_response(resp_status, resp_body).await
+            responses::GetCarsResponse::from_response(status, body).await
         }
 
         async fn create_car(
@@ -175,7 +186,7 @@ pub mod client {
             request: requests::CreateCarRequest,
         ) -> Result<responses::CreateCarResponse> {
             let mut uri = format!(
-                "{}/spaces/{}/car-service/cars",
+                "{}/v1/spaces/{}/car-service/cars",
                 self.base_uri, request.space_id
             );
 
@@ -185,15 +196,31 @@ pub mod client {
                 .body(Body::from(serde_json::to_string(&request.body)?))
                 .map_err(|err| Error::InvalidBody(err.to_string()))?;
 
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
             req.headers_mut()
                 .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+
+            if let Some(span_id) = request.span_id {
+                req.headers_mut().insert(
+                    "span-id",
+                    HeaderValue::from_str(&span_id)
+                        .map_err(|err| Error::InvalidHeader(format!("span-id: {}", err)))?,
+                );
+            }
             let resp = self.inner.request(req).await?;
 
-            let (resp_parts, resp_body) = resp.into_parts();
-            let resp_status = resp_parts.status;
-            context.set_response(resp_parts.into());
+            let (parts, body) = resp.into_parts();
+            let status = parts.status;
+            context.set_response(parts);
 
-            responses::CreateCarResponse::from_response(resp_status, resp_body).await
+            responses::CreateCarResponse::from_response(status, body).await
         }
 
         async fn get_car(
@@ -202,7 +229,7 @@ pub mod client {
             request: requests::GetCarRequest,
         ) -> Result<responses::GetCarResponse> {
             let mut uri = format!(
-                "{}/spaces/{}/car-service/cars/{}",
+                "{}/v1/spaces/{}/car-service/cars/{}",
                 self.base_uri, request.space_id, request.car_id
             );
 
@@ -211,13 +238,53 @@ pub mod client {
                 .uri(uri)
                 .body(Body::empty())
                 .unwrap();
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
             let resp = self.inner.request(req).await?;
 
-            let (resp_parts, resp_body) = resp.into_parts();
-            let resp_status = resp_parts.status;
-            context.set_response(resp_parts.into());
+            let (parts, body) = resp.into_parts();
+            let status = parts.status;
+            context.set_response(parts);
 
-            responses::GetCarResponse::from_response(resp_status, resp_body).await
+            responses::GetCarResponse::from_response(status, body).await
+        }
+
+        async fn delete_car(
+            &self,
+            context: &mut Context,
+            request: requests::DeleteCarRequest,
+        ) -> Result<responses::DeleteCarResponse> {
+            let mut uri = format!(
+                "{}/v1/spaces/{}/car-service/cars/{}",
+                self.base_uri, request.space_id, request.car_id
+            );
+
+            let mut req = Request::builder()
+                .method(Method::DELETE)
+                .uri(uri)
+                .body(Body::empty())
+                .unwrap();
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
+            let resp = self.inner.request(req).await?;
+
+            let (parts, body) = resp.into_parts();
+            let status = parts.status;
+            context.set_response(parts);
+
+            responses::DeleteCarResponse::from_response(status, body).await
         }
 
         async fn test_binary(
@@ -226,7 +293,7 @@ pub mod client {
             request: requests::TestBinaryRequest,
         ) -> Result<responses::TestBinaryResponse> {
             let mut uri = format!(
-                "{}/spaces/{}/car-service/test-binary",
+                "{}/v1/spaces/{}/car-service/test-binary",
                 self.base_uri, request.space_id
             );
 
@@ -236,17 +303,25 @@ pub mod client {
                 .body(Body::from(request.body))
                 .map_err(|err| Error::InvalidBody(err.to_string()))?;
 
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
             req.headers_mut().insert(
                 CONTENT_TYPE,
                 HeaderValue::from_static("application/octet-stream"),
             );
             let resp = self.inner.request(req).await?;
 
-            let (resp_parts, resp_body) = resp.into_parts();
-            let resp_status = resp_parts.status;
-            context.set_response(resp_parts.into());
+            let (parts, body) = resp.into_parts();
+            let status = parts.status;
+            context.set_response(parts);
 
-            responses::TestBinaryResponse::from_response(resp_status, resp_body).await
+            responses::TestBinaryResponse::from_response(status, body).await
         }
 
         async fn test_one_of(
@@ -261,13 +336,21 @@ pub mod client {
                 .uri(uri)
                 .body(Body::empty())
                 .unwrap();
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
             let resp = self.inner.request(req).await?;
 
-            let (resp_parts, resp_body) = resp.into_parts();
-            let resp_status = resp_parts.status;
-            context.set_response(resp_parts.into());
+            let (parts, body) = resp.into_parts();
+            let status = parts.status;
+            context.set_response(parts);
 
-            responses::TestOneOfResponse::from_response(resp_status, resp_body).await
+            responses::TestOneOfResponse::from_response(status, body).await
         }
     }
 }
@@ -298,15 +381,15 @@ pub mod server {
     {
         router
             .route(
-                "/spaces/:space-id/car-service/cars",
+                "/v1/spaces/:space-id/car-service/cars",
                 routing::get(get_cars::<T>).post(create_car::<T>),
             )
             .route(
-                "/spaces/:space-id/car-service/cars/:car-id",
-                routing::get(get_car::<T>),
+                "/v1/spaces/:space-id/car-service/cars/:car-id",
+                routing::get(get_car::<T>).delete(delete_car::<T>),
             )
             .route(
-                "/spaces/:space-id/car-service/test-binary",
+                "/v1/spaces/:space-id/car-service/test-binary",
                 routing::post(test_binary::<T>),
             )
             .route("/test-one-of", routing::get(test_one_of::<T>))
@@ -322,7 +405,8 @@ pub mod server {
     where
         T: super::Api + Send + Sync + 'static,
     {
-        let mut context = Context::from(Some(parts.into()), None);
+        let mut context = Context::default();
+        context.set_request(parts);
         let request = requests::GetCarsRequest {
             space_id,
             names: query.names,
@@ -330,10 +414,20 @@ pub mod server {
         };
 
         let resp = api.get_cars(&mut context, request).await;
-        match resp {
+        let mut resp = match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
         }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
     }
 
     async fn create_car<T>(
@@ -345,14 +439,41 @@ pub mod server {
     where
         T: super::Api + Send + Sync + 'static,
     {
-        let mut context = Context::from(Some(parts.into()), None);
-        let request = requests::CreateCarRequest { space_id, body };
+        let span_id = parts.headers.get(HeaderName::from_static("span-id"));
+        let span_id = span_id.map(|span_id| {
+            span_id
+                .to_str()
+                .map_err(|err| {
+                    error!("Failed to read `span-id` header: {}", err);
+                    Error::InvalidHeader("span-id".to_owned()).into_response()
+                })
+                .unwrap()
+                .to_owned()
+        });
+
+        let mut context = Context::default();
+        context.set_request(parts);
+        let request = requests::CreateCarRequest {
+            space_id,
+            span_id,
+            body,
+        };
 
         let resp = api.create_car(&mut context, request).await;
-        match resp {
+        let mut resp = match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
         }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
     }
 
     async fn get_car<T>(
@@ -363,14 +484,54 @@ pub mod server {
     where
         T: super::Api + Send + Sync + 'static,
     {
-        let mut context = Context::from(Some(parts.into()), None);
+        let mut context = Context::default();
+        context.set_request(parts);
         let request = requests::GetCarRequest { space_id, car_id };
 
         let resp = api.get_car(&mut context, request).await;
-        match resp {
+        let mut resp = match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
         }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
+    }
+
+    async fn delete_car<T>(
+        Extension(api): Extension<T>,
+        Path((space_id, car_id)): Path<(String, i64)>,
+        parts: Parts,
+    ) -> Response
+    where
+        T: super::Api + Send + Sync + 'static,
+    {
+        let mut context = Context::default();
+        context.set_request(parts);
+        let request = requests::DeleteCarRequest { space_id, car_id };
+
+        let resp = api.delete_car(&mut context, request).await;
+        let mut resp = match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
+        }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
     }
 
     async fn test_binary<T>(
@@ -382,31 +543,53 @@ pub mod server {
     where
         T: super::Api + Send + Sync + 'static,
     {
-        let mut context = Context::from(Some(parts.into()), None);
+        let mut context = Context::default();
+        context.set_request(parts);
         let request = requests::TestBinaryRequest {
             space_id,
             body: body.into(),
         };
 
         let resp = api.test_binary(&mut context, request).await;
-        match resp {
+        let mut resp = match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
         }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
     }
 
     async fn test_one_of<T>(Extension(api): Extension<T>, parts: Parts) -> Response
     where
         T: super::Api + Send + Sync + 'static,
     {
-        let mut context = Context::from(Some(parts.into()), None);
+        let mut context = Context::default();
+        context.set_request(parts);
         let request = requests::TestOneOfRequest {};
 
         let resp = api.test_one_of(&mut context, request).await;
-        match resp {
+        let mut resp = match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
         }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
     }
 }
 
@@ -489,11 +672,18 @@ pub mod requests {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct CreateCarRequest {
         pub space_id: String,
+        pub span_id: Option<String>,
         pub body: super::models::Car,
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct GetCarRequest {
+        pub space_id: String,
+        pub car_id: i64,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct DeleteCarRequest {
         pub space_id: String,
         pub car_id: i64,
     }
@@ -559,33 +749,19 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum CreateCarResponse {
         /// Created.
-        Status201(CreateCar201Response),
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct CreateCar201Response {
-        pub body: super::models::Car,
+        Status201,
     }
 
     impl CreateCarResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                CreateCarResponse::Status201(r) => {
-                    let body = Json(r.body);
-                    (StatusCode::from_u16(201).unwrap(), body).into_response()
-                }
+                CreateCarResponse::Status201 => StatusCode::from_u16(201).unwrap().into_response(),
             }
         }
 
         pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
             match status.as_u16() {
-                201 => {
-                    let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = CreateCar201Response {
-                        body: serde_json::from_slice(&bytes)?,
-                    };
-                    Ok(Self::Status201(resp))
-                }
+                201 => Ok(Self::Status201),
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",
                     status
@@ -627,6 +803,35 @@ pub mod responses {
                     };
                     Ok(Self::Status200(resp))
                 }
+
+                404 => Ok(Self::Status404),
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum DeleteCarResponse {
+        /// Car deleted.
+        Status200,
+        /// Car not found.
+        Status404,
+    }
+
+    impl DeleteCarResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                DeleteCarResponse::Status200 => StatusCode::from_u16(200).unwrap().into_response(),
+                DeleteCarResponse::Status404 => StatusCode::from_u16(404).unwrap().into_response(),
+            }
+        }
+
+        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
+            match status.as_u16() {
+                200 => Ok(Self::Status200),
 
                 404 => Ok(Self::Status404),
                 status => Err(Error::Internal(format!(

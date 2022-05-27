@@ -18,7 +18,7 @@ where
 {
     router
     {% for (path, routes) in api.paths %}
-        .route("{{ path|fmt_axum_path }}", 
+        .route("{{ path|fmt_axum_path }}",
             {% for route in routes -%}
                 {% if loop.first %}routing::{% else %}.{% endif -%}
                 {{ route.method|lower }}({{ route.name|snake_case }}::<T>)
@@ -77,16 +77,17 @@ where
                 {% endif %}
             {% endfor %}
 
-            let mut context = Context::from(Some(parts.into()), None);
+            let mut context = Context::default();
+            context.set_request(parts);
             let request = requests::{{ route.name|pascal_case }}Request {
                 {%- for parameter in route.parameters.path -%}
-                    {{ parameter.name|snake_case }}, 
+                    {{ parameter.name|snake_case }},
                 {%- endfor -%}
                 {%- for parameter in route.parameters.query -%}
-                    {{ parameter.name|snake_case }}: query.{{ parameter.name|snake_case }}, 
+                    {{ parameter.name|snake_case }}: query.{{ parameter.name|snake_case }},
                 {%- endfor -%}
                 {%- for parameter in route.parameters.header -%}
-                    {{ parameter.name|snake_case }}, 
+                    {{ parameter.name|snake_case }},
                 {%- endfor -%}
                 {%- if let Some(request_body) = route.request_body -%}
                     {% match request_body.content.media_type -%}
@@ -96,13 +97,23 @@ where
                             body: body.into(),
                     {% endmatch -%}
                 {%- endif -%}
-            };            
+            };
 
             let resp = api.{{ route.name|snake_case }}(&mut context, request).await;
-            match resp {
+            let mut resp = match resp {
                 Ok(resp) => resp.into_response(),
                 Err(err) => err.into_response(),
+            };
+
+            if let Some(extensions) = context.response_extensions() {
+                resp.extensions_mut().extend(extensions);
             }
+
+            if let Some(headers) = context.response_headers() {
+                resp.headers_mut().extend(headers);
+            }
+
+            resp
         }
     {% endfor %}
 {% endfor %}

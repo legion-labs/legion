@@ -26,7 +26,7 @@ use axum::{
             {% if let Some(content) = response.content -%}
                 {% let response_name = "{}{}Response"|format(route.name|pascal_case, status_code) %}
                 #[derive(Debug, Clone, PartialEq, Eq)]
-                pub struct {{ response_name }} {                    
+                pub struct {{ response_name }} {
                         pub body: {{ content.type_|fmt_type }},
                 }
             {% endif -%}
@@ -35,8 +35,8 @@ use axum::{
         impl {{ enum_name }} {
             pub(crate) fn into_response(self) -> Response {
                 match self {
-                    {% for (status_code, response) in route.responses %}    
-                        {%- if let Some(content) = response.content -%}                    
+                    {% for (status_code, response) in route.responses %}
+                        {%- if let Some(content) = response.content -%}
                             {{ enum_name }}::Status{{ status_code }}(r) => {
                                     {% match content.media_type -%}
                                         {% when MediaType::Json -%}
@@ -45,12 +45,12 @@ use axum::{
                                             let body: Vec<u8> = r.body.into();
                                     {% endmatch -%}
                                     (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), body).into_response()
-                            },    
+                            },
                         {%- else -%}
                             {{ enum_name }}::Status{{ status_code }} => {
                                 StatusCode::from_u16({{ status_code.as_u16() }}).unwrap().into_response()
                             },
-                        {%- endif -%}                                         
+                        {%- endif -%}
                     {% endfor %}
                 }
             }
@@ -66,23 +66,23 @@ use axum::{
                         {% for (status_code, response) in route.responses %}
                             {% let response_name = "{}{}Response"|format(route.name|pascal_case, status_code) %}
                             {{ status_code.as_u16() }} => 
-                                {       
+                                {
                                     {%- if let Some(content) = response.content -%}
-                                        let bytes = hyper::body::to_bytes(body).await?;                         
-                                        let resp = {{ response_name }} {                                        
+                                        let bytes = hyper::body::to_bytes(body).await?;
+                                        let resp = {{ response_name }} {
                                                 {% match content.media_type %}
                                                     {% when MediaType::Json %}
                                                         body: serde_json::from_slice(&bytes)?,
                                                     {% when MediaType::Bytes %}
                                                         body: bytes.into(),
-                                                {% endmatch %}               
-                                                                        
+                                                {% endmatch %}
+
                                         };
                                         Ok(Self::Status{{ status_code }}(resp))
                                     {%- else -%}
                                         Ok(Self::Status{{ status_code }})
                                     {%- endif -%}
-                                },     
+                                },
                         {%- endfor -%}
                         status => Err(Error::Internal(format!(
                             "unexpected status code: {}",
@@ -90,7 +90,7 @@ use axum::{
                         ))),
                     }
                 {% endif %}
-            } 
+            }
         }
     {% endfor %}
 {% endfor %}
