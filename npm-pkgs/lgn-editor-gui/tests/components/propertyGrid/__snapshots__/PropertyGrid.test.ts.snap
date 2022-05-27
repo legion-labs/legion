@@ -183,13 +183,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       class="property-input-root svelte-6f7lir"
                     >
                       <div
-                        class="root svelte-19bwb4k w-full readonly default"
+                        class="root svelte-yvswm7 w-full readonly default"
                       >
                          
                         <input
                           aria-autocomplete="none"
                           autocomplete="none"
-                          class="input svelte-19bwb4k default"
+                          class="input svelte-yvswm7 default"
                           readonly=""
                           type="text"
                         />
@@ -382,10 +382,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               class="color-property-root svelte-1473p73"
                             >
                               <div
-                                class="root svelte-19bwb4k w-full default with-extension"
+                                class="root svelte-yvswm7 w-full default with-extension"
                               >
                                 <div
-                                  class="extension left-extension svelte-19bwb4k extension-default"
+                                  class="extension left-extension svelte-yvswm7 extension-default"
                                 >
                                   <div
                                     class="h-full w-full flex items-center justify-center"
@@ -399,12 +399,12 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-19bwb4k with-right-extension with-left-extension default"
+                                  class="input svelte-yvswm7 with-right-extension with-left-extension default"
                                   type="text"
                                 />
                                  
                                 <div
-                                  class="extension right-extension svelte-19bwb4k extension-default"
+                                  class="extension right-extension svelte-yvswm7 extension-default"
                                 >
                                   <div
                                     class="root svelte-bi7nzo"
@@ -2294,13 +2294,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             class="property-input-root svelte-6f7lir"
                           >
                             <div
-                              class="root svelte-19bwb4k w-full default"
+                              class="root svelte-yvswm7 w-full default"
                             >
                                
                               <input
                                 aria-autocomplete="none"
                                 autocomplete="none"
-                                class="input svelte-19bwb4k default"
+                                class="input svelte-yvswm7 default"
                                 type="text"
                               />
                                
