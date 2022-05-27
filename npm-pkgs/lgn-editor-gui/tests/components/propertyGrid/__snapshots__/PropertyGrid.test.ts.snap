@@ -4,8 +4,9 @@ exports[`PropertyGrid > renders properly with an error 1`] = `
 <body>
   <div>
     <div
-      class="h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden"
+      class="property-grid-root svelte-1vh94yj"
     >
+       
       <div
         class="italic"
       >
@@ -20,48 +21,181 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
 <body>
   <div>
     <div
-      class="h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden"
+      class="property-grid-root svelte-1vh94yj"
     >
+      <div
+        class="property-header-root svelte-1t13ky9"
+      >
+        <div
+          class="header-root svelte-1t13ky9"
+        >
+          <div
+            class="header-text svelte-1t13ky9"
+          >
+            Properties
+          </div>
+           
+          <div
+            class="action svelte-1t13ky9"
+          >
+            <div>
+              
+              <div
+                class="menu svelte-141n1ii flex"
+              >
+                <div
+                  class="menu-title svelte-141n1ii"
+                >
+                  <div
+                    class="self-center"
+                  >
+                    
+                  </div>
+                   
+                  <iframe
+                    aria-hidden="true"
+                    src="about:blank"
+                    style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                    tabindex="-1"
+                  />
+                </div>
+                 
+                <div
+                  class="menu-dropdown svelte-141n1ii hidden"
+                >
+                  <div
+                    class="menu-dropdown-items svelte-141n1ii"
+                    style=""
+                  >
+                    
+                    <div
+                      class="menu-dropdown-item svelte-1ozv7s8"
+                    >
+                      Collapse All
+                    </div>
+                    
+                    <div
+                      class="menu-dropdown-item svelte-1ozv7s8"
+                    >
+                      Copy Id
+                    </div>
+                    
+                    
+                    <iframe
+                      aria-hidden="true"
+                      src="about:blank"
+                      style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                      tabindex="-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+         
+        <div
+          class="search svelte-1t13ky9"
+        >
+          <input
+            class="svelte-1t13ky9"
+            placeholder="Search property"
+            type="text"
+          />
+           
+          <div
+            class="icon svelte-1t13ky9"
+          >
+            
+          </div>
+        </div>
+         
+      </div>
+       
       
       <div>
         <div
-          class="root svelte-1mg9gpy"
+          class="property-root svelte-vcn98g flex"
         >
            
           <div>
             
             <div>
               <div
-                class="root svelte-tg2vtt"
+                class="property-unit-root svelte-nl1sff bg-surface-700"
+                style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-tg2vtt"
-                  title="test_string"
+                  class="property-name svelte-nl1sff"
+                  title="test_string (String)"
                 >
-                  <div
-                    class="truncate"
-                  >
-                    test_string
-                  </div>
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  T
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  s
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  S
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  r
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  n
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  g
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  
                 </div>
                  
                 <div
-                  class="property-input-container svelte-tg2vtt"
+                  class="property-input-container svelte-nl1sff"
                 >
                   <div
-                    class="property-input svelte-tg2vtt"
+                    class="property-input svelte-nl1sff"
                   >
                     <div
-                      class="root svelte-1gjlayc"
+                      class="property-input-root svelte-6f7lir"
                     >
                       <div
-                        class="root svelte-jk7kfq w-full readonly default"
+                        class="root svelte-19bwb4k w-full readonly default"
                       >
                          
                         <input
                           aria-autocomplete="none"
                           autocomplete="none"
-                          class="input svelte-jk7kfq default"
+                          class="input svelte-19bwb4k default"
                           readonly=""
                           type="text"
                         />
@@ -72,28 +206,115 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   </div>
                 </div>
               </div>
+              
             </div>
             
             
             <div>
               <div
-                class="root svelte-1mg9gpy"
+                class="property-root svelte-vcn98g flex"
               >
                 <div
-                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                  title="GroupTest1"
+                  class="property-header svelte-vcn98g"
+                  style="padding-left: 0.25rem;"
                 >
                   <div>
                     
                      
                     <div
-                      class="truncate"
+                      class="truncate my-auto"
+                      title="group"
                     >
-                      GroupTest1
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      G
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      r
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      u
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      p
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      T
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      1
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      
                     </div>
                   </div>
                    
-                   
+                  <div>
+                    
+                    <div
+                      class="menu svelte-141n1ii"
+                      hidden=""
+                    >
+                      <div
+                        class="menu-title svelte-141n1ii"
+                      >
+                        <div
+                          class="self-center"
+                        >
+                          
+                        </div>
+                         
+                        <iframe
+                          aria-hidden="true"
+                          src="about:blank"
+                          style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                          tabindex="-1"
+                        />
+                      </div>
+                       
+                      <div
+                        class="menu-dropdown svelte-141n1ii hidden"
+                      >
+                        <div
+                          class="menu-dropdown-items svelte-141n1ii"
+                          style=""
+                        >
+                          
+                          
+                          
+                          <iframe
+                            aria-hidden="true"
+                            src="about:blank"
+                            style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                            tabindex="-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                    
                 </div>
                  
@@ -101,39 +322,79 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-700"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="test_color"
+                        class="property-name svelte-nl1sff"
+                        title="test_color (Color)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          test_color
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        T
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        e
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        s
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                         
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        C
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        o
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        l
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        o
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        r
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <div
-                              class="root svelte-1nb3fu7"
+                              class="color-property-root svelte-1473p73"
                             >
                               <div
-                                class="root svelte-jk7kfq w-full default with-extension"
+                                class="root svelte-19bwb4k w-full default with-extension"
                               >
                                 <div
-                                  class="extension left-extension svelte-jk7kfq extension-default"
+                                  class="extension left-extension svelte-19bwb4k extension-default"
                                 >
                                   <div
-                                    class="h-full w-full flex items-center justify-center text-xl font-bold"
+                                    class="h-full w-full flex items-center justify-center"
                                     slot="leftExtension"
                                     title="Hexadecimal color value"
                                   >
@@ -144,12 +405,12 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-jk7kfq with-right-extension with-left-extension default"
+                                  class="input svelte-19bwb4k with-right-extension with-left-extension default"
                                   type="text"
                                 />
                                  
                                 <div
-                                  class="extension right-extension svelte-jk7kfq extension-default"
+                                  class="extension right-extension svelte-19bwb4k extension-default"
                                 >
                                   <div
                                     class="root svelte-bi7nzo"
@@ -240,7 +501,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                             <input
                                               aria-autocomplete="none"
                                               autocomplete="none"
-                                              class="input svelte-1s4bysp default w-full no-arrow"
+                                              class="input svelte-18m1n2f default w-full no-arrow"
                                               max="255"
                                               min="0"
                                               step="0"
@@ -254,7 +515,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                             <input
                                               aria-autocomplete="none"
                                               autocomplete="none"
-                                              class="input svelte-1s4bysp default w-full no-arrow"
+                                              class="input svelte-18m1n2f default w-full no-arrow"
                                               max="255"
                                               min="0"
                                               step="0"
@@ -268,7 +529,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                             <input
                                               aria-autocomplete="none"
                                               autocomplete="none"
-                                              class="input svelte-1s4bysp default w-full no-arrow"
+                                              class="input svelte-18m1n2f default w-full no-arrow"
                                               max="255"
                                               min="0"
                                               step="0"
@@ -282,7 +543,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                             <input
                                               aria-autocomplete="none"
                                               autocomplete="none"
-                                              class="input svelte-1s4bysp default w-full no-arrow"
+                                              class="input svelte-18m1n2f default w-full no-arrow"
                                               max="255"
                                               min="0"
                                               step="0"
@@ -301,6 +562,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                   
@@ -308,74 +570,142 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-700"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="test_rotation"
+                        class="property-name svelte-nl1sff"
+                        title="test_rotation (Quat)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          test_rotation
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        T
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        e
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        s
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                         
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        R
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        o
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        a
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        i
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        o
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        n
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <div
-                              class="root svelte-1p3vtt3"
+                              class="quaternion-root svelte-119d0wj"
                             >
                               <div
-                                class="svelte-1p3vtt3"
+                                class="vector-value svelte-1tmof08"
                               >
+                                <div
+                                  class="vector-value-name svelte-1tmof08 bg-vector-w"
+                                />
+                                 
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
+                                  class="input svelte-18m1n2f default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
                               </div>
                                
                               <div
-                                class="svelte-1p3vtt3"
+                                class="vector-value svelte-1tmof08"
                               >
+                                <div
+                                  class="vector-value-name svelte-1tmof08 bg-vector-x"
+                                />
+                                 
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
+                                  class="input svelte-18m1n2f default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
                               </div>
                                
                               <div
-                                class="svelte-1p3vtt3"
+                                class="vector-value svelte-1tmof08"
                               >
+                                <div
+                                  class="vector-value-name svelte-1tmof08 bg-vector-y"
+                                />
+                                 
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
+                                  class="input svelte-18m1n2f default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
                               </div>
                                
                               <div
-                                class="svelte-1p3vtt3"
+                                class="vector-value svelte-1tmof08"
                               >
+                                <div
+                                  class="vector-value-name svelte-1tmof08 bg-vector-z"
+                                />
+                                 
                                 <input
                                   aria-autocomplete="none"
                                   autocomplete="none"
-                                  class="input svelte-1s4bysp default w-full no-arrow"
+                                  class="input svelte-18m1n2f default w-full no-arrow"
                                   step="0"
                                   type="number"
                                 />
@@ -386,6 +716,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                 </div>
@@ -395,23 +726,109 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="root svelte-1mg9gpy"
+                class="property-root svelte-vcn98g flex"
               >
                 <div
-                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                  title="GroupTest2"
+                  class="property-header svelte-vcn98g"
+                  style="padding-left: 0.25rem;"
                 >
                   <div>
                     
                      
                     <div
-                      class="truncate"
+                      class="truncate my-auto"
+                      title="group"
                     >
-                      GroupTest2
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      G
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      r
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      u
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      p
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      T
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      2
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      
                     </div>
                   </div>
                    
-                   
+                  <div>
+                    
+                    <div
+                      class="menu svelte-141n1ii"
+                      hidden=""
+                    >
+                      <div
+                        class="menu-title svelte-141n1ii"
+                      >
+                        <div
+                          class="self-center"
+                        >
+                          
+                        </div>
+                         
+                        <iframe
+                          aria-hidden="true"
+                          src="about:blank"
+                          style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                          tabindex="-1"
+                        />
+                      </div>
+                       
+                      <div
+                        class="menu-dropdown svelte-141n1ii hidden"
+                      >
+                        <div
+                          class="menu-dropdown-items svelte-141n1ii"
+                          style=""
+                        >
+                          
+                          
+                          
+                          <iframe
+                            aria-hidden="true"
+                            src="about:blank"
+                            style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                            tabindex="-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                    
                 </div>
                  
@@ -419,36 +836,72 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-700"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="test_bool"
+                        class="property-name svelte-nl1sff"
+                        title="test_bool (bool)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          test_bool
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        T
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        e
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        s
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                         
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        B
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        o
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        o
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        l
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <div
-                              class="boolean-property svelte-1gjlayc"
+                              class="boolean-property svelte-6f7lir"
                             >
                               <div
-                                class="root group svelte-lo75i2"
+                                class="root group svelte-1d3pkyc"
                               >
                                 <div
-                                  class="handler svelte-lo75i2 handler-off"
+                                  class="handler svelte-1d3pkyc handler-off"
                                 />
                               </div>
                             </div>
@@ -457,37 +910,86 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-800"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="test_float32"
+                        class="property-name svelte-nl1sff"
+                        title="test_float32 (f32)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          test_float32
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        T
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        e
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        s
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                         
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        F
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        l
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        o
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        a
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        3
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        2
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              class="input svelte-18m1n2f default w-full no-arrow text-right"
                               step="0"
                               type="number"
                             />
@@ -496,37 +998,70 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-700"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="test_int"
+                        class="property-name svelte-nl1sff"
+                        title="test_int (i32)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          test_int
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        T
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        e
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        s
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                         
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        I
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        n
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              class="input svelte-18m1n2f default w-full no-arrow text-right"
                               step="0"
                               type="number"
                             />
@@ -535,6 +1070,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                 </div>
@@ -544,32 +1080,80 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="root svelte-tg2vtt"
+                class="property-unit-root svelte-nl1sff bg-surface-800"
+                style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-tg2vtt"
-                  title="test_float64"
+                  class="property-name svelte-nl1sff"
+                  title="test_float64 (f64)"
                 >
-                  <div
-                    class="truncate"
-                  >
-                    test_float64
-                  </div>
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  T
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  s
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  F
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  l
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  o
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  a
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  6
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  4
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  
                 </div>
                  
                 <div
-                  class="property-input-container svelte-tg2vtt"
+                  class="property-input-container svelte-nl1sff"
                 >
                   <div
-                    class="property-input svelte-tg2vtt"
+                    class="property-input svelte-nl1sff"
                   >
                     <div
-                      class="root svelte-1gjlayc"
+                      class="property-input-root svelte-6f7lir"
                     >
                       <input
                         aria-autocomplete="none"
                         autocomplete="none"
-                        class="input svelte-1s4bysp default w-full no-arrow text-right"
+                        class="input svelte-18m1n2f default w-full no-arrow text-right"
                         step="0"
                         type="number"
                       />
@@ -578,73 +1162,167 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   </div>
                 </div>
               </div>
+              
             </div>
             
             
             <div>
               <div
-                class="root svelte-1mg9gpy"
+                class="property-root svelte-vcn98g flex"
+                hidden=""
               >
                 <div
-                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                  title="test_blob"
+                  class="property-header svelte-vcn98g"
+                  style="padding-left: 0.25rem;"
                 >
                   <div>
                     
                      
                     <div
-                      class="truncate"
+                      class="truncate my-auto"
+                      title="Vec<u8>"
                     >
-                      test_blob
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      b
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      l
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      b
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      
                     </div>
                   </div>
                    
-                   
-                   
-                  <div
-                    class="add-vector svelte-1mg9gpy"
-                    title="Add property to vector"
-                  >
-                    +
+                  <div>
+                    
+                    <div
+                      class="menu svelte-141n1ii flex"
+                    >
+                      <div
+                        class="menu-title svelte-141n1ii"
+                      >
+                        <div
+                          class="self-center"
+                        >
+                          
+                        </div>
+                         
+                        <iframe
+                          aria-hidden="true"
+                          src="about:blank"
+                          style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                          tabindex="-1"
+                        />
+                      </div>
+                       
+                      <div
+                        class="menu-dropdown svelte-141n1ii hidden"
+                      >
+                        <div
+                          class="menu-dropdown-items svelte-141n1ii"
+                          style=""
+                        >
+                          
+                          <div
+                            class="menu-dropdown-item svelte-1ozv7s8"
+                          >
+                            Add property to vector
+                          </div>
+                          
+                          
+                          <iframe
+                            aria-hidden="true"
+                            src="about:blank"
+                            style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                            tabindex="-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                   
                 </div>
                  
                 <div>
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-700"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="[0]"
+                        class="property-name svelte-nl1sff"
+                        title="[0] (u8)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          [0]
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        [
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        0
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        ]
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              class="input svelte-18m1n2f default w-full no-arrow text-right"
                               step="0"
                               type="number"
                             />
                              
                             <div
-                              class="close-button svelte-1gjlayc"
+                              class="close-button svelte-6f7lir"
                             >
                               ×
                             </div>
@@ -652,43 +1330,56 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-800"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="[1]"
+                        class="property-name svelte-nl1sff"
+                        title="[1] (u8)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          [1]
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        [
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        1
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        ]
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              class="input svelte-18m1n2f default w-full no-arrow text-right"
                               step="0"
                               type="number"
                             />
                              
                             <div
-                              class="close-button svelte-1gjlayc"
+                              class="close-button svelte-6f7lir"
                             >
                               ×
                             </div>
@@ -696,43 +1387,56 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-700"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="[2]"
+                        class="property-name svelte-nl1sff"
+                        title="[2] (u8)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          [2]
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        [
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        2
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        ]
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              class="input svelte-18m1n2f default w-full no-arrow text-right"
                               step="0"
                               type="number"
                             />
                              
                             <div
-                              class="close-button svelte-1gjlayc"
+                              class="close-button svelte-6f7lir"
                             >
                               ×
                             </div>
@@ -740,43 +1444,56 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-800"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="[3]"
+                        class="property-name svelte-nl1sff"
+                        title="[3] (u8)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          [3]
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        [
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        3
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        ]
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <input
                               aria-autocomplete="none"
                               autocomplete="none"
-                              class="input svelte-1s4bysp default w-full no-arrow text-right"
+                              class="input svelte-18m1n2f default w-full no-arrow text-right"
                               step="0"
                               type="number"
                             />
                              
                             <div
-                              class="close-button svelte-1gjlayc"
+                              class="close-button svelte-6f7lir"
                             >
                               ×
                             </div>
@@ -784,6 +1501,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                 </div>
@@ -793,23 +1511,121 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="root svelte-1mg9gpy"
+                class="property-root svelte-vcn98g flex"
               >
                 <div
-                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                  title="test_sub_type"
+                  class="property-header svelte-vcn98g"
+                  style="padding-left: 0.25rem;"
                 >
                   <div>
                     
                      
                     <div
-                      class="truncate"
+                      class="truncate my-auto"
+                      title="TestSubType1"
                     >
-                      test_sub_type
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      u
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      b
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      y
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      p
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      
                     </div>
                   </div>
                    
-                   
+                  <div>
+                    
+                    <div
+                      class="menu svelte-141n1ii"
+                      hidden=""
+                    >
+                      <div
+                        class="menu-title svelte-141n1ii"
+                      >
+                        <div
+                          class="self-center"
+                        >
+                          
+                        </div>
+                         
+                        <iframe
+                          aria-hidden="true"
+                          src="about:blank"
+                          style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                          tabindex="-1"
+                        />
+                      </div>
+                       
+                      <div
+                        class="menu-dropdown svelte-141n1ii hidden"
+                      >
+                        <div
+                          class="menu-dropdown-items svelte-141n1ii"
+                          style=""
+                        >
+                          
+                          
+                          
+                          <iframe
+                            aria-hidden="true"
+                            src="about:blank"
+                            style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                            tabindex="-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                    
                 </div>
                  
@@ -817,59 +1633,211 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="root svelte-1mg9gpy with-indent"
+                      class="property-root svelte-vcn98g flex"
                     >
                       <div
-                        class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                        title="test_components"
+                        class="property-header svelte-vcn98g"
+                        style="padding-left: 0.5rem;"
                       >
                         <div>
                           
                            
                           <div
-                            class="truncate"
+                            class="truncate my-auto"
+                            title="Vec<Box<dyn Component>>"
                           >
-                            test_components
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            t
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            e
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            s
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            t
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            _
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            c
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            o
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            m
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            p
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            o
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            n
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            e
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            n
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            t
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            s
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            
                           </div>
                         </div>
                          
-                         
-                         
-                        <div
-                          class="add-vector svelte-1mg9gpy"
-                          title="Add property to vector"
-                        >
-                          +
+                        <div>
+                          
+                          <div
+                            class="menu svelte-141n1ii flex"
+                          >
+                            <div
+                              class="menu-title svelte-141n1ii"
+                            >
+                              <div
+                                class="self-center"
+                              >
+                                
+                              </div>
+                               
+                              <iframe
+                                aria-hidden="true"
+                                src="about:blank"
+                                style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                tabindex="-1"
+                              />
+                            </div>
+                             
+                            <div
+                              class="menu-dropdown svelte-141n1ii hidden"
+                            >
+                              <div
+                                class="menu-dropdown-items svelte-141n1ii"
+                                style=""
+                              >
+                                
+                                <div
+                                  class="menu-dropdown-item svelte-1ozv7s8"
+                                >
+                                  Add property to vector
+                                </div>
+                                
+                                
+                                <iframe
+                                  aria-hidden="true"
+                                  src="about:blank"
+                                  style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                  tabindex="-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
                         </div>
+                         
                       </div>
                        
                       <div>
                         
                         <div>
                           <div
-                            class="root svelte-1mg9gpy with-indent"
+                            class="property-root svelte-vcn98g flex"
                           >
                             <div
-                              class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                              title="[0]"
+                              class="property-header svelte-vcn98g"
+                              style="padding-left: 0.75rem;"
                             >
                               <div>
                                 
                                  
                                 <div
-                                  class="truncate"
+                                  class="truncate my-auto"
+                                  title="TestComponent"
                                 >
-                                  [0]
+                                  <mark
+                                    class="bg-orange-700 text-black font-bold"
+                                  />
+                                  0
+                                  <mark
+                                    class="bg-orange-700 text-black font-bold"
+                                  />
+                                  
                                 </div>
                               </div>
                                
-                              <div
-                                class="delete-button svelte-1mg9gpy"
-                                title="Remove Component"
-                              >
-                                ×
+                              <div>
+                                
+                                <div
+                                  class="menu svelte-141n1ii flex"
+                                >
+                                  <div
+                                    class="menu-title svelte-141n1ii"
+                                  >
+                                    <div
+                                      class="self-center"
+                                    >
+                                      
+                                    </div>
+                                     
+                                    <iframe
+                                      aria-hidden="true"
+                                      src="about:blank"
+                                      style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                      tabindex="-1"
+                                    />
+                                  </div>
+                                   
+                                  <div
+                                    class="menu-dropdown svelte-141n1ii hidden"
+                                  >
+                                    <div
+                                      class="menu-dropdown-items svelte-141n1ii"
+                                      style=""
+                                    >
+                                      <div
+                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                      >
+                                        Delete component
+                                      </div>
+                                      
+                                      
+                                      
+                                      <iframe
+                                        aria-hidden="true"
+                                        src="about:blank"
+                                        style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                        tabindex="-1"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                               
                                
                             </div>
                              
@@ -877,32 +1845,64 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               
                               <div>
                                 <div
-                                  class="root svelte-tg2vtt"
+                                  class="property-unit-root svelte-nl1sff bg-surface-700"
+                                  style="padding-left: 1rem;"
                                 >
                                   <div
-                                    class="property-name svelte-tg2vtt"
-                                    title="test_i32"
+                                    class="property-name svelte-nl1sff"
+                                    title="test_i32 (i32)"
                                   >
-                                    <div
-                                      class="truncate"
-                                    >
-                                      test_i32
-                                    </div>
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    T
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    e
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    s
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    t
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                     
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    I
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    3
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    2
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    
                                   </div>
                                    
                                   <div
-                                    class="property-input-container svelte-tg2vtt"
+                                    class="property-input-container svelte-nl1sff"
                                   >
                                     <div
-                                      class="property-input svelte-tg2vtt"
+                                      class="property-input svelte-nl1sff"
                                     >
                                       <div
-                                        class="root svelte-1gjlayc"
+                                        class="property-input-root svelte-6f7lir"
                                       >
                                         <input
                                           aria-autocomplete="none"
                                           autocomplete="none"
-                                          class="input svelte-1s4bysp default w-full no-arrow text-right"
+                                          class="input svelte-18m1n2f default w-full no-arrow text-right"
                                           step="0"
                                           type="number"
                                         />
@@ -911,6 +1911,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                     </div>
                                   </div>
                                 </div>
+                                
                               </div>
                               
                             </div>
@@ -920,29 +1921,77 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         
                         <div>
                           <div
-                            class="root svelte-1mg9gpy with-indent"
+                            class="property-root svelte-vcn98g flex"
                           >
                             <div
-                              class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                              title="[1]"
+                              class="property-header svelte-vcn98g"
+                              style="padding-left: 0.75rem;"
                             >
                               <div>
                                 
                                  
                                 <div
-                                  class="truncate"
+                                  class="truncate my-auto"
+                                  title="TestComponent"
                                 >
-                                  [1]
+                                  <mark
+                                    class="bg-orange-700 text-black font-bold"
+                                  />
+                                  1
+                                  <mark
+                                    class="bg-orange-700 text-black font-bold"
+                                  />
+                                  
                                 </div>
                               </div>
                                
-                              <div
-                                class="delete-button svelte-1mg9gpy"
-                                title="Remove Component"
-                              >
-                                ×
+                              <div>
+                                
+                                <div
+                                  class="menu svelte-141n1ii flex"
+                                >
+                                  <div
+                                    class="menu-title svelte-141n1ii"
+                                  >
+                                    <div
+                                      class="self-center"
+                                    >
+                                      
+                                    </div>
+                                     
+                                    <iframe
+                                      aria-hidden="true"
+                                      src="about:blank"
+                                      style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                      tabindex="-1"
+                                    />
+                                  </div>
+                                   
+                                  <div
+                                    class="menu-dropdown svelte-141n1ii hidden"
+                                  >
+                                    <div
+                                      class="menu-dropdown-items svelte-141n1ii"
+                                      style=""
+                                    >
+                                      <div
+                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                      >
+                                        Delete component
+                                      </div>
+                                      
+                                      
+                                      
+                                      <iframe
+                                        aria-hidden="true"
+                                        src="about:blank"
+                                        style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                        tabindex="-1"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                               
                                
                             </div>
                              
@@ -950,32 +1999,64 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               
                               <div>
                                 <div
-                                  class="root svelte-tg2vtt"
+                                  class="property-unit-root svelte-nl1sff bg-surface-700"
+                                  style="padding-left: 1rem;"
                                 >
                                   <div
-                                    class="property-name svelte-tg2vtt"
-                                    title="test_i32"
+                                    class="property-name svelte-nl1sff"
+                                    title="test_i32 (i32)"
                                   >
-                                    <div
-                                      class="truncate"
-                                    >
-                                      test_i32
-                                    </div>
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    T
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    e
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    s
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    t
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                     
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    I
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    3
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    2
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    
                                   </div>
                                    
                                   <div
-                                    class="property-input-container svelte-tg2vtt"
+                                    class="property-input-container svelte-nl1sff"
                                   >
                                     <div
-                                      class="property-input svelte-tg2vtt"
+                                      class="property-input svelte-nl1sff"
                                     >
                                       <div
-                                        class="root svelte-1gjlayc"
+                                        class="property-input-root svelte-6f7lir"
                                       >
                                         <input
                                           aria-autocomplete="none"
                                           autocomplete="none"
-                                          class="input svelte-1s4bysp default w-full no-arrow text-right"
+                                          class="input svelte-18m1n2f default w-full no-arrow text-right"
                                           step="0"
                                           type="number"
                                         />
@@ -984,6 +2065,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                     </div>
                                   </div>
                                 </div>
+                                
                               </div>
                               
                             </div>
@@ -993,29 +2075,77 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         
                         <div>
                           <div
-                            class="root svelte-1mg9gpy with-indent"
+                            class="property-root svelte-vcn98g flex"
                           >
                             <div
-                              class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                              title="[2]"
+                              class="property-header svelte-vcn98g"
+                              style="padding-left: 0.75rem;"
                             >
                               <div>
                                 
                                  
                                 <div
-                                  class="truncate"
+                                  class="truncate my-auto"
+                                  title="TestComponent"
                                 >
-                                  [2]
+                                  <mark
+                                    class="bg-orange-700 text-black font-bold"
+                                  />
+                                  2
+                                  <mark
+                                    class="bg-orange-700 text-black font-bold"
+                                  />
+                                  
                                 </div>
                               </div>
                                
-                              <div
-                                class="delete-button svelte-1mg9gpy"
-                                title="Remove Component"
-                              >
-                                ×
+                              <div>
+                                
+                                <div
+                                  class="menu svelte-141n1ii flex"
+                                >
+                                  <div
+                                    class="menu-title svelte-141n1ii"
+                                  >
+                                    <div
+                                      class="self-center"
+                                    >
+                                      
+                                    </div>
+                                     
+                                    <iframe
+                                      aria-hidden="true"
+                                      src="about:blank"
+                                      style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                      tabindex="-1"
+                                    />
+                                  </div>
+                                   
+                                  <div
+                                    class="menu-dropdown svelte-141n1ii hidden"
+                                  >
+                                    <div
+                                      class="menu-dropdown-items svelte-141n1ii"
+                                      style=""
+                                    >
+                                      <div
+                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                      >
+                                        Delete component
+                                      </div>
+                                      
+                                      
+                                      
+                                      <iframe
+                                        aria-hidden="true"
+                                        src="about:blank"
+                                        style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                        tabindex="-1"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
-                               
                                
                             </div>
                              
@@ -1023,32 +2153,64 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               
                               <div>
                                 <div
-                                  class="root svelte-tg2vtt"
+                                  class="property-unit-root svelte-nl1sff bg-surface-700"
+                                  style="padding-left: 1rem;"
                                 >
                                   <div
-                                    class="property-name svelte-tg2vtt"
-                                    title="test_i32"
+                                    class="property-name svelte-nl1sff"
+                                    title="test_i32 (i32)"
                                   >
-                                    <div
-                                      class="truncate"
-                                    >
-                                      test_i32
-                                    </div>
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    T
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    e
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    s
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    t
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                     
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    I
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    3
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    2
+                                    <mark
+                                      class="bg-orange-700 text-black font-bold"
+                                    />
+                                    
                                   </div>
                                    
                                   <div
-                                    class="property-input-container svelte-tg2vtt"
+                                    class="property-input-container svelte-nl1sff"
                                   >
                                     <div
-                                      class="property-input svelte-tg2vtt"
+                                      class="property-input svelte-nl1sff"
                                     >
                                       <div
-                                        class="root svelte-1gjlayc"
+                                        class="property-input-root svelte-6f7lir"
                                       >
                                         <input
                                           aria-autocomplete="none"
                                           autocomplete="none"
-                                          class="input svelte-1s4bysp default w-full no-arrow text-right"
+                                          class="input svelte-18m1n2f default w-full no-arrow text-right"
                                           step="0"
                                           type="number"
                                         />
@@ -1057,6 +2219,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                     </div>
                                   </div>
                                 </div>
+                                
                               </div>
                               
                             </div>
@@ -1070,36 +2233,80 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="root svelte-tg2vtt"
+                      class="property-unit-root svelte-nl1sff bg-surface-800"
+                      style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-tg2vtt"
-                        title="test_string"
+                        class="property-name svelte-nl1sff"
+                        title="test_string (String)"
                       >
-                        <div
-                          class="truncate"
-                        >
-                          test_string
-                        </div>
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        T
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        e
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        s
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                         
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        S
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        t
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        r
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        i
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        n
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        g
+                        <mark
+                          class="bg-orange-700 text-black font-bold"
+                        />
+                        
                       </div>
                        
                       <div
-                        class="property-input-container svelte-tg2vtt"
+                        class="property-input-container svelte-nl1sff"
                       >
                         <div
-                          class="property-input svelte-tg2vtt"
+                          class="property-input svelte-nl1sff"
                         >
                           <div
-                            class="root svelte-1gjlayc"
+                            class="property-input-root svelte-6f7lir"
                           >
                             <div
-                              class="root svelte-jk7kfq w-full default"
+                              class="root svelte-19bwb4k w-full default"
                             >
                                
                               <input
                                 aria-autocomplete="none"
                                 autocomplete="none"
-                                class="input svelte-jk7kfq default"
+                                class="input svelte-19bwb4k default"
                                 type="text"
                               />
                                
@@ -1109,28 +2316,127 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                       </div>
                     </div>
+                    
                   </div>
                   
                   
                   <div>
                     <div
-                      class="root svelte-1mg9gpy with-indent"
+                      class="property-root svelte-vcn98g flex"
                     >
                       <div
-                        class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                        title="test_sub_type"
+                        class="property-header svelte-vcn98g"
+                        style="padding-left: 0.5rem;"
                       >
                         <div>
                           
                            
                           <div
-                            class="truncate"
+                            class="truncate my-auto"
+                            title="TestSubType2"
                           >
-                            test_sub_type
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            t
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            e
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            s
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            t
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            _
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            s
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            u
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            b
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            _
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            t
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            y
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            p
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            e
+                            <mark
+                              class="bg-orange-700 text-black font-bold"
+                            />
+                            
                           </div>
                         </div>
                          
-                         
+                        <div>
+                          
+                          <div
+                            class="menu svelte-141n1ii"
+                            hidden=""
+                          >
+                            <div
+                              class="menu-title svelte-141n1ii"
+                            >
+                              <div
+                                class="self-center"
+                              >
+                                
+                              </div>
+                               
+                              <iframe
+                                aria-hidden="true"
+                                src="about:blank"
+                                style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                tabindex="-1"
+                              />
+                            </div>
+                             
+                            <div
+                              class="menu-dropdown svelte-141n1ii hidden"
+                            >
+                              <div
+                                class="menu-dropdown-items svelte-141n1ii"
+                                style=""
+                              >
+                                
+                                
+                                
+                                <iframe
+                                  aria-hidden="true"
+                                  src="about:blank"
+                                  style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                                  tabindex="-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                          
                       </div>
                        
@@ -1138,62 +2444,106 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         
                         <div>
                           <div
-                            class="root svelte-tg2vtt"
+                            class="property-unit-root svelte-nl1sff bg-surface-700"
+                            style="padding-left: 0.75rem;"
                           >
                             <div
-                              class="property-name svelte-tg2vtt"
-                              title="test_vec"
+                              class="property-name svelte-nl1sff"
+                              title="test_vec (Vec3)"
                             >
-                              <div
-                                class="truncate"
-                              >
-                                test_vec
-                              </div>
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              T
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              e
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              s
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              t
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                               
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              V
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              e
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              c
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              
                             </div>
                              
                             <div
-                              class="property-input-container svelte-tg2vtt"
+                              class="property-input-container svelte-nl1sff"
                             >
                               <div
-                                class="property-input svelte-tg2vtt"
+                                class="property-input svelte-nl1sff"
                               >
                                 <div
-                                  class="root svelte-1gjlayc"
+                                  class="property-input-root svelte-6f7lir"
                                 >
                                   <div
-                                    class="root svelte-1p3vtt3"
+                                    class="vector-root svelte-135641u"
                                   >
                                     <div
-                                      class="svelte-1p3vtt3"
+                                      class="vector-value svelte-1tmof08"
                                     >
+                                      <div
+                                        class="vector-value-name svelte-1tmof08 bg-vector-x"
+                                      />
+                                       
                                       <input
                                         aria-autocomplete="none"
                                         autocomplete="none"
-                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        class="input svelte-18m1n2f default w-full no-arrow"
                                         step="0"
                                         type="number"
                                       />
                                     </div>
                                      
                                     <div
-                                      class="svelte-1p3vtt3"
+                                      class="vector-value svelte-1tmof08"
                                     >
+                                      <div
+                                        class="vector-value-name svelte-1tmof08 bg-vector-y"
+                                      />
+                                       
                                       <input
                                         aria-autocomplete="none"
                                         autocomplete="none"
-                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        class="input svelte-18m1n2f default w-full no-arrow"
                                         step="0"
                                         type="number"
                                       />
                                     </div>
                                      
                                     <div
-                                      class="svelte-1p3vtt3"
+                                      class="vector-value svelte-1tmof08"
                                     >
+                                      <div
+                                        class="vector-value-name svelte-1tmof08 bg-vector-z"
+                                      />
+                                       
                                       <input
                                         aria-autocomplete="none"
                                         autocomplete="none"
-                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        class="input svelte-18m1n2f default w-full no-arrow"
                                         step="0"
                                         type="number"
                                       />
@@ -1204,6 +2554,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               </div>
                             </div>
                           </div>
+                          
                         </div>
                         
                       </div>
@@ -1217,23 +2568,129 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="root svelte-1mg9gpy"
+                class="property-root svelte-vcn98g flex"
               >
                 <div
-                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                  title="test_option_set"
+                  class="property-header svelte-vcn98g"
+                  style="padding-left: 0.25rem;"
                 >
                   <div>
                     
                      
                     <div
-                      class="truncate"
+                      class="truncate my-auto"
+                      title="Option<TestSubType2>"
                     >
-                      test_option_set
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      p
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      i
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      n
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      
                     </div>
                   </div>
                    
-                   
+                  <div>
+                    
+                    <div
+                      class="menu svelte-141n1ii"
+                      hidden=""
+                    >
+                      <div
+                        class="menu-title svelte-141n1ii"
+                      >
+                        <div
+                          class="self-center"
+                        >
+                          
+                        </div>
+                         
+                        <iframe
+                          aria-hidden="true"
+                          src="about:blank"
+                          style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                          tabindex="-1"
+                        />
+                      </div>
+                       
+                      <div
+                        class="menu-dropdown svelte-141n1ii hidden"
+                      >
+                        <div
+                          class="menu-dropdown-items svelte-141n1ii"
+                          style=""
+                        >
+                          
+                          
+                          
+                          <iframe
+                            aria-hidden="true"
+                            src="about:blank"
+                            style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                            tabindex="-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                    
                 </div>
                  
@@ -1241,69 +2698,113 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="root svelte-1mg9gpy with-indent"
+                      class="property-root svelte-vcn98g flex"
                     >
                        
                       <div>
                         
                         <div>
                           <div
-                            class="root svelte-tg2vtt"
+                            class="property-unit-root svelte-nl1sff bg-surface-700"
+                            style="padding-left: 0.75rem;"
                           >
                             <div
-                              class="property-name svelte-tg2vtt"
-                              title="test_vec"
+                              class="property-name svelte-nl1sff"
+                              title="test_vec (Vec3)"
                             >
-                              <div
-                                class="truncate"
-                              >
-                                test_vec
-                              </div>
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              T
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              e
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              s
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              t
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                               
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              V
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              e
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              c
+                              <mark
+                                class="bg-orange-700 text-black font-bold"
+                              />
+                              
                             </div>
                              
                             <div
-                              class="property-input-container svelte-tg2vtt"
+                              class="property-input-container svelte-nl1sff"
                             >
                               <div
-                                class="property-input svelte-tg2vtt"
+                                class="property-input svelte-nl1sff"
                               >
                                 <div
-                                  class="root svelte-1gjlayc"
+                                  class="property-input-root svelte-6f7lir"
                                 >
                                   <div
-                                    class="root svelte-1p3vtt3"
+                                    class="vector-root svelte-135641u"
                                   >
                                     <div
-                                      class="svelte-1p3vtt3"
+                                      class="vector-value svelte-1tmof08"
                                     >
+                                      <div
+                                        class="vector-value-name svelte-1tmof08 bg-vector-x"
+                                      />
+                                       
                                       <input
                                         aria-autocomplete="none"
                                         autocomplete="none"
-                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        class="input svelte-18m1n2f default w-full no-arrow"
                                         step="0"
                                         type="number"
                                       />
                                     </div>
                                      
                                     <div
-                                      class="svelte-1p3vtt3"
+                                      class="vector-value svelte-1tmof08"
                                     >
+                                      <div
+                                        class="vector-value-name svelte-1tmof08 bg-vector-y"
+                                      />
+                                       
                                       <input
                                         aria-autocomplete="none"
                                         autocomplete="none"
-                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        class="input svelte-18m1n2f default w-full no-arrow"
                                         step="0"
                                         type="number"
                                       />
                                     </div>
                                      
                                     <div
-                                      class="svelte-1p3vtt3"
+                                      class="vector-value svelte-1tmof08"
                                     >
+                                      <div
+                                        class="vector-value-name svelte-1tmof08 bg-vector-z"
+                                      />
+                                       
                                       <input
                                         aria-autocomplete="none"
                                         autocomplete="none"
-                                        class="input svelte-1s4bysp default w-full no-arrow"
+                                        class="input svelte-18m1n2f default w-full no-arrow"
                                         step="0"
                                         type="number"
                                       />
@@ -1314,6 +2815,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               </div>
                             </div>
                           </div>
+                          
                         </div>
                         
                       </div>
@@ -1327,23 +2829,134 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="root svelte-1mg9gpy"
+                class="property-root svelte-vcn98g flex"
+                hidden=""
               >
                 <div
-                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                  title="test_option_none"
+                  class="property-header svelte-vcn98g"
+                  style="padding-left: 0.25rem;"
                 >
                   <div>
                     
                      
                     <div
-                      class="truncate"
+                      class="truncate my-auto"
+                      title="Option<TestSubType2>"
                     >
-                      test_option_none
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      p
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      i
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      n
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      n
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      n
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      
                     </div>
                   </div>
                    
-                   
+                  <div>
+                    
+                    <div
+                      class="menu svelte-141n1ii"
+                      hidden=""
+                    >
+                      <div
+                        class="menu-title svelte-141n1ii"
+                      >
+                        <div
+                          class="self-center"
+                        >
+                          
+                        </div>
+                         
+                        <iframe
+                          aria-hidden="true"
+                          src="about:blank"
+                          style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                          tabindex="-1"
+                        />
+                      </div>
+                       
+                      <div
+                        class="menu-dropdown svelte-141n1ii hidden"
+                      >
+                        <div
+                          class="menu-dropdown-items svelte-141n1ii"
+                          style=""
+                        >
+                          
+                          
+                          
+                          <iframe
+                            aria-hidden="true"
+                            src="about:blank"
+                            style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                            tabindex="-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                    
                 </div>
                  
@@ -1354,55 +2967,132 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="root svelte-tg2vtt"
+                class="property-unit-root svelte-nl1sff bg-surface-700"
+                style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-tg2vtt"
-                  title="test_resource_path_option"
+                  class="property-name svelte-nl1sff"
+                  title="test_resource_path_option (Option<ResourcePathId>)"
                 >
-                  <div
-                    class="truncate"
-                  >
-                    test_resource_path_option
-                  </div>
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  T
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  s
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  R
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  s
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  o
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  u
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  r
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  c
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  P
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  a
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  h
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  O
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  p
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  o
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  n
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  
                 </div>
                  
                 <div
-                  class="property-input-container svelte-tg2vtt"
+                  class="property-input-container svelte-nl1sff"
                 >
                   <div
-                    class="property-input svelte-tg2vtt"
+                    class="property-input svelte-nl1sff"
                   >
                     <div
-                      class="root svelte-1gjlayc"
+                      class="property-input-root svelte-6f7lir"
                     >
                       <div
-                        class="option-property svelte-1sn8kpr"
+                        class="action-button svelte-9lo2x4"
                       >
-                        <div
-                          class="cursor-help svelte-1sn8kpr"
-                          title="This property's value is optional and no value has been set yet"
-                        >
-                          <div
-                            class="cursor-help-icon svelte-1sn8kpr"
-                          >
-                            ?
-                          </div>
-                        </div>
-                         
-                        <div
-                          class="option-property-checkbox svelte-1sn8kpr"
-                        >
-                          <div
-                            class="root svelte-10vzrsx default"
-                          >
-                            <input
-                              class="input svelte-10vzrsx"
-                              type="checkbox"
-                            />
-                             
-                          </div>
-                        </div>
+                        
                       </div>
                       
                        
@@ -1410,35 +3100,169 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   </div>
                 </div>
               </div>
+              
             </div>
             
             
             <div>
               <div
-                class="root svelte-1mg9gpy"
+                class="property-root svelte-vcn98g flex"
+                hidden=""
               >
                 <div
-                  class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-                  title="test_resource_path_vec"
+                  class="property-header svelte-vcn98g"
+                  style="padding-left: 0.25rem;"
                 >
                   <div>
                     
                      
                     <div
-                      class="truncate"
+                      class="truncate my-auto"
+                      title="Vec<ResourcePathId>"
                     >
-                      test_resource_path_vec
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      r
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      s
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      o
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      u
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      r
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      c
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      p
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      a
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      t
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      h
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      _
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      v
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      e
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      c
+                      <mark
+                        class="bg-orange-700 text-black font-bold"
+                      />
+                      
                     </div>
                   </div>
                    
-                   
-                   
-                  <div
-                    class="add-vector svelte-1mg9gpy"
-                    title="Add property to vector"
-                  >
-                    +
+                  <div>
+                    
+                    <div
+                      class="menu svelte-141n1ii flex"
+                    >
+                      <div
+                        class="menu-title svelte-141n1ii"
+                      >
+                        <div
+                          class="self-center"
+                        >
+                          
+                        </div>
+                         
+                        <iframe
+                          aria-hidden="true"
+                          src="about:blank"
+                          style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                          tabindex="-1"
+                        />
+                      </div>
+                       
+                      <div
+                        class="menu-dropdown svelte-141n1ii hidden"
+                      >
+                        <div
+                          class="menu-dropdown-items svelte-141n1ii"
+                          style=""
+                        >
+                          
+                          <div
+                            class="menu-dropdown-item svelte-1ozv7s8"
+                          >
+                            Add property to vector
+                          </div>
+                          
+                          
+                          <iframe
+                            aria-hidden="true"
+                            src="about:blank"
+                            style="display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; border: 0; opacity: 0; pointer-events: none; z-index: -1;"
+                            tabindex="-1"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                   
                 </div>
                  
                 <div />
@@ -1448,68 +3272,180 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="root svelte-tg2vtt"
+                class="property-unit-root svelte-nl1sff bg-surface-700"
+                style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-tg2vtt"
-                  title="test_option_primitive_set"
+                  class="property-name svelte-nl1sff"
+                  title="test_option_primitive_set (Option<Vec3>)"
                 >
-                  <div
-                    class="truncate"
-                  >
-                    test_option_primitive_set
-                  </div>
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  T
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  s
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  O
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  p
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  o
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  n
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  P
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  r
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  m
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  v
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  S
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  
                 </div>
                  
                 <div
-                  class="property-input-container svelte-tg2vtt"
+                  class="property-input-container svelte-nl1sff"
                 >
                   <div
-                    class="property-input svelte-tg2vtt"
+                    class="property-input svelte-nl1sff"
                   >
                     <div
-                      class="root svelte-1gjlayc"
+                      class="property-input-root svelte-6f7lir"
                     >
                       <div
-                        class="option-property svelte-1sn8kpr"
+                        class="option-property svelte-1lh30ip"
                       >
                         <div
-                          class="root svelte-1gjlayc"
+                          class="property-input-root svelte-6f7lir"
                         >
                           <div
-                            class="root svelte-1p3vtt3"
+                            class="vector-root svelte-135641u"
                           >
                             <div
-                              class="svelte-1p3vtt3"
+                              class="vector-value svelte-1tmof08"
                             >
+                              <div
+                                class="vector-value-name svelte-1tmof08 bg-vector-x"
+                              />
+                               
                               <input
                                 aria-autocomplete="none"
                                 autocomplete="none"
-                                class="input svelte-1s4bysp default w-full no-arrow"
+                                class="input svelte-18m1n2f default w-full no-arrow"
                                 step="0"
                                 type="number"
                               />
                             </div>
                              
                             <div
-                              class="svelte-1p3vtt3"
+                              class="vector-value svelte-1tmof08"
                             >
+                              <div
+                                class="vector-value-name svelte-1tmof08 bg-vector-y"
+                              />
+                               
                               <input
                                 aria-autocomplete="none"
                                 autocomplete="none"
-                                class="input svelte-1s4bysp default w-full no-arrow"
+                                class="input svelte-18m1n2f default w-full no-arrow"
                                 step="0"
                                 type="number"
                               />
                             </div>
                              
                             <div
-                              class="svelte-1p3vtt3"
+                              class="vector-value svelte-1tmof08"
                             >
+                              <div
+                                class="vector-value-name svelte-1tmof08 bg-vector-z"
+                              />
+                               
                               <input
                                 aria-autocomplete="none"
                                 autocomplete="none"
-                                class="input svelte-1s4bysp default w-full no-arrow"
+                                class="input svelte-18m1n2f default w-full no-arrow"
                                 step="0"
                                 type="number"
                               />
@@ -1519,18 +3455,9 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         </div>
                          
                         <div
-                          class="option-property-checkbox svelte-1sn8kpr"
+                          class="action-button svelte-9lo2x4"
                         >
-                          <div
-                            class="root svelte-10vzrsx default"
-                          >
-                            <input
-                              class="input svelte-10vzrsx"
-                              type="checkbox"
-                            />
-                             
-                            ✓
-                          </div>
+                          
                         </div>
                       </div>
                       
@@ -1539,60 +3466,142 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   </div>
                 </div>
               </div>
+              
             </div>
             
             
             <div>
               <div
-                class="root svelte-tg2vtt"
+                class="property-unit-root svelte-nl1sff bg-surface-800"
+                style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-tg2vtt"
-                  title="test_option_primitive_none"
+                  class="property-name svelte-nl1sff"
+                  title="test_option_primitive_none (Option<Vec3>)"
                 >
-                  <div
-                    class="truncate"
-                  >
-                    test_option_primitive_none
-                  </div>
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  T
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  s
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  O
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  p
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  o
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  n
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  P
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  r
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  m
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  t
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  i
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  v
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                   
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  N
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  o
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  n
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  e
+                  <mark
+                    class="bg-orange-700 text-black font-bold"
+                  />
+                  
                 </div>
                  
                 <div
-                  class="property-input-container svelte-tg2vtt"
+                  class="property-input-container svelte-nl1sff"
                 >
                   <div
-                    class="property-input svelte-tg2vtt"
+                    class="property-input svelte-nl1sff"
                   >
                     <div
-                      class="root svelte-1gjlayc"
+                      class="property-input-root svelte-6f7lir"
                     >
                       <div
-                        class="option-property svelte-1sn8kpr"
+                        class="action-button svelte-9lo2x4"
                       >
-                        <div
-                          class="cursor-help svelte-1sn8kpr"
-                          title="This property's value is optional and no value has been set yet"
-                        >
-                          <div
-                            class="cursor-help-icon svelte-1sn8kpr"
-                          >
-                            ?
-                          </div>
-                        </div>
-                         
-                        <div
-                          class="option-property-checkbox svelte-1sn8kpr"
-                        >
-                          <div
-                            class="root svelte-10vzrsx default"
-                          >
-                            <input
-                              class="input svelte-10vzrsx"
-                              type="checkbox"
-                            />
-                             
-                          </div>
-                        </div>
+                        
                       </div>
                       
                        
@@ -1600,6 +3609,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   </div>
                 </div>
               </div>
+              
             </div>
             
           </div>
@@ -1616,8 +3626,9 @@ exports[`PropertyGrid > renders properly without resources 1`] = `
 <body>
   <div>
     <div
-      class="h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden"
+      class="property-grid-root svelte-1vh94yj"
     >
+       
       <div
         class="italic"
       >
