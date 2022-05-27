@@ -4753,7 +4753,7 @@ dependencies = [
  "lgn-transform",
  "lgn-utils",
  "lgn-window",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.0",
  "paste",
  "renderdoc",
  "slab",
