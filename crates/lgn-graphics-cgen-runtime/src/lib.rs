@@ -640,7 +640,7 @@ pub struct CGenPipelineLayoutDef {
 //
 // CGenCrateID
 //
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct CGenCrateID(pub u64);
 
 //
@@ -664,7 +664,7 @@ pub type CGenShaderOptionMask = u64;
 //
 // CGenShaderKey
 //
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
 #[repr(packed)]
 pub struct CGenShaderKey(u64);
 

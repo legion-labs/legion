@@ -13,9 +13,10 @@ mod cgen {
 }
 
 use crate::components::EcsToRender;
-use crate::core::RenderObjects;
+use crate::core::{DebugStuff, RenderObjects};
 use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
+use crate::script::{Config, RenderScript, RenderView};
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
@@ -32,9 +33,8 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    AddressMode, ApiDef, BufferViewDef, CompareOp, DescriptorHeapDef, DeviceContext, Extents3D,
-    FilterType, Format, MemoryUsage, MipMapMode, Queue, QueueType, ResourceFlags, ResourceUsage,
-    SamplerDef, TextureDef, TextureTiling, BACKBUFFER_COUNT,
+    AddressMode, ApiDef, BufferViewDef, CompareOp, DescriptorHeapDef, DeviceContext, FilterType,
+    MipMapMode, Queue, QueueType, ResourceUsage, SamplerDef, BACKBUFFER_COUNT,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
@@ -68,6 +68,7 @@ pub mod render_pass;
 
 pub mod core;
 pub mod features;
+pub mod script;
 pub mod shared;
 
 mod renderdoc;
@@ -85,9 +86,9 @@ use crate::{
         reflect_light_components, ManipulatorComponent, PickedComponent,
         RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
     },
-    core::render_graph::{
-        AlphaBlendedLayerPass, Config, DepthLayerPass, GpuCullingPass, LightingPass,
-        OpaqueLayerPass, PostProcessPass, RenderScript, RenderView, SSAOPass, UiPass,
+    core::render_graph::render_passes::{
+        AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+        PostProcessPass, SSAOPass, UiPass,
     },
     egui::{egui_plugin::EguiPlugin, Egui},
     lighting::LightingManager,
@@ -463,7 +464,7 @@ fn render_update(
     // resources
     let mut renderer = resources.0;
     let mut pipeline_manager = resources.1;
-    let mut picking_manager = resources.2;
+    let picking_manager = resources.2;
     let mut egui = resources.3;
     let mut debug_display = resources.4;
     let mut persistent_descriptor_set_manager = resources.5;
@@ -525,9 +526,9 @@ fn render_update(
     // Run render thread
     //
 
-    task_pool.scope( |scope| {
-        scope.spawn(  async move {
-        span_scope_named!("render_thread");       
+    task_pool.scope(|scope| {
+        scope.spawn(async move {
+            span_scope_named!("render_thread");
 
         let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
         let default_camera = CameraComponent::default();
@@ -561,16 +562,13 @@ fn render_update(
         render_resources.get::<RenderObjects>().begin_frame();
 
         //
-        // Update 
+            // Update
         //
         render_resources
             .get_mut::<RenderCommandManager>()
             .apply(&render_resources);
 
-        let mut transient_buffer_allocator =
-        TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
-
-        let render_objects = render_resources.get::<RenderObjects>();
+            let render_objects = render_resources.get::<RenderObjects>();
 
         persistent_descriptor_set_manager.frame_update();
         pipeline_manager.frame_update(&device_context);
@@ -579,6 +577,9 @@ fn render_update(
             TransientCommandBufferAllocator::new(&transient_commandbuffer_manager);
 
         let graphics_queue = render_resources.get::<GraphicsQueue>();
+
+            let mut transient_buffer_allocator =
+                TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
         render_resources.get_mut::<GpuUploadManager>().upload(
             &mut transient_commandbuffer_allocator,
@@ -617,11 +618,11 @@ fn render_update(
             let descriptor_pool =
             descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
 
-            let mut render_context = RenderContext::new(
+        let mut render_context = RenderContext::new(
                 &device_context,
             &graphics_queue,
             &descriptor_pool,
-            &pipeline_manager,
+                    &mut pipeline_manager,
             &mut transient_commandbuffer_allocator,
             &mut transient_buffer_allocator,
             &static_buffer,
@@ -630,13 +631,16 @@ fn render_update(
         // Persistent descriptor set
         {
             let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
-            render_context
-                .set_persistent_descriptor_set(descriptor_set.layout(), *descriptor_set.handle());
+                    render_context.set_persistent_descriptor_set(
+                        descriptor_set.layout(),
+                        *descriptor_set.handle(),
+                    );
         }
 
         // Frame descriptor set
         {
-            let mut frame_descriptor_set = cgen::descriptor_set::FrameDescriptorSet::default();
+                    let mut frame_descriptor_set =
+                        cgen::descriptor_set::FrameDescriptorSet::default();
 
             render_resources.get::<LightingManager>().per_frame_render(
                 &render_objects,
@@ -662,7 +666,8 @@ fn render_update(
                 max_anisotropy: 1.0,
                 compare_op: CompareOp::LessOrEqual,
             };
-            let material_sampler = render_context.device_context.create_sampler(sampler_def);
+                    let material_sampler =
+                        render_context.device_context.create_sampler(sampler_def);
             frame_descriptor_set.set_material_sampler(&material_sampler);
 
             let frame_descriptor_set_handle = render_context.write_descriptor_set(
@@ -677,7 +682,7 @@ fn render_update(
         }
 
         // For each surface/view, we have to execute the render graph
-        for mut render_surface in render_surfaces.iter_mut() {
+                for render_surface in render_surfaces.iter_mut() {
             // View descriptor set
             {
                 let mut screen_rect = picking_manager.screen_rect();
@@ -703,14 +708,14 @@ fn render_update(
                     .transient_buffer_allocator
                     .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
 
-                let const_buffer_view = sub_allocation
-                    .to_buffer_view(BufferViewDef::as_const_buffer_typed::<cgen_type::ViewData>());
+                        let const_buffer_view =
+                            sub_allocation.to_buffer_view(BufferViewDef::as_const_buffer_typed::<
+                                cgen_type::ViewData,
+                            >());
 
-                let mut view_descriptor_set = cgen::descriptor_set::ViewDescriptorSet::default();
+                        let mut view_descriptor_set =
+                            cgen::descriptor_set::ViewDescriptorSet::default();
                 view_descriptor_set.set_view_data(const_buffer_view);
-
-                view_descriptor_set
-                    .set_hzb_texture(render_surface.get_hzb_surface().hzb_srv_view());
 
                 let view_descriptor_set_handle = render_context.write_descriptor_set(
                     cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
@@ -726,6 +731,8 @@ fn render_update(
             let test_render_graph = false;
             let frame_idx = render_scope.frame_idx();
             if !test_render_graph || frame_idx % 2 == 0 {
+                        render_surface.set_use_view_target(false);
+
                 //****************************************************************
                 // PREVIOUS RENDER PATH (WITHOUT RENDER GRAPH)
                 //****************************************************************
@@ -744,12 +751,13 @@ fn render_update(
                 mesh_renderer.gen_occlusion_and_cull(
                     &mut render_context,
                     cmd_buffer,
-                    &mut render_surface,
+                            render_surface,
                     &instance_manager,
                 );
 
                 cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
-                cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
+                        cmd_buffer
+                            .cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
                 let picking_pass = render_surface.picking_renderpass();
                 let mut picking_pass = picking_pass.write();
@@ -767,7 +775,8 @@ fn render_update(
                 );
 
                 cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
-                cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
+                        cmd_buffer
+                            .cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
                 TmpRenderPass::render(
                     &render_context,
@@ -821,6 +830,9 @@ fn render_update(
                     .transient_commandbuffer_allocator
                     .release(cmd_buffer_handle);
             } else {
+                        let render_graph_frame_idx = frame_idx / 2;
+                        render_surface.set_use_view_target(true);
+
                 //****************************************************************
                 // RENDER GRAPH TEST
                 //****************************************************************
@@ -832,78 +844,68 @@ fn render_update(
                 cmd_buffer.begin();
 
                 cmd_buffer.with_label("RenderGraph", |cmd_buffer| {
+                            render_surface.clear_hzb(cmd_buffer);
+
+                            let view = RenderView {
+                                target: render_surface.view_target(),
+                            };
 
                     let gpu_culling_pass = GpuCullingPass;
-                    let depth_layer_pass = DepthLayerPass;
                     let opaque_layer_pass = OpaqueLayerPass;
                     let ssao_pass = SSAOPass;
                     let alphablended_layer_pass = AlphaBlendedLayerPass;
+                            let debug_pass = DebugPass;
                     let postprocess_pass = PostProcessPass;
                     let lighting_pass = LightingPass;
                     let ui_pass = UiPass;
 
-                    let view_desc = TextureDef {
-                        extents: Extents3D {
-                            width: 1920,
-                            height: 1080,
-                            depth: 1,
-                        },
-                        array_length: 1,
-                        mip_count: 1,
-                        format: Format::R8G8B8A8_UNORM,
-                        usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_UNORDERED_ACCESS| ResourceUsage::AS_TRANSFERABLE,
-                        resource_flags: ResourceFlags::empty(),
-                        memory_usage: MemoryUsage::GpuOnly,
-                        tiling: TextureTiling::Optimal,
-                    };
-                    let view_target = render_context.device_context.create_texture(view_desc, "ViewBuffer");
-                    let view = RenderView {
-                        target: view_target,
-                    };
-
-                    let depth_desc = TextureDef {
-                        extents: view.target.definition().extents,
-                        array_length: 1,
-                        mip_count: 1,
-                        format: Format::D24_UNORM_S8_UINT,
-                        usage_flags: ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE,
-                        resource_flags: ResourceFlags::empty(),
-                        memory_usage: MemoryUsage::GpuOnly,
-                        tiling: TextureTiling::Optimal,
-                    };
-                    let prev_depth = render_context.device_context.create_texture(depth_desc, "PrevDepthBuffer");
+                            let prev_hzb_idx = render_graph_frame_idx as usize % 2;
+                            let current_hzb_idx = (render_graph_frame_idx + 1) as usize % 2;
 
                     let mut render_script = RenderScript {
                         gpu_culling_pass,
-                        depth_layer_pass,
                         opaque_layer_pass,
                         ssao_pass,
                         alphablended_layer_pass,
+                                debug_pass,
                         postprocess_pass,
                         lighting_pass,
                         ui_pass,
-                        prev_depth,
+                                prev_hzb: render_surface.hzb()[prev_hzb_idx],
+                                current_hzb: render_surface.hzb()[current_hzb_idx],
                     };
 
-                    let config = Config::default();
+                            let config = Config {
+                                frame_idx: render_graph_frame_idx,
+                                ..Config::default()
+                            };
 
-                    match render_script.build_render_graph(&view, &config, render_context.pipeline_manager, render_context.device_context) {
+                            match render_script.build_render_graph(
+                                &view,
+                                &config,
+                                &render_resources,
+                                render_context.pipeline_manager,
+                                render_context.device_context,
+                            ) {
                         Ok(render_graph) => {
-                            // Print out the render graph
-                            println!("{}", render_graph);
-                            println!("\n\n");
+                                    let debug_renderpass = render_surface.debug_renderpass();
+                                    let debug_renderpass = debug_renderpass.write();
 
                             let mut render_graph_context = render_graph.compile();
 
-                            println!("\n\n");
+                                    let debug_stuff = DebugStuff {
+                                        debug_renderpass: &debug_renderpass,
+                                        debug_display: &debug_display,
+                                        picked_drawables: picked_drawables.as_slice(),
+                                        manipulator_drawables: manipulator_drawables.as_slice(),
+                                        camera_component,
+                                    };
 
-                            // Execute it
-                            println!("*****************************************************************************");
-                            println!("Frame {}", frame_idx);
                             render_graph.execute(
                                 &mut render_graph_context,
                                 &render_resources,
                                 &mut render_context,
+                                        &debug_stuff,
                                 cmd_buffer,
                             );
                         }
@@ -911,7 +913,6 @@ fn render_update(
                             println!("{}", error);
                         }
                     }
-
                 });
 
                 cmd_buffer.end();
@@ -946,11 +947,9 @@ fn render_update(
         transient_commandbuffer_manager.end_frame();
         let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
         mesh_renderer.end_frame();
-
     }
 
         renderdoc_manager.end_frame_capture();
-
     });
     });
 }

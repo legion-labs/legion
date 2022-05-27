@@ -134,7 +134,7 @@ impl PickingRenderPass {
                         let custom_world = ManipulatorManager::scale_manipulator_for_viewport(
                             transform,
                             &manipulator.local_transform,
-                            render_surface,
+                            render_surface.extents(),
                             camera,
                         );
 
