@@ -68,9 +68,7 @@
 
   let div: HTMLElement;
 
-  $: collapsed = propertyGridStore
-    ? $propertyGridStore.get(propertyBagKey)
-    : false;
+  $: collapsed = $propertyGridStore.get(propertyBagKey) === true;
 
   function addVectorSubProperty() {
     const index = property.subProperties.length;
@@ -205,8 +203,7 @@
           class="float-left"
           width={"1.5em"}
           icon={`ic:baseline-arrow-${
-            $propertyGridStore.get(propertyBagKey) !== undefined &&
-            $propertyGridStore.get(propertyBagKey) !== false
+            $propertyGridStore.get(propertyBagKey) === true
               ? "right"
               : "drop-down"
           }`}
