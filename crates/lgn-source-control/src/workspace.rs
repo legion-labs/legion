@@ -2,14 +2,13 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, ResourceByteReader, ResourceByteWriter, ResourceIdentifier,
+        self, BasicIndexer, IndexKey, ResourceByteReader, ResourceByteWriter, ResourceIdentifier,
         ResourceReader, ResourceWriter, StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode,
         TreeWriter,
     },
     Provider,
 };
 use lgn_tracing::error;
-use tokio_stream::StreamExt;
 
 use crate::{
     Branch, Change, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
@@ -257,19 +256,9 @@ where
         &self,
         tree_id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.main_indexer
-            .enumerate_leaves(&self.transaction, tree_id)
+        indexing::enumerate_resources(&self.transaction, &self.main_indexer, tree_id)
             .await
-            .map_err(Error::ContentStoreIndexing)?
-            .map(|(key, leaf_res)| match leaf_res {
-                Ok(leaf) => match leaf {
-                    TreeLeafNode::Resource(resource_id) => Ok((key, resource_id)),
-                    TreeLeafNode::TreeRoot(_) => Err(Error::Unspecified("".to_owned())),
-                },
-                Err(err) => Err(Error::ContentStoreIndexing(err)),
-            })
-            .collect::<Result<Vec<(IndexKey, ResourceIdentifier)>>>()
-            .await
+            .map_err(Error::ContentStoreIndexing)
     }
 
     /// Add a resource to the local changes.

@@ -41,7 +41,6 @@ impl BuildManager {
 
     /// New instance of `BuildManager`.
     pub async fn new(
-        project: &Project,
         options: DataBuildOptions,
         project: &Project,
         runtime_manifest_id: SharedTreeIdentifier,

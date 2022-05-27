@@ -579,21 +579,6 @@ impl Project {
         Ok(meta.name)
     }
 
-    /// Returns the name of the repository that is used by the source control provider in the active workspace
-    pub fn repository_name(&self) -> &RepositoryName {
-        self.workspace.repository_name()
-    }
-
-    /// Returns the name of the branch, associated with the source control provider in the active workspace
-    pub fn branch_name(&self) -> &str {
-        self.workspace.branch_name()
-    }
-
-    /// Returns the provider associated with the current source-control workspace
-    pub fn get_provider(&self) -> &Provider {
-        self.workspace.get_provider()
-    }
-
     /// Moves a `remote` resources to the list of `local` resources.
     pub async fn checkout(&mut self, _id: ResourceTypeAndId) -> Result<(), Error> {
         // let metadata_path = self.metadata_path(id.id);
