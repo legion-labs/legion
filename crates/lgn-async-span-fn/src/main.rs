@@ -37,6 +37,11 @@ async fn delayed_value() -> String {
 }
 
 #[span_fn]
+fn consume_delayed_value(_: String) {
+    println!("Consumed a delayed value");
+}
+
+#[span_fn]
 async fn delayed() {
     println!("Before");
 
@@ -47,6 +52,10 @@ async fn delayed() {
     let msg = delayed_value().await;
 
     println!("{}", msg);
+
+    consume_delayed_value(delayed_value().await);
+
+    return;
 }
 
 #[tokio::main]

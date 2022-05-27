@@ -15,7 +15,7 @@ use syn::{
     parse_macro_input, parse_quote,
     punctuated::Punctuated,
     visit_mut::{self, VisitMut},
-    Expr, ExprReturn, Ident, ItemFn, Local, Stmt, Token,
+    Expr, ExprReturn, Ident, ItemFn, Stmt, Token,
 };
 
 struct TraceArgs {
@@ -39,40 +39,21 @@ impl Parse for TraceArgs {
 struct AwaitVisitor;
 
 impl VisitMut for AwaitVisitor {
-    fn visit_stmt_mut(&mut self, stmt: &mut Stmt) {
-        if let Stmt::Semi(Expr::Await(_), _) = stmt {
-            *stmt = parse_quote! {
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        if let Expr::Await(_) = expr {
+            *expr = parse_quote! {
                 {
                     lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
-                    #stmt
+                    let __lgn_tracing_temp_await_value = #expr;
                     lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
-                };
+                    __lgn_tracing_temp_await_value
+                }
             };
 
             return;
         }
 
-        if let Stmt::Local(Local {
-            ref pat,
-            init: Some((_, ref expr)),
-            ..
-        }) = stmt
-        {
-            if let Expr::Await(_) = expr.as_ref() {
-                *stmt = parse_quote! {
-                    let #pat = {
-                        lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
-                        let result = #expr;
-                        lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
-                        result
-                    };
-                };
-
-                return;
-            }
-        }
-
-        visit_mut::visit_stmt_mut(self, stmt);
+        visit_mut::visit_expr_mut(self, expr);
     }
 }
 
@@ -98,6 +79,8 @@ pub fn span_fn(
         });
     }
 
+    AwaitVisitor.visit_block_mut(&mut function.block);
+
     function.block.stmts.insert(0, parse_quote! {
         static _METADATA_FUNC: lgn_tracing::spans::SpanMetadata = lgn_tracing::spans::SpanMetadata {
             name: concat!(module_path!(), "::", #function_name),
@@ -117,8 +100,6 @@ pub fn span_fn(
             lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
         },
     );
-
-    AwaitVisitor.visit_block_mut(&mut function.block);
 
     if let Some(last_stmt) = function.block.stmts.last_mut() {
         if let Stmt::Semi(Expr::Return(ExprReturn { attrs: _, expr, .. }), _) = last_stmt {
