@@ -737,60 +737,61 @@ impl DataBuild {
                     let acc_deps = accumulated_dependencies.clone();
 
                     #[allow(clippy::type_complexity)]
-                    let work: Pin<Box<dyn Future<Output = Result<_, (NodeIndex, Error)>> + Send>> =
-                        async move {
-                            info!(
-                                "Compiling({:?}) {} ({:?}) ...",
-                                compile_node_index, compile_node, expected_name
-                            );
-                            let start = std::time::Instant::now();
+                    let work: Pin<
+                        Box<dyn Future<Output = Result<_, (NodeIndex, Error)>> + Send>,
+                    > = async move {
+                        info!(
+                            "Compiling({:?}) {} ({:?}) ...",
+                            compile_node_index, compile_node, expected_name
+                        );
+                        let start = std::time::Instant::now();
 
-                            let (resource_infos, resource_references, stats) = Self::compile_node(
-                                output_index,
-                                data_content_provider,
-                                project_dir,
-                                &compile_node,
-                                context_hash,
-                                source_hash,
-                                &dependencies,
-                                &acc_deps,
-                                env,
-                                compiler,
-                                resources.clone(),
-                            )
-                            .await
-                            .map_err(|e| (compile_node_index, e))?;
+                        let (resource_infos, resource_references, stats) = Self::compile_node(
+                            output_index,
+                            data_content_provider,
+                            project_dir,
+                            &compile_node,
+                            context_hash,
+                            source_hash,
+                            &dependencies,
+                            &acc_deps,
+                            env,
+                            compiler,
+                            resources.clone(),
+                        )
+                        .await
+                        .map_err(|e| (compile_node_index, e))?;
 
-                            info!(
-                                "Compiled({:?}) {:?} ended in {:?}.",
-                                compile_node_index,
-                                compile_node,
-                                start.elapsed()
-                            );
+                        info!(
+                            "Compiled({:?}) {:?} ended in {:?}.",
+                            compile_node_index,
+                            compile_node,
+                            start.elapsed()
+                        );
 
-                            // update the CAS manifest with new content in order to make new resources
-                            // visible to the next compilation node
-                            // NOTE: right now all the resources are visible to all compilation nodes.
-                            if let Some(manifest) = &intermediate_output {
-                                for r in &resource_infos {
-                                    manifest.insert(
-                                        r.compiled_path.resource_id(),
-                                        r.compiled_content_id.clone(),
-                                    );
-                                }
+                        // update the CAS manifest with new content in order to make new resources
+                        // visible to the next compilation node
+                        // NOTE: right now all the resources are visible to all compilation nodes.
+                        if let Some(manifest) = &intermediate_output {
+                            for r in &resource_infos {
+                                manifest.insert(
+                                    r.compiled_path.resource_id(),
+                                    r.compiled_content_id.clone(),
+                                );
                             }
-
-                            // registry must be updated to release any resources that are no longer referenced.
-                            resources.update();
-
-                            Ok((
-                                compile_node_index,
-                                resource_infos,
-                                resource_references,
-                                stats,
-                            ))
                         }
-                        .boxed();
+
+                        // registry must be updated to release any resources that are no longer referenced.
+                        resources.update();
+
+                        Ok((
+                            compile_node_index,
+                            resource_infos,
+                            resource_references,
+                            stats,
+                        ))
+                    }
+                    .boxed();
                     new_work.push(work);
                 } else {
                     let unnamed = compile_node.to_unnamed();
