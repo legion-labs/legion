@@ -13,7 +13,6 @@ use lgn_tracing::{
     spans::{SpanLocation, SpanMetadata},
     Verbosity,
 };
-use retain_mut::RetainMut;
 use tokio::runtime::{Builder, Handle, Runtime};
 
 use super::operation::{AsyncOperation, AsyncOperationError, AsyncOperationResult};
@@ -152,7 +151,9 @@ impl TokioAsyncRuntime {
     pub fn poll(&mut self) -> u32 {
         let mut num_completed = 0;
 
-        RetainMut::retain_mut(&mut self.result_handlers, |handler| {
+        // TODO: #1886 Fix after we move to 1.61
+        #[allow(deprecated)]
+        retain_mut::RetainMut::retain_mut(&mut self.result_handlers, |handler| {
             let is_complete = handler.try_complete();
 
             if is_complete {
