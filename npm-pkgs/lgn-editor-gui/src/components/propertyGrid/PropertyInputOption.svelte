@@ -11,7 +11,6 @@
   } from "@/components/propertyGrid/lib/propertyGrid";
   import type { OptionResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
 
-  import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyInput from "./PropertyInput.svelte";
 
   const dispatch = createEventDispatcher<{
