@@ -96,11 +96,11 @@
 
 <style lang="postcss">
   .property-unit-root {
-    @apply flex flex-row justify-between h-9 pr-2;
+    @apply flex flex-row justify-between items-center h-9 pr-2;
   }
 
   .property-name {
-    @apply my-auto truncate text-item-mid;
+    @apply truncate text-item-mid;
   }
 
   .property-input-container {
