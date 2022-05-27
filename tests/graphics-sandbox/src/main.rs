@@ -188,7 +188,7 @@ fn on_render_surface_created_for_window(
 }
 
 fn presenter_snapshot_system(
-    mut commands: Commands<'_, '_>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
     snapshot_descriptor: Res<'_, SnapshotDescriptor>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
@@ -221,7 +221,7 @@ fn presenter_snapshot_system(
             )
         });
 
-        commands.spawn().insert(render_surface);
+        render_surfaces.insert(render_surface);
     } else if frame_counter.frame_count > frame_counter.frame_target {
         app_exit_events.send(AppExit);
     }
@@ -379,12 +379,10 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
 fn on_snapshot_app_exit(
     mut commands: Commands<'_, '_>,
     mut app_exit: EventReader<'_, '_, AppExit>,
-    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     if app_exit.iter().last().is_some() {
-        for (entity, _) in query_render_surface.iter() {
-            commands.entity(entity).despawn();
-        }
+        render_surfaces.clear();
     }
 }
 

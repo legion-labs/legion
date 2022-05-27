@@ -14,6 +14,7 @@ use super::{picking_event::PickingEvent, ManipulatorManager, PickingIdContext, P
 use crate::{
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
+        RenderSurfaces,
     },
     CommandBufferLabel, RenderStage,
 };
@@ -163,7 +164,7 @@ fn update_manipulator_component(
         &CameraComponent,
         (Without<PickedComponent>, Without<ManipulatorComponent>),
     >,
-    q_render_surfaces: Query<'_, '_, &RenderSurface>,
+    render_surfaces: Res<'_, RenderSurfaces>,
     mut picked_query: Query<
         '_,
         '_,
@@ -223,7 +224,7 @@ fn update_manipulator_component(
 
                 let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
                 if !q_cameras.is_empty() {
-                    for render_surface in q_render_surfaces.iter() {
+                    for render_surface in render_surfaces.iter() {
                         let mut screen_rect = picking_manager.screen_rect();
                         if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
                             screen_rect = Vec2::new(

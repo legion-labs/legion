@@ -1,7 +1,6 @@
 use std::collections::hash_map::{Values, ValuesMut};
 use std::{cmp::max, sync::Arc};
 
-use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
     ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DepthStencilClearValue,
     DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Extents3D, Format, GPUViewType,
@@ -98,6 +97,11 @@ impl RenderSurfaces {
             surfaces: HashMap::new(),
             window_id_mapper: HashMap::new(),
         }
+    }
+
+    pub fn clear(&mut self) {
+        self.surfaces.clear();
+        self.window_id_mapper.clear();
     }
 
     pub fn insert(&mut self, render_surface: RenderSurface) {
@@ -218,7 +222,6 @@ pub enum RenderSurfacePresentingStatus {
     Paused,
 }
 
-#[derive(Component)]
 pub struct RenderSurface {
     id: RenderSurfaceId,
     window_id: Option<WindowId>,

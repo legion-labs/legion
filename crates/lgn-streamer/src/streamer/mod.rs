@@ -333,12 +333,10 @@ pub(crate) fn update_streams(
 pub(crate) fn on_app_exit(
     mut commands: Commands<'_, '_>,
     mut app_exit: EventReader<'_, '_, AppExit>,
-    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     if app_exit.iter().last().is_some() {
-        for (entity, _) in query_render_surface.iter() {
-            commands.entity(entity).despawn();
-        }
+        render_surfaces.clear();
     }
 }
 
