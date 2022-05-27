@@ -149,21 +149,23 @@ pub(crate) struct CullingArgBuffer {
     uav_view: BufferView,
 }
 
+// TMP -- what is public here is because they are used in the render graph
 pub(crate) struct CullingArgBuffers {
-    pub(crate) draw_count: Option<CullingArgBuffer>,
-    pub(crate) draw_args: Option<CullingArgBuffer>,
-    pub(crate) culled_count: Option<CullingArgBuffer>,
-    pub(crate) culled_args: Option<CullingArgBuffer>,
-    pub(crate) culled_instances: Option<CullingArgBuffer>,
+    draw_count: Option<CullingArgBuffer>,
+    draw_args: Option<CullingArgBuffer>,
+    culled_count: Option<CullingArgBuffer>,
+    culled_args: Option<CullingArgBuffer>,
+    culled_instances: Option<CullingArgBuffer>,
     pub(crate) stats_buffer: GpuBufferWithReadback,
     pub(crate) stats_buffer_readback: Option<Handle<ReadbackBuffer>>,
-    pub(crate) culling_debug: Option<CullingArgBuffer>,
+    culling_debug: Option<CullingArgBuffer>,
     // TMP until shader variations
-    pub(crate) tmp_culled_count: Option<CullingArgBuffer>,
-    pub(crate) tmp_culled_args: Option<CullingArgBuffer>,
-    pub(crate) tmp_culled_instances: Option<CullingArgBuffer>,
+    tmp_culled_count: Option<CullingArgBuffer>,
+    tmp_culled_args: Option<CullingArgBuffer>,
+    tmp_culled_instances: Option<CullingArgBuffer>,
 }
 
+// TMP -- what is public here is because they are used in the render graph
 pub struct MeshRenderer {
     pub(crate) default_layers: Vec<RenderLayer>,
 
