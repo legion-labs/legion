@@ -1,9 +1,12 @@
-use lgn_graphics_api::{CommandBuffer, DeviceContext, Texture};
+use lgn_graphics_api::{CommandBuffer, DeviceContext, ResourceState, Texture};
 
 use crate::{
-    core::render_graph::{
-        RGNode, RenderGraph, RenderGraphExecuteContext, RenderGraphResource,
-        RenderGraphResourceDef, RenderGraphResourceId, RenderGraphViewDef, RenderGraphViewId,
+    core::{
+        render_graph::{
+            RGNode, RenderGraph, RenderGraphExecuteContext, RenderGraphResource,
+            RenderGraphResourceDef, RenderGraphResourceId, RenderGraphViewDef, RenderGraphViewId,
+        },
+        RenderResources,
     },
     resources::PipelineManager,
 };
@@ -101,7 +104,8 @@ pub(crate) struct RenderGraphBuilder<'a> {
     pub(crate) current_parent: Option<RGNode>,
     pub(crate) resources: Vec<RenderGraphResourceDef>,
     pub(crate) resource_names: Vec<String>,
-    pub(crate) injected_resources: Vec<(RenderGraphResourceId, RenderGraphResource)>,
+    pub(crate) injected_resources:
+        Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>,
     pub(crate) next_resource_id: RenderGraphResourceId,
     pub(crate) views: Vec<RenderGraphViewDef>,
     pub(crate) next_view_id: RenderGraphViewId,
@@ -109,12 +113,17 @@ pub(crate) struct RenderGraphBuilder<'a> {
 
     // Stuff used to initialize pass-specific user data when building render passes.
     // Should not be stored anywhere, they are made accessible in the execute functions anyways.
-    pub(crate) pipeline_manager: &'a PipelineManager,
+    pub(crate) render_resources: &'a RenderResources,
+    pub(crate) pipeline_manager: &'a mut PipelineManager,
     pub(crate) device_context: &'a DeviceContext,
 }
 
 impl<'a> RenderGraphBuilder<'a> {
-    pub fn new(pipeline_manager: &'a PipelineManager, device_context: &'a DeviceContext) -> Self {
+    pub fn new(
+        render_resources: &'a RenderResources,
+        pipeline_manager: &'a mut PipelineManager,
+        device_context: &'a DeviceContext,
+    ) -> Self {
         RenderGraphBuilder {
             current_parent: None,
             resources: vec![],
@@ -124,6 +133,7 @@ impl<'a> RenderGraphBuilder<'a> {
             views: vec![],
             next_view_id: 0,
             top_level_nodes: vec![],
+            render_resources,
             pipeline_manager,
             device_context,
         }
@@ -141,12 +151,31 @@ impl<'a> RenderGraphBuilder<'a> {
         id
     }
 
-    pub fn inject_render_target(&mut self, name: &str, texture: &Texture) -> RenderGraphResourceId {
+    pub fn inject_render_target(
+        &mut self,
+        name: &str,
+        texture: &Texture,
+        initial_state: ResourceState,
+    ) -> RenderGraphResourceId {
         let texture_def = *texture.definition();
         let texture_def = texture_def.into();
         let id = self.declare_render_target(name, &RenderGraphResourceDef::Texture(texture_def));
-        self.injected_resources
-            .push((id, RenderGraphResource::Texture(texture.clone())));
+        self.injected_resources.push((
+            id,
+            (RenderGraphResource::Texture(texture.clone()), initial_state),
+        ));
+        id
+    }
+
+    pub fn declare_buffer(
+        &mut self,
+        name: &str,
+        resource: &RenderGraphResourceDef,
+    ) -> RenderGraphResourceId {
+        let id = self.next_resource_id;
+        self.next_resource_id += 1;
+        self.resources.push(resource.clone());
+        self.resource_names.push(name.to_string());
         id
     }
 
@@ -226,15 +255,6 @@ impl<'a> RenderGraphBuilder<'a> {
             self.current_parent = None;
         }
         self
-    }
-
-    pub fn get_resource_def(&self, resource_id: RenderGraphResourceId) -> &RenderGraphResourceDef {
-        self.resources.get(resource_id as usize).unwrap()
-    }
-
-    #[allow(dead_code)]
-    pub fn get_view_def(&self, view_id: RenderGraphViewId) -> &RenderGraphViewDef {
-        self.views.get(view_id as usize).unwrap()
     }
 
     pub fn build(mut self) -> RenderGraph {

@@ -72,6 +72,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
                 #{ name:"culled_instances", type:"RWStructuredBuffer", content:"GpuInstanceData" },
                 #{ name:"culling_efficiency", type:"RWStructuredBuffer", content:"CullingEfficiencyStats" },
                 #{ name:"culling_debug", type:"RWStructuredBuffer", content:"CullingDebugData" },
+                #{ name: "hzb_texture", type: "Texture2D", content:"Float1" },
             ]
         },
         #{

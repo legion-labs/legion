@@ -2,7 +2,7 @@ use lgn_graphics_api::{
     ComputePipelineDef, DeviceContext, GraphicsPipelineDef, Pipeline, Shader, ShaderPackage,
     ShaderStage, ShaderStageDef,
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use lgn_graphics_cgen_runtime::{
     CGenCrateID, CGenRegistry, CGenShaderDef, CGenShaderInstance, CGenShaderKey,
@@ -35,6 +35,7 @@ pub struct PipelineManager {
     cgen_registries: Vec<Arc<CGenRegistry>>,
     infos: RwLock<Vec<PipelineInfo>>,
     pipelines: Vec<Option<Pipeline>>,
+    shaders: RwLock<HashMap<(CGenCrateID, CGenShaderKey), Option<Shader>>>,
 }
 
 impl PipelineManager {
@@ -45,6 +46,7 @@ impl PipelineManager {
             cgen_registries: Vec::new(),
             infos: RwLock::new(Vec::new()),
             pipelines: Vec::new(),
+            shaders: RwLock::new(HashMap::new()),
         }
     }
 
@@ -98,6 +100,13 @@ impl PipelineManager {
 
     #[span_fn]
     pub fn create_shader(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<Shader> {
+        {
+            let shaders = self.shaders.read();
+            if let Some(shader) = shaders.get(&(crate_id, key)) {
+                return shader.clone();
+            };
+        }
+
         // get the instance
         let shader_instance = self.shader_instance(crate_id, key).unwrap();
 
@@ -191,10 +200,16 @@ impl PipelineManager {
             }
         }
 
-        Some(
-            self.device_context
-                .create_shader(shader_stage_defs.to_vec()),
-        )
+        let shader = self
+            .device_context
+            .create_shader(shader_stage_defs.to_vec());
+
+        let shader = {
+            let mut shaders = self.shaders.write();
+            shaders.insert((crate_id, key), Some(shader));
+            shaders.entry((crate_id, key)).or_default().clone() // or_default will always return the shader we just inserted, not default.
+        };
+        shader
     }
 
     fn cgen_registry(&self, crate_id: CGenCrateID) -> Option<&CGenRegistry> {

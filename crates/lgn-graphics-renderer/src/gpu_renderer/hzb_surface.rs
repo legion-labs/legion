@@ -91,15 +91,15 @@ impl HzbSurface {
             rt_mip_view,
             pipeline_handle: build_hzb_pso(pipeline_manager),
             mip_sampler: device_context.create_sampler(SamplerDef {
-            min_filter: FilterType::Nearest,
-            mag_filter: FilterType::Nearest,
-            mip_map_mode: MipMapMode::Nearest,
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mip_lod_bias: 0.0,
-            max_anisotropy: 1.0,
-            compare_op: CompareOp::Never,
+                min_filter: FilterType::Nearest,
+                mag_filter: FilterType::Nearest,
+                mip_map_mode: MipMapMode::Nearest,
+                address_mode_u: AddressMode::ClampToEdge,
+                address_mode_v: AddressMode::ClampToEdge,
+                address_mode_w: AddressMode::ClampToEdge,
+                mip_lod_bias: 0.0,
+                max_anisotropy: 1.0,
+                compare_op: CompareOp::Never,
             }),
         }
     }
@@ -232,20 +232,20 @@ fn build_hzb_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
 
     let shader = pipeline_manager
         .create_shader(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(cgen::shader::hzb_shader::ID, cgen::shader::hzb_shader::NONE),
+            cgen::CRATE_ID,
+            CGenShaderKey::make(cgen::shader::hzb_shader::ID, cgen::shader::hzb_shader::NONE),
         )
         .unwrap();
     pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
-                    shader,
+        shader,
         root_signature: root_signature.clone(),
         vertex_layout,
         blend_state: BlendState::default_alpha_disabled(),
         depth_state,
         rasterizer_state,
         color_formats: vec![Format::R32_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: None,
-                    primitive_topology: PrimitiveTopology::TriangleList,
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: None,
+        primitive_topology: PrimitiveTopology::TriangleList,
     }))
 }

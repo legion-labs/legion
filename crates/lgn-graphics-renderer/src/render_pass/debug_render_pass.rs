@@ -11,7 +11,9 @@ use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen::{self, cgen_type::TransformData},
-    components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent},
+    components::{
+        CameraComponent, ManipulatorComponent, RenderSurface, RenderSurfaceExtents, VisualComponent,
+    },
     debug_display::{DebugDisplay, DebugPrimitiveType},
     picking::ManipulatorManager,
     resources::{
@@ -252,12 +254,11 @@ impl DebugRenderPass {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn render_manipulators(
+    pub fn render_manipulators(
         &self,
         render_context: &RenderContext<'_>,
-
         cmd_buffer: &mut CommandBuffer,
-        render_surface: &mut RenderSurface,
+        render_surface_extents: RenderSurfaceExtents,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
         camera: &CameraComponent,
@@ -268,7 +269,7 @@ impl DebugRenderPass {
                     let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                         transform,
                         &manipulator.local_transform,
-                        render_surface,
+                        render_surface_extents,
                         camera,
                     );
 
@@ -350,7 +351,7 @@ impl DebugRenderPass {
             self.render_manipulators(
                 render_context,
                 cmd_buffer,
-                render_surface,
+                render_surface.extents(),
                 manipulator_meshes,
                 mesh_manager,
                 camera,

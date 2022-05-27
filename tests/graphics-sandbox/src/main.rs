@@ -215,7 +215,7 @@ fn presenter_snapshot_system(
             PresenterSnapshot::new(
                 &snapshot_descriptor.setup_name,
                 frame_counter.frame_target,
-                &device_context,
+                device_context,
                 &pipeline_manager,
                 render_surface_id,
                 RenderSurfaceExtents::new(

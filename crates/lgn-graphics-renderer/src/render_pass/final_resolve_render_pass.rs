@@ -1,8 +1,8 @@
 use lgn_graphics_api::{
     AddressMode, BlendState, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, CompareOp,
     CullMode, DepthState, DeviceContext, FilterType, Format, GraphicsPipelineDef, LoadOp,
-    MipMapMode, PrimitiveTopology, RasterizerState, ResourceState, ResourceUsage, SampleCount,
-    Sampler, SamplerDef, StencilOp, StoreOp, TextureView, VertexLayout,
+    MipMapMode, PrimitiveTopology, RasterizerState, ResourceState, SampleCount, Sampler,
+    SamplerDef, StencilOp, StoreOp, TextureView, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 

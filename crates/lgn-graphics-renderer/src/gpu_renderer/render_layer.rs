@@ -1,17 +1,14 @@
 use lgn_graphics_api::{Buffer, CommandBuffer, ResourceUsage};
 
 use crate::{
-    core::{BinaryWriter, RenderCommandBuilder},
-    resources::{
-        StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
-    },
+    resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator},
     RenderContext,
 };
 
 use super::{GpuInstanceId, RenderBatch, RenderElement, RenderStateSet};
 
 pub struct RenderLayer {
-    state_page: StaticBufferAllocation,
+    pub(crate) state_page: StaticBufferAllocation,
     state_to_batch: Vec<u32>,
     batches: Vec<RenderBatch>,
     cpu_render_set: bool,
@@ -70,10 +67,9 @@ impl RenderLayer {
 
     pub fn aggregate_offsets(
         &mut self,
-        render_commands: &mut RenderCommandBuilder,
         count_buffer_offset: &mut u64,
         indirect_arg_buffer_offset: &mut u64,
-    ) {
+    ) -> Vec<(u32, u32)> {
         if !self.cpu_render_set && !self.state_to_batch.is_empty() {
             let mut per_batch_offsets: Vec<(u32, u32)> = Vec::new();
             per_batch_offsets.resize(self.batches.len(), (0, 0));
@@ -94,13 +90,9 @@ impl RenderLayer {
                 per_state_offsets[state_id] = per_batch_offsets[*batch_id as usize];
             }
 
-            let mut binary_writer = BinaryWriter::new();
-            binary_writer.write_slice(&per_state_offsets);
-
-            render_commands.push(UpdateUnifiedStaticBufferCommand {
-                src_buffer: binary_writer.take(),
-                dst_offset: self.state_page.byte_offset(),
-            });
+            per_state_offsets
+        } else {
+            vec![]
         }
     }
 

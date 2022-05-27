@@ -2,9 +2,10 @@ use std::{cmp::max, sync::Arc};
 
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::{
-    CommandBuffer, DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext,
-    Extents2D, Format, GPUViewType, LoadOp, ResourceState, ResourceUsage, Semaphore, SemaphoreDef,
-    StoreOp,
+    ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DepthStencilClearValue,
+    DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Extents3D, Format, GPUViewType,
+    LoadOp, MemoryUsage, PlaneSlice, ResourceFlags, ResourceState, ResourceUsage, Semaphore,
+    SemaphoreDef, StoreOp, Texture, TextureDef, TextureTiling, TextureViewDef, ViewDimension,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -153,6 +154,12 @@ pub struct RenderSurface {
     egui_renderpass: Arc<RwLock<EguiPass>>,
     final_resolve_render_pass: Arc<RwLock<FinalResolveRenderPass>>,
     presenting_status: RenderSurfacePresentingStatus,
+
+    // For render graph
+    view_target: Texture,
+    hzb: [Texture; 2],
+    hzb_cleared: bool,
+    use_view_target: bool,
 }
 
 impl RenderSurface {
@@ -323,36 +330,159 @@ impl RenderSurface {
         self
     }
 
+    fn make_hzb_desc(extents: &Extents3D) -> TextureDef {
+        const SCALE_THRESHOLD: f32 = 0.7;
+
+        let mut hzb_width = 2.0f32.powf((extents.width as f32).log2().floor());
+        if hzb_width / extents.width as f32 > SCALE_THRESHOLD {
+            hzb_width /= 2.0;
+        }
+        let mut hzb_height = 2.0f32.powf((extents.height as f32).log2().floor());
+        if hzb_height / extents.height as f32 > SCALE_THRESHOLD {
+            hzb_height /= 2.0;
+        }
+
+        hzb_width = hzb_width.max(4.0);
+        hzb_height = hzb_height.max(4.0);
+
+        let mut min_extent = hzb_width.min(hzb_height) as u32;
+        let mut mip_count = 1;
+        while min_extent != 1 {
+            min_extent /= 2;
+            mip_count += 1;
+        }
+
+        TextureDef {
+            extents: Extents3D {
+                width: hzb_width as u32,
+                height: hzb_height as u32,
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count,
+            format: Format::R32_SFLOAT,
+            usage_flags: ResourceUsage::AS_RENDER_TARGET
+                | ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_UNORDERED_ACCESS
+                | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
+        }
+    }
+
+    pub fn view_target(&self) -> &Texture {
+        &self.view_target
+    }
+
+    pub fn use_view_target(&self) -> bool {
+        self.use_view_target
+    }
+
+    pub fn set_use_view_target(&mut self, enable: bool) {
+        self.use_view_target = enable;
+    }
+
+    pub(crate) fn hzb(&self) -> [&Texture; 2] {
+        [&self.hzb[0], &self.hzb[1]]
+    }
+
+    pub(crate) fn clear_hzb(&mut self, cmd_buffer: &mut CommandBuffer) {
+        if !self.hzb_cleared {
+            self.hzb_cleared = true;
+
+            cmd_buffer.with_label("Clear Prev HZB", |cmd_buffer| {
+                for i in 0..2 {
+                    for mip in 0..self.hzb[i].definition().mip_count {
+                        let hzb_view = self.hzb[i].create_view(TextureViewDef {
+                            gpu_view_type: GPUViewType::RenderTarget,
+                            view_dimension: ViewDimension::_2D,
+                            first_mip: mip,
+                            mip_count: 1,
+                            plane_slice: PlaneSlice::Default,
+                            first_array_slice: 0,
+                            array_size: 1,
+                        });
+
+                        cmd_buffer.cmd_begin_render_pass(
+                            &[ColorRenderTargetBinding {
+                                texture_view: &hzb_view,
+                                load_op: LoadOp::Clear,
+                                store_op: StoreOp::Store,
+                                clear_value: ColorClearValue([0.0; 4]),
+                            }],
+                            &None,
+                        );
+                        cmd_buffer.cmd_end_render_pass();
+                    }
+                }
+            });
+        }
+    }
+
     fn new_with_id(
         id: RenderSurfaceId,
         renderer: &Renderer,
         pipeline_manager: &PipelineManager,
-        extents: RenderSurfaceExtents,
+        render_surface_extents: RenderSurfaceExtents,
     ) -> Self {
         let num_render_frames = renderer.num_render_frames();
         let device_context = renderer.device_context();
         let presenter_sems = (0..num_render_frames)
             .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
             .collect();
+
+        let extents = Extents3D {
+            width: render_surface_extents.width(),
+            height: render_surface_extents.height(),
+            depth: 1,
+        };
+        let view_desc = TextureDef {
+            extents,
+            array_length: 1,
+            mip_count: 1,
+            format: Format::B8G8R8A8_UNORM,
+            usage_flags: ResourceUsage::AS_RENDER_TARGET
+                | ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_UNORDERED_ACCESS
+                | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
+        };
+        let view_target = device_context.create_texture(view_desc, "ViewBuffer");
+
+        let hzb_desc = Self::make_hzb_desc(&extents);
+
+        let hzb = [
+            device_context.create_texture(hzb_desc, "HZB 0"),
+            device_context.create_texture(hzb_desc, "HZB 1"),
+        ];
+
         Self {
             id,
-            extents,
-            resources: SizeDependentResources::new(&device_context, extents, pipeline_manager),
+            extents: render_surface_extents,
+            resources: SizeDependentResources::new(
+                device_context,
+                render_surface_extents,
+                pipeline_manager,
+            ),
             num_render_frames,
             render_frame_idx: 0,
             presenter_sems,
-            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(&device_context))),
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
-            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(
-                &device_context,
-                pipeline_manager,
-            ))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
             final_resolve_render_pass: Arc::new(RwLock::new(FinalResolveRenderPass::new(
-                &device_context,
+                device_context,
                 pipeline_manager,
             ))),
             presenters: Vec::new(),
             presenting_status: RenderSurfacePresentingStatus::Presenting,
+            view_target,
+            hzb,
+            hzb_cleared: false,
+            use_view_target: false,
         }
     }
 }

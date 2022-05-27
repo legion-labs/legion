@@ -20,12 +20,12 @@ pub fn main() {
 
     products.extend( mesh::main() );
 
-    // 
+    //
     // Next step:
     // let view_data = Struct::from_json( ... );
     //
 
-  
+
     let view_data = #{
         type: "Struct",
         name: "ViewData",
@@ -50,12 +50,12 @@ pub fn main() {
             #{ name: "num_spot_lights", ty:"Uint1" },
             #{ name: "apply_ambient", ty:"Uint1" },
             #{ name: "apply_diffuse", ty:"Uint1" },
-            #{ name: "apply_specular", ty:"Uint1" },            
+            #{ name: "apply_specular", ty:"Uint1" },
             #{ name: "pad_", ty:"Uint2" },
         ]
     };
     products.push( lighting_data );
-    
+
     let transform = #{
         type: "Struct",
         name: "TransformData",
@@ -66,7 +66,7 @@ pub fn main() {
         ]
     };
     products.push( transform );
-    
+
     let gpu_instance_color = #{
         type: "Struct",
         name: "GpuInstanceColor",
@@ -81,7 +81,7 @@ pub fn main() {
         type: "Struct",
         name: "GpuInstancePickingData",
         fields: [
-            #{ name:"picking_id", ty:"Uint1" },            
+            #{ name:"picking_id", ty:"Uint1" },
         ]
     };
     products.push( gpu_instance_picking_data );
@@ -97,7 +97,7 @@ pub fn main() {
             #{ name:"picking_data_va", ty:"Uint1" },
         ]
     };
-    products.push( gpu_instance_va_table );    
+    products.push( gpu_instance_va_table );
 
     let material_data = #{
         type: "Struct",
@@ -113,16 +113,16 @@ pub fn main() {
             #{ name:"roughness_texture", ty:"Uint1" },
         ]
     };
-    products.push( material_data );    
-    
+    products.push( material_data );
+
     products.extend( lighting::main() );
 
     let persistent_descriptor_set = #{
         type: "DescriptorSet",
         name: "PersistentDescriptorSet",
         frequency: PERSISTENT_DESCRIPTOR_SET_FREQUENCY,
-        descriptors: [            
-            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:10240, bindless:true },            
+        descriptors: [
+            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:10240, bindless:true },
         ]
     };
     products.push( persistent_descriptor_set );
@@ -148,8 +148,7 @@ pub fn main() {
         name: "ViewDescriptorSet",
         frequency: VIEW_DESCRIPTOR_SET_FREQUENCY,
         descriptors: [
-            #{name: "view_data", type:"ConstantBuffer", content:"ViewData", transient:true },            
-            #{name: "hzb_texture", type: "Texture2D", content:"Float1" },
+            #{name: "view_data", type:"ConstantBuffer", content:"ViewData", transient:true },
         ]
     };
     products.push( view_descriptor_set );
@@ -157,11 +156,11 @@ pub fn main() {
     products.extend( egui::main() );
     products.extend( hzb::main() );
     products.extend( final_resolve::main() );
-    products.extend( const_color::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
-    products.extend( picking::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );    
-    products.extend( default_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );        
-    products.extend( culling::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );     
-    products.extend( depth_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );        
+    products.extend( const_color::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
+    products.extend( picking::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
+    products.extend( default_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
+    products.extend( culling::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
+    products.extend( depth_shader::main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set) );
 
     products
 }

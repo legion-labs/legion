@@ -26,11 +26,12 @@ use crate::{
         shader,
     },
     components::RenderSurface,
+    core::BinaryWriter,
     egui::egui_plugin::Egui,
     labels::RenderStage,
     resources::{
         GpuBufferWithReadback, MaterialId, PipelineDef, PipelineHandle, PipelineManager,
-        ReadbackBuffer, UnifiedStaticBufferAllocator,
+        ReadbackBuffer, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
     },
     RenderContext, Renderer,
 };
@@ -142,37 +143,37 @@ fn prepare(renderer: Res<'_, Renderer>) {
     mesh_renderer.prepare(&renderer);
 }
 
-struct CullingArgBuffer {
+pub(crate) struct CullingArgBuffer {
     buffer: Buffer,
     srv_view: BufferView,
     uav_view: BufferView,
 }
 
-struct CullingArgBuffers {
-    draw_count: Option<CullingArgBuffer>,
-    draw_args: Option<CullingArgBuffer>,
-    culled_count: Option<CullingArgBuffer>,
-    culled_args: Option<CullingArgBuffer>,
-    culled_instances: Option<CullingArgBuffer>,
-    stats_buffer: GpuBufferWithReadback,
-    stats_buffer_readback: Option<Handle<ReadbackBuffer>>,
-    culling_debug: Option<CullingArgBuffer>,
+pub(crate) struct CullingArgBuffers {
+    pub(crate) draw_count: Option<CullingArgBuffer>,
+    pub(crate) draw_args: Option<CullingArgBuffer>,
+    pub(crate) culled_count: Option<CullingArgBuffer>,
+    pub(crate) culled_args: Option<CullingArgBuffer>,
+    pub(crate) culled_instances: Option<CullingArgBuffer>,
+    pub(crate) stats_buffer: GpuBufferWithReadback,
+    pub(crate) stats_buffer_readback: Option<Handle<ReadbackBuffer>>,
+    pub(crate) culling_debug: Option<CullingArgBuffer>,
     // TMP until shader variations
-    tmp_culled_count: Option<CullingArgBuffer>,
-    tmp_culled_args: Option<CullingArgBuffer>,
-    tmp_culled_instances: Option<CullingArgBuffer>,
+    pub(crate) tmp_culled_count: Option<CullingArgBuffer>,
+    pub(crate) tmp_culled_args: Option<CullingArgBuffer>,
+    pub(crate) tmp_culled_instances: Option<CullingArgBuffer>,
 }
 
 pub struct MeshRenderer {
-    default_layers: Vec<RenderLayer>,
+    pub(crate) default_layers: Vec<RenderLayer>,
 
-    instance_data_indices: Vec<u32>,
-    gpu_instance_data: Vec<GpuInstanceData>,
-    depth_count_buffer_count: u64,
+    pub(crate) instance_data_indices: Vec<u32>,
+    pub(crate) gpu_instance_data: Vec<GpuInstanceData>,
+    pub(crate) depth_count_buffer_size: u64,
 
     culling_shader_first_pass: Option<PipelineHandle>,
     culling_shader_second_pass: Option<PipelineHandle>,
-    culling_buffers: CullingArgBuffers,
+    pub(crate) culling_buffers: CullingArgBuffers,
     culling_stats: CullingEfficiencyStats,
 
     tmp_batch_ids: Vec<u32>,
@@ -209,7 +210,7 @@ impl MeshRenderer {
             culling_stats: CullingEfficiencyStats::default(),
             instance_data_indices: vec![],
             gpu_instance_data: vec![],
-            depth_count_buffer_count: 0,
+            depth_count_buffer_size: 0,
             culling_shader_first_pass: None,
             culling_shader_second_pass: None,
             tmp_batch_ids: vec![],
@@ -320,16 +321,23 @@ impl MeshRenderer {
 
         let mut count_buffer_size: u64 = 0;
         let mut indirect_arg_buffer_size: u64 = 0;
-        self.depth_count_buffer_count = 0;
+        self.depth_count_buffer_size = 0;
 
         for (index, layer) in self.default_layers.iter_mut().enumerate() {
-            layer.aggregate_offsets(
-                &mut render_commands,
-                &mut count_buffer_size,
-                &mut indirect_arg_buffer_size,
-            );
+            let per_state_offsets =
+                layer.aggregate_offsets(&mut count_buffer_size, &mut indirect_arg_buffer_size);
             if index == DefaultLayers::Depth as usize {
-                self.depth_count_buffer_count = count_buffer_size;
+                self.depth_count_buffer_size = count_buffer_size;
+            }
+
+            if !per_state_offsets.is_empty() {
+                let mut binary_writer = BinaryWriter::new();
+                binary_writer.write_slice(&per_state_offsets);
+
+                render_commands.push(UpdateUnifiedStaticBufferCommand {
+                    src_buffer: binary_writer.take(),
+                    dst_offset: layer.state_page.byte_offset(),
+                });
             }
         }
 
@@ -459,9 +467,11 @@ impl MeshRenderer {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn cull(
         &self,
         render_context: &RenderContext<'_>,
+        render_surface: &mut RenderSurface,
         cmd_buffer: &mut CommandBuffer,
         culling_buffers: &CullingArgBuffers,
         culling_options: GpuCullingOptions,
@@ -540,6 +550,8 @@ impl MeshRenderer {
             }
             culling_descriptor_set.set_render_pass_data(input_buffers.2);
 
+            culling_descriptor_set.set_hzb_texture(render_surface.get_hzb_surface().hzb_srv_view());
+
             let culling_descriptor_set_handle = render_context.write_descriptor_set(
                 cgen::descriptor_set::CullingDescriptorSet::descriptor_set_layout(),
                 culling_descriptor_set.descriptor_refs(),
@@ -576,7 +588,7 @@ impl MeshRenderer {
 
             if indirect_dispatch {
                 let depth_count_size =
-                    self.depth_count_buffer_count * std::mem::size_of::<u32>() as u64;
+                    self.depth_count_buffer_size * std::mem::size_of::<u32>() as u64;
                 cmd_buffer.cmd_fill_buffer(&draw_count.buffer, 0, depth_count_size, 0);
             } else {
                 cmd_buffer.cmd_fill_buffer(
@@ -765,6 +777,7 @@ impl MeshRenderer {
             // Cull using previous frame Hzb
             self.cull(
                 render_context,
+                render_surface,
                 cmd_buffer,
                 &self.culling_buffers,
                 GpuCullingOptions {
@@ -809,6 +822,7 @@ impl MeshRenderer {
             // Retest elements culled from first pass against new Hzb
             self.cull(
                 render_context,
+                render_surface,
                 cmd_buffer,
                 &self.culling_buffers,
                 GpuCullingOptions {
