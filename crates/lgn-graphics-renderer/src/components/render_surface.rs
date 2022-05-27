@@ -306,7 +306,7 @@ impl RenderSurface {
 
         Self {
             id: RenderSurfaceId::new(),
-            window_id: window_id,
+            window_id,
             extents: render_surface_extents,
             resources: SizeDependentResources::new(
                 device_context,
