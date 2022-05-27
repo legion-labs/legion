@@ -215,7 +215,7 @@ fn add_descriptor_set_internal(model: &mut db::Model, data: &DescriptorSetData) 
                 )?;
             }
             DescriptorData::Sampler(def) => {
-                builder = builder.add_samplers(&def.name, def.array_len)?;
+                builder = builder.add_samplers(&def.name, def.bindless, def.array_len)?;
             }
         }
     }
@@ -373,6 +373,8 @@ struct TextureData {
 #[derive(Serialize, Deserialize, Debug)]
 struct SamplerData {
     name: String,
+    #[serde(default)]
+    bindless: bool,
     array_len: Option<u32>,
 }
 

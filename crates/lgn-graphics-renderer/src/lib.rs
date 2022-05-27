@@ -37,8 +37,8 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    AddressMode, ApiDef, BufferViewDef, CompareOp, DescriptorHeapDef, DeviceContext, FilterType,
-    MipMapMode, Queue, QueueType, ResourceUsage, SamplerDef, BACKBUFFER_COUNT,
+    ApiDef, BufferViewDef, DescriptorHeapDef, DeviceContext, Extents3D, Format, MemoryUsage, Queue,
+    QueueType, ResourceFlags, ResourceUsage, BACKBUFFER_COUNT,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
@@ -106,7 +106,7 @@ use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 use crate::debug_display::DebugDisplay;
 
 use crate::resources::{
-    ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions,
+    ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions, SamplerManager,
     SharedResourcesManager, TransientBufferManager, UnifiedStaticBuffer,
 };
 
@@ -197,6 +197,9 @@ impl Plugin for RendererPlugin {
         let texture_manager = TextureManager::new(device_context);
 
         let material_manager = MaterialManager::new(static_buffer.allocator());
+
+        let sampler_manager =
+            SamplerManager::new(device_context, &mut persistent_descriptor_set_manager);
 
         let shared_resources_manager = SharedResourcesManager::new(
             &mut render_commands,
@@ -360,6 +363,7 @@ impl Plugin for RendererPlugin {
             .insert(model_manager)
             .insert(mesh_manager)
             .insert(material_manager)
+            .insert(sampler_manager)
             .insert(missing_visuals_tracker)
             .insert(render_features)
             .finalize();
@@ -633,6 +637,9 @@ fn render_update(
 
                 // Persistent descriptor set
                 {
+                    render_resources
+                        .get_mut::<SamplerManager>()
+                        .upload(&mut persistent_descriptor_set_manager);
                     let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
                     render_context.set_persistent_descriptor_set(
                         descriptor_set.layout(),
@@ -657,21 +664,6 @@ fn render_update(
                     let instance_manager = render_resources.get::<GpuInstanceManager>();
                     let va_table_address_buffer = instance_manager.structured_buffer_view();
                     frame_descriptor_set.set_va_table_address_buffer(va_table_address_buffer);
-
-                    let sampler_def = SamplerDef {
-                        min_filter: FilterType::Linear,
-                        mag_filter: FilterType::Linear,
-                        mip_map_mode: MipMapMode::Linear,
-                        address_mode_u: AddressMode::ClampToEdge,
-                        address_mode_v: AddressMode::ClampToEdge,
-                        address_mode_w: AddressMode::ClampToEdge,
-                        mip_lod_bias: 0.0,
-                        max_anisotropy: 1.0,
-                        compare_op: CompareOp::LessOrEqual,
-                    };
-                    let material_sampler =
-                        render_context.device_context.create_sampler(sampler_def);
-                    frame_descriptor_set.set_material_sampler(&material_sampler);
 
                     let frame_descriptor_set_handle = render_context.write_descriptor_set(
                         cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
