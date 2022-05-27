@@ -10,8 +10,8 @@
   } from "@/components/propertyGrid/lib/propertyGrid";
   import type { OptionResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
 
-  import PropertyInput from "./PropertyInput.svelte";
   import PropertyActionButton from "./PropertyActionButton.svelte";
+  import PropertyInput from "./PropertyInput.svelte";
 
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;

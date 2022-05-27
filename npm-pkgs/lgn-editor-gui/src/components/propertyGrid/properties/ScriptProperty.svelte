@@ -8,6 +8,7 @@
   import { fileName } from "@/lib/path";
   import { currentResource } from "@/orchestrators/currentResource";
   import type { RootContext } from "@/routes/index.svelte";
+
   import PropertyActionButton from "../PropertyActionButton.svelte";
 
   // export let name: string;
