@@ -3,7 +3,8 @@ use futures::TryStreamExt;
 use lgn_analytics::prelude::*;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
-use lgn_tracing::info;
+use lgn_tracing::prelude::*;
+use prost::Message;
 use sqlx::Row;
 use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
@@ -85,6 +86,28 @@ async fn create_empty_delta_table(table_uri: &str) -> Result<DeltaTable> {
     Ok(table)
 }
 
+async fn read_block_payload(
+    block_id: &str,
+    buffer_from_db: Option<Vec<u8>>,
+    blob_storage: Arc<dyn BlobStorage>,
+) -> Result<lgn_telemetry_proto::telemetry::BlockPayload> {
+    let buffer: Vec<u8> = if let Some(buffer) = buffer_from_db {
+        buffer
+    } else {
+        blob_storage
+            .read_blob(block_id)
+            .await
+            .with_context(|| "reading block payload from blob storage")?
+    };
+
+    {
+        span_scope!("decode");
+        let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
+            .with_context(|| format!("reading payload {}", &block_id))?;
+        Ok(payload)
+    }
+}
+
 // todo: update_spans_delta_table should not assume the absence of the table, it should add the needed partitions
 pub async fn update_spans_delta_table(
     pool: sqlx::any::AnyPool,
@@ -118,20 +141,19 @@ pub async fn update_spans_delta_table(
             let spans_table_path = spans_table_path.clone();
             let sender = sender.clone();
             let block = lgn_analytics::map_row_block(&block_row)?;
-            let payload: Option<Vec<u8>> = block_row.try_get("payload")?;
-            dbg!(payload);
-            let pool = pool.clone();
+            let payload_buffer = block_row.try_get("payload")?;
             handles.push(tokio::spawn(async move {
+                let payload =
+                    read_block_payload(&block.block_id, payload_buffer, blob_storage.clone())
+                        .await?;
                 let opt_action = write_local_partition(
-                    pool,
-                    blob_storage,
-                    stream,
-                    block,
+                    &payload,
+                    &stream,
+                    &block,
                     convert_ticks,
-                    next_id,
-                    spans_table_path,
+                    &*next_id,
+                    &spans_table_path,
                 )
-                .await
                 .with_context(|| "writing local partition")?;
                 if let Some(action) = opt_action {
                     sender.send(action)?;
