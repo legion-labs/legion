@@ -2,10 +2,11 @@
   import { page } from "$app/stores";
   import * as d3 from "d3";
   import type { D3ZoomEvent } from "d3";
-  import { onDestroy, onMount } from "svelte";
-  import { setContext } from "svelte";
-  import { getContext } from "svelte";
+  import { getContext, onDestroy, onMount, setContext } from "svelte";
+  import { derived, writable } from "svelte/store";
   import type { Unsubscriber } from "svelte/store";
+
+  import { recorded } from "@lgn/web-client/src/lib/store";
 
   import { MetricAxisCollection } from "@/components/Metric/Lib/MetricAxisCollection";
   import { getMetricColor } from "@/components/Metric/Lib/MetricColor";
@@ -61,7 +62,14 @@
   const client = getContext("http-client");
   const debug = getContext("debug");
 
-  let mainWidth = 0;
+  const mainWidthSource = writable(0);
+
+  const recordedMainWidth = recorded(mainWidthSource);
+
+  const mainWidth = derived(
+    recordedMainWidth,
+    ($recordedMainWidth) => $recordedMainWidth.curr
+  );
 
   let metricTooltip: MetricTooltip;
   let totalMinMs = -Infinity;
@@ -105,12 +113,12 @@
     }
   }
 
-  $: if (mainWidth) {
+  $: if ($mainWidth) {
     transform = transform;
   }
 
   const getDeltaMs = () => currentMaxMs - currentMinMs;
-  const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / mainWidth;
+  const getPixelSizeNs = () => (getDeltaMs() * 1_000_000) / $mainWidth;
 
   onMount(async () => {
     axisCollection = new MetricAxisCollection();
@@ -136,7 +144,7 @@
     pixelSizeNs = getPixelSizeNs();
     lod = getLodFromPixelSizeNs(pixelSizeNs);
     if (x) {
-      x.range([0, mainWidth]);
+      x.range([0, $mainWidth]);
       const scaleX = transform.rescaleX(x);
       currentMinMs = scaleX.domain()[0].valueOf();
       currentMaxMs = scaleX.domain()[1].valueOf();
@@ -193,7 +201,7 @@
   }
 
   function refreshZoom() {
-    const extent = [mainWidth, outerHeight] as [number, number];
+    const extent = [$mainWidth, outerHeight] as [number, number];
     const origin = [0, 0] as [number, number];
     zoom.translateExtent([origin, extent]);
     zoom.extent([origin, extent]);
@@ -229,7 +237,7 @@
 
     var foBody = fo
       .append("xhtml:body")
-      .style("width", `${mainWidth}px`)
+      .style("width", `${$mainWidth}px`)
       .style("height", `${height}px`);
 
     const canvasChart = foBody.append("canvas");
@@ -294,7 +302,7 @@
       .filter((e) => e.shiftKey)
       .extent([
         [1, 0],
-        [mainWidth, height - 1],
+        [$mainWidth, height - 1],
       ])
       .on("brush end", (e: d3.D3BrushEvent<number>) => {
         const scaleX = transform.rescaleX(x);
@@ -313,11 +321,11 @@
       container
         .select("svg")
         .attr("height", outerHeight)
-        .attr("width", mainWidth);
+        .attr("width", $mainWidth);
       container
         .select("canvas")
         .attr("height", height)
-        .attr("width", mainWidth);
+        .attr("width", $mainWidth);
     }
   }
 
@@ -327,7 +335,7 @@
     }
 
     var startTime = performance.now();
-    x.range([0, mainWidth]);
+    x.range([0, $mainWidth]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     svgGroup.call(zoom as any);
     refreshZoom();
@@ -389,18 +397,28 @@
 
   function handleKeydown(event: KeyboardEvent) {
     if (brushStart && brushEnd && event.code == "Escape") {
-      clearBrush();
+      brushSvg.call(d3.brush().clear);
+      brushStart = NaN;
+      brushEnd = NaN;
     }
   }
 
-  function clearBrush() {
-    brushSvg.call(d3.brush().clear);
-    brushStart = NaN;
-    brushEnd = NaN;
+  function resizeBrush() {
+    if (isNaN(brushStart) || isNaN(brushEnd)) {
+      return;
+    }
+
+    const diff = (($recordedMainWidth.prev || 0) - $recordedMainWidth.curr) / 2;
+
+    const scaleX = transform.rescaleX(x);
+    const start = scaleX(brushStart + diff).valueOf();
+    const end = scaleX(brushEnd - diff).valueOf();
+
+    brushSvg.call(brushFunction.move, [start, end]);
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} on:resize={clearBrush} />
+<svelte:window on:keydown={handleKeydown} on:resize={resizeBrush} />
 
 <Layout>
   <div class="metrics" slot="content">
@@ -410,18 +428,17 @@
           <MetricSelection />
           <MetricTooltip
             bind:this={metricTooltip}
-            {metricStore}
             xScale={transform.rescaleX(x)}
             {zoomEvent}
           />
         </div>
       {/if}
-      <div id="metric-canvas" bind:clientWidth={mainWidth} />
+      <div id="metric-canvas" bind:clientWidth={$mainWidthSource} />
       {#if !loading}
         {#if !isNaN(brushStart) && !isNaN(brushEnd)}
           <div>
             <TimeRange
-              width={mainWidth}
+              width={$mainWidth}
               selectionRange={[brushStart, brushEnd]}
               viewRange={[currentMinMs, currentMaxMs]}
             />
@@ -436,8 +453,7 @@
         {#if $debug}
           <div style="display:inherit;padding-top:40px">
             <MetricDebugDisplay
-              width={mainWidth}
-              {mainWidth}
+              width={$mainWidth}
               {transform}
               {updateTime}
               {metricStreamer}

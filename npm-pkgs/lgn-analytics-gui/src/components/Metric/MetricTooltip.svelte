@@ -1,17 +1,18 @@
 <script lang="ts">
   import type { D3ZoomEvent } from "d3";
+  import { getContext } from "svelte";
 
   import type { MetricPoint } from "./Lib/MetricPoint";
   import type { MetricState } from "./Lib/MetricState";
-  import type { MetricStore } from "./Lib/MetricStore";
   import MetricTooltipItem from "./MetricTooltipItem.svelte";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let zoomEvent: D3ZoomEvent<HTMLCanvasElement, any>;
   export let xScale: d3.ScaleLinear<number, number, never>;
-  export let metricStore: MetricStore;
 
   const margin = 15;
+
+  const metricStore = getContext("metrics-store");
 
   let displayed = false;
   let xValue: number;
