@@ -14,6 +14,7 @@ mod cgen {
 
 use crate::components::EcsToRender;
 use crate::core::RenderObjects;
+use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use std::sync::Arc;
 
@@ -331,8 +332,12 @@ impl Plugin for RendererPlugin {
         // Finalize
         //
 
-        let render_resources_builder = RenderResourcesBuilder::new();
+        let render_features_builder = RenderFeaturesBuilder::new();
+        let render_features = render_features_builder
+            .insert(ModelFeature::new())
+            .finalize();
 
+        let render_resources_builder = RenderResourcesBuilder::new();
         let render_resources = render_resources_builder
             .insert(render_scope)
             .insert(gfx_api.clone())
@@ -354,6 +359,7 @@ impl Plugin for RendererPlugin {
             .insert(mesh_manager)
             .insert(material_manager)
             .insert(missing_visuals_tracker)
+            .insert(render_features)
             .finalize();
 
         let renderer = Renderer::new(
@@ -370,7 +376,7 @@ impl Plugin for RendererPlugin {
 }
 
 #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
-fn on_window_created(    
+fn on_window_created(
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
@@ -385,9 +391,7 @@ fn on_window_created(
 
         render_surfaces.insert(render_surface);
 
-        event_render_surface_created.send(RenderSurfaceCreatedForWindow {
-            window_id: ev.id,            
-        });
+        event_render_surface_created.send(RenderSurfaceCreatedForWindow { window_id: ev.id });
     }
 }
 
@@ -395,12 +399,12 @@ fn on_window_created(
 fn on_window_resized(
     mut ev_wnd_resized: EventReader<'_, '_, WindowResized>,
     wnd_list: Res<'_, Windows>,
-    renderer: Res<'_, Renderer>,    
+    renderer: Res<'_, Renderer>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     pipeline_manager: Res<'_, PipelineManager>,
 ) {
     let device_context = renderer.device_context();
-    for ev in ev_wnd_resized.iter() {        
+    for ev in ev_wnd_resized.iter() {
         let wnd = wnd_list.get(ev.id).unwrap();
         let render_surface = render_surfaces.try_get_from_window_id_mut(ev.id);
         if let Some(render_surface) = render_surface {
@@ -408,17 +412,17 @@ fn on_window_resized(
                 device_context,
                 RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
                 &pipeline_manager,
-            );            
-        }        
+            );
+        }
     }
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn on_window_close_requested(    
-    mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,    
+fn on_window_close_requested(
+    mut ev_wnd_destroyed: EventReader<'_, '_, WindowCloseRequested>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
-    for ev in ev_wnd_destroyed.iter() {        
+    for ev in ev_wnd_destroyed.iter() {
         render_surfaces.remove_from_window_id(ev.id);
     }
 }
@@ -451,7 +455,6 @@ fn render_update(
         EventReader<'_, '_, KeyboardInput>,
     ),
     queries: (
-        
         Query<'_, '_, (&VisualComponent, &GlobalTransform), With<PickedComponent>>,
         Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,
         Query<'_, '_, &CameraComponent>,
@@ -467,7 +470,7 @@ fn render_update(
     let mut render_surfaces = resources.6;
     let mut keyboard_input_events = resources.7;
 
-    // queries    
+    // queries
     let q_picked_drawables = queries.0;
     let q_manipulator_drawables = queries.1;
     let q_cameras = queries.2;
@@ -568,7 +571,7 @@ fn render_update(
         TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
         let render_objects = render_resources.get::<RenderObjects>();
-        
+
         persistent_descriptor_set_manager.frame_update();
         pipeline_manager.frame_update(&device_context);
 
@@ -582,6 +585,19 @@ fn render_update(
             &mut transient_buffer_allocator,
             &graphics_queue,
         );
+
+        //
+        // Visibility
+        //
+
+        //...
+
+        //
+        // Update 
+        //
+
+        let render_features = render_resources.get::<RenderFeatures>();
+        render_features.update();
 
         //
         // Egui (not thread safe as is)
@@ -601,7 +617,7 @@ fn render_update(
             let descriptor_pool =
             descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
 
-        let mut render_context = RenderContext::new(
+            let mut render_context = RenderContext::new(
                 &device_context,
             &graphics_queue,
             &descriptor_pool,
