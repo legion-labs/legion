@@ -13,7 +13,7 @@ mod cgen {
 }
 
 use crate::components::{tmp_debug_display_lights, EcsToRender};
-use crate::core::{DebugStuff, RenderObjects};
+use crate::core::{DebugStuff, RenderGraphPersistentState, RenderObjects};
 use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::render_passes::{
@@ -37,8 +37,8 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    ApiDef, BufferViewDef, DescriptorHeapDef, DeviceContext, Extents3D, Format, MemoryUsage, Queue,
-    QueueType, ResourceFlags, ResourceUsage, BACKBUFFER_COUNT,
+    ApiDef, BufferViewDef, DescriptorHeapDef, DeviceContext, Queue, QueueType, ResourceUsage,
+    BACKBUFFER_COUNT,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
@@ -342,6 +342,8 @@ impl Plugin for RendererPlugin {
             .insert(ModelFeature::new())
             .finalize();
 
+        let render_graph_persistent_state = RenderGraphPersistentState::new();
+
         let render_resources_builder = RenderResourcesBuilder::new();
         let render_resources = render_resources_builder
             .insert(render_scope)
@@ -366,6 +368,7 @@ impl Plugin for RendererPlugin {
             .insert(sampler_manager)
             .insert(missing_visuals_tracker)
             .insert(render_features)
+            .insert(render_graph_persistent_state)
             .finalize();
 
         let renderer = Renderer::new(

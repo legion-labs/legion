@@ -125,7 +125,7 @@ impl RenderScript<'_> {
         //----------------------------------------------------------------
         // Inject external resources
 
-        // TODO need to think of a better way of doing this.
+        // TODO(jsg): need to think of a better way of doing this.
         let prev_hzb_initial_state = if config.frame_idx == 0 {
             ResourceState::RENDER_TARGET
         } else {
@@ -287,7 +287,7 @@ impl RenderScript<'_> {
         //----------------------------------------------------------------
         // Build graph
         //
-        // TODO: Passes still missing:
+        // TODO(jsg): Passes still missing:
         //       * egui
         //       * picking
 

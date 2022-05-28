@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::sync::RwLock;
 
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferCreateFlags, BufferDef, BufferView,
@@ -20,7 +21,7 @@ use crate::render_pass::DebugRenderPass;
 use crate::resources::PipelineManager;
 use crate::RenderContext;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct RenderGraphTextureDef {
     // TextureDef
     pub extents: Extents3D,
@@ -93,7 +94,7 @@ impl From<TextureDef> for RenderGraphTextureDef {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct RenderGraphBufferDef {
     // Buffer
     pub element_size: u64,
@@ -139,7 +140,7 @@ impl From<RenderGraphBufferViewDef> for BufferViewDef {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum RenderGraphResourceDef {
     Texture(RenderGraphTextureDef),
     Buffer(RenderGraphBufferDef),
@@ -587,7 +588,57 @@ pub(crate) struct RenderGraph {
 }
 
 pub(crate) struct RenderGraphPersistentState {
-    resources: HashMap<RenderGraphResourceDef, RenderGraphResource>,
+    resources: RwLock<HashMap<String, (RenderGraphResourceDef, RenderGraphResource)>>,
+}
+
+impl RenderGraphPersistentState {
+    pub fn new() -> Self {
+        Self {
+            resources: RwLock::new(HashMap::new()),
+        }
+    }
+
+    pub fn get_resource(
+        &self,
+        name: &str,
+        def: &RenderGraphResourceDef,
+    ) -> Option<RenderGraphResource> {
+        let mut need_destroy = false;
+
+        {
+            let resources = self.resources.read().unwrap();
+            if let Some(value) = resources.get(name) {
+                if &value.0 == def {
+                    return Some(value.1.clone());
+                }
+
+                need_destroy = true;
+            }
+        }
+
+        if need_destroy {
+            // Destroy resource and it will be recreated and re-added.
+            let mut resources = self.resources.write().unwrap();
+            let value = resources.get(name).unwrap();
+            match &value.1 {
+                RenderGraphResource::Texture(_texture) => {}
+                RenderGraphResource::Buffer(_buffer) => {}
+            }
+            resources.remove(name);
+        }
+
+        None
+    }
+
+    pub fn add_resource(
+        &mut self,
+        name: &str,
+        def: &RenderGraphResourceDef,
+        resource: &RenderGraphResource,
+    ) {
+        let mut resources = self.resources.write().unwrap();
+        resources.insert(name.to_string(), (def.clone(), resource.clone()));
+    }
 }
 
 struct ResourceBarrier {
@@ -678,16 +729,27 @@ impl RenderGraph {
 
         if !context.created.iter().any(|r| *r == resource_id) {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id) {
-                //println!("  !! Create {} ", self.get_resource_name(resource_id));
-                let texture_def = &self.resources[res_idx];
-                let texture_def: &RenderGraphTextureDef = texture_def.try_into().unwrap();
-                let texture_def = texture_def.clone().into();
-                let texture = execute_context
-                    .render_context
-                    .device_context
-                    .create_texture(texture_def, self.get_resource_name(resource_id));
-                let texture = RenderGraphResource::Texture(texture);
-                context.resources[res_idx] = Some(texture);
+                let name = &self.resource_names[res_idx];
+                let original_texture_def = &self.resources[res_idx];
+                let texture_def: &RenderGraphTextureDef = original_texture_def.try_into().unwrap();
+                let texture_def: TextureDef = texture_def.clone().into();
+
+                let mut persistent_state = execute_context
+                    .render_resources
+                    .get_mut::<RenderGraphPersistentState>();
+
+                if let Some(texture) = persistent_state.get_resource(name, original_texture_def) {
+                    context.resources[res_idx] = Some(texture);
+                } else {
+                    //println!("  !! Create {} ", self.get_resource_name(resource_id));
+                    let texture = execute_context
+                        .render_context
+                        .device_context
+                        .create_texture(texture_def, self.get_resource_name(resource_id));
+                    let texture = RenderGraphResource::Texture(texture);
+                    persistent_state.add_resource(name, original_texture_def, &texture);
+                    context.resources[res_idx] = Some(texture);
+                }
 
                 for mip in 0..texture_def.mip_count {
                     let res_mip_id = (res_idx as u32, mip as u8);
@@ -711,16 +773,27 @@ impl RenderGraph {
 
         if !context.created.iter().any(|r| *r == resource_id) {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id) {
-                //println!("  !! Create {} ", self.get_resource_name(resource_id));
-                let buffer_def = &self.resources[res_idx];
-                let buffer_def: &RenderGraphBufferDef = buffer_def.try_into().unwrap();
+                let name = &self.resource_names[res_idx];
+                let original_buffer_def = &self.resources[res_idx];
+                let buffer_def: &RenderGraphBufferDef = original_buffer_def.try_into().unwrap();
                 let buffer_def: BufferDef = buffer_def.clone().into();
-                let buffer = execute_context
-                    .render_context
-                    .device_context
-                    .create_buffer(buffer_def, self.get_resource_name(resource_id));
-                let buffer = RenderGraphResource::Buffer(buffer);
-                context.resources[res_idx] = Some(buffer);
+
+                let mut persistent_state = execute_context
+                    .render_resources
+                    .get_mut::<RenderGraphPersistentState>();
+
+                if let Some(buffer) = persistent_state.get_resource(name, original_buffer_def) {
+                    context.resources[res_idx] = Some(buffer);
+                } else {
+                    //println!("  !! Create {} ", self.get_resource_name(resource_id));
+                    let buffer = execute_context
+                        .render_context
+                        .device_context
+                        .create_buffer(buffer_def, self.get_resource_name(resource_id));
+                    let buffer = RenderGraphResource::Buffer(buffer);
+                    persistent_state.add_resource(name, original_buffer_def, &buffer);
+                    context.resources[res_idx] = Some(buffer);
+                }
 
                 let res_mip_id = (res_idx as u32, 0);
                 context
@@ -1332,7 +1405,7 @@ impl RenderGraph {
                     .iter()
                     .any(|r| r.0 == resource_idx as u32)
             {
-                // TODO: Deallocate resource to be able to reuse it later in the graph execution
+                // TODO(jsg): Deallocate resource to be able to reuse it later in the graph execution
                 // println!(
                 //     "  !! Destroy {}",
                 //     self.get_resource_name(resource_idx as RenderGraphResourceId)

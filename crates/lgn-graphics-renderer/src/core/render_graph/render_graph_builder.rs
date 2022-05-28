@@ -144,6 +144,12 @@ impl<'a> RenderGraphBuilder<'a> {
         name: &str,
         resource: &RenderGraphResourceDef,
     ) -> RenderGraphResourceId {
+        assert!(
+            !self.resource_names.iter().any(|x| x == name),
+            "Resource with the name {} already declared in this render graph.",
+            name
+        );
+
         let id = self.next_resource_id;
         self.next_resource_id += 1;
         self.resources.push(resource.clone());
@@ -172,6 +178,12 @@ impl<'a> RenderGraphBuilder<'a> {
         name: &str,
         resource: &RenderGraphResourceDef,
     ) -> RenderGraphResourceId {
+        assert!(
+            !self.resource_names.iter().any(|x| x == name),
+            "Resource with the name {} already declared in this render graph.",
+            name
+        );
+
         let id = self.next_resource_id;
         self.next_resource_id += 1;
         self.resources.push(resource.clone());
