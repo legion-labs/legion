@@ -2,6 +2,7 @@
   import type { D3ZoomEvent } from "d3";
   import { getContext } from "svelte";
 
+  import { getMetricColor } from "./Lib/MetricColor";
   import type { MetricPoint } from "./Lib/MetricPoint";
   import type { MetricState } from "./Lib/MetricState";
   import MetricTooltipItem from "./MetricTooltipItem.svelte";
@@ -12,7 +13,7 @@
 
   const margin = 15;
 
-  const metricStore = getContext("metrics-store");
+  const selectedMetricStore = getContext("selected-metrics-store");
 
   let displayed = false;
   let xValue: number;
@@ -20,7 +21,11 @@
   let side: boolean;
   let width: number;
   let displayInternal: boolean;
-  let values: { metric: MetricState; value: MetricPoint | null }[];
+  let values: {
+    metric: MetricState;
+    value: MetricPoint | null;
+    color: string;
+  }[];
 
   export function enable() {
     displayed = true;
@@ -49,14 +54,14 @@
 
   $: {
     if (xValue) {
-      values = $metricStore
-        .filter((m) => !m.hidden && m.selected)
-        .map((metric) => {
-          return {
-            metric,
-            value: getClosestValue(metric, time),
-          };
-        });
+      values = $selectedMetricStore.map((metric, index) => {
+        return {
+          metric,
+          value: getClosestValue(metric, time),
+          color: getMetricColor(index),
+        };
+      });
+
       displayInternal = values.some((v) => v.value);
     }
   }
@@ -66,7 +71,7 @@
     : `top:${yValue}px;right:${width - xValue + margin}px`;
 
   function getClosestValue(metric: MetricState, time: number) {
-    const m = $metricStore.filter((m) => m.name === metric.name)[0];
+    const m = $selectedMetricStore.filter((m) => m.name === metric.name)[0];
 
     if (m) {
       return m.getClosestValue(time);
@@ -83,8 +88,8 @@
       {style}
     >
       {#each values as metric (metric.metric.name)}
-        {#if metric.metric.selected && !metric.metric.hidden && metric.value?.value}
-          <MetricTooltipItem metric={metric.metric} value={metric.value} />
+        {#if metric.value}
+          <MetricTooltipItem {...metric} />
         {/if}
       {/each}
     </div>

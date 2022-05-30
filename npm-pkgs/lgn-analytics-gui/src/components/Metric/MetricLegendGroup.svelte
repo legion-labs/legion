@@ -1,14 +1,13 @@
 <script lang="ts">
-  import type { MetricStore } from "./Lib/MetricStore";
+  import { getContext } from "svelte";
+
   import MetricLegend from "./MetricLegend.svelte";
 
-  export let metricStore: MetricStore;
+  const selectedMetricStore = getContext("selected-metrics-store");
 </script>
 
 <div class="flex gap-3 flex-wrap">
-  {#each $metricStore as metric}
-    {#if metric.selected}
-      <MetricLegend {metricStore} {metric} />
-    {/if}
+  {#each $selectedMetricStore as metric, index}
+    <MetricLegend {metric} {index} />
   {/each}
 </div>
