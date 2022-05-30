@@ -16,7 +16,7 @@
   import "golden-layout/dist/css/goldenlayout-base.css";
   import "golden-layout/dist/css/themes/goldenlayout-dark-theme.css";
   import { onMount } from "svelte";
-  import { type SvelteComponentDev } from "svelte/internal";
+  import type { SvelteComponentDev } from "svelte/internal";
 
   type LayoutComponent = {
     type: string;
