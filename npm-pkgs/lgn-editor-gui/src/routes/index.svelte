@@ -8,8 +8,6 @@
   import { onMount } from "svelte";
   import { setContext } from "svelte";
 
-  import Log from "@lgn/web-client/src/components/Log.svelte";
-  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
@@ -26,7 +24,6 @@
     AppComponentMap as appComponentMap,
     defaultLayoutConfig,
   } from "@/components/layout/LayoutConfig";
-  import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import { fileName } from "@/lib/path";
   import {
@@ -68,7 +65,7 @@
     return allActiveScenes.subscribe((scenes) => {
       scenes?.forEach((s) => {
         layout.addComponent(
-          SceneExplorer.name,
+          "SceneExplorer",
           {
             state: {
               activeScenes: s.scenes,
@@ -102,7 +99,7 @@
           visible: true,
           action: () => {
             layout.addComponent(
-              RemoteWindow.name,
+              "RemoteWindow",
               {
                 state: {
                   serverType: "editor",
@@ -117,7 +114,7 @@
           visible: true,
           action: () => {
             layout.addComponent(
-              RemoteWindow.name,
+              "RemoteWindow",
               {
                 state: {
                   serverType: "runtime",
@@ -131,28 +128,28 @@
           title: "Property Grid",
           visible: true,
           action: () => {
-            layout.addComponent(PropertyGrid.name);
+            layout.addComponent("PropertyGrid");
           },
         },
         {
           title: "Resource Browser",
           visible: true,
           action: () => {
-            layout.addComponent(ResourceBrowser.name);
+            layout.addComponent("ResourceBrowser");
           },
         },
         {
           title: "Local Changes",
           visible: true,
           action: () => {
-            layout.addComponent(LocalChanges.name);
+            layout.addComponent("LocalChanges");
           },
         },
         {
           title: "Logs",
           visible: true,
           action: () => {
-            layout.addComponent(Log.name);
+            layout.addComponent("Log");
           },
         },
       ],
