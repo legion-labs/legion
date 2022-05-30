@@ -14,8 +14,7 @@ use syn::{
     parse::{Parse, ParseStream, Result},
     parse_macro_input, parse_quote,
     punctuated::Punctuated,
-    visit_mut::{self, VisitMut},
-    Expr, ExprAwait, ExprReturn, Ident, ItemFn, Stmt, Token,
+    Ident, ItemFn, Token,
 };
 
 struct TraceArgs {
@@ -33,28 +32,6 @@ impl Parse for TraceArgs {
                 alternative_name: Some(Literal::parse(input)?),
             })
         }
-    }
-}
-
-struct AwaitVisitor;
-
-impl VisitMut for AwaitVisitor {
-    fn visit_expr_mut(&mut self, expr: &mut Expr) {
-        if let Expr::Await(ExprAwait { attrs: _, base, .. }) = expr {
-            *expr = parse_quote! {
-                {
-                    let __lgn_tracing_await = #base;
-                    lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
-                    let __lgn_tracing_temp_await_value = __lgn_tracing_await.await;
-                    lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
-                    __lgn_tracing_temp_await_value
-                }
-            };
-
-            return;
-        }
-
-        visit_mut::visit_expr_mut(self, expr);
     }
 }
 
@@ -80,58 +57,39 @@ pub fn span_fn(
         });
     }
 
-    AwaitVisitor.visit_block_mut(&mut function.block);
+    let stmts = function.block.stmts;
 
-    function.block.stmts.insert(0, parse_quote! {
-        static _METADATA_FUNC: lgn_tracing::spans::SpanMetadata = lgn_tracing::spans::SpanMetadata {
-            name: concat!(module_path!(), "::", #function_name),
-            location: lgn_tracing::spans::SpanLocation {
-                lod: lgn_tracing::Verbosity::Max,
-                target: module_path!(),
-                module_path: module_path!(),
-                file: file!(),
-                line: line!()
-            }
-        };
-    });
-
-    function.block.stmts.insert(
-        1,
+    function.block.stmts = vec![
+        parse_quote! {
+           static _METADATA_FUNC: lgn_tracing::spans::SpanMetadata = lgn_tracing::spans::SpanMetadata {
+               name: concat!(module_path!(), "::", #function_name),
+               location: lgn_tracing::spans::SpanLocation {
+                   lod: lgn_tracing::Verbosity::Max,
+                   target: module_path!(),
+                   module_path: module_path!(),
+                   file: file!(),
+                   line: line!()
+               }
+           };
+        },
         parse_quote! {
             lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
         },
-    );
-
-    if let Some(last_stmt) = function.block.stmts.last_mut() {
-        if let Stmt::Semi(Expr::Return(ExprReturn { attrs: _, expr, .. }), _) = last_stmt {
-            // TODO: Handle attrs?
-            if let Some(expr) = expr {
-                *last_stmt = parse_quote! {
-                    {
-                        let __lgn_tracing_returned_value = #expr;
-
-                        lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
-
-                        return __lgn_tracing_returned_value;
-                    };
-                }
-            } else {
-                *last_stmt = parse_quote! {
-                    lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
-                }
-            }
-        } else {
-            *last_stmt = parse_quote! {
-                {
-                    let __lgn_tracing_returned_value = #last_stmt;
-
-                    lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
-
-                    return __lgn_tracing_returned_value;
-                };
-            }
-        };
-    };
+        parse_quote! {
+            let __lgn_tracing_future = async move {
+                #(#stmts)*
+            };
+        },
+        parse_quote! {
+            let __lgn_tracing_output = lgn_tracing::spans::Instrumentation::new(__lgn_tracing_future, &_METADATA_FUNC).await;
+        },
+        parse_quote! {
+            lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+        },
+        parse_quote! {
+            return __lgn_tracing_output;
+        },
+    ];
 
     proc_macro::TokenStream::from(quote! {
         #function

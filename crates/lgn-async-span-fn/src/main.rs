@@ -5,14 +5,12 @@
 use std::time::Duration;
 
 use lgn_telemetry_sink::TelemetryGuard;
-use lgn_tracing::span_fn;
+use lgn_tracing::{info, span_fn};
 use tokio::time::sleep;
 
 #[span_fn]
 async fn empty_return() {
     sleep(Duration::from_millis(1)).await;
-
-    return;
 }
 
 #[span_fn]
@@ -27,6 +25,8 @@ async fn iteration_with_cond() {
 
         break;
     }
+
+    info!("inside my_function!");
 }
 
 #[span_fn]
@@ -54,8 +54,6 @@ async fn delayed() {
     println!("{}", msg);
 
     consume_delayed_value(delayed_value().await);
-
-    return;
 }
 
 #[tokio::main]
