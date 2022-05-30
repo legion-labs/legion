@@ -1,0 +1,35 @@
+from enum import Enum, auto
+
+{%- for (path, routes) in api.paths %}
+{%- for route in routes %}
+{%- let enum_name = "{}Response"|format(route.name|pascal_case) %}
+class {{ enum_name }}(Enum):
+    {%- for (status_code, response) in route.responses %}
+    {%- if let Some(content) = response.content %}
+    {{ status_code }} = {{ status_code.as_u16() }} # {{ content.type_|fmt_type }}
+    {%- else %}
+    {{ status_code }} = {{ status_code.as_u16() }}
+    {%- endif %} # {{ response.description }}
+    {%- endfor %}
+    
+    def __init__(self, response):
+    {%- if route.responses.is_empty() %}
+        raise Exception("unexpected status code: {}".format(response.status))
+    {%- else %}
+        match response.status:
+            {%- for (status_code, response) in route.responses %}
+            case {{ status_code.as_u16() }}:
+                {%- if let Some(content) = response.content -%}
+                {%- match content.media_type %}
+                {% when MediaType::Json %}
+                self.json = response.json()
+                {% when MediaType::Bytes %}
+                self.bytes = response.content
+                {%- endmatch %}
+                {%- endif -%}
+            {%- endfor %}
+            case _:
+                raise Exception("unexpected status code: {}".format(response.status))
+    {% endif %} 
+{% endfor %}
+{% endfor %}

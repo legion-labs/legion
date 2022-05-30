@@ -1,0 +1,11 @@
+import abc
+
+class Api(metaclass=abc.ABCMeta):
+{% for (path, routes) in api.paths %}
+    {%- for route in routes -%}
+    {% if let Some(summary) = route.summary %}# {{ summary }} {% endif %}
+    @abc.abstractmethod
+    {% include "signature.py.jinja" %}
+        raise NotImplementedError
+    {% endfor %}
+{% endfor %}

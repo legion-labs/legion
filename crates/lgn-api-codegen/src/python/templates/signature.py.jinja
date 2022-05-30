@@ -1,0 +1,17 @@
+def {{ route.name|snake_case }}(
+        self,
+        {% for parameter in route.parameters.path -%}
+        {{ parameter.name|snake_case }} : {{ parameter.type_|fmt_type }},
+        {% endfor -%}
+        {% for parameter in route.parameters.query -%}
+        {{ parameter.name|snake_case }} : {{ parameter.type_|fmt_type }},
+        {% endfor -%}
+        {% for parameter in route.parameters.header -%}
+        {{ parameter.name|snake_case }} : {{ parameter.type_|fmt_type }},
+        {% endfor -%}
+        {% for parameter in route.parameters.cookie -%}
+        {{ parameter.name|snake_case }} : {{ parameter.type_|fmt_type }},
+        {% endfor -%}
+        body,
+        extra,
+    ) -> {{ route.name|pascal_case }}Response:

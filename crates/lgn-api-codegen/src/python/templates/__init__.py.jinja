@@ -1,5 +1,8 @@
-# ---------- Models ----------
-{% include "models.py.jinja" %}
+# ---------- Responses -------
+{% include "responses.py.jinja" %}
+
+# ---------- Api ----------
+{% include "api.py.jinja" %}
 
 # ---------- Parameters -------
 {% include "parameters.py.jinja" %}
@@ -7,5 +10,12 @@
 # ---------- Client -------
 {% include "client.py.jinja" %}
 
-# ---------- Responses -------
-{% include "responses.py.jinja" %}
+{#
+
+# ---------- Errors ----------
+{% include "errors.py.jinja" %}
+
+# ---------- Models ----------
+{% include "models.py.jinja" %}
+
+#}

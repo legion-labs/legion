@@ -1,0 +1,63 @@
+import requests
+
+class Client(Api):
+    def __init__(self, uri):
+        self.uri = uri
+
+    {% for (path, routes) in api.paths %}
+    {% for route in routes %}
+    {%- let enum_name = "{}Response"|format(route.name|pascal_case) -%}
+    {% include "signature.py.jinja" %}
+        uri = "{}{{ path|fmt_py_path }}".format(
+            self.uri,
+            {%- for parameter in route.parameters.path %}
+            {{ parameter.name|snake_case }},
+            {%- endfor %}
+        )
+
+        {%- if let Some(request_body) = route.request_body %}
+        headers = {
+            "Content-type": "{{ request_body.content.media_type }}",
+        }
+        {% endif %}
+        
+        {%- if !route.parameters.query.is_empty() %}
+        params = {
+            {%- for parameter in route.parameters.query %}
+            "{{ parameter.name|snake_case }}" : {{ parameter.name|snake_case }},
+            {%- endfor %}
+        }
+        # Initalizing for consistency but not used
+        _params = {{ route.name|pascal_case }}Query( 
+            {%- for parameter in route.parameters.query %}
+            {{ parameter.name|snake_case }},
+            {%- endfor %}
+        )
+        {%- endif -%}
+
+        {%- if !route.parameters.header.is_empty() %}
+        {%- for parameter in route.parameters.header %}
+            {%- let param_name = "{}"|format(parameter.name|snake_case) %}
+            {%- if parameter.required %}
+            headers["{{ parameter.name }}"] = "{{ param_name }}"
+            {% else %}
+            if {{ param_name }} != None:
+                headers["{{ parameter.name }}"] = "{{ param_name }}"
+            {%- endif %}                
+        {%- endfor %}
+        {%- endif %}
+
+        resp = requests.{{ route.method|lowercase }}(
+            uri,
+            {%- if !route.parameters.query.is_empty() %}
+            params = params,
+            {%- endif %}
+            {%- if let Some(request_body) = route.request_body %}
+            headers = headers
+            {%- endif %}
+        )
+
+        return {{ enum_name }}(resp)
+    {% endfor %}
+    {% endfor %}
+    
