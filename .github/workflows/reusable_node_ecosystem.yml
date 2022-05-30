@@ -105,6 +105,7 @@ jobs:
         run: pnpm build
 
       - name: Upload editor artifacts to S3
+        shell: bash
         run: |
           cd ./npm-pkgs/lgn-editor-gui/dist
           zip -r ../lgn-editor-gui.zip *
@@ -117,7 +118,7 @@ jobs:
           fi
 
       - name: Upload analytics artifacts to S3
-        if: ${{ inputs.deploy_analytics }}
+        shell: bash
         run: |
           cd ./npm-pkgs/lgn-analytics-gui/dist
           zip -r ../lgn-analytics-gui.zip *
