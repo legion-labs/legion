@@ -65,6 +65,7 @@
       scenes?.forEach((s) => {
         layout.addComponent(
           "SceneExplorer",
+          s.rootScene.id,
           {
             state: {
               activeScenes: s.scenes,
@@ -74,8 +75,7 @@
               await fetchAllActiveScenes();
             },
           },
-          fileName(s.rootScene.path) ?? "undefined",
-          s.rootScene.id
+          fileName(s.rootScene.path) ?? "undefined"
         );
       });
     });
@@ -99,6 +99,7 @@
           action: () => {
             layout.addComponent(
               "RemoteWindow",
+              "Editor",
               {
                 state: {
                   serverType: "editor",
@@ -114,6 +115,7 @@
           action: () => {
             layout.addComponent(
               "RemoteWindow",
+              "Runtime",
               {
                 state: {
                   serverType: "runtime",
@@ -127,28 +129,28 @@
           title: "Property Grid",
           visible: true,
           action: () => {
-            layout.addComponent("PropertyGrid");
+            layout.addComponent("PropertyGrid", "PropertyGrid");
           },
         },
         {
           title: "Resource Browser",
           visible: true,
           action: () => {
-            layout.addComponent("ResourceBrowser");
+            layout.addComponent("ResourceBrowser", "ResourceBrowser");
           },
         },
         {
           title: "Local Changes",
           visible: true,
           action: () => {
-            layout.addComponent("LocalChanges");
+            layout.addComponent("LocalChanges", "LocalChanges");
           },
         },
         {
           title: "Logs",
           visible: true,
           action: () => {
-            layout.addComponent("Log");
+            layout.addComponent("Log", "Log");
           },
         },
       ],

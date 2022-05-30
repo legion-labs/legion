@@ -44,6 +44,7 @@ export const defaultLayoutConfig: LayoutConfig = {
                   {
                     type: "component",
                     title: "Editor",
+                    id: "Editor",
                     componentType: "RemoteWindow",
                     componentState: {
                       state: {
@@ -54,6 +55,7 @@ export const defaultLayoutConfig: LayoutConfig = {
                   {
                     type: "component",
                     title: "Runtime",
+                    id: "Runtime",
                     componentType: "RemoteWindow",
                     componentState: {
                       state: {
@@ -71,16 +73,19 @@ export const defaultLayoutConfig: LayoutConfig = {
             content: [
               {
                 type: "component",
+                id: "ResourceBrowser",
                 componentType: "ResourceBrowser",
                 title: "Resource Browser",
               },
               {
                 type: "component",
+                id: "LocalChanges",
                 componentType: "LocalChanges",
                 title: "Local Changes",
               },
               {
                 type: "component",
+                id: "Log",
                 componentType: "Log",
               },
             ],
