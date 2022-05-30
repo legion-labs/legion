@@ -11,6 +11,7 @@ use gltf::{
     mesh::util::{ReadIndices, ReadTexCoords},
     texture, Document,
 };
+use lgn_data_offline::resource::RawContent;
 use lgn_math::{Vec2, Vec3, Vec4};
 
 use lgn_data_runtime::{
@@ -19,16 +20,36 @@ use lgn_data_runtime::{
     ResourceProcessorError, ResourceTypeAndId,
 };
 use lgn_tracing::warn;
+use serde::{Deserialize, Serialize};
 
 #[resource("gltf")]
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct GltfFile {
     meta: Metadata,
+
+    #[serde(with = "serde_bytes")]
     bytes: Vec<u8>,
 
+    #[serde(skip)]
     document: Option<Document>,
+
+    #[serde(skip)]
     buffers: Vec<gltf::buffer::Data>,
+
+    #[serde(skip)]
     images: Vec<gltf::image::Data>,
+}
+
+impl RawContent for GltfFile {
+    fn set_raw_content(&mut self, data: &[u8]) {
+        self.bytes = data.to_vec();
+
+        let (document, buffers, images) = gltf::import_slice(&self.bytes).unwrap();
+
+        self.document = Some(document);
+        self.buffers = buffers;
+        self.images = images;
+    }
 }
 
 impl Default for GltfFile {
@@ -376,10 +397,8 @@ impl GltfFile {
     ///
     /// Will return error if the write fails
     pub fn write(&self, writer: &mut dyn std::io::Write) -> Result<usize, ResourceProcessorError> {
-        if self.bytes.is_empty() {
-            return Ok(0);
-        }
-        Ok(writer.write(&self.bytes)?)
+        serde_json::to_writer_pretty(writer, self)?;
+        Ok(1)
     }
 }
 
@@ -450,10 +469,13 @@ pub struct GltfFileProcessor {}
 
 impl AssetLoader for GltfFileProcessor {
     fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes)?;
-
-        Ok(Box::new(GltfFile::from_bytes(bytes)))
+        let mut gltf: GltfFile = serde_json::from_reader(reader)?;
+        let (document, buffers, images) = gltf::import_slice(&gltf.bytes)
+            .map_err(|e| AssetLoaderError::ErrorLoading(GltfFile::TYPENAME, e.to_string()))?;
+        gltf.document = Some(document);
+        gltf.buffers = buffers;
+        gltf.images = images;
+        Ok(Box::new(gltf))
     }
 
     fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
@@ -482,7 +504,8 @@ impl ResourceProcessor for GltfFileProcessor {
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let gltf = resource.downcast_ref::<GltfFile>().unwrap();
-        gltf.write(writer)
+        serde_json::to_writer_pretty(writer, gltf)?;
+        Ok(1)
     }
 
     fn read_resource(

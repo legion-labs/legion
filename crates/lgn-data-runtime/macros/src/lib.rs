@@ -11,6 +11,7 @@ use quote::quote;
 use syn::{parse_macro_input, ItemStruct, LitStr};
 
 /// Derives a default implementation of the Resource trait for a type.
+/// TODO: remove this and replace by the codegen and def files.
 #[proc_macro_attribute]
 pub fn resource(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut resource = item.clone();

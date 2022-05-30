@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 pub struct BinaryResource {
     pub meta: Metadata,
 
+    #[serde(with = "serde_bytes")]
     pub content: Vec<u8>,
 }
 
@@ -29,17 +30,8 @@ pub struct BinaryResourceProc {}
 
 impl AssetLoader for BinaryResourceProc {
     fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
-        let mut resource = BinaryResource {
-            meta: Metadata::new(
-                ResourcePathName::default(),
-                BinaryResource::TYPENAME,
-                BinaryResource::TYPE,
-            ),
-            content: vec![],
-        };
-        reader.read_to_end(&mut resource.content)?;
-        let boxed = Box::new(resource);
-        Ok(boxed)
+        let resource: BinaryResource = serde_json::from_reader(reader).unwrap();
+        Ok(Box::new(resource))
     }
 
     fn load_init(&mut self, _asset: &mut (dyn Resource)) {}
@@ -67,7 +59,7 @@ impl ResourceProcessor for BinaryResourceProc {
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let resource = resource.downcast_ref::<BinaryResource>().unwrap();
-        writer.write_all(&resource.content)?;
+        serde_json::to_writer_pretty(writer, resource).unwrap();
         Ok(1) // no bytes written exposed by serde.
     }
 

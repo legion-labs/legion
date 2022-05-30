@@ -42,8 +42,7 @@ pub struct TestResourceProc {}
 impl AssetLoader for TestResourceProc {
     fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
         let resource: TestResource = serde_json::from_reader(reader).unwrap();
-        let boxed = Box::new(resource);
-        Ok(boxed)
+        Ok(Box::new(resource))
     }
 
     fn load_init(&mut self, _asset: &mut (dyn Resource)) {}

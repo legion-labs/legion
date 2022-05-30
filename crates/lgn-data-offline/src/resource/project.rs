@@ -90,6 +90,9 @@ pub enum Error {
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
     ResourceRegistry(ResourceTypeAndId, #[source] AssetRegistryError),
+    /// Serialization Error
+    #[error("Serialization error: '{0}'")]
+    Serialization(#[from] serde_json::Error),
 }
 
 /// The type of change done to a resource.
@@ -579,10 +582,13 @@ impl Project {
     fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
         let resource_path = self.resource_path(id);
 
-        let file = OpenOptions::new().read(true).open(&resource_path).unwrap(); // todo(kstasik): return a result and propagate an error
+        let file = OpenOptions::new()
+            .read(true)
+            .open(&resource_path)
+            .map_err(|e| Error::Io(resource_path.clone(), e))?;
 
-        let resource: Value = serde_json::from_reader(&file).unwrap();
-        let meta: Metadata = serde_json::from_value(resource["meta"].clone()).unwrap();
+        let resource: Value = serde_json::from_reader(&file)?;
+        let meta: Metadata = serde_json::from_value(resource["meta"].clone())?;
 
         Ok(meta)
     }
@@ -769,8 +775,7 @@ mod tests {
             reader: &mut dyn std::io::Read,
         ) -> Result<Box<dyn Resource>, ResourceProcessorError> {
             let resource: NullResource = serde_json::from_reader(reader).unwrap();
-            let boxed = Box::new(resource);
-            Ok(boxed)
+            Ok(Box::new(resource))
         }
     }
 

@@ -45,7 +45,7 @@ pub struct TextureProcessor {}
 
 impl AssetLoader for TextureProcessor {
     fn load(&mut self, reader: &mut dyn io::Read) -> Result<Box<dyn Resource>, AssetLoaderError> {
-        let texture: Texture = bincode::deserialize_from(reader).unwrap();
+        let texture: Texture = serde_json::from_reader(reader).unwrap();
         Ok(Box::new(texture))
     }
 
@@ -80,7 +80,7 @@ impl ResourceProcessor for TextureProcessor {
         writer: &mut dyn std::io::Write,
     ) -> Result<usize, ResourceProcessorError> {
         let texture = resource.downcast_ref::<Texture>().unwrap();
-        bincode::serialize_into(writer, texture).unwrap();
+        serde_json::to_writer_pretty(writer, texture).unwrap();
         Ok(1)
     }
 

@@ -5,8 +5,10 @@
 //! source control interactions.
 
 mod project;
-
 pub use self::project::*;
+
+mod raw;
+pub use self::raw::*;
 
 mod resource_handles;
 pub use self::resource_handles::*;

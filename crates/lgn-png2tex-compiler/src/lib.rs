@@ -66,7 +66,7 @@ impl Compiler for Png2TexCompiler {
                 ))
             })?;
 
-            let decoder = png::Decoder::new(png_file.content.as_slice());
+            let decoder = png::Decoder::new(png_file.raw_data.as_slice());
             let mut reader = decoder.read_info().map_err(|err| {
                 CompilerError::CompilationError(format!(
                     "Failed to read png info for resource {} ({})",

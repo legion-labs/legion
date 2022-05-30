@@ -2,17 +2,21 @@
 #[macro_export]
 macro_rules! implement_raw_resource {
     ($type_id:ident, $processor:ident, $type_name:literal) => {
-        #[derive(Clone)]
+        use serde::{Deserialize, Serialize};
+
+        #[derive(Clone, Serialize, Deserialize)]
         pub struct $type_id {
             pub meta: lgn_data_runtime::Metadata,
-            pub content: Vec<u8>,
+
+            #[serde(with = "serde_bytes")]
+            pub raw_data: Vec<u8>,
         }
 
         impl Default for $type_id {
             fn default() -> Self {
                 Self {
                     meta: lgn_data_runtime::Metadata::new(lgn_data_runtime::ResourcePathName::default(), <$type_id as lgn_data_runtime::ResourceDescriptor>::TYPENAME, <$type_id as lgn_data_runtime::ResourceDescriptor>::TYPE),
-                    content: vec![],
+                    raw_data: vec![],
                 }
             }
         }
@@ -64,11 +68,8 @@ macro_rules! implement_raw_resource {
                 reader: &mut dyn std::io::Read,
             ) -> Result<Box<dyn lgn_data_runtime::Resource>, lgn_data_runtime::AssetLoaderError>
             {
-                let mut content = Vec::new();
-                reader.read_to_end(&mut content)?;
-                let mut instance = $type_id::default();
-                instance.content = content;
-                Ok(Box::new(instance))
+                let resource: $type_id = serde_json::from_reader(reader).unwrap();
+                Ok(Box::new(resource))
             }
             fn load_init(&mut self, _asset: &mut (dyn lgn_data_runtime::Resource)) {}
         }
@@ -90,21 +91,9 @@ macro_rules! implement_raw_resource {
                 resource: &dyn lgn_data_runtime::Resource,
                 writer: &mut dyn std::io::Write,
             ) -> Result<usize, lgn_data_runtime::ResourceProcessorError> {
-                if let Some(png) = resource.downcast_ref::<$type_id>() {
-                    Ok(writer.write(png.content.as_slice()).map_err(|err| {
-                        lgn_data_runtime::ResourceProcessorError::ResourceSerializationFailed(
-                            <$type_id as lgn_data_runtime::ResourceDescriptor>::TYPENAME,
-                            err.to_string(),
-                        )
-                    })?)
-                } else {
-                    Err(
-                        lgn_data_runtime::ResourceProcessorError::ResourceSerializationFailed(
-                            <$type_id as lgn_data_runtime::ResourceDescriptor>::TYPENAME,
-                            "invalid cast".into(),
-                        ),
-                    )
-                }
+                let resource = resource.downcast_ref::<$type_id>().unwrap();
+                serde_json::to_writer_pretty(writer, resource).unwrap();
+                Ok(1) // no bytes written exposed by serde.
             }
 
             fn read_resource(
@@ -117,6 +106,12 @@ macro_rules! implement_raw_resource {
 
             fn get_resource_type_name(&self) -> Option<&'static str> {
                 Some($type_name)
+            }
+        }
+
+        impl lgn_data_offline::resource::RawContent for $type_id {
+            fn set_raw_content(&mut self, data: &[u8]) {
+                self.raw_data = data.to_vec();
             }
         }
     };

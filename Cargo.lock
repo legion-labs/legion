@@ -901,6 +901,8 @@ dependencies = [
  "lgn-data-model",
  "lgn-data-runtime",
  "serde",
+ "serde_bytes",
+ "serde_json",
 ]
 
 [[package]]

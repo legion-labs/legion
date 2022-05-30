@@ -43,11 +43,7 @@ impl Texture {
         writer: &mut dyn std::io::Write,
     ) {
         let texture = Self {
-            meta: Metadata::new(
-                ResourcePathName::default(),
-                Self::TYPENAME,
-                Self::TYPE,
-            ),
+            meta: Metadata::new(ResourcePathName::default(), Self::TYPENAME, Self::TYPE),
             width,
             height,
             format,

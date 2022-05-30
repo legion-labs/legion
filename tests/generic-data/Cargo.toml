@@ -38,7 +38,7 @@ lgn-data-codegen = { path = "../../crates/lgn-data-codegen", version = "0.1.0" }
 # generic-data = { path = ".", version = "0.1.0", features = ["offline"] }
 
 [features]
-default = ["runtime"]
+default = ["runtime", "offline"]
 offline = ["lgn-data-offline", "inventory"]
 runtime = []
 

@@ -44,7 +44,7 @@ impl Clone for Metadata {
         Self {
             name: ResourcePathName::default(),
             type_name: self.type_name.clone(),
-            type_id: self.type_id.clone(),
+            type_id: self.type_id,
             dependencies: vec![],
         }
     }

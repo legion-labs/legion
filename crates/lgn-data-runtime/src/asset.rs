@@ -24,6 +24,10 @@ pub enum AssetLoaderError {
     /// IOError fallback
     #[error("AssetLoader Invalid Uft8: {0}")]
     Utf8Error(#[from] std::string::FromUtf8Error),
+
+    /// Serialization
+    #[error("AssetLoader IOError: {0}")]
+    Serialization(#[from] serde_json::Error),
 }
 
 /// An interface allowing to create and initialize assets.
@@ -60,8 +64,12 @@ pub enum ResourceProcessorError {
     ResourceSerializationFailed(&'static str, String),
 
     /// AssetLoaderError fallthrough
-    #[error("ResourceProcessor Reflection Error '{0}'")]
+    #[error("ResourceProcessor reflection error '{0}'")]
     ReflectionError(#[from] lgn_data_model::ReflectionError),
+
+    /// Serialization error
+    #[error("ResourceProcessor serialization error '{0}'")]
+    Serialization(#[from] serde_json::Error),
 }
 
 /// The trait defines a resource that can be serialized.

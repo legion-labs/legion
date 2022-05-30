@@ -14,12 +14,12 @@ use std::{
 
 use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::Provider;
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::resource::{Project, RawContent};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId,
     ResourcePathName, ResourceType, ResourceTypeAndId,
 };
-use lgn_graphics_data::{offline_gltf::GltfFile, offline_psd::PsdFile};
+use lgn_graphics_data::{offline_gltf::GltfFile, offline_psd::PsdFile, offline_png::PngFile};
 use lgn_source_control::{RepositoryIndex, RepositoryName};
 use lgn_tracing::{error, info};
 use lgn_utils::DefaultHasher;
@@ -176,13 +176,13 @@ pub async fn build_offline(
                     .await;
                 }
                 "psd" => {
-                    load_psd_resource(resource_id, path, &mut project, &resources).await;
+                    load_raw_resource::<PsdFile>(resource_id, path, &mut project, &resources).await;
                 }
                 "png" => {
-                    load_png_resource(resource_id, path, &mut project, &resources).await;
+                    load_raw_resource::<PngFile>(resource_id, path, &mut project, &resources).await;
                 }
                 "gltf" | "glb" => {
-                    load_gltf_resource(resource_id, path, &mut project, &resources).await;
+                    load_raw_resource::<GltfFile>(resource_id, path, &mut project, &resources).await;
                 }
                 _ => panic!(),
             }
@@ -461,59 +461,19 @@ where
     }
 }
 
-async fn load_psd_resource(
+async fn load_raw_resource<T: RawContent>(
     resource_id: ResourceTypeAndId,
     file: &Path,
     project: &mut Project,
     resources: &AssetRegistry,
 ) -> Option<ResourceTypeAndId> {
     let raw_data = fs::read(file).ok()?;
-    let loaded_psd = PsdFile::from_bytes(&raw_data)?;
 
-    let resource = project
-        .load_resource(resource_id, resources)
-        .unwrap()
-        .typed::<PsdFile>();
-
-    let mut initial_resource = resource.instantiate(resources).unwrap();
-    *initial_resource = loaded_psd;
-    resource.apply(initial_resource, resources);
-
-    project
-        .save_resource(resource_id, &resource, resources)
-        .await
-        .unwrap();
-    Some(resource_id)
-}
-
-async fn load_png_resource(
-    resource_id: ResourceTypeAndId,
-    file: &Path,
-    project: &mut Project,
-    resources: &AssetRegistry,
-) -> Option<ResourceTypeAndId> {
-    let reader = fs::read(file).ok()?;
-    let handle = resources
-        .deserialize_resource(resource_id, &mut reader.as_slice())
-        .ok()?;
-    project
-        .save_resource(resource_id, handle, resources)
-        .await
-        .unwrap();
-    Some(resource_id)
-}
-
-async fn load_gltf_resource(
-    resource_id: ResourceTypeAndId,
-    file: &Path,
-    project: &mut Project,
-    resources: &AssetRegistry,
-) -> Option<ResourceTypeAndId> {
     let handle = resources.new_resource_with_id(resource_id).unwrap();
-    let mut gltf_file = handle.instantiate::<GltfFile>(resources).unwrap();
-    let raw_data = fs::read(file).ok()?;
-    *gltf_file = GltfFile::from_bytes(raw_data);
-    handle.apply(gltf_file, resources);
+
+    let mut initial_resource = handle.instantiate::<T>(resources).unwrap();
+    initial_resource.as_mut().set_raw_content(&raw_data);
+    handle.apply(initial_resource, resources);
 
     project
         .save_resource(resource_id, handle, resources)
