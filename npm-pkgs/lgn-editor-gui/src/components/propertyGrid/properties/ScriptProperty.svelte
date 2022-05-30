@@ -3,8 +3,6 @@
   import { getContext } from "svelte";
   import { writable } from "svelte/store";
 
-  import ScriptEditor from "@lgn/web-client/src/components/ScriptEditor.svelte";
-
   import { fileName } from "@/lib/path";
   import { currentResource } from "@/orchestrators/currentResource";
   import type { RootContext } from "@/routes/index.svelte";
@@ -43,7 +41,7 @@
     const layout = context.getLayout();
 
     layout.addComponent(
-      ScriptEditor.name,
+      "ScriptEditor",
       {
         state: {
           theme: "vs-dark",
