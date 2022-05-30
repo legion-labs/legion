@@ -19,7 +19,6 @@
   import DynamicPanel from "@/components/DynamicPanel.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
-  import SceneExplorer from "@/components/SceneExplorer.svelte";
   import {
     AppComponentMap as appComponentMap,
     defaultLayoutConfig,
