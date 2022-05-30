@@ -1,7 +1,7 @@
 <script lang="ts" context="module">
   export type ComponentLayoutState = {
     state: object;
-    onDestroyed?: () => void;
+    onClosed?: () => void;
   };
 </script>
 
@@ -84,7 +84,10 @@
       id,
     };
 
-    return layout.addItemAtLocation(config);
+    return layout.addItemAtLocation(config, [
+      { typeId: 4, index: 0 },
+      { typeId: 7, index: 1 },
+    ]);
   }
 
   function initializeLayout(divElement: HTMLDivElement) {
@@ -162,13 +165,19 @@
 
     const state = itemConfig.componentState as ComponentLayoutState;
 
-    if (state.onDestroyed) {
-      container.on("destroy", () => {
-        if (state.onDestroyed) {
-          state.onDestroyed();
-        }
-      });
-    }
+    container.on("open", () => {
+      if (state.onClosed) {
+        container.tab.closeElement?.addEventListener(
+          "click",
+          () => {
+            if (state.onClosed) {
+              state.onClosed();
+            }
+          },
+          { once: true }
+        );
+      }
+    });
 
     return {
       virtual: true,
