@@ -131,5 +131,9 @@ impl Hdr2Rgb {
             &[&self.export_semaphore.external_resource()],
             None,
         );
+
+        render_context
+            .transient_commandbuffer_allocator
+            .release(cmd_buffer_handle);
     }
 }

@@ -197,8 +197,8 @@ impl VulkanDeviceContext {
         unsafe {
             #[cfg(debug_assertions)]
             {
-                let vkmem_report = self.vk_allocator.build_stats_string(true).unwrap();
-                println!("{}", vkmem_report);
+                //let vkmem_report = self.vk_allocator.build_stats_string(true).unwrap();
+                //println!("{}", vkmem_report);
             }
             self.vk_allocator.destroy();
             self.vk_device.destroy_device(None);
