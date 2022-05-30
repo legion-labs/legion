@@ -115,9 +115,10 @@ impl RenderSurfaces {
     }
 
     pub fn remove_from_window_id(&mut self, window_id: WindowId) {
-        let id = self.window_id_mapper.remove(&window_id).unwrap();
-        let result = self.surfaces.remove(&id);
-        assert!(result.is_some());
+        let id = self.window_id_mapper.remove(&window_id);
+        if let Some(id) = id {
+            self.surfaces.remove(&id);
+        };
     }
 
     pub fn get_from_window_id(&self, window_id: WindowId) -> &RenderSurface {

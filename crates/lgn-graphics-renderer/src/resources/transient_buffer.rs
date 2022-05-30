@@ -91,6 +91,29 @@ impl TransientBufferAllocation {
     }
 }
 
+fn compute_required_alignment(
+    device_context: &DeviceContext,
+    resource_usage: ResourceUsage,
+) -> u32 {
+    let resource_usage = if resource_usage.is_empty() {
+        TRANSIENT_BUFFER_RESOURCE_USAGE
+    } else {
+        resource_usage
+    };
+
+    let required_alignment = if resource_usage.intersects(ResourceUsage::AS_CONST_BUFFER) {
+        device_context
+            .device_info()
+            .min_uniform_buffer_offset_alignment
+    } else {
+        device_context
+            .device_info()
+            .min_storage_buffer_offset_alignment
+    };
+
+    required_alignment
+}
+
 struct TransientBuffer {
     device_context: DeviceContext,
     buffer: Buffer,
@@ -126,8 +149,12 @@ impl TransientBuffer {
         self.byte_offset = 0;
     }
 
-    pub fn size(&self) -> u64 {
-        self.capacity - self.byte_offset
+    pub fn size(&self, required_alignment: u32) -> u64 {
+        let aligned_offset = lgn_utils::memory::round_size_up_to_alignment_u64(
+            self.byte_offset,
+            u64::from(required_alignment),
+        );
+        self.capacity - aligned_offset
     }
 
     fn allocate(
@@ -146,15 +173,7 @@ impl TransientBuffer {
             resource_usage
         };
 
-        let required_alignment = if resource_usage.intersects(ResourceUsage::AS_CONST_BUFFER) {
-            self.device_context
-                .device_info()
-                .min_uniform_buffer_offset_alignment
-        } else {
-            self.device_context
-                .device_info()
-                .min_storage_buffer_offset_alignment
-        };
+        let required_alignment = compute_required_alignment(&self.device_context, resource_usage);
 
         let aligned_offset = lgn_utils::memory::round_size_up_to_alignment_u64(
             self.byte_offset,
@@ -221,11 +240,17 @@ impl TransientBufferManager {
         inner.transient_buffers.end_frame(|_| ());
     }
 
-    fn acquire_page(&self, min_page_size: u64) -> Handle<TransientBuffer> {
+    fn acquire_page(
+        &self,
+        min_page_size: u64,
+        resource_usage: ResourceUsage,
+    ) -> Handle<TransientBuffer> {
         let inner = &mut *self.inner.lock().unwrap();
 
+        let required_alignment = compute_required_alignment(&inner.device_context, resource_usage);
+
         for (i, handle) in inner.frame_pool.iter().enumerate() {
-            if min_page_size <= handle.size() {
+            if min_page_size <= handle.size(required_alignment) {
                 return inner.frame_pool.swap_remove(i);
             }
         }
@@ -249,7 +274,7 @@ pub struct TransientBufferAllocator {
 
 impl TransientBufferAllocator {
     pub fn new(paged_buffer: &TransientBufferManager, min_alloc_size: u64) -> Self {
-        let allocation = paged_buffer.acquire_page(min_alloc_size);
+        let allocation = paged_buffer.acquire_page(min_alloc_size, ResourceUsage::empty());
         Self {
             paged_buffer: paged_buffer.clone(),
             transient_buffer: allocation,
@@ -315,7 +340,7 @@ impl TransientBufferAllocator {
         while allocation.is_none() {
             self.paged_buffer
                 .release_page(self.transient_buffer.transfer());
-            self.transient_buffer = self.paged_buffer.acquire_page(size);
+            self.transient_buffer = self.paged_buffer.acquire_page(size, resource_usage);
             allocation = self.transient_buffer.allocate(size, resource_usage);
         }
 

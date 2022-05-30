@@ -99,32 +99,46 @@ pub(crate) fn reflect_light_components(
     let mut render_commands = renderer.render_command_builder();
 
     for e in q_removals.iter() {
-        let render_object_id = ecs_to_render.map.get(&e);
+        let render_object_id = ecs_to_render.map.remove(&e);
         if let Some(render_object_id) = render_object_id {
-            render_commands.push(RemoveRenderObjectCommand {
-                render_object_id: *render_object_id,
-            });
+            render_commands.push(RemoveRenderObjectCommand { render_object_id });
         }
     }
 
     renderer.allocate_render_object(|allocator: &mut RenderObjectAllocator<'_, RenderLight>| {
-        for (e, transform, mut c) in q_changes.iter_mut() {
-            if let Some(render_object_id) = c.render_object_id {
+        for (e, transform, mut light) in q_changes.iter_mut() {
+            if let Some(render_object_id) = light.render_object_id {
                 render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                     render_object_id,
-                    data: c.as_spatial_render_object(*transform),
+                    data: light.as_spatial_render_object(*transform),
                 });
             } else {
-                let render_object_id = allocator.alloc();
+                let is_already_inserted = ecs_to_render.map.contains_key(&e);
+                let render_object_id = if is_already_inserted {
+                    ecs_to_render.map.get(&e).unwrap()
+                } else {
+                    let render_object_id = allocator.alloc();
 
-                assert!(!ecs_to_render.map.contains_key(&e));
-                ecs_to_render.map.insert(e, render_object_id);
+                    assert!(!ecs_to_render.map.contains_key(&e));
+                    ecs_to_render.map.insert(e, render_object_id);
 
-                c.render_object_id = Some(render_object_id);
-                render_commands.push(InsertRenderObjectCommand::<RenderLight> {
-                    render_object_id,
-                    data: c.as_spatial_render_object(*transform),
-                });
+                    ecs_to_render.map.get(&e).unwrap()
+                };
+
+                let render_object_id = *render_object_id;
+                light.render_object_id = Some(render_object_id);
+
+                if is_already_inserted {
+                    render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
+                        render_object_id,
+                        data: light.as_spatial_render_object(*transform),
+                    });
+                } else {
+                    render_commands.push(InsertRenderObjectCommand::<RenderLight> {
+                        render_object_id,
+                        data: light.as_spatial_render_object(*transform),
+                    });
+                }
             };
         }
     });
