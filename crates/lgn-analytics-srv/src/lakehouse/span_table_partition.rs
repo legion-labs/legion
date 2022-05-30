@@ -175,8 +175,10 @@ pub fn write_local_partition(
     block: &BlockMetadata,
     convert_ticks: ConvertTicks,
     next_id: &AtomicU64,
-    spans_table_path: &Path,
+    relative_file_name: String,
+    parquet_full_path: &Path,
 ) -> Result<Option<deltalake::action::Action>> {
+    //todo: do not allow overwriting - it could break id generation
     info!("processing block {}", &block.block_id);
     let mut builder = CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks);
     parse_thread_block_payload(payload, stream, &mut builder)
@@ -185,15 +187,13 @@ pub fn write_local_partition(
     if let Some(root) = processed_block.call_tree_root {
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, next_id, &mut rows);
-        let filename = format!("spans_block_id={}.parquet", &block.block_id);
-        let parquet_full_path = spans_table_path.join(&filename);
         let mut writer = SpanTablePartitionLocalWriter::create(&parquet_full_path)?;
         writer.append(&rows)?;
         writer.close()?;
         let attr = std::fs::metadata(&parquet_full_path)?; //that's not cool, we should already know how big the file is
         Ok(Some(deltalake::action::Action::add(
             deltalake::action::Add {
-                path: filename,
+                path: relative_file_name,
                 size: attr.len() as i64,
                 partition_values: HashMap::new(),
                 partition_values_parsed: None,
