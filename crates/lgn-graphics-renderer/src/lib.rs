@@ -841,77 +841,75 @@ fn render_update(
 
                         cmd_buffer.begin();
 
-                        cmd_buffer.with_label("RenderGraph", |cmd_buffer| {
-                            render_surface.clear_hzb(cmd_buffer);
+                        render_surface.clear_hzb(cmd_buffer);
 
-                            let view = RenderView {
-                                target: render_surface.view_target(),
-                            };
+                        let view = RenderView {
+                            target: render_surface.view_target(),
+                        };
 
-                            let gpu_culling_pass = GpuCullingPass;
-                            let opaque_layer_pass = OpaqueLayerPass;
-                            let ssao_pass = SSAOPass;
-                            let alphablended_layer_pass = AlphaBlendedLayerPass;
-                            let debug_pass = DebugPass;
-                            let postprocess_pass = PostProcessPass;
-                            let lighting_pass = LightingPass;
-                            let ui_pass = UiPass;
+                        let gpu_culling_pass = GpuCullingPass;
+                        let opaque_layer_pass = OpaqueLayerPass;
+                        let ssao_pass = SSAOPass;
+                        let alphablended_layer_pass = AlphaBlendedLayerPass;
+                        let debug_pass = DebugPass;
+                        let postprocess_pass = PostProcessPass;
+                        let lighting_pass = LightingPass;
+                        let ui_pass = UiPass;
 
-                            let prev_hzb_idx = render_graph_frame_idx as usize % 2;
-                            let current_hzb_idx = (render_graph_frame_idx + 1) as usize % 2;
+                        let prev_hzb_idx = render_graph_frame_idx as usize % 2;
+                        let current_hzb_idx = (render_graph_frame_idx + 1) as usize % 2;
 
-                            let mut render_script = RenderScript {
-                                gpu_culling_pass,
-                                opaque_layer_pass,
-                                ssao_pass,
-                                alphablended_layer_pass,
-                                debug_pass,
-                                postprocess_pass,
-                                lighting_pass,
-                                ui_pass,
-                                prev_hzb: render_surface.hzb()[prev_hzb_idx],
-                                current_hzb: render_surface.hzb()[current_hzb_idx],
-                            };
+                        let mut render_script = RenderScript {
+                            gpu_culling_pass,
+                            opaque_layer_pass,
+                            ssao_pass,
+                            alphablended_layer_pass,
+                            debug_pass,
+                            postprocess_pass,
+                            lighting_pass,
+                            ui_pass,
+                            prev_hzb: render_surface.hzb()[prev_hzb_idx],
+                            current_hzb: render_surface.hzb()[current_hzb_idx],
+                        };
 
-                            let config = Config {
-                                frame_idx: render_graph_frame_idx,
-                                ..Config::default()
-                            };
+                        let config = Config {
+                            frame_idx: render_graph_frame_idx,
+                            ..Config::default()
+                        };
 
-                            match render_script.build_render_graph(
-                                &view,
-                                &config,
-                                &render_resources,
-                                render_context.pipeline_manager,
-                                render_context.device_context,
-                            ) {
-                                Ok(render_graph) => {
-                                    let debug_renderpass = render_surface.debug_renderpass();
-                                    let debug_renderpass = debug_renderpass.write();
+                        match render_script.build_render_graph(
+                            &view,
+                            &config,
+                            &render_resources,
+                            render_context.pipeline_manager,
+                            render_context.device_context,
+                        ) {
+                            Ok(render_graph) => {
+                                let debug_renderpass = render_surface.debug_renderpass();
+                                let debug_renderpass = debug_renderpass.write();
 
-                                    let mut render_graph_context = render_graph.compile();
+                                let mut render_graph_context = render_graph.compile();
 
-                                    let debug_stuff = DebugStuff {
-                                        debug_renderpass: &debug_renderpass,
-                                        debug_display: &debug_display,
-                                        picked_drawables: picked_drawables.as_slice(),
-                                        manipulator_drawables: manipulator_drawables.as_slice(),
-                                        camera_component,
-                                    };
+                                let debug_stuff = DebugStuff {
+                                    debug_renderpass: &debug_renderpass,
+                                    debug_display: &debug_display,
+                                    picked_drawables: picked_drawables.as_slice(),
+                                    manipulator_drawables: manipulator_drawables.as_slice(),
+                                    camera_component,
+                                };
 
-                                    render_graph.execute(
-                                        &mut render_graph_context,
-                                        &render_resources,
-                                        &mut render_context,
-                                        &debug_stuff,
-                                        cmd_buffer,
-                                    );
-                                }
-                                Err(error) => {
-                                    println!("{}", error);
-                                }
+                                render_graph.execute(
+                                    &mut render_graph_context,
+                                    &render_resources,
+                                    &mut render_context,
+                                    &debug_stuff,
+                                    cmd_buffer,
+                                );
                             }
-                        });
+                            Err(error) => {
+                                println!("{}", error);
+                            }
+                        }
 
                         cmd_buffer.end();
 
