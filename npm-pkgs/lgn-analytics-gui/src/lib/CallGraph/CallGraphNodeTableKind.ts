@@ -1,4 +1,1 @@
-export enum CallGraphNodeTableKind {
-  Callers = 0,
-  Callees,
-}
+export type CallGraphNodeTableKind = "callers" | "callees";

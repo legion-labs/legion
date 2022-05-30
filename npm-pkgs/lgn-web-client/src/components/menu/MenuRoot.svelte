@@ -70,7 +70,7 @@
   </div>
 </div>
 
-<style>
+<style lang="postcss">
   .menu {
     @apply items-center cursor-pointer h-full;
   }
