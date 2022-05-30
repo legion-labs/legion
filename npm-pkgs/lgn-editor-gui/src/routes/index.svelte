@@ -44,6 +44,14 @@
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
 
+  let layout: Layout;
+
+  setContext<RootContext>("root", {
+    getLayout() {
+      return layout;
+    },
+  });
+
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
       // TODO: Handle errors
@@ -65,7 +73,7 @@
             state: {
               activeScenes: s.scenes,
             },
-            onDestroyed: async () => {
+            onClosed: async () => {
               await closeScene({ id: s.rootScene.id });
               await fetchAllActiveScenes();
             },
@@ -107,7 +115,6 @@
         {
           title: "Runtime",
           visible: true,
-
           action: () => {
             layout.addComponent(
               RemoteWindow.name,
@@ -123,7 +130,6 @@
         {
           title: "Property Grid",
           visible: true,
-
           action: () => {
             layout.addComponent(PropertyGrid.name);
           },
@@ -131,7 +137,6 @@
         {
           title: "Resource Browser",
           visible: true,
-
           action: () => {
             layout.addComponent(ResourceBrowser.name);
           },
@@ -139,7 +144,6 @@
         {
           title: "Local Changes",
           visible: true,
-
           action: () => {
             layout.addComponent(LocalChanges.name);
           },
@@ -154,14 +158,6 @@
       ],
     },
   ];
-
-  let layout: Layout;
-
-  setContext<RootContext>("root", {
-    getLayout() {
-      return layout;
-    },
-  });
 
   const enableOld = false;
 </script>
