@@ -8,13 +8,13 @@
   import DisplayError from "@/components/Misc/DisplayError.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
   import Loader from "@/components/Misc/Loader.svelte";
+  import TimeRange from "@/components/Misc/TimeRange.svelte";
   import { TimelineStateManager } from "@/components/Timeline/Stores/TimelineStateManager";
   import type { TimelineStateStore } from "@/components/Timeline/Stores/TimelineStateStore";
   import TimelineProcess from "@/components/Timeline/TimelineProcess.svelte";
   import TimelineAction from "@/components/Timeline/Tools/TimelineAction.svelte";
   import TimelineAxis from "@/components/Timeline/Tools/TimelineAxis.svelte";
   import TimelineMinimap from "@/components/Timeline/Tools/TimelineMinimap.svelte";
-  import TimelineRange from "@/components/Timeline/Tools/TimelineRange.svelte";
   import TimelineSearch from "@/components/Timeline/Tools/TimelineSearch.svelte";
   import { pixelMargin } from "@/components/Timeline/Values/TimelineValues";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
@@ -286,7 +286,16 @@
             />
             <TimelineAxis {stateStore} />
             <div class="pt-3">
-              <TimelineRange {stateStore} />
+              {#if $stateStore && $stateStore.currentSelection}
+                <div class="flex">
+                  <div class="min-w-thread-item" />
+                  <TimeRange
+                    width={$stateStore.canvasWidth}
+                    selectionRange={$stateStore.currentSelection}
+                    viewRange={$stateStore.viewRange}
+                  />
+                </div>
+              {/if}
             </div>
             {#if callGraphBegin && callGraphEnd}
               <div class="basis-1/5">

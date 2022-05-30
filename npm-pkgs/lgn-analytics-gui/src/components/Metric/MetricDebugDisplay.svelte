@@ -5,7 +5,6 @@
   import type { MetricStreamer } from "./Lib/MetricStreamer";
 
   export let width: number;
-  export let mainWidth: number;
   export let updateTime: number;
   export let transform: d3.ZoomTransform;
   export let lod: number;
@@ -24,7 +23,6 @@
 <div class="grid grid-cols-3">
   <div style="font-size:0.8rem">
     <div><span class="font-bold">Width</span>: {width}</div>
-    <div><span class="font-bold"> Main Width</span>: {mainWidth}</div>
     <br />
     <div>
       <span class="font-bold">Update Time</span>: {updateTime} ms
