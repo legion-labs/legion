@@ -72,8 +72,39 @@ jobs:
           GITHUB_PAGES: "true"
         run: pnpm build
 
-      - name: Upload analytics artifacts to S3
-        if: ${{ inputs.deploy_editor }}
+      - name: Upload analytics artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: analytics
+          path: ./npm-pkgs/lgn-analytics-gui/dist
+          retention-days: 5
+
+      - name: Upload editor artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: editor
+          path: ./npm-pkgs/lgn-editor-gui/dist
+          retention-days: 5
+
+  build_artifacts:
+    name: Build
+    needs: [check]
+    runs-on: [self-hosted, linux, governance-common, build]
+    if: ${{ inputs.deploy_editor || inputs.deploy_analytics }}
+    container:
+      image: ${{ inputs.image }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      - name: Npm install
+        run: pnpm install --unsafe-perm
+
+      - name: Npm build
+        run: pnpm build
+
+      - name: Upload editor artifacts to S3
         run: |
           pushd ./npm-pkgs/lgn-editor-gui/dist
           zip -r ../lgn-editor-gui.zip *
@@ -100,20 +131,6 @@ jobs:
             aws s3 cp ../lgn-analytics-gui.zip $PKG --region ca-central-1
           fi
           popd
-
-      - name: Upload analytics artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: analytics
-          path: ./npm-pkgs/lgn-analytics-gui/dist
-          retention-days: 5
-
-      - name: Upload editor artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: editor
-          path: ./npm-pkgs/lgn-editor-gui/dist
-          retention-days: 5
 
   deploy_editor:
     name: Deployment
