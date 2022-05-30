@@ -187,7 +187,7 @@ pub fn write_local_partition(
     if let Some(root) = processed_block.call_tree_root {
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, next_id, &mut rows);
-        let mut writer = SpanTablePartitionLocalWriter::create(&parquet_full_path)?;
+        let mut writer = SpanTablePartitionLocalWriter::create(parquet_full_path)?;
         writer.append(&rows)?;
         writer.close()?;
         let attr = std::fs::metadata(&parquet_full_path)?; //that's not cool, we should already know how big the file is
