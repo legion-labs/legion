@@ -178,17 +178,29 @@ where
     */
 
     async fn get_resource_identifier(&self, id: &IndexKey) -> Result<Option<ResourceIdentifier>> {
-        self.get_resource_identifier_from_index(id, self.get_main_index_id())
+        self.get_resource_identifier_from_index(&self.main_indexer, self.get_main_index_id(), id)
             .await
+    }
+
+    pub async fn get_resource_identifier_by_path(
+        &self,
+        path: &str,
+    ) -> Result<Option<ResourceIdentifier>> {
+        self.get_resource_identifier_from_index(
+            &self.path_indexer,
+            &self.content_id.path_index_tree_id,
+            &path.into(),
+        )
+        .await
     }
 
     async fn get_resource_identifier_from_index(
         &self,
-        id: &IndexKey,
+        indexer: &impl BasicIndexer,
         tree_id: &TreeIdentifier,
+        id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>> {
-        let leaf_node = self
-            .main_indexer
+        let leaf_node = indexer
             .get_leaf(&self.transaction, tree_id, id)
             .await
             .map_err(Error::ContentStoreIndexing)?;
@@ -207,22 +219,30 @@ where
         Ok(resource_id.is_some())
     }
 
+    pub async fn resource_exists_by_path(&self, path: &str) -> Result<bool> {
+        let resource_id = self.get_resource_identifier_by_path(path).await?;
+        Ok(resource_id.is_some())
+    }
+
     pub async fn load_resource(&self, id: &IndexKey) -> Result<Vec<u8>> {
-        self.load_resource_from_index(id, self.get_main_index_id())
+        self.load_resource_from_index(self.get_main_index_id(), id)
             .await
     }
 
     pub async fn load_metadata(&self, id: &IndexKey) -> Result<Vec<u8>> {
-        self.load_resource_from_index(id, &self.content_id.metadata_index_tree_id)
+        self.load_resource_from_index(&self.content_id.metadata_index_tree_id, id)
             .await
     }
 
     async fn load_resource_from_index(
         &self,
-        id: &IndexKey,
         tree_id: &TreeIdentifier,
+        id: &IndexKey,
     ) -> Result<Vec<u8>> {
-        if let Some(resource_id) = self.get_resource_identifier_from_index(id, tree_id).await? {
+        if let Some(resource_id) = self
+            .get_resource_identifier_from_index(&self.main_indexer, tree_id, id)
+            .await?
+        {
             let resource_bytes = self
                 .transaction
                 .read_resource::<ResourceByteReader>(&resource_id)

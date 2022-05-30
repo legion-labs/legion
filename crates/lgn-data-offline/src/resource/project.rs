@@ -168,14 +168,7 @@ impl Project {
         )
         .await?;
 
-        let manifest_id = workspace.get_main_index_id().clone();
-
-        Ok(Self {
-            project_dir: project_dir.as_ref().to_owned(),
-            workspace,
-            deleted_pending: HashMap::new(),
-            offline_manifest_id: Arc::new(ManifestId::new(manifest_id)),
-        })
+        Ok(Self::new_from_workspace(project_dir, workspace))
     }
 
     /// Opens the project index specified
@@ -195,14 +188,21 @@ impl Project {
         )
         .await?;
 
+        Ok(Self::new_from_workspace(project_dir, workspace))
+    }
+
+    fn new_from_workspace(
+        project_dir: impl AsRef<Path>,
+        workspace: Workspace<ResourceTypeAndIdIndexer>,
+    ) -> Self {
         let manifest_id = workspace.get_main_index_id().clone();
 
-        Ok(Self {
+        Self {
             project_dir: project_dir.as_ref().to_owned(),
             workspace,
             deleted_pending: HashMap::new(),
             offline_manifest_id: Arc::new(ManifestId::new(manifest_id)),
-        })
+        }
     }
 
     /*
@@ -273,12 +273,19 @@ impl Project {
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
     pub async fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
-        for type_id in self.resource_list().await {
-            let metadata = self.read_meta(type_id).await;
-            if let Ok(metadata) = metadata {
-                if &metadata.name == name {
-                    return Ok(type_id);
-                }
+        if let Some(resource_identifier) = self
+            .workspace
+            .get_resource_identifier_by_path(name.as_str())
+            .await?
+        {
+            // reverse lookup main index
+            if let Some((index_key, _resource_identifier)) = self
+                .get_resources()
+                .await?
+                .iter()
+                .find(|(_index_key, matched_id)| &resource_identifier == matched_id)
+            {
+                return Ok(index_key.into());
             }
         }
         Err(Error::FileNotFound(name.to_string()))
@@ -286,7 +293,10 @@ impl Project {
 
     /// Checks if a resource with a given name is part of the project.
     pub async fn exists_named(&self, name: &ResourcePathName) -> bool {
-        self.find_resource(name).await.is_ok()
+        self.workspace
+            .resource_exists_by_path(name.as_str())
+            .await
+            .unwrap()
     }
 
     /// Checks if a resource is part of the project.
