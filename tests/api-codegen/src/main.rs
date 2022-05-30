@@ -3,6 +3,8 @@
 // crate-specific lint exceptions:
 // #![allow()]
 
+use std::net::SocketAddr;
+
 use api_codegen::{api_impl::ApiImpl, cars::server};
 use axum::Router;
 use lgn_online::server::RouterExt;
@@ -18,7 +20,7 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("Server listening on http://{}", addr);
 
     axum::Server::bind(&addr)
-        .serve(router.into_make_service())
+        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
         .await?;
 
     Ok(())

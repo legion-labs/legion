@@ -26,9 +26,11 @@ pub struct ApiImpl {
 impl Api for ApiImpl {
     async fn get_cars(
         &self,
-        _context: &mut Context,
+        context: &mut Context,
         _request: GetCarsRequest,
     ) -> Result<GetCarsResponse> {
+        println!("Request addr: {}", context.request_addr().unwrap());
+
         Ok(GetCarsResponse::Status200(GetCars200Response {
             body: self.cars.read().await.values().cloned().collect(),
         }))

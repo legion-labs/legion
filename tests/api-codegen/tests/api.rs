@@ -159,7 +159,8 @@ async fn start_server(addr: SocketAddr) -> JoinHandle<Result<(), hyper::Error>> 
     let router = Router::new();
     let api = api_codegen::api_impl::ApiImpl::default();
     let router = server::register_routes(router, api);
-    let server = axum::Server::bind(&addr).serve(router.into_make_service());
+    let server =
+        axum::Server::bind(&addr).serve(router.into_make_service_with_connect_info::<SocketAddr>());
 
     tokio::spawn(async move { server.await })
 }
