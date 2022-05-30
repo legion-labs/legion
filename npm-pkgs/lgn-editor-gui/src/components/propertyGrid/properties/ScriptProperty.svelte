@@ -42,6 +42,7 @@
 
     layout.addComponent(
       "ScriptEditor",
+      $currentResource?.id ?? "ScriptEditor",
       {
         state: {
           theme: "vs-dark",
@@ -52,8 +53,7 @@
       },
       `Script Editor: ${fileName(
         $currentResource?.description.path ?? "undefined"
-      )}`,
-      $currentResource?.id
+      )}`
     );
 
     // $tabPayloads[payloadId] = {
