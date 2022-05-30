@@ -1463,14 +1463,18 @@ impl RenderGraph {
         debug_stuff: &DebugStuff<'_>,
         cmd_buffer: &mut CommandBuffer,
     ) {
-        self.execute_inner(
-            context,
-            render_resources,
-            render_context,
-            debug_stuff,
-            &self.root,
-            cmd_buffer,
-        );
+        // We execute the root's children directly instead of executing the root, because the root never
+        // does anything and it gives a useless level in the captures.
+        for child in &self.root.children {
+            self.execute_inner(
+                context,
+                render_resources,
+                render_context,
+                debug_stuff,
+                child,
+                cmd_buffer,
+            );
+        }
     }
 
     fn execute_inner(
