@@ -241,7 +241,7 @@ impl GlobalTransform {
         Self {
             translation,
             rotation,
-            scale: transform.scale,
+            scale: self.scale,
         }
     }
 
