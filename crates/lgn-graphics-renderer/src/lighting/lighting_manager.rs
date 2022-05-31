@@ -166,9 +166,9 @@ impl LightingManager {
         lighting_data.set_num_spot_lights(Uint1::from(spot_light_count));
         lighting_data.set_default_ambient(
             Vec3::new(
-                self.default_ambient_intensity * self.default_ambient_color.r as f32 / 255.0,
-                self.default_ambient_intensity * self.default_ambient_color.g as f32 / 255.0,
-                self.default_ambient_intensity * self.default_ambient_color.b as f32 / 255.0,
+                self.default_ambient_intensity * f32::from(self.default_ambient_color.r) / 255.0,
+                self.default_ambient_intensity * f32::from(self.default_ambient_color.g) / 255.0,
+                self.default_ambient_intensity * f32::from(self.default_ambient_color.b) / 255.0,
             )
             .into(),
         );

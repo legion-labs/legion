@@ -63,5 +63,6 @@ pub struct RenderFeatures {
 }
 
 impl RenderFeatures {
+    #[allow(clippy::unused_self)]
     pub fn update(&self) {}
 }
