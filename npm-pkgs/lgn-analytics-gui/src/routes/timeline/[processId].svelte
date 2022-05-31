@@ -251,7 +251,7 @@
               <TimelineSearch bind:searching />
             </div>
           {/if}
-          <div class="main relative flex flex-col">
+          <div class="main">
             <div
               class="canvas cursor-pointer basis-auto"
               bind:this={div}
@@ -321,6 +321,10 @@
   }
 
   .main {
+    /* TODO: Quick hack to prevent the x overflow, find a better fix */
+    @apply overflow-x-hidden;
+
+    @apply relative flex flex-col;
     height: calc(100vh - 130px);
   }
 

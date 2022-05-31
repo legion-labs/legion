@@ -21,7 +21,7 @@ use errors::{Error, Result};
 use openapi_loader::{OpenApi, OpenApiElement, OpenApiLoader};
 use openapi_path::OpenAPIPath;
 use rust::RustGenerator;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use typescript::TypeScriptGenerator;
 
 #[derive(Debug, Copy, Clone, ArgEnum)]
@@ -39,14 +39,16 @@ pub fn generate(
     language: Language,
     openapi_file: impl AsRef<Path>,
     output_dir: impl AsRef<Path>,
-) -> Result<()> {
+) -> Result<Vec<PathBuf>> {
     let openapi_file = openapi_file.as_ref();
     let loader = OpenApiLoader::default();
     let openapi = loader.load_openapi(openapi_file.to_path_buf().into())?;
     let api = openapi.try_into()?;
 
     let generator = load_generator_for_language(language);
-    generator.generate(&api, openapi_file, output_dir.as_ref())
+    generator.generate(&api, openapi_file, output_dir.as_ref())?;
+
+    Ok(loader.get_all_files())
 }
 
 #[macro_export]
@@ -59,13 +61,20 @@ macro_rules! generate {
         let openapi_file =
             std::path::PathBuf::from($apis_path).join(concat!(stringify!($api_name), ".yaml"));
 
-        println!("cargo:rerun-if-changed={}", openapi_file.display());
-
-        lgn_api_codegen::generate(
+        match lgn_api_codegen::generate(
             lgn_api_codegen::Language::$language,
             openapi_file,
             std::env::var("OUT_DIR")?,
-        )
+        ) {
+            Ok(files) => {
+                for file in files {
+                    println!("cargo:rerun-if-changed={}", file.display());
+                }
+
+                Ok(())
+            }
+            Err(err) => Err(err),
+        }
     }};
 }
 

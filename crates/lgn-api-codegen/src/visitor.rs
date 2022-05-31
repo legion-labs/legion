@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 
@@ -30,8 +32,8 @@ impl Visitor {
             title: oas.info.title.clone(),
             description: oas.info.description.clone(),
             version: oas.info.version.clone(),
-            models: Vec::new(),
-            paths: IndexMap::new(),
+            models: BTreeMap::new(),
+            paths: BTreeMap::new(),
         };
 
         // Let's first resolve schemas.
@@ -51,14 +53,14 @@ impl Visitor {
 
             for (method, operation) in path_item.iter() {
                 let method: Method = method.parse()?;
-                self.visit_operation(&path, &path_item, method, &oas.as_element_ref(operation))?;
+                self.register_operation(&path, &path_item, method, &oas.as_element_ref(operation))?;
             }
         }
 
         Ok(self.api)
     }
 
-    fn visit_operation(
+    fn register_operation(
         &mut self,
         path: &OpenAPIPath,
         path_item: &OpenApiElement<'_, openapiv3::PathItem>,
@@ -360,13 +362,21 @@ impl Visitor {
             },
         };
 
-        Ok(self.register_model(model))
+        self.register_model(model)
     }
 
-    fn register_model(&mut self, model: Model) -> Type {
+    fn register_model(&mut self, model: Model) -> Result<Type> {
         let type_ = model.to_named_type();
-        self.api.models.push(model);
-        type_
+
+        if let Some(old_model) = self.api.models.get(&model.name) {
+            if old_model != &model {
+                return Err(Error::ModelAlreadyRegistered(model.name));
+            }
+        }
+
+        self.api.models.insert(model.name.clone(), model);
+
+        Ok(type_)
     }
 
     fn resolve_type(
@@ -396,7 +406,7 @@ impl Visitor {
             }
         };
 
-        Ok(if type_.requires_model() {
+        if type_.requires_model() {
             let name = path.to_pascal_case();
 
             let model = Model {
@@ -407,8 +417,8 @@ impl Visitor {
 
             self.register_model(model)
         } else {
-            type_
-        })
+            Ok(type_)
+        }
     }
 
     fn resolve_integer(integer_type: &openapiv3::IntegerType) -> Result<Type> {
@@ -563,7 +573,17 @@ impl Visitor {
                 self.resolve_type(path, &schema.as_element_ref(inner_schema))
             }
             openapiv3::ReferenceOr::Reference { reference } => {
-                reference.parse().map(OpenApiRef::into_named_type)
+                let ref_: OpenApiRef = reference.parse()?;
+
+                // If we have a reference location, we need to make sure that we
+                // resolve the schema and register the associated model.
+                if ref_.ref_location().is_some() {
+                    let name = ref_.type_name();
+                    let schema = schema.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
+                    self.register_model_from_schema(name, &schema)
+                } else {
+                    Ok(ref_.into_named_type())
+                }
             }
         }
     }
@@ -685,7 +705,7 @@ mod tests {
     #[test]
     fn test_resolve_string_enum() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -729,8 +749,8 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 2);
-        assert!(api.models.contains(&expected_struct));
-        assert!(api.models.contains(&expected_enum));
+        assert_eq!(api.models.get("MyStruct"), Some(&expected_struct));
+        assert_eq!(api.models.get("MyStructMyEnum"), Some(&expected_enum));
     }
 
     #[test]
@@ -779,7 +799,7 @@ mod tests {
     #[test]
     fn test_resolve_array_ref() {
         let components = serde_yaml::from_str(
-            r#"    
+            r#"
             schemas:
               Category:
                 type: string
@@ -828,13 +848,13 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 3);
-        assert!(api.models.contains(&expected_struct));
+        assert_eq!(api.models.get("MyStruct"), Some(&expected_struct));
     }
 
     #[test]
     fn test_resolve_struct() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -879,13 +899,13 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 1);
-        assert!(api.models.contains(&expected_struct));
+        assert_eq!(api.models.get("MyStruct"), Some(&expected_struct));
     }
 
     #[test]
     fn test_resolve_inner_struct() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -934,14 +954,17 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 2);
-        assert!(api.models.contains(&expected_struct));
-        assert!(api.models.contains(&expected_inner_struct));
+        assert_eq!(api.models.get("MyStruct"), Some(&expected_struct));
+        assert_eq!(
+            api.models.get("MyStructMyInnerStruct"),
+            Some(&expected_inner_struct)
+        );
     }
 
     #[test]
     fn test_resolve_get_operation() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               Pet:
                 type: object
@@ -953,7 +976,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               get:
                 summary: Finds pets by tags.
@@ -1030,7 +1053,7 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 1);
-        assert!(api.models.contains(&expected_struct));
+        assert_eq!(api.models.get("Pet"), Some(&expected_struct));
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(
@@ -1042,7 +1065,7 @@ mod tests {
     #[test]
     fn test_resolve_request_body() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             requestBodies:
               Pet:
                 content:
@@ -1060,7 +1083,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               post:
                 operationId: addPet
@@ -1132,8 +1155,11 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 2);
-        assert!(api.models.contains(&expected_struct));
-        assert!(api.models.contains(&expected_inner_struct));
+        assert_eq!(api.models.get("AddPetBody"), Some(&expected_struct));
+        assert_eq!(
+            api.models.get("AddPetBodyPetData"),
+            Some(&expected_inner_struct)
+        );
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(
@@ -1145,13 +1171,13 @@ mod tests {
     #[test]
     fn test_resolve_post_operation() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             requestBodies:
               Pet:
                 content:
                   application/json:
                     schema:
-                      $ref: '#/components/schemas/Pet'  
+                      $ref: '#/components/schemas/Pet'
             schemas:
               Pet:
                 type: object
@@ -1163,7 +1189,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               post:
                 summary: Add a new pet to the store.
@@ -1242,7 +1268,7 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 1);
-        assert!(api.models.contains(&expected_struct));
+        assert_eq!(api.models.get("Pet"), Some(&expected_struct));
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(
@@ -1283,7 +1309,7 @@ mod tests {
     #[test]
     fn test_resolve_one_of() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             schemas:
               Pet:
                 type: object
@@ -1338,13 +1364,13 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 3);
-        assert!(api.models.contains(&expected_one_of));
+        assert_eq!(api.models.get("TestOneOfResponse"), Some(&expected_one_of));
     }
 
     #[test]
     fn test_resolve_operation_with_path_level_parameters() {
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /foo/{a}/bar/{b}:
               parameters:
                 - name: a
