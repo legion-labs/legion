@@ -1,6 +1,9 @@
 pub mod alpha_blend_pass;
 pub use alpha_blend_pass::*;
 
+pub mod picking_pass;
+pub use picking_pass::*;
+
 pub mod debug_pass;
 pub use debug_pass::*;
 

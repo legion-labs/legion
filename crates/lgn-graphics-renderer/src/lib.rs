@@ -17,7 +17,7 @@ use crate::core::{DebugStuff, RenderGraphPersistentState, RenderObjects};
 use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::render_passes::{
-    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass, PickingPass,
     PostProcessPass, SSAOPass, UiPass,
 };
 use crate::script::{Config, RenderScript, RenderView};
@@ -848,6 +848,7 @@ fn render_update(
                         };
 
                         let gpu_culling_pass = GpuCullingPass;
+                        let picking_pass = PickingPass;
                         let opaque_layer_pass = OpaqueLayerPass;
                         let ssao_pass = SSAOPass;
                         let alphablended_layer_pass = AlphaBlendedLayerPass;
@@ -861,6 +862,7 @@ fn render_update(
 
                         let mut render_script = RenderScript {
                             gpu_culling_pass,
+                            picking_pass,
                             opaque_layer_pass,
                             ssao_pass,
                             alphablended_layer_pass,
@@ -885,13 +887,11 @@ fn render_update(
                             render_context.device_context,
                         ) {
                             Ok(render_graph) => {
-                                let debug_renderpass = render_surface.debug_renderpass();
-                                let debug_renderpass = debug_renderpass.write();
-
                                 let mut render_graph_context = render_graph.compile();
 
                                 let debug_stuff = DebugStuff {
-                                    debug_renderpass: &debug_renderpass,
+                                    render_surface,
+                                    picking_manager: &picking_manager,
                                     debug_display: &debug_display,
                                     picked_drawables: picked_drawables.as_slice(),
                                     manipulator_drawables: manipulator_drawables.as_slice(),

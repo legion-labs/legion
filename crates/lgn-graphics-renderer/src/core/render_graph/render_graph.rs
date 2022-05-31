@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use lgn_core::Handle;
 use lgn_graphics_api::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferCreateFlags, BufferDef, BufferView,
     BufferViewDef, BufferViewFlags, CmdCopyBufferToTextureParams, ColorClearValue,
@@ -13,12 +14,13 @@ use lgn_graphics_api::{
 };
 use lgn_transform::prelude::GlobalTransform;
 
-use crate::components::{CameraComponent, ManipulatorComponent, VisualComponent};
+use crate::components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent};
 use crate::core::render_graph::RenderGraphBuilder;
 use crate::core::RenderResources;
 use crate::debug_display::DebugDisplay;
-use crate::render_pass::DebugRenderPass;
-use crate::resources::PipelineManager;
+use crate::picking::PickingManager;
+
+use crate::resources::{PipelineManager, ReadbackBuffer};
 use crate::RenderContext;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -562,7 +564,8 @@ impl RenderGraphContext {
 }
 
 pub(crate) struct DebugStuff<'a> {
-    pub(crate) debug_renderpass: &'a DebugRenderPass,
+    pub(crate) render_surface: &'a RenderSurface,
+    pub(crate) picking_manager: &'a PickingManager,
     pub(crate) debug_display: &'a DebugDisplay,
     pub(crate) picked_drawables: &'a [(&'a VisualComponent, &'a GlobalTransform)],
     pub(crate) manipulator_drawables: &'a [(&'a GlobalTransform, &'a ManipulatorComponent)],
@@ -576,6 +579,11 @@ pub(crate) struct RenderGraphExecuteContext<'a, 'frame> {
 
     // Stuff needed only for the debug pass
     pub(crate) debug_stuff: &'a DebugStuff<'a>,
+
+    // TODO: need a better way to pass data from one pass to another, like a blackboard
+    // (but these buffers should be managed by the render graph anyways)
+    pub(crate) count_readback: Handle<ReadbackBuffer>,
+    pub(crate) picked_readback: Handle<ReadbackBuffer>,
 }
 
 pub(crate) struct RenderGraph {
@@ -1463,53 +1471,37 @@ impl RenderGraph {
         debug_stuff: &DebugStuff<'_>,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        let mut execute_context = RenderGraphExecuteContext {
+            render_resources,
+            render_context,
+            debug_stuff,
+            count_readback: Handle::invalid(),
+            picked_readback: Handle::invalid(),
+        };
+
         // We execute the root's children directly instead of executing the root, because the root never
         // does anything and it gives a useless level in the captures.
         for child in &self.root.children {
-            self.execute_inner(
-                context,
-                render_resources,
-                render_context,
-                debug_stuff,
-                child,
-                cmd_buffer,
-            );
+            self.execute_inner(context, &mut execute_context, child, cmd_buffer);
         }
     }
 
     fn execute_inner(
         &self,
         context: &mut RenderGraphContext,
-        render_resources: &RenderResources,
-        render_context: &mut RenderContext<'_>,
-        debug_stuff: &DebugStuff<'_>,
+        execute_context: &mut RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
         cmd_buffer.with_label(&node.name, |cmd_buffer| {
             if let Some(execute_fn) = &node.execute_fn {
-                //println!("--- Executing {}", node.name);
-
-                let mut execute_context = RenderGraphExecuteContext {
-                    render_resources,
-                    render_context,
-                    debug_stuff,
-                };
-
-                self.begin_execute(context, &mut execute_context, node, cmd_buffer);
-                (execute_fn)(context, &mut execute_context, cmd_buffer);
+                self.begin_execute(context, execute_context, node, cmd_buffer);
+                (execute_fn)(context, execute_context, cmd_buffer);
                 self.end_execute(context, node, cmd_buffer);
             }
 
             for child in &node.children {
-                self.execute_inner(
-                    context,
-                    render_resources,
-                    render_context,
-                    debug_stuff,
-                    child,
-                    cmd_buffer,
-                );
+                self.execute_inner(context, execute_context, child, cmd_buffer);
             }
         });
     }

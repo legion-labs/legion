@@ -22,7 +22,7 @@ use lgn_graphics_api::{
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
 use super::render_passes::{
-    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass, PickingPass,
     PostProcessPass, SSAOPass, UiPass,
 };
 
@@ -68,6 +68,7 @@ impl Config {
 pub struct RenderScript<'a> {
     // Passes
     pub gpu_culling_pass: GpuCullingPass,
+    pub picking_pass: PickingPass,
     pub opaque_layer_pass: OpaqueLayerPass,
     pub ssao_pass: SSAOPass,
     pub alphablended_layer_pass: AlphaBlendedLayerPass,
@@ -348,6 +349,13 @@ impl RenderScript<'_> {
             prev_hzb_srv_id,
             self.current_hzb.definition(),
             current_hzb_id,
+        );
+        render_graph_builder = self.picking_pass.build_render_graph(
+            render_graph_builder,
+            view,
+            gbuffer_write_view_ids[0],
+            draw_count_buffer_id,
+            draw_args_buffer_id,
         );
         render_graph_builder = self.opaque_layer_pass.build_render_graph(
             render_graph_builder,
