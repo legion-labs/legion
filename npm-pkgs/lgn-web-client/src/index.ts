@@ -2,6 +2,7 @@ import grpcWeb from "@improbable-eng/grpc-web";
 import { SvelteComponentTyped } from "svelte";
 import type { Unsubscriber } from "svelte/store";
 
+import "../../tailwind.css";
 import { initApiClient } from "./api";
 import type { NonEmptyArray } from "./lib/array";
 import type { InitAuthUserConfig } from "./lib/auth";

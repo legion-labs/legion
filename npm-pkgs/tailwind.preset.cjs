@@ -25,6 +25,26 @@ module.exports = {
           z: "var(--color-vector-z)",
           w: "var(--color-vector-w)",
         },
+        dropdown: {
+          default: "var(--dropdown-surface-default)",
+        },
+        menu: {
+          default: "var(--menu-surface-default)",
+          hovered: "var(--menu-surface-hovered)",
+        },
+      },
+      borderColor: {
+        dropdown: {
+          root: "var(--dropdown-root)",
+        },
+      },
+      textColor: {
+        menu: {
+          disabled: "var(--menu-text-disabled)",
+          enabled: "var(--menu-text-enabled)",
+          hovered: "var(--menu-text-hovered)",
+          selected: "var(--menu-text-selected)",
+        },
       },
       colors: {
         content: {

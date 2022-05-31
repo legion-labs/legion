@@ -41,10 +41,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             <div>
               
               <div
-                class="menu svelte-141n1ii flex"
+                class="menu-root svelte-dh0n0 flex"
               >
                 <div
-                  class="menu-title svelte-141n1ii"
+                  class="menu-title svelte-dh0n0"
                 >
                   <div
                     class="self-center"
@@ -61,15 +61,15 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                 </div>
                  
                 <div
-                  class="menu-dropdown svelte-141n1ii hidden"
+                  class="menu-dropdown svelte-dh0n0 hidden"
                 >
                   <div
-                    class="menu-dropdown-items svelte-141n1ii"
+                    class="menu-dropdown-items svelte-dh0n0"
                     style=""
                   >
                     
                     <div
-                      class="menu-dropdown-item svelte-1ozv7s8"
+                      class="menu-dropdown-item svelte-1ld3o2c"
                     >
                       Copy Id
                     </div>
@@ -269,11 +269,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -290,10 +290,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -783,11 +783,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -804,10 +804,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -1222,10 +1222,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii flex"
+                      class="menu-root svelte-dh0n0 flex"
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -1242,15 +1242,15 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
                           <div
-                            class="menu-dropdown-item svelte-1ozv7s8"
+                            class="menu-dropdown-item svelte-1ld3o2c"
                           >
                             Add property to vector
                           </div>
@@ -1580,11 +1580,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -1601,10 +1601,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -1710,10 +1710,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <div>
                           
                           <div
-                            class="menu svelte-141n1ii flex"
+                            class="menu-root svelte-dh0n0 flex"
                           >
                             <div
-                              class="menu-title svelte-141n1ii"
+                              class="menu-title svelte-dh0n0"
                             >
                               <div
                                 class="self-center"
@@ -1730,15 +1730,15 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             </div>
                              
                             <div
-                              class="menu-dropdown svelte-141n1ii hidden"
+                              class="menu-dropdown svelte-dh0n0 hidden"
                             >
                               <div
-                                class="menu-dropdown-items svelte-141n1ii"
+                                class="menu-dropdown-items svelte-dh0n0"
                                 style=""
                               >
                                 
                                 <div
-                                  class="menu-dropdown-item svelte-1ozv7s8"
+                                  class="menu-dropdown-item svelte-1ld3o2c"
                                 >
                                   Add property to vector
                                 </div>
@@ -1788,10 +1788,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               <div>
                                 
                                 <div
-                                  class="menu svelte-141n1ii flex"
+                                  class="menu-root svelte-dh0n0 flex"
                                 >
                                   <div
-                                    class="menu-title svelte-141n1ii"
+                                    class="menu-title svelte-dh0n0"
                                   >
                                     <div
                                       class="self-center"
@@ -1808,14 +1808,14 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="menu-dropdown svelte-141n1ii hidden"
+                                    class="menu-dropdown svelte-dh0n0 hidden"
                                   >
                                     <div
-                                      class="menu-dropdown-items svelte-141n1ii"
+                                      class="menu-dropdown-items svelte-dh0n0"
                                       style=""
                                     >
                                       <div
-                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                        class="menu-dropdown-item svelte-1ld3o2c"
                                       >
                                         Delete component
                                       </div>
@@ -1942,10 +1942,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               <div>
                                 
                                 <div
-                                  class="menu svelte-141n1ii flex"
+                                  class="menu-root svelte-dh0n0 flex"
                                 >
                                   <div
-                                    class="menu-title svelte-141n1ii"
+                                    class="menu-title svelte-dh0n0"
                                   >
                                     <div
                                       class="self-center"
@@ -1962,14 +1962,14 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="menu-dropdown svelte-141n1ii hidden"
+                                    class="menu-dropdown svelte-dh0n0 hidden"
                                   >
                                     <div
-                                      class="menu-dropdown-items svelte-141n1ii"
+                                      class="menu-dropdown-items svelte-dh0n0"
                                       style=""
                                     >
                                       <div
-                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                        class="menu-dropdown-item svelte-1ld3o2c"
                                       >
                                         Delete component
                                       </div>
@@ -2096,10 +2096,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               <div>
                                 
                                 <div
-                                  class="menu svelte-141n1ii flex"
+                                  class="menu-root svelte-dh0n0 flex"
                                 >
                                   <div
-                                    class="menu-title svelte-141n1ii"
+                                    class="menu-title svelte-dh0n0"
                                   >
                                     <div
                                       class="self-center"
@@ -2116,14 +2116,14 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="menu-dropdown svelte-141n1ii hidden"
+                                    class="menu-dropdown svelte-dh0n0 hidden"
                                   >
                                     <div
-                                      class="menu-dropdown-items svelte-141n1ii"
+                                      class="menu-dropdown-items svelte-dh0n0"
                                       style=""
                                     >
                                       <div
-                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                        class="menu-dropdown-item svelte-1ld3o2c"
                                       >
                                         Delete component
                                       </div>
@@ -2391,11 +2391,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <div>
                           
                           <div
-                            class="menu svelte-141n1ii"
+                            class="menu-root svelte-dh0n0"
                             hidden=""
                           >
                             <div
-                              class="menu-title svelte-141n1ii"
+                              class="menu-title svelte-dh0n0"
                             >
                               <div
                                 class="self-center"
@@ -2412,10 +2412,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             </div>
                              
                             <div
-                              class="menu-dropdown svelte-141n1ii hidden"
+                              class="menu-dropdown svelte-dh0n0 hidden"
                             >
                               <div
-                                class="menu-dropdown-items svelte-141n1ii"
+                                class="menu-dropdown-items svelte-dh0n0"
                                 style=""
                               >
                                 
@@ -2645,11 +2645,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -2666,10 +2666,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -2911,11 +2911,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -2932,10 +2932,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -3212,10 +3212,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii flex"
+                      class="menu-root svelte-dh0n0 flex"
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -3232,15 +3232,15 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
                           <div
-                            class="menu-dropdown-item svelte-1ozv7s8"
+                            class="menu-dropdown-item svelte-1ld3o2c"
                           >
                             Add property to vector
                           </div>
