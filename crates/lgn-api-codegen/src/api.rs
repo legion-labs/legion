@@ -1,4 +1,4 @@
-use std::{iter::Chain, slice::Iter};
+use std::{collections::BTreeMap, iter::Chain, slice::Iter};
 
 use crate::{Error, OpenAPIPath, Result};
 use indexmap::IndexMap;
@@ -10,11 +10,11 @@ pub struct Api {
     pub title: String,
     pub description: Option<String>,
     pub version: String,
-    pub models: Vec<Model>,
+    pub models: BTreeMap<String, Model>,
     pub paths: IndexMap<Path, Vec<Route>>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Type {
     Int32,
     Int64,
@@ -43,7 +43,7 @@ impl Type {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Model {
     pub name: String,
     pub description: Option<String>,
@@ -56,7 +56,7 @@ impl Model {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Field {
     pub name: String,
     pub description: Option<String>,

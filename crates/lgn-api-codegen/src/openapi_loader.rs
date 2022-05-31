@@ -2,7 +2,13 @@ use crate::api::Type;
 
 use super::{Error, Result};
 
-use std::{cell::RefCell, collections::HashMap, fmt::Display, path::PathBuf, str::FromStr};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    fmt::Display,
+    path::{Component, Path, PathBuf},
+    str::FromStr,
+};
 
 use http::Uri;
 
@@ -35,7 +41,15 @@ impl OpenApiLoader {
     where
         T: for<'de> serde::Deserialize<'de> + Send + Sync + 'static,
     {
-        let ref_ = ref_.with_default_ref_location(ctx);
+        let cwd = std::env::current_dir()?;
+        let ctx = ctx.normalized(&cwd);
+        let root = match ctx.path() {
+            Some(p) => p.parent().unwrap_or(&cwd),
+            None => &cwd,
+        };
+        let ref_ = ref_
+            .with_normalized_ref_location(root)
+            .with_default_ref_location(ctx);
 
         let raw_reference = self.resolve_raw_reference(&ref_)?;
         let element: T = serde_json::from_value(raw_reference)?;
@@ -45,6 +59,15 @@ impl OpenApiLoader {
             ref_loc: ref_.ref_location.unwrap(),
             item: OpenApiElementItem::Owned(element),
         })
+    }
+
+    pub fn get_all_files(&self) -> Vec<PathBuf> {
+        self.raw_documents
+            .borrow()
+            .keys()
+            .filter_map(|ref_loc| ref_loc.path())
+            .cloned()
+            .collect()
     }
 
     /// Import an element.
@@ -58,7 +81,8 @@ impl OpenApiLoader {
     where
         E: serde::Serialize,
     {
-        let ref_location = "".try_into()?;
+        let ref_location: OpenApiRefLocation = "api.yaml".try_into()?;
+        let ref_location = ref_location.normalized(&std::env::current_dir()?);
         let mut raw_documents = self.raw_documents.borrow_mut();
 
         if raw_documents.contains_key(&ref_location) {
@@ -86,7 +110,8 @@ impl OpenApiLoader {
     where
         E: for<'de> serde::Deserialize<'de>,
     {
-        let ref_location = "".try_into()?;
+        let ref_location: OpenApiRefLocation = "api.yaml".try_into()?;
+        let ref_location = ref_location.normalized(&std::env::current_dir()?);
         let mut raw_documents = self.raw_documents.borrow_mut();
 
         if raw_documents.contains_key(&ref_location) {
@@ -321,6 +346,16 @@ impl OpenApiRef {
         }
     }
 
+    pub fn with_normalized_ref_location(self, root: impl AsRef<Path>) -> Self {
+        match self.ref_location {
+            Some(ref_location) => Self {
+                ref_location: Some(ref_location.normalized(root)),
+                json_pointer: self.json_pointer,
+            },
+            None => self,
+        }
+    }
+
     /// Returns the reference location.
     pub fn ref_location(&self) -> Option<&OpenApiRefLocation> {
         self.ref_location.as_ref()
@@ -329,6 +364,10 @@ impl OpenApiRef {
     /// Returns the JSON pointer.
     pub fn json_pointer(&self) -> &str {
         &self.json_pointer
+    }
+
+    pub fn type_name(&self) -> &str {
+        self.json_pointer.rsplit('/').next().unwrap()
     }
 
     pub fn into_named_type(self) -> Type {
@@ -416,6 +455,26 @@ impl OpenApiRefLocation {
         Self::Url(url)
     }
 
+    pub fn normalized(self, root: impl AsRef<Path>) -> Self {
+        match self {
+            Self::Remote(path) => Self::Remote({
+                normalize_path(if path.is_absolute() {
+                    path
+                } else {
+                    root.as_ref().join(path)
+                })
+            }),
+            Self::Url(url) => Self::Url(url),
+        }
+    }
+
+    pub fn path(&self) -> Option<&PathBuf> {
+        match self {
+            Self::Remote(path) => Some(path),
+            Self::Url(_) => None,
+        }
+    }
+
     /// Loads the document referenced by this reference.
     pub fn load(&self) -> Result<serde_json::Value> {
         Ok(match self {
@@ -429,6 +488,33 @@ impl OpenApiRefLocation {
             }
         })
     }
+}
+
+pub fn normalize_path(path: PathBuf) -> PathBuf {
+    let mut components = path.components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+        components.next();
+        PathBuf::from(c.as_os_str())
+    } else {
+        PathBuf::new()
+    };
+
+    for component in components {
+        match component {
+            Component::Prefix(..) => unreachable!(),
+            Component::RootDir => {
+                ret.push(component.as_os_str());
+            }
+            Component::CurDir => {}
+            Component::ParentDir => {
+                ret.pop();
+            }
+            Component::Normal(c) => {
+                ret.push(c);
+            }
+        }
+    }
+    ret
 }
 
 #[cfg(test)]

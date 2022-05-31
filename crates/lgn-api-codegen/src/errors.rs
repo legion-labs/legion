@@ -26,6 +26,8 @@ pub enum Error {
     InvalidReference(OpenApiRef),
     #[error("missing operation id: {0}")]
     MissingOperationID(String),
+    #[error("the model `{0}` was already registered with a different definition")]
+    ModelAlreadyRegistered(String),
     #[error("document already exists at location: {0}")]
     DocumentAlreadyExists(OpenApiRefLocation),
     #[error("unsupported: {0}")]
