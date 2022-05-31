@@ -3898,7 +3898,6 @@ dependencies = [
  "lgn-tasks",
  "lgn-tracing",
  "ntest",
- "retain_mut",
  "tokio",
 ]
 
@@ -7312,12 +7311,6 @@ dependencies = [
  "webpki-roots",
  "winreg",
 ]
-
-[[package]]
-name = "retain_mut"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4389f1d5789befaf6029ebd9f7dac4af7f7e3d61b69d4f30e2ac02b57e7712b0"
 
 [[package]]
 name = "rfc6979"

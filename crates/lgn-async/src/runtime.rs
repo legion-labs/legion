@@ -151,9 +151,7 @@ impl TokioAsyncRuntime {
     pub fn poll(&mut self) -> u32 {
         let mut num_completed = 0;
 
-        // TODO: #1886 Fix after we move to 1.61
-        #[allow(deprecated)]
-        retain_mut::RetainMut::retain_mut(&mut self.result_handlers, |handler| {
+        self.result_handlers.retain_mut(|handler| {
             let is_complete = handler.try_complete();
 
             if is_complete {
