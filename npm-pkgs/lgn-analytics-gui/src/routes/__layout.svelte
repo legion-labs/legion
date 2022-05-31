@@ -180,13 +180,15 @@
   });
 </script>
 
-<Notifications store={notifications} />
+{#if initAuthStatus?.type !== "error"}
+  <Notifications store={notifications} />
 
-<LoadingBar />
+  <LoadingBar />
 
-<div class="layout">
-  <slot />
-</div>
+  <div class="layout">
+    <slot />
+  </div>
+{/if}
 
 <style lang="postcss">
   .layout {
