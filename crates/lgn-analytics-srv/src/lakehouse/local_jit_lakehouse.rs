@@ -31,6 +31,7 @@ impl LocalJitLakehouse {
 
 #[async_trait]
 impl JitLakehouse for LocalJitLakehouse {
+    #[span_fn]
     async fn build_timeline_tables(&self, process_id: &str) -> Result<()> {
         async_span_scope!("build_timeline_tables");
         let mut connection = self.pool.acquire().await?;
