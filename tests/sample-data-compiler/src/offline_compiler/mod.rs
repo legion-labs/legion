@@ -43,6 +43,7 @@ pub async fn build(
     project: &Project,
     root_folder: impl AsRef<Path>,
     resource_name: &ResourcePathName,
+    source_control_content_provider: Arc<Provider>,
     data_content_provider: Arc<Provider>,
 ) {
     let root_folder = root_folder.as_ref();
@@ -60,6 +61,7 @@ pub async fn build(
     let mut build = DataBuildOptions::new_with_sqlite_output(
         build_index_dir,
         CompilerRegistryOptions::local_compilers(exe_path),
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .open_or_create(project)

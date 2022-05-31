@@ -57,7 +57,7 @@ mod tests {
             repository_index,
             &repository_name,
             branch_name,
-            source_control_content_provider,
+            Arc::clone(&source_control_content_provider),
         )
         .await;
 
@@ -65,6 +65,7 @@ mod tests {
             let build = DataBuildOptions::new_with_sqlite_output(
                 &output_dir,
                 CompilerRegistryOptions::default(),
+                Arc::clone(&source_control_content_provider),
                 data_content_provider,
             )
             .create(&project)
@@ -101,6 +102,7 @@ mod tests {
         {
             let _build = DataBuildOptions::new(
                 db_uri.clone(),
+                Arc::clone(&source_control_content_provider),
                 data_content_provider,
                 CompilerRegistryOptions::default(),
             )

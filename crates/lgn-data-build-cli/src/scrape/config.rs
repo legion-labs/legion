@@ -50,7 +50,7 @@ impl Config {
             repository_index,
             repository_name,
             branch_name,
-            source_control_content_provider,
+            Arc::clone(&source_control_content_provider),
         )
         .await
         .map_err(|e| e.to_string())?;
@@ -61,6 +61,7 @@ impl Config {
                 Self::workspace_dir(),
                 DataBuild::version(),
             ),
+            Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )

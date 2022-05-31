@@ -75,9 +75,12 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     std::fs::create_dir_all(&build_dir).unwrap();
 
     let source_control_content_provider = Arc::new(Provider::new_in_memory());
-    let project = Project::create_with_remote_mock(&project_dir, source_control_content_provider)
-        .await
-        .expect("failed to create a project");
+    let project = Project::create_with_remote_mock(
+        &project_dir,
+        Arc::clone(&source_control_content_provider),
+    )
+    .await
+    .expect("failed to create a project");
 
     let data_content_provider = Arc::new(Provider::new_in_memory());
 
@@ -98,6 +101,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let options = DataBuildOptions::new_with_sqlite_output(
         &build_dir,
         compilers,
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .asset_registry(asset_registry.clone());

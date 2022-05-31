@@ -34,6 +34,7 @@ use crate::{DataBuild, Error};
 /// # })
 /// ```
 pub struct DataBuildOptions {
+    pub(crate) source_control_content_provider: Arc<Provider>,
     pub(crate) data_content_provider: Arc<Provider>,
     pub(crate) output_db_addr: String,
     pub(crate) compiler_options: CompilerRegistryOptions,
@@ -45,6 +46,7 @@ impl DataBuildOptions {
     pub fn new_with_sqlite_output(
         output_dir: impl AsRef<Path>,
         compiler_options: CompilerRegistryOptions,
+        source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,
     ) -> Self {
         assert!(output_dir.as_ref().is_absolute());
@@ -55,6 +57,7 @@ impl DataBuildOptions {
         );
 
         Self {
+            source_control_content_provider,
             data_content_provider,
             output_db_addr,
             compiler_options,
@@ -65,10 +68,12 @@ impl DataBuildOptions {
     /// Create new instance of `DataBuildOptions` with the mandatory options.
     pub fn new(
         output_db_addr: String,
+        source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,
         compiler_options: CompilerRegistryOptions,
     ) -> Self {
         Self {
+            source_control_content_provider,
             data_content_provider,
             output_db_addr,
             compiler_options,

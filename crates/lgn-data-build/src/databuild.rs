@@ -22,7 +22,7 @@ use lgn_data_compiler::{
     compiler_node::{CompilerNode, CompilerStub},
     CompiledResource, CompiledResources,
 };
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::{resource::Project, vfs::AddDeviceCASOffline};
 use lgn_data_runtime::{
     manifest::ManifestId, AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId,
     Transform,
@@ -123,13 +123,16 @@ pub struct DataBuild {
 
 impl DataBuild {
     async fn default_asset_registry(
+        offline_manifest_id: &Arc<ManifestId>,
+        source_provider: Arc<Provider>,
         data_provider: Arc<Provider>,
         compilers: &CompilerRegistry,
     ) -> Result<Arc<AssetRegistry>, Error> {
         let empty_manifest_id =
             AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_provider).await;
-        let mut options =
-            AssetRegistryOptions::new().add_device_cas(data_provider, Arc::new(empty_manifest_id));
+        let mut options = AssetRegistryOptions::new()
+            .add_device_cas(data_provider, Arc::new(empty_manifest_id))
+            .add_device_cas_offline(source_provider, Arc::clone(offline_manifest_id));
 
         options = compilers.init_all(options).await;
 
@@ -145,8 +148,13 @@ impl DataBuild {
         let registry = match config.registry {
             Some(r) => Ok(r),
             None => {
-                Self::default_asset_registry(Arc::clone(&config.data_content_provider), &compilers)
-                    .await
+                Self::default_asset_registry(
+                    project.offline_manifest_id(),
+                    Arc::clone(&config.source_control_content_provider),
+                    Arc::clone(&config.data_content_provider),
+                    &compilers,
+                )
+                .await
             }
         }?;
 
@@ -167,8 +175,13 @@ impl DataBuild {
         let registry = match config.registry {
             Some(t) => Ok(t),
             None => {
-                Self::default_asset_registry(Arc::clone(&config.data_content_provider), &compilers)
-                    .await
+                Self::default_asset_registry(
+                    project.offline_manifest_id(),
+                    Arc::clone(&config.source_control_content_provider),
+                    Arc::clone(&config.data_content_provider),
+                    &compilers,
+                )
+                .await
             }
         }?;
 
@@ -209,8 +222,13 @@ impl DataBuild {
         let registry = match config.registry {
             Some(r) => r,
             None => {
-                Self::default_asset_registry(Arc::clone(&config.data_content_provider), &compilers)
-                    .await
+                Self::default_asset_registry(
+                    project.offline_manifest_id(),
+                    Arc::clone(&config.source_control_content_provider),
+                    Arc::clone(&config.data_content_provider),
+                    &compilers,
+                )
+                .await
             }
         };
 

@@ -102,13 +102,14 @@ async fn main() -> Result<(), String> {
                 repository_index,
                 &repository_name,
                 &branch_name,
-                source_control_content_provider,
+                Arc::clone(&source_control_content_provider),
             )
             .await
             .map_err(|e| format!("failed to open project {}", e))?;
 
             let mut build = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
+                Arc::clone(&source_control_content_provider),
                 Arc::clone(&data_content_provider),
                 CompilerRegistryOptions::default(),
             )
@@ -159,13 +160,14 @@ async fn main() -> Result<(), String> {
                 repository_index,
                 &repository_name,
                 &branch_name,
-                source_control_content_provider,
+                Arc::clone(&source_control_content_provider),
             )
             .await
             .map_err(|e| e.to_string())?;
 
             let mut build = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
+                Arc::clone(&source_control_content_provider),
                 Arc::clone(&data_content_provider),
                 compilers,
             )

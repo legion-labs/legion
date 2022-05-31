@@ -141,6 +141,7 @@ async fn main() -> anyhow::Result<()> {
     let data_build = DataBuildOptions::new_with_sqlite_output(
         &absolute_build_dir,
         compilers,
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .asset_registry(asset_registry.clone());

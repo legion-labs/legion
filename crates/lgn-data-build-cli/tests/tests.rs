@@ -52,7 +52,7 @@ async fn build_device() {
         project_dir,
         &repository_index,
         &repository_name,
-        source_control_content_provider,
+        Arc::clone(&source_control_content_provider),
     )
     .await
     .expect("new project");
@@ -100,6 +100,7 @@ async fn build_device() {
     let mut build = DataBuildOptions::new_with_sqlite_output(
         &output_dir,
         CompilerRegistryOptions::local_compilers(target_dir),
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .create(&project)
@@ -243,7 +244,7 @@ async fn no_intermediate_resource() {
             project_dir,
             &repository_index,
             &repository_name,
-            source_control_content_provider,
+            Arc::clone(&source_control_content_provider),
         )
         .await
         .expect("new project");
@@ -271,6 +272,7 @@ async fn no_intermediate_resource() {
 
         let mut build = DataBuildOptions::new(
             DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version()),
+            Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
@@ -357,7 +359,7 @@ async fn with_intermediate_resource() {
             project_dir,
             &repository_index,
             &repository_name,
-            source_control_content_provider,
+            Arc::clone(&source_control_content_provider),
         )
         .await
         .expect("new project");
@@ -386,6 +388,7 @@ async fn with_intermediate_resource() {
         let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
+            Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
         )
         .create(&project)

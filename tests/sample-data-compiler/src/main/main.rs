@@ -106,7 +106,7 @@ async fn main() {
         &repository_index,
         &repository_name,
         branch_name,
-        source_control_content_provider,
+        Arc::clone(&source_control_content_provider),
         true,
     )
     .await;
@@ -116,6 +116,7 @@ async fn main() {
         &project,
         &absolute_root,
         &ResourcePathName::from(&args.resource),
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .await;

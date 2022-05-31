@@ -44,10 +44,12 @@ mod tests {
             setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let mut project =
-            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
-                .await
-                .expect("failed to create a project");
+        let mut project = Project::create_with_remote_mock(
+            &project_dir,
+            Arc::clone(&source_control_content_provider),
+        )
+        .await
+        .expect("failed to create a project");
 
         let resource = ResourcePathId::from(
             project
@@ -66,6 +68,7 @@ mod tests {
         let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
+            Arc::clone(&source_control_content_provider),
             data_content_provider,
         )
         .create(&project)
@@ -87,10 +90,12 @@ mod tests {
             setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let mut project =
-            Project::create_with_remote_mock(&project_dir, source_control_content_provider)
-                .await
-                .expect("failed to create a project");
+        let mut project = Project::create_with_remote_mock(
+            &project_dir,
+            Arc::clone(&source_control_content_provider),
+        )
+        .await
+        .expect("failed to create a project");
 
         let (child_id, parent_id) = {
             let child_id = project
@@ -135,6 +140,7 @@ mod tests {
         let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
+            Arc::clone(&source_control_content_provider),
             data_content_provider,
         )
         .create(&project)

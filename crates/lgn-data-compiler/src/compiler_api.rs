@@ -515,9 +515,9 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
 
                 let registry = AssetRegistryOptions::new()
                     .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone())
-                    .add_device_cas_offline(
+                    .add_device_source_cas(
                         Arc::clone(&source_provider),
-                        Arc::clone(&offline_manifest_id),
+                        source_manifest_id.clone(),
                     ); // todo: filter dependencies only
 
                 compiler.init(registry).await.create().await
