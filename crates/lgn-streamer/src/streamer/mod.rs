@@ -6,7 +6,7 @@ use lgn_async::TokioAsyncRuntime;
 use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_ecs::prelude::*;
 use lgn_graphics_renderer::{
-    components::{RenderSurface, RenderSurfaceCreatedForWindow, RenderSurfaces},
+    components::{RenderSurfaceCreatedForWindow, RenderSurfaces},
     resources::PipelineManager,
     Renderer,
 };
@@ -331,7 +331,6 @@ pub(crate) fn update_streams(
 
 // Cleaning up render surfaces otherwise we crash on Ctrl+C
 pub(crate) fn on_app_exit(
-    mut commands: Commands<'_, '_>,
     mut app_exit: EventReader<'_, '_, AppExit>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
