@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use crate::animation_skeleton::Skeleton;
 use crate::runtime::{AnimationTrack, VecAnimationTransform};
 
@@ -18,18 +20,21 @@ pub struct RuntimeAnimationTrack {
 }
 
 impl RuntimeAnimationTrack {
+    #[must_use]
     pub fn new(raw_animation_track: &AnimationTrack) -> Self {
         let converted_poses = convert_raw_pose_data(&raw_animation_track.key_frames);
+        let mut skeleton: Skeleton = Skeleton {
+            bone_ids: raw_animation_track.bone_ids.clone(),
+            parent_indices: raw_animation_track.parent_indices.clone(),
+            poses: converted_poses,
+        };
+        update_children_transforms(&mut skeleton);
         Self {
             current_key_frame_index: raw_animation_track.current_key_frame_index,
             duration_key_frames: raw_animation_track.duration_key_frames.clone(),
             time_since_last_tick: raw_animation_track.time_since_last_tick,
             looping: raw_animation_track.looping,
-            skeleton: Skeleton {
-                bone_ids: raw_animation_track.bone_ids.clone(),
-                parent_indices: raw_animation_track.parent_indices.clone(),
-                poses: converted_poses,
-            },
+            skeleton,
         }
     }
 }
@@ -57,4 +62,25 @@ pub(crate) fn convert_raw_pose_data(
         poses.push(vec_transform_bundle);
     }
     poses
+}
+
+pub(crate) fn update_children_transforms(skeleton: &mut Skeleton) {
+    for n_pose in 0..skeleton.poses.len() {
+        for n_bone in 0..skeleton.bone_ids.len() {
+            if !is_root_bone(skeleton.parent_indices[n_bone]) {
+                skeleton.poses[n_pose][n_bone].global = skeleton.poses[n_pose][n_bone]
+                    .local
+                    .add(
+                        skeleton.poses[n_pose][skeleton.parent_indices[n_bone] as usize]
+                            .global
+                            .into(),
+                    )
+                    .into();
+            }
+        }
+    }
+}
+
+pub(crate) fn is_root_bone(parent_idx: i32) -> bool {
+    parent_idx == -1
 }
