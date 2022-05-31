@@ -47,20 +47,50 @@ pub fn span_fn(
         .alternative_name
         .map_or(function.sig.ident.to_string(), |n| n.to_string());
 
-    let statement = match function.sig.asyncness {
-        None => {
-            parse_quote! {
-                lgn_tracing::span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
-            }
-        }
-        Some(_) => {
-            parse_quote! {
-                lgn_tracing::async_span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
-            }
-        }
-    };
+    if function.sig.asyncness.is_none() {
+        function.block.stmts.insert(0, parse_quote! {
+            lgn_tracing::span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
+        });
 
-    function.block.stmts.insert(0, statement);
+        return proc_macro::TokenStream::from(quote! {
+            #function
+        });
+    }
+
+    let stmts = function.block.stmts;
+
+    function.block.stmts = vec![
+        parse_quote! {
+           static _METADATA_FUNC: lgn_tracing::spans::SpanMetadata = lgn_tracing::spans::SpanMetadata {
+               name: concat!(module_path!(), "::", #function_name),
+               location: lgn_tracing::spans::SpanLocation {
+                   lod: lgn_tracing::Verbosity::Max,
+                   target: module_path!(),
+                   module_path: module_path!(),
+                   file: file!(),
+                   line: line!()
+               }
+           };
+        },
+        parse_quote! {
+            lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
+        },
+        parse_quote! {
+            let __lgn_tracing_future = async move {
+                #(#stmts)*
+            };
+        },
+        parse_quote! {
+            let __lgn_tracing_output = lgn_tracing::spans::Instrumentation::new(__lgn_tracing_future, &_METADATA_FUNC).await;
+        },
+        parse_quote! {
+            lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+        },
+        parse_quote! {
+            return __lgn_tracing_output;
+        },
+    ];
+
     proc_macro::TokenStream::from(quote! {
         #function
     })

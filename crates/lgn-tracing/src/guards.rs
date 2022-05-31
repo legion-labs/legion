@@ -98,7 +98,7 @@ impl ThreadSpanGuard {
             thread_span_desc,
             _dummy_ptr: std::marker::PhantomData::default(),
         };
-        on_begin_scope(guard.thread_span_desc);
+        on_begin_scope(thread_span_desc);
         guard
     }
 }
