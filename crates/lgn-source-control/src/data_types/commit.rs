@@ -38,7 +38,6 @@ pub struct Commit {
     pub changes: BTreeSet<Change>,
     pub main_index_tree_id: TreeIdentifier,
     pub path_index_tree_id: TreeIdentifier,
-    pub metadata_index_tree_id: TreeIdentifier,
     pub parents: BTreeSet<CommitId>,
     pub timestamp: DateTime<Utc>,
 }
@@ -53,7 +52,6 @@ impl Commit {
         changes: BTreeSet<Change>,
         main_index_tree_id: TreeIdentifier,
         path_index_tree_id: TreeIdentifier,
-        metadata_index_tree_id: TreeIdentifier,
         parents: BTreeSet<CommitId>,
         timestamp: DateTime<Utc>,
     ) -> Self {
@@ -66,7 +64,6 @@ impl Commit {
             changes,
             main_index_tree_id,
             path_index_tree_id,
-            metadata_index_tree_id,
             parents,
             timestamp,
         }
@@ -79,7 +76,6 @@ impl Commit {
         changes: BTreeSet<Change>,
         main_index_tree_id: TreeIdentifier,
         path_index_tree_id: TreeIdentifier,
-        metadata_index_tree_id: TreeIdentifier,
         parents: BTreeSet<CommitId>,
     ) -> Self {
         let id = CommitId(0);
@@ -92,7 +88,6 @@ impl Commit {
             changes,
             main_index_tree_id,
             path_index_tree_id,
-            metadata_index_tree_id,
             parents,
             timestamp,
         )
@@ -110,7 +105,6 @@ impl From<Commit> for lgn_source_control_proto::Commit {
             changes: commit.changes.into_iter().map(Into::into).collect(),
             main_index_tree_id: commit.main_index_tree_id.to_string(),
             path_index_tree_id: commit.path_index_tree_id.to_string(),
-            metadata_index_tree_id: commit.metadata_index_tree_id.to_string(),
             parents: commit.parents.into_iter().map(|id| id.0).collect(),
             timestamp: Some(timestamp.into()),
         }
@@ -140,7 +134,6 @@ impl TryFrom<lgn_source_control_proto::Commit> for Commit {
             changes,
             main_index_tree_id: commit.main_index_tree_id.parse().unwrap(),
             path_index_tree_id: commit.path_index_tree_id.parse().unwrap(),
-            metadata_index_tree_id: commit.metadata_index_tree_id.parse().unwrap(),
             parents: commit.parents.into_iter().map(CommitId).collect(),
             timestamp,
         })
@@ -153,7 +146,6 @@ mod tests {
 
     const MAIN_INDEX_TREE_ID: &str = "AG5vZGU2";
     const PATH_INDEX_TREE_ID: &str = "AG5vZGU3";
-    const METADATA_INDEX_TREE_ID: &str = "AG5vZGU4";
 
     #[test]
     fn test_commit_from_proto() {
@@ -167,7 +159,6 @@ mod tests {
             changes: vec![],
             main_index_tree_id: MAIN_INDEX_TREE_ID.to_owned(),
             path_index_tree_id: PATH_INDEX_TREE_ID.to_owned(),
-            metadata_index_tree_id: METADATA_INDEX_TREE_ID.to_owned(),
             parents: vec![43],
             timestamp: Some(now_sys.into()),
         };
@@ -183,8 +174,6 @@ mod tests {
                 changes: BTreeSet::new(),
                 main_index_tree_id: MAIN_INDEX_TREE_ID.parse().unwrap(),
                 path_index_tree_id: PATH_INDEX_TREE_ID.parse().unwrap(),
-                metadata_index_tree_id: METADATA_INDEX_TREE_ID.parse().unwrap(),
-
                 parents: vec![CommitId(43)].into_iter().collect(),
                 timestamp: now,
             }
@@ -203,7 +192,6 @@ mod tests {
             changes: BTreeSet::new(),
             main_index_tree_id: MAIN_INDEX_TREE_ID.parse().unwrap(),
             path_index_tree_id: PATH_INDEX_TREE_ID.parse().unwrap(),
-            metadata_index_tree_id: METADATA_INDEX_TREE_ID.parse().unwrap(),
             parents: vec![CommitId(43)].into_iter().collect(),
             timestamp: now,
         };
@@ -219,7 +207,6 @@ mod tests {
                 changes: vec![],
                 main_index_tree_id: MAIN_INDEX_TREE_ID.to_owned(),
                 path_index_tree_id: PATH_INDEX_TREE_ID.to_owned(),
-                metadata_index_tree_id: METADATA_INDEX_TREE_ID.to_owned(),
                 parents: vec![43],
                 timestamp: Some(now_sys.into()),
             }

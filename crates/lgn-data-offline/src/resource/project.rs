@@ -390,20 +390,25 @@ impl Project {
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<(), Error> {
-        let mut content = std::io::Cursor::new(Vec::new());
-        let (_written, dependencies) = registry
-            .serialize_resource(type_id.kind, handle, &mut content)
+        let mut contents = std::io::Cursor::new(Vec::new());
+
+        let dependencies = registry
+            .get_build_dependencies(type_id.kind, &handle)
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
+        // pre-pend metadata before serialized resource
         let metadata = Metadata { name, dependencies };
-        let metadata_bytes = bincode::serialize(&metadata).expect("failed to encode dependencies");
+        bincode::serialize_into(&mut contents, &metadata).expect("failed to serialize metadata");
+
+        let _written = registry
+            .serialize_resource_without_dependencies(type_id.kind, &handle, &mut contents)
+            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
         self.workspace
             .add_resource(
                 &type_id.into(),
                 metadata.name.as_str(),
-                &content.into_inner(),
-                &metadata_bytes,
+                &contents.into_inner(),
             )
             .await?;
 
@@ -492,6 +497,10 @@ impl Project {
         let resource_bytes = self.workspace.load_resource(&type_id.into()).await?;
 
         let mut reader = std::io::Cursor::new(resource_bytes);
+
+        // skip over the pre-pended metadata
+        let _metadata: Metadata =
+            bincode::deserialize_from(&mut reader).expect("failed to decode metadata contents");
 
         resources
             .deserialize_resource(type_id, &mut reader)
@@ -603,10 +612,13 @@ impl Project {
     }
 
     async fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
-        let metadata_bytes = self.workspace.load_metadata(&type_id.into()).await?;
+        let resource_bytes = self.workspace.load_resource(&type_id.into()).await?;
 
+        let mut reader = std::io::Cursor::new(resource_bytes);
+
+        // just read the pre-pended metadata
         let metadata =
-            bincode::deserialize(&metadata_bytes).expect("failed to decode metadata contents");
+            bincode::deserialize_from(&mut reader).expect("failed to decode metadata contents");
 
         Ok(metadata)
     }

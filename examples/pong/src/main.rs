@@ -12,7 +12,10 @@ use clap::{ArgEnum, Parser};
 use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_offline::{
+    resource::{Project, ResourcePathName},
+    vfs::AddDeviceCASOffline,
+};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
     ResourceTypeAndId,
@@ -94,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to create a project");
 
-    let mut asset_registry = AssetRegistryOptions::new().add_device_cas(
+    let mut asset_registry = AssetRegistryOptions::new().add_device_cas_offline(
         Arc::clone(&source_control_content_provider),
         Arc::clone(project.offline_manifest_id()),
     );

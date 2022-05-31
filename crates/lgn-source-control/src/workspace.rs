@@ -29,7 +29,6 @@ pub struct Workspace<MainIndexer> {
 pub struct ContentId {
     main_index_tree_id: TreeIdentifier,
     path_index_tree_id: TreeIdentifier,
-    metadata_index_tree_id: TreeIdentifier,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,7 +146,6 @@ where
             content_id: ContentId {
                 main_index_tree_id: commit.main_index_tree_id,
                 path_index_tree_id: commit.path_index_tree_id,
-                metadata_index_tree_id: commit.metadata_index_tree_id,
             },
         })
     }
@@ -229,11 +227,6 @@ where
             .await
     }
 
-    pub async fn load_metadata(&self, id: &IndexKey) -> Result<Vec<u8>> {
-        self.load_resource_from_index(&self.content_id.metadata_index_tree_id, id)
-            .await
-    }
-
     async fn load_resource_from_index(
         &self,
         tree_id: &TreeIdentifier,
@@ -290,7 +283,6 @@ where
         id: &IndexKey,
         path: &str,
         contents: &[u8],
-        metadata: &[u8],
     ) -> Result<ResourceIdentifier> {
         let resource_identifier = self
             .transaction
@@ -316,23 +308,6 @@ where
                 &self.content_id.path_index_tree_id,
                 &path.into(),
                 TreeLeafNode::Resource(resource_identifier.clone()),
-            )
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
-
-        let metadata_identifier = self
-            .transaction
-            .write_resource(&ResourceByteWriter::new(metadata))
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
-
-        self.content_id.metadata_index_tree_id = self
-            .main_indexer
-            .add_leaf(
-                &self.transaction,
-                &self.content_id.metadata_index_tree_id,
-                id,
-                TreeLeafNode::Resource(metadata_identifier),
             )
             .await
             .map_err(Error::ContentStoreIndexing)?;
@@ -758,8 +733,7 @@ where
         }
 
         let empty_commit = commit.main_index_tree_id == self.content_id.main_index_tree_id
-            && commit.path_index_tree_id == self.content_id.path_index_tree_id
-            && commit.metadata_index_tree_id == self.content_id.metadata_index_tree_id;
+            && commit.path_index_tree_id == self.content_id.path_index_tree_id;
 
         if empty_commit && matches!(behavior, CommitMode::Strict) {
             return Err(Error::EmptyCommitNotAllowed);
@@ -772,7 +746,6 @@ where
                 commit.changes.clone(),
                 self.get_main_index_id().clone(),
                 self.content_id.path_index_tree_id.clone(),
-                self.content_id.metadata_index_tree_id.clone(),
                 BTreeSet::from([commit.id]),
             );
 

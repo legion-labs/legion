@@ -97,9 +97,8 @@ message Commit {
   repeated Change changes = 4;
   string main_index_tree_id = 5;
   string path_index_tree_id = 6;
-  string metadata_index_tree_id = 7;
-  repeated uint64 parents = 8;
-  google.protobuf.Timestamp timestamp = 9;
+  repeated uint64 parents = 7;
+  google.protobuf.Timestamp timestamp = 8;
 }
 
 message Change {

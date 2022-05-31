@@ -90,6 +90,7 @@ use lgn_content_store::{
     Config, Provider,
 };
 use lgn_data_model::ReflectionError;
+use lgn_data_offline::vfs::AddDeviceCASOffline;
 use lgn_data_runtime::{
     manifest::ManifestId, AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
     ResourceProcessorError, Transform,
@@ -513,7 +514,11 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     .ok_or(CompilerError::CompilerNotFound(transform))?;
 
                 let registry = AssetRegistryOptions::new()
-                    .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone()); // todo: filter dependencies only
+                    .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone())
+                    .add_device_cas_offline(
+                        Arc::clone(&source_provider),
+                        Arc::clone(&offline_manifest_id),
+                    ); // todo: filter dependencies only
 
                 compiler.init(registry).await.create().await
             };
