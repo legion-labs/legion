@@ -33,6 +33,8 @@ pub struct LightComponent {
     pub radiance: f32,
     pub cone_angle: f32, // Spot light
     pub enabled: bool,
+
+    // The following fields are dynamic, meaning they do not come from serialized data.
     pub picking_id: u32,
     pub render_object_id: Option<RenderObjectId>,
 }
@@ -65,8 +67,13 @@ impl AsSpatialRenderObject<RenderLight> for LightComponent {
     }
 }
 
+struct LightDynamicData {
+    render_object_id: RenderObjectId,
+    picking_id: u32,
+}
+
 pub(crate) struct EcsToRender<C, R> {
-    map: HashMap<Entity, (RenderObjectId, u32 /* picking_id */)>,
+    map: HashMap<Entity, LightDynamicData>,
     phantom: PhantomData<C>,
     phantom2: PhantomData<R>,
 }
@@ -99,9 +106,11 @@ pub(crate) fn reflect_light_components(
     let mut render_commands = renderer.render_command_builder();
 
     for e in q_removals.iter() {
-        let render_object_id_and_picking_id = ecs_to_render.map.remove(&e);
-        if let Some((render_object_id, _)) = render_object_id_and_picking_id {
-            render_commands.push(RemoveRenderObjectCommand { render_object_id });
+        let light_dynamic_data = ecs_to_render.map.remove(&e);
+        if let Some(light_dynamic_data) = light_dynamic_data {
+            render_commands.push(RemoveRenderObjectCommand {
+                render_object_id: light_dynamic_data.render_object_id,
+            });
         }
     }
 
@@ -109,9 +118,13 @@ pub(crate) fn reflect_light_components(
         for (e, transform, mut light) in q_changes.iter_mut() {
             if let Some(render_object_id) = light.render_object_id {
                 // Update picking_id in hash map.
-                ecs_to_render
-                    .map
-                    .insert(e, (render_object_id, light.picking_id));
+                ecs_to_render.map.insert(
+                    e,
+                    LightDynamicData {
+                        render_object_id,
+                        picking_id: light.picking_id,
+                    },
+                );
 
                 render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                     render_object_id,
@@ -119,25 +132,30 @@ pub(crate) fn reflect_light_components(
                 });
             } else {
                 let is_already_inserted = ecs_to_render.map.contains_key(&e);
-                let (render_object_id, picking_id) = if is_already_inserted {
+                let light_dynamic_data = if is_already_inserted {
                     // This happens when the manipulator is released. The component gets recreated but we do not
                     // go into the removals code above for some reason. So we need to handle it ourselves.
                     ecs_to_render.map.get(&e).unwrap()
                 } else {
                     let render_object_id = allocator.alloc();
 
-                    assert!(!ecs_to_render.map.contains_key(&e));
-                    ecs_to_render.map.insert(e, (render_object_id, 0));
+                    ecs_to_render.map.insert(
+                        e,
+                        LightDynamicData {
+                            render_object_id,
+                            picking_id: 0,
+                        },
+                    );
 
                     ecs_to_render.map.get(&e).unwrap()
                 };
 
-                let render_object_id = *render_object_id;
+                let render_object_id = light_dynamic_data.render_object_id;
                 light.render_object_id = Some(render_object_id);
 
                 if is_already_inserted {
                     // Component was recreated; assign the old picking_id back to it.
-                    light.picking_id = *picking_id;
+                    light.picking_id = light_dynamic_data.picking_id;
 
                     render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                         render_object_id,
