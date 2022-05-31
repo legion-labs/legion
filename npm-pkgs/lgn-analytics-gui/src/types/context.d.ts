@@ -22,7 +22,7 @@ declare module "svelte" {
   ): L10nOrchestrator<Fluent>;
   function setContext(
     key: "http-client",
-    context: PerformanceAnalyticsClientImpl
+    context: Writable<PerformanceAnalyticsClientImpl>
   ): PerformanceAnalyticsClientImpl;
   function setContext(
     key: "notifications",
@@ -57,7 +57,9 @@ declare module "svelte" {
   function getContext(
     key: typeof l10nOrchestratorContextKey
   ): L10nOrchestrator<Fluent>;
-  function getContext(key: "http-client"): PerformanceAnalyticsClientImpl;
+  function getContext(
+    key: "http-client"
+  ): Writable<PerformanceAnalyticsClientImpl>;
   function getContext(key: "notifications"): NotificationsStore<Fluent>;
   function getContext(key: "debug"): Writable<boolean>;
 

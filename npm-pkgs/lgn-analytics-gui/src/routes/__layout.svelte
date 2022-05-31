@@ -81,6 +81,7 @@
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
   import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
+  import { recorded } from "@lgn/web-client/src/lib/store";
   import { createL10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
   import accessToken from "@lgn/web-client/src/stores/accessToken";
   import type { NotificationsStore } from "@lgn/web-client/src/stores/notifications";
@@ -104,6 +105,8 @@
   export let notifications: NotificationsStore<Fluent>;
 
   export let dispose: () => void | undefined;
+
+  const recordedAccessToken = recorded(accessToken);
 
   const theme = createThemeStore(themeStorageKey, "dark");
 
@@ -141,7 +144,16 @@
 
   setContext(l10nOrchestratorContextKey, l10n);
 
-  setContext("http-client", makeGrpcClient($accessToken));
+  const httpClient = writable(makeGrpcClient($recordedAccessToken.curr));
+
+  $: if (
+    $recordedAccessToken.curr !== $recordedAccessToken.prev &&
+    $recordedAccessToken.curr
+  ) {
+    $httpClient = makeGrpcClient($recordedAccessToken.curr);
+  }
+
+  setContext("http-client", httpClient);
 
   setContext("notifications", notifications);
 
@@ -162,7 +174,7 @@
     setContext("thread-item-length", threadItemLengthFallback);
   }
 
-  // TODO: Here we can control the UI and display a modal like in the Editor
+  // TODO: Here we can control the UI and display a modal or change the page content
   onMount(() => {
     if (initAuthStatus?.type === "error") {
       window.location.href = initAuthStatus.authorizationUrl;

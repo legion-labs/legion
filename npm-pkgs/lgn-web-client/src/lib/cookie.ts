@@ -38,3 +38,17 @@ export function setCookie(
 
   document.cookie = cookie;
 }
+
+/**
+ * Remove a cookie in the browser
+ * @param name Cookie name
+ */
+export function removeCookie(name: string) {
+  const cookieDomain = window.location.hostname;
+
+  const cookie = `${name}=;domain=${cookieDomain};path=/;samesite=strict;secure;expires=${new Date(
+    0
+  ).toUTCString()}`;
+
+  document.cookie = cookie;
+}
