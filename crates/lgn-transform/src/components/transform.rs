@@ -245,7 +245,7 @@ impl Transform {
         Self {
             translation,
             rotation,
-            scale: transform.scale,
+            scale: self.scale,
         }
     }
 

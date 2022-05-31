@@ -16,7 +16,16 @@ pub struct AnimationGraphComponent {
 }
 
 impl AnimationGraphComponent {
-    fn initialize() {}
+    fn initialize(&self) {
+        // EntityComponent::Initialize();
+
+        // Create new Pose with skeleton
+        // Calc transforms? Si je recois du raw data (ou bien je pourrais le faire avant, comme ça on initialise au début une seule fois!)
+
+        // Create a new task system -> pense pas que c'est necessaire pour l'instant
+        // Creer une instance de graph
+        // self.graph_instance = GraphInstance::new()
+    }
 
     fn get_skeleton() {}
 
