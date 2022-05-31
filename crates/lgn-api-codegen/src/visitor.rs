@@ -519,7 +519,7 @@ impl Visitor {
             )));
         }
 
-        let mut properties = Vec::new();
+        let mut properties = BTreeMap::new();
 
         for (property_name, property_ref) in &object_type.properties {
             let mut path = path.clone();
@@ -540,7 +540,7 @@ impl Visitor {
                 type_,
                 required,
             };
-            properties.push(property);
+            properties.insert(property.name.clone(), property);
         }
 
         Ok(Type::Struct { fields: properties })
@@ -731,12 +731,15 @@ mod tests {
             name: "MyStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "my_enum".to_string(),
-                    description: None,
-                    type_: Type::Named("MyStructMyEnum".to_string()),
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "my_enum".to_string(),
+                    Field {
+                        name: "my_enum".to_string(),
+                        description: None,
+                        type_: Type::Named("MyStructMyEnum".to_string()),
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -830,20 +833,26 @@ mod tests {
             name: "MyStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![
-                    Field {
-                        name: "category".to_string(),
-                        description: None,
-                        type_: Type::Named("Category".to_string()),
-                        required: false,
-                    },
-                    Field {
-                        name: "tags".to_string(),
-                        description: None,
-                        type_: Type::Array(Box::new(Type::Named("Tag".to_string()))),
-                        required: false,
-                    },
-                ],
+                fields: BTreeMap::from([
+                    (
+                        "category".to_string(),
+                        Field {
+                            name: "category".to_string(),
+                            description: None,
+                            type_: Type::Named("Category".to_string()),
+                            required: false,
+                        },
+                    ),
+                    (
+                        "tags".to_string(),
+                        Field {
+                            name: "tags".to_string(),
+                            description: None,
+                            type_: Type::Array(Box::new(Type::Named("Tag".to_string()))),
+                            required: false,
+                        },
+                    ),
+                ]),
             },
         };
 
@@ -881,20 +890,26 @@ mod tests {
             name: "MyStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![
-                    Field {
-                        name: "my_prop1".to_string(),
-                        description: None,
-                        type_: Type::String,
-                        required: true,
-                    },
-                    Field {
-                        name: "my_prop2".to_string(),
-                        description: None,
-                        type_: Type::Int32,
-                        required: false,
-                    },
-                ],
+                fields: BTreeMap::from([
+                    (
+                        "my_prop1".to_string(),
+                        Field {
+                            name: "my_prop1".to_string(),
+                            description: None,
+                            type_: Type::String,
+                            required: true,
+                        },
+                    ),
+                    (
+                        "my_prop2".to_string(),
+                        Field {
+                            name: "my_prop2".to_string(),
+                            description: None,
+                            type_: Type::Int32,
+                            required: false,
+                        },
+                    ),
+                ]),
             },
         };
 
@@ -931,12 +946,15 @@ mod tests {
             name: "MyStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "my_inner_struct".to_string(),
-                    description: None,
-                    type_: Type::Named("MyStructMyInnerStruct".to_string()),
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "my_inner_struct".to_string(),
+                    Field {
+                        name: "my_inner_struct".to_string(),
+                        description: None,
+                        type_: Type::Named("MyStructMyInnerStruct".to_string()),
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -944,12 +962,15 @@ mod tests {
             name: "MyStructMyInnerStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "my_inner_prop".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "my_inner_prop".to_string(),
+                    Field {
+                        name: "my_inner_prop".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1016,12 +1037,15 @@ mod tests {
             name: "Pet".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "name".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1109,12 +1133,15 @@ mod tests {
             name: "AddPetBody".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "pet_data".to_string(),
-                    description: None,
-                    type_: Type::Named("AddPetBodyPetData".to_string()),
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "pet_data".to_string(),
+                    Field {
+                        name: "pet_data".to_string(),
+                        description: None,
+                        type_: Type::Named("AddPetBodyPetData".to_string()),
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1122,12 +1149,15 @@ mod tests {
             name: "AddPetBodyPetData".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "name".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1222,12 +1252,15 @@ mod tests {
             name: "Pet".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "name".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
             },
         };
 

@@ -8,8 +8,8 @@ use api_codegen::cars::{
         TestOneOfRequest,
     },
     responses::{
-        CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCars200Response, GetCarsResponse,
-        TestBinary200Response, TestBinaryResponse, TestOneOf200Response, TestOneOfResponse,
+        CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
+        TestOneOfResponse,
     },
     server, Api,
 };
@@ -49,12 +49,7 @@ async fn test_crud() -> anyhow::Result<()> {
         q: None,
     };
     let resp = client.get_cars(&mut ctx, req).await?;
-    assert_eq!(
-        resp,
-        GetCarsResponse::Status200(GetCars200Response {
-            body: Cars(vec![car.clone()])
-        })
-    );
+    assert_eq!(resp, GetCarsResponse::Status200(Cars(vec![car.clone()])));
 
     let req = GetCarRequest {
         space_id: space_id.clone(),
@@ -88,9 +83,7 @@ async fn test_binary() -> anyhow::Result<()> {
     let resp = client.test_binary(&mut ctx, req).await?;
     assert_eq!(
         resp,
-        TestBinaryResponse::Status200(TestBinary200Response {
-            body: b"123456".to_vec().into()
-        })
+        TestBinaryResponse::Status200(b"123456".to_vec().into())
     );
 
     handle.abort();
@@ -108,11 +101,9 @@ async fn test_one_of() -> anyhow::Result<()> {
     let resp = client.test_one_of(&mut ctx, req).await?;
     assert_eq!(
         resp,
-        TestOneOfResponse::Status200(TestOneOf200Response {
-            body: models::TestOneOfResponse::Option1(models::Pet {
-                name: Some("Cat".to_string()),
-            }),
-        })
+        TestOneOfResponse::Status200(models::TestOneOfResponse::Option1(models::Pet {
+            name: Some("Cat".to_string()),
+        }),)
     );
 
     handle.abort();
@@ -139,11 +130,9 @@ async fn test_context() -> anyhow::Result<()> {
 
     assert_eq!(
         resp,
-        TestOneOfResponse::Status200(TestOneOf200Response {
-            body: models::TestOneOfResponse::Option1(models::Pet {
-                name: Some("Cat".to_string()),
-            }),
-        })
+        TestOneOfResponse::Status200(models::TestOneOfResponse::Option1(models::Pet {
+            name: Some("Cat".to_string()),
+        }),)
     );
 
     assert_eq!(

@@ -15,7 +15,7 @@
             );
         {% when Type::Struct with { fields } %}
             export type {{ model.name }}Model = {
-                {% for field in fields %}
+                {% for field in fields.values() %}
                     {% if let Some(description) = field.description -%}/** {{ description }} */{%- endif %}
                     {# #[serde(rename = "{{ field.name }}")] #}
                     {%- if field.required -%}
