@@ -647,6 +647,12 @@ pub mod models {
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Cars(pub Vec<super::models::Car>);
 
+    impl From<Vec<super::models::Car>> for Cars {
+        fn from(t: Vec<super::models::Car>) -> Self {
+            Cars(t)
+        }
+    }
+
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Pet {
         #[serde(rename = "name")]
@@ -731,19 +737,14 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum TestOneOfResponse {
         /// Ok.
-        Status200(TestOneOf200Response),
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct TestOneOf200Response {
-        pub body: super::models::TestOneOfResponse,
+        Status200(super::models::TestOneOfResponse),
     }
 
     impl TestOneOfResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                TestOneOfResponse::Status200(r) => {
-                    let body = Json(r.body);
+                TestOneOfResponse::Status200(body) => {
+                    let body = Json(body);
                     (StatusCode::from_u16(200).unwrap(), body).into_response()
                 }
             }
@@ -753,10 +754,9 @@ pub mod responses {
             match status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = TestOneOf200Response {
-                        body: serde_json::from_slice(&bytes)?,
-                    };
-                    Ok(Self::Status200(resp))
+                    let body = serde_json::from_slice(&bytes)?;
+
+                    Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",
@@ -769,19 +769,14 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum GetCarsResponse {
         /// List of cars.
-        Status200(GetCars200Response),
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct GetCars200Response {
-        pub body: super::models::Cars,
+        Status200(super::models::Cars),
     }
 
     impl GetCarsResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                GetCarsResponse::Status200(r) => {
-                    let body = Json(r.body);
+                GetCarsResponse::Status200(body) => {
+                    let body = Json(body);
                     (StatusCode::from_u16(200).unwrap(), body).into_response()
                 }
             }
@@ -791,10 +786,9 @@ pub mod responses {
             match status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = GetCars200Response {
-                        body: serde_json::from_slice(&bytes)?,
-                    };
-                    Ok(Self::Status200(resp))
+                    let body = serde_json::from_slice(&bytes)?;
+
+                    Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",
@@ -831,21 +825,16 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum GetCarResponse {
         /// A car.
-        Status200(GetCar200Response),
+        Status200(super::models::Car),
         /// Car not found.
         Status404,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct GetCar200Response {
-        pub body: super::models::Car,
     }
 
     impl GetCarResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                GetCarResponse::Status200(r) => {
-                    let body = Json(r.body);
+                GetCarResponse::Status200(body) => {
+                    let body = Json(body);
                     (StatusCode::from_u16(200).unwrap(), body).into_response()
                 }
                 GetCarResponse::Status404 => StatusCode::from_u16(404).unwrap().into_response(),
@@ -856,10 +845,9 @@ pub mod responses {
             match status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = GetCar200Response {
-                        body: serde_json::from_slice(&bytes)?,
-                    };
-                    Ok(Self::Status200(resp))
+                    let body = serde_json::from_slice(&bytes)?;
+
+                    Ok(Self::Status200(body))
                 }
 
                 404 => Ok(Self::Status404),
@@ -903,19 +891,14 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum TestBinaryResponse {
         /// Ok.
-        Status200(TestBinary200Response),
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct TestBinary200Response {
-        pub body: Bytes,
+        Status200(Bytes),
     }
 
     impl TestBinaryResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                TestBinaryResponse::Status200(r) => {
-                    let body: Vec<u8> = r.body.into();
+                TestBinaryResponse::Status200(body) => {
+                    let body: Vec<u8> = body.into();
                     (StatusCode::from_u16(200).unwrap(), body).into_response()
                 }
             }
@@ -925,8 +908,9 @@ pub mod responses {
             match status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = TestBinary200Response { body: bytes.into() };
-                    Ok(Self::Status200(resp))
+                    let body = bytes.into();
+
+                    Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",

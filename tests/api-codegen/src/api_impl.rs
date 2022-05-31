@@ -8,9 +8,8 @@ use crate::cars::{
         TestOneOfRequest,
     },
     responses::{
-        CreateCarResponse, DeleteCarResponse, GetCar200Response, GetCarResponse,
-        GetCars200Response, GetCarsResponse, TestBinary200Response, TestBinaryResponse,
-        TestOneOf200Response, TestOneOfResponse,
+        CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
+        TestOneOfResponse,
     },
     Api,
 };
@@ -31,9 +30,9 @@ impl Api for ApiImpl {
     ) -> Result<GetCarsResponse> {
         println!("Request addr: {}", context.request_addr().unwrap());
 
-        Ok(GetCarsResponse::Status200(GetCars200Response {
-            body: models::Cars(self.cars.read().await.values().cloned().collect()),
-        }))
+        Ok(GetCarsResponse::Status200(models::Cars(
+            self.cars.read().await.values().cloned().collect(),
+        )))
     }
 
     async fn get_car(
@@ -43,7 +42,7 @@ impl Api for ApiImpl {
     ) -> Result<GetCarResponse> {
         let car = self.cars.read().await.get(&request.car_id).cloned();
         match car {
-            Some(car) => Ok(GetCarResponse::Status200(GetCar200Response { body: car })),
+            Some(car) => Ok(GetCarResponse::Status200(car)),
             None => Ok(GetCarResponse::Status404),
         }
     }
@@ -74,9 +73,7 @@ impl Api for ApiImpl {
         _context: &mut Context,
         request: TestBinaryRequest,
     ) -> Result<TestBinaryResponse> {
-        Ok(TestBinaryResponse::Status200(TestBinary200Response {
-            body: request.body,
-        }))
+        Ok(TestBinaryResponse::Status200(request.body))
     }
 
     async fn test_one_of(
@@ -90,10 +87,10 @@ impl Api for ApiImpl {
             context.set_response_headers(headers);
         }
 
-        Ok(TestOneOfResponse::Status200(TestOneOf200Response {
-            body: models::TestOneOfResponse::Option1(models::Pet {
+        Ok(TestOneOfResponse::Status200(
+            models::TestOneOfResponse::Option1(models::Pet {
                 name: Some("Cat".to_string()),
             }),
-        }))
+        ))
     }
 }

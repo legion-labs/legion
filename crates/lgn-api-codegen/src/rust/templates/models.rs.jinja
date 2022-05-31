@@ -38,5 +38,11 @@ use lgn_online::codegen::Bytes;
         {% when t %}
             #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
             pub struct {{ model.name }}(pub {{ t|fmt_type }});
+
+            impl From<{{ t|fmt_type }}> for {{ model.name }} {
+                fn from(t: {{ t|fmt_type }}) -> Self {
+                    Self(t)
+                }
+            }
     {% endmatch %}
 {% endfor %}
