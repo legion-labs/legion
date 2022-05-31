@@ -6,12 +6,12 @@ use lgn_ecs::{
 };
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
-    BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferDef, BufferView,
-    BufferViewDef, CompareOp, ComputePipelineDef, CullMode, DepthState, DepthStencilClearValue,
-    DepthStencilRenderTargetBinding, DeviceContext, Format, GraphicsPipelineDef, LoadOp,
-    MemoryAllocation, MemoryAllocationDef, MemoryUsage, PrimitiveTopology, RasterizerState,
-    ResourceCreation, ResourceState, ResourceUsage, SampleCount, StencilOp, StoreOp,
-    VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
+    BarrierQueueTransition, BlendState, Buffer, BufferBarrier, BufferCreateFlags, BufferDef,
+    BufferView, BufferViewDef, CommandBuffer, CompareOp, ComputePipelineDef, CullMode, DepthState,
+    DepthStencilClearValue, DepthStencilRenderTargetBinding, DeviceContext, Format,
+    GraphicsPipelineDef, LoadOp, MemoryUsage, PrimitiveTopology, RasterizerState, ResourceState,
+    ResourceUsage, SampleCount, StencilOp, StoreOp, TransientBufferView, VertexAttributeRate,
+    VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Vec2;
@@ -20,18 +20,18 @@ use crate::{
     cgen::{
         self,
         cgen_type::{
-            CullingDebugData, CullingEfficiancyStats, CullingOptions, GpuInstanceData,
+            CullingDebugData, CullingEfficiencyStats, CullingOptions, GpuInstanceData,
             RenderPassData,
         },
         shader,
     },
     components::RenderSurface,
+    core::BinaryWriter,
     egui::egui_plugin::Egui,
-    hl_gfx_api::HLCommandBuffer,
     labels::RenderStage,
     resources::{
-        GpuBufferWithReadback, MaterialId, PipelineHandle, PipelineManager, ReadbackBuffer,
-        UnifiedStaticBufferAllocator, UniformGPUDataUpdater,
+        GpuBufferWithReadback, MaterialId, PipelineDef, PipelineHandle, PipelineManager,
+        ReadbackBuffer, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
     },
     RenderContext, Renderer,
 };
@@ -50,8 +50,12 @@ embedded_watched_file!(
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
 embedded_watched_file!(INCLUDE_TRANSFORM, "gpu/include/transform.hsh");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
-struct IndirectDispatch(bool);
-struct GatherPerfStats(bool);
+
+#[derive(Clone, Copy)]
+struct GpuCullingOptions {
+    indirect_dispatch: bool,
+    gather_perf_stats: bool,
+}
 
 pub(crate) enum DefaultLayers {
     Depth = 0,
@@ -93,18 +97,15 @@ impl MeshRenderer {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn initialize_psos(
-    pipeline_manager: Res<'_, PipelineManager>,
-    mut mesh_renderer: ResMut<'_, MeshRenderer>,
-) {
+fn initialize_psos(pipeline_manager: Res<'_, PipelineManager>, renderer: Res<'_, Renderer>) {
+    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
     mesh_renderer.initialize_psos(&pipeline_manager);
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn update_render_elements(
-    mut mesh_renderer: ResMut<'_, MeshRenderer>,
-    instance_manager: Res<'_, GpuInstanceManager>,
-) {
+fn update_render_elements(renderer: Res<'_, Renderer>) {
+    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
+    let instance_manager = renderer.render_resources().get::<GpuInstanceManager>();
     instance_manager.for_each_removed_gpu_instance_id(|gpu_instance_id| {
         mesh_renderer.unregister_element(*gpu_instance_id);
     });
@@ -116,7 +117,10 @@ fn update_render_elements(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, mesh_renderer: Res<'_, MeshRenderer>) {
+pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, renderer: ResMut<'_, Renderer>) {
+    // renderer is a ResMut just to avoid concurrent accesses
+    let mesh_renderer = renderer.render_resources().get::<MeshRenderer>();
+
     egui.window("Culling", |ui| {
         ui.label(format!(
             "Total Elements'{}'",
@@ -134,25 +138,26 @@ pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, mesh_renderer: Res<'_, MeshR
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn prepare(renderer: Res<'_, Renderer>, mut mesh_renderer: ResMut<'_, MeshRenderer>) {
+fn prepare(renderer: Res<'_, Renderer>) {
+    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
     mesh_renderer.prepare(&renderer);
 }
 
-struct CullingArgBuffer {
+pub(crate) struct CullingArgBuffer {
     buffer: Buffer,
     srv_view: BufferView,
     uav_view: BufferView,
-    _allocation: MemoryAllocation,
 }
 
-struct CullingArgBuffers {
+// TMP -- what is public here is because they are used in the render graph
+pub(crate) struct CullingArgBuffers {
     draw_count: Option<CullingArgBuffer>,
     draw_args: Option<CullingArgBuffer>,
     culled_count: Option<CullingArgBuffer>,
     culled_args: Option<CullingArgBuffer>,
     culled_instances: Option<CullingArgBuffer>,
-    stats_buffer: GpuBufferWithReadback,
-    stats_buffer_readback: Option<Handle<ReadbackBuffer>>,
+    pub(crate) stats_buffer: GpuBufferWithReadback,
+    pub(crate) stats_buffer_readback: Option<Handle<ReadbackBuffer>>,
     culling_debug: Option<CullingArgBuffer>,
     // TMP until shader variations
     tmp_culled_count: Option<CullingArgBuffer>,
@@ -160,17 +165,18 @@ struct CullingArgBuffers {
     tmp_culled_instances: Option<CullingArgBuffer>,
 }
 
+// TMP -- what is public here is because they are used in the render graph
 pub struct MeshRenderer {
-    default_layers: Vec<RenderLayer>,
+    pub(crate) default_layers: Vec<RenderLayer>,
 
-    instance_data_idxs: Vec<u32>,
-    gpu_instance_data: Vec<GpuInstanceData>,
-    depth_count_buffer_count: u64,
+    pub(crate) instance_data_indices: Vec<u32>,
+    pub(crate) gpu_instance_data: Vec<GpuInstanceData>,
+    pub(crate) depth_count_buffer_size: u64,
 
     culling_shader_first_pass: Option<PipelineHandle>,
     culling_shader_second_pass: Option<PipelineHandle>,
-    culling_buffers: CullingArgBuffers,
-    culling_stats: CullingEfficiancyStats,
+    pub(crate) culling_buffers: CullingArgBuffers,
+    culling_stats: CullingEfficiencyStats,
 
     tmp_batch_ids: Vec<u32>,
     tmp_pipeline_handles: Vec<PipelineHandle>,
@@ -196,17 +202,17 @@ impl MeshRenderer {
                 culling_debug: None,
                 stats_buffer: GpuBufferWithReadback::new(
                     device_context,
-                    std::mem::size_of::<CullingEfficiancyStats>() as u64,
+                    std::mem::size_of::<CullingEfficiencyStats>() as u64,
                 ),
                 stats_buffer_readback: None,
                 tmp_culled_count: None,
                 tmp_culled_args: None,
                 tmp_culled_instances: None,
             },
-            culling_stats: CullingEfficiancyStats::default(),
-            instance_data_idxs: vec![],
+            culling_stats: CullingEfficiencyStats::default(),
+            instance_data_indices: vec![],
             gpu_instance_data: vec![],
-            depth_count_buffer_count: 0,
+            depth_count_buffer_size: 0,
             culling_shader_first_pass: None,
             culling_shader_second_pass: None,
             tmp_batch_ids: vec![],
@@ -214,7 +220,7 @@ impl MeshRenderer {
         }
     }
 
-    fn initialize_psos(&mut self, pipeline_manager: &PipelineManager) {
+    pub fn initialize_psos(&mut self, pipeline_manager: &PipelineManager) {
         if self.culling_shader_first_pass.is_none() {
             let (first_pass, second_pass) = build_culling_psos(pipeline_manager);
             self.culling_shader_first_pass = Some(first_pass);
@@ -227,7 +233,9 @@ impl MeshRenderer {
             );
             self.tmp_pipeline_handles.push(pipeline_handle);
 
-            let pipeline_handle = build_temp_pso(pipeline_manager);
+            let need_depth_write =
+                !self.default_layers[DefaultLayers::Opaque as usize].gpu_culling_enabled();
+            let pipeline_handle = build_temp_pso(pipeline_manager, need_depth_write);
             self.tmp_batch_ids.push(
                 self.default_layers[DefaultLayers::Opaque as usize]
                     .register_state_set(&RenderStateSet { pipeline_handle }),
@@ -256,27 +264,31 @@ impl MeshRenderer {
     fn register_element(&mut self, element: &RenderElement) {
         let new_index = self.gpu_instance_data.len() as u32;
         let gpu_instance_index = element.gpu_instance_id().index();
-        if gpu_instance_index > self.instance_data_idxs.len() as u32 {
-            self.instance_data_idxs
+        if gpu_instance_index >= self.instance_data_indices.len() as u32 {
+            self.instance_data_indices
                 .resize(gpu_instance_index as usize + 1, u32::MAX);
         }
-        assert!(self.instance_data_idxs[gpu_instance_index as usize] == u32::MAX);
-        self.instance_data_idxs[gpu_instance_index as usize] = new_index;
+        assert!(self.instance_data_indices[gpu_instance_index as usize] == u32::MAX);
+        self.instance_data_indices[gpu_instance_index as usize] = new_index;
 
         let mut instance_data = GpuInstanceData::default();
         instance_data.set_gpu_instance_id(gpu_instance_index.into());
+        instance_data.set_state_id(0.into());
 
         for layer in &mut self.default_layers {
-            instance_data.set_state_id(0.into());
             layer.register_element(0, element);
         }
+
         self.gpu_instance_data.push(instance_data);
+
+        self.invariant();
     }
 
     fn unregister_element(&mut self, gpu_instance_id: GpuInstanceId) {
         let gpu_instance_index = gpu_instance_id.index();
-        let removed_index = self.instance_data_idxs[gpu_instance_index as usize] as usize;
-        self.instance_data_idxs[gpu_instance_index as usize] = u32::MAX;
+        let removed_index = self.instance_data_indices[gpu_instance_index as usize] as usize;
+        assert!(removed_index as u32 != u32::MAX);
+        self.instance_data_indices[gpu_instance_index as usize] = u32::MAX;
 
         let removed_instance = self.gpu_instance_data.swap_remove(removed_index as usize);
         let removed_instance_id: u32 = removed_instance.gpu_instance_id().into();
@@ -286,44 +298,61 @@ impl MeshRenderer {
             let moved_instance_id: u32 = self.gpu_instance_data[removed_index as usize]
                 .gpu_instance_id()
                 .into();
-            self.instance_data_idxs[moved_instance_id as usize] = removed_index as u32;
+            self.instance_data_indices[moved_instance_id as usize] = removed_index as u32;
         }
 
         for layer in &mut self.default_layers {
             layer.unregister_element(removed_instance.state_id().into(), gpu_instance_id);
         }
+
+        self.invariant();
+    }
+
+    fn invariant(&self) {
+        for (instance_idx, slot_idx) in self.instance_data_indices.iter().enumerate() {
+            if *slot_idx != u32::MAX {
+                let gpu_instance_data = &self.gpu_instance_data[*slot_idx as usize];
+                assert!(gpu_instance_data.gpu_instance_id() == (instance_idx as u32).into());
+            }
+        }
     }
 
     fn prepare(&mut self, renderer: &Renderer) {
-        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
+        let mut render_commands = renderer.render_command_builder();
+        let device_context = renderer.device_context();
 
         let mut count_buffer_size: u64 = 0;
         let mut indirect_arg_buffer_size: u64 = 0;
-        self.depth_count_buffer_count = 0;
+        self.depth_count_buffer_size = 0;
 
         for (index, layer) in self.default_layers.iter_mut().enumerate() {
-            layer.aggregate_offsets(
-                &mut updater,
-                &mut count_buffer_size,
-                &mut indirect_arg_buffer_size,
-            );
+            let per_state_offsets =
+                layer.aggregate_offsets(&mut count_buffer_size, &mut indirect_arg_buffer_size);
             if index == DefaultLayers::Depth as usize {
-                self.depth_count_buffer_count = count_buffer_size;
+                self.depth_count_buffer_size = count_buffer_size;
+            }
+
+            if !per_state_offsets.is_empty() {
+                let mut binary_writer = BinaryWriter::new();
+                binary_writer.write_slice(&per_state_offsets);
+
+                render_commands.push(UpdateUnifiedStaticBufferCommand {
+                    src_buffer: binary_writer.take(),
+                    dst_offset: layer.state_page.byte_offset(),
+                });
             }
         }
-
-        renderer.add_update_job_block(updater.job_blocks());
 
         let readback = self
             .culling_buffers
             .stats_buffer
-            .begin_readback(renderer.device_context());
+            .begin_readback(device_context);
 
         readback.read_gpu_data(
             0,
             usize::MAX,
             u64::MAX,
-            |data: &[CullingEfficiancyStats]| {
+            |data: &[CullingEfficiencyStats]| {
                 self.culling_stats = data[0];
             },
         );
@@ -331,7 +360,7 @@ impl MeshRenderer {
 
         if count_buffer_size != 0 {
             create_or_replace_buffer(
-                renderer.device_context(),
+                device_context,
                 &mut self.culling_buffers.draw_count,
                 std::mem::size_of::<u32>() as u64,
                 count_buffer_size,
@@ -340,24 +369,26 @@ impl MeshRenderer {
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
                 MemoryUsage::GpuOnly,
+                "draw_count",
             );
         }
 
         if indirect_arg_buffer_size != 0 {
             create_or_replace_buffer(
-                renderer.device_context(),
+                device_context,
                 &mut self.culling_buffers.draw_args,
-                std::mem::size_of::<u32>() as u64,
-                indirect_arg_buffer_size * 5,
+                5 * std::mem::size_of::<u32>() as u64,
+                indirect_arg_buffer_size,
                 ResourceUsage::AS_INDIRECT_BUFFER
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
                 MemoryUsage::GpuOnly,
+                "draw_args",
             );
         }
 
         create_or_replace_buffer(
-            renderer.device_context(),
+            device_context,
             &mut self.culling_buffers.culled_count,
             std::mem::size_of::<u32>() as u64,
             1,
@@ -366,10 +397,11 @@ impl MeshRenderer {
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS,
             MemoryUsage::GpuOnly,
+            "culled_count",
         );
 
         create_or_replace_buffer(
-            renderer.device_context(),
+            device_context,
             &mut self.culling_buffers.tmp_culled_count,
             std::mem::size_of::<u32>() as u64,
             1,
@@ -378,10 +410,11 @@ impl MeshRenderer {
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS,
             MemoryUsage::GpuOnly,
+            "tmp_culled_count",
         );
 
         create_or_replace_buffer(
-            renderer.device_context(),
+            device_context,
             &mut self.culling_buffers.culled_args,
             std::mem::size_of::<(u32, u32, u32)>() as u64,
             1,
@@ -390,10 +423,11 @@ impl MeshRenderer {
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS,
             MemoryUsage::GpuOnly,
+            "culled_args",
         );
 
         create_or_replace_buffer(
-            renderer.device_context(),
+            device_context,
             &mut self.culling_buffers.tmp_culled_args,
             std::mem::size_of::<(u32, u32, u32)>() as u64,
             1,
@@ -402,11 +436,12 @@ impl MeshRenderer {
                 | ResourceUsage::AS_SHADER_RESOURCE
                 | ResourceUsage::AS_UNORDERED_ACCESS,
             MemoryUsage::GpuOnly,
+            "tmp_culled_args",
         );
 
         if !self.gpu_instance_data.is_empty() {
             create_or_replace_buffer(
-                renderer.device_context(),
+                device_context,
                 &mut self.culling_buffers.culled_instances,
                 std::mem::size_of::<GpuInstanceData>() as u64,
                 self.gpu_instance_data.len() as u64,
@@ -414,21 +449,11 @@ impl MeshRenderer {
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
                 MemoryUsage::GpuOnly,
+                "culled_instances",
             );
 
             create_or_replace_buffer(
-                renderer.device_context(),
-                &mut self.culling_buffers.culling_debug,
-                std::mem::size_of::<CullingDebugData>() as u64,
-                self.gpu_instance_data.len() as u64,
-                ResourceUsage::AS_INDIRECT_BUFFER
-                    | ResourceUsage::AS_SHADER_RESOURCE
-                    | ResourceUsage::AS_UNORDERED_ACCESS,
-                MemoryUsage::GpuOnly,
-            );
-
-            create_or_replace_buffer(
-                renderer.device_context(),
+                device_context,
                 &mut self.culling_buffers.tmp_culled_instances,
                 std::mem::size_of::<GpuInstanceData>() as u64,
                 self.gpu_instance_data.len() as u64,
@@ -436,22 +461,41 @@ impl MeshRenderer {
                     | ResourceUsage::AS_SHADER_RESOURCE
                     | ResourceUsage::AS_UNORDERED_ACCESS,
                 MemoryUsage::GpuOnly,
+                "tmp_culled_instances",
+            );
+
+            create_or_replace_buffer(
+                device_context,
+                &mut self.culling_buffers.culling_debug,
+                std::mem::size_of::<CullingDebugData>() as u64,
+                self.gpu_instance_data.len() as u64,
+                ResourceUsage::AS_INDIRECT_BUFFER
+                    | ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_UNORDERED_ACCESS,
+                MemoryUsage::GpuOnly,
+                "culling_debug",
             );
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn cull(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        render_surface: &mut RenderSurface,
+        cmd_buffer: &mut CommandBuffer,
         culling_buffers: &CullingArgBuffers,
-        culling_options: &(IndirectDispatch, GatherPerfStats),
+        culling_options: GpuCullingOptions,
         culling_args: (u32, u32, u32, Vec2),
-        input_buffers: (&BufferView, &BufferView, &BufferView),
+        input_buffers: (
+            TransientBufferView,
+            TransientBufferView,
+            TransientBufferView,
+        ),
     ) {
         cmd_buffer.with_label("Cull", |cmd_buffer| {
-            let indirect_dispatch = culling_options.0 .0;
-            let gather_perf_stats = culling_options.1 .0;
+            let indirect_dispatch = culling_options.indirect_dispatch;
+            let gather_perf_stats = culling_options.gather_perf_stats;
 
             let draw_count = culling_buffers.draw_count.as_ref().unwrap();
             let draw_args = culling_buffers.draw_args.as_ref().unwrap();
@@ -482,17 +526,17 @@ impl MeshRenderer {
             };
 
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(pipeline_handle)
                 .unwrap();
-            cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.cmd_bind_pipeline(pipeline);
 
-            cmd_buffer.bind_descriptor_set(
+            cmd_buffer.cmd_bind_descriptor_set_handle(
                 render_context.frame_descriptor_set().0,
                 render_context.frame_descriptor_set().1,
             );
 
-            cmd_buffer.bind_descriptor_set(
+            cmd_buffer.cmd_bind_descriptor_set_handle(
                 render_context.view_descriptor_set().0,
                 render_context.view_descriptor_set().1,
             );
@@ -517,17 +561,19 @@ impl MeshRenderer {
             }
             culling_descriptor_set.set_render_pass_data(input_buffers.2);
 
+            culling_descriptor_set.set_hzb_texture(render_surface.get_hzb_surface().hzb_srv_view());
+
             let culling_descriptor_set_handle = render_context.write_descriptor_set(
                 cgen::descriptor_set::CullingDescriptorSet::descriptor_set_layout(),
                 culling_descriptor_set.descriptor_refs(),
             );
 
-            cmd_buffer.bind_descriptor_set(
+            cmd_buffer.cmd_bind_descriptor_set_handle(
                 cgen::descriptor_set::CullingDescriptorSet::descriptor_set_layout(),
                 culling_descriptor_set_handle,
             );
 
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[
                     BufferBarrier {
                         buffer: &draw_count.buffer,
@@ -553,14 +599,19 @@ impl MeshRenderer {
 
             if indirect_dispatch {
                 let depth_count_size =
-                    self.depth_count_buffer_count * std::mem::size_of::<u32>() as u64;
-                cmd_buffer.fill_buffer(&draw_count.buffer, 0, depth_count_size, 0);
+                    self.depth_count_buffer_size * std::mem::size_of::<u32>() as u64;
+                cmd_buffer.cmd_fill_buffer(&draw_count.buffer, 0, depth_count_size, 0);
             } else {
-                cmd_buffer.fill_buffer(&draw_count.buffer, 0, !0, 0);
-                cmd_buffer.fill_buffer(&culled_count.buffer, 0, 4, 0);
-                cmd_buffer.fill_buffer(&culled_args.buffer, 0, 4, 0);
+                cmd_buffer.cmd_fill_buffer(
+                    &draw_count.buffer,
+                    0,
+                    draw_count.buffer.definition().size,
+                    0,
+                );
+                cmd_buffer.cmd_fill_buffer(&culled_count.buffer, 0, 4, 0);
+                cmd_buffer.cmd_fill_buffer(&culled_args.buffer, 0, 4, 0);
             }
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[
                     BufferBarrier {
                         buffer: &draw_count.buffer,
@@ -608,15 +659,15 @@ impl MeshRenderer {
             culling_constant_data.set_hzb_pixel_extents(culling_args.3.into());
             culling_constant_data.set_options(options);
 
-            cmd_buffer.push_constant(&culling_constant_data);
+            cmd_buffer.cmd_push_constant_typed(&culling_constant_data);
 
             if indirect_dispatch {
-                cmd_buffer.dispatch_indirect(&dispatch_args.buffer, 0);
+                cmd_buffer.cmd_dispatch_indirect(&dispatch_args.buffer, 0);
             } else {
-                cmd_buffer.dispatch((self.gpu_instance_data.len() as u32 + 255) / 256, 1, 1);
+                cmd_buffer.cmd_dispatch((self.gpu_instance_data.len() as u32 + 255) / 256, 1, 1);
             }
 
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[
                     BufferBarrier {
                         buffer: &draw_count.buffer,
@@ -656,16 +707,15 @@ impl MeshRenderer {
 
     pub(crate) fn gen_occlusion_and_cull(
         &self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
+        cmd_buffer: &mut CommandBuffer,
         render_surface: &mut RenderSurface,
         instance_manager: &GpuInstanceManager,
     ) {
         if self.culling_buffers.draw_count.is_none() || self.gpu_instance_data.is_empty() {
             // TODO(vdbdd):  Remove this hack
 
-            let mut cmd_buffer = render_context.alloc_command_buffer();
-
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[],
                 &Some(DepthStencilRenderTargetBinding {
                     texture_view: render_surface.depth_rt().rtv(),
@@ -680,77 +730,81 @@ impl MeshRenderer {
                 }),
             );
 
-            cmd_buffer.end_render_pass();
-
-            render_context
-                .graphics_queue()
-                .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
+            cmd_buffer.cmd_end_render_pass();
 
             return;
         }
 
         let mut render_pass_data: Vec<RenderPassData> = vec![];
         for layer in &self.default_layers {
-            let offset_base_va = layer.offsets_va();
+            let offset_base_va = u32::try_from(layer.offsets_va()).unwrap();
 
             let mut pass_data = RenderPassData::default();
             pass_data.set_offset_base_va(offset_base_va.into());
             render_pass_data.push(pass_data);
         }
 
-        let mut cmd_buffer = render_context.alloc_command_buffer();
-
         cmd_buffer.with_label("Gen occlusion and cull", |cmd_buffer| {
-            cmd_buffer.bind_index_buffer(
-                &render_context
-                    .renderer()
-                    .static_buffer()
-                    .index_buffer_binding(),
-            );
-            cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+            cmd_buffer.cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
+            cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
             let hzb_pixel_extents = render_surface.get_hzb_surface().hzb_pixel_extents();
             let hzb_max_lod = render_surface.get_hzb_surface().hzb_max_lod();
 
             render_surface.init_hzb_if_needed(render_context, cmd_buffer);
 
-            let gpu_count_allocation = render_context.transient_buffer_allocator().copy_data(
+            let gpu_count_allocation = render_context.transient_buffer_allocator.copy_data(
                 &(self.gpu_instance_data.len() as u32),
                 ResourceUsage::AS_SHADER_RESOURCE,
             );
+
             let gpu_count_view = gpu_count_allocation
-                .create_structured_buffer_view(std::mem::size_of::<u32>() as u64, true);
+                .to_buffer_view(BufferViewDef::as_structured_buffer_typed::<u32>(1, true));
 
             let gpu_instance_allocation = render_context
-                .transient_buffer_allocator()
+                .transient_buffer_allocator
                 .copy_data_slice(&self.gpu_instance_data, ResourceUsage::AS_SHADER_RESOURCE);
-            let gpu_instance_view = gpu_instance_allocation
-                .create_structured_buffer_view(std::mem::size_of::<GpuInstanceData>() as u64, true);
+
+            let gpu_instance_view = gpu_instance_allocation.to_buffer_view(
+                BufferViewDef::as_structured_buffer_typed::<GpuInstanceData>(
+                    self.gpu_instance_data.len() as u64,
+                    true,
+                ),
+            );
 
             let render_pass_allocation = render_context
-                .transient_buffer_allocator()
+                .transient_buffer_allocator
                 .copy_data_slice(&render_pass_data, ResourceUsage::AS_SHADER_RESOURCE);
-            let render_pass_view = render_pass_allocation
-                .create_structured_buffer_view(std::mem::size_of::<RenderPassData>() as u64, true);
+
+            let render_pass_view =
+                render_pass_allocation.to_buffer_view(BufferViewDef::as_structured_buffer_typed::<
+                    RenderPassData,
+                >(
+                    render_pass_data.len() as u64, true
+                ));
 
             self.culling_buffers.stats_buffer.clear_buffer(cmd_buffer);
 
             // Cull using previous frame Hzb
             self.cull(
                 render_context,
+                render_surface,
                 cmd_buffer,
                 &self.culling_buffers,
-                &(IndirectDispatch(false), GatherPerfStats(true)),
+                GpuCullingOptions {
+                    indirect_dispatch: false,
+                    gather_perf_stats: true,
+                },
                 (
                     0,
                     render_pass_data.len() as u32,
                     hzb_max_lod,
                     hzb_pixel_extents,
                 ),
-                (&gpu_count_view, &gpu_instance_view, &render_pass_view),
+                (gpu_count_view, gpu_instance_view, render_pass_view),
             );
 
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[],
                 &Some(DepthStencilRenderTargetBinding {
                     texture_view: render_surface.depth_rt().rtv(),
@@ -768,31 +822,35 @@ impl MeshRenderer {
             // Render initial depth buffer from last frame culling results
             self.draw(render_context, cmd_buffer, DefaultLayers::Depth);
 
-            cmd_buffer.end_render_pass();
+            cmd_buffer.cmd_end_render_pass();
 
             // Initial Hzb for current frame
             render_surface.generate_hzb(render_context, cmd_buffer);
 
             // Rebind global vertex buffer after gen Hzb changes it
-            cmd_buffer.bind_vertex_buffers(0, &[instance_manager.vertex_buffer_binding()]);
+            cmd_buffer.cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
 
             // Retest elements culled from first pass against new Hzb
             self.cull(
                 render_context,
+                render_surface,
                 cmd_buffer,
                 &self.culling_buffers,
-                &(IndirectDispatch(true), GatherPerfStats(true)),
+                GpuCullingOptions {
+                    indirect_dispatch: true,
+                    gather_perf_stats: true,
+                },
                 (
                     0,
                     render_pass_data.len() as u32,
                     hzb_max_lod,
                     hzb_pixel_extents,
                 ),
-                (&gpu_count_view, &gpu_instance_view, &render_pass_view),
+                (gpu_count_view, gpu_instance_view, render_pass_view),
             );
 
             // Redraw depth istances that passed second cull pass
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[],
                 &Some(DepthStencilRenderTargetBinding {
                     texture_view: render_surface.depth_rt().rtv(),
@@ -807,7 +865,7 @@ impl MeshRenderer {
             // Render initial depth buffer from last frame culling results
             self.draw(render_context, cmd_buffer, DefaultLayers::Depth);
 
-            cmd_buffer.end_render_pass();
+            cmd_buffer.cmd_end_render_pass();
 
             // Update Hzb from complete depth buffer
             render_surface.generate_hzb(render_context, cmd_buffer);
@@ -818,16 +876,12 @@ impl MeshRenderer {
                     .copy_buffer_to_readback(cmd_buffer, readback);
             }
         });
-
-        render_context
-            .graphics_queue()
-            .submit(&mut [cmd_buffer.finalize()], &[], &[], None);
     }
 
     pub(crate) fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         layer_id: DefaultLayers,
     ) {
         let label = format!(
@@ -856,12 +910,18 @@ impl MeshRenderer {
         });
     }
 
-    pub(crate) fn render_end(&mut self) {
+    pub(crate) fn end_frame(&mut self) {
         let readback = std::mem::take(&mut self.culling_buffers.stats_buffer_readback);
 
         if let Some(readback) = readback {
             self.culling_buffers.stats_buffer.end_readback(readback);
         }
+    }
+}
+
+impl Drop for MeshRenderer {
+    fn drop(&mut self) {
+        println!("MeshRenderer dropped");
     }
 }
 
@@ -872,6 +932,7 @@ fn create_or_replace_buffer(
     element_count: u64,
     usage_flags: ResourceUsage,
     memory_usage: MemoryUsage,
+    name: &str,
 ) {
     let required_size = element_count * element_size;
 
@@ -882,34 +943,35 @@ fn create_or_replace_buffer(
     }
 
     if buffer.is_none() {
-        let buffer_def = BufferDef {
-            name: "CullingArgBuffer".to_string(),
-            size: required_size,
-            usage_flags,
-            creation_flags: ResourceCreation::empty(),
-        };
-        let new_buffer = device_context.create_buffer(&buffer_def);
+        let new_buffer = device_context.create_buffer(
+            BufferDef {
+                size: required_size,
+                usage_flags,
+                create_flags: BufferCreateFlags::empty(),
+                memory_usage,
+                always_mapped: false,
+            },
+            name,
+        );
 
-        let alloc_def = MemoryAllocationDef {
-            memory_usage,
-            always_mapped: false,
-        };
+        let srv_view = new_buffer.create_view(BufferViewDef::as_structured_buffer_with_offset(
+            element_count,
+            element_size,
+            true,
+            0,
+        ));
 
-        let allocation = MemoryAllocation::from_buffer(device_context, &new_buffer, &alloc_def);
-
-        let srv_view_def =
-            BufferViewDef::as_structured_buffer_with_offset(required_size, element_size, true, 0);
-        let srv_view = BufferView::from_buffer(&new_buffer, &srv_view_def);
-
-        let uav_view_def =
-            BufferViewDef::as_structured_buffer_with_offset(required_size, element_size, false, 0);
-        let uav_view = BufferView::from_buffer(&new_buffer, &uav_view_def);
+        let uav_view = new_buffer.create_view(BufferViewDef::as_structured_buffer_with_offset(
+            element_count,
+            element_size,
+            false,
+            0,
+        ));
 
         *buffer = Some(CullingArgBuffer {
             buffer: new_buffer,
             srv_view,
             uav_view,
-            _allocation: allocation,
         });
     }
 }
@@ -946,37 +1008,35 @@ fn build_depth_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
         back_stencil_pass_op: StencilOp::default(),
     };
 
-    let resterizer_state = RasterizerState {
+    let rasterizer_state = RasterizerState {
         cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(
-            cgen::shader::depth_shader::ID,
-            cgen::shader::depth_shader::NONE,
-        ),
-        move |device_context, shader| {
-            device_context
-                .create_graphics_pipeline(&GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_disabled(),
-                    depth_state: &depth_state,
-                    rasterizer_state: &resterizer_state,
-                    color_formats: &[],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: Some(Format::D32_SFLOAT),
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-                .unwrap()
-        },
-    )
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::depth_shader::ID,
+                cgen::shader::depth_shader::NONE,
+            ),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout,
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state,
+        color_formats: vec![],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: Some(Format::D32_SFLOAT),
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }
 
-fn build_temp_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
+fn build_temp_pso(pipeline_manager: &PipelineManager, need_depth_write: bool) -> PipelineHandle {
     let root_signature = cgen::pipeline_layout::ShaderPipelineLayout::root_signature();
 
     let mut vertex_layout = VertexLayout::default();
@@ -993,8 +1053,12 @@ fn build_temp_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
 
     let depth_state = DepthState {
         depth_test_enable: true,
-        depth_write_enable: false,
-        depth_compare_op: CompareOp::Equal,
+        depth_write_enable: need_depth_write,
+        depth_compare_op: if need_depth_write {
+            CompareOp::GreaterOrEqual
+        } else {
+            CompareOp::Equal
+        },
         stencil_test_enable: false,
         stencil_read_mask: 0xFF,
         stencil_write_mask: 0xFF,
@@ -1008,34 +1072,32 @@ fn build_temp_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
         back_stencil_pass_op: StencilOp::default(),
     };
 
-    let resterizer_state = RasterizerState {
+    let rasterizer_state = RasterizerState {
         cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(
-            cgen::shader::default_shader::ID,
-            cgen::shader::default_shader::NONE,
-        ),
-        move |device_context, shader| {
-            device_context
-                .create_graphics_pipeline(&GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_disabled(),
-                    depth_state: &depth_state,
-                    rasterizer_state: &resterizer_state,
-                    color_formats: &[Format::R16G16B16A16_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: Some(Format::D32_SFLOAT),
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-                .unwrap()
-        },
-    )
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::default_shader::ID,
+                cgen::shader::default_shader::NONE,
+            ),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout,
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state,
+        color_formats: vec![Format::R16G16B16A16_SFLOAT],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: Some(Format::D32_SFLOAT),
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }
 
 fn build_picking_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
@@ -1069,61 +1131,58 @@ fn build_picking_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
         back_stencil_fail_op: StencilOp::default(),
         back_stencil_pass_op: StencilOp::default(),
     };
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(shader::picking_shader::ID, shader::picking_shader::NONE),
-        move |device_context, shader| {
-            device_context
-                .create_graphics_pipeline(&GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_disabled(),
-                    depth_state: &depth_state,
-                    rasterizer_state: &RasterizerState::default(),
-                    color_formats: &[Format::R16G16B16A16_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: None,
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-                .unwrap()
-        },
-    )
+
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(shader::picking_shader::ID, shader::picking_shader::NONE),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout,
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state: RasterizerState::default(),
+        color_formats: vec![Format::R16G16B16A16_SFLOAT],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: None,
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }
 
 fn build_culling_psos(pipeline_manager: &PipelineManager) -> (PipelineHandle, PipelineHandle) {
     let root_signature = cgen::pipeline_layout::CullingPipelineLayout::root_signature();
 
-    (
-        pipeline_manager.register_pipeline(
+    let shader_first_pass = pipeline_manager
+        .create_shader(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 shader::culling_shader::ID,
                 shader::culling_shader::FIRST_PASS,
             ),
-            move |device_context, shader| {
-                device_context
-                    .create_compute_pipeline(&ComputePipelineDef {
-                        shader,
-                        root_signature,
-                    })
-                    .unwrap()
-            },
-        ),
-        pipeline_manager.register_pipeline(
+        )
+        .unwrap();
+
+    let shader_second_pass = pipeline_manager
+        .create_shader(
             cgen::CRATE_ID,
             CGenShaderKey::make(
                 shader::culling_shader::ID,
                 shader::culling_shader::SECOND_PASS,
             ),
-            move |device_context, shader| {
-                device_context
-                    .create_compute_pipeline(&ComputePipelineDef {
-                        shader,
-                        root_signature,
-                    })
-                    .unwrap()
-            },
-        ),
+        )
+        .unwrap();
+
+    (
+        pipeline_manager.register_pipeline(PipelineDef::Compute(ComputePipelineDef {
+            shader: shader_first_pass,
+            root_signature: root_signature.clone(),
+        })),
+        pipeline_manager.register_pipeline(PipelineDef::Compute(ComputePipelineDef {
+            shader: shader_second_pass,
+            root_signature: root_signature.clone(),
+        })),
     )
 }

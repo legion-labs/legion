@@ -9,40 +9,36 @@ pub struct DescriptorHeapManager {
 }
 
 impl DescriptorHeapManager {
-    pub fn new(num_render_frames: usize, device_context: &DeviceContext) -> Self {
-        let descriptor_heap_def = DescriptorHeapDef {
-            max_descriptor_sets: 32 * 4096,
-            sampler_count: 32 * 128,
-            constant_buffer_count: 32 * 1024,
-            buffer_count: 32 * 1024,
-            rw_buffer_count: 32 * 1024,
-            texture_count: 32 * 1024,
-            rw_texture_count: 32 * 1024,
-        };
-
+    pub fn new(num_render_frames: u64, device_context: &DeviceContext) -> Self {
         Self {
-            heap: device_context
-                .create_descriptor_heap(&descriptor_heap_def)
-                .unwrap(),
+            heap: device_context.create_descriptor_heap(DescriptorHeapDef {
+                max_descriptor_sets: 32 * 4096,
+                sampler_count: 32 * 128,
+                constant_buffer_count: 32 * 1024,
+                buffer_count: 32 * 1024,
+                rw_buffer_count: 32 * 1024,
+                texture_count: 32 * 1024,
+                rw_texture_count: 32 * 1024,
+            }),
             descriptor_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
         }
     }
 
     pub fn begin_frame(&mut self) {
         let mut pool = self.descriptor_pools.lock();
-        pool.begin_frame();
+        pool.begin_frame(DescriptorPool::begin_frame);
     }
 
     pub fn end_frame(&mut self) {
         let mut pool = self.descriptor_pools.lock();
-        pool.end_frame();
+        pool.end_frame(|_| ());
     }
 
     pub fn descriptor_heap(&self) -> &DescriptorHeap {
         &self.heap
     }
 
-    pub fn acquire_descriptor_pool(&self, heap_def: &DescriptorHeapDef) -> DescriptorPoolHandle {
+    pub fn acquire_descriptor_pool(&self, heap_def: DescriptorHeapDef) -> DescriptorPoolHandle {
         let mut pool = self.descriptor_pools.lock();
         pool.acquire_or_create(|| DescriptorPool::new(&self.heap, heap_def))
     }

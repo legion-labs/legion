@@ -140,11 +140,12 @@ impl HlslCompiler {
                 shader_product.name,
                 shader_product.target_profile.to_profile_string(),
                 &[
-                    "-Od",
+                    "-Od", // Disable optimization
+                    "-Zi", // Compile with debug information
                     "-spirv",
                     "-fspv-target-env=vulkan1.1",
                     "-enable-16bit-types",
-                    "-HV 2021",
+                    "-HV 2021", // HLSL version 2021
                 ],
                 &defines,
             )

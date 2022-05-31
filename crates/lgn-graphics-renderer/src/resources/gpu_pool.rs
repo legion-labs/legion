@@ -1,17 +1,17 @@
 use lgn_core::Handle;
 
-use super::OnFrameEventHandler;
+// use super::OnFrameEventHandler;
 
-pub(crate) struct GpuSafePool<T: OnFrameEventHandler> {
-    num_cpu_frames: usize,
-    cur_cpu_frame: usize,
+pub(crate) struct GpuSafePool<T> {
+    num_cpu_frames: u64,
+    cur_cpu_frame: u64,
     available: Vec<T>,
     in_use: Vec<Vec<T>>,
     acquired_count: u32,
 }
 
-impl<T: OnFrameEventHandler> GpuSafePool<T> {
-    pub(crate) fn new(num_cpu_frames: usize) -> Self {
+impl<T> GpuSafePool<T> {
+    pub(crate) fn new(num_cpu_frames: u64) -> Self {
         Self {
             num_cpu_frames,
             cur_cpu_frame: 0,
@@ -21,18 +21,19 @@ impl<T: OnFrameEventHandler> GpuSafePool<T> {
         }
     }
 
-    pub(crate) fn begin_frame(&mut self) {
-        let next_cpu_frame = (self.cur_cpu_frame + 1) % self.num_cpu_frames;
-        self.available.append(&mut self.in_use[next_cpu_frame]);
-        self.available.iter_mut().for_each(T::on_begin_frame);
+    pub(crate) fn begin_frame(&mut self, func: impl Fn(&mut T)) {
+        let next_cpu_frame = (self.cur_cpu_frame + 1) % self.num_cpu_frames as u64;
+        self.available
+            .append(&mut self.in_use[next_cpu_frame as usize]);
+        self.available.iter_mut().for_each(func);
         self.cur_cpu_frame = next_cpu_frame;
     }
 
-    pub(crate) fn end_frame(&mut self) {
+    pub(crate) fn end_frame(&mut self, func: impl Fn(&mut T)) {
         assert_eq!(self.acquired_count, 0);
-        self.in_use[self.cur_cpu_frame]
+        self.in_use[self.cur_cpu_frame as usize]
             .iter_mut()
-            .for_each(T::on_end_frame);
+            .for_each(func);
     }
 
     pub(crate) fn acquire_or_create(&mut self, create_fn: impl FnOnce() -> T) -> Handle<T> {
@@ -47,7 +48,7 @@ impl<T: OnFrameEventHandler> GpuSafePool<T> {
 
     pub(crate) fn release(&mut self, mut data: Handle<T>) {
         assert!(self.acquired_count > 0);
-        self.in_use[self.cur_cpu_frame].push(data.take());
+        self.in_use[self.cur_cpu_frame as usize].push(data.take());
         self.acquired_count -= 1;
     }
 }

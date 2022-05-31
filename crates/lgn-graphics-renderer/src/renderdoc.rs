@@ -1,112 +1,71 @@
-use std::sync::Mutex;
-
-use lgn_app::{App, CoreStage, EventReader, Plugin};
-use lgn_ecs::prelude::ResMut;
-use lgn_input::keyboard::{KeyCode, KeyboardInput};
 use lgn_tracing::{info, warn};
-use renderdoc::{RenderDoc, Version};
+
+use renderdoc::Version;
+
+use crate::core::RenderCommand;
 
 type RenderDocVersion = renderdoc::V141;
 
-pub struct RenderDocPlugin {}
-
-impl Plugin for RenderDocPlugin {
-    fn build(&self, app: &mut App) {
-        app.init_resource::<RenderDocManager>();
-        app.add_system_to_stage(CoreStage::First, start_frame_capture);
-        app.add_system_to_stage(CoreStage::Last, end_frame_capture);
-        app.add_system(listen_for_key);
-    }
-}
-
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 enum CaptureState {
-    NotAvailable,
     NotCapturing,
     CaptureScheduled,
     CaptureStarted,
 }
-struct RenderDocManager {
-    rd: Option<Mutex<RenderDoc<RenderDocVersion>>>,
+pub(crate) struct RenderDocManager {
+    rd: Option<renderdoc::RenderDoc<RenderDocVersion>>,
     capture_state: CaptureState,
 }
 
-#[allow(unsafe_code)]
-unsafe impl Send for RenderDocManager {}
-#[allow(unsafe_code)]
-unsafe impl Sync for RenderDocManager {}
-
 impl RenderDocManager {
-    pub fn schedule_capture(&mut self) {
-        if self.capture_state == CaptureState::NotAvailable {
-            warn!("Render Doc is not available. Make sure you are starting from Render Doc and the version is at least {:?}", RenderDocVersion::VERSION);
-        } else if self.capture_state == CaptureState::NotCapturing {
-            info!("RenderDoc capture scheduled");
-            self.capture_state = CaptureState::CaptureScheduled;
-        }
-    }
-
     pub fn start_frame_capture(&mut self) {
         if self.capture_state == CaptureState::CaptureScheduled {
-            info!("RenderDoc capture started");
-            self.rd
-                .as_ref()
-                .unwrap()
-                .lock()
-                .unwrap()
-                .start_frame_capture(std::ptr::null(), std::ptr::null());
-            self.capture_state = CaptureState::CaptureStarted;
+            if let Some(rd) = self.rd.as_mut() {
+                info!("RenderDoc capture started");
+                rd.start_frame_capture(std::ptr::null(), std::ptr::null());
+                self.capture_state = CaptureState::CaptureStarted;
+            } else {
+                warn!("Render Doc is not available. Make sure you are starting from Render Doc and the version is at least {:?}", RenderDocVersion::VERSION);
+            }
         }
     }
 
     pub fn end_frame_capture(&mut self) {
         if self.capture_state == CaptureState::CaptureStarted {
-            info!("RenderDoc capture ended");
-            self.rd
-                .as_ref()
-                .unwrap()
-                .lock()
-                .unwrap()
-                .end_frame_capture(std::ptr::null(), std::ptr::null());
-            self.capture_state = CaptureState::NotCapturing;
+            if let Some(rd) = self.rd.as_mut() {
+                info!("RenderDoc capture ended");
+                rd.end_frame_capture(std::ptr::null(), std::ptr::null());
+                self.capture_state = CaptureState::NotCapturing;
+            }
+        }
+    }
+
+    fn schedule_capture(&mut self) {
+        if self.capture_state == CaptureState::NotCapturing {
+            info!("RenderDoc capture scheduled");
+            self.capture_state = CaptureState::CaptureScheduled;
         }
     }
 }
 
 impl Default for RenderDocManager {
     fn default() -> Self {
-        let rd = RenderDoc::new();
-        if let Ok(rd) = rd {
-            return Self {
-                rd: Some(Mutex::new(rd)),
-                capture_state: CaptureState::NotCapturing,
-            };
-        }
-
         Self {
-            rd: None,
-            capture_state: CaptureState::NotAvailable,
+            rd: renderdoc::RenderDoc::new().ok(),
+            capture_state: CaptureState::NotCapturing,
         }
     }
 }
 
-fn listen_for_key(
-    mut renderdoc: ResMut<'_, RenderDocManager>,
-    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
-) {
-    for keyboard_input_event in keyboard_input_events.iter() {
-        if let Some(key_code) = keyboard_input_event.key_code {
-            if key_code == KeyCode::C && keyboard_input_event.state.is_pressed() {
-                renderdoc.schedule_capture();
-            }
-        }
+#[allow(unsafe_code)]
+unsafe impl Sync for RenderDocManager {}
+
+#[derive(Default)]
+pub struct RenderDocCaptureCommand;
+
+impl RenderCommand for RenderDocCaptureCommand {
+    fn execute(self, render_resources: &crate::core::RenderResources) {
+        let mut renderdoc_manager = render_resources.get_mut::<RenderDocManager>();
+        renderdoc_manager.schedule_capture();
     }
-}
-
-fn start_frame_capture(mut renderdoc: ResMut<'_, RenderDocManager>) {
-    renderdoc.start_frame_capture();
-}
-
-fn end_frame_capture(mut renderdoc: ResMut<'_, RenderDocManager>) {
-    renderdoc.end_frame_capture();
 }

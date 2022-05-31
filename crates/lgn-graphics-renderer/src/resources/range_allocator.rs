@@ -1,9 +1,12 @@
-#[derive(Clone, Copy)]
+use lgn_tracing::error;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Range {
     begin: u64,
     end: u64,
 }
 
+#[allow(dead_code)]
 impl Range {
     pub fn from_begin_end(begin: u64, end: u64) -> Self {
         assert!(begin <= end);
@@ -18,6 +21,10 @@ impl Range {
         self.begin
     }
 
+    pub fn end(&self) -> u64 {
+        self.end
+    }
+
     pub fn size(&self) -> u64 {
         self.end - self.begin
     }
@@ -25,14 +32,18 @@ impl Range {
 
 pub struct RangeAllocator {
     free_list: Vec<Range>,
+    capacity: u64,
     available: u64,
+    alloc_count: u32,
 }
 
 impl RangeAllocator {
     pub fn new(size: u64) -> Self {
         Self {
             free_list: vec![Range::from_begin_size(0, size)],
+            capacity: size,
             available: size,
+            alloc_count: 0,
         }
     }
 
@@ -59,11 +70,14 @@ impl RangeAllocator {
                 self.free_list.remove(remove_index);
             }
         }
+        if result.is_some() {
+            self.alloc_count += 1;
+        }
         result
     }
 
     pub fn free(&mut self, free_range: Range) {
-        assert!(free_range.begin < free_range.end);
+        assert!(self.alloc_count > 0 && free_range.begin < free_range.end);
 
         let mut insert_index = self.free_list.len();
         for index in 0..self.free_list.len() {
@@ -84,10 +98,22 @@ impl RangeAllocator {
             }
         }
         self.available += free_range.end - free_range.begin;
+        assert!(self.available <= self.capacity);
+
         if self.free_list.is_empty() {
             self.free_list.push(free_range);
         } else if insert_index != self.free_list.len() {
             self.free_list.insert(insert_index, free_range);
+        }
+
+        self.alloc_count -= 1;
+    }
+}
+
+impl Drop for RangeAllocator {
+    fn drop(&mut self) {
+        if self.alloc_count != 0 {
+            error!("Leaking {} allocations.", self.alloc_count);
         }
     }
 }

@@ -2,7 +2,7 @@ use crate::backends::BackendTextureView;
 use crate::{deferred_drop::Drc, Texture};
 use crate::{Descriptor, GPUViewType, PlaneSlice, ResourceUsage, ShaderResourceType, TextureDef};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ViewDimension {
     _2D,
     _2DArray,
@@ -11,7 +11,7 @@ pub enum ViewDimension {
     _3D,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TextureViewDef {
     pub gpu_view_type: GPUViewType,
     pub view_dimension: ViewDimension,
@@ -62,6 +62,18 @@ impl TextureViewDef {
     pub fn as_rt_for_mip(_texture: &TextureDef, mip_index: u32) -> Self {
         Self {
             gpu_view_type: GPUViewType::RenderTarget,
+            view_dimension: ViewDimension::_2D,
+            first_mip: mip_index,
+            mip_count: 1,
+            plane_slice: PlaneSlice::Default,
+            first_array_slice: 0,
+            array_size: 1,
+        }
+    }
+
+    pub fn as_uav_for_mip(_texture: &TextureDef, mip_index: u32) -> Self {
+        Self {
+            gpu_view_type: GPUViewType::UnorderedAccess,
             view_dimension: ViewDimension::_2D,
             first_mip: mip_index,
             mip_count: 1,
@@ -205,13 +217,13 @@ pub struct TextureView {
 }
 
 impl TextureView {
-    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> Self {
+    pub(crate) fn new(texture: &Texture, definition: TextureViewDef) -> Self {
         let device_context = texture.device_context();
-        let backend_texture_view = BackendTextureView::new(texture, view_def);
+        let backend_texture_view = BackendTextureView::new(texture, definition);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(TextureViewInner {
-                definition: *view_def,
+                definition,
                 texture: texture.clone(),
                 backend_texture_view,
             }),

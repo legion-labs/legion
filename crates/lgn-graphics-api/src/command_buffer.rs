@@ -2,97 +2,94 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::backends::BackendCommandBuffer;
 use crate::{
-    Buffer, BufferCopy, CommandPool, DescriptorSetHandle, Pipeline, PipelineType, Texture,
+    Buffer, BufferCopy, CommandPool, DescriptorSetHandle, DescriptorSetLayout, Pipeline, Texture,
 };
 use crate::{
     BufferBarrier, CmdBlitParams, CmdCopyBufferToTextureParams, CmdCopyTextureParams,
-    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, GfxResult,
-    IndexBufferBinding, QueueType, RootSignature, TextureBarrier, VertexBufferBinding,
+    ColorRenderTargetBinding, DepthStencilRenderTargetBinding, DeviceContext, IndexBufferBinding,
+    QueueType, RootSignature, TextureBarrier, VertexBufferBinding,
 };
 
 /// Used to create a `CommandBuffer`
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CommandBufferDef {
     /// Secondary command buffers are used to encode a single pass on multiple
     /// threads
     pub is_secondary: bool,
 }
 
-pub(crate) struct CommandBufferInner {
+pub struct CommandBuffer {
     pub(crate) device_context: DeviceContext,
     pub(crate) queue_type: QueueType,
     pub(crate) queue_family_index: u32,
     has_active_renderpass: AtomicBool,
+    cur_pipeline: Option<Pipeline>,
     pub(crate) backend_command_buffer: BackendCommandBuffer,
-}
-
-pub struct CommandBuffer {
-    pub(crate) inner: Box<CommandBufferInner>,
 }
 
 impl CommandBuffer {
     pub(crate) fn new(
         device_context: &DeviceContext,
         command_pool: &CommandPool,
-        command_buffer_def: &CommandBufferDef,
-    ) -> GfxResult<Self> {
-        let backend_command_buffer = BackendCommandBuffer::new(command_pool, command_buffer_def)?;
+        command_buffer_def: CommandBufferDef,
+    ) -> Self {
+        let backend_command_buffer = BackendCommandBuffer::new(command_pool, command_buffer_def);
 
-        Ok(Self {
-            inner: Box::new(CommandBufferInner {
-                device_context: device_context.clone(),
-                queue_type: command_pool.queue_type(),
-                queue_family_index: command_pool.queue_family_index(),
-                has_active_renderpass: AtomicBool::new(false),
-                backend_command_buffer,
-            }),
-        })
+        Self {
+            device_context: device_context.clone(),
+            queue_type: command_pool.queue_type(),
+            queue_family_index: command_pool.queue_family_index(),
+            has_active_renderpass: AtomicBool::new(false),
+            cur_pipeline: None,
+            backend_command_buffer,
+        }
     }
 
-    pub fn begin(&mut self) -> GfxResult<()> {
-        self.backend_begin()
+    pub fn begin(&mut self) {
+        self.cur_pipeline = None;
+        self.backend_begin();
     }
 
-    pub fn end(&mut self) -> GfxResult<()> {
-        if self.inner.has_active_renderpass.load(Ordering::Relaxed) {
+    pub fn end(&mut self) {
+        if self.has_active_renderpass.load(Ordering::Relaxed) {
             self.cmd_end_render_pass();
-            self.inner
-                .has_active_renderpass
-                .store(false, Ordering::Relaxed);
+            self.has_active_renderpass.store(false, Ordering::Relaxed);
         }
 
-        self.backend_end()?;
-
-        Ok(())
+        self.backend_end();
     }
 
     pub fn cmd_begin_render_pass(
         &mut self,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
-    ) -> GfxResult<()> {
-        if self.inner.has_active_renderpass.load(Ordering::Relaxed) {
+    ) {
+        assert!(
+            !(color_targets.is_empty() && depth_target.is_none()),
+            "No color or depth target supplied to cmd_begin_render_pass"
+        );
+
+        if self.has_active_renderpass.load(Ordering::Relaxed) {
             self.cmd_end_render_pass();
         }
 
-        if color_targets.is_empty() && depth_target.is_none() {
-            return Err("No color or depth target supplied to cmd_begin_render_pass".into());
-        }
+        self.backend_cmd_begin_render_pass(color_targets, depth_target);
 
-        self.backend_cmd_begin_render_pass(color_targets, depth_target)?;
-
-        self.inner
-            .has_active_renderpass
-            .store(true, Ordering::Relaxed);
-
-        Ok(())
+        self.has_active_renderpass.store(true, Ordering::Relaxed);
     }
 
     pub fn cmd_end_render_pass(&mut self) {
         self.backend_cmd_end_render_pass();
-        self.inner
-            .has_active_renderpass
-            .store(false, Ordering::Relaxed);
+        self.has_active_renderpass.store(false, Ordering::Relaxed);
+    }
+
+    pub fn with_label<F>(&mut self, label: &str, f: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        self.begin_label(label);
+        f(self);
+        self.end_label();
     }
 
     pub fn begin_label(&mut self, label: &str) {
@@ -124,34 +121,72 @@ impl CommandBuffer {
     }
 
     pub fn cmd_bind_pipeline(&mut self, pipeline: &Pipeline) {
+        self.cur_pipeline = Some(pipeline.clone());
         self.backend_cmd_bind_pipeline(pipeline);
+    }
+
+    pub fn cmd_bind_vertex_buffer(&mut self, first_binding: u32, binding: VertexBufferBinding) {
+        self.cmd_bind_vertex_buffers(first_binding, std::slice::from_ref(&binding));
     }
 
     pub fn cmd_bind_vertex_buffers(
         &mut self,
         first_binding: u32,
-        bindings: &[VertexBufferBinding<'_>],
+        bindings: &[VertexBufferBinding],
     ) {
         self.backend_cmd_bind_vertex_buffers(first_binding, bindings);
     }
 
-    pub fn cmd_bind_index_buffer(&mut self, binding: &IndexBufferBinding<'_>) {
+    pub fn cmd_bind_index_buffer(&mut self, binding: IndexBufferBinding) {
         self.backend_cmd_bind_index_buffer(binding);
     }
 
     pub fn cmd_bind_descriptor_set_handle(
         &mut self,
-        pipeline_type: PipelineType,
-        root_signature: &RootSignature,
-        set_index: u32,
-        descriptor_set_handle: DescriptorSetHandle,
+        layout: &DescriptorSetLayout,
+        handle: DescriptorSetHandle,
+        // pipeline_type: PipelineType,
+        // root_signature: &RootSignature,
+        // set_index: u32,
+        // descriptor_set_handle: DescriptorSetHandle,
     ) {
+        assert!(self.cur_pipeline.is_some());
+
+        let cur_pipeline = self.cur_pipeline.as_ref().unwrap().clone();
+        let pipeline_type = cur_pipeline.pipeline_type();
+        let root_signature = cur_pipeline.root_signature();
+        let set_index = layout.frequency();
+
+        assert_eq!(
+            &root_signature.definition().descriptor_set_layouts[set_index as usize],
+            layout
+        );
+
         self.backend_cmd_bind_descriptor_set_handle(
             pipeline_type,
             root_signature,
             set_index,
-            descriptor_set_handle,
+            handle,
         );
+    }
+
+    pub fn cmd_push_constant_typed<T: Sized>(&mut self, constants: &T) {
+        assert!(self.cur_pipeline.is_some());
+
+        let cur_pipeline = self.cur_pipeline.as_ref().unwrap().clone();
+        let root_signature = cur_pipeline.root_signature();
+
+        assert!(&root_signature.definition().push_constant_def.is_some());
+        assert_eq!(
+            root_signature.definition().push_constant_def.unwrap().size as usize,
+            std::mem::size_of::<T>()
+        );
+
+        let constants_size = std::mem::size_of::<T>();
+        let constants_ptr = (constants as *const T).cast::<u8>();
+        #[allow(unsafe_code)]
+        let data = unsafe { &*std::ptr::slice_from_raw_parts(constants_ptr, constants_size) };
+        self.cmd_push_constant(root_signature, data);
     }
 
     pub fn cmd_push_constant(&mut self, root_signature: &RootSignature, data: &[u8]) {
@@ -275,13 +310,14 @@ impl CommandBuffer {
         texture_barriers: &[TextureBarrier<'_>],
     ) {
         assert!(
-            !self.inner.has_active_renderpass.load(Ordering::Relaxed),
+            !self.has_active_renderpass.load(Ordering::Relaxed),
             "cmd_resource_barrier may not be called if inside render pass"
         );
         self.backend_cmd_resource_barrier(buffer_barriers, texture_barriers);
     }
 
     pub fn cmd_fill_buffer(&mut self, dst_buffer: &Buffer, offset: u64, size: u64, data: u32) {
+        assert!(size <= dst_buffer.definition().size);
         self.backend_cmd_fill_buffer(dst_buffer, offset, size, data);
     }
 

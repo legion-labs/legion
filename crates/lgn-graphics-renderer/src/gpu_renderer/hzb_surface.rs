@@ -1,10 +1,10 @@
 use lgn_graphics_api::{
-    AddressMode, BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, CullMode,
-    DepthState, DeviceContext, Extents3D, FilterType, Format, GraphicsPipelineDef, LoadOp,
-    MemoryUsage, MipMapMode, PrimitiveTopology, RasterizerState, ResourceFlags, ResourceState,
-    ResourceUsage, SampleCount, Sampler, SamplerDef, StencilOp, StoreOp, Texture, TextureBarrier,
-    TextureDef, TextureTiling, TextureView, TextureViewDef, VertexAttributeRate, VertexLayout,
-    VertexLayoutAttribute, VertexLayoutBuffer,
+    AddressMode, BlendState, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, CompareOp,
+    CullMode, DepthState, DeviceContext, Extents3D, FilterType, Format, GraphicsPipelineDef,
+    LoadOp, MemoryUsage, MipMapMode, PrimitiveTopology, RasterizerState, ResourceFlags,
+    ResourceState, ResourceUsage, SampleCount, Sampler, SamplerDef, StencilOp, StoreOp, Texture,
+    TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef, VertexAttributeRate,
+    VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Vec2;
@@ -12,8 +12,7 @@ use lgn_math::Vec2;
 use crate::{
     cgen,
     components::RenderSurfaceExtents,
-    hl_gfx_api::HLCommandBuffer,
-    resources::{PipelineHandle, PipelineManager},
+    resources::{PipelineDef, PipelineHandle, PipelineManager},
     RenderContext,
 };
 
@@ -54,7 +53,6 @@ impl HzbSurface {
         }
 
         let hzb_def = TextureDef {
-            name: "HZB".to_string(),
             extents: Extents3D {
                 width: hzb_width as u32,
                 height: hzb_height as u32,
@@ -65,36 +63,26 @@ impl HzbSurface {
             format: Format::R32_SFLOAT,
             usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_SHADER_RESOURCE,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         };
 
-        let texture = device_context.create_texture(&hzb_def);
-        let srv_view_def = TextureViewDef::as_shader_resource_view(&hzb_def);
-        let srv_view = texture.create_view(&srv_view_def);
+        let texture = device_context.create_texture(hzb_def, "HZB");
+        let srv_view = texture.create_view(TextureViewDef::as_shader_resource_view(
+            texture.definition(),
+        ));
 
         let mut srv_mip_views = Vec::with_capacity(mip_count as usize);
         let mut rt_mip_view = Vec::with_capacity(mip_count as usize);
 
         for mip_index in 0..mip_count {
-            let hzb_srv_view_mip_def = TextureViewDef::as_srv_with_mip_spec(&hzb_def, mip_index, 1);
-            srv_mip_views.push(texture.create_view(&hzb_srv_view_mip_def));
+            srv_mip_views.push(
+                texture.create_view(TextureViewDef::as_srv_with_mip_spec(&hzb_def, mip_index, 1)),
+            );
 
-            let hzb_rt_view_mip_def = TextureViewDef::as_rt_for_mip(&hzb_def, mip_index);
-            rt_mip_view.push(texture.create_view(&hzb_rt_view_mip_def));
+            rt_mip_view
+                .push(texture.create_view(TextureViewDef::as_rt_for_mip(&hzb_def, mip_index)));
         }
-
-        let mip_sampler_def = SamplerDef {
-            min_filter: FilterType::Nearest,
-            mag_filter: FilterType::Nearest,
-            mip_map_mode: MipMapMode::Nearest,
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mip_lod_bias: 0.0,
-            max_anisotropy: 1.0,
-            compare_op: CompareOp::Never,
-        };
 
         Self {
             texture,
@@ -102,7 +90,17 @@ impl HzbSurface {
             srv_mip_views,
             rt_mip_view,
             pipeline_handle: build_hzb_pso(pipeline_manager),
-            mip_sampler: device_context.create_sampler(&mip_sampler_def),
+            mip_sampler: device_context.create_sampler(SamplerDef {
+                min_filter: FilterType::Nearest,
+                mag_filter: FilterType::Nearest,
+                mip_map_mode: MipMapMode::Nearest,
+                address_mode_u: AddressMode::ClampToEdge,
+                address_mode_v: AddressMode::ClampToEdge,
+                address_mode_w: AddressMode::ClampToEdge,
+                mip_lod_bias: 0.0,
+                max_anisotropy: 1.0,
+                compare_op: CompareOp::Never,
+            }),
         }
     }
 
@@ -123,18 +121,18 @@ impl HzbSurface {
 
     pub fn generate_hzb(
         &self,
-        render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        render_context: &mut RenderContext<'_>,
+        cmd_buffer: &mut CommandBuffer,
         depth_srv_view: &TextureView,
     ) {
         let pipeline = render_context
-            .pipeline_manager()
+            .pipeline_manager
             .get_pipeline(self.pipeline_handle)
             .unwrap();
 
-        cmd_buffer.bind_pipeline(pipeline);
+        cmd_buffer.cmd_bind_pipeline(pipeline);
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 &self.texture,
@@ -157,12 +155,12 @@ impl HzbSurface {
                 cgen::descriptor_set::HzbDescriptorSet::descriptor_set_layout(),
                 descriptor_set.descriptor_refs(),
             );
-            cmd_buffer.bind_descriptor_set(
+            cmd_buffer.cmd_bind_descriptor_set_handle(
                 cgen::descriptor_set::HzbDescriptorSet::descriptor_set_layout(),
                 descriptor_set_handle,
             );
 
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: rt_view,
                     load_op: LoadOp::DontCare,
@@ -172,11 +170,11 @@ impl HzbSurface {
                 &None,
             );
 
-            cmd_buffer.draw(3, 0);
+            cmd_buffer.cmd_draw(3, 0);
 
-            cmd_buffer.end_render_pass();
+            cmd_buffer.cmd_end_render_pass();
 
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition_for_mip(
                     &self.texture,
@@ -227,29 +225,27 @@ fn build_hzb_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
         back_stencil_pass_op: StencilOp::default(),
     };
 
-    let resterizer_state = RasterizerState {
+    let rasterizer_state = RasterizerState {
         cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(cgen::shader::hzb_shader::ID, cgen::shader::hzb_shader::NONE),
-        move |device_context, shader| {
-            device_context
-                .create_graphics_pipeline(&GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &vertex_layout,
-                    blend_state: &BlendState::default_alpha_disabled(),
-                    depth_state: &depth_state,
-                    rasterizer_state: &resterizer_state,
-                    color_formats: &[Format::R32_SFLOAT],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: None,
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-                .unwrap()
-        },
-    )
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(cgen::shader::hzb_shader::ID, cgen::shader::hzb_shader::NONE),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout,
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state,
+        color_formats: vec![Format::R32_SFLOAT],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: None,
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }

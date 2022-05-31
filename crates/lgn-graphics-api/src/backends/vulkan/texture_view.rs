@@ -8,13 +8,13 @@ pub(crate) struct VulkanTextureView {
 }
 
 impl VulkanTextureView {
-    pub(crate) fn new(texture: &Texture, view_def: &TextureViewDef) -> Self {
-        view_def.verify(texture.definition());
+    pub(crate) fn new(texture: &Texture, definition: TextureViewDef) -> Self {
+        definition.verify(texture.definition());
 
         let device_context = texture.device_context();
         let device = device_context.vk_device();
         let texture_def = texture.definition();
-        let aspect_mask = match view_def.plane_slice {
+        let aspect_mask = match definition.plane_slice {
             crate::PlaneSlice::Default => {
                 super::internal::image_format_to_aspect_mask(texture_def.format)
             }
@@ -26,14 +26,14 @@ impl VulkanTextureView {
         };
         let subresource_range = vk::ImageSubresourceRange::builder()
             .aspect_mask(aspect_mask)
-            .base_mip_level(view_def.first_mip)
-            .level_count(view_def.mip_count)
-            .base_array_layer(view_def.first_array_slice)
-            .layer_count(view_def.array_size);
+            .base_mip_level(definition.first_mip)
+            .level_count(definition.mip_count)
+            .base_array_layer(definition.first_array_slice)
+            .layer_count(definition.array_size);
         let builder = vk::ImageViewCreateInfo::builder()
             .image(texture.vk_image())
             .components(vk::ComponentMapping::default())
-            .view_type(view_def.view_dimension.into())
+            .view_type(definition.view_dimension.into())
             .format(texture_def.format.into())
             .subresource_range(subresource_range.build());
         let vk_image_view = unsafe { device.create_image_view(&builder.build(), None).unwrap() };

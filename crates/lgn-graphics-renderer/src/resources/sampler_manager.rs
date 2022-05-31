@@ -1,18 +1,24 @@
-use lgn_app::App;
-use lgn_ecs::{prelude::ResMut, schedule::SystemSet};
 use lgn_graphics_api::{DeviceContext, SamplerDef};
-
-use crate::{labels::RenderStage, ResourceStageLabel};
+use parking_lot::RwLock;
 
 use super::PersistentDescriptorSetManager;
 
-const SAMPLER_ARRAY_SIZE: usize = 64; // When changing this number make sure to make a corresponding change to material_samplers in root.rn
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub struct SamplerId(u32);
+
+impl SamplerId {
+    pub fn as_index(self) -> u32 {
+        self.0
+    }
+}
+
+const DEFAULT_SAMPLER_ID: SamplerId = SamplerId(0);
 
 pub struct SamplerManager {
     device_context: DeviceContext,
 
-    samplers: Vec<(SamplerDef, lgn_graphics_api::Sampler)>,
-    scheduled_upload: Vec<u32>,
+    samplers: RwLock<Vec<(u64, lgn_graphics_api::Sampler)>>,
+    uploaded: usize,
 }
 
 impl SamplerManager {
@@ -22,61 +28,48 @@ impl SamplerManager {
     ) -> Self {
         let mut sampler_manager = Self {
             device_context: device_context.clone(),
-            samplers: Vec::new(),
-            scheduled_upload: Vec::new(),
+            samplers: RwLock::new(Vec::new()),
+            uploaded: 0,
         };
-        sampler_manager.get_index(&SamplerDef::default());
+        let idx = sampler_manager.get_index(&SamplerDef::default());
+        assert_eq!(idx, DEFAULT_SAMPLER_ID);
         sampler_manager.upload(persistent_descriptor_set_manager);
         sampler_manager
     }
 
-    pub fn init_ecs(app: &mut App) {
-        app.add_system_set_to_stage(
-            RenderStage::Resource,
-            SystemSet::new()
-                .with_system(upload_sampler_data)
-                .label(ResourceStageLabel::Sampler)
-                .after(ResourceStageLabel::Material),
-        );
-    }
-
-    pub fn get_index(&mut self, sampler_definition: &SamplerDef) -> u32 {
-        if let Some(idx) = self
-            .samplers
+    pub fn get_index(&self, sampler_definition: &SamplerDef) -> SamplerId {
+        let samplers = self.samplers.read();
+        if let Some(idx) = samplers
             .iter()
-            .position(|s| s.0 == *sampler_definition)
+            .position(|s| s.0 == sampler_definition.get_hash())
             .map(|idx| idx as u32)
         {
-            return idx as u32;
+            assert_eq!(sampler_definition, samplers[idx as usize].1.definition());
+            return SamplerId(idx);
         }
-        assert!(self.samplers.len() < SAMPLER_ARRAY_SIZE);
-        let idx = self.samplers.len() as u32;
-        self.samplers.push((
-            sampler_definition.clone(),
-            self.device_context.create_sampler(sampler_definition),
+        drop(samplers);
+
+        let mut samplers = self.samplers.write();
+        let sampler_id = SamplerId(samplers.len() as u32);
+        samplers.push((
+            sampler_definition.get_hash(),
+            self.device_context.create_sampler(*sampler_definition),
         ));
-        self.scheduled_upload.push(idx);
-        idx
+        sampler_id
     }
 
     pub fn upload(
         &mut self,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) {
-        self.scheduled_upload.iter().for_each(|idx| {
-            persistent_descriptor_set_manager.set_sampler(*idx, &self.samplers[*idx as usize].1);
-        });
-        self.scheduled_upload.clear();
+        let samplers = self.samplers.read();
+        for idx in self.uploaded..samplers.len() {
+            persistent_descriptor_set_manager.set_sampler(idx as u32, &samplers[idx].1);
+        }
+        self.uploaded = samplers.len();
     }
 
-    pub fn get_default_sampler_index() -> u32 {
-        0
+    pub fn get_default_sampler_index() -> SamplerId {
+        DEFAULT_SAMPLER_ID
     }
-}
-
-pub(crate) fn upload_sampler_data(
-    mut sampler_manager: ResMut<'_, SamplerManager>,
-    mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
-) {
-    sampler_manager.upload(&mut persistent_descriptor_set_manager);
 }

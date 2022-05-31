@@ -1,9 +1,10 @@
 use lgn_graphics_api::{
-    DeviceContext, Extents3D, Format, GPUViewType, MemoryUsage, ResourceFlags, ResourceState,
-    ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    CommandBuffer, DeviceContext, Extents3D, Format, GPUViewType, MemoryUsage, ResourceFlags,
+    ResourceState, ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
+    TextureViewDef,
 };
 
-use crate::{components::RenderSurfaceExtents, hl_gfx_api::HLCommandBuffer};
+use crate::components::RenderSurfaceExtents;
 
 pub struct RenderTarget {
     texture: Texture,
@@ -21,28 +22,32 @@ impl RenderTarget {
         usage_flags: ResourceUsage,
         view_type: GPUViewType,
     ) -> Self {
-        let texture_def = TextureDef {
-            name: name.to_string(),
-            extents: Extents3D {
-                width: extents.width(),
-                height: extents.height(),
-                depth: 1,
+        let texture = device_context.create_texture(
+            TextureDef {
+                extents: Extents3D {
+                    width: extents.width(),
+                    height: extents.height(),
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format,
+                usage_flags,
+                resource_flags: ResourceFlags::empty(),
+                memory_usage: MemoryUsage::GpuOnly,
+                tiling: TextureTiling::Optimal,
             },
-            array_length: 1,
-            mip_count: 1,
-            format,
-            usage_flags,
-            resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
-            tiling: TextureTiling::Optimal,
-        };
-        let texture = device_context.create_texture(&texture_def);
+            name,
+        );
 
-        let srv_def = TextureViewDef::as_shader_resource_view(&texture_def);
-        let srv = texture.create_view(&srv_def);
+        let srv = texture.create_view(TextureViewDef::as_shader_resource_view(
+            texture.definition(),
+        ));
 
-        let rtv_def = TextureViewDef::as_render_view(&texture_def, view_type);
-        let rtv = texture.create_view(&rtv_def);
+        let rtv = texture.create_view(TextureViewDef::as_render_view(
+            texture.definition(),
+            view_type,
+        ));
 
         Self {
             texture,
@@ -52,16 +57,12 @@ impl RenderTarget {
         }
     }
 
-    pub fn transition_to(
-        &mut self,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
-        dst_state: ResourceState,
-    ) {
+    pub fn transition_to(&mut self, cmd_buffer: &mut CommandBuffer, dst_state: ResourceState) {
         let src_state = self.state;
         let dst_state = dst_state;
 
         if src_state != dst_state {
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     &self.texture,

@@ -3,7 +3,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_graphics_renderer::{
     components::{RenderSurface, RenderSurfaceExtents},
-    resources::{PipelineHandle, PipelineManager},
+    resources::{PipelineDef, PipelineHandle, PipelineManager},
     RenderContext,
 };
 use lgn_tracing::span_fn;
@@ -26,34 +26,33 @@ impl OffscreenHelper {
     ) -> Self {
         let root_signature = cgen::pipeline_layout::DisplayMapperPipelineLayout::root_signature();
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::display_mapper_shader::ID,
-                cgen::shader::display_mapper_shader::NONE,
-            ),
-            |device_context, shader| {
-                device_context
-                    .create_graphics_pipeline(&GraphicsPipelineDef {
-                        shader,
-                        root_signature,
-                        vertex_layout: &VertexLayout::default(),
-                        blend_state: &BlendState::default(),
-                        depth_state: &DepthState::default(),
-                        rasterizer_state: &RasterizerState {
-                            cull_mode: CullMode::Back,
-                            ..RasterizerState::default()
-                        },
-                        primitive_topology: PrimitiveTopology::TriangleList,
-                        color_formats: &[Format::R8G8B8A8_UNORM],
-                        depth_stencil_format: None,
-                        sample_count: SampleCount::SampleCount1,
-                    })
-                    .unwrap()
-            },
-        );
+        let shader = pipeline_manager
+            .create_shader(
+                cgen::CRATE_ID,
+                CGenShaderKey::make(
+                    cgen::shader::display_mapper_shader::ID,
+                    cgen::shader::display_mapper_shader::NONE,
+                ),
+            )
+            .unwrap();
+        let pipeline_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader,
+                root_signature: root_signature.clone(),
+                vertex_layout: VertexLayout::default(),
+                blend_state: BlendState::default(),
+                depth_state: DepthState::default(),
+                rasterizer_state: RasterizerState {
+                    cull_mode: CullMode::Back,
+                    ..RasterizerState::default()
+                },
+                primitive_topology: PrimitiveTopology::TriangleList,
+                color_formats: vec![Format::R8G8B8A8_UNORM],
+                depth_stencil_format: None,
+                sample_count: SampleCount::SampleCount1,
+            }));
 
-        let sampler_def = SamplerDef {
+        let bilinear_sampler = device_context.create_sampler(SamplerDef {
             min_filter: FilterType::Linear,
             mag_filter: FilterType::Linear,
             mip_map_mode: MipMapMode::Linear,
@@ -61,45 +60,48 @@ impl OffscreenHelper {
             address_mode_v: AddressMode::ClampToEdge,
             address_mode_w: AddressMode::ClampToEdge,
             ..SamplerDef::default()
-        };
-        let bilinear_sampler = device_context.create_sampler(&sampler_def);
-
-        let render_image = device_context.create_texture(&TextureDef {
-            name: "Offscreen".to_string(),
-            extents: Extents3D {
-                width: resolution.width(),
-                height: resolution.height(),
-                depth: 1,
-            },
-            array_length: 1,
-            mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
-            mem_usage: MemoryUsage::GpuOnly,
-            usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
-            tiling: TextureTiling::Optimal,
         });
 
-        let render_image_rtv = render_image.create_view(&TextureViewDef::as_render_view(
+        let render_image = device_context.create_texture(
+            TextureDef {
+                extents: Extents3D {
+                    width: resolution.width(),
+                    height: resolution.height(),
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8G8B8A8_UNORM,
+                memory_usage: MemoryUsage::GpuOnly,
+                usage_flags: ResourceUsage::AS_RENDER_TARGET | ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                tiling: TextureTiling::Optimal,
+            },
+            "Offscreen",
+        );
+
+        let render_image_rtv = render_image.create_view(TextureViewDef::as_render_view(
             render_image.definition(),
             GPUViewType::RenderTarget,
         ));
 
-        let copy_image = device_context.create_texture(&TextureDef {
-            name: "Copy".to_string(),
-            extents: Extents3D {
-                width: resolution.width(),
-                height: resolution.height(),
-                depth: 1,
+        let copy_image = device_context.create_texture(
+            TextureDef {
+                extents: Extents3D {
+                    width: resolution.width(),
+                    height: resolution.height(),
+                    depth: 1,
+                },
+                array_length: 1,
+                mip_count: 1,
+                format: Format::R8G8B8A8_UNORM,
+                memory_usage: MemoryUsage::GpuToCpu,
+                usage_flags: ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                tiling: TextureTiling::Linear,
             },
-            array_length: 1,
-            mip_count: 1,
-            format: Format::R8G8B8A8_UNORM,
-            mem_usage: MemoryUsage::GpuToCpu,
-            usage_flags: ResourceUsage::AS_TRANSFERABLE,
-            resource_flags: ResourceFlags::empty(),
-            tiling: TextureTiling::Linear,
-        });
+            "Copy",
+        );
 
         Self {
             render_image,
@@ -113,20 +115,24 @@ impl OffscreenHelper {
     #[span_fn]
     pub fn present<F: FnOnce(&[u8], usize)>(
         &mut self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         copy_fn: F,
     ) -> anyhow::Result<()> {
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
+        let cmd_buffer = cmd_buffer_handle.as_mut();
+
+        cmd_buffer.begin();
+
         let render_texture = &self.render_image;
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;
 
         render_surface
             .hdr_rt_mut()
-            .transition_to(&mut cmd_buffer, ResourceState::SHADER_RESOURCE);
+            .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 render_texture,
@@ -135,7 +141,7 @@ impl OffscreenHelper {
             )],
         );
 
-        cmd_buffer.begin_render_pass(
+        cmd_buffer.cmd_begin_render_pass(
             &[ColorRenderTargetBinding {
                 texture_view: render_texture_rtv,
                 load_op: LoadOp::DontCare,
@@ -146,10 +152,10 @@ impl OffscreenHelper {
         );
 
         let pipeline = render_context
-            .pipeline_manager()
+            .pipeline_manager
             .get_pipeline(self.pipeline_handle)
             .unwrap();
-        cmd_buffer.bind_pipeline(pipeline);
+        cmd_buffer.cmd_bind_pipeline(pipeline);
 
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
         descriptor_set.set_hdr_image(render_surface.hdr_rt().srv());
@@ -158,16 +164,16 @@ impl OffscreenHelper {
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),
             descriptor_set.descriptor_refs(),
         );
-        cmd_buffer.bind_descriptor_set(
+        cmd_buffer.cmd_bind_descriptor_set_handle(
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),
             descriptor_set_handle,
         );
 
-        cmd_buffer.draw(3, 0);
+        cmd_buffer.cmd_draw(3, 0);
 
-        cmd_buffer.end_render_pass();
+        cmd_buffer.cmd_end_render_pass();
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 render_texture,
@@ -180,7 +186,7 @@ impl OffscreenHelper {
         // Copy
         //
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 copy_texture,
@@ -192,7 +198,7 @@ impl OffscreenHelper {
         let copy_extents = render_texture.definition().extents;
         assert_eq!(copy_texture.definition().extents, copy_extents);
 
-        cmd_buffer.copy_image(
+        cmd_buffer.cmd_copy_image(
             render_texture,
             copy_texture,
             &CmdCopyTextureParams {
@@ -210,7 +216,7 @@ impl OffscreenHelper {
             },
         );
 
-        cmd_buffer.resource_barrier(
+        cmd_buffer.cmd_resource_barrier(
             &[],
             &[TextureBarrier::state_transition(
                 copy_texture,
@@ -223,12 +229,19 @@ impl OffscreenHelper {
         // Present the image
         //
 
+        cmd_buffer.end();
+
         let wait_sem = render_surface.presenter_sem();
-        let graphics_queue = render_context.graphics_queue();
 
-        graphics_queue.submit(&mut [cmd_buffer.finalize()], &[wait_sem], &[], None);
+        render_context
+            .graphics_queue
+            .queue_mut()
+            .submit(&[cmd_buffer], &[wait_sem], &[], None);
 
-        graphics_queue.wait_for_queue_idle()?;
+        render_context
+            .graphics_queue
+            .queue_mut()
+            .wait_for_queue_idle();
 
         let sub_resource = copy_texture.map_texture(PlaneSlice::Default)?;
         copy_fn(sub_resource.data, sub_resource.row_pitch as usize);

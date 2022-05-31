@@ -5,7 +5,7 @@ use lgn_math::{Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
-    components::{CameraComponent, ManipulatorComponent, RenderSurface},
+    components::{CameraComponent, ManipulatorComponent, RenderSurfaceExtents},
     resources::DefaultMeshType,
 };
 
@@ -186,6 +186,7 @@ struct ManipulatorManagerInner {
     current_type: ManipulatorType,
 }
 
+#[derive(Clone)]
 pub struct ManipulatorManager {
     inner: Arc<Mutex<ManipulatorManagerInner>>,
 }
@@ -331,12 +332,12 @@ impl ManipulatorManager {
     pub fn scale_manipulator_for_viewport(
         entity_transform: &GlobalTransform,
         manipulator_transform: &Transform,
-        render_surface: &RenderSurface,
+        render_surface_extents: RenderSurfaceExtents,
         camera: &CameraComponent,
     ) -> GlobalTransform {
         let projection_matrix = camera.build_projection(
-            render_surface.extents().width() as f32,
-            render_surface.extents().height() as f32,
+            render_surface_extents.width() as f32,
+            render_surface_extents.height() as f32,
         );
 
         let view_pos = camera

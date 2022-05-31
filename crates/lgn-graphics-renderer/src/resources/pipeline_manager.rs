@@ -1,8 +1,8 @@
-use std::sync::Arc;
-
 use lgn_graphics_api::{
-    DeviceContext, Pipeline, Shader, ShaderPackage, ShaderStage, ShaderStageDef,
+    ComputePipelineDef, DeviceContext, GraphicsPipelineDef, Pipeline, Shader, ShaderPackage,
+    ShaderStage, ShaderStageDef,
 };
+use std::{collections::HashMap, sync::Arc};
 
 use lgn_graphics_cgen_runtime::{
     CGenCrateID, CGenRegistry, CGenShaderDef, CGenShaderInstance, CGenShaderKey,
@@ -15,13 +15,18 @@ use parking_lot::RwLock;
 use smallvec::SmallVec;
 use strum::{EnumCount, IntoEnumIterator};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PipelineHandle(usize);
 
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone, PartialEq)]
+pub enum PipelineDef {
+    Graphics(GraphicsPipelineDef),
+    Compute(ComputePipelineDef),
+}
+
 struct PipelineInfo {
-    crate_id: CGenCrateID,
-    key: CGenShaderKey,
-    create_pipeline: Box<dyn Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>,
+    pipeline_def: PipelineDef,
 }
 
 pub struct PipelineManager {
@@ -30,16 +35,18 @@ pub struct PipelineManager {
     cgen_registries: Vec<Arc<CGenRegistry>>,
     infos: RwLock<Vec<PipelineInfo>>,
     pipelines: Vec<Option<Pipeline>>,
+    shaders: RwLock<HashMap<(CGenCrateID, CGenShaderKey), Option<Shader>>>,
 }
 
 impl PipelineManager {
-    pub(crate) fn new(device_context: &DeviceContext) -> Self {
+    pub fn new(device_context: &DeviceContext) -> Self {
         Self {
             device_context: device_context.clone(),
             shader_compiler: HlslCompiler::new().unwrap(),
             cgen_registries: Vec::new(),
             infos: RwLock::new(Vec::new()),
             pipelines: Vec::new(),
+            shaders: RwLock::new(HashMap::new()),
         }
     }
 
@@ -55,27 +62,22 @@ impl PipelineManager {
         }
     }
 
-    pub fn register_pipeline<F: Fn(&DeviceContext, &Shader) -> Pipeline + Send + Sync + 'static>(
-        &self,
-        crate_id: CGenCrateID,
-        key: CGenShaderKey,
-        func: F,
-    ) -> PipelineHandle {
-        self.shader_instance(crate_id, key)
-            .expect("Invalid shader key");
+    pub fn register_pipeline(&self, pipeline_def: PipelineDef) -> PipelineHandle {
         {
-            let mut infos = self.infos.write();
-            infos.push(PipelineInfo {
-                crate_id,
-                key,
-                create_pipeline: Box::new(func),
-            });
-            PipelineHandle(infos.len() - 1)
+            let infos = self.infos.read();
+            for (i, info) in infos.iter().enumerate() {
+                if pipeline_def == info.pipeline_def {
+                    return PipelineHandle(i);
+                }
+            }
         }
+        let mut infos = self.infos.write();
+        infos.push(PipelineInfo { pipeline_def });
+        PipelineHandle(infos.len() - 1)
     }
 
     #[span_fn]
-    pub fn update(&mut self) {
+    pub fn frame_update(&mut self, device_context: &DeviceContext) {
         let infos = self.infos.read();
 
         self.pipelines.resize(infos.len(), None);
@@ -83,17 +85,28 @@ impl PipelineManager {
         for i in 0..self.pipelines.len() {
             if self.pipelines[i].is_none() {
                 let info = &infos[i];
-                let shader = self.create_shader(info.crate_id, info.key);
-                if let Some(shader) = shader {
-                    let pipeline = (info.create_pipeline)(&self.device_context, &shader);
-                    self.pipelines[i] = Some(pipeline);
-                }
+                let pipeline = match &info.pipeline_def {
+                    PipelineDef::Graphics(graphics_pipeline_def) => {
+                        device_context.create_graphics_pipeline(graphics_pipeline_def.clone())
+                    }
+                    PipelineDef::Compute(compute_pipeline_def) => {
+                        device_context.create_compute_pipeline(compute_pipeline_def.clone())
+                    }
+                };
+                self.pipelines[i] = Some(pipeline);
             }
         }
     }
 
     #[span_fn]
-    fn create_shader(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<Shader> {
+    pub fn create_shader(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<Shader> {
+        {
+            let shaders = self.shaders.read();
+            if let Some(shader) = shaders.get(&(crate_id, key)) {
+                return shader.clone();
+            };
+        }
+
         // get the instance
         let shader_instance = self.shader_instance(crate_id, key).unwrap();
 
@@ -187,10 +200,16 @@ impl PipelineManager {
             }
         }
 
-        Some(
-            self.device_context
-                .create_shader(shader_stage_defs.to_vec()),
-        )
+        let shader = self
+            .device_context
+            .create_shader(shader_stage_defs.to_vec());
+
+        let shader = {
+            let mut shaders = self.shaders.write();
+            shaders.insert((crate_id, key), Some(shader));
+            shaders.entry((crate_id, key)).or_default().clone() // or_default will always return the shader we just inserted, not default.
+        };
+        shader
     }
 
     fn cgen_registry(&self, crate_id: CGenCrateID) -> Option<&CGenRegistry> {

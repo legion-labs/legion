@@ -13,7 +13,7 @@ use lgn_window::WindowResized;
 use super::{picking_event::PickingEvent, ManipulatorManager, PickingIdContext, PickingManager};
 use crate::{
     components::{
-        CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
+        CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurfaces,
     },
     CommandBufferLabel, RenderStage,
 };
@@ -31,9 +31,7 @@ pub enum PickingSystemLabel {
 
 impl Plugin for PickingPlugin {
     fn build(&self, app: &mut App) {
-        let picking_manager = PickingManager::new(4096);
         app.add_event::<PickingEvent>();
-        app.insert_resource(picking_manager);
 
         app.add_system_to_stage(CoreStage::PostUpdate, gather_input);
         app.add_system_to_stage(CoreStage::PostUpdate, gather_window_resize);
@@ -165,7 +163,7 @@ fn update_manipulator_component(
         &CameraComponent,
         (Without<PickedComponent>, Without<ManipulatorComponent>),
     >,
-    q_render_surfaces: Query<'_, '_, &RenderSurface>,
+    render_surfaces: Res<'_, RenderSurfaces>,
     mut picked_query: Query<
         '_,
         '_,
@@ -225,7 +223,7 @@ fn update_manipulator_component(
 
                 let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
                 if !q_cameras.is_empty() {
-                    for render_surface in q_render_surfaces.iter() {
+                    for render_surface in render_surfaces.iter() {
                         let mut screen_rect = picking_manager.screen_rect();
                         if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
                             screen_rect = Vec2::new(

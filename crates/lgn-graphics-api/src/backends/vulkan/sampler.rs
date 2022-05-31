@@ -15,7 +15,7 @@ impl std::fmt::Debug for VulkanSampler {
 }
 
 impl VulkanSampler {
-    pub fn new(device_context: &DeviceContext, sampler_def: &SamplerDef) -> Self {
+    pub fn new(device_context: &DeviceContext, sampler_def: SamplerDef) -> Self {
         let max_lod = if sampler_def.mip_map_mode == MipMapMode::Linear {
             f32::MAX
         } else {

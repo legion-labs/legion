@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
+use lgn_app::{prelude::*, AppExit, Events, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
@@ -16,18 +16,22 @@ use lgn_graphics_data::{Color, GraphicsPlugin};
 use lgn_graphics_renderer::{
     components::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
-        RenderSurfaceExtents, VisualComponent,
+        RenderSurfaceExtents, RenderSurfaces, VisualComponent,
     },
     resources::{DefaultMeshType, ModelManager, PipelineManager},
     {Renderer, RendererPlugin},
 };
 use lgn_hierarchy::HierarchyPlugin;
-use lgn_input::InputPlugin;
+use lgn_input::{
+    keyboard::{KeyCode, KeyboardInput},
+    InputPlugin,
+};
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
+use lgn_tracing::{flush_monitor::FlushMonitor, LevelFilter};
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
-use lgn_window::{WindowDescriptor, WindowPlugin, Windows};
+use lgn_window::{WindowCloseRequested, WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
 use sample_data::SampleDataPlugin;
 
@@ -58,6 +62,9 @@ impl Default for SnapshotFrameCounter {
 #[clap(name = "graphics-sandbox")]
 #[clap(about = "A sandbox for graphics", version, author)]
 struct Args {
+    /// Verbose
+    #[clap(short, long)]
+    verbose: bool,
     /// The width of the window
     #[clap(short, long, default_value_t = 1280.0)]
     width: f32,
@@ -84,7 +91,13 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let mut app = App::default();
+    let mut telemetry_guard_builder = lgn_telemetry_sink::TelemetryGuardBuilder::default();
+    if args.verbose {
+        telemetry_guard_builder =
+            telemetry_guard_builder.with_max_level_override(LevelFilter::Trace);
+    }
+
+    let mut app = App::new(telemetry_guard_builder);
 
     if args.use_asset_registry {
         let root_asset = args
@@ -93,16 +106,13 @@ fn main() {
             .unwrap_or("(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)")
             .parse::<ResourceTypeAndId>()
             .ok();
-
         let project_folder =
             lgn_config::get_or("editor_srv.project_dir", PathBuf::from("tests/sample-data"))
                 .unwrap();
-
         let asset_registry_settings = AssetRegistrySettings::new(
             Some(project_folder.join("runtime").join("game.manifest")),
             root_asset.into_iter().collect::<Vec<_>>(),
         );
-
         app.insert_resource(asset_registry_settings)
             .add_plugin(lgn_async::AsyncPlugin::default())
             .add_plugin(AssetRegistryPlugin::default())
@@ -118,11 +128,13 @@ fn main() {
             height: args.height,
             ..WindowDescriptor::default()
         })
+        .insert_resource(FlushMonitor::new(5))
         .add_plugin(WindowPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())
         .add_plugin(InputPlugin::default())
-        .add_plugin(GilrsPlugin::default());
+        .add_plugin(GilrsPlugin::default())
+        .add_system_to_stage(CoreStage::Last, tick_flush_monitor);
 
     if args.snapshot {
         app.insert_resource(SnapshotDescriptor {
@@ -143,6 +155,8 @@ fn main() {
         .add_system(on_render_surface_created_for_window.exclusive_system());
     }
 
+    app.add_system_to_stage(CoreStage::Last, check_keyboard_events);
+
     if args.use_asset_registry {
     } else if args.setup_name.eq("light_test") {
         app.add_startup_system(init_light_test);
@@ -160,25 +174,21 @@ fn on_render_surface_created_for_window(
     wnd_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
     winit_wnd_list: NonSend<'_, WinitWindows>,
-    mut render_surfaces: Query<'_, '_, &mut RenderSurface>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     for event in event_render_surface_created.iter() {
-        let render_surface = render_surfaces
-            .iter_mut()
-            .find(|x| x.id() == event.render_surface_id);
-        if let Some(mut render_surface) = render_surface {
-            let wnd = wnd_list.get(event.window_id).unwrap();
-            let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
+        let render_surface = render_surfaces.get_from_window_id_mut(event.window_id);
+        let wnd = wnd_list.get(event.window_id).unwrap();
+        let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
 
-            let winit_wnd = winit_wnd_list.get_window(event.window_id).unwrap();
-            render_surface
-                .register_presenter(|| PresenterWindow::from_window(&renderer, winit_wnd, extents));
-        }
+        let winit_wnd = winit_wnd_list.get_window(event.window_id).unwrap();
+        render_surface
+            .register_presenter(|| PresenterWindow::from_window(&renderer, winit_wnd, extents));
     }
 }
 
 fn presenter_snapshot_system(
-    mut commands: Commands<'_, '_>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
     snapshot_descriptor: Res<'_, SnapshotDescriptor>,
     renderer: Res<'_, Renderer>,
     pipeline_manager: Res<'_, PipelineManager>,
@@ -186,7 +196,7 @@ fn presenter_snapshot_system(
     mut frame_counter: Local<'_, SnapshotFrameCounter>,
 ) {
     if frame_counter.frame_count == 0 {
-        let mut render_surface = RenderSurface::new(
+        let mut render_surface = RenderSurface::new_offscreen_window(
             &renderer,
             &pipeline_manager,
             RenderSurfaceExtents::new(
@@ -195,12 +205,13 @@ fn presenter_snapshot_system(
             ),
         );
         let render_surface_id = render_surface.id();
+        let device_context = renderer.device_context();
 
         render_surface.register_presenter(|| {
             PresenterSnapshot::new(
                 &snapshot_descriptor.setup_name,
                 frame_counter.frame_target,
-                renderer.device_context(),
+                device_context,
                 &pipeline_manager,
                 render_surface_id,
                 RenderSurfaceExtents::new(
@@ -210,14 +221,16 @@ fn presenter_snapshot_system(
             )
         });
 
-        commands.spawn().insert(render_surface);
+        render_surfaces.insert(render_surface);
     } else if frame_counter.frame_count > frame_counter.frame_target {
         app_exit_events.send(AppExit);
     }
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
+fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
+    let model_manager = renderer.render_resources().get_mut::<ModelManager>();
+
     // sphere 1
     commands
         .spawn()
@@ -275,7 +288,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelM
             1.0, 1.0, 0.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional,
+            light_type: LightType::OmniDirectional,
             radiance: 40.0,
             color: Color::WHITE,
             enabled: false,
@@ -289,7 +302,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelM
             -1.0, 1.0, 0.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional,
+            light_type: LightType::OmniDirectional,
             radiance: 40.0,
             color: Color::WHITE,
             enabled: false,
@@ -303,17 +316,18 @@ fn init_light_test(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelM
             0.0, 1.0, 0.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::Spotlight {
-                cone_angle: std::f32::consts::PI / 4.0,
-            },
+            light_type: LightType::Spot,
             radiance: 40.0,
+            cone_angle: std::f32::consts::PI / 4.0,
             color: Color::WHITE,
             enabled: true,
             ..LightComponent::default()
         });
 }
 
-fn init_scene(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManager>) {
+fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
+    let model_manager = renderer.render_resources().get_mut::<ModelManager>();
+
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
@@ -354,7 +368,7 @@ fn init_scene(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManage
             1.0, 1.0, 0.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::Omnidirectional,
+            light_type: LightType::OmniDirectional,
             radiance: 10.0,
             color: Color::new(127, 127, 127, 255),
             enabled: true,
@@ -363,13 +377,30 @@ fn init_scene(mut commands: Commands<'_, '_>, model_manager: Res<'_, ModelManage
 }
 
 fn on_snapshot_app_exit(
-    mut commands: Commands<'_, '_>,
     mut app_exit: EventReader<'_, '_, AppExit>,
-    query_render_surface: Query<'_, '_, (Entity, &RenderSurface)>,
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
 ) {
     if app_exit.iter().last().is_some() {
-        for (entity, _) in query_render_surface.iter() {
-            commands.entity(entity).despawn();
+        render_surfaces.clear();
+    }
+}
+
+fn tick_flush_monitor(flush_monitor: Res<'_, FlushMonitor>) {
+    flush_monitor.tick();
+}
+
+fn check_keyboard_events(
+    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
+    mut window_close_requested_events: ResMut<'_, Events<WindowCloseRequested>>,
+    windows: Res<'_, Windows>,
+) {
+    for keyboard_input_event in keyboard_input_events.iter() {
+        if let Some(key_code) = keyboard_input_event.key_code {
+            if key_code == KeyCode::Escape && keyboard_input_event.state.is_pressed() {
+                window_close_requested_events.send(WindowCloseRequested {
+                    id: windows.get_primary().unwrap().id(),
+                });
+            }
         }
     }
 }

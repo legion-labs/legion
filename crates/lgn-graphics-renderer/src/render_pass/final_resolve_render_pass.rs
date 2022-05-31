@@ -1,16 +1,15 @@
 use lgn_graphics_api::{
-    AddressMode, BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, CullMode,
-    DepthState, DeviceContext, FilterType, Format, GraphicsPipelineDef, LoadOp, MipMapMode,
-    PrimitiveTopology, RasterizerState, ResourceState, SampleCount, Sampler, SamplerDef, StencilOp,
-    StoreOp, TextureView, VertexLayout,
+    AddressMode, BlendState, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, CompareOp,
+    CullMode, DepthState, DeviceContext, FilterType, Format, GraphicsPipelineDef, LoadOp,
+    MipMapMode, PrimitiveTopology, RasterizerState, ResourceState, SampleCount, Sampler,
+    SamplerDef, StencilOp, StoreOp, TextureView, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
 use crate::{
     cgen,
     components::RenderSurface,
-    hl_gfx_api::HLCommandBuffer,
-    resources::{PipelineHandle, PipelineManager},
+    resources::{PipelineDef, PipelineHandle, PipelineManager},
     RenderContext,
 };
 
@@ -21,38 +20,36 @@ pub struct FinalResolveRenderPass {
 
 impl FinalResolveRenderPass {
     pub fn new(device_context: &DeviceContext, pipeline_manager: &PipelineManager) -> Self {
-        let linear_sampler_def = SamplerDef {
-            min_filter: FilterType::Nearest,
-            mag_filter: FilterType::Nearest,
-            mip_map_mode: MipMapMode::Nearest,
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mip_lod_bias: 0.0,
-            max_anisotropy: 1.0,
-            compare_op: CompareOp::Never,
-        };
-
         Self {
             pipeline_handle: build_final_resolve_pso(pipeline_manager),
-            linear_sampler: device_context.create_sampler(&linear_sampler_def),
+            linear_sampler: device_context.create_sampler(SamplerDef {
+                min_filter: FilterType::Nearest,
+                mag_filter: FilterType::Nearest,
+                mip_map_mode: MipMapMode::Nearest,
+                address_mode_u: AddressMode::ClampToEdge,
+                address_mode_v: AddressMode::ClampToEdge,
+                address_mode_w: AddressMode::ClampToEdge,
+                mip_lod_bias: 0.0,
+                max_anisotropy: 1.0,
+                compare_op: CompareOp::Never,
+            }),
         }
     }
 
     pub fn render(
         &self,
-        render_context: &RenderContext<'_>,
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         resolve_rtv: &TextureView,
     ) {
         cmd_buffer.with_label("Final resolve", |cmd_buffer| {
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.pipeline_handle)
                 .unwrap();
 
-            cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.cmd_bind_pipeline(pipeline);
 
             render_surface
                 .hdr_rt_mut()
@@ -66,12 +63,12 @@ impl FinalResolveRenderPass {
                 cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
                 descriptor_set.descriptor_refs(),
             );
-            cmd_buffer.bind_descriptor_set(
+            cmd_buffer.cmd_bind_descriptor_set_handle(
                 cgen::descriptor_set::FinalResolveDescriptorSet::descriptor_set_layout(),
                 descriptor_set_handle,
             );
 
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: resolve_rtv,
                     load_op: LoadOp::DontCare,
@@ -81,9 +78,9 @@ impl FinalResolveRenderPass {
                 &None,
             );
 
-            cmd_buffer.draw(3, 0);
+            cmd_buffer.cmd_draw(3, 0);
 
-            cmd_buffer.end_render_pass();
+            cmd_buffer.cmd_end_render_pass();
         });
     }
 }
@@ -108,32 +105,30 @@ fn build_final_resolve_pso(pipeline_manager: &PipelineManager) -> PipelineHandle
         back_stencil_pass_op: StencilOp::default(),
     };
 
-    let resterizer_state = lgn_graphics_api::RasterizerState {
+    let rasterizer_state = lgn_graphics_api::RasterizerState {
         cull_mode: CullMode::Back,
         ..RasterizerState::default()
     };
 
-    pipeline_manager.register_pipeline(
-        cgen::CRATE_ID,
-        CGenShaderKey::make(
-            cgen::shader::final_resolve_shader::ID,
-            cgen::shader::final_resolve_shader::NONE,
-        ),
-        move |device_context, shader| {
-            device_context
-                .create_graphics_pipeline(&GraphicsPipelineDef {
-                    shader,
-                    root_signature,
-                    vertex_layout: &VertexLayout::default(),
-                    blend_state: &BlendState::default_alpha_disabled(),
-                    depth_state: &depth_state,
-                    rasterizer_state: &resterizer_state,
-                    color_formats: &[Format::B8G8R8A8_UNORM],
-                    sample_count: SampleCount::SampleCount1,
-                    depth_stencil_format: None,
-                    primitive_topology: PrimitiveTopology::TriangleList,
-                })
-                .unwrap()
-        },
-    )
+    let shader = pipeline_manager
+        .create_shader(
+            cgen::CRATE_ID,
+            CGenShaderKey::make(
+                cgen::shader::final_resolve_shader::ID,
+                cgen::shader::final_resolve_shader::NONE,
+            ),
+        )
+        .unwrap();
+    pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+        shader,
+        root_signature: root_signature.clone(),
+        vertex_layout: VertexLayout::default(),
+        blend_state: BlendState::default_alpha_disabled(),
+        depth_state,
+        rasterizer_state,
+        color_formats: vec![Format::B8G8R8A8_UNORM],
+        sample_count: SampleCount::SampleCount1,
+        depth_stencil_format: None,
+        primitive_topology: PrimitiveTopology::TriangleList,
+    }))
 }

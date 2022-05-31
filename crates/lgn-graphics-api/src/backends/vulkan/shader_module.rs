@@ -1,3 +1,6 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
 use ash::vk;
 
 use crate::{DeviceContext, GfxResult, ShaderModule, ShaderModuleDef};
@@ -5,6 +8,13 @@ use crate::{DeviceContext, GfxResult, ShaderModule, ShaderModuleDef};
 #[derive(Debug)]
 pub(crate) struct VulkanShaderModule {
     shader_module: vk::ShaderModule,
+    spv_hash: u64,
+}
+
+impl PartialEq for VulkanShaderModule {
+    fn eq(&self, other: &Self) -> bool {
+        self.spv_hash == other.spv_hash
+    }
 }
 
 impl VulkanShaderModule {
@@ -29,6 +39,10 @@ impl VulkanShaderModule {
     }
 
     fn new_from_spv(device_context: &DeviceContext, data: &[u32]) -> GfxResult<Self> {
+        let mut hasher = DefaultHasher::new();
+        data.hash(&mut hasher);
+        let spv_hash = hasher.finish();
+
         let create_info = vk::ShaderModuleCreateInfo::builder().code(data);
 
         let shader_module = unsafe {
@@ -37,7 +51,10 @@ impl VulkanShaderModule {
                 .create_shader_module(&create_info, None)?
         };
 
-        Ok(Self { shader_module })
+        Ok(Self {
+            shader_module,
+            spv_hash,
+        })
     }
 }
 

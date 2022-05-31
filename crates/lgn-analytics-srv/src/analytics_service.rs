@@ -109,7 +109,7 @@ impl AnalyticsService {
             cache: Arc::new(DiskCache::new(cache_blobs.clone())),
             jit_lakehouse,
             call_trees: Arc::new(CallTreeStore::new(pool, data_lake_blobs, cache_blobs)),
-            flush_monitor: FlushMonitor::new(),
+            flush_monitor: FlushMonitor::default(),
         }
     }
 

@@ -2,9 +2,7 @@ use std::ffi::CString;
 
 use ash::vk;
 
-use crate::{
-    ComputePipelineDef, DeviceContext, GfxResult, GraphicsPipelineDef, Pipeline, ShaderStageFlags,
-};
+use crate::{ComputePipelineDef, DeviceContext, GraphicsPipelineDef, Pipeline, ShaderStageFlags};
 
 #[derive(Debug)]
 pub(crate) struct VulkanPipeline {
@@ -14,8 +12,8 @@ pub(crate) struct VulkanPipeline {
 impl VulkanPipeline {
     pub fn new_graphics_pipeline(
         device_context: &DeviceContext,
-        pipeline_def: &GraphicsPipelineDef<'_>,
-    ) -> GfxResult<Self> {
+        pipeline_def: GraphicsPipelineDef,
+    ) -> Self {
         //log::trace!("Create pipeline\n{:#?}", pipeline_def);
 
         //TODO: Cache
@@ -114,10 +112,10 @@ impl VulkanPipeline {
             .alpha_to_one_enable(false);
 
         let rasterization_state =
-            super::internal::rasterizer_state_to_create_info(pipeline_def.rasterizer_state);
-        let depth_state = super::internal::depth_state_to_create_info(pipeline_def.depth_state);
+            super::internal::rasterizer_state_to_create_info(&pipeline_def.rasterizer_state);
+        let depth_state = super::internal::depth_state_to_create_info(&pipeline_def.depth_state);
         let blend_state = super::internal::blend_state_to_create_info(
-            pipeline_def.blend_state,
+            &pipeline_def.blend_state,
             pipeline_def.color_formats.len(),
         );
 
@@ -165,15 +163,16 @@ impl VulkanPipeline {
                 Ok(result) => Ok(result),
                 Err(e) => Err(e.1),
             }
-        }?[0];
+        }
+        .unwrap()[0];
 
-        Ok(Self { vk_pipeline })
+        Self { vk_pipeline }
     }
 
     pub fn new_compute_pipeline(
         device_context: &DeviceContext,
-        pipeline_def: &ComputePipelineDef<'_>,
-    ) -> GfxResult<Self> {
+        pipeline_def: ComputePipelineDef,
+    ) -> Self {
         //log::trace!("Create pipeline\n{:#?}", pipeline_def);
 
         //TODO: Cache
@@ -211,9 +210,10 @@ impl VulkanPipeline {
                 Ok(result) => Ok(result),
                 Err(e) => Err(e.1),
             }
-        }?[0];
+        }
+        .unwrap()[0];
 
-        Ok(Self { vk_pipeline })
+        Self { vk_pipeline }
     }
 
     pub fn destroy(&self, device_context: &DeviceContext) {

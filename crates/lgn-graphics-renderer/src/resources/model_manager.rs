@@ -34,7 +34,7 @@ pub struct ModelMetaData {
 }
 
 pub struct ModelManager {
-    model_meta_datas: BTreeMap<ResourceTypeAndId, ModelMetaData>,
+    model_meta_data: BTreeMap<ResourceTypeAndId, ModelMetaData>,
     default_model_ids: Vec<ResourceTypeAndId>,
 }
 
@@ -42,7 +42,7 @@ impl ModelManager {
     pub fn new(mesh_manager: &MeshManager, material_manager: &MaterialManager) -> Self {
         let default_material_id = material_manager.get_default_material_id();
 
-        let mut model_meta_datas = BTreeMap::new();
+        let mut model_meta_data = BTreeMap::new();
 
         let default_model_ids = DefaultMeshType::iter()
             .map(|_| ResourceTypeAndId {
@@ -55,7 +55,7 @@ impl ModelManager {
             // TODO(vdbdd): reserved range of runtime resource id
             let resource_id = default_model_ids[default_mesh_type as usize];
 
-            model_meta_datas.insert(
+            model_meta_data.insert(
                 resource_id,
                 ModelMetaData {
                     mesh_instances: vec![MeshInstance {
@@ -67,7 +67,7 @@ impl ModelManager {
         }
 
         Self {
-            model_meta_datas,
+            model_meta_data,
             default_model_ids,
         }
     }
@@ -88,7 +88,7 @@ impl ModelManager {
     }
 
     pub fn add_model(&mut self, resource_id: ResourceTypeAndId, model: ModelMetaData) {
-        self.model_meta_datas.insert(resource_id, model);
+        self.model_meta_data.insert(resource_id, model);
     }
 
     pub fn get_default_model(&self, default_mesh_type: DefaultMeshType) -> &ModelMetaData {
@@ -100,19 +100,24 @@ impl ModelManager {
         &self,
         model_resource_id: &ResourceTypeAndId,
     ) -> Option<&ModelMetaData> {
-        self.model_meta_datas.get(model_resource_id)
+        self.model_meta_data.get(model_resource_id)
     }
 }
 
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn update_models(
-    renderer: Res<'_, Renderer>,
-    mut model_manager: ResMut<'_, ModelManager>,
-    mut mesh_manager: ResMut<'_, MeshManager>,
-    material_manager: Res<'_, MaterialManager>,
+    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
     updated_models: Query<'_, '_, &ModelComponent, Changed<ModelComponent>>,
-    mut missing_visuals_tracker: ResMut<'_, MissingVisualTracker>,
 ) {
+    let mut mesh_manager = renderer.render_resources().get_mut::<MeshManager>();
+    let mut model_manager = renderer.render_resources().get_mut::<ModelManager>();
+    let material_manager = renderer.render_resources().get::<MaterialManager>();
+    let mut missing_visuals_tracker = renderer
+        .render_resources()
+        .get_mut::<MissingVisualTracker>();
+
+    let mut render_commands = renderer.render_command_builder();
+
     for updated_model in updated_models.iter() {
         let model_resource_id = &updated_model.resource.id();
 
@@ -121,7 +126,7 @@ pub(crate) fn update_models(
         let mut mesh_instances = Vec::new();
 
         for mesh in &updated_model.meshes {
-            let mesh_id = mesh_manager.add_mesh(&renderer, mesh);
+            let mesh_id = mesh_manager.add_mesh(&mut render_commands, mesh);
 
             // for (idx, mesh) in updated_model.meshes.iter().enumerate() {
             /*
@@ -164,7 +169,6 @@ pub(crate) fn update_models(
                 mesh_id,
                 material_id,
             });
-            // }
         }
 
         model_manager.add_model(*model_resource_id, ModelMetaData { mesh_instances });
@@ -175,11 +179,13 @@ pub(crate) fn update_models(
 fn debug_bounding_spheres(
     debug_display: Res<'_, DebugDisplay>,
     bump_allocator_pool: Res<'_, BumpAllocatorPool>,
-    model_manager: Res<'_, ModelManager>,
-    mesh_manager: Res<'_, MeshManager>,
+    renderer: Res<'_, Renderer>,
     renderer_options: Res<'_, RendererOptions>,
     visuals: Query<'_, '_, (&VisualComponent, &Transform)>,
 ) {
+    let mesh_manager = renderer.render_resources().get_mut::<MeshManager>();
+    let model_manager = renderer.render_resources().get_mut::<ModelManager>();
+
     if !renderer_options.show_bounding_spheres {
         return;
     }

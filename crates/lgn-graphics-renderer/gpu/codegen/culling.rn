@@ -25,7 +25,7 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
         },
         #{
             type: "Struct",
-            name: "CullingEfficiancyStats",
+            name: "CullingEfficiencyStats",
             fields: [
                 #{ name:"total_elements", ty:"Uint1" },
                 #{ name:"frustum_visible", ty:"Uint1" },
@@ -70,8 +70,9 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
                 #{ name:"culled_count", type:"RWStructuredBuffer", content:"Uint1" },
                 #{ name:"culled_args", type:"RWStructuredBuffer", content:"Uint3" },
                 #{ name:"culled_instances", type:"RWStructuredBuffer", content:"GpuInstanceData" },
-                #{ name:"culling_efficiency", type:"RWStructuredBuffer", content:"CullingEfficiancyStats" },
+                #{ name:"culling_efficiency", type:"RWStructuredBuffer", content:"CullingEfficiencyStats" },
                 #{ name:"culling_debug", type:"RWStructuredBuffer", content:"CullingDebugData" },
+                #{ name: "hzb_texture", type: "Texture2D", content:"Float1" },
             ]
         },
         #{

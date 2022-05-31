@@ -6,8 +6,7 @@ pub fn main() {
             values: [
                 "NORMAL",
                 "TANGENT",
-                "TEX_COORD",
-                "INDEX",
+                "TEX_COORD",   
                 "COLOR",
             ]
         },

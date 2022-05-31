@@ -1,15 +1,18 @@
 use lgn_tracing::trace;
 
-use crate::{Buffer, BufferCopy, BufferDef, DeviceContext, ResourceUsage};
+use crate::{Buffer, BufferCopy, BufferDef, BufferMappingInfo, DeviceContext, ResourceUsage};
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
+    vkmem_allocation: vk_mem::Allocation,
+    vkmem_allocation_info: vk_mem::AllocationInfo,
     vk_buffer: ash::vk::Buffer,
-    vk_mem_requirements: ash::vk::MemoryRequirements,
 }
 
 impl VulkanBuffer {
-    pub fn new(device_context: &DeviceContext, buffer_def: &BufferDef) -> Self {
+    pub fn new(device_context: &DeviceContext, buffer_def: BufferDef) -> Self {
+        trace!("creating VulkanBuffer");
+
         buffer_def.verify();
         let allocation_size = if buffer_def
             .usage_flags
@@ -34,7 +37,7 @@ impl VulkanBuffer {
         }
 
         let creation_flags =
-            super::internal::resource_type_buffer_creation_flags(buffer_def.creation_flags);
+            super::internal::resource_type_buffer_creation_flags(buffer_def.create_flags);
 
         assert_ne!(allocation_size, 0);
 
@@ -44,18 +47,28 @@ impl VulkanBuffer {
             .usage(usage_flags)
             .sharing_mode(ash::vk::SharingMode::EXCLUSIVE);
 
-        let vk_buffer = unsafe {
-            device_context
-                .vk_device()
-                .create_buffer(&buffer_info, None)
-                .unwrap()
+        let mut alloc_flags = vk_mem::AllocationCreateFlags::NONE;
+
+        alloc_flags |= vk_mem::AllocationCreateFlags::USER_DATA_COPY_STRING;
+
+        if buffer_def.always_mapped {
+            alloc_flags |= vk_mem::AllocationCreateFlags::MAPPED;
+        }
+
+        let allocation_create_info = vk_mem::AllocationCreateInfo {
+            usage: buffer_def.memory_usage.into(),
+            flags: alloc_flags,
+            required_flags: ash::vk::MemoryPropertyFlags::empty(),
+            preferred_flags: ash::vk::MemoryPropertyFlags::empty(),
+            memory_type_bits: 0, // Do not exclude any memory types
+            pool: None,
+            user_data: None,
         };
 
-        let vk_mem_requirements = unsafe {
-            device_context
-                .vk_device()
-                .get_buffer_memory_requirements(vk_buffer)
-        };
+        let (vk_buffer, vk_allocation, vk_allocation_info) = device_context
+            .vk_allocator()
+            .create_buffer(&buffer_info, &allocation_create_info)
+            .unwrap();
 
         trace!(
             "Buffer {:?} created with size {}",
@@ -64,8 +77,9 @@ impl VulkanBuffer {
         );
 
         Self {
+            vkmem_allocation: vk_allocation,
+            vkmem_allocation_info: vk_allocation_info,
             vk_buffer,
-            vk_mem_requirements,
         }
     }
 
@@ -93,8 +107,36 @@ impl Buffer {
         self.inner.backend_buffer.vk_buffer
     }
 
-    pub(crate) fn backend_required_alignment(&self) -> u64 {
-        self.inner.backend_buffer.vk_mem_requirements.alignment
+    pub(crate) fn vkmem_allocation(&self) -> vk_mem::Allocation {
+        self.inner.backend_buffer.vkmem_allocation
+    }
+
+    pub(crate) fn backend_map_buffer(&self) -> BufferMappingInfo<'_> {
+        let ptr = self
+            .inner
+            .device_context
+            .vk_allocator()
+            .map_memory(&self.inner.backend_buffer.vkmem_allocation)
+            .unwrap();
+
+        BufferMappingInfo {
+            _buffer: self,
+            data_ptr: ptr,
+        }
+    }
+
+    pub(crate) fn backend_unmap_buffer(&self) {
+        self.inner
+            .device_context
+            .vk_allocator()
+            .unmap_memory(&self.inner.backend_buffer.vkmem_allocation);
+    }
+
+    pub(crate) fn backend_mapped_ptr(&self) -> *mut u8 {
+        self.inner
+            .backend_buffer
+            .vkmem_allocation_info
+            .get_mapped_data()
     }
 }
 

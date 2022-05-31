@@ -1,15 +1,14 @@
-use lgn_graphics_api::Buffer;
+use lgn_graphics_api::{Buffer, CommandBuffer, ResourceUsage};
 
 use crate::{
-    hl_gfx_api::HLCommandBuffer,
-    resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater},
+    resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator},
     RenderContext,
 };
 
 use super::{GpuInstanceId, RenderBatch, RenderElement, RenderStateSet};
 
 pub struct RenderLayer {
-    state_page: StaticBufferAllocation,
+    pub(crate) state_page: StaticBufferAllocation,
     state_to_batch: Vec<u32>,
     batches: Vec<RenderBatch>,
     cpu_render_set: bool,
@@ -19,11 +18,11 @@ pub struct RenderLayer {
 impl RenderLayer {
     pub fn new(allocator: &UnifiedStaticBufferAllocator, cpu_render_set: bool) -> Self {
         const TEMP_MAX_MATERIAL_COUNT: usize = 8192;
-        let page_size = TEMP_MAX_MATERIAL_COUNT * std::mem::size_of::<u32>();
-        let material_page = allocator.allocate_segment(page_size as u64);
+        let page_size = TEMP_MAX_MATERIAL_COUNT * std::mem::size_of::<u64>();
+        let state_page = allocator.allocate(page_size as u64, ResourceUsage::empty());
 
         Self {
-            state_page: material_page,
+            state_page,
             state_to_batch: vec![],
             batches: vec![],
             cpu_render_set,
@@ -68,10 +67,9 @@ impl RenderLayer {
 
     pub fn aggregate_offsets(
         &mut self,
-        updater: &mut UniformGPUDataUpdater,
         count_buffer_offset: &mut u64,
         indirect_arg_buffer_offset: &mut u64,
-    ) {
+    ) -> Vec<(u32, u32)> {
         if !self.cpu_render_set && !self.state_to_batch.is_empty() {
             let mut per_batch_offsets: Vec<(u32, u32)> = Vec::new();
             per_batch_offsets.resize(self.batches.len(), (0, 0));
@@ -92,22 +90,28 @@ impl RenderLayer {
                 per_state_offsets[state_id] = per_batch_offsets[*batch_id as usize];
             }
 
-            updater.add_update_jobs(&per_state_offsets, self.state_page.offset());
+            per_state_offsets
+        } else {
+            vec![]
         }
     }
 
-    pub fn offsets_va(&self) -> u32 {
+    pub fn offsets_va(&self) -> u64 {
         if !self.cpu_render_set && !self.state_to_batch.is_empty() {
-            self.state_page.offset() as u32
+            self.state_page.byte_offset()
         } else {
             0
         }
     }
 
+    pub fn gpu_culling_enabled(&self) -> bool {
+        !self.cpu_render_set
+    }
+
     pub fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {

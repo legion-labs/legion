@@ -99,8 +99,8 @@ impl VulkanSwapchain {
     pub fn new(
         device_context: &DeviceContext,
         raw_window_handle: &dyn HasRawWindowHandle,
-        swapchain_def: &SwapchainDef,
-    ) -> GfxResult<Self> {
+        swapchain_def: SwapchainDef,
+    ) -> Self {
         // Get the surface, needed to select the best queue family
         let surface = unsafe {
             crate::backends::vulkan::create_surface(
@@ -108,7 +108,8 @@ impl VulkanSwapchain {
                 device_context.vk_instance(),
                 raw_window_handle,
                 None,
-            )?
+            )
+            .unwrap()
         };
 
         let surface_loader = device_context.deferred_dropper().new_drc(khr::Surface::new(
@@ -116,7 +117,7 @@ impl VulkanSwapchain {
             device_context.vk_instance(),
         ));
 
-        let present_mode_priority = present_mode_priority(swapchain_def);
+        let present_mode_priority = present_mode_priority(&swapchain_def);
 
         let swapchain = SwapchainVulkanInstance::new(
             device_context,
@@ -128,18 +129,20 @@ impl VulkanSwapchain {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
             },
+            swapchain_def.backbuffer_count,
         )
-        .map_err(|e| format!("{:?}", e))?;
+        .map_err(|e| format!("{:?}", e))
+        .unwrap();
 
-        let swapchain_images = Self::setup_swapchain_images(device_context, &swapchain)?;
+        let swapchain_images = Self::setup_swapchain_images(device_context, &swapchain);
 
-        Ok(Self {
+        Self {
             swapchain: ManuallyDrop::new(swapchain),
             surface,
             surface_loader,
             swapchain_images,
             last_image_suboptimal: false,
-        })
+        }
     }
 
     pub fn destroy(&mut self) {
@@ -156,13 +159,13 @@ impl VulkanSwapchain {
     fn setup_swapchain_images(
         device_context: &DeviceContext,
         swapchain: &SwapchainVulkanInstance,
-    ) -> GfxResult<Vec<SwapchainImage>> {
-        let queue = device_context.create_queue(QueueType::Graphics)?;
-        let cmd_pool = queue.create_command_pool(&CommandPoolDef { transient: true })?;
-        let mut command_buffer = cmd_pool.create_command_buffer(&CommandBufferDef {
+    ) -> Vec<SwapchainImage> {
+        let mut queue = device_context.create_queue(QueueType::Graphics);
+        let mut cmd_pool = queue.create_command_pool(CommandPoolDef { transient: true });
+        let mut command_buffer = cmd_pool.create_command_buffer(CommandBufferDef {
             is_secondary: false,
-        })?;
-        command_buffer.begin()?;
+        });
+        command_buffer.begin();
 
         let swapchain_images = swapchain._images();
 
@@ -179,10 +182,13 @@ impl VulkanSwapchain {
 
         command_buffer.cmd_resource_barrier(&[], &image_barriers);
 
-        command_buffer.end()?;
-        queue.submit(&mut [&mut command_buffer], &[], &[], None)?;
-        queue.wait_for_queue_idle()?;
-        Ok(swapchain_images)
+        command_buffer.end();
+
+        queue.submit(&[&command_buffer], &[], &[], None);
+
+        queue.wait_for_queue_idle();
+
+        swapchain_images
     }
 }
 
@@ -277,10 +283,8 @@ impl Swapchain {
         }
     }
 
-    pub(crate) fn backend_rebuild(&mut self, swapchain_def: &SwapchainDef) -> GfxResult<()> {
-        self.swapchain_def = swapchain_def.clone();
-
-        let present_mode_priority = present_mode_priority(swapchain_def);
+    pub(crate) fn backend_rebuild(&mut self, swapchain_def: SwapchainDef) {
+        let present_mode_priority = present_mode_priority(&swapchain_def);
         let device_context = &self.device_context;
         let new_swapchain = SwapchainVulkanInstance::new(
             device_context,
@@ -292,19 +296,20 @@ impl Swapchain {
                 width: swapchain_def.width,
                 height: swapchain_def.height,
             },
-        )?;
+            swapchain_def.backbuffer_count,
+        )
+        .unwrap();
 
         unsafe {
             ManuallyDrop::drop(&mut self.backend_swapchain.swapchain);
         }
+        self.swapchain_def = swapchain_def;
         self.backend_swapchain.swapchain = ManuallyDrop::new(new_swapchain);
-
         self.backend_swapchain.last_image_suboptimal = false;
         self.backend_swapchain.swapchain_images = VulkanSwapchain::setup_swapchain_images(
             device_context,
             &self.backend_swapchain.swapchain,
-        )?;
-        Ok(())
+        );
     }
 }
 
@@ -333,6 +338,7 @@ impl SwapchainVulkanInstance {
         old_swapchain: Option<vk::SwapchainKHR>,
         present_mode_priority: &[VkPresentMode],
         window_inner_size: Extent2D,
+        backbufffer_count: u32,
     ) -> VkResult<Self> {
         let (available_formats, available_present_modes, surface_capabilities) =
             Self::query_swapchain_support(
@@ -373,6 +379,7 @@ impl SwapchainVulkanInstance {
             swapchain_image_usage_flags,
             old_swapchain,
             present_queue_family_index,
+            backbufffer_count,
         )?;
 
         let swapchain_images = unsafe {
@@ -406,7 +413,7 @@ impl SwapchainVulkanInstance {
         for (image_index, image) in self.swapchain_images.iter().enumerate() {
             let raw_image = VulkanRawImage {
                 vk_image: *image,
-                vk_allocation: None,
+                vkmem_allocation: None,
                 vk_device_memory: None,
                 vk_alloc_size: 0,
             };
@@ -415,8 +422,7 @@ impl SwapchainVulkanInstance {
             let texture = Texture::from_existing(
                 &self.device_context,
                 Some(raw_image),
-                &TextureDef {
-                    name: "Swapchain".to_string(),
+                TextureDef {
                     extents: Extents3D {
                         width: self.swapchain_info.extents.width,
                         height: self.swapchain_info.extents.height,
@@ -429,12 +435,13 @@ impl SwapchainVulkanInstance {
                         | ResourceUsage::AS_RENDER_TARGET
                         | ResourceUsage::AS_TRANSFERABLE,
                     resource_flags: ResourceFlags::empty(),
-                    mem_usage: MemoryUsage::GpuOnly,
+                    memory_usage: MemoryUsage::GpuOnly,
                     tiling: TextureTiling::Optimal,
                 },
             );
+            texture.set_name("Swapchain");
 
-            let render_target_view = texture.create_view(&TextureViewDef::as_render_view(
+            let render_target_view = texture.create_view(TextureViewDef::as_render_view(
                 texture.definition(),
                 GPUViewType::RenderTarget,
             ));
@@ -644,25 +651,16 @@ impl SwapchainVulkanInstance {
         swapchain_image_usage_flags: vk::ImageUsageFlags,
         old_swapchain: Option<vk::SwapchainKHR>,
         present_queue_family_index: u32,
+        backbufffer_count: u32,
     ) -> VkResult<CreateSwapchainResult> {
         trace!("VkSwapchain::create_swapchain");
-        // "simply sticking to this minimum means that we may sometimes have to wait on
-        // the driver to complete internal operations before we can acquire
-        // another image to render to. Therefore it is recommended to request at
-        // least one more image than the minimum"
-        let mut min_image_count = surface_capabilities.min_image_count + 1;
-
-        // But if there is a limit, we must not exceed it
-        if surface_capabilities.max_image_count > 0 {
-            min_image_count = u32::min(min_image_count, surface_capabilities.max_image_count);
-        }
 
         let swapchain_loader =
             khr::Swapchain::new(device_context.vk_instance(), device_context.vk_device());
 
         let mut swapchain_create_info = vk::SwapchainCreateInfoKHR::builder()
             .surface(surface)
-            .min_image_count(min_image_count)
+            .min_image_count(backbufffer_count)
             .image_format(surface_format.format)
             .image_color_space(surface_format.color_space)
             .image_extent(extents)

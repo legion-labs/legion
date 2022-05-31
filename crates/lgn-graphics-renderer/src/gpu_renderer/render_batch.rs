@@ -1,6 +1,6 @@
-use lgn_graphics_api::Buffer;
+use lgn_graphics_api::{Buffer, CommandBuffer};
 
-use crate::{hl_gfx_api::HLCommandBuffer, resources::PipelineHandle, RenderContext};
+use crate::{resources::PipelineHandle, RenderContext};
 
 use super::{GpuInstanceId, RenderElement};
 
@@ -69,7 +69,7 @@ impl RenderBatch {
     pub fn draw(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         indirect_arg_buffer: Option<&Buffer>,
         count_buffer: Option<&Buffer>,
     ) {
@@ -78,16 +78,16 @@ impl RenderBatch {
 
         if self.element_count > 0 || !self.elements.is_empty() {
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.state_set.pipeline_handle)
                 .unwrap();
 
-            cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.cmd_bind_pipeline(pipeline);
 
             render_context.bind_default_descriptor_sets(cmd_buffer);
 
             if self.element_count > 0 {
-                cmd_buffer.draw_indexed_indirect_count(
+                cmd_buffer.cmd_draw_indexed_indirect_count(
                     indirect_arg_buffer.unwrap(),
                     self.element_offset * INDIRECT_ARG_STRIDE,
                     count_buffer.unwrap(),

@@ -4,15 +4,15 @@ use lgn_app::App;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::{prelude::*, schedule::SystemLabel};
 use lgn_graphics_api::{
-    BufferDef, CmdCopyBufferToTextureParams, CommandBuffer, DeviceContext, Extents3D, Format,
-    MemoryAllocation, MemoryAllocationDef, MemoryUsage, QueueType, ResourceFlags, ResourceState,
-    ResourceUsage, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    DeviceContext, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceUsage, TextureDef,
+    TextureTiling, TextureView, TextureViewDef,
 };
 use lgn_graphics_data::TextureFormat;
 use lgn_tracing::span_fn;
 
 use crate::{
     components::{TextureComponent, TextureData},
+    core::UploadTextureCommand,
     labels::RenderStage,
     Renderer, ResourceStageLabel,
 };
@@ -25,7 +25,7 @@ pub enum TextureEvent {
 
 struct UploadTextureJob {
     entity: Entity,
-    texture_data: Option<TextureData>,
+    texture_data: TextureData,
 }
 
 struct RemoveTextureJob {
@@ -102,7 +102,7 @@ impl TextureManager {
     pub fn allocate_texture(&mut self, entity: Entity, texture_component: &TextureComponent) {
         let texture_def = Self::texture_def_from_texture_component(texture_component);
 
-        let texture_view = self.create_texture_view(&texture_def);
+        let texture_view = self.create_texture_view(&texture_def, "material_texture");
 
         self.texture_infos.insert(
             entity,
@@ -119,7 +119,7 @@ impl TextureManager {
 
         self.texture_jobs.push(TextureJob::Upload(UploadTextureJob {
             entity,
-            texture_data: Some(texture_component.texture_data.clone()),
+            texture_data: texture_component.texture_data.clone(),
         }));
 
         let texture_info = self.texture_info_mut(entity);
@@ -140,14 +140,14 @@ impl TextureManager {
         };
 
         if recreate_texture_view {
-            let texture_view = self.create_texture_view(&texture_def);
+            let texture_view = self.create_texture_view(&texture_def, "material_texture");
             let texture_info = self.texture_info_mut(entity);
             texture_info.texture_view = texture_view;
         }
 
         self.texture_jobs.push(TextureJob::Upload(UploadTextureJob {
             entity,
-            texture_data: Some(texture_component.texture_data.clone()),
+            texture_data: texture_component.texture_data.clone(),
         }));
 
         let texture_info = self.texture_info_mut(entity);
@@ -234,47 +234,20 @@ impl TextureManager {
 
     #[span_fn]
     fn upload_texture(&mut self, renderer: &Renderer, upload_job: &UploadTextureJob) {
-        let device_context = renderer.device_context();
-        let cmd_buffer_pool = renderer.acquire_command_buffer_pool(QueueType::Graphics);
-        let mut cmd_buffer = cmd_buffer_pool.acquire();
+        let texture_info = self.texture_infos.get(&upload_job.entity).unwrap();
 
-        cmd_buffer.begin().unwrap();
+        let mut render_commands = renderer.render_command_builder();
 
-        // let gpu_texture_id = upload_job.gpu_texture_id;
-        let entity = upload_job.entity;
-        let texture_info = self.texture_infos.get(&entity).unwrap();
-        {
-            let texture = texture_info.texture_view.texture();
-            let texture_data = upload_job.texture_data.as_ref().unwrap();
-            let mip_slices = texture_data.data();
-            for (mip_level, mip_data) in mip_slices.iter().enumerate() {
-                Self::upload_texture_data(
-                    device_context,
-                    &mut cmd_buffer,
-                    texture,
-                    mip_data,
-                    mip_level as u8,
-                );
-            }
-        }
-
-        cmd_buffer.end().unwrap();
-
-        let graphics_queue = renderer.graphics_queue_guard(QueueType::Graphics);
-
-        graphics_queue
-            .submit(&mut [&mut cmd_buffer], &[], &[], None)
-            .unwrap();
-
-        cmd_buffer_pool.release(cmd_buffer);
-
-        renderer.release_command_buffer_pool(cmd_buffer_pool);
+        render_commands.push(UploadTextureCommand {
+            src_data: upload_job.texture_data.clone(),
+            dst_texture: texture_info.texture_view.texture().clone(),
+        });
     }
 
-    fn create_texture_view(&self, texture_def: &TextureDef) -> TextureView {
+    fn create_texture_view(&self, texture_def: &TextureDef, name: &str) -> TextureView {
         // todo: bundle all the default views in the resource instead of having them separatly
-        let texture = self.device_context.create_texture(texture_def);
-        texture.create_view(&TextureViewDef::as_shader_resource_view(texture_def))
+        let texture = self.device_context.create_texture(*texture_def, name);
+        texture.create_view(TextureViewDef::as_shader_resource_view(texture_def))
     }
 
     fn texture_info(&self, entity: Entity) -> &TextureInfo {
@@ -317,7 +290,6 @@ impl TextureManager {
         };
 
         TextureDef {
-            name: "TextureComponent".to_string(), // todo: filename?
             extents: Extents3D {
                 width: texture_component.width,
                 height: texture_component.height,
@@ -328,68 +300,9 @@ impl TextureManager {
             format,
             usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
             resource_flags: ResourceFlags::empty(),
-            mem_usage: MemoryUsage::GpuOnly,
+            memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         }
-    }
-
-    fn upload_texture_data(
-        device_context: &DeviceContext,
-        cmd_buffer: &mut CommandBuffer,
-        texture: &Texture,
-        data: &[u8],
-        mip_level: u8,
-    ) {
-        //
-        // TODO(vdbdd): this code shoud be moved (-> upload manager)
-        // Motivations:
-        // - Here the buffer is constantly reallocated
-        // - Almost same code for buffer and texture
-        // - Leverage the Copy queue
-        //
-        let staging_buffer = device_context.create_buffer(&BufferDef::for_staging_buffer_data(
-            data,
-            ResourceUsage::empty(),
-        ));
-
-        let alloc_def = MemoryAllocationDef {
-            memory_usage: MemoryUsage::CpuToGpu,
-            always_mapped: true,
-        };
-
-        let buffer_memory =
-            MemoryAllocation::from_buffer(device_context, &staging_buffer, &alloc_def);
-
-        buffer_memory.copy_to_host_visible_buffer(data);
-
-        // todo: not needed here
-        cmd_buffer.cmd_resource_barrier(
-            &[],
-            &[TextureBarrier::state_transition(
-                texture,
-                ResourceState::UNDEFINED,
-                ResourceState::COPY_DST,
-            )],
-        );
-
-        cmd_buffer.cmd_copy_buffer_to_texture(
-            &staging_buffer,
-            texture,
-            &CmdCopyBufferToTextureParams {
-                mip_level,
-                ..CmdCopyBufferToTextureParams::default()
-            },
-        );
-
-        // todo: not needed here
-        cmd_buffer.cmd_resource_barrier(
-            &[],
-            &[TextureBarrier::state_transition(
-                texture,
-                ResourceState::COPY_DST,
-                ResourceState::SHADER_RESOURCE,
-            )],
-        );
     }
 }
 

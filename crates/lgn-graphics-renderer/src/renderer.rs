@@ -1,267 +1,165 @@
-#![allow(unsafe_code)]
+use std::sync::Arc;
+use std::time;
 
-use lgn_core::Handle;
-use lgn_graphics_api::{
-    ApiDef, BufferView, DeviceContext, Fence, FenceStatus, GfxApi, QueueType, Semaphore,
-};
-use lgn_graphics_api::{Queue, SemaphoreDef};
+use lgn_graphics_api::{ApiDef, DeviceContext, Fence, FenceStatus, GfxApi};
 
 use lgn_tracing::span_fn;
-use parking_lot::{Mutex, RwLock, RwLockReadGuard};
 
-use crate::cgen::cgen_type::{DirectionalLight, OmniDirectionalLight, SpotLight};
-
-use crate::resources::{
-    CommandBufferPool, CommandBufferPoolHandle, GpuSafePool, TransientPagedBuffer,
-    UnifiedStaticBuffer, UnifiedStaticBufferAllocator, UniformGPUData,
-    UniformGPUDataUploadJobBlock,
+use crate::core::{
+    RenderCommandBuilder, RenderCommandQueuePool, RenderObject, RenderObjectAllocator,
+    RenderObjects, RenderResources,
 };
-use crate::RenderContext;
 
-pub struct Renderer {
-    frame_idx: usize,
-    render_frame_idx: usize,
-    num_render_frames: usize,
-    prev_frame_sems: Vec<Semaphore>,
-    sparse_unbind_sems: Vec<Semaphore>,
-    sparse_bind_sems: Vec<Semaphore>,
-    frame_fences: Vec<Fence>,
-    graphics_queue: RwLock<Queue>,
-    command_buffer_pools: Mutex<GpuSafePool<CommandBufferPool>>,
-    transient_buffer: TransientPagedBuffer,
-    static_buffer: UnifiedStaticBuffer,
-    omnidirectional_lights_data: OmniDirectionalLightsStaticBuffer,
-    directional_lights_data: DirectionalLightsStaticBuffer,
-    spotlights_data: SpotLightsStaticBuffer,
-    // This should be last, as it must be destroyed last.
-    api: GfxApi,
+use crate::GraphicsQueue;
+
+#[derive(Clone)]
+pub struct GfxApiArc {
+    inner: Arc<GfxApi>,
 }
 
-pub type OmniDirectionalLightsStaticBuffer = Handle<UniformGPUData<OmniDirectionalLight>>;
-pub type DirectionalLightsStaticBuffer = Handle<UniformGPUData<DirectionalLight>>;
-pub type SpotLightsStaticBuffer = Handle<UniformGPUData<SpotLight>>;
-
-macro_rules! impl_static_buffer_accessor {
-    ($name:ident, $buffer_type:ty, $type:ty) => {
-        paste::paste! {
-            pub fn [<acquire_ $name>](&mut self) -> $buffer_type {
-                self.$name.transfer()
-            }
-            pub fn [<release_ $name>](&mut self, $name: $buffer_type) {
-                self.$name = $name;
-            }
-            pub fn [<$name _create_structured_buffer_view>](&self) -> BufferView{
-                self.$name.create_structured_buffer_view($type::NUM)
-            }
+impl GfxApiArc {
+    #[allow(unsafe_code)]
+    pub fn new(api_def: ApiDef) -> Self {
+        let gfx_api = unsafe { GfxApi::new(api_def).unwrap() };
+        Self {
+            inner: Arc::new(gfx_api),
         }
-    };
+    }
+}
+
+impl std::ops::Deref for GfxApiArc {
+    type Target = GfxApi;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+pub struct Renderer {
+    num_render_frames: u64,
+    command_queue_pool: RenderCommandQueuePool,
+    render_resources: RenderResources,
+    graphics_queue: GraphicsQueue,
+    gfx_api: GfxApiArc,
 }
 
 impl Renderer {
-    pub fn new(num_render_frames: usize) -> Self {
-        let api = unsafe { GfxApi::new(&ApiDef::default()).unwrap() };
-        let device_context = api.device_context();
-
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024, false);
-
-        let omnidirectional_lights_data =
-            OmniDirectionalLightsStaticBuffer::new(UniformGPUData::<OmniDirectionalLight>::new(
-                Some(static_buffer.allocator()),
-                OmniDirectionalLight::NUM,
-            ));
-
-        let directional_lights_data =
-            DirectionalLightsStaticBuffer::new(UniformGPUData::<DirectionalLight>::new(
-                Some(static_buffer.allocator()),
-                DirectionalLight::NUM,
-            ));
-
-        let spotlights_data = SpotLightsStaticBuffer::new(UniformGPUData::<SpotLight>::new(
-            Some(static_buffer.allocator()),
-            SpotLight::NUM,
-        ));
-
+    pub fn new(
+        num_render_frames: u64,
+        command_queue_pool: RenderCommandQueuePool,
+        render_resources: RenderResources,
+        graphics_queue: GraphicsQueue,
+        gfx_api: GfxApiArc,
+    ) -> Self {
         Self {
-            frame_idx: 0,
-            render_frame_idx: 0,
             num_render_frames,
-            prev_frame_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
-                .collect(),
-            sparse_unbind_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
-                .collect(),
-            sparse_bind_sems: (0..num_render_frames)
-                .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
-                .collect(),
-            frame_fences: (0..num_render_frames)
-                .map(|_| device_context.create_fence().unwrap())
-                .collect(),
-            graphics_queue: RwLock::new(device_context.create_queue(QueueType::Graphics).unwrap()),
-
-            command_buffer_pools: Mutex::new(GpuSafePool::new(num_render_frames)),
-            transient_buffer: TransientPagedBuffer::new(device_context, 512, 64 * 1024),
-            static_buffer,
-            omnidirectional_lights_data,
-            directional_lights_data,
-            spotlights_data,
-            api,
+            command_queue_pool,
+            render_resources,
+            graphics_queue,
+            gfx_api,
         }
     }
 
-    pub fn device_context(&self) -> &DeviceContext {
-        self.api.device_context()
-    }
-
-    pub fn num_render_frames(&self) -> usize {
+    pub fn num_render_frames(&self) -> u64 {
         self.num_render_frames
     }
 
-    pub fn render_frame_idx(&self) -> usize {
-        self.render_frame_idx
+    pub fn render_resources(&self) -> &RenderResources {
+        &self.render_resources
     }
 
-    pub fn graphics_queue_guard(&self, queue_type: QueueType) -> RwLockReadGuard<'_, Queue> {
-        match queue_type {
-            QueueType::Graphics => self.graphics_queue.read(),
-            _ => unreachable!(),
-        }
+    pub fn device_context(&self) -> &DeviceContext {
+        self.gfx_api.device_context()
     }
 
-    // TMP: change that.
-    pub(crate) fn transient_buffer(&self) -> TransientPagedBuffer {
-        self.transient_buffer.clone()
+    pub(crate) fn render_command_queue_pool(&mut self) -> &mut RenderCommandQueuePool {
+        &mut self.command_queue_pool
     }
 
-    impl_static_buffer_accessor!(
-        omnidirectional_lights_data,
-        OmniDirectionalLightsStaticBuffer,
-        OmniDirectionalLight
-    );
-
-    impl_static_buffer_accessor!(
-        directional_lights_data,
-        DirectionalLightsStaticBuffer,
-        DirectionalLight
-    );
-
-    impl_static_buffer_accessor!(spotlights_data, SpotLightsStaticBuffer, SpotLight);
-
-    pub fn static_buffer(&self) -> &UnifiedStaticBuffer {
-        &self.static_buffer
+    pub fn render_command_builder(&self) -> RenderCommandBuilder {
+        RenderCommandBuilder::new(&self.command_queue_pool)
     }
 
-    pub fn static_buffer_allocator(&self) -> &UnifiedStaticBufferAllocator {
-        self.static_buffer.allocator()
+    pub fn graphics_queue(&self) -> &GraphicsQueue {
+        &self.graphics_queue
     }
 
-    pub fn add_update_job_block(&self, job_blocks: &mut Vec<UniformGPUDataUploadJobBlock>) {
-        self.static_buffer
-            .allocator()
-            .add_update_job_block(job_blocks);
-    }
-
-    #[span_fn]
-    pub fn flush_update_jobs(&self, render_context: &RenderContext<'_>) {
-        let prev_frame_semaphore = &self.prev_frame_sems[self.render_frame_idx];
-        let unbind_semaphore = &self.sparse_unbind_sems[self.render_frame_idx];
-        let bind_semaphore = &self.sparse_bind_sems[self.render_frame_idx];
-
-        self.static_buffer.allocator().flush_updater(
-            prev_frame_semaphore,
-            unbind_semaphore,
-            bind_semaphore,
-            render_context,
-        );
-    }
-
-    pub fn static_buffer_ro_view(&self) -> BufferView {
-        self.static_buffer.read_only_view()
-    }
-
-    //    pub fn prev_frame_semaphore(&self)
-
-    pub(crate) fn acquire_command_buffer_pool(
-        &self,
-        queue_type: QueueType,
-    ) -> CommandBufferPoolHandle {
-        let queue = self.graphics_queue_guard(queue_type);
-        let mut pool = self.command_buffer_pools.lock();
-        pool.acquire_or_create(|| CommandBufferPool::new(&*queue))
-    }
-
-    pub(crate) fn release_command_buffer_pool(&self, handle: CommandBufferPoolHandle) {
-        let mut pool = self.command_buffer_pools.lock();
-        pool.release(handle);
-    }
-
-    #[span_fn]
-    pub(crate) fn begin_frame(&mut self) {
-        //
-        // Update frame indices
-        //
-        self.frame_idx += 1;
-        self.render_frame_idx = self.frame_idx % self.num_render_frames;
-
-        //
-        // Wait for the next cpu frame to be available
-        //
-        let signal_fence = &self.frame_fences[self.render_frame_idx];
-        if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
-            signal_fence.wait().unwrap();
-        }
-
-        //
-        // Now, it is safe to free memory
-        //
-        let device_context = self.api.device_context();
-        device_context.free_gpu_memory();
-
-        //
-        // Broadcast begin frame event
-        //
-        {
-            let mut pool = self.command_buffer_pools.lock();
-            pool.begin_frame();
-        }
-
-        //
-        // Update the current frame used for timeline semaphores
-        //
-        self.api.device_context_mut().inc_current_cpu_frame();
-
-        // TMP: todo
-        self.transient_buffer.begin_frame();
-    }
-
-    #[span_fn]
-    pub(crate) fn end_frame(&mut self) {
-        let graphics_queue = self.graphics_queue.write();
-        let frame_fence = &self.frame_fences[self.render_frame_idx];
-
-        graphics_queue
-            .submit(&mut [], &[], &[], Some(frame_fence))
-            .unwrap();
-
-        //
-        // Broadcast end frame event
-        //
-
-        {
-            let mut pool = self.command_buffer_pools.lock();
-            pool.end_frame();
-        }
+    pub fn allocate_render_object<F, R>(&self, func: F)
+    where
+        F: FnOnce(&mut RenderObjectAllocator<'_, R>),
+        R: RenderObject,
+    {
+        let render_objects = self.render_resources.get::<RenderObjects>();
+        let mut allocator = render_objects.create_allocator::<R>();
+        func(&mut allocator);
     }
 }
 
 impl Drop for Renderer {
     fn drop(&mut self) {
-        {
-            let graphics_queue = self.graphics_queue_guard(QueueType::Graphics);
-            graphics_queue.wait_for_queue_idle().unwrap();
+        self.graphics_queue.queue_mut().wait_for_queue_idle();
+    }
+}
+
+pub(crate) struct RenderScope {
+    frame_idx: u64,
+    render_frame_idx: u64,
+    num_render_frames: u64,
+    frame_fences: Vec<Fence>,
+    frame_start: time::Instant,
+    frame_time: time::Duration,
+}
+
+impl RenderScope {
+    pub fn new(num_render_frames: u64, device_context: &DeviceContext) -> Self {
+        Self {
+            frame_idx: 0,
+            render_frame_idx: 0,
+            num_render_frames,
+            frame_fences: (0..num_render_frames)
+                .map(|_| device_context.create_fence())
+                .collect(),
+            frame_start: time::Instant::now(),
+            frame_time: time::Duration::default(),
         }
-        std::mem::drop(self.spotlights_data.take());
-        std::mem::drop(self.directional_lights_data.take());
-        std::mem::drop(self.omnidirectional_lights_data.take());
+    }
+
+    #[span_fn]
+    pub fn begin_frame(&mut self) {
+        //
+        // Update frame indices
+        //
+        self.frame_idx += 1;
+        self.render_frame_idx = self.frame_idx % self.num_render_frames as u64;
+
+        //
+        // Wait for the next cpu frame to be available
+        //
+        let signal_fence = &self.frame_fences[self.render_frame_idx as usize];
+        if signal_fence.get_fence_status().unwrap() == FenceStatus::Incomplete {
+            signal_fence.wait().unwrap();
+        }
+
+        self.frame_start = time::Instant::now();
+    }
+
+    #[span_fn]
+    pub(crate) fn end_frame(&mut self, graphics_queue: &GraphicsQueue) {
+        let frame_fence = &self.frame_fences[self.render_frame_idx as usize];
+
+        graphics_queue
+            .queue_mut()
+            .submit(&[], &[], &[], Some(frame_fence));
+
+        let frame_end = time::Instant::now();
+        self.frame_time = frame_end - self.frame_start;
+    }
+
+    pub(crate) fn frame_idx(&self) -> u64 {
+        self.frame_idx
+    }
+
+    pub(crate) fn frame_time(&self) -> time::Duration {
+        self.frame_time
     }
 }

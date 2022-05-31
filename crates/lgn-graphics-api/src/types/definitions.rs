@@ -35,14 +35,11 @@ bitflags::bitflags! {
 }
 
 bitflags::bitflags! {
-    pub struct ResourceCreation: u16 {
-        const SPARSE_BINDING = 0x0001;
-        const SPARSE_RESIDENCY = 0x0002;
-        const SPARSE_ALIASED = 0x0004;
+    pub struct BufferCreateFlags: u16 {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GPUViewType {
     ConstantBuffer,
     ShaderResource,
@@ -51,7 +48,7 @@ pub enum GPUViewType {
     DepthStencil,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PlaneSlice {
     Default,
     Depth,

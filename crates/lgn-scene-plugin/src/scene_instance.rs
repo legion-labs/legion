@@ -150,15 +150,14 @@ impl SceneInstance {
                 } else if let Some(light) = component.downcast_ref::<runtime_data::Light>() {
                     entity.insert(LightComponent {
                         light_type: match light.light_type {
-                            sample_data::LightType::Omnidirectional => LightType::Omnidirectional,
+                            sample_data::LightType::Omnidirectional => LightType::OmniDirectional,
                             sample_data::LightType::Directional => LightType::Directional,
-                            sample_data::LightType::Spotlight => LightType::Spotlight {
-                                cone_angle: light.cone_angle,
-                            },
+                            sample_data::LightType::Spotlight => LightType::Spot,
                             _ => unreachable!("Unrecognized light type"),
                         },
                         color: light.color,
                         radiance: light.radiance,
+                        cone_angle: light.cone_angle,
                         enabled: light.enabled,
                         ..LightComponent::default()
                     });

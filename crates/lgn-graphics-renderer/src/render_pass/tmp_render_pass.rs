@@ -1,7 +1,7 @@
 #![allow(unsafe_code)]
 
 use lgn_graphics_api::{
-    ColorClearValue, ColorRenderTargetBinding, DepthStencilClearValue,
+    ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DepthStencilClearValue,
     DepthStencilRenderTargetBinding, LoadOp, ResourceState, StoreOp,
 };
 use lgn_graphics_data::Color;
@@ -10,7 +10,6 @@ use lgn_tracing::span_fn;
 use crate::{
     components::RenderSurface,
     gpu_renderer::{DefaultLayers, MeshRenderer},
-    hl_gfx_api::HLCommandBuffer,
     RenderContext,
 };
 
@@ -20,7 +19,7 @@ impl TmpRenderPass {
     #[span_fn]
     pub(crate) fn render(
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         render_surface: &mut RenderSurface,
         mesh_renderer: &MeshRenderer,
     ) {
@@ -29,7 +28,7 @@ impl TmpRenderPass {
                 .hdr_rt_mut()
                 .transition_to(cmd_buffer, ResourceState::RENDER_TARGET);
 
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: render_surface.hdr_rt().rtv(),
                     load_op: LoadOp::Clear,
@@ -48,7 +47,7 @@ impl TmpRenderPass {
 
             mesh_renderer.draw(render_context, cmd_buffer, DefaultLayers::Opaque);
 
-            cmd_buffer.end_render_pass();
+            cmd_buffer.cmd_end_render_pass();
         });
     }
 }

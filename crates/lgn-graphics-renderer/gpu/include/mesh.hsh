@@ -22,23 +22,23 @@ float4 unpack_tangents_r11g10b10a1(uint pack) {
 }
 
 template<typename TVertexIn>
-TVertexIn LoadVertex(MeshDescription mesh_desc, uint vertexId) {
+TVertexIn LoadVertex(MeshDescription mesh_desc, uint mesh_desc_addr,  uint vertexId) {
     TVertexIn vertex_in = (TVertexIn)0;
-    vertex_in.pos = static_buffer.Load<float3>(mesh_desc.position_offset + vertexId * 12);
+    vertex_in.pos = static_buffer.Load<float3>(mesh_desc_addr + mesh_desc.position_offset + vertexId * 12);
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_NORMAL)) {      
-        uint pack = static_buffer.Load<uint>(mesh_desc.normal_offset + vertexId * 4);
+        uint pack = static_buffer.Load<uint>(mesh_desc_addr + mesh_desc.normal_offset + vertexId * 4);
         vertex_in.normal = unpack_normal_r11g11b10(pack);
     }
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_TANGENT)) {
-        uint pack = static_buffer.Load<uint>(mesh_desc.tangent_offset + vertexId * 4);
+        uint pack = static_buffer.Load<uint>(mesh_desc_addr + mesh_desc.tangent_offset + vertexId * 4);
         vertex_in.tangent = unpack_tangents_r11g10b10a1(pack);
     }
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_COLOR)) {
-        uint packed_color = static_buffer.Load<uint>(mesh_desc.color_offset + vertexId * 4);       
-        vertex_in.color = unpack_linear(packed_color);
+        uint packed_color = static_buffer.Load<uint>(mesh_desc_addr + mesh_desc.color_offset + vertexId * 4);       
+        vertex_in.color = unpack_srgb2linear( packed_color );
     }
     if( mesh_desc.attrib_mask.is_set(MeshAttribMask_TEX_COORD)) {   
-        vertex_in.uv_coord = static_buffer.Load<float2>(mesh_desc.tex_coord_offset + vertexId * 8);
+        vertex_in.uv_coord = static_buffer.Load<float2>(mesh_desc_addr + mesh_desc.tex_coord_offset + vertexId * 8);
     }
     return vertex_in;
 }

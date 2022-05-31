@@ -1,19 +1,28 @@
-use lgn_math::Vec4;
+use std::num::NonZeroU32;
+
+use lgn_graphics_api::ResourceUsage;
+use lgn_math::{Vec3, Vec4};
 use strum::EnumIter;
 
-use super::{StaticBufferAllocation, UnifiedStaticBufferAllocator, UniformGPUDataUpdater};
-use crate::{cgen::cgen_type::MeshDescription, components::Mesh, Renderer};
+use super::{
+    StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
+};
+use crate::{
+    components::{Mesh, MeshTopology},
+    core::RenderCommandBuilder,
+};
 
 #[derive(Clone, Copy)]
 pub struct MeshId(u32);
 
 pub struct MeshMetaData {
-    pub vertex_count: u32,
-    pub index_count: u32,
-    pub index_offset: u32,
-    pub mesh_description_offset: u32,
-    pub positions: Vec<Vec4>, // for AABB calculation
+    pub vertex_count: NonZeroU32,
+    pub index_count: NonZeroU32,
+    pub index_offset: u32,            // static_buffer_index_offset
+    pub mesh_description_offset: u32, // static_buffer_mesh_description_offset
+    pub positions: Vec<Vec3>,         // for AABB calculation
     pub bounding_sphere: Vec4,
+    pub topology: MeshTopology,
     _allocation: StaticBufferAllocation,
 }
 
@@ -39,15 +48,15 @@ pub enum DefaultMeshType {
 }
 
 impl MeshManager {
-    pub fn new(renderer: &Renderer) -> Self {
-        let allocator = renderer.static_buffer_allocator();
-
-        let mut mesh_manager = Self {
+    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
+        Self {
             allocator: allocator.clone(),
             default_mesh_ids: Vec::new(),
             static_meshes: Vec::new(),
-        };
+        }
+    }
 
+    pub fn initialize_default_meshes(&mut self, render_commands: &mut RenderCommandBuilder) {
         // Keep consistent with DefaultMeshType
         let default_meshes = vec![
             Mesh::new_plane(1.0),
@@ -64,39 +73,43 @@ impl MeshManager {
         ];
 
         for default_mesh in &default_meshes {
-            let mesh_id = mesh_manager.add_mesh(renderer, default_mesh);
-            mesh_manager.default_mesh_ids.push(mesh_id);
+            let mesh_id = self.add_mesh(render_commands, default_mesh);
+            self.default_mesh_ids.push(mesh_id);
         }
-
-        mesh_manager
     }
 
-    pub fn add_mesh(&mut self, renderer: &Renderer, mesh: &Mesh) -> MeshId {
-        let vertex_data_size_in_bytes =
-            u64::from(mesh.size_in_bytes()) + std::mem::size_of::<MeshDescription>() as u64;
+    pub fn add_mesh(&mut self, render_commands: &mut RenderCommandBuilder, mesh: &Mesh) -> MeshId {
+        let (buf, index_byte_offset) = mesh.pack_gpu_data();
+        assert_eq!(index_byte_offset % 4, 0);
 
-        let allocation = self.allocator.allocate_segment(vertex_data_size_in_bytes);
+        let allocation = self
+            .allocator
+            .allocate(buf.len() as u64, ResourceUsage::AS_SHADER_RESOURCE);
 
-        let mut updater = UniformGPUDataUpdater::new(renderer.transient_buffer(), 64 * 1024);
-        let offset = allocation.offset();
-        let mut mesh_meta_datas = Vec::new();
+        let allocation_offset = u32::try_from(allocation.byte_offset()).unwrap();
+        assert_eq!(allocation_offset % 4, 0);
+
+        let index_offset =
+            (allocation_offset + index_byte_offset) / std::mem::size_of::<u16>() as u32;
+        assert_eq!(index_offset % 4, 0);
+
         let mesh_id = self.static_meshes.len();
 
-        let (_, mesh_info_offset, index_offset) =
-            mesh.make_gpu_update_job(&mut updater, offset as u32);
-
-        mesh_meta_datas.push(MeshMetaData {
-            vertex_count: mesh.num_vertices() as u32,
-            index_count: mesh.num_indices() as u32,
+        self.static_meshes.push(MeshMetaData {
+            vertex_count: NonZeroU32::new(mesh.num_vertices() as u32).unwrap(),
+            index_count: NonZeroU32::new(mesh.num_indices() as u32).unwrap(),
             index_offset,
-            mesh_description_offset: mesh_info_offset,
-            positions: mesh.positions.iter().map(|v| v.extend(1.0)).collect(),
+            mesh_description_offset: allocation_offset,
+            positions: mesh.positions.clone(),
             bounding_sphere: mesh.bounding_sphere,
-            _allocation: allocation,
+            topology: mesh.topology,
+            _allocation: allocation.clone(),
         });
 
-        renderer.add_update_job_block(updater.job_blocks());
-        self.static_meshes.append(&mut mesh_meta_datas);
+        render_commands.push(UpdateUnifiedStaticBufferCommand {
+            src_buffer: buf,
+            dst_offset: allocation.byte_offset(),
+        });
 
         MeshId(u32::try_from(mesh_id).unwrap())
     }

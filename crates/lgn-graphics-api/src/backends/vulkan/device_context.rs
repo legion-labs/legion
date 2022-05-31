@@ -195,18 +195,42 @@ impl VulkanDeviceContext {
 
     pub(crate) fn destroy(&mut self) {
         unsafe {
+            #[cfg(debug_assertions)]
+            {
+                //let vkmem_report = self.vk_allocator.build_stats_string(true).unwrap();
+                //println!("{}", vkmem_report);
+            }
             self.vk_allocator.destroy();
             self.vk_device.destroy_device(None);
         }
     }
 
     pub(crate) fn set_texture_name(&self, texture: &Texture, name: &str) {
+        unsafe {
+            if let Some(vkmem_allocation) = texture.vkmem_allocation() {
+                let cstr = std::ffi::CString::new(name).unwrap();
+                self.vk_allocator.set_allocation_user_data(
+                    &vkmem_allocation,
+                    cstr.as_ptr() as *mut std::ffi::c_void,
+                );
+            }
+        }
+
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.set_texture_name(self, texture, name);
         }
     }
 
     pub(crate) fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
+        unsafe {
+            let cstr = std::ffi::CString::new(name).unwrap();
+
+            self.vk_allocator.set_allocation_user_data(
+                &buffer.vkmem_allocation(),
+                cstr.as_ptr() as *mut std::ffi::c_void,
+            );
+        }
+
         if let Some(debug_reporter) = self.debug_reporter.as_ref() {
             debug_reporter.set_buffer_name(self, buffer, name);
         }

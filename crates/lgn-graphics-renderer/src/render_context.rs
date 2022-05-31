@@ -1,26 +1,26 @@
-use lgn_core::Handle;
 use lgn_graphics_api::{
-    DescriptorHeapDef, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, QueueType,
+    CommandBuffer, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext,
 };
 
 use crate::{
-    hl_gfx_api::{HLCommandBuffer, HLQueue},
     resources::{
-        CommandBufferPoolHandle, DescriptorHeapManager, DescriptorPoolHandle, PipelineManager,
-        TransientBufferAllocator,
+        DescriptorPoolHandle, PipelineManager, TransientBufferAllocator,
+        TransientCommandBufferAllocator, UnifiedStaticBuffer,
     },
-    Renderer,
+    GraphicsQueue,
 };
 
-pub(crate) type TransientBufferAllocatorHandle = Handle<TransientBufferAllocator>;
+// pub(crate) type TransientBufferAllocatorHandle = Handle<TransientBufferAllocator>;
 
 pub struct RenderContext<'frame> {
-    renderer: &'frame Renderer,
-    descriptor_heap_manager: &'frame DescriptorHeapManager,
-    pipeline_manager: &'frame PipelineManager,
-    cmd_buffer_pool: CommandBufferPoolHandle,
-    descriptor_pool: DescriptorPoolHandle,
-    transient_buffer_allocator: TransientBufferAllocatorHandle,
+    // renderer: &'frame Renderer,
+    pub device_context: &'frame DeviceContext,
+    pub graphics_queue: &'frame GraphicsQueue,
+    pub descriptor_pool: &'frame DescriptorPoolHandle,
+    pub pipeline_manager: &'frame mut PipelineManager,
+    pub transient_commandbuffer_allocator: &'frame mut TransientCommandBufferAllocator,
+    pub transient_buffer_allocator: &'frame mut TransientBufferAllocator,
+    pub static_buffer: &'frame UnifiedStaticBuffer,
     // tmp
     persistent_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
     frame_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
@@ -29,66 +29,36 @@ pub struct RenderContext<'frame> {
 
 impl<'frame> RenderContext<'frame> {
     pub fn new(
-        renderer: &'frame Renderer,
-        descriptor_heap_manager: &'frame DescriptorHeapManager,
-        pipeline_manager: &'frame PipelineManager,
+        device_context: &'frame DeviceContext,
+        graphics_queue: &'frame GraphicsQueue,
+        descriptor_pool: &'frame DescriptorPoolHandle,
+        pipeline_manager: &'frame mut PipelineManager,
+        transient_commandbuffer_allocator: &'frame mut TransientCommandBufferAllocator,
+        transient_buffer_allocator: &'frame mut TransientBufferAllocator,
+        static_buffer: &'frame UnifiedStaticBuffer,
     ) -> Self {
-        let heap_def = default_descriptor_heap_size();
-
         Self {
-            renderer,
+            device_context,
+            graphics_queue,
+            descriptor_pool,
             pipeline_manager,
-            descriptor_heap_manager,
-            cmd_buffer_pool: renderer.acquire_command_buffer_pool(QueueType::Graphics),
-            descriptor_pool: descriptor_heap_manager.acquire_descriptor_pool(&heap_def),
-            transient_buffer_allocator: TransientBufferAllocatorHandle::new(
-                TransientBufferAllocator::new(
-                    renderer.device_context(),
-                    &renderer.transient_buffer(),
-                    1000,
-                ),
-            ),
+            transient_commandbuffer_allocator,
+            transient_buffer_allocator,
+            static_buffer,
             persistent_descriptor_set: None,
             frame_descriptor_set: None,
             view_descriptor_set: None,
         }
     }
 
-    pub fn renderer(&self) -> &Renderer {
-        self.renderer
-    }
-
-    pub fn pipeline_manager(&self) -> &PipelineManager {
-        self.pipeline_manager
-    }
-
-    pub fn graphics_queue(&self) -> HLQueue<'_> {
-        HLQueue::new(
-            self.renderer.graphics_queue_guard(QueueType::Graphics),
-            &self.cmd_buffer_pool,
-        )
-    }
-
-    pub fn alloc_command_buffer(&self) -> HLCommandBuffer<'_> {
-        HLCommandBuffer::new(&self.cmd_buffer_pool)
-    }
-
-    pub fn descriptor_pool(&self) -> &DescriptorPoolHandle {
-        &self.descriptor_pool
-    }
-
     #[allow(clippy::todo)]
     pub fn write_descriptor_set(
         &self,
         layout: &DescriptorSetLayout,
-        descriptors: &[DescriptorRef<'_>],
+        descriptors: &[DescriptorRef],
     ) -> DescriptorSetHandle {
         self.descriptor_pool
             .write_descriptor_set(layout, descriptors)
-    }
-
-    pub(crate) fn transient_buffer_allocator(&self) -> &TransientBufferAllocatorHandle {
-        &self.transient_buffer_allocator
     }
 
     pub fn persistent_descriptor_set(&self) -> (&DescriptorSetLayout, DescriptorSetHandle) {
@@ -127,42 +97,18 @@ impl<'frame> RenderContext<'frame> {
         self.view_descriptor_set = Some((layout, handle));
     }
 
-    pub fn bind_default_descriptor_sets(&self, cmd_buffer: &mut HLCommandBuffer<'_>) {
-        cmd_buffer.bind_descriptor_set(
+    pub fn bind_default_descriptor_sets(&self, cmd_buffer: &mut CommandBuffer) {
+        cmd_buffer.cmd_bind_descriptor_set_handle(
             self.persistent_descriptor_set.unwrap().0,
             self.persistent_descriptor_set.unwrap().1,
         );
-        cmd_buffer.bind_descriptor_set(
+        cmd_buffer.cmd_bind_descriptor_set_handle(
             self.frame_descriptor_set.unwrap().0,
             self.frame_descriptor_set.unwrap().1,
         );
-        cmd_buffer.bind_descriptor_set(
+        cmd_buffer.cmd_bind_descriptor_set_handle(
             self.view_descriptor_set.unwrap().0,
             self.view_descriptor_set.unwrap().1,
         );
-    }
-}
-
-impl<'frame> Drop for RenderContext<'frame> {
-    fn drop(&mut self) {
-        self.renderer
-            .release_command_buffer_pool(self.cmd_buffer_pool.transfer());
-
-        self.descriptor_heap_manager
-            .release_descriptor_pool(self.descriptor_pool.transfer());
-
-        self.transient_buffer_allocator.take();
-    }
-}
-
-fn default_descriptor_heap_size() -> DescriptorHeapDef {
-    DescriptorHeapDef {
-        max_descriptor_sets: 4096,
-        sampler_count: 128,
-        constant_buffer_count: 1024,
-        buffer_count: 1024,
-        rw_buffer_count: 1024,
-        texture_count: 1024,
-        rw_texture_count: 1024,
     }
 }

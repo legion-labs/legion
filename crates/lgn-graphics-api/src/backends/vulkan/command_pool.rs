@@ -10,8 +10,8 @@ impl VulkanCommandPool {
     pub(crate) fn new(
         device_context: &DeviceContext,
         queue: &Queue,
-        command_pool_def: &CommandPoolDef,
-    ) -> GfxResult<Self> {
+        command_pool_def: CommandPoolDef,
+    ) -> Self {
         let queue_family_index = queue.family_index();
         trace!(
             "Creating command pool on queue family index {:?}",
@@ -30,10 +30,11 @@ impl VulkanCommandPool {
         let vk_command_pool = unsafe {
             device_context
                 .vk_device()
-                .create_command_pool(&pool_create_info, None)?
+                .create_command_pool(&pool_create_info, None)
+                .unwrap()
         };
 
-        Ok(Self { vk_command_pool })
+        Self { vk_command_pool }
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext) {
@@ -48,8 +49,8 @@ impl VulkanCommandPool {
 impl CommandPool {
     pub(crate) fn reset_command_pool_platform(&self) -> GfxResult<()> {
         unsafe {
-            self.inner.device_context.vk_device().reset_command_pool(
-                self.inner.backend_command_pool.vk_command_pool,
+            self.device_context.vk_device().reset_command_pool(
+                self.backend_command_pool.vk_command_pool,
                 ash::vk::CommandPoolResetFlags::empty(),
             )?;
         }
@@ -57,6 +58,6 @@ impl CommandPool {
     }
 
     pub(crate) fn vk_command_pool(&self) -> ash::vk::CommandPool {
-        self.inner.backend_command_pool.vk_command_pool
+        self.backend_command_pool.vk_command_pool
     }
 }

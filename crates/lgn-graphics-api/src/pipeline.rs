@@ -2,7 +2,7 @@ use lgn_utils::decimal::DecimalF32;
 use std::hash::{Hash, Hasher};
 
 use crate::backends::BackendPipeline;
-use crate::{deferred_drop::Drc, GfxResult, PipelineType, RootSignature};
+use crate::{deferred_drop::Drc, PipelineType, RootSignature};
 use crate::{
     BlendFactor, BlendOp, BlendStateTargets, ColorFlags, CompareOp, CullMode, DeviceContext,
     FillMode, Format, FrontFace, PrimitiveTopology, SampleCount, Shader, StencilOp,
@@ -248,23 +248,25 @@ impl BlendState {
 }
 
 /// Used to create a `Pipeline` for graphics operations
-pub struct GraphicsPipelineDef<'a> {
-    pub shader: &'a Shader,
-    pub root_signature: &'a RootSignature,
-    pub vertex_layout: &'a VertexLayout,
-    pub blend_state: &'a BlendState,
-    pub depth_state: &'a DepthState,
-    pub rasterizer_state: &'a RasterizerState,
+#[derive(Clone, PartialEq)]
+pub struct GraphicsPipelineDef {
+    pub shader: Shader,
+    pub root_signature: RootSignature,
+    pub vertex_layout: VertexLayout,
+    pub blend_state: BlendState,
+    pub depth_state: DepthState,
+    pub rasterizer_state: RasterizerState,
     pub primitive_topology: PrimitiveTopology,
-    pub color_formats: &'a [Format],
+    pub color_formats: Vec<Format>,
     pub depth_stencil_format: Option<Format>,
     pub sample_count: SampleCount,
 }
 
 /// Used to create a `Pipeline` for compute operations
-pub struct ComputePipelineDef<'a> {
-    pub shader: &'a Shader,
-    pub root_signature: &'a RootSignature,
+#[derive(Clone, PartialEq)]
+pub struct ComputePipelineDef {
+    pub shader: Shader,
+    pub root_signature: RootSignature,
 }
 
 pub(crate) struct PipelineInner {
@@ -288,33 +290,34 @@ pub struct Pipeline {
 impl Pipeline {
     pub fn new_graphics_pipeline(
         device_context: &DeviceContext,
-        pipeline_def: &GraphicsPipelineDef<'_>,
-    ) -> GfxResult<Self> {
-        let backend_pipeline =
-            BackendPipeline::new_graphics_pipeline(device_context, pipeline_def)?;
+        pipeline_def: GraphicsPipelineDef,
+    ) -> Self {
+        let root_signature = pipeline_def.root_signature.clone();
+        let backend_pipeline = BackendPipeline::new_graphics_pipeline(device_context, pipeline_def);
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(PipelineInner {
                 pipeline_type: PipelineType::Graphics,
-                root_signature: pipeline_def.root_signature.clone(),
+                root_signature,
                 backend_pipeline,
             }),
-        })
+        }
     }
 
     pub fn new_compute_pipeline(
         device_context: &DeviceContext,
-        pipeline_def: &ComputePipelineDef<'_>,
-    ) -> GfxResult<Self> {
-        let backend_pipeline = BackendPipeline::new_compute_pipeline(device_context, pipeline_def)?;
+        pipeline_def: ComputePipelineDef,
+    ) -> Self {
+        let root_signature = pipeline_def.root_signature.clone();
+        let backend_pipeline = BackendPipeline::new_compute_pipeline(device_context, pipeline_def);
 
-        Ok(Self {
+        Self {
             inner: device_context.deferred_dropper().new_drc(PipelineInner {
                 pipeline_type: PipelineType::Compute,
-                root_signature: pipeline_def.root_signature.clone(),
+                root_signature,
                 backend_pipeline,
             }),
-        })
+        }
     }
 
     pub fn pipeline_type(&self) -> PipelineType {

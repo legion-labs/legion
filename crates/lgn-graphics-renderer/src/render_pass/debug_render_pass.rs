@@ -1,5 +1,5 @@
 use lgn_graphics_api::{
-    BlendState, ColorClearValue, ColorRenderTargetBinding, CompareOp, DepthState,
+    BlendState, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, CompareOp, DepthState,
     DepthStencilClearValue, DepthStencilRenderTargetBinding, FillMode, Format, GraphicsPipelineDef,
     LoadOp, PrimitiveTopology, RasterizerState, SampleCount, StencilOp, StoreOp, VertexLayout,
 };
@@ -11,12 +11,14 @@ use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen::{self, cgen_type::TransformData},
-    components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent},
+    components::{
+        CameraComponent, ManipulatorComponent, RenderSurface, RenderSurfaceExtents, VisualComponent,
+    },
     debug_display::{DebugDisplay, DebugPrimitiveType},
-    hl_gfx_api::HLCommandBuffer,
     picking::ManipulatorManager,
     resources::{
-        DefaultMeshType, MeshManager, MeshMetaData, ModelManager, PipelineHandle, PipelineManager,
+        DefaultMeshType, MeshManager, MeshMetaData, ModelManager, PipelineDef, PipelineHandle,
+        PipelineManager,
     },
     RenderContext,
 };
@@ -24,8 +26,8 @@ use crate::{
 pub struct DebugRenderPass {
     solid_pso_depth_handle: PipelineHandle,
     wire_pso_depth_handle: PipelineHandle,
-    solid_pso_nodepth_handle: PipelineHandle,
-    _wire_pso_nodepth_handle: PipelineHandle,
+    solid_pso_no_depth_handle: PipelineHandle,
+    _wire_pso_no_depth_handle: PipelineHandle,
 }
 
 impl DebugRenderPass {
@@ -73,122 +75,92 @@ impl DebugRenderPass {
             ..RasterizerState::default()
         };
 
-        let solid_pso_depth_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::const_color_shader::ID,
-                cgen::shader::const_color_shader::NONE,
-            ),
-            move |device_context, shader| {
-                device_context
-                    .create_graphics_pipeline(&GraphicsPipelineDef {
-                        shader,
-                        root_signature,
-                        vertex_layout: &vertex_layout,
-                        blend_state: &BlendState::default_alpha_enabled(),
-                        depth_state: &depth_state_enabled,
-                        rasterizer_state: &RasterizerState::default(),
-                        color_formats: &[Format::R16G16B16A16_SFLOAT],
-                        sample_count: SampleCount::SampleCount1,
-                        depth_stencil_format: Some(Format::D32_SFLOAT),
-                        primitive_topology: PrimitiveTopology::TriangleList,
-                    })
-                    .unwrap()
-            },
-        );
+        let shader = pipeline_manager
+            .create_shader(
+                cgen::CRATE_ID,
+                CGenShaderKey::make(
+                    cgen::shader::const_color_shader::ID,
+                    cgen::shader::const_color_shader::NONE,
+                ),
+            )
+            .unwrap();
+        let solid_pso_depth_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader: shader.clone(),
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: depth_state_enabled,
+                rasterizer_state: RasterizerState::default(),
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
+                primitive_topology: PrimitiveTopology::TriangleList,
+            }));
 
-        let wire_pso_depth_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::const_color_shader::ID,
-                cgen::shader::const_color_shader::NONE,
-            ),
-            move |device_context, shader| {
-                device_context
-                    .create_graphics_pipeline(&GraphicsPipelineDef {
-                        shader,
-                        root_signature,
-                        vertex_layout: &vertex_layout,
-                        blend_state: &BlendState::default_alpha_enabled(),
-                        depth_state: &depth_state_enabled,
-                        rasterizer_state: &wire_frame_state,
-                        color_formats: &[Format::R16G16B16A16_SFLOAT],
-                        sample_count: SampleCount::SampleCount1,
-                        depth_stencil_format: Some(Format::D32_SFLOAT),
-                        primitive_topology: PrimitiveTopology::LineList,
-                    })
-                    .unwrap()
-            },
-        );
+        let wire_pso_depth_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader: shader.clone(),
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: depth_state_enabled,
+                rasterizer_state: wire_frame_state,
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
+                primitive_topology: PrimitiveTopology::LineList,
+            }));
 
-        let solid_pso_nodepth_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::const_color_shader::ID,
-                cgen::shader::const_color_shader::NONE,
-            ),
-            move |device_context, shader| {
-                device_context
-                    .create_graphics_pipeline(&GraphicsPipelineDef {
-                        shader,
-                        root_signature,
-                        vertex_layout: &vertex_layout,
-                        blend_state: &BlendState::default_alpha_enabled(),
-                        depth_state: &depth_state_disabled,
-                        rasterizer_state: &RasterizerState::default(),
-                        color_formats: &[Format::R16G16B16A16_SFLOAT],
-                        sample_count: SampleCount::SampleCount1,
-                        depth_stencil_format: Some(Format::D32_SFLOAT),
-                        primitive_topology: PrimitiveTopology::TriangleList,
-                    })
-                    .unwrap()
-            },
-        );
+        let solid_pso_no_depth_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader: shader.clone(),
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: depth_state_disabled,
+                rasterizer_state: RasterizerState::default(),
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
+                primitive_topology: PrimitiveTopology::TriangleList,
+            }));
 
-        let wire_pso_nodepth_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::const_color_shader::ID,
-                cgen::shader::const_color_shader::NONE,
-            ),
-            move |device_context, shader| {
-                device_context
-                    .create_graphics_pipeline(&GraphicsPipelineDef {
-                        shader,
-                        root_signature,
-                        vertex_layout: &vertex_layout,
-                        blend_state: &BlendState::default_alpha_enabled(),
-                        depth_state: &depth_state_disabled,
-                        rasterizer_state: &wire_frame_state,
-                        color_formats: &[Format::R16G16B16A16_SFLOAT],
-                        sample_count: SampleCount::SampleCount1,
-                        depth_stencil_format: Some(Format::D32_SFLOAT),
-                        primitive_topology: PrimitiveTopology::LineList,
-                    })
-                    .unwrap()
-            },
-        );
+        let wire_pso_no_depth_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
+                shader,
+                root_signature: root_signature.clone(),
+                vertex_layout,
+                blend_state: BlendState::default_alpha_enabled(),
+                depth_state: depth_state_disabled,
+                rasterizer_state: wire_frame_state,
+                color_formats: vec![Format::R16G16B16A16_SFLOAT],
+                sample_count: SampleCount::SampleCount1,
+                depth_stencil_format: Some(Format::D32_SFLOAT),
+                primitive_topology: PrimitiveTopology::LineList,
+            }));
 
         Self {
             solid_pso_depth_handle,
             wire_pso_depth_handle,
-            solid_pso_nodepth_handle,
-            _wire_pso_nodepth_handle: wire_pso_nodepth_handle,
+            solid_pso_no_depth_handle,
+            _wire_pso_no_depth_handle: wire_pso_no_depth_handle,
         }
     }
 
     pub fn render_ground_plane(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         mesh_manager: &MeshManager,
     ) {
         cmd_buffer.with_label("Ground Plane", |cmd_buffer| {
             let wire_pso_depth_pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.wire_pso_depth_handle)
                 .unwrap();
-            cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
+
+            cmd_buffer.cmd_bind_pipeline(wire_pso_depth_pipeline);
 
             render_context.bind_default_descriptor_sets(cmd_buffer);
 
@@ -205,7 +177,7 @@ impl DebugRenderPass {
     pub fn render_picked(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
         model_manager: &ModelManager,
@@ -214,11 +186,11 @@ impl DebugRenderPass {
             render_context.bind_default_descriptor_sets(cmd_buffer);
 
             let wire_pso_depth_pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.wire_pso_depth_handle)
                 .unwrap();
             let solid_pso_depth_pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.solid_pso_depth_handle)
                 .unwrap();
 
@@ -227,12 +199,12 @@ impl DebugRenderPass {
                 if let Some(model_resource_id) = visual_component.model_resource_id() {
                     if let Some(model) = model_manager.get_model_meta_data(model_resource_id) {
                         for mesh in &model.mesh_instances {
-                            cmd_buffer.bind_pipeline(wire_pso_depth_pipeline);
+                            cmd_buffer.cmd_bind_pipeline(wire_pso_depth_pipeline);
 
                             let mesh = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
                             render_aabb_for_mesh(wireframe_cube, mesh, transform, cmd_buffer);
 
-                            cmd_buffer.bind_pipeline(solid_pso_depth_pipeline);
+                            cmd_buffer.cmd_bind_pipeline(solid_pso_depth_pipeline);
 
                             render_mesh(
                                 mesh,
@@ -252,16 +224,16 @@ impl DebugRenderPass {
     pub fn render_debug_display(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         debug_display: &DebugDisplay,
         mesh_manager: &MeshManager,
     ) {
         cmd_buffer.with_label("Debug_Display", |cmd_buffer| {
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.wire_pso_depth_handle)
                 .unwrap();
-            cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.cmd_bind_pipeline(pipeline);
 
             render_context.bind_default_descriptor_sets(cmd_buffer);
 
@@ -282,12 +254,11 @@ impl DebugRenderPass {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn render_manipulators(
+    pub fn render_manipulators(
         &self,
         render_context: &RenderContext<'_>,
-
-        cmd_buffer: &mut HLCommandBuffer<'_>,
-        render_surface: &mut RenderSurface,
+        cmd_buffer: &mut CommandBuffer,
+        render_surface_extents: RenderSurfaceExtents,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
         camera: &CameraComponent,
@@ -298,7 +269,7 @@ impl DebugRenderPass {
                     let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                         transform,
                         &manipulator.local_transform,
-                        render_surface,
+                        render_surface_extents,
                         camera,
                     );
 
@@ -310,10 +281,10 @@ impl DebugRenderPass {
                     color.a = if manipulator.transparent { 225 } else { 255 };
 
                     let pipeline = render_context
-                        .pipeline_manager()
-                        .get_pipeline(self.solid_pso_nodepth_handle)
+                        .pipeline_manager
+                        .get_pipeline(self.solid_pso_no_depth_handle)
                         .unwrap();
-                    cmd_buffer.bind_pipeline(pipeline);
+                    cmd_buffer.cmd_bind_pipeline(pipeline);
 
                     render_context.bind_default_descriptor_sets(cmd_buffer);
 
@@ -333,7 +304,7 @@ impl DebugRenderPass {
     pub fn render(
         &self,
         render_context: &RenderContext<'_>,
-        cmd_buffer: &mut HLCommandBuffer<'_>,
+        cmd_buffer: &mut CommandBuffer,
         render_surface: &mut RenderSurface,
         picked_meshes: &[(&VisualComponent, &GlobalTransform)],
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
@@ -343,14 +314,9 @@ impl DebugRenderPass {
         debug_display: &DebugDisplay,
     ) {
         cmd_buffer.with_label("Debug", |cmd_buffer| {
-            cmd_buffer.bind_index_buffer(
-                &render_context
-                    .renderer()
-                    .static_buffer()
-                    .index_buffer_binding(),
-            );
+            cmd_buffer.cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
 
-            cmd_buffer.begin_render_pass(
+            cmd_buffer.cmd_begin_render_pass(
                 &[ColorRenderTargetBinding {
                     texture_view: render_surface.hdr_rt().rtv(),
                     load_op: LoadOp::Load,
@@ -385,13 +351,13 @@ impl DebugRenderPass {
             self.render_manipulators(
                 render_context,
                 cmd_buffer,
-                render_surface,
+                render_surface.extents(),
                 manipulator_meshes,
                 mesh_manager,
                 camera,
             );
 
-            cmd_buffer.end_render_pass();
+            cmd_buffer.cmd_end_render_pass();
         });
     }
 }
@@ -400,14 +366,14 @@ fn render_aabb_for_mesh(
     wire_frame_cube: &MeshMetaData,
     mesh: &MeshMetaData,
     transform: &GlobalTransform,
-    cmd_buffer: &mut HLCommandBuffer<'_>,
+    cmd_buffer: &mut CommandBuffer,
 ) {
     cmd_buffer.with_label("AABB", |cmd_buffer| {
         let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
         let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
 
         for position in &mesh.positions {
-            let world_pos = transform.mul_vec3(position.truncate());
+            let world_pos = transform.mul_vec3(*position);
 
             min_bound = min_bound.min(world_pos);
             max_bound = max_bound.max(world_pos);
@@ -435,7 +401,7 @@ fn render_mesh(
     world_xform: &GlobalTransform,
     color: Color,
     color_blend: f32,
-    cmd_buffer: &mut HLCommandBuffer<'_>,
+    cmd_buffer: &mut CommandBuffer,
 ) {
     let mut push_constant_data = cgen::cgen_type::ConstColorPushConstantData::default();
 
@@ -449,11 +415,11 @@ fn render_mesh(
     push_constant_data.set_color_blend(color_blend.into());
     push_constant_data.set_mesh_description_offset(mesh_meta_data.mesh_description_offset.into());
 
-    cmd_buffer.push_constant(&push_constant_data);
+    cmd_buffer.cmd_push_constant_typed(&push_constant_data);
 
-    if mesh_meta_data.index_count != 0 {
-        cmd_buffer.draw_indexed(mesh_meta_data.index_count, mesh_meta_data.index_offset, 0);
-    } else {
-        cmd_buffer.draw(mesh_meta_data.vertex_count, 0);
-    }
+    cmd_buffer.cmd_draw_indexed(
+        mesh_meta_data.index_count.get(),
+        mesh_meta_data.index_offset,
+        0,
+    );
 }

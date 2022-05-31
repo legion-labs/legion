@@ -65,6 +65,10 @@ impl StructMember {
 }
 
 impl CGenType {
+    pub fn is_native_type(&self) -> bool {
+        matches!(self, CGenType::Native(_))
+    }
+
     pub fn native_type(&self) -> &NativeType {
         if let CGenType::Native(e) = self {
             e
@@ -73,12 +77,20 @@ impl CGenType {
         }
     }
 
+    pub fn is_bitfield_type(&self) -> bool {
+        matches!(self, CGenType::BitField(_))
+    }
+
     pub fn bitfield_type(&self) -> &BitFieldType {
         if let CGenType::BitField(e) = self {
             e
         } else {
             panic!("Invalid access");
         }
+    }
+
+    pub fn is_struct_type(&self) -> bool {
+        matches!(self, CGenType::Struct(_))
     }
 
     pub fn struct_type(&self) -> &StructType {
@@ -159,10 +171,10 @@ pub fn build_type_graph(model: &Model) -> TypeGraph {
         g.add_node(t.id());
     }
 
-    for n in model.object_iter::<CGenType>() {
-        let deps = n.object().get_type_dependencies();
+    for t in model.object_iter::<CGenType>() {
+        let deps = t.object().get_type_dependencies();
         for e in deps {
-            g.add_edge(e.id(), n.id(), ());
+            g.add_edge(e.id(), t.id(), ());
         }
     }
 

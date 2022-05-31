@@ -32,7 +32,7 @@ float aabb_min_z(float4 aabb, float2 view_port, float debug_index) {
 void main_cs(uint3 dt_id : SV_DispatchThreadID) {
     if (dt_id.x < gpu_instance_count[0]) {
         GpuInstanceData instance_data = gpu_instance_data[dt_id.x];
-
+        
         uint va_table_address = va_table_address_buffer[instance_data.gpu_instance_id];
         GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, va_table_address);
         MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
@@ -93,9 +93,9 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
 
                 culled_instances[previous_count] = instance_data;
             #endif
-            }
+            }            
         }
-
+        
         if (!culled) {
             if (push_constant.options.is_set(CullingOptions_GATHER_PERF_STATS)) {
                 InterlockedAdd(culling_efficiency[0].occlusion_visible, 1);
@@ -107,20 +107,21 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             for (uint pass_idx = first_pass; pass_idx < last_pass; pass_idx++) {
 
                 uint offset_base_va = render_pass_data[pass_idx].offset_base_va;
-                uint offset_va = offset_base_va += (instance_data.state_id * 8);
-
+                uint offset_va = offset_base_va + (instance_data.state_id * 8);
+        
                 uint count_offset = static_buffer.Load<uint>(offset_va);
                 uint indirect_arg_offset = static_buffer.Load<uint>(offset_va + 4);
 
-                uint element_offset = 0;
-                InterlockedAdd(draw_count[count_offset], 1, element_offset);
-                uint inirect_offset = (indirect_arg_offset + element_offset) * 5;
+                uint prev_draw_count = 0;
+                InterlockedAdd(draw_count[count_offset], 1, prev_draw_count);
+                
+                uint indirect_offset = (indirect_arg_offset + prev_draw_count) * 5;
 
-                draw_args[inirect_offset + 0] = mesh_desc.index_count;
-                draw_args[inirect_offset + 1] = 1;
-                draw_args[inirect_offset + 2] = mesh_desc.index_offset;
-                draw_args[inirect_offset + 3] = 0;
-                draw_args[inirect_offset + 4] = instance_data.gpu_instance_id;
+                draw_args[indirect_offset + 0] = mesh_desc.index_count;
+                draw_args[indirect_offset + 1] = 1;
+                draw_args[indirect_offset + 2] = (addresses.mesh_description_va + mesh_desc.index_offset) / 2;
+                draw_args[indirect_offset + 3] = 0;
+                draw_args[indirect_offset + 4] = instance_data.gpu_instance_id;
             }
         }
     }

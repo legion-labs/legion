@@ -40,9 +40,6 @@ pub use device_context::*;
 mod fence;
 pub use fence::*;
 
-mod memory_allocation;
-pub use memory_allocation::*;
-
 mod pipeline;
 pub use pipeline::*;
 
@@ -74,12 +71,8 @@ mod texture_view;
 pub use texture_view::*;
 
 pub mod prelude {
+    pub use super::*;
     pub use crate::types::*;
-    pub use crate::*;
-    pub use crate::{
-        Buffer, BufferView, CommandBuffer, CommandPool, DescriptorSetHandle, DescriptorSetLayout,
-        DeviceContext, Fence, GfxResult, Queue, Sampler, Semaphore, Shader, Swapchain, Texture,
-    };
 }
 
 pub use error::*;
@@ -88,6 +81,8 @@ pub use types::*;
 //
 // Constants
 //
+
+pub const BACKBUFFER_COUNT: u32 = 2; // Needs to be known by the renderer (NUM_RENDER_FRAMES) and plugins (PresenterWindow)
 
 /// The maximum descriptor set layout index allowed. Vulkan only guarantees up
 /// to 4 are available

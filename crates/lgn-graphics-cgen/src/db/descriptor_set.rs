@@ -113,6 +113,10 @@ impl DescriptorSet {
         }
     }
 
+    pub fn contains_bindless_descriptors(&self) -> bool {
+        self.descriptors.iter().any(|d| d.bindless)
+    }
+
     pub fn get_type_dependencies(&self) -> HashSet<CGenTypeHandle> {
         let mut set = HashSet::new();
 

@@ -1,14 +1,16 @@
-use std::sync::Arc;
-
+use ash;
 use lgn_tracing::trace;
+use smallvec::SmallVec;
+use std::sync::Arc;
 
 use super::{internal, VkDebugReporter};
 use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer,
     CommandBufferDef, CommandPool, DepthStencilRenderTargetBinding, DescriptorSetHandle,
-    DeviceContext, GfxError, GfxResult, IndexBufferBinding, Pipeline, PipelineType, PlaneSlice,
-    ResourceState, ResourceUsage, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
+    DeviceContext, IndexBufferBinding, Pipeline, PipelineType, PlaneSlice, ResourceState,
+    ResourceUsage, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
+    MAX_VERTEX_INPUT_BINDINGS,
 };
 pub(crate) struct VulkanCommandBuffer {
     vk_command_buffer: ash::vk::CommandBuffer,
@@ -16,10 +18,7 @@ pub(crate) struct VulkanCommandBuffer {
 }
 
 impl VulkanCommandBuffer {
-    pub(crate) fn new(
-        command_pool: &CommandPool,
-        command_buffer_def: &CommandBufferDef,
-    ) -> GfxResult<Self> {
+    pub(crate) fn new(command_pool: &CommandPool, command_buffer_def: CommandBufferDef) -> Self {
         let vk_command_pool = command_pool.vk_command_pool();
         trace!("Creating command buffers from pool {:?}", vk_command_pool);
         let command_buffer_level = if command_buffer_def.is_secondary {
@@ -38,25 +37,26 @@ impl VulkanCommandBuffer {
                 .device_context()
                 .vk_device()
                 .allocate_command_buffers(&command_buffer_allocate_info)
-        }?[0];
+        }
+        .unwrap()[0];
 
-        Ok(Self {
+        Self {
             vk_command_buffer,
             debug_reporter: command_pool
                 .device_context()
                 .debug_reporter()
                 .as_ref()
                 .cloned(),
-        })
+        }
     }
 }
 
 impl CommandBuffer {
-    pub(crate) fn vk_command_buffer(&mut self) -> ash::vk::CommandBuffer {
-        self.inner.backend_command_buffer.vk_command_buffer
+    pub(crate) fn vk_command_buffer(&self) -> ash::vk::CommandBuffer {
+        self.backend_command_buffer.vk_command_buffer
     }
 
-    pub(crate) fn backend_begin(&mut self) -> GfxResult<()> {
+    pub(crate) fn backend_begin(&mut self) {
         // TODO: check if it is not a ONE TIME SUBMIT
         let command_buffer_usage_flags = ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT;
 
@@ -64,30 +64,27 @@ impl CommandBuffer {
             ash::vk::CommandBufferBeginInfo::builder().flags(command_buffer_usage_flags);
 
         unsafe {
-            self.inner.device_context.vk_device().begin_command_buffer(
-                self.inner.backend_command_buffer.vk_command_buffer,
-                &*begin_info,
-            )?;
+            self.device_context
+                .vk_device()
+                .begin_command_buffer(self.backend_command_buffer.vk_command_buffer, &*begin_info)
+                .unwrap();
         }
-
-        Ok(())
     }
 
-    pub(crate) fn backend_end(&mut self) -> GfxResult<()> {
+    pub(crate) fn backend_end(&mut self) {
         unsafe {
-            self.inner
-                .device_context
+            self.device_context
                 .vk_device()
-                .end_command_buffer(self.inner.backend_command_buffer.vk_command_buffer)?;
+                .end_command_buffer(self.backend_command_buffer.vk_command_buffer)
+                .unwrap();
         }
-        Ok(())
     }
 
     pub(crate) fn backend_cmd_begin_render_pass(
         &mut self,
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
-    ) -> GfxResult<()> {
+    ) {
         let barriers = {
             let mut barriers = Vec::with_capacity(color_targets.len() + 1);
             for color_target in color_targets {
@@ -144,9 +141,7 @@ impl CommandBuffer {
             let texture_def = depth_rt.texture_view.texture().definition();
             texture_def.extents
         } else {
-            return Err(GfxError::String(
-                "No render target in render pass color_targets or depth_target".to_string(),
-            ));
+            panic!("No render target in render pass color_targets or depth_target");
         };
 
         let render_area = ash::vk::Rect2D {
@@ -226,10 +221,9 @@ impl CommandBuffer {
         let render_info = render_info.build();
 
         unsafe {
-            self.inner.device_context.vk_device().cmd_begin_rendering(
-                self.inner.backend_command_buffer.vk_command_buffer,
-                &render_info,
-            );
+            self.device_context
+                .vk_device()
+                .cmd_begin_rendering(self.backend_command_buffer.vk_command_buffer, &render_info);
         }
 
         #[allow(clippy::cast_precision_loss)]
@@ -242,16 +236,13 @@ impl CommandBuffer {
             1.0,
         );
         self.cmd_set_scissor(0, 0, extents.width, extents.height);
-
-        Ok(())
     }
 
     pub(crate) fn backend_cmd_end_render_pass(&mut self) {
         unsafe {
-            self.inner
-                .device_context
+            self.device_context
                 .vk_device()
-                .cmd_end_rendering(self.inner.backend_command_buffer.vk_command_buffer);
+                .cmd_end_rendering(self.backend_command_buffer.vk_command_buffer);
         }
     }
 
@@ -268,8 +259,8 @@ impl CommandBuffer {
         unsafe {
             // We invert the viewport by using negative height and setting y = y + height
             // This is supported in vulkan 1.1 or 1.0 with an extension
-            self.inner.device_context.vk_device().cmd_set_viewport(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_set_viewport(
+                self.backend_command_buffer.vk_command_buffer,
                 0,
                 &[ash::vk::Viewport {
                     x,
@@ -285,8 +276,8 @@ impl CommandBuffer {
 
     pub(crate) fn backend_cmd_set_scissor(&mut self, x: u32, y: u32, width: u32, height: u32) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_set_scissor(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_set_scissor(
+                self.backend_command_buffer.vk_command_buffer,
                 0,
                 &[ash::vk::Rect2D {
                     offset: ash::vk::Offset2D {
@@ -301,14 +292,11 @@ impl CommandBuffer {
 
     pub(crate) fn backend_cmd_set_stencil_reference_value(&mut self, value: u32) {
         unsafe {
-            self.inner
-                .device_context
-                .vk_device()
-                .cmd_set_stencil_reference(
-                    self.inner.backend_command_buffer.vk_command_buffer,
-                    ash::vk::StencilFaceFlags::FRONT_AND_BACK,
-                    value,
-                );
+            self.device_context.vk_device().cmd_set_stencil_reference(
+                self.backend_command_buffer.vk_command_buffer,
+                ash::vk::StencilFaceFlags::FRONT_AND_BACK,
+                value,
+            );
         }
     }
 
@@ -319,8 +307,8 @@ impl CommandBuffer {
             super::internal::pipeline_type_pipeline_bind_point(pipeline.pipeline_type());
 
         unsafe {
-            self.inner.device_context.vk_device().cmd_bind_pipeline(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_bind_pipeline(
+                self.backend_command_buffer.vk_command_buffer,
                 pipeline_bind_point,
                 pipeline.vk_pipeline(),
             );
@@ -330,35 +318,36 @@ impl CommandBuffer {
     pub(crate) fn backend_cmd_bind_vertex_buffers(
         &mut self,
         first_binding: u32,
-        bindings: &[VertexBufferBinding<'_>],
+        bindings: &[VertexBufferBinding],
     ) {
-        let mut buffers = Vec::with_capacity(bindings.len());
-        let mut offsets = Vec::with_capacity(bindings.len());
+        let mut buffers =
+            SmallVec::<[ash::vk::Buffer; MAX_VERTEX_INPUT_BINDINGS]>::with_capacity(bindings.len());
+        let mut offsets =
+            SmallVec::<[ash::vk::DeviceSize; MAX_VERTEX_INPUT_BINDINGS]>::with_capacity(
+                bindings.len(),
+            );
         for binding in bindings {
-            buffers.push(binding.buffer.vk_buffer());
-            offsets.push(binding.byte_offset);
+            buffers.push(binding.buffer().vk_buffer());
+            offsets.push(binding.byte_offset());
         }
 
         unsafe {
-            self.inner
-                .device_context
-                .vk_device()
-                .cmd_bind_vertex_buffers(
-                    self.inner.backend_command_buffer.vk_command_buffer,
-                    first_binding,
-                    &buffers,
-                    &offsets,
-                );
+            self.device_context.vk_device().cmd_bind_vertex_buffers(
+                self.backend_command_buffer.vk_command_buffer,
+                first_binding,
+                &buffers,
+                &offsets,
+            );
         }
     }
 
-    pub(crate) fn backend_cmd_bind_index_buffer(&mut self, binding: &IndexBufferBinding<'_>) {
+    pub(crate) fn backend_cmd_bind_index_buffer(&mut self, binding: IndexBufferBinding) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_bind_index_buffer(
-                self.inner.backend_command_buffer.vk_command_buffer,
-                binding.buffer.vk_buffer(),
-                binding.byte_offset,
-                binding.index_type.into(),
+            self.device_context.vk_device().cmd_bind_index_buffer(
+                self.backend_command_buffer.vk_command_buffer,
+                binding.buffer().vk_buffer(),
+                binding.byte_offset(),
+                binding.index_type().into(),
             );
         }
     }
@@ -371,17 +360,14 @@ impl CommandBuffer {
         descriptor_set_handle: DescriptorSetHandle,
     ) {
         unsafe {
-            self.inner
-                .device_context
-                .vk_device()
-                .cmd_bind_descriptor_sets(
-                    self.inner.backend_command_buffer.vk_command_buffer,
-                    super::internal::pipeline_type_pipeline_bind_point(pipeline_type),
-                    root_signature.vk_pipeline_layout(),
-                    set_index,
-                    &[descriptor_set_handle.backend_descriptor_set_handle],
-                    &[],
-                );
+            self.device_context.vk_device().cmd_bind_descriptor_sets(
+                self.backend_command_buffer.vk_command_buffer,
+                super::internal::pipeline_type_pipeline_bind_point(pipeline_type),
+                root_signature.vk_pipeline_layout(),
+                set_index,
+                &[descriptor_set_handle.backend_descriptor_set_handle],
+                &[],
+            );
         }
     }
 
@@ -391,8 +377,8 @@ impl CommandBuffer {
         data: &[u8],
     ) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_push_constants(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_push_constants(
+                self.backend_command_buffer.vk_command_buffer,
                 root_signature.vk_pipeline_layout(),
                 ash::vk::ShaderStageFlags::ALL,
                 0,
@@ -403,8 +389,8 @@ impl CommandBuffer {
 
     pub(crate) fn backend_cmd_draw(&mut self, vertex_count: u32, first_vertex: u32) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_draw(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_draw(
+                self.backend_command_buffer.vk_command_buffer,
                 vertex_count,
                 1,
                 first_vertex,
@@ -421,8 +407,8 @@ impl CommandBuffer {
         first_instance: u32,
     ) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_draw(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_draw(
+                self.backend_command_buffer.vk_command_buffer,
                 vertex_count,
                 instance_count,
                 first_vertex,
@@ -439,8 +425,8 @@ impl CommandBuffer {
         stride: u32,
     ) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_draw_indirect(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_draw_indirect(
+                self.backend_command_buffer.vk_command_buffer,
                 indirect_arg_buffer.vk_buffer(),
                 indirect_arg_offset,
                 draw_count,
@@ -459,18 +445,15 @@ impl CommandBuffer {
         stride: u32,
     ) {
         unsafe {
-            self.inner
-                .device_context
-                .vk_device()
-                .cmd_draw_indirect_count(
-                    self.inner.backend_command_buffer.vk_command_buffer,
-                    indirect_arg_buffer.vk_buffer(),
-                    indirect_arg_offset,
-                    count_buffer.vk_buffer(),
-                    count_offset,
-                    max_draw_count,
-                    stride,
-                );
+            self.device_context.vk_device().cmd_draw_indirect_count(
+                self.backend_command_buffer.vk_command_buffer,
+                indirect_arg_buffer.vk_buffer(),
+                indirect_arg_offset,
+                count_buffer.vk_buffer(),
+                count_offset,
+                max_draw_count,
+                stride,
+            );
         }
     }
 
@@ -481,8 +464,8 @@ impl CommandBuffer {
         vertex_offset: i32,
     ) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_draw_indexed(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_draw_indexed(
+                self.backend_command_buffer.vk_command_buffer,
                 index_count,
                 1,
                 first_index,
@@ -501,8 +484,8 @@ impl CommandBuffer {
         vertex_offset: i32,
     ) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_draw_indexed(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_draw_indexed(
+                self.backend_command_buffer.vk_command_buffer,
                 index_count,
                 instance_count,
                 first_index,
@@ -520,16 +503,13 @@ impl CommandBuffer {
         stride: u32,
     ) {
         unsafe {
-            self.inner
-                .device_context
-                .vk_device()
-                .cmd_draw_indexed_indirect(
-                    self.inner.backend_command_buffer.vk_command_buffer,
-                    indirect_arg_buffer.vk_buffer(),
-                    indirect_arg_offset,
-                    draw_count,
-                    stride,
-                );
+            self.device_context.vk_device().cmd_draw_indexed_indirect(
+                self.backend_command_buffer.vk_command_buffer,
+                indirect_arg_buffer.vk_buffer(),
+                indirect_arg_offset,
+                draw_count,
+                stride,
+            );
         }
     }
 
@@ -543,11 +523,10 @@ impl CommandBuffer {
         stride: u32,
     ) {
         unsafe {
-            self.inner
-                .device_context
+            self.device_context
                 .vk_device()
                 .cmd_draw_indexed_indirect_count(
-                    self.inner.backend_command_buffer.vk_command_buffer,
+                    self.backend_command_buffer.vk_command_buffer,
                     indirect_arg_buffer.vk_buffer(),
                     indirect_arg_offset,
                     count_buffer.vk_buffer(),
@@ -564,9 +543,13 @@ impl CommandBuffer {
         group_count_y: u32,
         group_count_z: u32,
     ) {
+        assert!(
+            group_count_x != 0 && group_count_y != 0 && group_count_z != 0,
+            "None of the group counts should be 0, since this would launch 0 thread groups."
+        );
         unsafe {
-            self.inner.device_context.vk_device().cmd_dispatch(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_dispatch(
+                self.backend_command_buffer.vk_command_buffer,
                 group_count_x,
                 group_count_y,
                 group_count_z,
@@ -576,8 +559,8 @@ impl CommandBuffer {
 
     pub(crate) fn backend_cmd_dispatch_indirect(&mut self, buffer: &Buffer, offset: u64) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_dispatch_indirect(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_dispatch_indirect(
+                self.backend_command_buffer.vk_command_buffer,
                 buffer.vk_buffer(),
                 offset,
             );
@@ -610,20 +593,20 @@ impl CommandBuffer {
 
             match &barrier.queue_transition {
                 BarrierQueueTransition::ReleaseTo(dst_queue_type) => {
-                    vk_buffer_barrier.src_queue_family_index = self.inner.queue_family_index;
+                    vk_buffer_barrier.src_queue_family_index = self.queue_family_index;
                     vk_buffer_barrier.dst_queue_family_index =
                         super::internal::queue_type_to_family_index(
-                            &self.inner.device_context,
+                            &self.device_context,
                             *dst_queue_type,
                         );
                 }
                 BarrierQueueTransition::AcquireFrom(src_queue_type) => {
                     vk_buffer_barrier.src_queue_family_index =
                         super::internal::queue_type_to_family_index(
-                            &self.inner.device_context,
+                            &self.device_context,
                             *src_queue_type,
                         );
-                    vk_buffer_barrier.dst_queue_family_index = self.inner.queue_family_index;
+                    vk_buffer_barrier.dst_queue_family_index = self.queue_family_index;
                 }
                 BarrierQueueTransition::None => {
                     vk_buffer_barrier.src_queue_family_index = ash::vk::QUEUE_FAMILY_IGNORED;
@@ -733,8 +716,8 @@ impl CommandBuffer {
 
             set_queue_family_indices(
                 &mut vk_image_barrier,
-                &self.inner.device_context,
-                self.inner.queue_family_index,
+                &self.device_context,
+                self.queue_family_index,
                 &barrier.queue_transition,
             );
 
@@ -744,19 +727,15 @@ impl CommandBuffer {
             vk_image_barriers.push(vk_image_barrier);
         }
 
-        let src_stage_mask = super::internal::determine_pipeline_stage_flags(
-            self.inner.queue_type,
-            src_access_flags,
-        );
-        let dst_stage_mask = super::internal::determine_pipeline_stage_flags(
-            self.inner.queue_type,
-            dst_access_flags,
-        );
+        let src_stage_mask =
+            super::internal::determine_pipeline_stage_flags(self.queue_type, src_access_flags);
+        let dst_stage_mask =
+            super::internal::determine_pipeline_stage_flags(self.queue_type, dst_access_flags);
 
         if !vk_buffer_barriers.is_empty() || !vk_image_barriers.is_empty() {
             unsafe {
-                self.inner.device_context.vk_device().cmd_pipeline_barrier(
-                    self.inner.backend_command_buffer.vk_command_buffer,
+                self.device_context.vk_device().cmd_pipeline_barrier(
+                    self.backend_command_buffer.vk_command_buffer,
                     src_stage_mask,
                     dst_stage_mask,
                     ash::vk::DependencyFlags::empty(),
@@ -776,8 +755,8 @@ impl CommandBuffer {
         data: u32,
     ) {
         unsafe {
-            self.inner.device_context.vk_device().cmd_fill_buffer(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_fill_buffer(
+                self.backend_command_buffer.vk_command_buffer,
                 dst_buffer.vk_buffer(),
                 offset,
                 size,
@@ -804,8 +783,8 @@ impl CommandBuffer {
             })
             .collect::<Vec<_>>();
         unsafe {
-            self.inner.device_context.vk_device().cmd_copy_buffer(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_copy_buffer(
+                self.backend_command_buffer.vk_command_buffer,
                 src_buffer.vk_buffer(),
                 dst_buffer.vk_buffer(),
                 &vk_buffer_copy_regions,
@@ -826,32 +805,29 @@ impl CommandBuffer {
         let depth = 1.max(texture_def.extents.depth >> params.mip_level);
 
         unsafe {
-            self.inner
-                .device_context
-                .vk_device()
-                .cmd_copy_buffer_to_image(
-                    self.inner.backend_command_buffer.vk_command_buffer,
-                    src_buffer.vk_buffer(),
-                    dst_texture.vk_image(),
-                    ash::vk::ImageLayout::TRANSFER_DST_OPTIMAL,
-                    &[ash::vk::BufferImageCopy {
-                        image_extent: ash::vk::Extent3D {
-                            width,
-                            height,
-                            depth,
-                        },
-                        image_offset: ash::vk::Offset3D { x: 0, y: 0, z: 0 },
-                        image_subresource: ash::vk::ImageSubresourceLayers {
-                            aspect_mask: dst_texture.vk_aspect_mask(),
-                            mip_level: u32::from(params.mip_level),
-                            base_array_layer: u32::from(params.array_layer),
-                            layer_count: 1,
-                        },
-                        buffer_offset: params.buffer_offset,
-                        buffer_image_height: 0,
-                        buffer_row_length: 0,
-                    }],
-                );
+            self.device_context.vk_device().cmd_copy_buffer_to_image(
+                self.backend_command_buffer.vk_command_buffer,
+                src_buffer.vk_buffer(),
+                dst_texture.vk_image(),
+                ash::vk::ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[ash::vk::BufferImageCopy {
+                    image_extent: ash::vk::Extent3D {
+                        width,
+                        height,
+                        depth,
+                    },
+                    image_offset: ash::vk::Offset3D { x: 0, y: 0, z: 0 },
+                    image_subresource: ash::vk::ImageSubresourceLayers {
+                        aspect_mask: dst_texture.vk_aspect_mask(),
+                        mip_level: u32::from(params.mip_level),
+                        base_array_layer: u32::from(params.array_layer),
+                        layer_count: 1,
+                    },
+                    buffer_offset: params.buffer_offset,
+                    buffer_image_height: 0,
+                    buffer_row_length: 0,
+                }],
+            );
         }
     }
 
@@ -929,8 +905,8 @@ impl CommandBuffer {
             .dst_subresource(dst_subresource);
 
         unsafe {
-            self.inner.device_context.vk_device().cmd_blit_image(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_blit_image(
+                self.backend_command_buffer.vk_command_buffer,
                 src_texture.vk_image(),
                 super::internal::resource_state_to_image_layout(params.src_state).unwrap(),
                 dst_texture.vk_image(),
@@ -1016,8 +992,8 @@ impl CommandBuffer {
             });
 
         unsafe {
-            self.inner.device_context.vk_device().cmd_copy_image(
-                self.inner.backend_command_buffer.vk_command_buffer,
+            self.device_context.vk_device().cmd_copy_image(
+                self.backend_command_buffer.vk_command_buffer,
                 src_texture.vk_image(),
                 super::internal::resource_state_to_image_layout(params.src_state).unwrap(),
                 dst_texture.vk_image(),
@@ -1029,14 +1005,14 @@ impl CommandBuffer {
 
     pub(crate) fn backend_begin_label(&mut self, label: &str) {
         let vk_command_buffer = self.vk_command_buffer();
-        if let Some(debug_reporter) = &self.inner.backend_command_buffer.debug_reporter {
+        if let Some(debug_reporter) = &self.backend_command_buffer.debug_reporter {
             debug_reporter.begin_label(vk_command_buffer, label);
         }
     }
 
     pub(crate) fn backend_end_label(&mut self) {
         let vk_command_buffer = self.vk_command_buffer();
-        if let Some(debug_reporter) = &self.inner.backend_command_buffer.debug_reporter {
+        if let Some(debug_reporter) = &self.backend_command_buffer.debug_reporter {
             debug_reporter.end_label(vk_command_buffer);
         }
     }

@@ -26,6 +26,7 @@ pub enum ExtensionMode {
 }
 
 /// General configuration that all APIs will make best effort to respect
+#[derive(Clone)]
 pub struct ApiDef {
     /// Used as a hint for drivers for what is being run. There are no special
     /// requirements for this. It is not visible to end-users.
@@ -77,9 +78,9 @@ impl GfxApi {
     /// the GPU should be considered unsafe. However,  APIs are only gated
     /// by unsafe if they can cause undefined behavior on the CPU for
     /// reasons other than interacting with the GPU.
-    #[allow(unsafe_code)]
-    pub unsafe fn new(api_def: &ApiDef) -> GfxResult<Self> {
-        let (platform_api, device_context) = BackendApi::new(api_def)?;
+    #[allow(unsafe_code, clippy::needless_pass_by_value)]
+    pub unsafe fn new(api_def: ApiDef) -> GfxResult<Self> {
+        let (platform_api, device_context) = BackendApi::new(&api_def)?;
 
         Ok(Self {
             device_context: Some(device_context),

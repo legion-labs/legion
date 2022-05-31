@@ -45,7 +45,7 @@ impl Product {
         let mut output = std::fs::File::create(&final_path)?;
 
         // write file footer
-        writeln!(output, "// This is generated file. Do not edit manually")?;
+        writeln!(output, "// This is a generated file. Do not edit manually")?;
         writeln!(output)?;
 
         // write file content

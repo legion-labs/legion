@@ -4,26 +4,38 @@ use lgn_data_runtime::Handle;
 use lgn_ecs::prelude::Component;
 use lgn_graphics_data::runtime::{MaterialReferenceType, Model};
 use lgn_math::{Mat4, Vec2, Vec3, Vec4};
+use lgn_utils::memory::round_size_up_to_alignment_u32;
 
 use crate::{
     cgen::cgen_type::{MeshAttribMask, MeshDescription},
-    resources::UniformGPUDataUpdater,
+    core::BinaryWriter,
     DOWN_VECTOR, UP_VECTOR,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MeshTopology {
+    LineList,
+    TriangleList,
+}
+
 pub struct Mesh {
+    pub indices: Vec<u16>,
     pub positions: Vec<Vec3>,
     pub normals: Option<Vec<Vec3>>,
     pub tangents: Option<Vec<Vec4>>,
     pub tex_coords: Option<Vec<Vec2>>,
-    pub indices: Option<Vec<u16>>,
     pub colors: Option<Vec<[u8; 4]>>,
-
+    pub topology: MeshTopology,
     pub material_id: Option<MaterialReferenceType>,
     pub bounding_sphere: Vec4,
 }
 
+const DEFAULT_ALIGNMENT: usize = 64;
 const DEFAULT_MESH_VERTEX_SIZE: usize = 12; // pos + normal + color + tex_coord = 3 + 3 + 4 + 2
+
+fn byteadressbuffer_align(size: u32) -> u32 {
+    round_size_up_to_alignment_u32(size, DEFAULT_ALIGNMENT as u32)
+}
 
 impl Mesh {
     pub fn get_mesh_attrib_mask(&self) -> MeshAttribMask {
@@ -37,33 +49,10 @@ impl Mesh {
         if self.tex_coords.is_some() {
             format |= MeshAttribMask::TEX_COORD;
         }
-        if self.indices.is_some() {
-            format |= MeshAttribMask::INDEX;
-        }
         if self.colors.is_some() {
             format |= MeshAttribMask::COLOR;
         }
         format
-    }
-
-    pub fn size_in_bytes(&self) -> u32 {
-        let mut size = (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
-        if let Some(normals) = &self.normals {
-            size += (std::mem::size_of::<u32>() * normals.len()) as u32;
-        }
-        if let Some(tangents) = &self.tangents {
-            size += (std::mem::size_of::<u32>() * tangents.len()) as u32;
-        }
-        if let Some(tex_coords) = &self.tex_coords {
-            size += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
-        }
-        if let Some(indices) = &self.indices {
-            size += (std::mem::size_of::<u32>() * indices.len()) as u32;
-        }
-        if let Some(colors) = &self.colors {
-            size += (std::mem::size_of::<[u8; 4]>() * colors.len()) as u32;
-        }
-        size
     }
 
     pub fn calculate_bounding_sphere(positions: &[Vec3]) -> Vec4 {
@@ -90,60 +79,98 @@ impl Mesh {
         mid_point.extend(max_length)
     }
 
-    pub fn make_gpu_update_job(
-        &self,
-        updater: &mut UniformGPUDataUpdater,
-        offset: u32,
-    ) -> (u32, u32, u32) {
+    pub fn pack_gpu_data(&self) -> (Vec<u8>, u32) {
+        let indice_size = (self.indices.len() * std::mem::size_of::<u16>()) as u32;
+        let position_size = (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
+        let normal_size = self.normals.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<u32>() * stream.len()) as u32
+        });
+        let tangent_size = self.tangents.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<u32>() * stream.len()) as u32
+        });
+        let texcoord_size = self.tex_coords.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<Vec2>() * stream.len()) as u32
+        });
+        let color_size = self.colors.as_ref().map_or(0, |stream| {
+            (std::mem::size_of::<[u8; 4]>() * stream.len()) as u32
+        });
+
+        let indice_offset = byteadressbuffer_align(std::mem::size_of::<MeshDescription>() as u32);
+        let position_offset = byteadressbuffer_align(indice_offset + indice_size);
+        let normal_offset = byteadressbuffer_align(position_offset + position_size);
+        let tangent_offset = byteadressbuffer_align(normal_offset + normal_size);
+        let texcoord_offset = byteadressbuffer_align(tangent_offset + tangent_size);
+        let color_offset = byteadressbuffer_align(texcoord_offset + texcoord_size);
+        let buf_size = byteadressbuffer_align(color_offset + color_size);
+
         let mut mesh_desc = MeshDescription::default();
         mesh_desc.set_attrib_mask(self.get_mesh_attrib_mask());
-        let mut offset = offset;
-        let mut index_offset = 0;
-
-        mesh_desc.set_position_offset(offset.into());
-        updater.add_update_jobs(&self.positions, u64::from(offset));
-        offset += (std::mem::size_of::<Vec3>() * self.positions.len()) as u32;
-
-        if let Some(normals) = &self.normals {
-            mesh_desc.set_normal_offset(offset.into());
-            updater.add_update_jobs(
-                &lgn_math::pack_normals_r11g11b10(normals),
-                u64::from(offset),
-            );
-            offset += (std::mem::size_of::<u32>() * normals.len()) as u32;
-        }
-        if let Some(tangents) = &self.tangents {
-            mesh_desc.set_tangent_offset(offset.into());
-            updater.add_update_jobs(
-                &lgn_math::pack_tangents_r11g10b10a1(tangents),
-                u64::from(offset),
-            );
-            offset += (std::mem::size_of::<u32>() * tangents.len()) as u32;
-        }
-        if let Some(tex_coords) = &self.tex_coords {
-            mesh_desc.set_tex_coord_offset(offset.into());
-            updater.add_update_jobs(tex_coords, u64::from(offset));
-            offset += (std::mem::size_of::<Vec2>() * tex_coords.len()) as u32;
-        }
-        if let Some(indices) = &self.indices {
-            // Convert from byte offset to index offset, byte offset is only needed for uploading data
-            index_offset = offset / 2;
-            mesh_desc.set_index_offset(index_offset.into());
-            mesh_desc.set_index_count((indices.len() as u32).into());
-            updater.add_update_jobs(indices, u64::from(offset));
-            offset += (std::mem::size_of::<u32>() * indices.len()) as u32;
-        }
-        if let Some(colors) = &self.colors {
-            mesh_desc.set_color_offset(offset.into());
-            updater.add_update_jobs(colors, u64::from(offset));
-            offset += (std::mem::size_of::<[u8; 4]>() * colors.len()) as u32;
-        }
+        mesh_desc.set_position_offset(position_offset.into());
+        mesh_desc.set_normal_offset(normal_offset.into());
+        mesh_desc.set_tangent_offset(tangent_offset.into());
+        mesh_desc.set_tex_coord_offset(texcoord_offset.into());
+        mesh_desc.set_index_offset(indice_offset.into());
+        mesh_desc.set_index_count((indice_size / 2).into());
+        mesh_desc.set_color_offset(color_offset.into());
         mesh_desc.set_bounding_sphere(self.bounding_sphere.into());
 
-        updater.add_update_jobs(&[mesh_desc], u64::from(offset));
-        let mesh_info_offset = offset;
-        offset += std::mem::size_of::<MeshDescription>() as u32;
-        (offset, mesh_info_offset, index_offset)
+        macro_rules! write_slice {
+            ($writer:expr, $data:expr, $offset:expr, $size:expr) => {
+                assert_eq!($writer.len(), $offset as usize);
+                let written = $writer.write_slice($data);
+                assert_eq!(written, $size as usize);
+            };
+        }
+
+        let mut writer = BinaryWriter::with_capacity(buf_size as usize);
+
+        writer.write(&mesh_desc);
+
+        writer.align(DEFAULT_ALIGNMENT);
+
+        write_slice!(writer, &self.indices, indice_offset, indice_size);
+
+        writer.align(DEFAULT_ALIGNMENT);
+
+        write_slice!(writer, &self.positions, position_offset, position_size);
+
+        writer.align(DEFAULT_ALIGNMENT);
+
+        if let Some(normals) = &self.normals {
+            write_slice!(
+                writer,
+                &lgn_math::pack_normals_r11g11b10(normals),
+                normal_offset,
+                normal_size
+            );
+        }
+
+        writer.align(DEFAULT_ALIGNMENT);
+
+        if let Some(tangents) = &self.tangents {
+            write_slice!(
+                writer,
+                &lgn_math::pack_tangents_r11g10b10a1(tangents),
+                tangent_offset,
+                tangent_size
+            );
+        }
+
+        writer.align(DEFAULT_ALIGNMENT);
+
+        if let Some(tex_coords) = &self.tex_coords {
+            write_slice!(writer, tex_coords, texcoord_offset, texcoord_size);
+        }
+
+        writer.align(DEFAULT_ALIGNMENT);
+
+        if let Some(colors) = &self.colors {
+            write_slice!(writer, colors, color_offset, color_size);
+        }
+
+        writer.align(DEFAULT_ALIGNMENT);
+
+        (writer.take(), indice_offset)
     }
 
     pub fn num_vertices(&self) -> usize {
@@ -151,17 +178,7 @@ impl Mesh {
     }
 
     pub fn num_indices(&self) -> usize {
-        if let Some(indices) = &self.indices {
-            return indices.len();
-        }
-        0
-    }
-
-    pub fn index_offset(&self) -> usize {
-        if let Some(indices) = &self.indices {
-            return indices.len();
-        }
-        0
+        self.indices.len()
     }
 
     pub fn new_cube(size: f32) -> Self {
@@ -208,7 +225,7 @@ impl Mesh {
         index_data.extend_from_slice(&[16, 17, 18, 16, 18, 19]);
         index_data.extend_from_slice(&[20, 21, 22, 20, 22, 23]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), MeshTopology::TriangleList)
     }
 
     pub fn new_pyramid(base_size: f32, height: f32) -> Self {
@@ -257,7 +274,7 @@ impl Mesh {
         index_data.extend_from_slice(&[10, 11, 12]);
         index_data.extend_from_slice(&[13, 14, 15]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), MeshTopology::TriangleList)
     }
 
     pub fn new_plane(size: f32) -> Self {
@@ -273,7 +290,7 @@ impl Mesh {
         let mut index_data: Vec<u16> = vec![];
         index_data.extend_from_slice(&[0, 1, 2, 0, 2, 3]);
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), MeshTopology::TriangleList)
     }
 
     fn new_cylinder_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u16>) {
@@ -335,7 +352,7 @@ impl Mesh {
 
     pub fn new_cylinder(radius: f32, length: f32, steps: u32) -> Self {
         let (vertex_data, index_data) = Self::new_cylinder_inner(radius, length, steps);
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), MeshTopology::TriangleList)
     }
 
     fn new_cone_inner(radius: f32, length: f32, steps: u32) -> (Vec<f32>, Vec<u16>) {
@@ -377,7 +394,7 @@ impl Mesh {
 
     pub fn new_cone(radius: f32, length: f32, steps: u32) -> Self {
         let (vertex_data, index_data) = Self::new_cone_inner(radius, length, steps);
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), MeshTopology::TriangleList)
     }
 
     pub fn new_torus(
@@ -478,7 +495,7 @@ impl Mesh {
             }
         }
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), MeshTopology::TriangleList)
     }
 
     pub fn new_wireframe_cube(size: f32) -> Self {
@@ -514,7 +531,8 @@ impl Mesh {
             -half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0,
              half_size, -half_size,  half_size, 0.0, -1.0,  0.0, 0.0, 0.0, 0.0, 1.0,  1.0,  1.0,
         ];
-        Self::from_vertex_data(&vertex_data, None)
+
+        Self::from_vertex_data(&vertex_data, None, MeshTopology::LineList)
     }
 
     pub fn new_ground_plane(num_squares: u32, num_sub_squares: u32, minor_spacing: f32) -> Self {
@@ -603,7 +621,7 @@ impl Mesh {
             0.05,
         );
 
-        Self::from_vertex_data(&vertex_data, None)
+        Self::from_vertex_data(&vertex_data, None, MeshTopology::LineList)
     }
 
     /// An arrow that points down with default rotation
@@ -623,7 +641,11 @@ impl Mesh {
         arrow_vertex_data.append(&mut cone_vertex_data);
         arrow_index_data.append(&mut cone_index_data);
 
-        Self::from_vertex_data(&arrow_vertex_data, Some(arrow_index_data))
+        Self::from_vertex_data(
+            &arrow_vertex_data,
+            Some(arrow_index_data),
+            MeshTopology::TriangleList,
+        )
     }
 
     pub fn new_sphere(radius: f32, slices: u32, sails: u32) -> Self {
@@ -736,14 +758,19 @@ impl Mesh {
             }
         }
 
-        Self::from_vertex_data(&vertex_data, Some(index_data))
+        Self::from_vertex_data(&vertex_data, Some(index_data), MeshTopology::TriangleList)
     }
 
-    fn from_vertex_data(vertex_data: &[f32], index_data: Option<Vec<u16>>) -> Self {
+    fn from_vertex_data(
+        vertex_data: &[f32],
+        indices: Option<Vec<u16>>,
+        topology: MeshTopology,
+    ) -> Self {
         let mut positions = Vec::new();
         let mut normals = Vec::new();
         let mut colors = Vec::new();
         let mut tex_coords = Vec::new();
+        assert_eq!(vertex_data.len() % DEFAULT_MESH_VERTEX_SIZE, 0);
         for i in 0..vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE {
             let idx = i * DEFAULT_MESH_VERTEX_SIZE;
             positions.push(Vec3::new(
@@ -764,19 +791,41 @@ impl Mesh {
             ]);
             tex_coords.push(Vec2::new(vertex_data[idx + 10], vertex_data[idx + 11]));
         }
-        let tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &index_data);
+
+        let indices = indices.unwrap_or_else(|| {
+            (0..positions.len())
+                .map(|x| u16::try_from(x).unwrap())
+                .collect::<Vec<u16>>()
+        });
+
+        let tangents = match topology {
+            MeshTopology::LineList => {
+                assert_eq!(indices.len() % 2, 0);
+                None
+            }
+            MeshTopology::TriangleList => {
+                assert_eq!(indices.len() % 3, 0);
+                Some(
+                    lgn_math::calculate_tangents(&positions, &tex_coords, &indices)
+                        .iter()
+                        .map(|v| v.extend(-1.0))
+                        .collect(),
+                )
+            }
+        };
+
         let bounding_sphere = Self::calculate_bounding_sphere(&positions);
 
         Self {
+            indices,
             positions,
             normals: Some(normals),
-            tangents: Some(tangents.iter().map(|v| v.extend(-1.0)).collect()),
+            tangents,
             tex_coords: Some(tex_coords),
-            indices: index_data,
             colors: Some(colors),
-
             material_id: None,
             bounding_sphere,
+            topology,
         }
     }
 

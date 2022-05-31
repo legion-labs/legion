@@ -30,8 +30,8 @@ pub(crate) use fence::*;
 mod internal;
 pub(crate) use internal::*;
 
-mod memory_allocation;
-pub(crate) use memory_allocation::*;
+// mod memory_allocation;
+// pub(crate) use memory_allocation::*;
 
 mod pipeline;
 pub(crate) use pipeline::*;
@@ -72,8 +72,6 @@ pub(crate) mod backend_impl {
     pub(crate) type BackendDescriptorHeapPartition = super::VulkanDescriptorHeapPartition;
     pub(crate) type BackendDescriptorSetLayout = super::VulkanDescriptorSetLayout;
     pub(crate) type BackendFence = super::VulkanFence;
-    pub(crate) type BackendMemoryAllocation = super::VulkanMemoryAllocation;
-    pub(crate) type BackendMemoryPagesAllocation = super::VulkanMemoryPagesAllocation;
     pub(crate) type BackendPipeline = super::VulkanPipeline;
     pub(crate) type BackendQueue = super::VulkanQueue;
     pub(crate) type BackendRootSignature = super::VulkanRootSignature;

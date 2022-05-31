@@ -2,7 +2,7 @@ use std::{fs::File, io, path::Path};
 
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::prelude::{Commands, Entity, Query, Res};
-use lgn_graphics_renderer::{components::VisualComponent, resources::ModelManager};
+use lgn_graphics_renderer::{components::VisualComponent, resources::ModelManager, Renderer};
 use lgn_math::{Quat, Vec3};
 use lgn_tracing::span_fn;
 use lgn_transform::prelude::{GlobalTransform, Transform, TransformBundle};
@@ -37,8 +37,10 @@ impl Plugin for MetaCubePlugin {
 fn init_stress_test(
     commands: Commands<'_, '_>,
     meta_cube: Res<'_, MetaCubeResource>,
-    model_manager: Res<'_, ModelManager>,
+    renderer: Res<'_, Renderer>,
 ) {
+    let model_manager = renderer.render_resources().get::<ModelManager>();
+
     meta_cube.initialize(commands, &model_manager);
 }
 

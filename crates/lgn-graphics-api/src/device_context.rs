@@ -87,15 +87,7 @@ pub(crate) struct DeviceContextInner {
 
 impl std::fmt::Debug for DeviceContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DeviceContext")
-            .field(
-                "handle",
-                //#[cfg(any(feature = "vulkan"))]
-                //&self.vk_device().handle(),
-                //#[cfg(not(any(feature = "vulkan")))]
-                &0,
-            )
-            .finish()
+        f.debug_struct("DeviceContext").field("handle", &0).finish()
     }
 }
 
@@ -209,11 +201,11 @@ impl DeviceContext {
         })
     }
 
-    pub fn create_queue(&self, queue_type: QueueType) -> GfxResult<Queue> {
+    pub fn create_queue(&self, queue_type: QueueType) -> Queue {
         Queue::new(self, queue_type)
     }
 
-    pub fn create_fence(&self) -> GfxResult<Fence> {
+    pub fn create_fence(&self) -> Fence {
         Fence::new(self)
     }
 
@@ -224,24 +216,24 @@ impl DeviceContext {
     pub fn create_swapchain(
         &self,
         raw_window_handle: &dyn HasRawWindowHandle,
-        swapchain_def: &SwapchainDef,
-    ) -> GfxResult<Swapchain> {
+        swapchain_def: SwapchainDef,
+    ) -> Swapchain {
         Swapchain::new(self, raw_window_handle, swapchain_def)
     }
 
-    pub fn create_sampler(&self, sampler_def: &SamplerDef) -> Sampler {
+    pub fn create_sampler(&self, sampler_def: SamplerDef) -> Sampler {
         Sampler::new(self, sampler_def)
     }
 
-    pub fn create_texture(&self, texture_def: &TextureDef) -> Texture {
+    pub fn create_texture<T: AsRef<str>>(&self, texture_def: TextureDef, debug_name: T) -> Texture {
         let texture = Texture::new(self, texture_def);
-        self.set_texture_name(&texture, &texture_def.name);
+        self.set_texture_name(&texture, debug_name);
         texture
     }
 
-    pub fn create_buffer(&self, buffer_def: &BufferDef) -> Buffer {
+    pub fn create_buffer<T: AsRef<str>>(&self, buffer_def: BufferDef, debug_name: T) -> Buffer {
         let buffer = Buffer::new(self, buffer_def);
-        self.set_buffer_name(&buffer, &buffer_def.name);
+        self.set_buffer_name(&buffer, debug_name);
         buffer
     }
 
@@ -251,36 +243,24 @@ impl DeviceContext {
 
     pub fn create_descriptorset_layout(
         &self,
-        descriptorset_layout_def: &DescriptorSetLayoutDef,
-    ) -> GfxResult<DescriptorSetLayout> {
+        descriptorset_layout_def: DescriptorSetLayoutDef,
+    ) -> DescriptorSetLayout {
         DescriptorSetLayout::new(self, descriptorset_layout_def)
     }
 
-    pub fn create_root_signature(
-        &self,
-        root_signature_def: &RootSignatureDef,
-    ) -> GfxResult<RootSignature> {
+    pub fn create_root_signature(&self, root_signature_def: RootSignatureDef) -> RootSignature {
         RootSignature::new(self, root_signature_def)
     }
 
-    pub fn create_descriptor_heap(
-        &self,
-        descriptor_heap_def: &DescriptorHeapDef,
-    ) -> GfxResult<DescriptorHeap> {
+    pub fn create_descriptor_heap(&self, descriptor_heap_def: DescriptorHeapDef) -> DescriptorHeap {
         DescriptorHeap::new(self, descriptor_heap_def)
     }
 
-    pub fn create_graphics_pipeline(
-        &self,
-        graphics_pipeline_def: &GraphicsPipelineDef<'_>,
-    ) -> GfxResult<Pipeline> {
+    pub fn create_graphics_pipeline(&self, graphics_pipeline_def: GraphicsPipelineDef) -> Pipeline {
         Pipeline::new_graphics_pipeline(self, graphics_pipeline_def)
     }
 
-    pub fn create_compute_pipeline(
-        &self,
-        compute_pipeline_def: &ComputePipelineDef<'_>,
-    ) -> GfxResult<Pipeline> {
+    pub fn create_compute_pipeline(&self, compute_pipeline_def: ComputePipelineDef) -> Pipeline {
         Pipeline::new_compute_pipeline(self, compute_pipeline_def)
     }
 
@@ -300,7 +280,7 @@ impl DeviceContext {
         &self.inner.device_info
     }
 
-    pub fn inc_current_cpu_frame(&mut self) {
+    pub fn inc_current_cpu_frame(&self) {
         self.inner.current_cpu_frame.fetch_add(1, Ordering::Relaxed);
     }
 
@@ -308,16 +288,16 @@ impl DeviceContext {
         self.inner.current_cpu_frame.load(Ordering::Relaxed)
     }
 
-    pub fn set_texture_name(&self, texture: &Texture, name: &str) {
+    pub fn set_texture_name<T: AsRef<str>>(&self, texture: &Texture, name: T) {
         self.inner
             .backend_device_context
-            .set_texture_name(texture, name);
+            .set_texture_name(texture, name.as_ref());
     }
 
-    pub fn set_buffer_name(&self, buffer: &Buffer, name: &str) {
+    pub fn set_buffer_name<T: AsRef<str>>(&self, buffer: &Buffer, name: T) {
         self.inner
             .backend_device_context
-            .set_buffer_name(buffer, name);
+            .set_buffer_name(buffer, name.as_ref());
     }
 }
 

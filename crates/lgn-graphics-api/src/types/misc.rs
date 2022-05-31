@@ -6,7 +6,9 @@ use std::{
 use lgn_utils::decimal::DecimalF32;
 use strum::{EnumCount, EnumIter, IntoEnumIterator};
 
-use crate::{Buffer, BufferView, PlaneSlice, QueueType, Sampler, Texture, TextureView};
+use crate::{
+    Buffer, BufferView, PlaneSlice, QueueType, Sampler, Texture, TextureView, TransientBufferView,
+};
 
 /// The color space an image data is in. The correct color space often varies
 /// between texture types (like normal maps vs. albedo maps).
@@ -642,16 +644,59 @@ pub struct DepthStencilRenderTargetBinding<'a> {
 }
 
 /// A vertex buffer to be bound during a renderpass
-pub struct VertexBufferBinding<'a> {
-    pub buffer: &'a Buffer,
-    pub byte_offset: u64,
+#[derive(Clone, Copy)]
+pub struct VertexBufferBinding {
+    buffer: *const Buffer,
+    byte_offset: u64,
+}
+
+impl VertexBufferBinding {
+    pub fn new(buffer: &Buffer, byte_offset: u64) -> Self {
+        Self {
+            buffer,
+            byte_offset,
+        }
+    }
+
+    #[allow(unsafe_code)]
+    pub fn buffer(&self) -> &Buffer {
+        unsafe { self.buffer.as_ref().unwrap() }
+    }
+
+    pub fn byte_offset(&self) -> u64 {
+        self.byte_offset
+    }
 }
 
 /// An index buffer to be bound during a renderpass
-pub struct IndexBufferBinding<'a> {
-    pub buffer: &'a Buffer,
-    pub byte_offset: u64,
-    pub index_type: IndexType,
+#[derive(Clone, Copy)]
+pub struct IndexBufferBinding {
+    buffer: *const Buffer,
+    byte_offset: u64,
+    index_type: IndexType,
+}
+
+impl IndexBufferBinding {
+    pub fn new(buffer: &Buffer, byte_offset: u64, index_type: IndexType) -> Self {
+        Self {
+            buffer,
+            byte_offset,
+            index_type,
+        }
+    }
+
+    #[allow(unsafe_code)]
+    pub fn buffer(&self) -> &Buffer {
+        unsafe { self.buffer.as_ref().unwrap() }
+    }
+
+    pub fn byte_offset(&self) -> u64 {
+        self.byte_offset
+    }
+
+    pub fn index_type(&self) -> IndexType {
+        self.index_type
+    }
 }
 
 /// Parameters for copying a buffer to a texture
@@ -691,16 +736,41 @@ pub struct CmdCopyTextureParams {
 
 /// Wraps all the possible types used to fill a `DescriptorSet`
 #[derive(Clone, Copy)]
-pub enum DescriptorRef<'a> {
+pub enum DescriptorRef {
     Undefined,
-    Sampler(&'a Sampler),
-    BufferView(&'a BufferView),
-    TextureView(&'a TextureView),
+    Sampler(*const Sampler),
+    TransientBufferView(TransientBufferView),
+    BufferView(*const BufferView),
+    TextureView(*const TextureView),
 }
 
-impl<'a> Default for DescriptorRef<'a> {
+impl Default for DescriptorRef {
     fn default() -> Self {
         Self::Undefined
+    }
+}
+
+impl From<&Sampler> for DescriptorRef {
+    fn from(sampler: &Sampler) -> Self {
+        Self::Sampler(sampler)
+    }
+}
+
+impl From<&BufferView> for DescriptorRef {
+    fn from(buffer_view: &BufferView) -> Self {
+        Self::BufferView(buffer_view)
+    }
+}
+
+impl From<TransientBufferView> for DescriptorRef {
+    fn from(transient_buffer_view: TransientBufferView) -> Self {
+        Self::TransientBufferView(transient_buffer_view)
+    }
+}
+
+impl From<&TextureView> for DescriptorRef {
+    fn from(texture_view: &TextureView) -> Self {
+        Self::TextureView(texture_view)
     }
 }
 

@@ -2,7 +2,7 @@ use lgn_graphics_api::prelude::*;
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_graphics_renderer::{
     components::RenderSurface,
-    resources::{PipelineHandle, PipelineManager},
+    resources::{PipelineDef, PipelineHandle, PipelineManager},
     RenderContext,
 };
 use lgn_tracing::span_fn;
@@ -28,29 +28,30 @@ impl ResolutionDependentResources {
         let mut yuv_image_uavs = Vec::with_capacity(render_frame_count as usize);
         let mut copy_yuv_images = Vec::with_capacity(render_frame_count as usize);
         for _ in 0..render_frame_count {
-            let mut yuv_plane_def = TextureDef {
-                name: "Y".to_string(),
-                extents: Extents3D {
-                    width: resolution.width,
-                    height: resolution.height,
-                    depth: 1,
+            let y_image = device_context.create_texture(
+                TextureDef {
+                    extents: Extents3D {
+                        width: resolution.width,
+                        height: resolution.height,
+                        depth: 1,
+                    },
+                    array_length: 1,
+                    mip_count: 1,
+                    format: Format::R8_UNORM,
+                    memory_usage: MemoryUsage::GpuOnly,
+                    usage_flags: ResourceUsage::AS_UNORDERED_ACCESS
+                        | ResourceUsage::AS_TRANSFERABLE,
+                    resource_flags: ResourceFlags::empty(),
+                    tiling: TextureTiling::Optimal,
                 },
-                array_length: 1,
-                mip_count: 1,
-                format: Format::R8_UNORM,
-                mem_usage: MemoryUsage::GpuOnly,
-                usage_flags: ResourceUsage::AS_UNORDERED_ACCESS | ResourceUsage::AS_TRANSFERABLE,
-                resource_flags: ResourceFlags::empty(),
-                tiling: TextureTiling::Optimal,
-            };
-
-            let y_image = device_context.create_texture(&yuv_plane_def);
-            yuv_plane_def.extents.width /= 2;
-            yuv_plane_def.extents.height /= 2;
-            yuv_plane_def.name = "U".to_string();
-            let u_image = device_context.create_texture(&yuv_plane_def);
-            yuv_plane_def.name = "V".to_string();
-            let v_image = device_context.create_texture(&yuv_plane_def);
+                "Y",
+            );
+            let mut u_plane_def = *y_image.definition();
+            u_plane_def.extents.width /= 2;
+            u_plane_def.extents.height /= 2;
+            let v_plane_def = u_plane_def;
+            let u_image = device_context.create_texture(u_plane_def, "U");
+            let v_image = device_context.create_texture(v_plane_def, "V");
 
             let yuv_plane_uav_def = TextureViewDef {
                 gpu_view_type: GPUViewType::UnorderedAccess,
@@ -62,25 +63,27 @@ impl ResolutionDependentResources {
                 array_size: 1,
             };
 
-            let y_image_uav = y_image.create_view(&yuv_plane_uav_def);
-            let u_image_uav = u_image.create_view(&yuv_plane_uav_def);
-            let v_image_uav = v_image.create_view(&yuv_plane_uav_def);
+            let y_image_uav = y_image.create_view(yuv_plane_uav_def);
+            let u_image_uav = u_image.create_view(yuv_plane_uav_def);
+            let v_image_uav = v_image.create_view(yuv_plane_uav_def);
 
-            let copy_yuv_image = device_context.create_texture(&TextureDef {
-                name: "Copy".to_string(),
-                extents: Extents3D {
-                    width: resolution.width,
-                    height: resolution.height,
-                    depth: 1,
+            let copy_yuv_image = device_context.create_texture(
+                TextureDef {
+                    extents: Extents3D {
+                        width: resolution.width,
+                        height: resolution.height,
+                        depth: 1,
+                    },
+                    array_length: 1,
+                    mip_count: 1,
+                    format: Format::G8_B8_R8_3PLANE_420_UNORM,
+                    memory_usage: MemoryUsage::GpuToCpu,
+                    usage_flags: ResourceUsage::AS_TRANSFERABLE,
+                    resource_flags: ResourceFlags::empty(),
+                    tiling: TextureTiling::Linear,
                 },
-                array_length: 1,
-                mip_count: 1,
-                format: Format::G8_B8_R8_3PLANE_420_UNORM,
-                mem_usage: MemoryUsage::GpuToCpu,
-                usage_flags: ResourceUsage::AS_TRANSFERABLE,
-                resource_flags: ResourceFlags::empty(),
-                tiling: TextureTiling::Linear,
-            });
+                "Copy",
+            );
 
             yuv_images.push((y_image, u_image, v_image));
             yuv_image_uavs.push((y_image_uav, u_image_uav, v_image_uav));
@@ -110,21 +113,20 @@ impl RgbToYuvConverter {
     ) -> Self {
         let root_signature = cgen::pipeline_layout::RGB2YUVPipelineLayout::root_signature();
 
-        let pipeline_handle = pipeline_manager.register_pipeline(
-            cgen::CRATE_ID,
-            CGenShaderKey::make(
-                cgen::shader::rgb2yuv_shader::ID,
-                cgen::shader::rgb2yuv_shader::NONE,
-            ),
-            |device_context, shader| {
-                device_context
-                    .create_compute_pipeline(&ComputePipelineDef {
-                        shader,
-                        root_signature,
-                    })
-                    .unwrap()
-            },
-        );
+        let shader = pipeline_manager
+            .create_shader(
+                cgen::CRATE_ID,
+                CGenShaderKey::make(
+                    cgen::shader::rgb2yuv_shader::ID,
+                    cgen::shader::rgb2yuv_shader::NONE,
+                ),
+            )
+            .unwrap();
+        let pipeline_handle =
+            pipeline_manager.register_pipeline(PipelineDef::Compute(ComputePipelineDef {
+                shader,
+                root_signature: root_signature.clone(),
+            }));
 
         ////////////////////////////////////////////////////////////////////////////////
 
@@ -155,19 +157,22 @@ impl RgbToYuvConverter {
     #[span_fn]
     pub fn convert(
         &mut self,
-        render_context: &RenderContext<'_>,
-
+        render_context: &mut RenderContext<'_>,
         render_surface: &mut RenderSurface,
         yuv: &mut [u8],
-    ) -> anyhow::Result<()> {
+    ) {
         let render_frame_idx = 0;
-        let mut cmd_buffer = render_context.alloc_command_buffer();
+        let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
+        let cmd_buffer = cmd_buffer_handle.as_mut();
+
+        cmd_buffer.begin();
+
         render_surface
             .hdr_rt_mut()
-            .transition_to(&mut cmd_buffer, ResourceState::SHADER_RESOURCE);
+            .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
         {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     &yuv_images.0,
@@ -175,7 +180,7 @@ impl RgbToYuvConverter {
                     ResourceState::UNORDERED_ACCESS,
                 )],
             );
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     &yuv_images.1,
@@ -183,7 +188,7 @@ impl RgbToYuvConverter {
                     ResourceState::UNORDERED_ACCESS,
                 )],
             );
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     &yuv_images.2,
@@ -193,10 +198,10 @@ impl RgbToYuvConverter {
             );
 
             let pipeline = render_context
-                .pipeline_manager()
+                .pipeline_manager
                 .get_pipeline(self.pipeline_handle)
                 .unwrap();
-            cmd_buffer.bind_pipeline(pipeline);
+            cmd_buffer.cmd_bind_pipeline(pipeline);
 
             let yuv_images_views =
                 &self.resolution_dependent_resources.yuv_image_uavs[render_frame_idx];
@@ -211,12 +216,12 @@ impl RgbToYuvConverter {
                 cgen::descriptor_set::RGB2YUVDescriptorSet::descriptor_set_layout(),
                 descriptor_set.descriptor_refs(),
             );
-            cmd_buffer.bind_descriptor_set(
+            cmd_buffer.cmd_bind_descriptor_set_handle(
                 cgen::descriptor_set::RGB2YUVDescriptorSet::descriptor_set_layout(),
                 descriptor_set_handle,
             );
 
-            cmd_buffer.dispatch(
+            cmd_buffer.cmd_dispatch(
                 ((self.resolution_dependent_resources.resolution.width + 7) / 8) as u32,
                 ((self.resolution_dependent_resources.resolution.height + 7) / 8) as u32,
                 1,
@@ -227,7 +232,7 @@ impl RgbToYuvConverter {
             &self.resolution_dependent_resources.copy_yuv_images[render_frame_idx];
         {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     &yuv_images.0,
@@ -235,7 +240,7 @@ impl RgbToYuvConverter {
                     ResourceState::COPY_SRC,
                 )],
             );
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     &yuv_images.1,
@@ -243,7 +248,7 @@ impl RgbToYuvConverter {
                     ResourceState::COPY_SRC,
                 )],
             );
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     &yuv_images.2,
@@ -251,7 +256,7 @@ impl RgbToYuvConverter {
                     ResourceState::COPY_SRC,
                 )],
             );
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     copy_texture_yuv,
@@ -262,7 +267,7 @@ impl RgbToYuvConverter {
 
             let mut copy_extents = copy_texture_yuv.definition().extents;
             assert_eq!(copy_texture_yuv.definition().extents, copy_extents);
-            cmd_buffer.copy_image(
+            cmd_buffer.cmd_copy_image(
                 &yuv_images.0,
                 copy_texture_yuv,
                 &CmdCopyTextureParams {
@@ -282,7 +287,7 @@ impl RgbToYuvConverter {
 
             copy_extents.width /= 2;
             copy_extents.height /= 2;
-            cmd_buffer.copy_image(
+            cmd_buffer.cmd_copy_image(
                 &yuv_images.1,
                 copy_texture_yuv,
                 &CmdCopyTextureParams {
@@ -300,7 +305,7 @@ impl RgbToYuvConverter {
                 },
             );
 
-            cmd_buffer.copy_image(
+            cmd_buffer.cmd_copy_image(
                 &yuv_images.2,
                 copy_texture_yuv,
                 &CmdCopyTextureParams {
@@ -318,7 +323,7 @@ impl RgbToYuvConverter {
                 },
             );
 
-            cmd_buffer.resource_barrier(
+            cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[TextureBarrier::state_transition(
                     copy_texture_yuv,
@@ -328,21 +333,25 @@ impl RgbToYuvConverter {
             );
         }
 
+        cmd_buffer.end();
+
         //
         // Present the image
         //
 
         let wait_sem = render_surface.presenter_sem();
-        let graphics_queue = render_context.graphics_queue();
-        graphics_queue.submit(&mut [cmd_buffer.finalize()], &[wait_sem], &[], None);
+        let mut graphics_queue = render_context.graphics_queue.queue_mut();
 
-        graphics_queue.wait_for_queue_idle()?;
+        graphics_queue.submit(&[cmd_buffer], &[wait_sem], &[], None);
+
+        graphics_queue.wait_for_queue_idle();
+
         let (mut width, mut height) = (
             copy_texture_yuv.definition().extents.width as usize,
             copy_texture_yuv.definition().extents.height as usize,
         );
 
-        let sub_resource = copy_texture_yuv.map_texture(PlaneSlice::Plane0)?;
+        let sub_resource = copy_texture_yuv.map_texture(PlaneSlice::Plane0).unwrap();
         let mut amount_copied = 0;
         for y in 0..height {
             yuv[amount_copied..(y + 1) * width].copy_from_slice(
@@ -353,7 +362,7 @@ impl RgbToYuvConverter {
         }
         copy_texture_yuv.unmap_texture();
 
-        let sub_resource = copy_texture_yuv.map_texture(PlaneSlice::Plane1)?;
+        let sub_resource = copy_texture_yuv.map_texture(PlaneSlice::Plane1).unwrap();
         width /= 2;
         height /= 2;
         let start = amount_copied;
@@ -366,7 +375,7 @@ impl RgbToYuvConverter {
         }
         copy_texture_yuv.unmap_texture();
 
-        let sub_resource = copy_texture_yuv.map_texture(PlaneSlice::Plane2)?;
+        let sub_resource = copy_texture_yuv.map_texture(PlaneSlice::Plane2).unwrap();
         let start = amount_copied;
         for y in 0..height {
             yuv[amount_copied..start + (y + 1) * width].copy_from_slice(
@@ -376,7 +385,7 @@ impl RgbToYuvConverter {
             amount_copied += width;
         }
         copy_texture_yuv.unmap_texture();
+
         assert_eq!(amount_copied, yuv.len());
-        Ok(())
     }
 }

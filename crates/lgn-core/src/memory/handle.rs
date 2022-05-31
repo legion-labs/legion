@@ -12,6 +12,11 @@ impl<T> Handle<T> {
         Self { inner: Some(data) }
     }
 
+    /// Create invalid handle
+    pub fn invalid() -> Self {
+        Self { inner: None }
+    }
+
     /// Check if this handle owns anything
     pub fn is_valid(&self) -> bool {
         self.inner.is_some()
@@ -31,6 +36,24 @@ impl<T> Handle<T> {
     pub fn transfer(&mut self) -> Self {
         Self {
             inner: Some(self.take()),
+        }
+    }
+}
+
+impl<T> AsRef<T> for Handle<T> {
+    fn as_ref(&self) -> &T {
+        match &self.inner {
+            Some(e) => e,
+            None => unreachable!(),
+        }
+    }
+}
+
+impl<T> AsMut<T> for Handle<T> {
+    fn as_mut(&mut self) -> &mut T {
+        match &mut self.inner {
+            Some(e) => e,
+            None => unreachable!(),
         }
     }
 }
