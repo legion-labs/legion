@@ -72,7 +72,7 @@
 
 <style lang="postcss">
   .menu-root {
-    @apply h-8 text-menu-enabled items-center cursor-pointer;
+    @apply h-8 text-menu-selected items-center cursor-pointer;
   }
 
   .menu-title {
