@@ -22,8 +22,8 @@ use lgn_graphics_api::{
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
 use super::render_passes::{
-    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass, PickingPass,
-    PostProcessPass, SSAOPass, UiPass,
+    AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    PickingPass, PostProcessPass, SSAOPass, UiPass,
 };
 
 ///
@@ -76,6 +76,7 @@ pub struct RenderScript<'a> {
     pub postprocess_pass: PostProcessPass,
     pub lighting_pass: LightingPass,
     pub ui_pass: UiPass,
+    pub egui_pass: EguiPass,
 
     // Resources
     pub prev_hzb: &'a Texture,
@@ -387,6 +388,11 @@ impl RenderScript<'_> {
             render_graph_builder,
             view,
             depth_view_id,
+            gbuffer_write_view_ids[0], // radiance_write_rt_view_id
+        );
+        render_graph_builder = self.egui_pass.build_render_graph(
+            render_graph_builder,
+            view,
             gbuffer_write_view_ids[0], // radiance_write_rt_view_id
         );
 

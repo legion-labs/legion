@@ -17,8 +17,8 @@ use crate::core::{DebugStuff, RenderGraphPersistentState, RenderObjects};
 use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::render_passes::{
-    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass, PickingPass,
-    PostProcessPass, SSAOPass, UiPass,
+    AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    PickingPass, PostProcessPass, SSAOPass, UiPass,
 };
 use crate::script::{Config, RenderScript, RenderView};
 use std::sync::Arc;
@@ -856,6 +856,7 @@ fn render_update(
                         let postprocess_pass = PostProcessPass;
                         let lighting_pass = LightingPass;
                         let ui_pass = UiPass;
+                        let egui_pass = EguiPass;
 
                         let prev_hzb_idx = render_graph_frame_idx as usize % 2;
                         let current_hzb_idx = (render_graph_frame_idx + 1) as usize % 2;
@@ -870,6 +871,7 @@ fn render_update(
                             postprocess_pass,
                             lighting_pass,
                             ui_pass,
+                            egui_pass,
                             prev_hzb: render_surface.hzb()[prev_hzb_idx],
                             current_hzb: render_surface.hzb()[current_hzb_idx],
                         };
@@ -896,6 +898,7 @@ fn render_update(
                                     picked_drawables: picked_drawables.as_slice(),
                                     manipulator_drawables: manipulator_drawables.as_slice(),
                                     camera_component,
+                                    egui: &egui,
                                 };
 
                                 render_graph.execute(

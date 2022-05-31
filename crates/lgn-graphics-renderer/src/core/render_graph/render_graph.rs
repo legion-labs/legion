@@ -18,6 +18,7 @@ use crate::components::{CameraComponent, ManipulatorComponent, RenderSurface, Vi
 use crate::core::render_graph::RenderGraphBuilder;
 use crate::core::RenderResources;
 use crate::debug_display::DebugDisplay;
+use crate::egui::Egui;
 use crate::picking::PickingManager;
 
 use crate::resources::{PipelineManager, ReadbackBuffer};
@@ -570,6 +571,7 @@ pub(crate) struct DebugStuff<'a> {
     pub(crate) picked_drawables: &'a [(&'a VisualComponent, &'a GlobalTransform)],
     pub(crate) manipulator_drawables: &'a [(&'a GlobalTransform, &'a ManipulatorComponent)],
     pub(crate) camera_component: &'a CameraComponent,
+    pub(crate) egui: &'a Egui,
 }
 
 pub(crate) struct RenderGraphExecuteContext<'a, 'frame> {

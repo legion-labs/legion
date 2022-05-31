@@ -24,3 +24,6 @@ pub use ssao_pass::*;
 
 pub mod ui_pass;
 pub use ui_pass::*;
+
+pub mod egui_pass;
+pub use egui_pass::*;
