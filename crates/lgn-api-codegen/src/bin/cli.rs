@@ -50,7 +50,7 @@ fn main() -> anyhow::Result<()> {
         .with_local_sink_max_level(LevelFilter::Debug)
         .build();
 
-    let res = generate(args.language, &args.openapi_file, &args.output_dir)?;
+    generate(args.language, &args.openapi_file, &args.output_dir)?;
 
-    Ok(res)
+    Ok(())
 }

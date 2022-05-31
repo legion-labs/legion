@@ -614,17 +614,6 @@ pub mod server {
 pub mod models {
     use lgn_online::codegen::Bytes;
 
-    /// The car color.
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub enum CarColor {
-        #[serde(rename = "red")]
-        Red,
-        #[serde(rename = "blue")]
-        Blue,
-        #[serde(rename = "yellow")]
-        Yellow,
-    }
-
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Car {
         #[serde(rename = "color")]
@@ -642,6 +631,17 @@ pub mod models {
 
         #[serde(rename = "name")]
         pub name: String,
+    }
+
+    /// The car color.
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub enum CarColor {
+        #[serde(rename = "red")]
+        Red,
+        #[serde(rename = "blue")]
+        Blue,
+        #[serde(rename = "yellow")]
+        Yellow,
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
