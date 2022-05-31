@@ -16,6 +16,7 @@ use deltalake::{
 
 use crate::lakehouse::span_table_partition::write_local_partition;
 
+#[span_fn]
 fn get_delta_schema() -> Schema {
     Schema::new(vec![
         SchemaField::new(
@@ -69,6 +70,7 @@ fn get_delta_schema() -> Schema {
     ])
 }
 
+#[span_fn]
 async fn create_empty_delta_table(table_uri: &str) -> Result<DeltaTable> {
     info!("creating table {}", table_uri);
     let storage = deltalake::storage::get_backend_for_uri(table_uri)?;
@@ -97,6 +99,7 @@ async fn create_empty_delta_table(table_uri: &str) -> Result<DeltaTable> {
     Ok(table)
 }
 
+#[span_fn]
 async fn open_or_create_table(table_uri: &str) -> Result<DeltaTable> {
     match deltalake::open_table(table_uri).await {
         Ok(table) => Ok(table),
@@ -110,6 +113,7 @@ async fn open_or_create_table(table_uri: &str) -> Result<DeltaTable> {
     }
 }
 
+#[span_fn]
 async fn read_block_payload(
     block_id: &str,
     buffer_from_db: Option<Vec<u8>>,
@@ -132,6 +136,7 @@ async fn read_block_payload(
     }
 }
 
+#[span_fn]
 pub async fn update_spans_delta_table(
     pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
