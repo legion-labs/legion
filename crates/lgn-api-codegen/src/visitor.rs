@@ -374,7 +374,7 @@ impl Visitor {
             }
         }
 
-        self.api.models.insert(model.name.clone(), model.clone());
+        self.api.models.insert(model.name.clone(), model);
 
         Ok(type_)
     }
@@ -705,7 +705,7 @@ mod tests {
     #[test]
     fn test_resolve_string_enum() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -799,7 +799,7 @@ mod tests {
     #[test]
     fn test_resolve_array_ref() {
         let components = serde_yaml::from_str(
-            r#"    
+            r#"
             schemas:
               Category:
                 type: string
@@ -854,7 +854,7 @@ mod tests {
     #[test]
     fn test_resolve_struct() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -905,7 +905,7 @@ mod tests {
     #[test]
     fn test_resolve_inner_struct() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -964,7 +964,7 @@ mod tests {
     #[test]
     fn test_resolve_get_operation() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               Pet:
                 type: object
@@ -976,7 +976,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               get:
                 summary: Finds pets by tags.
@@ -1065,7 +1065,7 @@ mod tests {
     #[test]
     fn test_resolve_request_body() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             requestBodies:
               Pet:
                 content:
@@ -1083,7 +1083,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               post:
                 operationId: addPet
@@ -1171,13 +1171,13 @@ mod tests {
     #[test]
     fn test_resolve_post_operation() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             requestBodies:
               Pet:
                 content:
                   application/json:
                     schema:
-                      $ref: '#/components/schemas/Pet'  
+                      $ref: '#/components/schemas/Pet'
             schemas:
               Pet:
                 type: object
@@ -1189,7 +1189,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               post:
                 summary: Add a new pet to the store.
@@ -1309,7 +1309,7 @@ mod tests {
     #[test]
     fn test_resolve_one_of() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             schemas:
               Pet:
                 type: object
@@ -1370,7 +1370,7 @@ mod tests {
     #[test]
     fn test_resolve_operation_with_path_level_parameters() {
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /foo/{a}/bar/{b}:
               parameters:
                 - name: a

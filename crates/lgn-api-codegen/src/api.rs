@@ -26,12 +26,12 @@ pub enum Type {
     Date,
     Bytes,
     Binary,
-    Array(Box<Type>),
-    HashSet(Box<Type>),
+    Array(Box<Self>),
+    HashSet(Box<Self>),
     Named(String),
     Enum { variants: Vec<String> },
     Struct { fields: Vec<Field> },
-    OneOf { types: Vec<Type> },
+    OneOf { types: Vec<Self> },
 }
 
 impl Type {

@@ -65,7 +65,7 @@ impl OpenApiLoader {
         self.raw_documents
             .borrow()
             .keys()
-            .filter_map(|ref_loc| ref_loc.path())
+            .filter_map(OpenApiRefLocation::path)
             .cloned()
             .collect()
     }
@@ -490,9 +490,9 @@ impl OpenApiRefLocation {
     }
 }
 
-pub fn normalize_path(path: PathBuf) -> PathBuf {
-    let mut components = path.components().peekable();
-    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
+pub fn normalize_path(path: impl AsRef<Path>) -> PathBuf {
+    let mut components = path.as_ref().components().peekable();
+    let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().copied() {
         components.next();
         PathBuf::from(c.as_os_str())
     } else {
