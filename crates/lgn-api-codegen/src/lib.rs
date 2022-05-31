@@ -9,7 +9,8 @@
 pub(crate) mod api;
 pub(crate) mod errors;
 pub(crate) mod filters;
-pub(crate) mod openapi_ext;
+pub(crate) mod openapi_loader;
+pub(crate) mod openapi_path;
 pub(crate) mod rust;
 pub(crate) mod typescript;
 pub(crate) mod visitor;
@@ -17,6 +18,8 @@ pub(crate) mod visitor;
 use api::Api;
 use clap::ArgEnum;
 use errors::{Error, Result};
+use openapi_loader::{OpenApi, OpenApiElement, OpenApiLoader};
+use openapi_path::OpenAPIPath;
 use rust::RustGenerator;
 use std::path::Path;
 use typescript::TypeScriptGenerator;
@@ -38,9 +41,9 @@ pub fn generate(
     output_dir: impl AsRef<Path>,
 ) -> Result<()> {
     let openapi_file = openapi_file.as_ref();
-    let openapi_reader = std::fs::File::open(openapi_file)?;
-    let openapi: openapiv3::OpenAPI = serde_yaml::from_reader(&openapi_reader)?;
-    let api = Api::try_from(&openapi)?;
+    let loader = OpenApiLoader::default();
+    let openapi = loader.load_openapi(openapi_file.to_path_buf().into())?;
+    let api = openapi.try_into()?;
 
     let generator = load_generator_for_language(language);
     generator.generate(&api, openapi_file, output_dir.as_ref())

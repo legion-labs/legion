@@ -32,7 +32,7 @@ impl Api for ApiImpl {
         println!("Request addr: {}", context.request_addr().unwrap());
 
         Ok(GetCarsResponse::Status200(GetCars200Response {
-            body: self.cars.read().await.values().cloned().collect(),
+            body: models::Cars(self.cars.read().await.values().cloned().collect()),
         }))
     }
 

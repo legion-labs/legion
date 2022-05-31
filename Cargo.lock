@@ -3831,6 +3831,7 @@ dependencies = [
  "reqwest",
  "rust-format",
  "serde",
+ "serde_json",
  "serde_yaml",
  "thiserror",
 ]

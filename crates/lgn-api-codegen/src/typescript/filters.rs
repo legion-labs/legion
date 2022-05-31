@@ -1,8 +1,11 @@
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
-use crate::api::{Parameter, Path, Type};
 pub use crate::filters::*;
+use crate::{
+    api::{Parameter, Path, Type},
+    errors::Error,
+};
 
 #[allow(clippy::unnecessary_wraps)]
 pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
@@ -15,7 +18,12 @@ pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
         Type::DateTime | Type::Date => "Date".to_string(),
         Type::Array(inner) => format!("{}[]", fmt_type(inner).unwrap()),
         Type::HashSet(inner) => format!("Set<{}>", fmt_type(inner).unwrap()),
-        Type::Struct(struct_) => format!("{}Model", struct_),
+        Type::Named(struct_) => format!("{}Model", struct_),
+        Type::Enum { .. } | Type::Struct { .. } | Type::OneOf { .. } => {
+            return Err(askama::Error::Custom(Box::new(Error::Unsupported(
+                "complex types cannot be formatted".to_string(),
+            ))))
+        }
     })
 }
 

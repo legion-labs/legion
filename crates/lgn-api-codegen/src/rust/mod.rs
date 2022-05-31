@@ -1,7 +1,7 @@
 mod filters;
 
 use crate::{
-    api::{Api, MediaType, Model},
+    api::{Api, MediaType, Type},
     Generator, Result,
 };
 use askama::Template;
@@ -45,12 +45,17 @@ fn generate(api: &Api) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use crate::OpenApiLoader;
+
     use super::*;
 
     #[test]
     fn test_rust_generation() {
-        let data = include_str!("../../../../tests/api-codegen/cars.yaml");
-        let api = Api::try_from(&serde_yaml::from_str(data).unwrap()).unwrap();
+        let loader = OpenApiLoader::default();
+        let openapi = loader
+            .load_openapi("../../tests/api-codegen/cars.yaml".try_into().unwrap())
+            .unwrap();
+        let api = openapi.try_into().unwrap();
         let content = generate(&api).unwrap();
 
         insta::assert_snapshot!(content);
