@@ -2,7 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use lgn_tracing::error;
+use lgn_tracing::warn;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -14,6 +14,8 @@ pub enum Error {
     SerdeJson(#[from] serde_json::Error),
     #[error("serde qs: {0}")]
     SerdeQs(#[from] serde_qs::Error),
+    #[error("codegen encoding: {0}")]
+    CodegenEncoding(#[from] lgn_online::codegen::encoding::Error),
     #[error("invalid body: {0}")]
     InvalidBody(String),
     #[error("invalid header: {0}")]
@@ -22,39 +24,29 @@ pub enum Error {
     MissingHeader(String),
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
+        warn!("converted error into HTTP response: {}", self);
+
         match self {
-            Self::Internal(err) => {
-                error!("Internal server error: {}", err);
+            Self::Internal(_) | Self::Hyper(_) | Self::SerdeJson(_) | Self::SerdeQs(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
-            Self::Hyper(err) => {
-                error!("Hyper error: {:?}", err);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-            Self::SerdeJson(err) => {
-                error!("Serde Json error: {:?}", err);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-            Self::SerdeQs(err) => {
-                error!("Serde Qs error: {:?}", err);
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-            Self::InvalidBody(err) => {
-                error!("Invalid body: {}", err);
-                StatusCode::BAD_REQUEST.into_response()
-            }
-            Self::InvalidHeader(err) => {
-                error!("Invalid header: {}", err);
-                StatusCode::BAD_REQUEST.into_response()
-            }
-            Self::MissingHeader(err) => {
-                error!("Missing header: {}", err);
+            Self::CodegenEncoding(_) | Self::InvalidBody(_) | Self::InvalidHeader(_) | Self::MissingHeader(_) => {
                 StatusCode::BAD_REQUEST.into_response()
             }
         }
+    }
+}
+
+pub trait ErrorExt<T> {
+    fn into_internal_server_error(self) -> Result<T, Error>;
+}
+
+impl<T, E: std::error::Error> ErrorExt<T> for Result<T, E> {
+    fn into_internal_server_error(self) -> Result<T, Error> {
+        self.map_err(|err| Error::Internal(err.to_string()))
     }
 }

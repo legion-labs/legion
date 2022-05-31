@@ -5,7 +5,6 @@ use crate::cars::{
     models::{self},
     requests::{
         CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
-        TestOneOfRequest,
     },
     responses::{
         CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
@@ -76,11 +75,7 @@ impl Api for ApiImpl {
         Ok(TestBinaryResponse::Status200(request.body))
     }
 
-    async fn test_one_of(
-        &self,
-        context: &mut Context,
-        _request: TestOneOfRequest,
-    ) -> Result<TestOneOfResponse> {
+    async fn test_one_of(&self, context: &mut Context) -> Result<TestOneOfResponse> {
         if let Some(value) = context.request().unwrap().headers.get("X-Test-Header") {
             let mut headers = http::HeaderMap::new();
             headers.insert("X-Test-Header", value.clone());
