@@ -33,7 +33,7 @@ impl Visitor {
             description: oas.info.description.clone(),
             version: oas.info.version.clone(),
             models: BTreeMap::new(),
-            paths: IndexMap::new(),
+            paths: BTreeMap::new(),
         };
 
         // Let's first resolve schemas.

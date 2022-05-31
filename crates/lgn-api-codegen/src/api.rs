@@ -11,7 +11,7 @@ pub struct Api {
     pub description: Option<String>,
     pub version: String,
     pub models: BTreeMap<String, Model>,
-    pub paths: IndexMap<Path, Vec<Route>>,
+    pub paths: BTreeMap<Path, Vec<Route>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
