@@ -31,7 +31,7 @@ pub struct RenderLight {
 }
 
 pub struct RenderLightTestData {
-    foo: u32,
+    //foo: u32,
 }
 
 pub struct LightingManager {

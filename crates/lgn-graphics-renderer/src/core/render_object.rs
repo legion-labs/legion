@@ -355,9 +355,9 @@ impl RenderObjectsBuilder {
         self.secondary_tables.insert(
             secondary_key,
             SecondaryTable {
-                key: secondary_key,
-                primary_key,
-                storage: AtomicRefCell::new(RenderObjectStorage::new(
+                _key: secondary_key,
+                _primary_key: primary_key,
+                _storage: AtomicRefCell::new(RenderObjectStorage::new(
                     Layout::new::<S>(),
                     drop_func::<S>,
                     256,
@@ -371,7 +371,7 @@ impl RenderObjectsBuilder {
     pub fn finalize(self) -> RenderObjects {
         RenderObjects {
             primary_tables: self.primary_tables,
-            secondary_tables: self.secondary_tables,
+            _secondary_tables: self.secondary_tables,
         }
     }
 }
@@ -435,9 +435,9 @@ impl PrimaryTable {
 //
 
 struct SecondaryTable {
-    key: RenderObjectKey,
-    primary_key: RenderObjectKey,
-    storage: AtomicRefCell<RenderObjectStorage>,
+    _key: RenderObjectKey,
+    _primary_key: RenderObjectKey,
+    _storage: AtomicRefCell<RenderObjectStorage>,
 }
 
 //
@@ -531,7 +531,7 @@ where
 
 pub struct RenderObjects {
     primary_tables: HashMap<RenderObjectKey, PrimaryTable>,
-    secondary_tables: HashMap<RenderObjectKey, SecondaryTable>,
+    _secondary_tables: HashMap<RenderObjectKey, SecondaryTable>,
 }
 
 impl RenderObjects {

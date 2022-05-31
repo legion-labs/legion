@@ -51,15 +51,15 @@ impl RenderFeaturesBuilder {
         }
 
         RenderFeatures {
-            features_map,
-            features,
+            _features_map: features_map,
+            _features: features,
         }
     }
 }
 
 pub struct RenderFeatures {
-    features_map: HashMap<RenderFeatureId, usize>,
-    features: Vec<Box<dyn RenderFeature>>,
+    _features_map: HashMap<RenderFeatureId, usize>,
+    _features: Vec<Box<dyn RenderFeature>>,
 }
 
 impl RenderFeatures {

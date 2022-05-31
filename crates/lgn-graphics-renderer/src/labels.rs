@@ -18,7 +18,7 @@ pub enum RenderStage {
 pub(crate) enum ResourceStageLabel {
     Texture,
     Material,
-    Sampler,
+    //Sampler,
     Model,
 }
 
