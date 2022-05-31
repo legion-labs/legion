@@ -6,7 +6,6 @@ use lgn_blob_storage::BlobStorage;
 use lgn_tracing::prelude::*;
 use prost::Message;
 use sqlx::Row;
-use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::{collections::HashMap, path::PathBuf};
@@ -51,13 +50,13 @@ fn get_delta_schema() -> Schema {
         ),
         SchemaField::new(
             "id".to_string(),
-            SchemaDataType::primitive("integer".to_string()),
+            SchemaDataType::primitive("long".to_string()),
             false,
             HashMap::new(),
         ),
         SchemaField::new(
             "parent".to_string(),
-            SchemaDataType::primitive("integer".to_string()),
+            SchemaDataType::primitive("long".to_string()),
             false,
             HashMap::new(),
         ),
@@ -137,12 +136,12 @@ pub async fn update_spans_delta_table(
     let storage_uri = format!("{}", spans_table_path.display());
     let mut table = open_or_create_table(&storage_uri).await?;
     let files_already_in_table = table.get_file_set();
+    let mut partition_index: u32 = files_already_in_table.len() as u32;
 
     let mut handles = vec![];
 
     let (sender, receiver) = channel();
 
-    let next_id = Arc::new(AtomicU64::new(1)); //todo: reserve a range of ids for each block
     let mut connection = pool.acquire().await?;
     let streams = find_process_thread_streams(&mut connection, process_id).await?;
     for stream in streams {
@@ -157,10 +156,13 @@ pub async fn update_spans_delta_table(
             .bind(&stream.stream_id)
             .fetch( &mut connection );
         while let Some(block_row) = block_rows.try_next().await? {
+            partition_index += 1;
+            let mut partition_starting_span_id = i64::from(partition_index)
+                .checked_shl(31)
+                .with_context(|| "building partition starting span id")?;
             let convert_ticks = convert_ticks.clone();
             let blob_storage = blob_storage.clone();
             let stream = stream.clone();
-            let next_id = next_id.clone();
             let spans_table_path = spans_table_path.clone();
             let sender = sender.clone();
             let block = lgn_analytics::map_row_block(&block_row)?;
@@ -182,7 +184,7 @@ pub async fn update_spans_delta_table(
                         &stream,
                         &block,
                         convert_ticks,
-                        &*next_id,
+                        &mut partition_starting_span_id,
                         filename_string,
                         &parquet_full_path,
                     )
