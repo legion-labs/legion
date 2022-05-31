@@ -20,6 +20,7 @@
 
 <style lang="postcss">
   .menu-dropdown-item {
+    @apply font-normal;
     @apply h-8 px-3 pt-1;
     @apply text-menu-text-enabled hover:text-menu-text-hovered;
     @apply bg-menu-default hover:bg-menu-hovered;
