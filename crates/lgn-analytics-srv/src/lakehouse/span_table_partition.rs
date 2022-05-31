@@ -39,7 +39,10 @@ impl SpanTablePartitionLocalWriter {
         let schema =
             Arc::new(parse_message_type(message_type).with_context(|| "parsing spans schema")?);
         let props = Arc::new(WriterProperties::builder().build());
-        let file = std::fs::File::create(file_path)
+        let file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(file_path)
             .with_context(|| format!("creating file {}", file_path.display()))?;
         let file_writer = SerializedFileWriter::new(file, schema, props)
             .with_context(|| "creating parquet writer")?;
@@ -169,7 +172,7 @@ pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &AtomicU64, table: &mut
 
 #[allow(clippy::cast_possible_wrap)]
 #[span_fn]
-pub fn write_local_partition(
+pub async fn write_local_partition(
     payload: &lgn_telemetry_proto::telemetry::BlockPayload,
     stream: &Stream,
     block: &BlockMetadata,
@@ -180,6 +183,11 @@ pub fn write_local_partition(
 ) -> Result<Option<deltalake::action::Action>> {
     //todo: do not allow overwriting - it could break id generation
     info!("processing block {}", &block.block_id);
+    if let Some(parent) = parquet_full_path.parent() {
+        tokio::fs::create_dir_all(&parent)
+            .await
+            .with_context(|| format!("creating directory for {}", parquet_full_path.display()))?;
+    }
     let mut builder = CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks);
     parse_thread_block_payload(payload, stream, &mut builder)
         .with_context(|| "parsing thread block payload")?;
@@ -190,12 +198,15 @@ pub fn write_local_partition(
         let mut writer = SpanTablePartitionLocalWriter::create(parquet_full_path)?;
         writer.append(&rows)?;
         writer.close()?;
-        let attr = std::fs::metadata(&parquet_full_path)?; //that's not cool, we should already know how big the file is
+        let attr = tokio::fs::metadata(&parquet_full_path).await?; //that's not cool, we should already know how big the file is
         Ok(Some(deltalake::action::Action::add(
             deltalake::action::Add {
                 path: relative_file_name,
                 size: attr.len() as i64,
-                partition_values: HashMap::new(),
+                partition_values: HashMap::from([(
+                    "block_id".to_owned(),
+                    Some(block.block_id.clone()),
+                )]),
                 partition_values_parsed: None,
                 modification_time: 0,
                 data_change: false,
