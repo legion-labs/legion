@@ -489,6 +489,10 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 .last_transform()
                 .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
 
+            let offline_manifest_id = Arc::new(ManifestId::new(offline_manifest_id));
+
+            let source_provider =
+                Arc::new(Config::load_and_instantiate_persistent_provider().await?);
             let data_provider = Arc::new(Config::load_and_instantiate_volatile_provider().await?);
 
             let runtime_manifest_id = {
