@@ -151,3 +151,29 @@ impl BoneMaskValueNode {
 // impl ValueNode for BoneMaskValueNode {
 //
 // }
+
+pub enum SourceType {
+    State,
+    Transition,
+    CachedPose,
+}
+
+pub enum TransitionOptions {
+    Synchronized,
+    ClampDuration,
+    KeepSyncEventIndex,
+    KeepSyncEventPercentage,
+    ForcedTransitionAllowed,
+}
+
+pub struct InitializationOptions {
+    source_node_result: GraphPoseNodeResult,
+    should_cache_pose: bool,
+}
+
+// Derives from PoseNode
+pub struct TransitionNode {}
+
+impl TransitionNode {}
+
+// impl PoseNode for TransitionNode {}
