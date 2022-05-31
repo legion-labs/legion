@@ -202,10 +202,10 @@ pub async fn write_local_partition(
             deltalake::action::Add {
                 path: relative_file_name,
                 size: attr.len() as i64,
-                partition_values: HashMap::from([(
-                    "block_id".to_owned(),
-                    Some(block.block_id.clone()),
-                )]),
+                partition_values: HashMap::from([
+                    ("block_id".to_owned(), Some(block.block_id.clone())),
+                    ("thread_id".to_owned(), Some(stream.stream_id.clone())),
+                ]),
                 partition_values_parsed: None,
                 modification_time: 0,
                 data_change: false,

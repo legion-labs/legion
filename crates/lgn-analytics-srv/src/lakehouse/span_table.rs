@@ -25,6 +25,12 @@ fn get_delta_schema() -> Schema {
             HashMap::new(),
         ),
         SchemaField::new(
+            "thread_id".to_string(),
+            SchemaDataType::primitive("string".to_string()),
+            false,
+            HashMap::new(),
+        ),
+        SchemaField::new(
             "hash".to_string(),
             SchemaDataType::primitive("integer".to_string()),
             false,
