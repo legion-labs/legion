@@ -649,7 +649,7 @@ pub mod models {
 
     impl From<Vec<super::models::Car>> for Cars {
         fn from(t: Vec<super::models::Car>) -> Self {
-            Cars(t)
+            Self(t)
         }
     }
 

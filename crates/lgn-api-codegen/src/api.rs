@@ -30,7 +30,7 @@ pub enum Type {
     HashSet(Box<Self>),
     Named(String),
     Enum { variants: Vec<String> },
-    Struct { fields: Vec<Field> },
+    Struct { fields: BTreeMap<String, Field> },
     OneOf { types: Vec<Self> },
 }
 
