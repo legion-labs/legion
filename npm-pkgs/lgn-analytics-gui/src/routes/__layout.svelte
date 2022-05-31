@@ -81,7 +81,6 @@
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
   import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
-  import { recorded } from "@lgn/web-client/src/lib/store";
   import { createL10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
   import accessToken from "@lgn/web-client/src/stores/accessToken";
   import type { NotificationsStore } from "@lgn/web-client/src/stores/notifications";
@@ -96,7 +95,7 @@
     themeStorageKey,
     threadItemLengthFallback,
   } from "@/constants";
-  import { makeGrpcClient } from "@/lib/client";
+  import { createGrpcClientStore } from "@/lib/client";
 
   import "../assets/index.css";
 
@@ -105,8 +104,6 @@
   export let notifications: NotificationsStore<Fluent>;
 
   export let dispose: () => void | undefined;
-
-  const recordedAccessToken = recorded(accessToken);
 
   const theme = createThemeStore(themeStorageKey, "dark");
 
@@ -144,16 +141,7 @@
 
   setContext(l10nOrchestratorContextKey, l10n);
 
-  const httpClient = writable(makeGrpcClient($recordedAccessToken.curr));
-
-  $: if (
-    $recordedAccessToken.curr !== $recordedAccessToken.prev &&
-    $recordedAccessToken.curr
-  ) {
-    $httpClient = makeGrpcClient($recordedAccessToken.curr);
-  }
-
-  setContext("http-client", httpClient);
+  setContext("http-client", createGrpcClientStore(accessToken));
 
   setContext("notifications", notifications);
 

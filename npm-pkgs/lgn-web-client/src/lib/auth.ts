@@ -471,15 +471,13 @@ export class LegionClient extends Client<UserInfo> {
     return authorizeUrl;
   }
 
-  async startRefreshTokenInterval() {
+  async startTokenSetAutoRefresh() {
     const expiresAt = this.#cookieStorage.expiresAt;
 
     if (!expiresAt) {
-      log.warn(
-        "Couldn't start refresh token interval, expires in cookie is not set or not valid"
+      throw new Error(
+        "Couldn't start token set auto refresh, expires in cookie is not set or not valid"
       );
-
-      return;
     }
 
     if (expiresAt.getTime() - Date.now() < refreshTokenTimeThreshold) {
@@ -487,8 +485,8 @@ export class LegionClient extends Client<UserInfo> {
     }
 
     setTimeout(() => {
-      this.startRefreshTokenInterval().catch(() => {
-        log.warn("auth", "couldn't refresh token set");
+      this.startTokenSetAutoRefresh().catch((error) => {
+        log.warn("auth", `Couldn't refresh token set: ${displayError(error)}`);
       });
     }, refreshTokenTimeThreshold);
   }
@@ -659,6 +657,8 @@ export async function initAuth({
       };
     }
 
+    accessToken.set(authClient.accessToken);
+
     return { type: "success" };
   }
 
@@ -743,7 +743,18 @@ export async function initAuth({
     };
   }
 
-  await authClient.startRefreshTokenInterval();
+  try {
+    await authClient.startTokenSetAutoRefresh();
+  } catch (error) {
+    log.warn(
+      log.json`An error occured while starting the token set auto refresh ${error}`
+    );
+
+    return {
+      type: "error",
+      authorizationUrl: await authClient.getAuthorizationUrl(),
+    };
+  }
 
   accessToken.set(authClient.accessToken);
 
