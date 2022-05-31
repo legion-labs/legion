@@ -30,6 +30,14 @@ module.exports = {
           hovered: "var(--menu-surface-hovered)",
         },
       },
+      textColor: {
+        menu: {
+          disabled: "var(--menu-text-disabled)",
+          enabled: "var(--menu-text-enabled)",
+          hovered: "var(--menu-text-hovered)",
+          selected: "var(--menu-text-selected)",
+        },
+      },
       colors: {
         content: {
           500: "var(--color-background-500)",
@@ -38,14 +46,6 @@ module.exports = {
           800: "var(--color-background-800)",
           900: "var(--color-background-900)",
           max: "var(--color-background-max)",
-        },
-        menu: {
-          text: {
-            disabled: "var(--menu-text-disabled)",
-            enabled: "var(--menu-text-enabled)",
-            hovered: "var(--menu-text-hovered)",
-            selected: "var(--menu-text-selected)",
-          },
         },
         item: {
           max: "var(--color-item-max)",

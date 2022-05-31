@@ -2,6 +2,7 @@ import grpcWeb from "@improbable-eng/grpc-web";
 import { SvelteComponentTyped } from "svelte";
 import type { Unsubscriber } from "svelte/store";
 
+import "../../tailwind.css";
 import { initApiClient } from "./api";
 import type { NonEmptyArray } from "./lib/array";
 import type { InitAuthUserConfig } from "./lib/auth";
@@ -10,8 +11,6 @@ import type { InitAuthStatus } from "./lib/auth";
 import log from "./lib/log";
 import type { Transport } from "./lib/log";
 import userInfo from "./orchestrators/userInfo";
-
-import "../../tailwind.css";
 
 export class AppComponent extends SvelteComponentTyped<{
   dispose(): void;

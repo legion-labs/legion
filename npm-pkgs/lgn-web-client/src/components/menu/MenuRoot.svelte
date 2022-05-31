@@ -72,7 +72,7 @@
 
 <style lang="postcss">
   .menu-root {
-    @apply h-8 text-menu-text-enabled items-center cursor-pointer;
+    @apply h-8 text-menu-enabled items-center cursor-pointer;
   }
 
   .menu-title {
@@ -89,7 +89,7 @@
 
   .menu-dropdown-items {
     box-shadow: 0px 2px 10px -2px rgba(0, 0, 0, 0.7);
-    @apply bg-menu-default  rounded-b-sm absolute z-10;
+    @apply bg-menu-default rounded-b-sm absolute z-10;
   }
 
   .left {
