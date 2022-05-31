@@ -1,5 +1,8 @@
-use crate::api::{Parameter, Path, Type};
 pub use crate::filters::*;
+use crate::{
+    api::{Parameter, Path, Type},
+    errors::Error,
+};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -20,12 +23,17 @@ pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
         Type::Boolean => "bool".to_string(),
         Type::Float32 => "f32".to_string(),
         Type::Float64 => "f64".to_string(),
-        Type::Bytes | Type::Binary => "ByteArray".to_string(),
+        Type::Bytes | Type::Binary => "Bytes".to_string(),
         Type::DateTime => "chrono::DateTime::<chrono::Utc>".to_string(),
         Type::Date => "chrono::Date::<chrono::Utc>".to_string(),
         Type::Array(inner) => format!("Vec<{}>", fmt_type(inner).unwrap()),
         Type::HashSet(inner) => format!("std::collections::HashSet<{}>", fmt_type(inner).unwrap()),
-        Type::Struct(struct_) => format!("crate::models::{}", struct_),
+        Type::Named(struct_) => format!("super::models::{}", struct_),
+        Type::Enum { .. } | Type::Struct { .. } | Type::OneOf { .. } => {
+            return Err(askama::Error::Custom(Box::new(Error::Unsupported(
+                "complex types cannot be formatted".to_string(),
+            ))))
+        }
     })
 }
 

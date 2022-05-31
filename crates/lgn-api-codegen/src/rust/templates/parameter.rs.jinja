@@ -1,5 +1,0 @@
-{%- if parameter.required -%}
-    {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type }},    
-{%- else -%}
-    {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type }}>,
-{%- endif -%}

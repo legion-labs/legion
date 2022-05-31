@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { writable } from "svelte/store";
+
   import log from "@lgn/web-client/src/lib/log";
 
   import {
@@ -7,16 +9,20 @@
     updateResourceProperties,
   } from "@/api";
   import type { PropertyUpdate } from "@/api";
+  import {
+    propertyIsDynComponent,
+    propertyIsGroup,
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import CreateComponentModal from "@/components/resources/CreateComponentModal.svelte";
-  import { propertyIsDynComponent, propertyIsGroup } from "@/lib/propertyGrid";
   import {
     currentResource,
     currentResourceError,
   } from "@/orchestrators/currentResource";
   import modal from "@/stores/modal";
-  import { createPropertyGridStore } from "@/stores/propertyGrid";
 
   import PropertyContainer from "./PropertyContainer.svelte";
+  import PropertyGridHeader from "./PropertyGridHeader.svelte";
+  import { createPropertyGridStore } from "./lib/propertyGridStore";
   import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
@@ -28,9 +34,13 @@
 
   const propertyGridStore = createPropertyGridStore();
 
+  const search = writable<string>("");
+
   let updateTimeout: ReturnType<typeof setTimeout> | null = null;
 
   let propertyUpdates: PropertyUpdate[] = [];
+
+  // $: currentResource && console.log($currentResource);
 
   function onInput({ detail: propertyUpdate }: CustomEvent<PropertyUpdate>) {
     if (updateTimeout) {
@@ -123,7 +133,10 @@
   }
 </script>
 
-<div class="h-full w-full px-1 py-1 overflow-y-auto overflow-x-hidden">
+<div class="property-grid-root">
+  {#if $currentResource}
+    <PropertyGridHeader resources={[$currentResource]} {search} />
+  {/if}
   {#if $currentResourceError}
     <div class="italic">An error occured</div>
   {:else if !$currentResource}
@@ -142,6 +155,7 @@
             : [property.name]}
           {property}
           {index}
+          {search}
           {propertyGridStore}
           parentProperty={null}
         />
@@ -149,3 +163,9 @@
     {/each}
   {/if}
 </div>
+
+<style lang="postcss">
+  .property-grid-root {
+    @apply h-full w-full overflow-y-auto overflow-x-hidden bg-surface-900 flex flex-col gap-y-0.5;
+  }
+</style>

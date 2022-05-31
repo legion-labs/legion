@@ -232,7 +232,7 @@ impl BasicIndexer for StringPathIndexer {
                     item.tree.count += 1;
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
 
                     item.tree.total_size += size_delta;
@@ -242,7 +242,7 @@ impl BasicIndexer for StringPathIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         break Ok(node.into_branch().unwrap());
                     }
@@ -271,7 +271,7 @@ impl BasicIndexer for StringPathIndexer {
 
                     loop {
                         if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                            provider.unwrite(old_node.as_identifier()).await;
+                            provider.unwrite(old_node.as_identifier()).await?;
                         }
 
                         item.tree.total_size += data_size;
@@ -284,7 +284,7 @@ impl BasicIndexer for StringPathIndexer {
                         if let Some(next) = stack.pop() {
                             item = next;
                         } else {
-                            provider.unwrite(root_id.as_identifier()).await;
+                            provider.unwrite(root_id.as_identifier()).await?;
 
                             break Ok((node.into_branch().unwrap(), existing_leaf_node));
                         }
@@ -313,7 +313,7 @@ impl BasicIndexer for StringPathIndexer {
 
                 loop {
                     if let Some(old_node) = item.tree.remove_children(item.key) {
-                        provider.unwrite(old_node.as_identifier()).await;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
 
                     if !item.tree.is_empty() || self.keep_empty_branches {
@@ -328,7 +328,7 @@ impl BasicIndexer for StringPathIndexer {
                         // to return.
                         //
                         // This should always return an empty tree.
-                        provider.unwrite(root_id.as_identifier()).await;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         return Ok((
                             provider.write_tree(&Tree::default()).await?,
@@ -348,13 +348,13 @@ impl BasicIndexer for StringPathIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         break Ok((node.into_branch().unwrap(), existing_leaf_node));
                     }
 
                     if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await;
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
                 }
             }

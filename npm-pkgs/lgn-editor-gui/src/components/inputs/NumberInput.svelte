@@ -85,7 +85,8 @@
 
 <style lang="postcss">
   .input {
-    @apply bg-gray-800 border-gray-400 px-2 py-1 rounded-sm outline-none;
+    /* maybe rounded-r-sm should be exposed as a <NumberInput> component feature */
+    @apply bg-surface-max outline-none px-2 rounded-r-sm text-item-low;
   }
 
   .disabled {
@@ -97,6 +98,6 @@
   }
 
   .default {
-    @apply h-8;
+    @apply h-6;
   }
 </style>

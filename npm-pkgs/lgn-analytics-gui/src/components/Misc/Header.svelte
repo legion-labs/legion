@@ -1,12 +1,14 @@
 <script lang="ts">
+  import { getContext } from "svelte";
+
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
   import { userInfo } from "@lgn/web-client/src/orchestrators/userInfo";
 
   import iconPath from "@/assets/icons/128x128.png";
-  import { getL10nOrchestratorContext } from "@/contexts";
 
   import User from "../Process/User.svelte";
 
-  const { availableLocales, locale } = getL10nOrchestratorContext();
+  const { availableLocales, locale } = getContext(l10nOrchestratorContextKey);
 
   const en = "en-US";
   const fr = "fr-CA";

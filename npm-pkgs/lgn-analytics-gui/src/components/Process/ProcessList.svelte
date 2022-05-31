@@ -1,13 +1,14 @@
 <script lang="ts">
-  import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
+  import { getContext } from "svelte";
 
-  import { getL10nOrchestratorContext } from "@/contexts";
+  import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
 
   import L10n from "../Misc/L10n.svelte";
   import Table from "../Misc/Table.svelte";
   import ProcessItem from "./ProcessItem.svelte";
 
-  const { t } = getL10nOrchestratorContext();
+  const { t } = getContext(l10nOrchestratorContextKey);
 
   const columns = [
     { name: "process" as const, width: "20%" },

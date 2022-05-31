@@ -18,6 +18,29 @@ use lgn_data_offline::resource::ResourcePathName;
 use lgn_source_control::RepositoryName;
 use sample_data_compiler::{offline_compiler, raw_loader};
 
+fn target_dir() -> PathBuf {
+    std::env::current_exe().ok().map_or_else(
+        || panic!("cannot find test directory"),
+        |mut path| {
+            path.pop();
+            if path.ends_with("deps") {
+                path.pop();
+            }
+            path
+        },
+    )
+}
+
+pub fn workspace_dir() -> PathBuf {
+    target_dir()
+        .as_path()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_owned()
+}
+
 #[derive(Parser, Default)]
 #[clap(name = "Sample data compiler")]
 #[clap(
@@ -118,8 +141,11 @@ fn clean_folders(project_dir: &str) {
         remove(&path).unwrap_or_default();
     };
 
+    let builddb_dir = workspace_dir().join("target").join("build_db");
+
     delete("VERSION", false);
     delete("offline", true);
     delete("runtime", true);
     delete("temp", true);
+    delete(builddb_dir.as_os_str().to_str().unwrap(), true);
 }

@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { getContext } from "svelte";
+
   import type { Process } from "@lgn/proto-telemetry/dist/process";
 
   import L10n from "@/components/Misc/L10n.svelte";
-  import { getNotificationsContext } from "@/contexts";
 
-  const notifications = getNotificationsContext();
+  const notifications = getContext("notifications");
 
   export let timeRange: [number, number] | undefined;
   export let processId: string;

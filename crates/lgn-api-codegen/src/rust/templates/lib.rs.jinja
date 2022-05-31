@@ -4,9 +4,7 @@
 //
 
 // ---------- Api ----------
-pub mod api {
 {% include "api.rs.jinja" %}
-}
 
 // ---------- Errors ----------
 pub mod errors {
@@ -28,9 +26,14 @@ pub mod models {
     {% include "models.rs.jinja" %}
 }
 
-// ---------- Parameters ----------
+// ---------- Params ----------
 pub(crate) mod params {
     {% include "parameters.rs.jinja" %}
+}
+
+// ---------- Requests ----------
+pub mod requests {
+    {% include "requests.rs.jinja" %}
 }
 
 // ---------- Responses ----------

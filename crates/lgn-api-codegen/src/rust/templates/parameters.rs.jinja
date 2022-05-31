@@ -1,15 +1,20 @@
+// Types used server side by axum to parse the request body.
 
 {% for (path, routes) in api.paths %}
-    {% for route in routes %}    
+    {% for route in routes %}
         {% if !route.parameters.query.is_empty() -%}
             #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
             pub struct {{ route.name|pascal_case }}Query {
                 {% for parameter in route.parameters.query -%}
                     #[serde(rename = "{{ parameter.name }}")]
-                    pub {% include "parameter.rs.jinja" %}                 
+                    {%- if parameter.required -%}
+                        pub {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type }},
+                    {%- else -%}
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        pub {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type }}>,
+                    {%- endif -%}
                 {% endfor -%}
-                
-            }        
+            }
         {% endif %}
     {% endfor %}
 {% endfor %}

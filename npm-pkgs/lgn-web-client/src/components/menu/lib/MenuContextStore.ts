@@ -10,7 +10,9 @@ export type MenuContext = {
 };
 
 export function getMenuContextStore() {
-  const { subscribe, update } = writable<MenuContext>({ open: false });
+  const { subscribe, update } = writable<MenuContext>({
+    open: false,
+  });
 
   const updateState = (action: (state: MenuContext) => void) => {
     update((s) => {

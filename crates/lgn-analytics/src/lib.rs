@@ -488,7 +488,7 @@ pub async fn find_block_stream(
 }
 
 #[span_fn]
-fn map_row_block(row: &AnyRow) -> Result<BlockMetadata> {
+pub fn map_row_block(row: &AnyRow) -> Result<BlockMetadata> {
     let opt_size: Option<i64> = row.try_get("payload_size")?;
     Ok(BlockMetadata {
         block_id: row.try_get("block_id")?,

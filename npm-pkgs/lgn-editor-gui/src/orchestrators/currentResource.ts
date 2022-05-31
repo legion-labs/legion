@@ -5,8 +5,8 @@ import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async"
 import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
 import { getResourceProperties, updateSelection } from "@/api";
+import type { ResourceWithProperties } from "@/components/propertyGrid/lib/propertyGrid";
 import { fileName } from "@/lib/path";
-import type { ResourceWithProperties } from "@/lib/propertyGrid";
 import notifications from "@/stores/notifications";
 
 export type CurrentResourceOrchestrator =

@@ -18,11 +18,13 @@ use super::{
 /// A `ContentProviderCache` is a provider that stores locally content that was retrieved from a remote source.
 #[derive(Debug, Clone)]
 pub struct ContentProviderCache<Remote, Local> {
+    remote_supports_unwrite: bool,
+    local_supports_unwrite: bool,
     remote: Remote,
     local: Local,
 }
 
-impl<Remote: Display, Local: Display> ContentProviderCache<Remote, Local> {
+impl<Remote: ContentWriter, Local: ContentWriter> ContentProviderCache<Remote, Local> {
     /// Creates a new `ContentProviderCache` instance who stores content in the
     /// backing remote and local providers.
     pub fn new(remote: Remote, local: Local) -> Self {
@@ -33,7 +35,12 @@ impl<Remote: Display, Local: Display> ContentProviderCache<Remote, Local> {
             remote, local
         );
 
-        Self { remote, local }
+        Self {
+            remote_supports_unwrite: remote.supports_unwrite(),
+            local_supports_unwrite: local.supports_unwrite(),
+            remote,
+            local,
+        }
     }
 }
 
@@ -155,6 +162,44 @@ impl<Remote: ContentWriter + Send + Sync, Local: ContentWriter + Send + Sync> Co
 
                 Ok(remote_writer)
             }
+        }
+    }
+
+    fn supports_unwrite(&self) -> bool {
+        self.remote_supports_unwrite || self.local_supports_unwrite
+    }
+
+    async fn unwrite_content(&self, id: &HashRef) -> Result<()> {
+        async_span_scope!("ContentProviderCache::unwrite");
+
+        match (self.remote_supports_unwrite, self.local_supports_unwrite) {
+            (true, true) => {
+                let (r, rlocal) = tokio::join!(
+                    self.remote.unwrite_content(id),
+                    self.local.unwrite_content(id)
+                );
+
+                if let Err(err) = rlocal {
+                    warn!(
+                        "Failed to unwrite local cache for identifier {}: {}",
+                        id, err
+                    );
+                }
+
+                r
+            }
+            (true, false) => self.remote.unwrite_content(id).await,
+            (false, true) => {
+                if let Err(err) = self.local.unwrite_content(id).await {
+                    warn!(
+                        "Failed to unwrite local cache for identifier {}: {}",
+                        id, err
+                    );
+                }
+
+                Ok(())
+            }
+            (false, false) => return Err(Error::UnwriteNotSupported),
         }
     }
 }

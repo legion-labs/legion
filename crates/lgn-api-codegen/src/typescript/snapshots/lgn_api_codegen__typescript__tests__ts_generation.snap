@@ -1,6 +1,5 @@
 ---
 source: crates/lgn-api-codegen/src/typescript/mod.rs
-assertion_line: 86
 expression: content
 ---
 // Auto-generated file for Api: Test API : 1.0.0
@@ -13,6 +12,17 @@ import qs from "qs";
 // ---------- Api ----------
 
 export interface Api {
+
+    
+        
+        testOneOf(input: {
+    params: {
+        },
+    
+    
+    
+    }): Promise<TestOneOfResponse>;
+    
 
     
         
@@ -37,8 +47,36 @@ export interface Api {
         },
     
     
+    headers: {
+        "span-id"?: string;
+        },
+    
     
     body: CarModel,}): Promise<CreateCarResponse>;
+    
+
+    
+        
+        getCar(input: {
+    params: {
+        "space-id": string;
+        "car-id": bigint;
+        },
+    
+    
+    
+    }): Promise<GetCarResponse>;
+    
+        
+        deleteCar(input: {
+    params: {
+        "space-id": string;
+        "car-id": bigint;
+        },
+    
+    
+    
+    }): Promise<DeleteCarResponse>;
     
 
     
@@ -51,17 +89,6 @@ export interface Api {
     
     
     body: Blob,}): Promise<TestBinaryResponse>;
-    
-
-    
-        
-        testOneOf(input: {
-    params: {
-        },
-    
-    
-    
-    }): Promise<TestOneOfResponse>;
     
 
 }
@@ -105,6 +132,37 @@ export class Client implements Api {
         
             
 
+            async testOneOf(input: {
+    params: {
+        },
+    
+    
+    
+    }): Promise<TestOneOfResponse> {
+                const url = new URL(`${this.#baseUri}/test-one-of`);
+
+                
+
+                const headers = new Headers();
+
+                
+
+
+                
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "GET",
+                    headers,
+                    
+                });
+
+                return TestOneOfResponse.fromResponse(response);
+            }
+        
+    
+        
+            
+
             async getCars(input: {
     params: {
         "space-id": string;
@@ -118,7 +176,7 @@ export class Client implements Api {
     
     
     }): Promise<GetCarsResponse> {
-                const url = new URL(`${this.#baseUri}/spaces/${input.params["space-id"]}/car-service/cars`);
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/cars`);
 
                 const query: GetCarsQuery = { 
                         "names": input.query["names"],
@@ -152,9 +210,13 @@ export class Client implements Api {
         },
     
     
+    headers: {
+        "span-id"?: string;
+        },
+    
     
     body: CarModel,}): Promise<CreateCarResponse> {
-                const url = new URL(`${this.#baseUri}/spaces/${input.params["space-id"]}/car-service/cars`);
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/cars`);
 
                 
 
@@ -188,6 +250,70 @@ export class Client implements Api {
         
             
 
+            async getCar(input: {
+    params: {
+        "space-id": string;
+        "car-id": bigint;
+        },
+    
+    
+    
+    }): Promise<GetCarResponse> {
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/cars/${input.params["car-id"]}`);
+
+                
+
+                const headers = new Headers();
+
+                
+
+
+                
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "GET",
+                    headers,
+                    
+                });
+
+                return GetCarResponse.fromResponse(response);
+            }
+        
+            
+
+            async deleteCar(input: {
+    params: {
+        "space-id": string;
+        "car-id": bigint;
+        },
+    
+    
+    
+    }): Promise<DeleteCarResponse> {
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/cars/${input.params["car-id"]}`);
+
+                
+
+                const headers = new Headers();
+
+                
+
+
+                
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "DELETE",
+                    headers,
+                    
+                });
+
+                return DeleteCarResponse.fromResponse(response);
+            }
+        
+    
+        
+            
+
             async testBinary(input: {
     params: {
         "space-id": string;
@@ -196,7 +322,7 @@ export class Client implements Api {
     
     
     body: Blob,}): Promise<TestBinaryResponse> {
-                const url = new URL(`${this.#baseUri}/spaces/${input.params["space-id"]}/car-service/test-binary`);
+                const url = new URL(`${this.#baseUri}/v1/spaces/${input.params["space-id"]}/car-service/test-binary`);
 
                 
 
@@ -227,81 +353,54 @@ export class Client implements Api {
             }
         
     
-        
-            
-
-            async testOneOf(input: {
-    params: {
-        },
-    
-    
-    
-    }): Promise<TestOneOfResponse> {
-                const url = new URL(`${this.#baseUri}/test-one-of`);
-
-                
-
-                const headers = new Headers();
-
-                
-
-
-                
-
-                const response = await this.#fetch(url.toString(), {
-                    method: "GET",
-                    headers,
-                    
-                });
-
-                return TestOneOfResponse.fromResponse(response);
-            }
-        
-    
 }
 
 // ---------- Models ----------
 
 
-    
-            /** The car color. */
+    /** The car color. */
             export type CarColorModel = (| "red"| "blue"| "yellow");
         
 
     
-            
             export type CarModel = {
                 
                     
-                    "id"?: bigint;
-                    
-                    "name"?: string;
-                    /** The car color. */
-                    "color"?: CarColorModel;
-                    
-                    "is_new"?: boolean;
+                    "color": CarColorModel;
                     
                     "extra"?: Blob;
+                    
+                    "id": bigint;
+                    
+                    "is_new": boolean;
+                    
+                    "name": string;
             };
+        
+
+    
+            export type CarsModel = CarModel[];
     
 
     
-            
             export type PetModel = {
                 
                     
                     "name"?: string;
             };
-    
+        
 
     
-            
             export type TestOneOfResponseModel = (| { type: "option1", value: PetModel }| { type: "option2", value: CarModel });
         
 
 
 // ---------- Parameters ----------
 
+
+        
+        
+    
 
         
         export type GetCarsQuery = {
@@ -314,6 +413,8 @@ export class Client implements Api {
         
     
 
+        
+        
         
         
     
@@ -329,74 +430,7 @@ export class Client implements Api {
     
         
         
-        export type GetCarsResponse = (| { /** List of cars. */ type: "Ok", value: CarModel[] });
-
-        export const GetCarsResponse = {
-            async fromResponse(response: Response): Promise<GetCarsResponse> {
-                
-                    switch (response.status) {
-                        
-                            case 200: { 
-                                return {type: "Ok", value:
-                                                await response.json()
-                                            }
-                            }default: {
-                            throw new InternalError(`unexpected status code: ${status}`);
-                        }
-                    }
-                
-            } 
-        }
-    
-        
-        
-        export type CreateCarResponse = (| { /** Created. */ type: "Created", value: CarModel });
-
-        export const CreateCarResponse = {
-            async fromResponse(response: Response): Promise<CreateCarResponse> {
-                
-                    switch (response.status) {
-                        
-                            case 201: { 
-                                return {type: "Created", value:
-                                                await response.json()
-                                            }
-                            }default: {
-                            throw new InternalError(`unexpected status code: ${status}`);
-                        }
-                    }
-                
-            } 
-        }
-    
-
-    
-        
-        
-        export type TestBinaryResponse = (| { /** Ok. */ type: "Ok", value: Blob });
-
-        export const TestBinaryResponse = {
-            async fromResponse(response: Response): Promise<TestBinaryResponse> {
-                
-                    switch (response.status) {
-                        
-                            case 200: { 
-                                return {type: "Ok", value:
-                                                await response.blob()
-                                        }
-                            }default: {
-                            throw new InternalError(`unexpected status code: ${status}`);
-                        }
-                    }
-                
-            } 
-        }
-    
-
-    
-        
-        
-        export type TestOneOfResponse = (| { /** Ok. */ type: "Ok", value: TestOneOfResponseModel });
+        export type TestOneOfResponse = (| { /** Ok. */ type: "200", value: TestOneOfResponseModel });
 
         export const TestOneOfResponse = {
             async fromResponse(response: Response): Promise<TestOneOfResponse> {
@@ -404,9 +438,122 @@ export class Client implements Api {
                     switch (response.status) {
                         
                             case 200: { 
-                                return {type: "Ok", value:
+                                return {type: "200", value:
                                                 await response.json()
                                             }
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+
+    
+        
+        
+        export type GetCarsResponse = (| { /** List of cars. */ type: "200", value: CarsModel });
+
+        export const GetCarsResponse = {
+            async fromResponse(response: Response): Promise<GetCarsResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:
+                                                await response.json()
+                                            }
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+        
+        
+        export type CreateCarResponse = (| { /** Created. */ type: "201" });
+
+        export const CreateCarResponse = {
+            async fromResponse(response: Response): Promise<CreateCarResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 201: { 
+                                return {type: "201", value:}
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+
+    
+        
+        
+        export type GetCarResponse = (| { /** A car. */ type: "200", value: CarModel }| { /** Car not found. */ type: "404" });
+
+        export const GetCarResponse = {
+            async fromResponse(response: Response): Promise<GetCarResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:
+                                                await response.json()
+                                            }
+                            }
+                            case 404: { 
+                                return {type: "404", value:}
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+        
+        
+        export type DeleteCarResponse = (| { /** Car deleted. */ type: "200" }| { /** Car not found. */ type: "404" });
+
+        export const DeleteCarResponse = {
+            async fromResponse(response: Response): Promise<DeleteCarResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:}
+                            }
+                            case 404: { 
+                                return {type: "404", value:}
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+
+    
+        
+        
+        export type TestBinaryResponse = (| { /** Ok. */ type: "200", value: Blob });
+
+        export const TestBinaryResponse = {
+            async fromResponse(response: Response): Promise<TestBinaryResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:
+                                                await response.blob()
+                                        }
                             }default: {
                             throw new InternalError(`unexpected status code: ${status}`);
                         }

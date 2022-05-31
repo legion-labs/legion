@@ -1,0 +1,25 @@
+use lgn_online::codegen::{Bytes};
+
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% let model_name = "{}Request"|format(route.name|pascal_case) %}
+
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        pub struct {{ model_name }} {
+            {% for parameter in route.parameters -%}
+                {%- if parameter.required -%}
+                    pub {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type }},
+                {%- else -%}
+                    pub {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type }}>,
+                {%- endif -%}
+            {% endfor -%}
+            {% if let Some(request_body) = route.request_body -%}
+                {%- if request_body.required -%}
+                    pub body: {{ request_body.content.type_|fmt_type }},
+                {%- else -%}
+                    pub body: Option<{{ request_body.content.type_|fmt_type }}>,
+                {%- endif -%}
+            {% endif -%}
+        }
+    {% endfor %}
+{% endfor %}

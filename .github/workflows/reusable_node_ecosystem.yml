@@ -86,6 +86,60 @@ jobs:
           path: ./npm-pkgs/lgn-editor-gui/dist
           retention-days: 5
 
+  build_artifacts:
+    name: Build
+    needs: [check]
+    runs-on: [self-hosted, linux, governance-common, build]
+    if: ${{ inputs.deploy_editor || inputs.deploy_analytics }}
+    container:
+      image: ${{ inputs.image }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          lfs: true
+
+      - name: Npm install
+        run: pnpm install --unsafe-perm
+
+      - name: Npm build
+        run: pnpm build
+
+      - name: Upload editor artifacts to S3
+        shell: bash
+        run: |
+          cd ./npm-pkgs/lgn-editor-gui/dist
+          VERSION=`cat ../package.json | jq -r '.version'`
+          PKG="s3://legionlabs-governance-ci-artefacts/releases/legion/lgn-editor-gui/lgn-editor-gui-$VERSION.zip"
+          set +e
+          aws s3 ls $PKG --region ca-central-1
+          if [[ $? -ne 0 ]]; then
+            set -e
+            echo "Pushing editor frontend to S3..."
+            zip -r ../lgn-editor-gui.zip *
+            aws s3 cp ../lgn-editor-gui.zip $PKG --region ca-central-1
+          else
+            echo "Editor frontend already exists"
+            exit 0
+          fi
+
+      - name: Upload analytics artifacts to S3
+        shell: bash
+        run: |
+          cd ./npm-pkgs/lgn-analytics-gui/dist
+          VERSION=`cat ../package.json | jq -r '.version'`
+          PKG="s3://legionlabs-governance-ci-artefacts/releases/legion/lgn-analytics-gui/lgn-analytics-gui-$VERSION.zip"
+          set +e
+          aws s3 ls $PKG --region ca-central-1
+          if [[ $? -ne 0 ]]; then
+            set -e
+            echo "Pushing analytics to S3..."
+            zip -r ../lgn-analytics-gui.zip *
+            aws s3 cp ../lgn-analytics-gui.zip $PKG --region ca-central-1
+          else
+            echo "Analytics frontend already exists"
+            exit 0
+          fi
+
   deploy_editor:
     name: Deployment
     needs: [build]

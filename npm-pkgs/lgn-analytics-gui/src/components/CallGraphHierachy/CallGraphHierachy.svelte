@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { getContext, onMount } from "svelte";
   import { BarLoader } from "svelte-loading-spinners";
 
-  import { getHttpClientContext } from "@/contexts";
   import type { CumulatedCallGraphHierarchyStore } from "@/lib/CallGraph/CallGraphStore";
   import { getProcessCumulatedCallGraphHierarchy } from "@/lib/CallGraph/CallGraphStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
@@ -11,7 +10,7 @@
   import CallTreeDebug from "./CallGraphHierachyDebug.svelte";
   import CallGraphLine from "./CallGraphHierachyLine.svelte";
 
-  const client = getHttpClientContext();
+  const client = getContext("http-client");
 
   export let begin: number;
   export let end: number;

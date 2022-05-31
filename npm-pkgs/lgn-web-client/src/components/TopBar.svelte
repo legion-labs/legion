@@ -27,6 +27,8 @@
 
   let devSettingsTitle: string | null = null;
 
+  let div: HTMLElement;
+
   onMount(() => {
     if (!window.isElectron || !window.electron) {
       return;
@@ -76,12 +78,12 @@
   }
 </script>
 
-<div class="root" class:electron={window.isElectron}>
+<div class="root" class:electron={window.isElectron} bind:this={div}>
   <div class="menus">
     <div class="brand" title="Legion Editor">
       <BrandLogo class="brand-logo" />
     </div>
-    <MenuBar items={mainMenuItemDescriptions} />
+    <MenuBar items={mainMenuItemDescriptions} container={div} />
   </div>
   <div class="handle" bind:this={topBarHandle} style="-webkit-app-region: drag">
     <div class="document-title">

@@ -186,16 +186,19 @@ impl ThreadBlockProcessor for CallTreeBuilder {
 #[allow(clippy::cast_precision_loss)]
 #[span_fn]
 pub(crate) async fn process_thread_block(
-    connection: &mut sqlx::AnyConnection,
+    pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
     convert_ticks: ConvertTicks,
     stream: &lgn_telemetry_sink::StreamInfo,
     block_id: &str,
 ) -> Result<ProcessedThreadBlock> {
-    let block = find_block(connection, block_id).await?;
+    let block = {
+        let mut connection = pool.acquire().await?;
+        find_block(&mut connection, block_id).await?
+    };
     let mut builder = CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks);
     parse_thread_block(
-        connection,
+        pool,
         blob_storage,
         stream,
         block_id.to_owned(),

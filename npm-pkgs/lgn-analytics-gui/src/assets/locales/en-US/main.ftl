@@ -107,7 +107,3 @@ metrics-recently-used = Recently Used
 metrics-all-metrics = All Metrics
 metrics-open-cumulative-call-graph = Open { global-cumulative-call-graph }
 metrics-open-timeline = Open { global-timeline }
-metrics-selected-time-range = Selected time range
-metrics-selected-time-range-duration = Duration:
-metrics-selected-time-range-beginning = Beginning:
-metrics-selected-time-range-end = End:

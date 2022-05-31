@@ -28,19 +28,21 @@ if ("VITEST" in process.env) {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig(() => ({
-  // TODO: Drop this option when vite-tsconfig-paths
-  // will work properly with SvelteKit
-  resolve: {
-    alias: {
-      "@/resources": path.resolve("./tests/resources"),
-      "@": path.resolve("./src"),
+export default defineConfig(() => {
+  return {
+    // TODO: Drop this option when vite-tsconfig-paths
+    // will work properly with SvelteKit
+    resolve: {
+      alias: {
+        "@/resources": path.resolve("./tests/resources"),
+        "@": path.resolve("./src"),
+      },
     },
-  },
-  plugins,
-  test: {
-    environment: testEnvironment,
-    globals: true,
-    setupFiles: "tests/setup.ts",
-  },
-}));
+    plugins,
+    test: {
+      environment: testEnvironment,
+      globals: true,
+      setupFiles: "tests/setup.ts",
+    },
+  };
+});

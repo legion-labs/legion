@@ -233,9 +233,7 @@ impl Config {
             ));
         }
 
-        let provider = Provider::new(content_provider, alias_provider);
-
-        Ok(provider)
+        Ok(Provider::new(content_provider, alias_provider))
     }
 
     /// Load the configuration from the specified section and immediately instantiate the provider.

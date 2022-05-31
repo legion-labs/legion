@@ -1,10 +1,13 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::SystemTime;
 use std::{env, io};
 
+use futures::future::{select_all, try_join_all};
+use futures::{Future, FutureExt};
 use lgn_content_store::{Identifier, Provider};
 use lgn_data_compiler::compiler_api::{
     CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION,
@@ -16,8 +19,9 @@ use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
-use lgn_tracing::{async_span_scope, info};
+use lgn_tracing::{async_span_scope, debug, error, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
+use petgraph::graph::NodeIndex;
 use petgraph::{algo, Graph};
 
 use crate::asset_file_writer::write_assetfile;
@@ -305,7 +309,7 @@ impl DataBuild {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     async fn compile_node(
-        output_index: &mut OutputIndex,
+        output_index: &OutputIndex,
         data_provider: &Provider,
         project_dir: &Path,
         compile_node: &ResourcePathId,
@@ -464,7 +468,7 @@ impl DataBuild {
 
         let build_graph = source_index.generate_build_graph(compile_path);
 
-        let topological_order: Vec<_> = algo::toposort(&build_graph, None).map_err(|_e| {
+        let mut topological_order: Vec<_> = algo::toposort(&build_graph, None).map_err(|_e| {
             eprintln!("{:?}", build_graph);
             Error::CircularDependency
         })?;
@@ -517,186 +521,422 @@ impl DataBuild {
         let mut node_hash = HashMap::<_, (AssetHash, AssetHash)>::new();
 
         let mut compiled_at_node = HashMap::<ResourcePathId, _>::new();
+        let mut compiled = HashSet::<petgraph::graph::NodeIndex>::new();
 
-        for compile_node_index in topological_order {
-            let compile_node = build_graph.node_weight(compile_node_index).unwrap();
-            // compile non-source dependencies.
-            if let Some(direct_dependency) = compile_node.direct_dependency() {
-                let mut n = build_graph.neighbors_directed(compile_node_index, petgraph::Incoming);
-                let direct_dependency_index = n.next().unwrap();
+        let mut compiled_unnamed = HashSet::<ResourcePathId>::new();
+        let mut compiling_unnamed = HashSet::<ResourcePathId>::new();
 
-                // only one direct dependency supported now. it's ok for the path
-                // but it needs to be revisited for source (if this ever applies to source).
-                assert!(n.next().is_none());
+        let mut work = vec![];
 
-                assert_eq!(
-                    &direct_dependency,
-                    build_graph.node_weight(direct_dependency_index).unwrap()
-                );
+        let to_compile = topological_order.len();
 
-                let transform = compile_node.last_transform().unwrap();
-
-                //  'name' is dropped as we always compile input as a whole.
-                let expected_name = compile_node.name();
-                let compile_node = compile_node.to_unnamed();
-
-                // check if the unnamed ResourcePathId has been already compiled and early out.
-                if let Some(node_index) = compiled_at_node.get(&compile_node) {
-                    node_hash.insert(compile_node_index, *node_hash.get(node_index).unwrap());
-                    continue;
-                }
-
-                compiled_at_node.insert(compile_node.clone(), compile_node_index);
-
-                //
-                // for derived resources the build index will not have dependencies for.
-                // for now derived resources do not inherit dependencies from resources down the
-                // resource path.
-                //
-                // this is compensated by the fact that the compilation output of each node
-                // contributes to `derived dependencies`. we might still want to inherit the
-                // regular dependencies.
-                //
-                // this has to be reevaluated in the future.
-                //
-                let dependencies = source_index
-                    .find_dependencies(&direct_dependency)
-                    .unwrap_or_default();
-
-                let (compiler, compiler_hash) = *compiler_details.get(&transform).unwrap();
-
-                // todo: not sure if transform is the right thing here. resource_path_id better?
-                // transform is already defined by the compiler_hash so it seems redundant.
-                let context_hash = compute_context_hash(transform, compiler_hash, Self::version());
-
-                let source_hash = {
-                    if direct_dependency.is_source() {
-                        //
-                        // todo(kstasik): source_hash computation can include filtering of resource
-                        // types in the future. the same resource can have a
-                        // different source_hash depending on the compiler
-                        // used as compilers can filter dependencies out.
-                        //
-                        source_index.compute_source_hash(compile_node.clone())
-                    } else {
-                        //
-                        // since this is a path-derived resource its hash is equal to the
-                        // checksum of its direct dependency.
-                        // this is because the direct dependency is the only dependency.
-                        // more thought needs to be put into this - this would mean this
-                        // resource should not read any other resources - but right now
-                        // `accumulated_dependencies` allows to read much more.
-                        //
-                        let (dep_context_hash, dep_source_hash) =
-                            node_hash.get(&direct_dependency_index).unwrap();
-
-                        // we can assume there are results of compilation of the `direct_dependency`
-                        let compiled = self
-                            .output_index
-                            .find_compiled(
-                                &direct_dependency.to_unnamed(),
-                                *dep_context_hash,
-                                *dep_source_hash,
-                            )
-                            .await
-                            .unwrap()
-                            .0;
-                        // can we assume there is a result of a requested name?
-                        // probably no, this should return a compile error.
-                        if let Some(source) = compiled
-                            .iter()
-                            .find(|&compiled| compiled.compiled_path == direct_dependency)
-                        {
-                            // this is how we truncate the 128 bit long checksum
-                            // and convert it to a 64 bit source_hash.
-                            AssetHash::from(source.compiled_content_id.default_hash())
-                        } else {
-                            lgn_tracing::error!(
-                                "Failed to find compilation output for: {}",
-                                direct_dependency
-                            );
-                            continue;
-                        }
-                    }
-                };
-
-                node_hash.insert(compile_node_index, (context_hash, source_hash));
-
-                info!("Compiling {} ({:?}) ...", compile_node, expected_name);
-                let start = std::time::Instant::now();
-
-                let (resource_infos, resource_references, stats) = Self::compile_node(
-                    &mut self.output_index,
-                    &self.data_content_provider,
-                    &self.resource_dir,
-                    &compile_node,
-                    context_hash,
-                    source_hash,
-                    &dependencies,
-                    &accumulated_dependencies,
-                    env,
-                    compiler,
-                    self.compilers.registry(),
-                )
-                .await?;
-
-                info!("Compiled {} ended in {:?}.", compile_node, start.elapsed());
-
-                // update the CAS manifest with new content in order to make new resources
-                // visible to the next compilation node
-                // NOTE: right now all the resources are visible to all compilation nodes.
-                if let Some(manifest) = &intermediate_output {
-                    for r in &resource_infos {
-                        manifest
-                            .insert(r.compiled_path.resource_id(), r.compiled_content_id.clone());
-                    }
-                }
-
-                // registry must be updated to release any resources that are no longer referenced.
-                self.compilers.registry().update();
-
-                // we check if the expected named output was produced.
-                if let Some(expected_name) = expected_name {
-                    if !resource_infos.iter().any(|info| {
-                        info.compiled_path
-                            .name()
-                            .map_or(false, |name| name == expected_name)
-                    }) {
-                        return Err(Error::OutputNotPresent(
-                            compile_node,
-                            expected_name.to_string(),
-                        ));
-                    }
-                }
-
-                accumulated_dependencies.extend(resource_infos.iter().map(|res| {
-                    CompiledResource {
-                        path: res.compiled_path.clone(),
-                        content_id: res.compiled_content_id.clone(),
-                    }
-                }));
-                accumulated_dependencies.sort();
-                accumulated_dependencies.dedup();
-
-                assert_eq!(
-                    compiled_resources
-                        .iter()
-                        .filter(|&info| resource_infos.iter().any(|a| a == info))
-                        .count(),
-                    0,
-                    "duplicate compilation output detected"
-                );
-
-                compiled_resources.extend(resource_infos);
-                compile_stats.extend(stats);
-                compiled_references.extend(resource_references);
-            }
+        for node in &topological_order {
+            debug!(
+                "Node {:?} -> {}",
+                node,
+                build_graph.node_weight(*node).unwrap()
+            );
         }
+
+        for node in &topological_order {
+            debug!(
+                "Dependency List {:?}:{}",
+                node,
+                build_graph
+                    .neighbors_directed(*node, petgraph::Incoming)
+                    .fold("".to_string(), |acc, d| acc + &format!(" {:?}", d))
+            );
+        }
+
+        while compiled.len() < to_compile {
+            let (ready, pending) =
+                topological_order
+                    .into_iter()
+                    .partition::<Vec<_>, _>(|&compile_node_index| {
+                        // ready if all dependencies have been compiled
+                        let all_deps_compiled = build_graph
+                            .neighbors_directed(compile_node_index, petgraph::Incoming)
+                            .all(|index| compiled.contains(&index));
+
+                        let compile_node = build_graph.node_weight(compile_node_index).unwrap();
+                        let compile_node_unnamed = compile_node.to_unnamed();
+
+                        // make sure we only schedule one compilation of a node. the rest will be pending until that one completes.
+                        {
+                            if compiling_unnamed.contains(&compile_node_unnamed) {
+                                return false;
+                            }
+                            if all_deps_compiled
+                                && !compiled_unnamed.contains(&compile_node_unnamed)
+                            {
+                                compiling_unnamed.insert(compile_node_unnamed);
+                            }
+                        }
+
+                        all_deps_compiled
+                    });
+            info!(
+                "Progress: ready: {}, pending {}, ongoing: {}, done: {}/{}",
+                ready.len(),
+                pending.len(),
+                work.len(),
+                compiled.len(),
+                to_compile
+            );
+            topological_order = pending;
+
+            for node in &topological_order {
+                let dep_status = build_graph
+                    .neighbors_directed(*node, petgraph::Incoming)
+                    .fold("".to_string(), |acc, d| {
+                        let dd = build_graph.node_weight(d).unwrap();
+                        let completion_status = if compiled.contains(&d) {
+                            "compiled"
+                        } else if compiling_unnamed.contains(&dd.to_unnamed()) {
+                            "compiling"
+                        } else {
+                            "pending"
+                        };
+                        acc + &format!(" {:?} - {},", d, completion_status)
+                    });
+                let name = build_graph.node_weight(*node).unwrap().to_unnamed();
+                let unnamed_status = if compiling_unnamed.contains(&name) {
+                    "compiling"
+                } else if compiled_unnamed.contains(&name) {
+                    "compiled"
+                } else {
+                    "pending"
+                };
+                debug!(
+                    "Pending '{:?}': Status: '{}'. Deps:{}",
+                    node, unnamed_status, dep_status
+                );
+            }
+
+            debug!("Compiled: {:?}", compiled);
+            debug!("Compiling Unnamed {:?}", compiling_unnamed);
+            debug!("Compiled Unnamed {:?}", compiled_unnamed);
+
+            let mut new_work = vec![];
+            let num_ready = ready.len();
+            for compile_node_index in ready {
+                let compile_node = build_graph.node_weight(compile_node_index).unwrap();
+                info!(
+                    "Progress({:?}): {:?} is ready",
+                    compile_node_index, compile_node
+                );
+                // compile non-source dependencies.
+                if let Some(direct_dependency) = compile_node.direct_dependency() {
+                    let mut n =
+                        build_graph.neighbors_directed(compile_node_index, petgraph::Incoming);
+                    let direct_dependency_index = n.next().unwrap();
+
+                    // only one direct dependency supported now. it's ok for the path
+                    // but it needs to be revisited for source (if this ever applies to source).
+                    assert!(n.next().is_none());
+
+                    assert_eq!(
+                        &direct_dependency,
+                        build_graph.node_weight(direct_dependency_index).unwrap()
+                    );
+
+                    let transform = compile_node.last_transform().unwrap();
+
+                    //  'name' is dropped as we always compile input as a whole.
+                    let expected_name = compile_node.name();
+                    let compile_node = compile_node.to_unnamed();
+
+                    // check if the unnamed ResourcePathId has been already compiled and early out.
+                    if let Some(node_index) = compiled_at_node.get(&compile_node) {
+                        node_hash.insert(compile_node_index, *node_hash.get(node_index).unwrap());
+                        compiled.insert(compile_node_index);
+                        continue;
+                    }
+
+                    compiled_at_node.insert(compile_node.clone(), compile_node_index);
+
+                    //
+                    // for derived resources the build index will not have dependencies for.
+                    // for now derived resources do not inherit dependencies from resources down the
+                    // resource path.
+                    //
+                    // this is compensated by the fact that the compilation output of each node
+                    // contributes to `derived dependencies`. we might still want to inherit the
+                    // regular dependencies.
+                    //
+                    // this has to be reevaluated in the future.
+                    //
+                    let dependencies = source_index
+                        .find_dependencies(&direct_dependency)
+                        .unwrap_or_default();
+
+                    let (compiler, compiler_hash) = *compiler_details.get(&transform).unwrap();
+
+                    // todo: not sure if transform is the right thing here. resource_path_id better?
+                    // transform is already defined by the compiler_hash so it seems redundant.
+                    let context_hash =
+                        compute_context_hash(transform, compiler_hash, Self::version());
+
+                    let source_hash = {
+                        if direct_dependency.is_source() {
+                            //
+                            // todo(kstasik): source_hash computation can include filtering of resource
+                            // types in the future. the same resource can have a
+                            // different source_hash depending on the compiler
+                            // used as compilers can filter dependencies out.
+                            //
+                            source_index.compute_source_hash(compile_node.clone())
+                        } else {
+                            //
+                            // since this is a path-derived resource its hash is equal to the
+                            // checksum of its direct dependency.
+                            // this is because the direct dependency is the only dependency.
+                            // more thought needs to be put into this - this would mean this
+                            // resource should not read any other resources - but right now
+                            // `accumulated_dependencies` allows to read much more.
+                            //
+                            let (dep_context_hash, dep_source_hash) =
+                                node_hash.get(&direct_dependency_index).unwrap();
+
+                            // we can assume there are results of compilation of the `direct_dependency`
+                            let compiled = self
+                                .output_index
+                                .find_compiled(
+                                    &direct_dependency.to_unnamed(),
+                                    *dep_context_hash,
+                                    *dep_source_hash,
+                                )
+                                .await
+                                .unwrap()
+                                .0;
+                            // can we assume there is a result of a requested name?
+                            // probably no, this should return a compile error.
+                            if let Some(source) = compiled
+                                .iter()
+                                .find(|&compiled| compiled.compiled_path == direct_dependency)
+                            {
+                                // this is how we truncate the 128 bit long checksum
+                                // and convert it to a 64 bit source_hash.
+                                AssetHash::from(source.compiled_content_id.default_hash())
+                            } else {
+                                lgn_tracing::error!(
+                                    "Failed to find compilation output for: {}",
+                                    direct_dependency
+                                );
+                                continue;
+                            }
+                        }
+                    };
+
+                    node_hash.insert(compile_node_index, (context_hash, source_hash));
+
+                    let output_index = &self.output_index;
+                    let data_content_provider = &self.data_content_provider;
+                    let project_dir = &self.resource_dir;
+                    let resources = self.compilers.registry();
+                    let acc_deps = accumulated_dependencies.clone();
+
+                    #[allow(clippy::type_complexity)]
+                    let work: Pin<
+                        Box<dyn Future<Output = Result<_, (NodeIndex, Error)>> + Send>,
+                    > = async move {
+                        info!(
+                            "Compiling({:?}) {} ({:?}) ...",
+                            compile_node_index, compile_node, expected_name
+                        );
+                        let start = std::time::Instant::now();
+
+                        let (resource_infos, resource_references, stats) = Self::compile_node(
+                            output_index,
+                            data_content_provider,
+                            project_dir,
+                            &compile_node,
+                            context_hash,
+                            source_hash,
+                            &dependencies,
+                            &acc_deps,
+                            env,
+                            compiler,
+                            resources.clone(),
+                        )
+                        .await
+                        .map_err(|e| (compile_node_index, e))?;
+
+                        info!(
+                            "Compiled({:?}) {:?} ended in {:?}.",
+                            compile_node_index,
+                            compile_node,
+                            start.elapsed()
+                        );
+
+                        // update the CAS manifest with new content in order to make new resources
+                        // visible to the next compilation node
+                        // NOTE: right now all the resources are visible to all compilation nodes.
+                        if let Some(manifest) = &intermediate_output {
+                            for r in &resource_infos {
+                                manifest.insert(
+                                    r.compiled_path.resource_id(),
+                                    r.compiled_content_id.clone(),
+                                );
+                            }
+                        }
+
+                        // registry must be updated to release any resources that are no longer referenced.
+                        resources.update();
+
+                        Ok((
+                            compile_node_index,
+                            resource_infos,
+                            resource_references,
+                            stats,
+                        ))
+                    }
+                    .boxed();
+                    new_work.push(work);
+                } else {
+                    let unnamed = compile_node.to_unnamed();
+                    info!("Source({:?}) Completed '{}'", compile_node_index, unnamed);
+                    compiled.insert(compile_node_index);
+                    compiling_unnamed.remove(&unnamed);
+                    compiled_unnamed.insert(unnamed);
+                }
+            }
+
+            info!(
+                "Progress: new work: {}, total work: {}, pending: {}, done: {}/{}",
+                new_work.len(),
+                work.len() + new_work.len(),
+                topological_order.len(),
+                compiled.len(),
+                to_compile
+            );
+            work.extend(new_work);
+
+            if work.is_empty() && num_ready > 0 {
+                continue;
+            }
+
+            //
+            //
+            //
+
+            let (result, _, remaining) = select_all(work).await;
+
+            match result {
+                Ok((node_index, resource_infos, resource_references, stats)) => {
+                    let compile_node = build_graph.node_weight(node_index).unwrap();
+
+                    let unnamed = compile_node.to_unnamed();
+                    info!(
+                        "Progress({:?}): done: {} ({})",
+                        node_index, compile_node, unnamed
+                    );
+                    compiling_unnamed.remove(&unnamed);
+                    compiled_unnamed.insert(unnamed);
+
+                    accumulated_dependencies.extend(resource_infos.iter().map(|res| {
+                        CompiledResource {
+                            path: res.compiled_path.clone(),
+                            content_id: res.compiled_content_id.clone(),
+                        }
+                    }));
+                    accumulated_dependencies.sort();
+                    accumulated_dependencies.dedup();
+
+                    assert_eq!(
+                        compiled_resources
+                            .iter()
+                            .filter(|&info| resource_infos.iter().any(|a| a == info))
+                            .count(),
+                        0,
+                        "duplicate compilation output detected"
+                    );
+
+                    compiled_resources.extend(resource_infos);
+                    compiled_references.extend(resource_references);
+                    compile_stats.extend(stats);
+
+                    compiled.insert(node_index);
+                }
+                Err((node_index, e)) => {
+                    error!("Compilation of '{:?}' failed {}", node_index, e);
+                    compiled.insert(node_index);
+                }
+            };
+
+            work = remaining;
+        }
+
         Ok(CompileOutput {
             resources: compiled_resources,
             references: compiled_references,
             statistics: compile_stats,
         })
+    }
+
+    async fn link_work(
+        &self,
+        resource: &CompiledResourceInfo,
+        references: &[CompiledResourceReference],
+    ) -> Result<CompiledResource, Error> {
+        info!("Linking {:?} ...", resource);
+        let checksum = if let Some(checksum) = self
+            .output_index
+            .find_linked(
+                resource.compiled_path.clone(),
+                resource.context_hash,
+                resource.source_hash,
+            )
+            .await?
+        {
+            checksum
+        } else {
+            //
+            // for now, every derived resource gets an `assetfile` representation.
+            //
+            let asset_id = resource.compiled_path.resource_id();
+
+            let resource_list = std::iter::once((asset_id, resource.compiled_content_id.clone()));
+            let reference_list = references
+                .iter()
+                .filter(|r| r.is_reference_of(resource))
+                .map(|r| {
+                    (
+                        resource.compiled_path.resource_id(),
+                        (
+                            r.compiled_reference.resource_id(),
+                            r.compiled_reference.resource_id(),
+                        ),
+                    )
+                });
+
+            let output = write_assetfile(
+                resource_list,
+                reference_list,
+                &self.source_index.content_store,
+            )
+            .await?;
+
+            let checksum = {
+                async_span_scope!("content_store");
+                self.source_index.content_store.write(&output).await?
+            };
+            self.output_index
+                .insert_linked(
+                    resource.compiled_path.clone(),
+                    resource.context_hash,
+                    resource.source_hash,
+                    checksum.clone(),
+                )
+                .await?;
+            checksum
+        };
+
+        let asset_file = CompiledResource {
+            path: resource.compiled_path.clone(),
+            content_id: checksum,
+        };
+        Ok(asset_file)
     }
 
     /// Create asset files in runtime format containing compiled resources that
@@ -708,70 +948,33 @@ impl DataBuild {
         resources: &[CompiledResourceInfo],
         references: &[CompiledResourceReference],
     ) -> Result<Vec<CompiledResource>, Error> {
-        let mut resource_files = Vec::with_capacity(resources.len());
-        for resource in resources {
-            info!("Linking {:?} ...", resource);
-            let checksum = if let Some(checksum) = self
-                .output_index
-                .find_linked(
-                    resource.compiled_path.clone(),
-                    resource.context_hash,
-                    resource.source_hash,
-                )
-                .await?
-            {
-                checksum
-            } else {
-                //
-                // for now, every derived resource gets an `assetfile` representation.
-                //
-                let asset_id = resource.compiled_path.resource_id();
+        let timer = std::time::Instant::now();
 
-                let resource_list =
-                    std::iter::once((asset_id, resource.compiled_content_id.clone()));
-                let reference_list = references
-                    .iter()
-                    .filter(|r| r.is_reference_of(resource))
-                    .map(|r| {
-                        (
-                            resource.compiled_path.resource_id(),
-                            (
-                                r.compiled_reference.resource_id(),
-                                r.compiled_reference.resource_id(),
-                            ),
-                        )
-                    });
+        #[allow(clippy::type_complexity)]
+        let work: Vec<
+            Pin<Box<dyn Future<Output = Result<CompiledResource, Error>> + Send>>,
+        > = resources
+            .iter()
+            .map(|resource| {
+                async {
+                    let link_timer = std::time::Instant::now();
 
-                let output = write_assetfile(
-                    resource_list,
-                    reference_list,
-                    &self.source_index.content_store,
-                )
-                .await?;
+                    let asset_file = self.link_work(resource, references).await?;
+                    info!(
+                        "Linked {} into: {} in {:?}",
+                        resource.compiled_path,
+                        asset_file.content_id,
+                        link_timer.elapsed()
+                    );
+                    Ok(asset_file)
+                }
+                .boxed()
+            })
+            .collect::<Vec<_>>();
 
-                let checksum = {
-                    async_span_scope!("content_store");
-                    self.source_index.content_store.write(&output).await?
-                };
-                self.output_index
-                    .insert_linked(
-                        resource.compiled_path.clone(),
-                        resource.context_hash,
-                        resource.source_hash,
-                        checksum.clone(),
-                    )
-                    .await?;
-                checksum
-            };
+        let resource_files = try_join_all(work).await?;
 
-            let asset_file = CompiledResource {
-                path: resource.compiled_path.clone(),
-                content_id: checksum.clone(),
-            };
-
-            info!("Linked {} into: {}", resource.compiled_path, checksum);
-            resource_files.push(asset_file);
-        }
+        info!("Linking ended in {:?}.", timer.elapsed());
 
         Ok(resource_files)
     }

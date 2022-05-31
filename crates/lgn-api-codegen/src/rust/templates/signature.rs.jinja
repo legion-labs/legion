@@ -1,23 +1,5 @@
 async fn {{ route.name|snake_case }}(
     &self,
-    {% for parameter in route.parameters.path -%}
-        {% include "parameter.rs.jinja" %}
-    {% endfor -%}
-    {% for parameter in route.parameters.query -%}
-        {% include "parameter.rs.jinja" %}
-    {% endfor -%}
-    {% for parameter in route.parameters.header -%}
-        {% include "parameter.rs.jinja" %}
-    {% endfor -%}
-    {% for parameter in route.parameters.cookie -%}
-        {% include "parameter.rs.jinja" %}
-    {% endfor -%}
-    {% if let Some(request_body) = route.request_body -%}
-        {%- if request_body.required -%}
-            body: {{ request_body.content.type_|fmt_type }},
-        {%- else -%}
-            body: Option<{{ request_body.content.type_|fmt_type }}>,
-        {%- endif -%}
-    {% endif -%}
-    extra: Extra,
+    context: &mut Context,
+    request: requests::{{ route.name|pascal_case }}Request
 ) -> Result<responses::{{ route.name|pascal_case }}Response>

@@ -5,6 +5,8 @@ use super::{HashRef, InvalidHashRef};
 /// An error type for the content-store crate.
 #[derive(Error, Debug)]
 pub enum Error {
+    #[error("the provider does not support unwritting")]
+    UnwriteNotSupported,
     #[error("the hash reference `{0}` was not found")]
     HashRefNotFound(HashRef),
     #[error("the hash reference `{0}` already exists")]

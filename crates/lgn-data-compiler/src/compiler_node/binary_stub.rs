@@ -27,7 +27,10 @@ impl CompilerStub for BinCompilerStub {
         env: &CompilationEnv,
     ) -> io::Result<CompilerHash> {
         let cmd = CompilerHashCmd::new(&self.bin_path, env, Some(transform));
-        let transforms = cmd.execute().map(|output| output.compiler_hash_list)?;
+        let transforms = cmd
+            .execute()
+            .await
+            .map(|output| output.compiler_hash_list)?;
 
         if transforms.len() == 1 && transforms[0].0 == transform {
             return Ok(transforms[0].1);
@@ -63,6 +66,7 @@ impl CompilerStub for BinCompilerStub {
             env,
         )
         .execute()
+        .await
         .map(|output| CompilationOutput {
             compiled_resources: output.compiled_resources,
             resource_references: output.resource_references,
@@ -73,6 +77,7 @@ impl CompilerStub for BinCompilerStub {
     async fn info(&self) -> io::Result<Vec<CompilerInfo>> {
         CompilerInfoCmd::new(&self.bin_path)
             .execute()
+            .await
             .map(CompilerInfoCmdOutput::take)
     }
 }

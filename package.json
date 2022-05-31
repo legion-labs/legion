@@ -20,9 +20,14 @@
     "runtime:start": "pnpm -C npm-pkgs/lgn-runtime-gui start",
     "analytics:start:desktop": "pnpm -C npm-pkgs/lgn-analytics-gui start:desktop",
     "editor:start:desktop": "pnpm -C npm-pkgs/lgn-editor-gui start:desktop",
-    "runtime:start:desktop": "pnpm -C npm-pkgs/lgn-runtime-gui start:desktop"  },
+    "runtime:start:desktop": "pnpm -C npm-pkgs/lgn-runtime-gui start:desktop"
+  },
   "devDependencies": {
+    "@types/tailwindcss": "^3.0.10",
+    "autoprefixer": "^10.4.4",
+    "postcss": "^8.4.12",
     "rimraf": "^3.0.2",
+    "tailwindcss": "^3.0.24",
     "wasm-pack": "0.10.2"
   }
 }

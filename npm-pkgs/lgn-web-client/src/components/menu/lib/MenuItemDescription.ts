@@ -1,5 +1,7 @@
 export type MenuItemDescription = {
-  title: string;
+  title?: string;
+  icon?: string;
+  visible: boolean;
   action?: () => void;
   children?: MenuItemDescription[];
 };
