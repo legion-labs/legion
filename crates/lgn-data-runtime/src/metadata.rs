@@ -56,6 +56,6 @@ impl TypeReflection for Metadata {
     }
 
     fn get_type_def() -> TypeDefinition {
-        lgn_data_model::TypeDefinition::None
+        TypeDefinition::None
     }
 }

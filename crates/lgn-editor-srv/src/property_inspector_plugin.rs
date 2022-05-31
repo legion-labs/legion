@@ -502,7 +502,8 @@ impl PropertyInspector for PropertyInspectorRPC {
                 depth: 0,
             }
             .collect::<ResourcePropertyCollector>()
-            .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
+            .map_err(|err| Status::internal(format!("transaction error {}", err)))?
+            .unwrap();
 
             Ok(Response::new(InsertNewArrayElementResponse {
                 new_value: Some(resource_property),

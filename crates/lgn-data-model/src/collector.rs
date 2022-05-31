@@ -41,22 +41,18 @@ where
         depth: 0,
         field_descriptor: None,
     };
-    item_info.collect::<T>()
+    Ok(item_info.collect::<T>()?.unwrap())
 }
 
 impl ItemInfo<'_> {
     /// Collect all the properties of a `ItemInfo` (subfield)
-    pub fn collect<T>(&self) -> Result<T::Item, ReflectionError>
+    pub fn collect<T>(&self) -> Result<Option<T::Item>, ReflectionError>
     where
         T: PropertyCollector,
     {
         let result = match self.type_def {
             TypeDefinition::None => {
-                let resource_type = self
-                    .field_descriptor
-                    .map_or(self.suffix.unwrap_or_default(), |f| f.field_name.as_str());
-
-                return Err(ReflectionError::InvalidTypeDescriptor(resource_type.into()));
+                None
             }
             TypeDefinition::BoxDyn(box_dyn_descriptor) => {
                 // For BoxDyn, pipe directly to the inner type
@@ -90,13 +86,16 @@ impl ItemInfo<'_> {
                         depth: self.depth + 1,
                         field_descriptor: None,
                     };
-                    T::add_child(&mut array_parent, child.collect::<T>()?);
+                    let child = child.collect::<T>()?;
+                    if child.is_some() {
+                        T::add_child(&mut array_parent, child.unwrap());
+                    }
                 }
-                array_parent
+                Some(array_parent)
             }
 
-            TypeDefinition::Enum(_enum_descriptor) => T::new_item(self)?,
-            TypeDefinition::Primitive(_primitive_descriptor) => T::new_item(self)?,
+            TypeDefinition::Enum(_enum_descriptor) => Some(T::new_item(self)?),
+            TypeDefinition::Primitive(_primitive_descriptor) => Some(T::new_item(self)?),
 
             TypeDefinition::Option(option_descriptor) => {
                 let mut option_parent = T::new_item(self)?;
@@ -108,9 +107,13 @@ impl ItemInfo<'_> {
                         depth: self.depth + 1,
                         field_descriptor: self.field_descriptor,
                     };
-                    T::add_child(&mut option_parent, child.collect::<T>()?);
+                    let child = child.collect::<T>()?;
+                    if child.is_none() {
+                        return Ok(None);
+                    }
+                    T::add_child(&mut option_parent, child.unwrap());
                 }
-                option_parent
+                Some(option_parent)
             }
             TypeDefinition::Struct(struct_descriptor) => {
                 let mut struct_parent = T::new_item(self)?;
@@ -125,11 +128,14 @@ impl ItemInfo<'_> {
                             depth: self.depth + 1,
                             field_descriptor: Some(field),
                         };
-                        T::add_child(&mut struct_parent, child.collect::<T>()?);
+                        let child = child.collect::<T>()?;
+                        if child.is_some() {
+                            T::add_child(&mut struct_parent, child.unwrap());
+                        }
                         Ok(())
                     },
                 )?;
-                struct_parent
+                Some(struct_parent)
             }
         };
         Ok(result)

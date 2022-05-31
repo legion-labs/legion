@@ -717,8 +717,8 @@ mod tests {
 
     use lgn_content_store::Provider;
     use lgn_data_runtime::{
-        resource, AssetRegistry, AssetRegistryOptions, Metadata, Resource, ResourceDescriptor,
-        ResourcePathId, ResourcePathName, ResourceProcessor, ResourceProcessorError, ResourceType,
+        resource, AssetRegistry, AssetRegistryOptions, Metadata, Resource, ResourcePathId,
+        ResourcePathName, ResourceProcessor, ResourceProcessorError, ResourceType,
     };
     use serde::{Deserialize, Serialize};
 
@@ -738,15 +738,15 @@ mod tests {
         dependencies: Vec<ResourcePathId>,
     }
 
-    struct NullResourceProc {}
+    struct NullResourceProc {
+        type_name: &'static str,
+        type_id: ResourceType,
+    }
+
     impl ResourceProcessor for NullResourceProc {
         fn new_resource(&mut self) -> Box<dyn Resource> {
             Box::new(NullResource {
-                meta: Metadata::new(
-                    ResourcePathName::default(),
-                    NullResource::TYPENAME,
-                    NullResource::TYPE,
-                ),
+                meta: Metadata::new(ResourcePathName::default(), self.type_name, self.type_id),
                 content: 0,
                 dependencies: vec![],
             })
@@ -784,23 +784,38 @@ mod tests {
         let resources = AssetRegistryOptions::new()
             .add_processor_ext(
                 ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
-                Box::new(NullResourceProc {}),
+                Box::new(NullResourceProc {
+                    type_name: RESOURCE_TEXTURE,
+                    type_id: ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
+                }),
             )
             .add_processor_ext(
                 ResourceType::new(RESOURCE_MATERIAL.as_bytes()),
-                Box::new(NullResourceProc {}),
+                Box::new(NullResourceProc {
+                    type_name: RESOURCE_MATERIAL,
+                    type_id: ResourceType::new(RESOURCE_MATERIAL.as_bytes()),
+                }),
             )
             .add_processor_ext(
                 ResourceType::new(RESOURCE_GEOMETRY.as_bytes()),
-                Box::new(NullResourceProc {}),
+                Box::new(NullResourceProc {
+                    type_name: RESOURCE_GEOMETRY,
+                    type_id: ResourceType::new(RESOURCE_GEOMETRY.as_bytes()),
+                }),
             )
             .add_processor_ext(
                 ResourceType::new(RESOURCE_SKELETON.as_bytes()),
-                Box::new(NullResourceProc {}),
+                Box::new(NullResourceProc {
+                    type_name: RESOURCE_SKELETON,
+                    type_id: ResourceType::new(RESOURCE_SKELETON.as_bytes()),
+                }),
             )
             .add_processor_ext(
                 ResourceType::new(RESOURCE_ACTOR.as_bytes()),
-                Box::new(NullResourceProc {}),
+                Box::new(NullResourceProc {
+                    type_name: RESOURCE_ACTOR,
+                    type_id: ResourceType::new(RESOURCE_ACTOR.as_bytes()),
+                }),
             )
             .create()
             .await;
