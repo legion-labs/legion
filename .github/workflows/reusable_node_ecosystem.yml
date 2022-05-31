@@ -115,6 +115,9 @@ jobs:
           if [[ $? -ne 0 ]]; then
             echo "Pushing editor frontend to S3..."
             aws s3 cp ../lgn-editor-gui.zip $PKG --region ca-central-1
+          else
+            echo "Editor frontend already exists"
+            exit 0
           fi
 
       - name: Upload analytics artifacts to S3
@@ -128,6 +131,9 @@ jobs:
           if [[ $? -ne 0 ]]; then
             echo "Pushing analytics to S3..."
             aws s3 cp ../lgn-analytics-gui.zip $PKG --region ca-central-1
+          else
+            echo "Analytics frontend already exists"
+            exit 0
           fi
 
   deploy_editor:
