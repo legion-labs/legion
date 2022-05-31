@@ -30,8 +30,8 @@
 <div
   hidden={!displayable}
   class:flex={displayable}
-  class:bg-gray-400={enableHover && selected}
-  class={`menu ${enableHover ? "hover:bg-gray-500" : ""}`}
+  class:bg-menu-hovered={enableHover && selected}
+  class={`menu-root ${enableHover ? "hover:bg-menu-hovered" : ""}`}
   use:clickOutside
   on:click-outside={menuContext.close}
   on:mouseenter={() => menuContext.mouseEnter(desc)}
@@ -71,8 +71,8 @@
 </div>
 
 <style lang="postcss">
-  .menu {
-    @apply items-center cursor-pointer h-full;
+  .menu-root {
+    @apply h-8 text-menu-text-enabled items-center cursor-pointer;
   }
 
   .menu-title {
@@ -80,7 +80,7 @@
   }
 
   .menu-dropdown {
-    @apply absolute top-7 rounded-b-sm z-[10];
+    @apply absolute top-8 rounded-b-sm z-[10];
   }
 
   .menu-dropdown.electron {
@@ -89,7 +89,7 @@
 
   .menu-dropdown-items {
     box-shadow: 0px 2px 10px -2px rgba(0, 0, 0, 0.7);
-    @apply bg-gray-800 py-1 rounded-b-sm absolute z-10;
+    @apply bg-menu-default  rounded-b-sm absolute z-10;
   }
 
   .left {

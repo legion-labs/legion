@@ -20,7 +20,7 @@
   --color-item-mid: rgba(255, 255, 255, 0.72);
   /* White/60 */
   --color-item-low: rgba(255, 255, 255, 0.6);
-  /* White/20 */
+  /* White/38 */
   --color-item-min: rgba(255, 255, 255, 0.38);
 
   /* Charcoal 700 */
@@ -29,6 +29,7 @@
   --list-item-bg-odd: rgba(24, 24, 24, 1);
   /* Charcoal 900 */
   --list-item-bg-header: rgba(15, 15, 15, 1);
+
   /* Black Opacity 100 */
   --text-box-bg: rgba(1, 1, 1, 1);
 
@@ -40,4 +41,18 @@
   --color-vector-z: rgba(74, 137, 211, 1);
   /* Vector : W*/
   --color-vector-w: rgba(211, 172, 74, 1);
+
+  /* Charcoal 700 */
+  --menu-surface-default: rgba(32, 32, 32, 1);
+  /* Charcoal 900 */
+  --menu-surface-hovered: rgba(15, 15, 15, 1);
+
+  /* White/38 */
+  --menu-text-disabled: rgba(255, 255, 255, 0.38);
+  /* White/60 */
+  --menu-text-enabled: rgba(255, 255, 255, 0.6);
+  /* White/87 */
+  --menu-text-hovered: rgba(255, 255, 255, 0.87);
+  /* White/87 */
+  --menu-text-selected: rgba(255, 255, 255, 0.87);
 }

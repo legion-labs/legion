@@ -11,6 +11,8 @@ import log from "./lib/log";
 import type { Transport } from "./lib/log";
 import userInfo from "./orchestrators/userInfo";
 
+import "../../tailwind.css";
+
 export class AppComponent extends SvelteComponentTyped<{
   dispose(): void;
   initAuthStatus: InitAuthStatus | null;

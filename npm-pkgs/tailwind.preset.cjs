@@ -25,6 +25,10 @@ module.exports = {
           z: "var(--color-vector-z)",
           w: "var(--color-vector-w)",
         },
+        menu: {
+          default: "var(--menu-surface-default)",
+          hovered: "var(--menu-surface-hovered)",
+        },
       },
       colors: {
         content: {
@@ -34,6 +38,14 @@ module.exports = {
           800: "var(--color-background-800)",
           900: "var(--color-background-900)",
           max: "var(--color-background-max)",
+        },
+        menu: {
+          text: {
+            disabled: "var(--menu-text-disabled)",
+            enabled: "var(--menu-text-enabled)",
+            hovered: "var(--menu-text-hovered)",
+            selected: "var(--menu-text-selected)",
+          },
         },
         item: {
           max: "var(--color-item-max)",
