@@ -6,7 +6,7 @@ use lgn_content_store::{
 };
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::{resource::Project, vfs::AddDeviceCASOffline};
 use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
@@ -86,10 +86,15 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
 
     let runtime_manifest_id =
         SharedTreeIdentifier::new(empty_tree_id(&data_content_provider).await.unwrap());
-    let mut asset_registry = AssetRegistryOptions::new().add_device_cas(
-        Arc::clone(&data_content_provider),
-        runtime_manifest_id.clone(),
-    );
+    let mut asset_registry = AssetRegistryOptions::new()
+        .add_device_cas(
+            Arc::clone(&data_content_provider),
+            runtime_manifest_id.clone(),
+        )
+        .add_device_source_cas(
+            Arc::clone(&source_control_content_provider),
+            project.source_manifest_id(),
+        );
     sample_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
