@@ -10,8 +10,6 @@ use parquet::file::writer::SerializedFileWriter;
 use parquet::schema::parser::parse_message_type;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use crate::call_tree::CallTreeBuilder;
@@ -131,21 +129,22 @@ pub struct SpanRow {
     depth: u32,
     begin_ms: f64,
     end_ms: f64,
-    id: u64,
-    parent: u64,
+    id: i64,
+    parent: i64,
 }
 
 fn make_rows_from_tree_impl<RowFun>(
     tree: &CallTreeNode,
-    parent: u64,
+    parent: i64,
     depth: u32,
-    next_id: &AtomicU64,
+    next_id: &mut i64,
     process_row: &mut RowFun,
 ) where
     RowFun: FnMut(SpanRow),
 {
     assert!(tree.hash != 0);
-    let span_id = next_id.fetch_add(1, Ordering::Relaxed);
+    *next_id += 1;
+    let span_id = *next_id;
     let span = SpanRow {
         hash: tree.hash,
         depth,
@@ -160,7 +159,7 @@ fn make_rows_from_tree_impl<RowFun>(
     }
 }
 
-pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &AtomicU64, table: &mut SpanRowGroup) {
+pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &mut i64, table: &mut SpanRowGroup) {
     if tree.hash == 0 {
         for child in &tree.children {
             make_rows_from_tree_impl(child, 0, 0, next_id, &mut |row| table.append(&row));
@@ -177,7 +176,7 @@ pub async fn write_local_partition(
     stream: &Stream,
     block: &BlockMetadata,
     convert_ticks: ConvertTicks,
-    next_id: &AtomicU64,
+    next_id: &mut i64,
     relative_file_name: String,
     parquet_full_path: &Path,
 ) -> Result<Option<deltalake::action::Action>> {
