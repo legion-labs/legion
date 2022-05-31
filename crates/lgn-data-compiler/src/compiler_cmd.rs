@@ -56,6 +56,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use lgn_content_store::indexing::TreeIdentifier;
 use lgn_data_runtime::{ResourcePathId, Transform};
 use lgn_tracing::info;
 use serde::{Deserialize, Serialize};
@@ -260,6 +261,7 @@ pub(crate) const COMMAND_ARG_TARGET: &str = "target";
 pub(crate) const COMMAND_ARG_LOCALE: &str = "locale";
 pub(crate) const COMMAND_ARG_SRC_DEPS: &str = "deps";
 pub(crate) const COMMAND_ARG_DER_DEPS: &str = "derdeps";
+pub(crate) const COMMAND_ARG_OFFLINE_MANIFEST_ID: &str = "offline_manifest_id";
 pub(crate) const COMMAND_ARG_TRANSFORM: &str = "transform";
 
 /// Helper building a `info` command.
@@ -375,6 +377,7 @@ impl CompilerCompileCmd {
         resource_to_build: &ResourcePathId,
         source_deps: &[ResourcePathId],
         derived_deps: &[CompiledResource],
+        offline_manifest_id: &TreeIdentifier,
         env: &CompilationEnv,
     ) -> Self {
         Self(
@@ -384,6 +387,7 @@ impl CompilerCompileCmd {
                 .arg(&resource_to_build.to_string())
                 .many_args(COMMAND_ARG_SRC_DEPS, source_deps.iter())
                 .many_args(COMMAND_ARG_DER_DEPS, derived_deps.iter())
+                .arg2(COMMAND_ARG_OFFLINE_MANIFEST_ID, offline_manifest_id.into())
                 .arg2(COMMAND_ARG_TARGET, env.target.into())
                 .arg2(COMMAND_ARG_PLATFORM, env.platform.into())
                 .arg2(COMMAND_ARG_LOCALE, env.locale.clone().into())

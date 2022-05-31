@@ -66,6 +66,7 @@ impl CompilerStub for RemoteCompilerStub {
             &compile_path,
             dependencies,
             derived_deps,
+            offline_manifest_id,
             env,
         );
 

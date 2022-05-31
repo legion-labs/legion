@@ -112,7 +112,7 @@ async fn main() -> Result<(), String> {
                 Arc::clone(&data_content_provider),
                 CompilerRegistryOptions::default(),
             )
-            .create()
+            .create(&project)
             .await
             .map_err(|e| format!("failed creating build index {}", e))?;
 
@@ -169,7 +169,7 @@ async fn main() -> Result<(), String> {
                 Arc::clone(&data_content_provider),
                 compilers,
             )
-            .open()
+            .open(&project)
             .await
             .map_err(|e| format!("Failed to open build index: '{}'", e))?;
 

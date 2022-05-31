@@ -102,7 +102,7 @@ async fn build_device() {
         CompilerRegistryOptions::local_compilers(target_dir),
         Arc::clone(&data_content_provider),
     )
-    .create()
+    .create(&project)
     .await
     .expect("new build index");
     build.source_pull(&project).await.expect("successful pull");
@@ -274,7 +274,7 @@ async fn no_intermediate_resource() {
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
-        .create()
+        .create(&project)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -388,7 +388,7 @@ async fn with_intermediate_resource() {
             CompilerRegistryOptions::default(),
             Arc::clone(&data_content_provider),
         )
-        .create()
+        .create(&project)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");

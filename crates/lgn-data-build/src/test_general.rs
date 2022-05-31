@@ -61,15 +61,19 @@ mod tests {
         )
         .await;
 
-        let build = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::default(),
-            data_content_provider,
-        )
-        .create()
-        .await;
+        if let Ok(project) = project {
+            let build = DataBuildOptions::new_with_sqlite_output(
+                &output_dir,
+                CompilerRegistryOptions::default(),
+                data_content_provider,
+            )
+            .create(&project)
+            .await;
 
-        assert!(project.is_err() || build.is_err());
+            assert!(build.is_err());
+        } else {
+            panic!();
+        }
     }
 
     #[tokio::test]
@@ -83,6 +87,14 @@ mod tests {
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
+        let project = Project::create_with_remote_mock(
+            &project_dir,
+            Arc::clone(&source_control_content_provider),
+        )
+        .await
+        .expect("failed to create a project");
+
         let db_uri =
             DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version());
 
@@ -92,7 +104,7 @@ mod tests {
                 data_content_provider,
                 CompilerRegistryOptions::default(),
             )
-            .create()
+            .create(&project)
             .await
             .expect("valid data build index");
         }

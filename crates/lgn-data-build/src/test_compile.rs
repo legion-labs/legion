@@ -163,7 +163,7 @@ mod tests {
 
         // compile the resource..
         let original_checksum = {
-            let mut build = config.create().await.expect("to create index");
+            let mut build = config.create(&project).await.expect("to create index");
             build
                 .source_pull(&project)
                 .await
@@ -212,7 +212,7 @@ mod tests {
                 Arc::clone(&data_content_provider),
             );
 
-            let mut build = config.open().await.expect("to open index");
+            let mut build = config.open(&project).await.expect("to open index");
             build
                 .source_pull(&project)
                 .await
@@ -342,7 +342,7 @@ mod tests {
             CompilerRegistryOptions::local_compilers(target_dir()),
             Arc::clone(&data_content_provider),
         )
-        .create()
+        .create(&project)
         .await
         .expect("new build index");
 
@@ -440,7 +440,7 @@ mod tests {
             CompilerRegistryOptions::local_compilers(target_dir()),
             data_content_provider,
         )
-        .create()
+        .create(&project)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -569,7 +569,7 @@ mod tests {
             CompilerRegistryOptions::local_compilers(target_dir()),
             Arc::clone(&data_content_provider),
         )
-        .create()
+        .create(&project)
         .await
         .expect("new build index");
 
@@ -847,7 +847,7 @@ mod tests {
             CompilerRegistryOptions::local_compilers(target_dir()),
             data_content_provider,
         )
-        .create()
+        .create(&project)
         .await
         .expect("to create index");
 
@@ -944,7 +944,7 @@ mod tests {
             CompilerRegistryOptions::local_compilers(target_dir()),
             Arc::clone(&data_content_provider),
         )
-        .create()
+        .create(&project)
         .await
         .expect("to create index");
 

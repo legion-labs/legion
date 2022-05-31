@@ -68,7 +68,7 @@ mod tests {
             CompilerRegistryOptions::default(),
             data_content_provider,
         )
-        .create()
+        .create(&project)
         .await
         .expect("data build");
 
@@ -137,7 +137,7 @@ mod tests {
             CompilerRegistryOptions::default(),
             data_content_provider,
         )
-        .create()
+        .create(&project)
         .await
         .expect("data build");
 

@@ -24,7 +24,8 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
+    manifest::ManifestId, AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId,
+    Transform,
 };
 use lgn_tracing::{async_span_scope, debug, error, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
@@ -135,7 +136,7 @@ impl DataBuild {
         Ok(options.create().await)
     }
 
-    pub(crate) async fn new(config: DataBuildOptions) -> Result<Self, Error> {
+    pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
 
         let output_index = OutputIndex::create_new(config.output_db_addr).await?;
@@ -152,12 +153,13 @@ impl DataBuild {
         Ok(Self {
             source_index,
             output_index,
+            offline_manifest_id: Arc::clone(project.offline_manifest_id()),
             data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
 
-    pub(crate) async fn open(config: DataBuildOptions) -> Result<Self, Error> {
+    pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
         let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
         let output_index = OutputIndex::open(config.output_db_addr).await?;
 
@@ -173,13 +175,16 @@ impl DataBuild {
         Ok(Self {
             source_index,
             output_index,
-
+            offline_manifest_id: Arc::clone(project.offline_manifest_id()),
             data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
 
-    pub(crate) async fn open_or_create(config: DataBuildOptions) -> Result<Self, Error> {
+    pub(crate) async fn open_or_create(
+        config: DataBuildOptions,
+        project: &Project,
+    ) -> Result<Self, Error> {
         let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
 
         let output_index = match OutputIndex::open(config.output_db_addr.clone()).await {

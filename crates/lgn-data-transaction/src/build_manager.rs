@@ -51,7 +51,7 @@ impl BuildManager {
             locale: Locale::new("en"),
         };
 
-        let build = options.open_or_create().await?;
+        let build = options.open_or_create(project).await?;
 
         Ok(Self {
             build,

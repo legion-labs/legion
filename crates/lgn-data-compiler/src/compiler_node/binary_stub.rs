@@ -62,6 +62,7 @@ impl CompilerStub for BinCompilerStub {
             &compile_path,
             dependencies,
             derived_deps,
+            offline_manifest_id,
             env,
         )
         .execute()

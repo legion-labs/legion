@@ -25,12 +25,14 @@ fn find_compiler() {
 
 #[tokio::test]
 async fn compile_atoi() {
-    let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
+    let persistent_content_provider =
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap();
 
     let source_magic_value = String::from("47");
 
-    let source = {
+    let (source, offline_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
@@ -45,11 +47,10 @@ async fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(source.id.resource_path());
-        let mut file = common::create_resource_file(&path).expect("new file");
-        proc.write_resource(resource, &mut file)
-            .expect("written to disk");
-        source
+        let offline_manifest_id =
+            common::write_resource(source, &persistent_content_provider, &proc, resource).await;
+
+        (source, offline_manifest_id)
     };
 
     let asset_info = {
@@ -57,8 +58,14 @@ async fn compile_atoi() {
         assert!(exe_path.exists());
 
         let compile_path = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
-        let command =
-            CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
+        let command = CompilerCompileCmd::new(
+            &exe_path,
+            &compile_path,
+            &[],
+            &[],
+            &offline_manifest_id,
+            &common::test_env(),
+        );
 
         let result = command.execute().await.expect("compile result");
         println!("{:?}", result);
@@ -96,12 +103,14 @@ async fn compile_atoi() {
 
 #[tokio::test]
 async fn compile_intermediate() {
-    let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
+    let persistent_content_provider =
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap();
 
     let source_magic_value = String::from("47");
 
-    let source = {
+    let (source, offline_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
@@ -114,19 +123,24 @@ async fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let path = resource_dir.join(source.id.resource_path());
-        let mut file = common::create_resource_file(&path).expect("new file");
-        proc.write_resource(resource, &mut file)
-            .expect("written to disk");
-        source
+        let offline_manifest_id =
+            common::write_resource(source, &persistent_content_provider, &proc, resource).await;
+
+        (source, offline_manifest_id)
     };
 
     let intermediate_info = {
         let exe_path = common::compiler_exe("test-reverse");
         assert!(exe_path.exists());
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let command =
-            CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
+        let command = CompilerCompileCmd::new(
+            &exe_path,
+            &compile_path,
+            &[],
+            &[],
+            &offline_manifest_id,
+            &common::test_env(),
+        );
 
         let result = command.execute().await.expect("compile result");
 
@@ -145,6 +159,7 @@ async fn compile_intermediate() {
             &compile_path,
             &[],
             &[intermediate_info],
+            &offline_manifest_id,
             &common::test_env(),
         );
 
@@ -186,12 +201,14 @@ async fn compile_intermediate() {
 
 #[tokio::test]
 async fn compile_multi_resource() {
-    let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
+    let persistent_content_provider =
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap();
 
     let source_text_list = vec![String::from("hello"), String::from("world")];
 
-    let source = {
+    let (source, offline_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: multitext_resource::MultiTextResource::TYPE,
             id: ResourceId::new(),
@@ -204,11 +221,10 @@ async fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let path = resource_dir.join(source.id.resource_path());
-        let mut file = common::create_resource_file(&path).expect("new file");
-        proc.write_resource(resource, &mut file)
-            .expect("written to disk");
-        source
+        let offline_manifest_id =
+            common::write_resource(source, &persistent_content_provider, &proc, resource).await;
+
+        (source, offline_manifest_id)
     };
 
     let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
@@ -217,8 +233,14 @@ async fn compile_multi_resource() {
         let exe_path = common::compiler_exe("test-split");
         assert!(exe_path.exists());
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let command =
-            CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
+        let command = CompilerCompileCmd::new(
+            &exe_path,
+            &compile_path,
+            &[],
+            &[],
+            &offline_manifest_id,
+            &common::test_env(),
+        );
 
         let result = command.execute().await.expect("compile result");
 
@@ -266,13 +288,15 @@ async fn compile_multi_resource() {
 
 #[tokio::test]
 async fn compile_base64() {
-    let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
+    let persistent_content_provider =
+        lgn_content_store::Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap();
 
     let source_binary_value = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let expected_base64_value = String::from("AQIDBAUGBwgJ");
 
-    let source = {
+    let (source, offline_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: binary_resource::BinaryResource::TYPE,
             id: ResourceId::new(),
@@ -287,11 +311,10 @@ async fn compile_base64() {
 
         resource.content = source_binary_value;
 
-        let path = resource_dir.join(source.id.resource_path());
-        let mut file = common::create_resource_file(&path).expect("new file");
-        proc.write_resource(resource, &mut file)
-            .expect("written to disk");
-        source
+        let offline_manifest_id =
+            common::write_resource(source, &persistent_content_provider, &proc, resource).await;
+
+        (source, offline_manifest_id)
     };
 
     let asset_info = {
@@ -299,8 +322,14 @@ async fn compile_base64() {
         assert!(exe_path.exists());
 
         let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
-        let command =
-            CompilerCompileCmd::new(&exe_path, &compile_path, &[], &[], &common::test_env());
+        let command = CompilerCompileCmd::new(
+            &exe_path,
+            &compile_path,
+            &[],
+            &[],
+            &offline_manifest_id,
+            &common::test_env(),
+        );
 
         let result = command.execute().await.expect("compile result");
         println!("{:?}", result);

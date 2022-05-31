@@ -5,6 +5,7 @@ use std::{
 
 use lgn_content_store::Provider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
+use lgn_data_offline::resource::Project;
 use lgn_data_runtime::AssetRegistry;
 
 use crate::{DataBuild, Error};
@@ -147,19 +148,19 @@ impl DataBuildOptions {
     /// Opens the existing build index.
     ///
     /// If the build index does not exist it creates one.
-    pub async fn open_or_create(self) -> Result<DataBuild, Error> {
-        DataBuild::open_or_create(self).await
+    pub async fn open_or_create(self, project: &Project) -> Result<DataBuild, Error> {
+        DataBuild::open_or_create(self, project).await
     }
 
     /// Opens existing build index.
     ///
     /// The content store must exist for this to work.
-    pub async fn open(self) -> Result<DataBuild, Error> {
-        DataBuild::open(self).await
+    pub async fn open(self, project: &Project) -> Result<DataBuild, Error> {
+        DataBuild::open(self, project).await
     }
 
     /// Create new build index for a specified project.
-    pub async fn create(self) -> Result<DataBuild, Error> {
-        DataBuild::new(self).await
+    pub async fn create(self, project: &Project) -> Result<DataBuild, Error> {
+        DataBuild::new(self, project).await
     }
 }

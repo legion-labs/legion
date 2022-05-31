@@ -142,7 +142,7 @@ async fn main() -> anyhow::Result<()> {
     )
     .asset_registry(asset_registry.clone());
 
-    let mut build_manager = BuildManager::new(data_build, None).await.unwrap();
+    let mut build_manager = BuildManager::new(data_build, &project, None).await.unwrap();
 
     for id in resource_ids {
         let derived_result = build_manager.build_all_derived(id, &project).await.unwrap();

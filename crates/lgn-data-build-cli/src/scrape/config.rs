@@ -64,7 +64,7 @@ impl Config {
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
-        .open()
+        .open(&project)
         .await
         .map_err(|e| e.to_string())?;
 

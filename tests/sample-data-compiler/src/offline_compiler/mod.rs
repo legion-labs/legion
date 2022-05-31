@@ -62,7 +62,7 @@ pub async fn build(
         CompilerRegistryOptions::local_compilers(exe_path),
         Arc::clone(&data_content_provider),
     )
-    .open_or_create()
+    .open_or_create(project)
     .await
     .expect("new build index");
 
