@@ -6,10 +6,10 @@ use lgn_blob_storage::BlobStorage;
 use lgn_tracing::prelude::*;
 use prost::Message;
 use sqlx::Row;
-use std::collections::HashMap;
 use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
+use std::{collections::HashMap, path::PathBuf};
 
 use deltalake::{
     action::Protocol, DeltaTable, DeltaTableMetaData, Schema, SchemaDataType, SchemaField,
@@ -19,6 +19,12 @@ use crate::lakehouse::span_table_partition::write_local_partition;
 
 fn get_delta_schema() -> Schema {
     Schema::new(vec![
+        SchemaField::new(
+            "block_id".to_string(),
+            SchemaDataType::primitive("string".to_string()),
+            false,
+            HashMap::new(),
+        ),
         SchemaField::new(
             "hash".to_string(),
             SchemaDataType::primitive("integer".to_string()),
@@ -159,8 +165,13 @@ pub async fn update_spans_delta_table(
             let sender = sender.clone();
             let block = lgn_analytics::map_row_block(&block_row)?;
             let payload_buffer = block_row.try_get("payload")?;
-            let filename = format!("spans_block_id={}.parquet", &block.block_id);
-            if !files_already_in_table.contains(&*filename) {
+            let partition_folder = PathBuf::from(format!("block_id={}", &block.block_id));
+            let filename = partition_folder.join("spans.parquet");
+            let filename_string = filename
+                .to_str()
+                .with_context(|| "converting path to string")?
+                .to_string();
+            if !files_already_in_table.contains(&*filename_string) {
                 let parquet_full_path = spans_table_path.join(&filename);
                 handles.push(tokio::spawn(async move {
                     let payload =
@@ -172,9 +183,10 @@ pub async fn update_spans_delta_table(
                         &block,
                         convert_ticks,
                         &*next_id,
-                        filename,
+                        filename_string,
                         &parquet_full_path,
                     )
+                    .await
                     .with_context(|| "writing local partition")?;
                     if let Some(action) = opt_action {
                         sender.send(action)?;
