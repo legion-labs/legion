@@ -1,10 +1,9 @@
 use std::{
     fmt,
-    sync::{atomic::AtomicU32, Arc, Mutex},
+    sync::{Arc, Mutex},
 };
 
 use lgn_tracing::{
-    dispatch::{flush_log_buffer, log_enabled, log_interop},
     event::EventSink,
     logs::{LogBlock, LogMetadata, LogMsgQueueAny, LogStream},
     metrics::{MetricsBlock, MetricsMsgQueueAny, MetricsStream},
@@ -108,53 +107,6 @@ impl EventSink for DebugEventSink {
 
     fn is_busy(&self) -> bool {
         false
-    }
-}
-
-pub struct LogDispatch;
-
-impl log::Log for LogDispatch {
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        let level = match metadata.level() {
-            log::Level::Error => Level::Error,
-            log::Level::Warn => Level::Warn,
-            log::Level::Info => Level::Info,
-            log::Level::Debug => Level::Debug,
-            log::Level::Trace => Level::Trace,
-        };
-        let log_metadata = LogMetadata {
-            level,
-            level_filter: AtomicU32::new(0),
-            fmt_str: "",
-            target: "unknown",
-            module_path: "unknown",
-            file: "unknown",
-            line: 0,
-        };
-        log_enabled(&log_metadata)
-    }
-
-    fn log(&self, record: &log::Record<'_>) {
-        let level = match record.level() {
-            log::Level::Error => Level::Error,
-            log::Level::Warn => Level::Warn,
-            log::Level::Info => Level::Info,
-            log::Level::Debug => Level::Debug,
-            log::Level::Trace => Level::Trace,
-        };
-        let log_metadata = LogMetadata {
-            level,
-            level_filter: AtomicU32::new(0),
-            fmt_str: record.args().as_str().unwrap_or(""),
-            target: record.module_path_static().unwrap_or("unknown"),
-            module_path: record.module_path_static().unwrap_or("unknown"),
-            file: record.file_static().unwrap_or("unknown"),
-            line: record.line().unwrap_or(0),
-        };
-        log_interop(&log_metadata, *record.args());
-    }
-    fn flush(&self) {
-        flush_log_buffer();
     }
 }
 

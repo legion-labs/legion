@@ -1,15 +1,12 @@
-use std::{
-    fmt,
-    sync::{atomic::AtomicU32, Arc},
-};
+use std::{fmt, sync::Arc};
 
 use lgn_tracing::{
-    dispatch::{flush_log_buffer, log_enabled, log_interop},
     event::{BoxedEventSink, EventSink},
-    logs::{LogBlock, LogMetadata, LogStream, FILTER_LEVEL_UNSET_VALUE},
+    interop::LogDispatch,
+    logs::{LogBlock, LogMetadata, LogStream},
     metrics::{MetricsBlock, MetricsStream},
     spans::{ThreadBlock, ThreadStream},
-    Level, LevelFilter, ProcessInfo,
+    LevelFilter, ProcessInfo,
 };
 
 pub struct CompositeSink {
@@ -36,14 +33,13 @@ impl CompositeSink {
             }
             lgn_tracing::set_max_level(max_level);
         }
-        let interop_max_level = if let Some(max_level) = interop_max_level_override {
-            tracing_level_filter_to_log_level_filter(max_level)
-        } else {
-            tracing_level_filter_to_log_level_filter(lgn_tracing::max_level())
-        };
+        let interop_max_level = interop_max_level_override
+            .unwrap_or_else(lgn_tracing::max_level)
+            .into();
         log::set_max_level(interop_max_level);
 
         static LOG_DISPATCHER: LogDispatch = LogDispatch;
+
         if log::set_logger(&LOG_DISPATCHER).is_err() {
             println!("Could not set log crate dispatcher");
             log::set_max_level(log::LevelFilter::Off);
@@ -166,61 +162,5 @@ impl EventSink for CompositeSink {
             }
         }
         false
-    }
-}
-
-struct LogDispatch;
-
-impl log::Log for LogDispatch {
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        let level = log_level_to_tracing_level(metadata.level());
-        let log_metadata = LogMetadata {
-            level,
-            level_filter: AtomicU32::new(0),
-            fmt_str: "",
-            target: "unknown",
-            module_path: "unknown",
-            file: "unknown",
-            line: 0,
-        };
-        log_enabled(&log_metadata)
-    }
-
-    fn log(&self, record: &log::Record<'_>) {
-        let level = log_level_to_tracing_level(record.level());
-        let log_desc = LogMetadata {
-            level,
-            level_filter: AtomicU32::new(FILTER_LEVEL_UNSET_VALUE),
-            fmt_str: record.args().as_str().unwrap_or(""),
-            target: record.module_path_static().unwrap_or("unknown"),
-            module_path: record.module_path_static().unwrap_or("unknown"),
-            file: record.file_static().unwrap_or("unknown"),
-            line: record.line().unwrap_or(0),
-        };
-        log_interop(&log_desc, *record.args());
-    }
-    fn flush(&self) {
-        flush_log_buffer();
-    }
-}
-
-fn log_level_to_tracing_level(level: log::Level) -> Level {
-    match level {
-        log::Level::Error => Level::Error,
-        log::Level::Warn => Level::Warn,
-        log::Level::Info => Level::Info,
-        log::Level::Debug => Level::Debug,
-        log::Level::Trace => Level::Trace,
-    }
-}
-
-pub(crate) fn tracing_level_filter_to_log_level_filter(level: LevelFilter) -> log::LevelFilter {
-    match level {
-        LevelFilter::Off => log::LevelFilter::Off,
-        LevelFilter::Error => log::LevelFilter::Error,
-        LevelFilter::Warn => log::LevelFilter::Warn,
-        LevelFilter::Info => log::LevelFilter::Info,
-        LevelFilter::Debug => log::LevelFilter::Debug,
-        LevelFilter::Trace => log::LevelFilter::Trace,
     }
 }

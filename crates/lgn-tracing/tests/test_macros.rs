@@ -8,7 +8,7 @@ use lgn_tracing::dispatch::{
 };
 use lgn_tracing::{fmetric, frequency, imetric, info, set_max_level, span_scope, LevelFilter};
 use lgn_tracing_proc_macros::{log_fn, span_fn};
-use utils::{DebugEventSink, LogDispatch, SharedState, State};
+use utils::{DebugEventSink, SharedState, State};
 
 fn test_log_str(state: &SharedState) {
     for x in 0..5 {
@@ -21,6 +21,7 @@ fn test_log_str(state: &SharedState) {
     expect_state!(state, Some(State::ProcessLogBlock(10)));
 }
 
+#[cfg(feature = "log_interop")]
 fn test_log_interop_str(state: &SharedState) {
     for x in 0..5 {
         log::info!("test");
@@ -84,8 +85,15 @@ fn test_proc_macros(state: &SharedState) {
 
 #[test]
 fn test_log() {
-    static LOG_DISPATCHER: LogDispatch = LogDispatch;
-    log::set_logger(&LOG_DISPATCHER).unwrap();
+    #[cfg(feature = "log_interop")]
+    {
+        use lgn_tracing::interop::LogDispatch;
+
+        static LOG_DISPATCHER: LogDispatch = LogDispatch;
+
+        log::set_logger(&LOG_DISPATCHER).unwrap();
+        log::set_max_level(log::LevelFilter::Trace);
+    }
 
     let state = Arc::new(Mutex::new(None));
     init_event_dispatch(
@@ -96,9 +104,9 @@ fn test_log() {
     )
     .unwrap();
     set_max_level(LevelFilter::Trace);
-    log::set_max_level(log::LevelFilter::Trace);
     assert!(process_id().is_some());
     test_log_str(&state);
+    #[cfg(feature = "log_interop")]
     test_log_interop_str(&state);
     test_thread_spans(&state);
     test_proc_macros(&state);

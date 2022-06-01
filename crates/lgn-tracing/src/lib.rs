@@ -74,6 +74,9 @@ pub mod panic_hook;
 pub mod spans;
 pub mod string_id;
 
+#[cfg(feature = "log_interop")]
+pub mod interop;
+
 #[macro_use]
 mod macros;
 pub mod flush_monitor;

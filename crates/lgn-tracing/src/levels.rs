@@ -44,6 +44,32 @@ impl Level {
     }
 }
 
+#[cfg(feature = "log_interop")]
+impl From<log::Level> for Level {
+    fn from(level: log::Level) -> Self {
+        match level {
+            log::Level::Error => Self::Error,
+            log::Level::Warn => Self::Warn,
+            log::Level::Info => Self::Info,
+            log::Level::Debug => Self::Debug,
+            log::Level::Trace => Self::Trace,
+        }
+    }
+}
+
+#[cfg(feature = "log_interop")]
+impl From<Level> for log::Level {
+    fn from(level: Level) -> Self {
+        match level {
+            Level::Error => Self::Error,
+            Level::Warn => Self::Warn,
+            Level::Info => Self::Info,
+            Level::Debug => Self::Debug,
+            Level::Trace => Self::Trace,
+        }
+    }
+}
+
 /// An enum representing the available verbosity level filters of the logger.
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
@@ -60,6 +86,34 @@ pub enum LevelFilter {
     Debug,
     /// Corresponds to the `Trace` log level.
     Trace,
+}
+
+#[cfg(feature = "log_interop")]
+impl From<log::LevelFilter> for LevelFilter {
+    fn from(level: log::LevelFilter) -> Self {
+        match level {
+            log::LevelFilter::Off => Self::Off,
+            log::LevelFilter::Error => Self::Error,
+            log::LevelFilter::Warn => Self::Warn,
+            log::LevelFilter::Info => Self::Info,
+            log::LevelFilter::Debug => Self::Debug,
+            log::LevelFilter::Trace => Self::Trace,
+        }
+    }
+}
+
+#[cfg(feature = "log_interop")]
+impl From<LevelFilter> for log::LevelFilter {
+    fn from(level: LevelFilter) -> Self {
+        match level {
+            LevelFilter::Off => Self::Off,
+            LevelFilter::Error => Self::Error,
+            LevelFilter::Warn => Self::Warn,
+            LevelFilter::Info => Self::Info,
+            LevelFilter::Debug => Self::Debug,
+            LevelFilter::Trace => Self::Trace,
+        }
+    }
 }
 
 impl PartialEq<LevelFilter> for Level {

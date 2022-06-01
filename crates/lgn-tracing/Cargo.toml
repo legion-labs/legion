@@ -21,13 +21,14 @@ memoffset = "0.6"
 thread-id = "4.0"
 lazy_static = "1.4"
 pin-project-lite = "0.2.9"
+log = { version = "0.4", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
-# to tests interop
-log = "0.4"
 
 [features]
+default = ["log_interop"]
+
 max_level_off = []
 max_level_error = []
 max_level_warn = []
@@ -51,6 +52,8 @@ release_max_lod_off = []
 release_max_lod_min = []
 release_max_lod_med = []
 release_max_lod_max = []
+
+log_interop = ["log"]
 
 [[bench]]
 name = "with_no_dispatch"
