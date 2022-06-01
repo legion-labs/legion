@@ -197,7 +197,7 @@
   }
 
   .fixed-size {
-    @apply w-[194px];
+    @apply w-[16rem];
   }
 
   .unknown-property {

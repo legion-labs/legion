@@ -102,6 +102,6 @@
   }
 
   .property-input-container {
-    @apply flex-grow-[1];
+    @apply flex-grow;
   }
 </style>
