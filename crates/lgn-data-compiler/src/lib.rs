@@ -107,9 +107,9 @@ pub enum Target {
 impl fmt::Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Target::Game => write!(f, "game"),
-            Target::Server => write!(f, "server"),
-            Target::Backend => write!(f, "backend"),
+            Self::Game => write!(f, "game"),
+            Self::Server => write!(f, "server"),
+            Self::Backend => write!(f, "backend"),
         }
     }
 }
@@ -141,9 +141,9 @@ pub enum Platform {
 impl fmt::Display for Platform {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            Platform::Windows => write!(f, "windows"),
-            Platform::Unix => write!(f, "unix"),
-            Platform::ConsoleX => write!(f, "consolex"),
+            Self::Windows => write!(f, "windows"),
+            Self::Unix => write!(f, "unix"),
+            Self::ConsoleX => write!(f, "consolex"),
         }
     }
 }

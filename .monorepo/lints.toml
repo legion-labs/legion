@@ -106,7 +106,7 @@ warn = [
     "clippy::suspicious_operation_groupings",
     "clippy::trailing_empty_array",
     "clippy::trivial_regex",
-    "clippy::use_self",
+    # "clippy::use_self", // disabling for Rust 1.61, see https://github.com/rust-lang/rust-clippy/issues/6902
     "clippy::useless_let_if_seq",
     "clippy::useless_transmute",
     # Clippy restriction lints, usually not considered bad, but useful in specific cases

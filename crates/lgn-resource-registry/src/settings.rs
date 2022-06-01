@@ -19,9 +19,9 @@ impl Default for CompilationMode {
 impl std::fmt::Display for CompilationMode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CompilationMode::InProcess => write!(f, "in-process"),
-            CompilationMode::External => write!(f, "external"),
-            CompilationMode::Remote { url } => write!(f, "remote:{}", url),
+            Self::InProcess => write!(f, "in-process"),
+            Self::External => write!(f, "external"),
+            Self::Remote { url } => write!(f, "remote:{}", url),
         }
     }
 }

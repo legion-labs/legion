@@ -40,8 +40,8 @@ impl GenerationType {
     /// Returns the name of the generation type
     pub fn name(self) -> &'static str {
         match self {
-            GenerationType::OfflineFormat => "offline",
-            GenerationType::RuntimeFormat => "runtime",
+            Self::OfflineFormat => "offline",
+            Self::RuntimeFormat => "runtime",
         }
     }
 }

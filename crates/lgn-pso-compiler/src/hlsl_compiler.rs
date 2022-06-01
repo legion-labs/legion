@@ -32,9 +32,9 @@ pub enum TargetProfile {
 impl TargetProfile {
     fn to_profile_string(&self) -> &str {
         match self {
-            TargetProfile::Vertex => "vs_6_2",
-            TargetProfile::Pixel => "ps_6_2",
-            TargetProfile::Compute => "cs_6_2",
+            Self::Vertex => "vs_6_2",
+            Self::Pixel => "ps_6_2",
+            Self::Compute => "cs_6_2",
         }
     }
 }

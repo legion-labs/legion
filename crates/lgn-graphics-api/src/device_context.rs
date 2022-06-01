@@ -87,7 +87,9 @@ pub(crate) struct DeviceContextInner {
 
 impl std::fmt::Debug for DeviceContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DeviceContext").field("handle", &0).finish()
+        f.debug_struct("DeviceContext")
+            .field("handle", &0_u64)
+            .finish()
     }
 }
 

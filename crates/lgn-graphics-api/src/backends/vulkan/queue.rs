@@ -200,6 +200,7 @@ impl Queue {
                     Ok(PresentSuccessResult::Success)
                 }
             }
+            #[allow(clippy::match_single_binding)]
             Err(e) => match e {
                 // todo(jal)
                 //GfxError::VkError(vk::Result::ERROR_OUT_OF_DATE_KHR) => {

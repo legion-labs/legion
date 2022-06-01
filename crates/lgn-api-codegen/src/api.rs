@@ -195,14 +195,14 @@ pub enum Method {
 impl std::fmt::Display for Method {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Method::Get => "GET",
-            Method::Post => "POST",
-            Method::Delete => "DELETE",
-            Method::Put => "PUT",
-            Method::Patch => "PATCH",
-            Method::Head => "HEAD",
-            Method::Options => "OPTIONS",
-            Method::Trace => "TRACE",
+            Self::Get => "GET",
+            Self::Post => "POST",
+            Self::Delete => "DELETE",
+            Self::Put => "PUT",
+            Self::Patch => "PATCH",
+            Self::Head => "HEAD",
+            Self::Options => "OPTIONS",
+            Self::Trace => "TRACE",
         })
     }
 }
