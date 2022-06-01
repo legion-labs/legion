@@ -5,6 +5,9 @@ module.exports = {
       default: "Inter,Arial,sans-serif",
     },
     extend: {
+      borderWidth: {
+        xs: "1px",
+      },
       backgroundColor: {
         surface: {
           500: "var(--color-background-500)",

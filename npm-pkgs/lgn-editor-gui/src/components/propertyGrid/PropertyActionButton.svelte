@@ -10,6 +10,6 @@
 
 <style lang="postcss">
   div {
-    @apply h-6 w-6 bg-surface-500 flex justify-center items-center cursor-pointer border-[1px] border-black;
+    @apply h-6 w-6 bg-surface-500 flex justify-center items-center cursor-pointer border-xs border-black;
   }
 </style>
