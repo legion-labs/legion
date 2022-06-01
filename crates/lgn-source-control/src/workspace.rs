@@ -222,18 +222,9 @@ where
         Ok(resource_id.is_some())
     }
 
-    pub async fn load_resource(&self, id: &IndexKey) -> Result<Vec<u8>> {
-        self.load_resource_from_index(self.get_main_index_id(), id)
-            .await
-    }
-
-    async fn load_resource_from_index(
-        &self,
-        tree_id: &TreeIdentifier,
-        id: &IndexKey,
-    ) -> Result<Vec<u8>> {
+    pub async fn load_resource(&self, id: &IndexKey) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.main_indexer, tree_id, id)
+            .get_resource_identifier_from_index(&self.main_indexer, self.get_main_index_id(), id)
             .await?
         {
             let resource_bytes = self
@@ -242,7 +233,7 @@ where
                 .await
                 .map_err(Error::ContentStoreIndexing)?;
 
-            Ok(resource_bytes.into_vec())
+            Ok((resource_bytes.into_vec(), resource_id))
         } else {
             Err(Error::ResourceNotFound { id: id.clone() })
         }
@@ -313,6 +304,38 @@ where
             .map_err(Error::ContentStoreIndexing)?;
 
         Ok(resource_identifier)
+    }
+
+    pub async fn update_path(
+        &mut self,
+        old_path: &str,
+        new_path: &str,
+        resource_identifier: &ResourceIdentifier,
+    ) -> Result<()> {
+        assert!(new_path != old_path);
+
+        let (path_index_tree_id, _old_node) = self
+            .path_indexer
+            .remove_leaf(
+                &self.transaction,
+                &self.content_id.path_index_tree_id,
+                &old_path.into(),
+            )
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+
+        self.content_id.path_index_tree_id = self
+            .path_indexer
+            .add_leaf(
+                &self.transaction,
+                &path_index_tree_id,
+                &new_path.into(),
+                TreeLeafNode::Resource(resource_identifier.clone()),
+            )
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+
+        Ok(())
     }
 
     /*
@@ -409,72 +432,6 @@ where
         }
 
         self.backend.save_staged_changes(&changes_to_save).await?;
-
-        Ok(changes_to_save.into_iter().map(Into::into).collect())
-    }
-    */
-
-    /*
-    /// Mark some local files for edition.
-    ///
-    /// The list of new files edited is returned. If all the files were already
-    /// edited, an empty list is returned and call still succeeds.
-    ///
-    /// Calling this method on newly added files is not an error but does
-    /// nothing.
-    pub async fn checkout_files(
-        &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
-    ) -> Result<BTreeSet<CanonicalPath>> {
-        let canonical_paths = self.to_canonical_paths(paths).await?;
-        let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
-        let commit = self.get_current_commit().await?;
-        let tree = self.get_tree_for_commit(&commit, canonical_paths).await?;
-        let staged_changes = self.get_staged_changes().await?;
-
-        let mut changes_to_save = vec![];
-
-        for (canonical_path, file) in fs_tree.files() {
-            if staged_changes.contains_key(&canonical_path) {
-                // The file is already staged, nothing to do.
-                continue;
-            }
-
-            let change = if let Some(tree_node) = tree.find(&canonical_path)? {
-                match tree_node {
-                    Tree::Directory { .. } => {
-                        // The file is a directory, it cannot be edited.
-                        return Err(Error::cannot_edit_directory(canonical_path.clone()));
-                    }
-                    Tree::File { id: info, .. } => Change::new(
-                        canonical_path,
-                        ChangeType::Edit {
-                            old_id: info.clone(),
-                            new_id: file.cs_id().clone(),
-                        },
-                    ),
-                }
-            } else {
-                // The file is not known to the source-control: assume we mean to add it.
-                Change::new(
-                    canonical_path,
-                    ChangeType::Add {
-                        new_id: file.cs_id().clone(),
-                    },
-                )
-            };
-
-            //assert_not_locked(workspace, &abs_path).await?;
-
-            changes_to_save.push(change);
-        }
-
-        self.backend.save_staged_changes(&changes_to_save).await?;
-
-        for change in &changes_to_save {
-            self.make_file_read_only(change.canonical_path().to_path_buf(&self.root), false)
-                .await?;
-        }
 
         Ok(changes_to_save.into_iter().map(Into::into).collect())
     }

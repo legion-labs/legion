@@ -18,9 +18,9 @@ impl Metadata {
         bincode::deserialize_from(reader).expect("failed to decode metadata contents")
     }
 
-    //     pub(crate) fn rename(&mut self, name: &ResourcePathName) -> ResourcePathName {
-    //         std::mem::replace(&mut self.name, name.clone())
-    //     }
+    pub(crate) fn rename(&mut self, name: &ResourcePathName) -> ResourcePathName {
+        std::mem::replace(&mut self.name, name.clone())
+    }
 }
 
 /// Write serialized form of metadata

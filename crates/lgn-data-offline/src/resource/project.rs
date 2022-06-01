@@ -97,6 +97,9 @@ pub enum Error {
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
     ResourceRegistry(ResourceTypeAndId, #[source] AssetRegistryError),
+    /// Name already used
+    #[error("name '{0}' already used by resource '{1}'")]
+    NameAlreadyUsed(ResourcePathName, ResourceTypeAndId),
 }
 
 /// The type of change done to a resource.
@@ -496,7 +499,7 @@ impl Project {
         type_id: ResourceTypeAndId,
         resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
-        let resource_bytes = self.workspace.load_resource(&type_id.into()).await?;
+        let (resource_bytes, _resource_id) = self.workspace.load_resource(&type_id.into()).await?;
 
         let mut reader = std::io::Cursor::new(resource_bytes);
 
@@ -513,7 +516,7 @@ impl Project {
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<Vec<ResourcePathId>, Error> {
-        let meta = self.read_meta(type_id).await?;
+        let (meta, _resource_id) = self.read_meta(type_id).await?;
         Ok(meta.dependencies)
     }
 
@@ -523,7 +526,7 @@ impl Project {
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(type_id).await?;
+        let (meta, _resource_id) = self.read_meta(type_id).await?;
         if let Some((resource_id, suffix)) = meta
             .name
             .as_str()
@@ -595,32 +598,22 @@ impl Project {
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(type_id).await?;
+        let (meta, _resource_id) = self.read_meta(type_id).await?;
         Ok(meta.name)
     }
 
-    /// Moves a `remote` resources to the list of `local` resources.
-    pub async fn checkout(&mut self, _id: ResourceTypeAndId) -> Result<(), Error> {
-        // let metadata_path = self.metadata_path(id.id);
-        // let resource_path = self.resource_path(id.id);
-        // self.workspace
-        //     .checkout_files([metadata_path.as_path(), resource_path.as_path()])
-        //     .await
-        //     .map_err(Error::SourceControl)
-        //     .map(|_e| ())
-
-        Err(Error::FileNotFound("not implemented".to_owned()))
-    }
-
-    async fn read_meta(&self, type_id: ResourceTypeAndId) -> Result<Metadata, Error> {
-        let resource_bytes = self.workspace.load_resource(&type_id.into()).await?;
+    async fn read_meta(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<(Metadata, ResourceIdentifier), Error> {
+        let (resource_bytes, resource_id) = self.workspace.load_resource(&type_id.into()).await?;
 
         let mut reader = std::io::Cursor::new(resource_bytes);
 
         // just read the pre-pended metadata
         let metadata = Metadata::deserialize(&mut reader);
 
-        Ok(metadata)
+        Ok((metadata, resource_id))
     }
 
     /// Change the name of the resource.
@@ -630,24 +623,27 @@ impl Project {
     pub async fn rename_resource(
         &mut self,
         type_id: ResourceTypeAndId,
-        _new_name: &ResourcePathName,
+        new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        self.checkout(type_id).await?;
+        let (mut metadata, resource_id) = self.read_meta(type_id).await?;
 
-        let old_name: Option<ResourcePathName> = None;
-        // self.update_meta(type_id.id, |data| {
-        //     old_name = Some(data.rename(new_name));
-        // })
-        // .await;
+        // renaming to same name, no-op
+        if new_name == &metadata.name {
+            return Ok(metadata.name);
+        }
 
-        // let metadata_path = self.metadata_path(type_id.id);
-        // let resource_path = self.resource_path(type_id.id);
-        // self.workspace
-        //     .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
-        //     .await
-        //     .map_err(Error::SourceControl)?;
+        // already used?
+        if let Ok(existing_type_id) = self.find_resource(new_name).await {
+            return Err(Error::NameAlreadyUsed(new_name.clone(), existing_type_id));
+        }
 
-        Ok(old_name.unwrap())
+        let old_name = metadata.rename(new_name);
+
+        self.workspace
+            .update_path(old_name.as_str(), new_name.as_str(), &resource_id)
+            .await?;
+
+        Ok(old_name)
     }
 
     /// Moves `local` resources to `remote` resource list.
