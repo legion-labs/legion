@@ -248,32 +248,16 @@ impl Project {
         Err(Error::FileNotFound("todo".to_owned()))
     }
 
-    async fn remote_resource_list(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
-        /*
-            let tree = self.workspace.get_current_tree().await?;
-
-            let files = tree
-                .files()
-                .map(|(path, _)| PathBuf::from(path.to_string()))
-                .filter(|path| path.extension().is_none())
-                .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
-                .collect::<Vec<_>>();
-
-            Ok(files)
-        */
-        Err(Error::FileNotFound("todo".to_owned()))
-    }
-
     /// Returns an iterator on the list of resources.
     ///
     /// This method flattens the `remote` and `local` resources into one list.
     pub async fn resource_list(&self) -> Vec<ResourceTypeAndId> {
-        let mut all = self.local_resource_list().await.unwrap();
-        match self.remote_resource_list().await {
-            Ok(remote) => all.extend(remote),
-            Err(err) => lgn_tracing::error!("Error fetching remote resources: {}", err),
-        }
-        all
+        self.get_resources()
+            .await
+            .unwrap()
+            .iter()
+            .map(|(index_key, _resource_id)| index_key.into())
+            .collect()
     }
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
@@ -999,7 +983,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
-        assert_eq!(project.remote_resource_list().await.unwrap().len(), 0);
+        //assert_eq!(project.remote_resource_list().await.unwrap().len(), 0);
 
         // modify before commit
         {
@@ -1017,7 +1001,7 @@ mod tests {
         project.commit("add resources").await.unwrap();
 
         assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
-        assert_eq!(project.remote_resource_list().await.unwrap().len(), 5);
+        //assert_eq!(project.remote_resource_list().await.unwrap().len(), 5);
 
         // modify resource
         {
