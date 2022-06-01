@@ -340,6 +340,54 @@ where
         Ok(resource_identifier)
     }
 
+    pub async fn update_resource(
+        &mut self,
+        id: &IndexKey,
+        path: &str,
+        contents: &[u8],
+        old_identifier: &ResourceIdentifier,
+    ) -> Result<ResourceIdentifier> {
+        let resource_identifier = self
+            .transaction
+            .write_resource(&ResourceByteWriter::new(contents))
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+
+        if &resource_identifier != old_identifier {
+            // content has changed
+
+            // update indices
+            let (main_index_tree_id, _leaf_node) = self
+                .main_indexer
+                .replace_leaf(
+                    &self.transaction,
+                    self.get_main_index_id(),
+                    id,
+                    TreeLeafNode::Resource(resource_identifier.clone()),
+                )
+                .await
+                .map_err(Error::ContentStoreIndexing)?;
+            self.content_id.main_index_tree_id = main_index_tree_id;
+
+            let (path_index_tree_id, _leaf_node) = self
+                .path_indexer
+                .replace_leaf(
+                    &self.transaction,
+                    &self.content_id.path_index_tree_id,
+                    &path.into(),
+                    TreeLeafNode::Resource(resource_identifier.clone()),
+                )
+                .await
+                .map_err(Error::ContentStoreIndexing)?;
+            self.content_id.path_index_tree_id = path_index_tree_id;
+
+            // unwrite previous resource content from content-store
+            self.transaction.unwrite_resource(old_identifier).await?;
+        }
+
+        Ok(resource_identifier)
+    }
+
     pub async fn update_path(
         &mut self,
         old_path: &str,

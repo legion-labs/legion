@@ -378,6 +378,23 @@ impl Project {
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<(), Error> {
+        let contents = Self::get_resource_contents(&name, type_id, handle, registry)?;
+
+        self.workspace
+            .add_resource(&type_id.into(), name.as_str(), &contents)
+            .await?;
+
+        self.update_offline_manifest_id();
+
+        Ok(())
+    }
+
+    fn get_resource_contents(
+        name: &ResourcePathName,
+        type_id: ResourceTypeAndId,
+        handle: impl AsRef<HandleUntyped>,
+        registry: &AssetRegistry,
+    ) -> Result<Vec<u8>, Error> {
         let mut contents = std::io::Cursor::new(Vec::new());
 
         let dependencies = registry
@@ -385,24 +402,17 @@ impl Project {
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
         // pre-pend metadata before serialized resource
-        let metadata = Metadata { name, dependencies };
+        let metadata = Metadata {
+            name: name.clone(),
+            dependencies,
+        };
         metadata.serialize(&mut contents);
 
         let _written = registry
             .serialize_resource_without_dependencies(type_id.kind, &handle, &mut contents)
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
-        self.workspace
-            .add_resource(
-                &type_id.into(),
-                metadata.name.as_str(),
-                &contents.into_inner(),
-            )
-            .await?;
-
-        self.update_offline_manifest_id();
-
-        Ok(())
+        Ok(contents.into_inner())
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
@@ -433,45 +443,24 @@ impl Project {
     /// corresponding .meta file.
     pub async fn save_resource(
         &mut self,
-        _type_id: ResourceTypeAndId,
-        _handle: impl AsRef<HandleUntyped>,
-        _resources: &AssetRegistry,
+        type_id: ResourceTypeAndId,
+        handle: impl AsRef<HandleUntyped>,
+        registry: &AssetRegistry,
     ) -> Result<(), Error> {
-        // let resource_path = self.resource_path(type_id.id);
-        // let metadata_path = self.metadata_path(type_id.id);
+        let (metadata, resource_id) = self.read_meta(type_id).await?;
 
-        // self.checkout(type_id).await?;
+        let contents = Self::get_resource_contents(&metadata.name, type_id, handle, registry)?;
 
-        // let mut meta_file = OpenOptions::new()
-        //     .read(true)
-        //     .write(true)
-        //     .open(&metadata_path)
-        //     .map_err(|e| Error::Io(metadata_path.clone(), e))?;
-        // let mut metadata: Metadata = serde_json::from_reader(&meta_file)
-        //     .map_err(|e| Error::Parse(metadata_path.clone(), e))?;
+        self.workspace
+            .update_resource(
+                &type_id.into(),
+                metadata.name.as_str(),
+                &contents,
+                &resource_id,
+            )
+            .await?;
 
-        // let build_dependencies = {
-        //     let mut resource_file = OpenOptions::new()
-        //         .write(true)
-        //         .truncate(true)
-        //         .open(&resource_path)
-        //         .map_err(|e| Error::Io(resource_path.clone(), e))?;
-
-        //     let (_written, build_deps) = resources
-        //         .serialize_resource(type_id.kind, handle, &mut resource_file)
-        //         .map_err(|e| Error::ResourceRegistry(type_id, e))?;
-        //     build_deps
-        // };
-
-        // metadata.dependencies = build_dependencies;
-
-        // meta_file.set_len(0).unwrap();
-        // meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        // serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
-
-        // self.workspace
-        //     .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
-        //     .await?;
+        self.update_offline_manifest_id();
 
         Ok(())
     }
