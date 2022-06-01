@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
 use lgn_content_store::{
-    indexing::{IndexKey, TreeIdentifier},
+    indexing::{IndexKey, ResourceIdentifier, TreeIdentifier},
     Identifier,
 };
 use thiserror::Error;
@@ -99,6 +99,8 @@ pub enum Error {
     ResourceNotFound { id: IndexKey },
     #[error("corrupted resource index  `{tree_id}` in content store")]
     CorruptedIndex { tree_id: TreeIdentifier },
+    #[error("reverse lookup failed, content-store resource id `{id}` not found")]
+    ReverseLookup { id: ResourceIdentifier },
 }
 
 impl Error {

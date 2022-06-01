@@ -137,6 +137,11 @@ impl Project {
         &self.offline_manifest_id
     }
 
+    fn update_offline_manifest_id(&self) {
+        self.offline_manifest_id
+            .write(self.workspace.get_main_index_id());
+    }
+
     /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
     pub async fn create_with_remote_mock(
         project_dir: impl AsRef<Path>,
@@ -268,14 +273,8 @@ impl Project {
             .await?
         {
             // reverse lookup main index
-            if let Some((index_key, _resource_identifier)) = self
-                .get_resources()
-                .await?
-                .iter()
-                .find(|(_index_key, matched_id)| &resource_identifier == matched_id)
-            {
-                return Ok(index_key.into());
-            }
+            let index_key = self.workspace.reverse_lookup(&resource_identifier).await?;
+            return Ok(index_key.into());
         }
         Err(Error::FileNotFound(name.to_string()))
     }
@@ -401,9 +400,7 @@ impl Project {
             )
             .await?;
 
-        // update shared manifest-id, since content has possibly changed
-        self.offline_manifest_id
-            .write(self.workspace.get_main_index_id());
+        self.update_offline_manifest_id();
 
         Ok(())
     }
@@ -411,6 +408,8 @@ impl Project {
     /// Delete the resource+meta files, remove from Registry and Flush index
     pub async fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
         self.workspace.delete_resource(&type_id.into()).await?;
+
+        self.update_offline_manifest_id();
 
         Ok(())
     }
@@ -675,7 +674,7 @@ impl Project {
         id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
         self.workspace
-            .get_resources_for_tree_id(id)
+            .get_resources_from_main_by_id(id)
             .await
             .map_err(Error::SourceControl)
     }

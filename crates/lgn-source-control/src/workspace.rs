@@ -243,12 +243,12 @@ where
         &self,
         commit: &Commit,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.get_resources_for_tree_id(&commit.main_index_tree_id)
+        self.get_resources_from_main_by_id(&commit.main_index_tree_id)
             .await
     }
 
     pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.get_resources_for_tree_id(self.get_main_index_id())
+        self.get_resources_from_main_by_id(self.get_main_index_id())
             .await
     }
 
@@ -256,13 +256,47 @@ where
         &self.content_id.main_index_tree_id
     }
 
-    pub async fn get_resources_for_tree_id(
+    pub async fn get_resources_from_main_by_id(
         &self,
         tree_id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        indexing::enumerate_resources(&self.transaction, &self.main_indexer, tree_id)
+        self.get_resources_by_index_and_id(&self.main_indexer, tree_id)
+            .await
+    }
+
+    async fn get_resources_by_index_and_id(
+        &self,
+        indexer: &(impl BasicIndexer + Sync),
+        tree_id: &TreeIdentifier,
+    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
+        indexing::enumerate_resources(&self.transaction, indexer, tree_id)
             .await
             .map_err(Error::ContentStoreIndexing)
+    }
+
+    pub async fn reverse_lookup(&self, resource_id: &ResourceIdentifier) -> Result<IndexKey> {
+        self.reverse_lookup_in_tree_id(&self.main_indexer, self.get_main_index_id(), resource_id)
+            .await
+    }
+
+    async fn reverse_lookup_in_tree_id(
+        &self,
+        indexer: &(impl BasicIndexer + Sync),
+        tree_id: &TreeIdentifier,
+        resource_id: &ResourceIdentifier,
+    ) -> Result<IndexKey> {
+        if let Some((index_key, _matched_id)) = self
+            .get_resources_by_index_and_id(indexer, tree_id)
+            .await?
+            .iter()
+            .find(|(_index_key, matched_id)| resource_id == matched_id)
+        {
+            Ok(index_key.clone())
+        } else {
+            Err(Error::ReverseLookup {
+                id: resource_id.clone(),
+            })
+        }
     }
 
     /// Add a resource to the local changes.
@@ -338,110 +372,47 @@ where
         Ok(())
     }
 
-    /*
-    /// Add files to the local changes.
-    ///
-    /// The list of new files added is returned. If all the files were already
-    /// added, an empty list is returned and call still succeeds.
-    #[deprecated = "use add_resource instead"]
-    pub async fn add_files(
-        &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
-    ) -> Result<BTreeSet<CanonicalPath>> {
-        let canonical_paths = self.to_canonical_paths(paths).await?;
-        let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
-
-        // Also get the current tree to check if the files are already added.
-        let tree = self.get_current_tree().await?;
-
-        let staged_changes = self.get_staged_changes().await?;
-
-        let mut changes_to_save = vec![];
-
-        for (canonical_path, file) in fs_tree.files() {
-            let change = if let Some(staged_change) = staged_changes.get(&canonical_path) {
-                match staged_change.change_type() {
-                    ChangeType::Add { new_id: new_info } => {
-                        let info = file.cs_id();
-
-                        if new_info == info {
-                            // The file is already staged as add or edit with the correct hash, nothing to do.
-                            continue;
-                        }
-
-                        self.upload_file(&canonical_path).await?;
-
-                        Change::new(
-                            canonical_path,
-                            ChangeType::Add {
-                                new_id: info.clone(),
-                            },
-                        )
-                    }
-                    ChangeType::Edit {
-                        old_id: old_info,
-                        new_id: new_info,
-                    } => {
-                        let info = file.cs_id();
-
-                        if new_info == info {
-                            // The file is already staged as add or edit with the correct hash, nothing to do.
-                            continue;
-                        }
-
-                        self.upload_file(&canonical_path).await?;
-
-                        Change::new(
-                            canonical_path,
-                            ChangeType::Edit {
-                                old_id: old_info.clone(),
-                                new_id: info.clone(),
-                            },
-                        )
-                    }
-                    ChangeType::Delete { old_id: old_info } => {
-                        // The file was staged for deletion: replace it with an edit.
-                        Change::new(
-                            canonical_path,
-                            ChangeType::Edit {
-                                old_id: old_info.clone(),
-                                new_id: file.cs_id().clone(),
-                            },
-                        )
-                    }
-                }
-            } else {
-                if let Ok(Some(_)) = tree.find(&canonical_path) {
-                    // The file is already in the current tree, nothing to do.
-                    continue;
-                }
-
-                self.upload_file(&canonical_path).await?;
-
-                Change::new(
-                    canonical_path,
-                    ChangeType::Add {
-                        new_id: file.cs_id().clone(),
-                    },
-                )
-            };
-
-            //assert_not_locked(workspace, &abs_path).await?;
-
-            changes_to_save.push(change);
-        }
-
-        self.backend.save_staged_changes(&changes_to_save).await?;
-
-        Ok(changes_to_save.into_iter().map(Into::into).collect())
-    }
-    */
-
     /// Mark some local files for deletion.
     ///
     /// The list of new files edited is returned. If all the files were already
     /// edited, an empty list is returned and call still succeeds.
-    pub async fn delete_resource(&self, _id: &IndexKey) -> Result<()> {
+    pub async fn delete_resource(&mut self, id: &IndexKey) -> Result<()> {
+        // remove from main index
+        let (main_index_tree_id, leaf_node) = self
+            .main_indexer
+            .remove_leaf(&self.transaction, self.get_main_index_id(), id)
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+        self.content_id.main_index_tree_id = main_index_tree_id;
+
+        if let TreeLeafNode::Resource(resource_id) = leaf_node {
+            // reverse lookup in path index
+            let path = self
+                .reverse_lookup_in_tree_id(
+                    &self.path_indexer,
+                    &self.content_id.path_index_tree_id,
+                    &resource_id,
+                )
+                .await?;
+            let (path_index_tree_id, _leaf_node) = self
+                .path_indexer
+                .remove_leaf(
+                    &self.transaction,
+                    &self.content_id.path_index_tree_id,
+                    &path,
+                )
+                .await
+                .map_err(Error::ContentStoreIndexing)?;
+            self.content_id.path_index_tree_id = path_index_tree_id;
+
+            // unwrite resource from content-store
+            self.transaction.unwrite_resource(&resource_id).await?;
+        } else {
+            return Err(Error::CorruptedIndex {
+                tree_id: self.get_main_index_id().clone(),
+            });
+        }
+
         Ok(())
     }
 

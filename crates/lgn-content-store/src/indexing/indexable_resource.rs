@@ -84,8 +84,6 @@ pub trait ResourceWriter {
         resource: &R,
     ) -> Result<ResourceIdentifier>;
 
-    async fn write_resource_from_bytes(&self, data: &[u8]) -> Result<ResourceIdentifier>;
-
     async fn unwrite_resource(&self, id: &ResourceIdentifier) -> Result<()>;
 }
 
