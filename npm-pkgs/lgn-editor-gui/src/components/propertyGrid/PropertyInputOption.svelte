@@ -56,7 +56,6 @@
 </script>
 
 {#if property.subProperties[0]}
-  <!-- <div class="option-property"> -->
   <PropertyInput
     on:input={(event) => dispatch("input", event.detail)}
     property={property.subProperties[0]}
@@ -68,20 +67,9 @@
     icon="ic:baseline-subdirectory-arrow-left"
     on:click={(_) => setOptionProperty(false)}
   />
-  <!-- </div> -->
 {:else}
   <PropertyActionButton
     icon="ic:baseline-add-circle-outline"
     on:click={(_) => setOptionProperty(true)}
   />
 {/if}
-
-<!-- <style lang="postcss">
-  .option-property {
-    @apply w-full;
-  }
-
-  .option-property-body {
-    @apply flex justify-end gap-x-1;
-  }
-</style> -->
