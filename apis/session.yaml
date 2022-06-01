@@ -4,7 +4,7 @@ info:
   description: "The OpenAPI specification for the Legion Labs session service."
   version: 1.0.0
 paths:
-  /v1/current-user/spaces/{space-id}/sessions:
+  /v1/current-user/spaces/{space-id}/sessions/:
     parameters:
       - $ref: "./common.yaml#/parameters/space_id"
     get:
@@ -17,7 +17,7 @@ paths:
             application/json:
               schema:
                 $ref: "./common.yaml#/schemas/SessionList"
-  /v1/current-user/spaces/{space-id}/workspaces:
+  /v1/current-user/spaces/{space-id}/workspaces/:
     parameters:
       - $ref: "./common.yaml#/parameters/space_id"
     get:
@@ -30,7 +30,7 @@ paths:
             application/json:
               schema:
                 $ref: "./common.yaml#/schemas/WorkspaceList"
-  /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}:
+  /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}/:
     parameters:
       - $ref: "./common.yaml#/parameters/space_id"
       - $ref: "./common.yaml#/parameters/workspace_id"
@@ -46,7 +46,7 @@ paths:
                 $ref: "./common.yaml#/schemas/Workspace"
         "404":
           description: The workspace was not found.
-  /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}/session:
+  /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}/session/:
     parameters:
       - $ref: "./common.yaml#/parameters/space_id"
       - $ref: "./common.yaml#/parameters/workspace_id"

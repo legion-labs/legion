@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use lgn_online::codegen::Context;
 
-use crate::api::governance::{
+use crate::api::user::{
     errors::{self},
     responses, Api,
 };

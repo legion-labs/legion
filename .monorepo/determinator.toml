@@ -8,6 +8,10 @@ globs = [
 mark-changed = "all"
 
 [[path-rule]]
+globs = ["apis/*"]
+mark-changed = ["lgn-governance"]
+
+[[path-rule]]
 globs = [
     ".github/images/*",
     ".github/dependabot.yml",

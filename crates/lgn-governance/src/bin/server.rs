@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::Router;
 use clap::Parser;
-use lgn_governance::{api, Server};
+use lgn_governance::Server;
 use lgn_online::server::RouterExt;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, debug, info, LevelFilter};
@@ -15,6 +15,13 @@ struct Args {
 
     #[clap(short, long, default_value = "0.0.0.0:5000")]
     listen_endpoint: SocketAddr,
+
+    #[clap(
+        long,
+        env,
+        default_value = "mysql://root@localhost:3306/lgn_governance"
+    )]
+    database_url: String,
 
     #[clap(
         long,
@@ -44,15 +51,21 @@ async fn main() -> anyhow::Result<()> {
         info!("Starting in production mode");
     }
 
-    let server = Arc::new(Server::new());
-    let router = Router::new();
-    let router = api::governance::server::register_routes(router, server);
+    // Only display this sensitive information in debug mode.
+    if args.debug {
+        info!("Connecting to MySQL: {}", args.database_url);
+    } else {
+        info!("Connecting to MySQL");
+    }
+
+    let server = Arc::new(Server::new(&args.database_url).await?);
+    let router = lgn_governance::register_routes(Router::new(), server);
     let router = router.apply_development_router_options();
 
     info!("HTTP server listening on: {}", args.listen_endpoint);
 
     axum::Server::bind(&args.listen_endpoint)
-        .serve(router.into_make_service())
+        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(async move { lgn_cli_utils::wait_for_termination().await.unwrap() })
         .await?;
 

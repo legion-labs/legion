@@ -4,9 +4,12 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use lgn_online::codegen::Context;
 
-use crate::api::session::{
-    errors::{self, ErrorExt},
-    models, requests, responses, Api,
+use crate::api::{
+    common,
+    session::{
+        errors::{self, ErrorExt},
+        requests, responses, Api,
+    },
 };
 
 use super::Server;
@@ -39,7 +42,7 @@ impl Api for Arc<Server> {
         _request: requests::GetCurrentUserWorkspaceRequest,
     ) -> errors::Result<responses::GetCurrentUserWorkspaceResponse> {
         Ok(responses::GetCurrentUserWorkspaceResponse::Status200(
-            models::Workspace {
+            common::Workspace {
                 id: "lol".to_string().into(),
                 created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
                     .into_internal_server_error()?
@@ -57,7 +60,7 @@ impl Api for Arc<Server> {
         _request: requests::GetCurrentUserWorkspaceSessionRequest,
     ) -> errors::Result<responses::GetCurrentUserWorkspaceSessionResponse> {
         Ok(
-            responses::GetCurrentUserWorkspaceSessionResponse::Status200(models::Session {
+            responses::GetCurrentUserWorkspaceSessionResponse::Status200(common::Session {
                 user_id: "lol".to_string().into(),
                 workspace_id: "lol".to_string().into(),
                 created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
@@ -76,7 +79,7 @@ impl Api for Arc<Server> {
         _request: requests::CreateCurrentUserWorkspaceSessionRequest,
     ) -> errors::Result<responses::CreateCurrentUserWorkspaceSessionResponse> {
         Ok(
-            responses::CreateCurrentUserWorkspaceSessionResponse::Status201(models::Session {
+            responses::CreateCurrentUserWorkspaceSessionResponse::Status201(common::Session {
                 user_id: "lol".to_string().into(),
                 workspace_id: "lol".to_string().into(),
                 created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
@@ -95,7 +98,7 @@ impl Api for Arc<Server> {
         _request: requests::DeleteCurrentUserWorkspaceSessionRequest,
     ) -> errors::Result<responses::DeleteCurrentUserWorkspaceSessionResponse> {
         Ok(
-            responses::DeleteCurrentUserWorkspaceSessionResponse::Status200(models::Session {
+            responses::DeleteCurrentUserWorkspaceSessionResponse::Status200(common::Session {
                 user_id: "lol".to_string().into(),
                 workspace_id: "lol".to_string().into(),
                 created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
