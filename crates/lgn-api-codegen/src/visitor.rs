@@ -191,8 +191,8 @@ impl Visitor {
 
                     let type_ = match &media_type_data.schema {
                         Some(schema_ref) => Some({
-                            let name = format!("{}_response", operation_name).to_case(Case::Pascal);
-
+                            let name = format!("{}_{}_response", operation_name, status_code)
+                                .to_case(Case::Pascal);
                             self.resolve_type_ref(
                                 &name.as_str().into(),
                                 &response.as_element_ref(schema_ref),
@@ -1376,7 +1376,7 @@ mod tests {
         let api: Api = oas.try_into().unwrap();
 
         let expected_one_of = Model {
-            name: "TestOneOfResponse".to_string(),
+            name: "TestOneOf200Response".to_string(),
             description: None,
             type_: Type::OneOf {
                 types: vec![
@@ -1387,7 +1387,10 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 3);
-        assert_eq!(api.models.get("TestOneOfResponse"), Some(&expected_one_of));
+        assert_eq!(
+            api.models.get("TestOneOf200Response"),
+            Some(&expected_one_of)
+        );
     }
 
     #[test]

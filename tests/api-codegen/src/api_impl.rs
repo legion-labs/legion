@@ -78,7 +78,7 @@ impl Api for ApiImpl {
 
     async fn test_one_of(&self, context: &mut Context) -> Result<TestOneOfResponse> {
         Ok(TestOneOfResponse::Status200(
-            models::TestOneOfResponse::Option1(models::Pet {
+            models::TestOneOf200Response::Option1(models::Pet {
                 name: Some("Cat".to_string()),
             }),
         ))

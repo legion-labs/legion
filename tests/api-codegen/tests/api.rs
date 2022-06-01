@@ -98,7 +98,7 @@ async fn test_one_of() {
     let resp = client.test_one_of(&mut ctx).await.unwrap();
     assert_eq!(
         resp,
-        TestOneOfResponse::Status200(models::TestOneOfResponse::Option1(models::Pet {
+        TestOneOfResponse::Status200(models::TestOneOf200Response::Option1(models::Pet {
             name: Some("Cat".to_string()),
         }),)
     );
