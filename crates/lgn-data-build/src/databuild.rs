@@ -122,84 +122,22 @@ pub struct DataBuild {
 }
 
 impl DataBuild {
-    async fn default_asset_registry(
-        offline_manifest_id: &Arc<ManifestId>,
-        source_provider: Arc<Provider>,
-        data_provider: Arc<Provider>,
-        compilers: &CompilerRegistry,
-    ) -> Result<Arc<AssetRegistry>, Error> {
-        let empty_manifest_id =
-            AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_provider).await;
-        let mut options = AssetRegistryOptions::new()
-            .add_device_cas(data_provider, Arc::new(empty_manifest_id))
-            .add_device_cas_offline(source_provider, Arc::clone(offline_manifest_id));
-
-        options = compilers.init_all(options).await;
-
-        Ok(options.create().await)
-    }
-
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
+        let output_index = OutputIndex::create_new(config.output_db_addr.clone()).await?;
 
-        let output_index = OutputIndex::create_new(config.output_db_addr).await?;
-
-        let compilers = config.compiler_options.create().await;
-        let registry = match config.registry {
-            Some(r) => Ok(r),
-            None => {
-                Self::default_asset_registry(
-                    project.offline_manifest_id(),
-                    Arc::clone(&config.source_control_content_provider),
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                )
-                .await
-            }
-        }?;
-
-        Ok(Self {
-            source_index,
-            output_index,
-            offline_manifest_id: Arc::clone(project.offline_manifest_id()),
-            data_content_provider: Arc::clone(&config.data_content_provider),
-            compilers: CompilerNode::new(compilers, registry),
-        })
+        Self::new_with_output_index(config, output_index, project).await
     }
 
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
-        let output_index = OutputIndex::open(config.output_db_addr).await?;
+        let output_index = OutputIndex::open(config.output_db_addr.clone()).await?;
 
-        let compilers = config.compiler_options.create().await;
-        let registry = match config.registry {
-            Some(t) => Ok(t),
-            None => {
-                Self::default_asset_registry(
-                    project.offline_manifest_id(),
-                    Arc::clone(&config.source_control_content_provider),
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                )
-                .await
-            }
-        }?;
-
-        Ok(Self {
-            source_index,
-            output_index,
-            offline_manifest_id: Arc::clone(project.offline_manifest_id()),
-            data_content_provider: Arc::clone(&config.data_content_provider),
-            compilers: CompilerNode::new(compilers, registry),
-        })
+        Self::new_with_output_index(config, output_index, project).await
     }
 
     pub(crate) async fn open_or_create(
         config: DataBuildOptions,
         project: &Project,
     ) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
-
         let output_index = match OutputIndex::open(config.output_db_addr.clone()).await {
             Ok(output_index) => Ok(output_index),
             Err(Error::NotFound(_)) => OutputIndex::create_new(config.output_db_addr.clone()).await,
@@ -222,13 +160,21 @@ impl DataBuild {
         let registry = match config.registry {
             Some(r) => r,
             None => {
-                Self::default_asset_registry(
-                    project.offline_manifest_id(),
-                    Arc::clone(&config.source_control_content_provider),
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                )
-                .await
+                // setup default asset registry
+                let data_provider = Arc::clone(&config.data_content_provider);
+                let empty_manifest_id =
+                    AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_provider).await;
+
+                let mut options = AssetRegistryOptions::new()
+                    .add_device_cas(data_provider, Arc::new(empty_manifest_id))
+                    .add_device_cas_offline(
+                        Arc::clone(&config.source_control_content_provider),
+                        Arc::clone(project.offline_manifest_id()),
+                    );
+
+                options = compilers.init_all(options).await;
+
+                options.create().await
             }
         };
 
