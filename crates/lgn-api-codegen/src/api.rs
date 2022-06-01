@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, iter::Chain, slice::Iter};
 
 use crate::{Error, OpenAPIPath, Result};
-use indexmap::IndexMap;
 
 /// API is the resolved type that is fed to templates and contains helper
 /// methods to ease their writing.
@@ -86,7 +85,7 @@ pub struct Route {
     pub summary: Option<String>,
     pub request_body: Option<RequestBody>,
     pub parameters: Parameters,
-    pub responses: IndexMap<StatusCode, Response>,
+    pub responses: BTreeMap<StatusCode, Response>,
 }
 
 impl Route {
@@ -128,7 +127,7 @@ impl<'a> IntoIterator for &'a Parameters {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StatusCode(http::StatusCode);
 
 impl From<http::StatusCode> for StatusCode {
@@ -153,7 +152,7 @@ impl StatusCode {
 pub struct Response {
     pub description: String,
     pub content: Option<Content>,
-    pub headers: IndexMap<String, Header>,
+    pub headers: BTreeMap<String, Header>,
 }
 
 #[derive(Debug, PartialEq)]

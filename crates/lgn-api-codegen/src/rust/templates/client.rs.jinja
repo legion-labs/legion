@@ -104,10 +104,9 @@ where
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::{{ enum_name }}::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::{{ enum_name }}::from_response(status, body).await
+            resp
         }
     {% endfor %}
 {% endfor %}

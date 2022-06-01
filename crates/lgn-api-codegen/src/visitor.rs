@@ -186,7 +186,7 @@ impl Visitor {
         };
 
         // Visit responses.
-        let mut responses = IndexMap::new();
+        let mut responses = BTreeMap::new();
         for (status_code, response_ref) in &operation.responses.responses {
             let response = operation.resolve_reference_or(response_ref)?;
 
@@ -235,7 +235,7 @@ impl Visitor {
                 }
             };
 
-            let mut headers = IndexMap::new();
+            let mut headers = BTreeMap::new();
             for (header_name, header_ref) in &response.headers {
                 let header = response.resolve_reference_or(header_ref)?;
 
@@ -595,7 +595,6 @@ mod tests {
         api::{Content, MediaType, Path},
         openapi_loader::OpenApiLoader,
     };
-    use indexmap::IndexMap;
 
     use super::*;
 
@@ -1063,7 +1062,7 @@ mod tests {
                 }],
                 ..Parameters::default()
             },
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
@@ -1071,7 +1070,7 @@ mod tests {
                         media_type: MediaType::Json,
                         type_: Type::Array(Box::new(Type::Named("Pet".to_string()))),
                     }),
-                    headers: IndexMap::new(),
+                    headers: BTreeMap::new(),
                 },
             )]),
         };
@@ -1174,12 +1173,12 @@ mod tests {
                 },
             }),
             parameters: Parameters::default(),
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
                     content: None,
-                    headers: IndexMap::new(),
+                    headers: BTreeMap::new(),
                 },
             )]),
         };
@@ -1277,7 +1276,7 @@ mod tests {
                 },
             }),
             parameters: Parameters::default(),
-            responses: IndexMap::from([
+            responses: BTreeMap::from([
                 (
                     http::StatusCode::OK.into(),
                     Response {
@@ -1286,7 +1285,7 @@ mod tests {
                             media_type: MediaType::Json,
                             type_: Type::Named("Pet".to_string()),
                         }),
-                        headers: IndexMap::new(),
+                        headers: BTreeMap::new(),
                     },
                 ),
                 (
@@ -1294,7 +1293,7 @@ mod tests {
                     Response {
                         description: "Invalid input".to_string(),
                         content: None,
-                        headers: IndexMap::new(),
+                        headers: BTreeMap::new(),
                     },
                 ),
             ]),
@@ -1401,6 +1400,75 @@ mod tests {
     }
 
     #[test]
+    fn test_resolve_headers() {
+        let paths = serde_yaml::from_str::<openapiv3::Paths>(
+            r#"
+            /test-headers:
+              get:
+                operationId: testHeaders
+                parameters:
+                  - name: x-static-header
+                    in: header
+                    schema:
+                      type: string
+                responses:
+                  '200':
+                    description: Ok.
+                    headers:
+                      x-static-header:
+                        schema:
+                          type: string
+            "#,
+        )
+        .unwrap();
+
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
+            paths,
+            ..openapiv3::OpenAPI::default()
+        };
+        let oas: OpenApi<'_> = loader.import(&api).unwrap();
+        let api: Api = oas.try_into().unwrap();
+
+        let expected_route = Route {
+            name: "testHeaders".to_string(),
+            method: Method::Get,
+            summary: None,
+            request_body: None,
+            parameters: Parameters {
+                header: vec![Parameter {
+                    name: "x-static-header".to_string(),
+                    description: None,
+                    required: false,
+                    type_: Type::String,
+                }],
+                ..Parameters::default()
+            },
+            responses: BTreeMap::from([(
+                http::StatusCode::OK.into(),
+                Response {
+                    description: "Ok.".to_string(),
+                    content: None,
+                    headers: BTreeMap::from([(
+                        "x-static-header".to_string(),
+                        Header {
+                            description: None,
+                            type_: Type::String,
+                        },
+                    )]),
+                },
+            )]),
+        };
+
+        println!("{:#?}", api.paths);
+        assert_eq!(api.paths.len(), 1);
+        assert_eq!(
+            api.paths.get::<Path>(&"/test-headers".into()),
+            Some(&vec![expected_route])
+        );
+    }
+
+    #[test]
     fn test_resolve_operation_with_path_level_parameters() {
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
             r#"
@@ -1473,12 +1541,12 @@ mod tests {
                 }],
                 ..Parameters::default()
             },
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
                     content: None,
-                    headers: IndexMap::new(),
+                    headers: BTreeMap::new(),
                 },
             )]),
         };

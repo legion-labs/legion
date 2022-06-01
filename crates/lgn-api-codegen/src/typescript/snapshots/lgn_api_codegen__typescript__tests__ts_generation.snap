@@ -15,6 +15,21 @@ export interface Api {
 
     
         
+        testHeaders(input: {
+    params: {
+        },
+    
+    
+    headers: {
+        "x-static-header"?: string;
+        },
+    
+    
+    }): Promise<TestHeadersResponse>;
+    
+
+    
+        
         testOneOf(input: {
     params: {
         },
@@ -128,6 +143,41 @@ export class Client implements Api {
         this.#fetch = fetch;
     }
 
+    
+        
+            
+
+            async testHeaders(input: {
+    params: {
+        },
+    
+    
+    headers: {
+        "x-static-header"?: string;
+        },
+    
+    
+    }): Promise<TestHeadersResponse> {
+                const url = new URL(`${this.#baseUri}/test-headers`);
+
+                
+
+                const headers = new Headers();
+
+                
+
+
+                
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "GET",
+                    headers,
+                    
+                });
+
+                return TestHeadersResponse.fromResponse(response);
+            }
+        
     
         
             
@@ -403,6 +453,10 @@ export class Client implements Api {
     
 
         
+        
+    
+
+        
         export type GetCarsQuery = {
                 "names"?: string[];
                 "q"?: string;
@@ -426,6 +480,29 @@ export class Client implements Api {
 
 // ---------- Responses ----------
 
+
+    
+        
+        
+        export type TestHeadersResponse = (| { /** Ok. */ type: "200", value: PetModel });
+
+        export const TestHeadersResponse = {
+            async fromResponse(response: Response): Promise<TestHeadersResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:
+                                                await response.json()
+                                            }
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
 
     
         
