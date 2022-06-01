@@ -23,6 +23,8 @@ use thiserror::Error;
 
 use crate::resource::{metadata::Metadata, ResourcePathName};
 
+use super::deserialize_and_skip_metadata;
+
 /// A source-control-backed state of the project
 ///
 /// This structure captures the state of the project. This includes `remote
@@ -398,7 +400,7 @@ impl Project {
 
         // pre-pend metadata before serialized resource
         let metadata = Metadata { name, dependencies };
-        bincode::serialize_into(&mut contents, &metadata).expect("failed to serialize metadata");
+        metadata.serialize(&mut contents);
 
         let _written = registry
             .serialize_resource_without_dependencies(type_id.kind, &handle, &mut contents)
@@ -499,8 +501,7 @@ impl Project {
         let mut reader = std::io::Cursor::new(resource_bytes);
 
         // skip over the pre-pended metadata
-        let _metadata: Metadata =
-            bincode::deserialize_from(&mut reader).expect("failed to decode metadata contents");
+        deserialize_and_skip_metadata(&mut reader);
 
         resources
             .deserialize_resource(type_id, &mut reader)
@@ -617,8 +618,7 @@ impl Project {
         let mut reader = std::io::Cursor::new(resource_bytes);
 
         // just read the pre-pended metadata
-        let metadata =
-            bincode::deserialize_from(&mut reader).expect("failed to decode metadata contents");
+        let metadata = Metadata::deserialize(&mut reader);
 
         Ok(metadata)
     }

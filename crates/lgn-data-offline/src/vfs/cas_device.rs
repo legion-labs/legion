@@ -10,7 +10,7 @@ use lgn_data_runtime::{
     ResourceTypeAndIdIndexer,
 };
 
-use crate::resource::metadata::Metadata;
+use crate::resource::deserialize_and_skip_metadata;
 
 /// Content addressable storage device. Resources are accessed through a
 /// manifest access table.
@@ -46,8 +46,7 @@ impl Device for CasDevice {
                 let mut reader = std::io::Cursor::new(resource_bytes.into_vec());
 
                 // skip over the pre-pended metadata
-                let _metadata: Metadata = bincode::deserialize_from(&mut reader)
-                    .expect("failed to decode metadata contents");
+                deserialize_and_skip_metadata(&mut reader);
 
                 let pos = reader.position() as usize;
                 let resource_bytes = reader.into_inner();
