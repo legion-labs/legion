@@ -49,3 +49,9 @@
 >
   <TextInput on:input bind:value fluid autoSelect {readonly} />
 </div>
+
+<style lang="postcss">
+  div {
+    @apply w-full;
+  }
+</style>
