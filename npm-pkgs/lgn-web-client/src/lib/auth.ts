@@ -7,6 +7,9 @@ import { getCookie, setCookie } from "./cookie";
 import { displayError } from "./errors";
 import log from "./log";
 
+// We check each hour if the refresh token should be refreshed
+const refreshTokenTimeThreshold = 60 * 60 * 1_000;
+
 // https://connect2id.com/products/server/docs/api/token#token-response
 export type ClientTokenSet = {
   [key: string]: unknown;
@@ -82,13 +85,20 @@ class IssuerConfiguration {
 export class CookieStorage {
   accessTokenName: string;
   refreshTokenName: string;
+  expiresAtName: string;
 
   constructor({
     accessTokenName,
     refreshTokenName,
-  }: { accessTokenName?: string; refreshTokenName?: string } = {}) {
+    expiresAtName,
+  }: {
+    accessTokenName?: string;
+    refreshTokenName?: string;
+    expiresAtName?: string;
+  } = {}) {
     this.accessTokenName = accessTokenName || "access_token";
     this.refreshTokenName = refreshTokenName || "refresh_token";
+    this.expiresAtName = expiresAtName || "expires_at";
   }
 
   // The refresh token arbitraly last for 1 day by default
@@ -98,6 +108,9 @@ export class CookieStorage {
     refreshTokenExpiresIn = 24 * 60 * 60
   ) {
     setCookie(this.accessTokenName, access_token, expires_in);
+
+    // eslint-disable-next-line camelcase
+    setCookie(this.expiresAtName, Date.now() + expires_in * 1_000, expires_in);
 
     // eslint-disable-next-line camelcase
     if (refresh_token) {
@@ -111,6 +124,22 @@ export class CookieStorage {
 
   get refreshToken() {
     return getCookie(this.refreshTokenName);
+  }
+
+  get expiresAt() {
+    const expiresAt = getCookie(this.expiresAtName);
+
+    if (expiresAt === null) {
+      return null;
+    }
+
+    const expiresAtValue = +expiresAt;
+
+    if (isNaN(expiresAtValue)) {
+      return null;
+    }
+
+    return new Date(expiresAtValue);
   }
 }
 
@@ -414,7 +443,13 @@ export class LegionClient extends Client<UserInfo> {
       throw new Error("Refresh token not found");
     }
 
-    return this.exchangeRefreshTokenRequest(this.refreshToken);
+    const clientTokenSet = await this.exchangeRefreshTokenRequest(
+      this.refreshToken
+    );
+
+    accessToken.set(clientTokenSet.access_token);
+
+    return clientTokenSet;
   }
 
   async getAuthorizationUrl() {
@@ -434,6 +469,26 @@ export class LegionClient extends Client<UserInfo> {
     }
 
     return authorizeUrl;
+  }
+
+  async startTokenSetAutoRefresh() {
+    const expiresAt = this.#cookieStorage.expiresAt;
+
+    if (!expiresAt) {
+      throw new Error(
+        "Couldn't start token set auto refresh, expires in cookie is not set or not valid"
+      );
+    }
+
+    if (expiresAt.getTime() - Date.now() < refreshTokenTimeThreshold) {
+      authClient.storeClientTokenSet(await this.refreshClientTokenSet());
+    }
+
+    setTimeout(() => {
+      this.startTokenSetAutoRefresh().catch((error) => {
+        log.warn("auth", `Couldn't refresh token set: ${displayError(error)}`);
+      });
+    }, refreshTokenTimeThreshold);
   }
 
   getTargetUrl(): URL | null {
@@ -488,6 +543,8 @@ export class LegionClient extends Client<UserInfo> {
     if (!clientTokenSet) {
       throw new Error("No client token set returned by the provider");
     }
+
+    accessToken.set(clientTokenSet.access_token);
 
     return clientTokenSet;
   }
@@ -574,7 +631,7 @@ export async function initAuth({
     authClient = client;
   }
 
-  if (globalThis.isElectron && globalThis.electron) {
+  if (globalThis.isElectron === true && globalThis.electron) {
     await globalThis.electron.auth.initOAuthClient();
 
     try {
@@ -599,6 +656,8 @@ export async function initAuth({
         authorizationUrl: await authClient.getAuthorizationUrl(),
       };
     }
+
+    accessToken.set(authClient.accessToken);
 
     return { type: "success" };
   }
@@ -673,7 +732,6 @@ export async function initAuth({
   // At that point this request should not fail
   try {
     await userInfo.run(() => authClient.userInfo());
-    accessToken.set(authClient.accessToken);
   } catch (error) {
     log.warn(
       log.json`An error occured while trying to get the user info ${error}`
@@ -684,6 +742,21 @@ export async function initAuth({
       authorizationUrl: await authClient.getAuthorizationUrl(),
     };
   }
+
+  try {
+    await authClient.startTokenSetAutoRefresh();
+  } catch (error) {
+    log.warn(
+      log.json`An error occured while starting the token set auto refresh ${error}`
+    );
+
+    return {
+      type: "error",
+      authorizationUrl: await authClient.getAuthorizationUrl(),
+    };
+  }
+
+  accessToken.set(authClient.accessToken);
 
   // All good
   return { type: "success" };

@@ -57,11 +57,11 @@
 
   function fetchProcessInfo(processId: string) {
     return processStore.run(async () => {
-      const { count: nbEntries } = await client.nb_process_log_entries({
+      const { count: nbEntries } = await $client.nb_process_log_entries({
         processId,
       });
 
-      const { process } = await client.find_process({
+      const { process } = await $client.find_process({
         processId,
       });
 
@@ -84,7 +84,7 @@
     return logEntriesStore.run(async () => {
       const cleanSearch = search.trim();
 
-      const response = await client.list_process_log_entries({
+      const response = await $client.list_process_log_entries({
         process,
         begin: beginRange ?? 0,
         end: endRange ?? Math.min(nbEntries, MAX_NB_ENTRIES_IN_PAGE),

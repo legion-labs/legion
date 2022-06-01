@@ -32,10 +32,10 @@
   function search(search: string) {
     return processesStore.run(async () => {
       const response = search.length
-        ? await client.search_processes({
+        ? await $client.search_processes({
             search,
           })
-        : await client.list_recent_processes({ parentProcessId: undefined });
+        : await $client.list_recent_processes({ parentProcessId: undefined });
 
       return response.processes;
     });

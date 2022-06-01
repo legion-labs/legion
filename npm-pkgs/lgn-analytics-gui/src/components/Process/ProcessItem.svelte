@@ -43,7 +43,7 @@
       return;
     }
 
-    ({ processes } = await client.list_recent_processes({
+    ({ processes } = await $client.list_recent_processes({
       parentProcessId: processInstance.processInfo?.processId,
     }));
   }

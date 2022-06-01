@@ -95,7 +95,7 @@
     themeStorageKey,
     threadItemLengthFallback,
   } from "@/constants";
-  import { makeGrpcClient } from "@/lib/client";
+  import { createGrpcClientStore } from "@/lib/client";
 
   import "../assets/index.css";
 
@@ -141,7 +141,7 @@
 
   setContext(l10nOrchestratorContextKey, l10n);
 
-  setContext("http-client", makeGrpcClient($accessToken));
+  setContext("http-client", createGrpcClientStore(accessToken));
 
   setContext("notifications", notifications);
 
@@ -162,7 +162,7 @@
     setContext("thread-item-length", threadItemLengthFallback);
   }
 
-  // TODO: Here we can control the UI and display a modal like in the Editor
+  // TODO: Here we can control the UI and display a modal or change the page content
   onMount(() => {
     if (initAuthStatus?.type === "error") {
       window.location.href = initAuthStatus.authorizationUrl;
