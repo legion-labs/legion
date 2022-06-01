@@ -116,6 +116,11 @@ impl GpuCullingPass {
             draw_args_buffer_desc,
             GPUViewType::UnorderedAccess,
         ));
+        let draw_args_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
+            draw_args_buffer_id,
+            draw_args_buffer_desc,
+            GPUViewType::ShaderResource,
+        ));
 
         let culled_count_buffer_desc =
             RenderGraphResourceDef::new_buffer(std::mem::size_of::<u32>() as u64, 1);
@@ -269,6 +274,7 @@ impl GpuCullingPass {
                             }),
                         )
                         .read(draw_count_srv_id, RenderGraphLoadState::Load)
+                        .read(draw_args_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
                             Self::execute_depth_layer_pass(
                                 context,
@@ -374,6 +380,7 @@ impl GpuCullingPass {
                     graphics_pass_builder
                         .depth_stencil(depth_view_id, RenderGraphLoadState::Load)
                         .read(draw_count_srv_id, RenderGraphLoadState::Load)
+                        .read(draw_args_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
                             Self::execute_depth_layer_pass(
                                 context,
@@ -580,19 +587,6 @@ impl GpuCullingPass {
                                 cgen::descriptor_set::HzbDescriptorSet::descriptor_set_layout(),
                                 descriptor_set_handle,
                             );
-
-                            #[rustfmt::skip]
-                            let vertex_data: [f32; 12] = [0.0, 2.0, 0.0, 2.0,
-                                                          0.0, 0.0, 0.0, 0.0,
-                                                          2.0, 0.0, 2.0, 0.0];
-
-                            let transient_buffer = render_context
-                                .transient_buffer_allocator
-                                .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
-
-                            let vertex_binding = transient_buffer.vertex_buffer_binding();
-
-                            cmd_buffer.cmd_bind_vertex_buffer(0, vertex_binding);
 
                             cmd_buffer.cmd_draw(3, 0);
                         }
