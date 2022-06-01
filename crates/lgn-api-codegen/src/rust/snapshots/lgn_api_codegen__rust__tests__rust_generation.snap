@@ -93,6 +93,9 @@ pub mod errors {
     }
 
     pub trait ErrorExt<T> {
+        /// Converts to an internal server error.
+        /// # Errors
+        /// If we fail to return a response.
         fn into_internal_server_error(self) -> Result<T, Error>;
     }
 
