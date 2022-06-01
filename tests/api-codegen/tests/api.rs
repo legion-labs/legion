@@ -5,7 +5,6 @@ use api_codegen::cars::{
     models::{self, CarColor, Cars},
     requests::{
         CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
-        TestOneOfRequest,
     },
     responses::{
         CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
@@ -97,8 +96,7 @@ async fn test_one_of() -> anyhow::Result<()> {
     let handle = start_server(addr).await;
 
     let mut ctx = Context::default();
-    let req = TestOneOfRequest {};
-    let resp = client.test_one_of(&mut ctx, req).await?;
+    let resp = client.test_one_of(&mut ctx).await?;
     assert_eq!(
         resp,
         TestOneOfResponse::Status200(models::TestOneOfResponse::Option1(models::Pet {
@@ -125,8 +123,7 @@ async fn test_context() -> anyhow::Result<()> {
     let mut ctx = Context::default();
     ctx.set_request_extensions(extensions);
     ctx.set_request_headers(headers);
-    let req = TestOneOfRequest {};
-    let resp = client.test_one_of(&mut ctx, req).await?;
+    let resp = client.test_one_of(&mut ctx).await?;
 
     assert_eq!(
         resp,

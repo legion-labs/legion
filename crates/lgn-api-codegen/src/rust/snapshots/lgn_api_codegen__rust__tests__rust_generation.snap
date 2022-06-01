@@ -13,11 +13,7 @@ use lgn_online::codegen::Context;
 
 #[async_trait::async_trait]
 pub trait Api {
-    async fn test_one_of(
-        &self,
-        context: &mut Context,
-        request: requests::TestOneOfRequest,
-    ) -> Result<responses::TestOneOfResponse>;
+    async fn test_one_of(&self, context: &mut Context) -> Result<responses::TestOneOfResponse>;
 
     async fn get_cars(
         &self,
@@ -56,7 +52,7 @@ pub mod errors {
         http::StatusCode,
         response::{IntoResponse, Response},
     };
-    use lgn_tracing::error;
+    use lgn_tracing::warn;
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
@@ -68,6 +64,8 @@ pub mod errors {
         SerdeJson(#[from] serde_json::Error),
         #[error("serde qs: {0}")]
         SerdeQs(#[from] serde_qs::Error),
+        #[error("codegen encoding: {0}")]
+        CodegenEncoding(#[from] lgn_online::codegen::encoding::Error),
         #[error("invalid body: {0}")]
         InvalidBody(String),
         #[error("invalid header: {0}")]
@@ -76,40 +74,34 @@ pub mod errors {
         MissingHeader(String),
     }
 
-    pub type Result<T> = std::result::Result<T, Error>;
+    pub type Result<T, E = Error> = std::result::Result<T, E>;
 
     impl IntoResponse for Error {
         fn into_response(self) -> Response {
+            warn!("converted error into HTTP response: {}", self);
+
             match self {
-                Self::Internal(err) => {
-                    error!("Internal server error: {}", err);
+                Self::Internal(_) | Self::Hyper(_) | Self::SerdeJson(_) | Self::SerdeQs(_) => {
                     StatusCode::INTERNAL_SERVER_ERROR.into_response()
                 }
-                Self::Hyper(err) => {
-                    error!("Hyper error: {:?}", err);
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                }
-                Self::SerdeJson(err) => {
-                    error!("Serde Json error: {:?}", err);
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                }
-                Self::SerdeQs(err) => {
-                    error!("Serde Qs error: {:?}", err);
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                }
-                Self::InvalidBody(err) => {
-                    error!("Invalid body: {}", err);
-                    StatusCode::BAD_REQUEST.into_response()
-                }
-                Self::InvalidHeader(err) => {
-                    error!("Invalid header: {}", err);
-                    StatusCode::BAD_REQUEST.into_response()
-                }
-                Self::MissingHeader(err) => {
-                    error!("Missing header: {}", err);
-                    StatusCode::BAD_REQUEST.into_response()
-                }
+                Self::CodegenEncoding(_)
+                | Self::InvalidBody(_)
+                | Self::InvalidHeader(_)
+                | Self::MissingHeader(_) => StatusCode::BAD_REQUEST.into_response(),
             }
+        }
+    }
+
+    pub trait ErrorExt<T> {
+        /// Converts to an internal server error.
+        /// # Errors
+        /// If we fail to return a response.
+        fn into_internal_server_error(self) -> Result<T, Error>;
+    }
+
+    impl<T, E: std::error::Error> ErrorExt<T> for Result<T, E> {
+        fn into_internal_server_error(self) -> Result<T, Error> {
+            self.map_err(|err| Error::Internal(err.to_string()))
         }
     }
 }
@@ -140,11 +132,7 @@ pub mod client {
     where
         C: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
     {
-        async fn test_one_of(
-            &self,
-            context: &mut Context,
-            request: requests::TestOneOfRequest,
-        ) -> Result<responses::TestOneOfResponse> {
+        async fn test_one_of(&self, context: &mut Context) -> Result<responses::TestOneOfResponse> {
             let mut uri = format!("{}/test-one-of", self.base_uri);
 
             let mut req = Request::builder()
@@ -176,7 +164,8 @@ pub mod client {
         ) -> Result<responses::GetCarsResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/cars",
-                self.base_uri, request.space_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
             );
 
             let query = params::GetCarsQuery {
@@ -216,7 +205,8 @@ pub mod client {
         ) -> Result<responses::CreateCarResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/cars",
-                self.base_uri, request.space_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
             );
 
             let mut req = Request::builder()
@@ -259,7 +249,9 @@ pub mod client {
         ) -> Result<responses::GetCarResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/cars/{}",
-                self.base_uri, request.space_id, request.car_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.car_id)?
             );
 
             let mut req = Request::builder()
@@ -291,7 +283,9 @@ pub mod client {
         ) -> Result<responses::DeleteCarResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/cars/{}",
-                self.base_uri, request.space_id, request.car_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.car_id)?
             );
 
             let mut req = Request::builder()
@@ -323,7 +317,8 @@ pub mod client {
         ) -> Result<responses::TestBinaryResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/test-binary",
-                self.base_uri, request.space_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
             );
 
             let mut req = Request::builder()
@@ -409,9 +404,8 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
-        let request = requests::TestOneOfRequest {};
 
-        let resp = api.test_one_of(&mut context, request).await;
+        let resp = api.test_one_of(&mut context).await;
         let mut resp = match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
@@ -441,6 +435,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::GetCarsRequest {
             space_id,
             names: query.names,
@@ -489,6 +484,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::CreateCarRequest {
             space_id,
             span_id,
@@ -524,6 +520,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::GetCarRequest { space_id, car_id };
 
         let resp = api.get_car(&mut context, request).await;
@@ -555,6 +552,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::DeleteCarRequest { space_id, car_id };
 
         let resp = api.delete_car(&mut context, request).await;
@@ -587,6 +585,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::TestBinaryRequest {
             space_id,
             body: body.into(),
@@ -687,9 +686,6 @@ pub(crate) mod params {
 // ---------- Requests ----------
 pub mod requests {
     use lgn_online::codegen::Bytes;
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct TestOneOfRequest {}
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct GetCarsRequest {

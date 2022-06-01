@@ -30,7 +30,7 @@ where
                 "{}{{ path|fmt_rust_path }}",
                 self.base_uri
                 {% for parameter in route.parameters.path -%}
-                    , request.{{ parameter.name|snake_case }}
+                    , lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ parameter.name|snake_case }})?
                 {% endfor -%}
             );
 

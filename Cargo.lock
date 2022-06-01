@@ -4950,6 +4950,7 @@ dependencies = [
  "lgn-config",
  "lgn-tracing",
  "openidconnect",
+ "percent-encoding",
  "pin-project",
  "prost",
  "reqwest",

@@ -89,12 +89,27 @@ pub struct Route {
     pub responses: IndexMap<StatusCode, Response>,
 }
 
+impl Route {
+    pub fn has_empty_request(&self) -> bool {
+        self.request_body.is_none() && self.parameters.is_empty()
+    }
+}
+
 #[derive(Debug, PartialEq, Default)]
 pub struct Parameters {
     pub path: Vec<Parameter>,
     pub query: Vec<Parameter>,
     pub header: Vec<Parameter>,
     pub cookie: Vec<Parameter>,
+}
+
+impl Parameters {
+    pub fn is_empty(&self) -> bool {
+        self.path.is_empty()
+            && self.query.is_empty()
+            && self.header.is_empty()
+            && self.cookie.is_empty()
+    }
 }
 
 impl<'a> IntoIterator for &'a Parameters {
