@@ -9,12 +9,13 @@
 use std::collections::HashSet;
 
 use proc_macro2::Literal;
-use quote::quote;
+use quote::{quote, ToTokens};
 use syn::{
     parse::{Parse, ParseStream, Result},
     parse_macro_input, parse_quote,
     punctuated::Punctuated,
-    Ident, ItemFn, Token,
+    visit_mut::VisitMut,
+    ExprAwait, Ident, ItemFn, Token,
 };
 
 struct TraceArgs {
@@ -32,6 +33,29 @@ impl Parse for TraceArgs {
                 alternative_name: Some(Literal::parse(input)?),
             })
         }
+    }
+}
+
+struct AwaitVisitor;
+
+impl VisitMut for AwaitVisitor {
+    fn visit_expr_await_mut(&mut self, expr: &mut ExprAwait) {
+        // TODO: Use attrs
+        let ExprAwait { attrs: _, base, .. } = expr;
+
+        let text = base.to_token_stream().to_string();
+
+        *expr = parse_quote! {
+            {
+                lgn_tracing::span!(_AWAIT, #text);
+
+                lgn_tracing::spans::Instrumentation::new(
+                    #base,
+                    &_AWAIT,
+                    &__lgn_tracing_is_idle
+                )
+            }.await
+        };
     }
 }
 
@@ -55,12 +79,42 @@ pub fn span_fn(
         .alternative_name
         .map_or(function.sig.ident.to_string(), |n| n.to_string());
 
-    function.block.stmts.insert(
-        0,
-        parse_quote! {
-            lgn_tracing::span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
-        },
-    );
+    AwaitVisitor.visit_block_mut(&mut function.block);
+
+    if let Some((last_stmt, stmts)) = function.block.stmts.split_last() {
+        function.block.stmts = vec![
+            parse_quote! {
+                let __lgn_tracing_output = {
+                    lgn_tracing::span!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
+                    let __lgn_tracing_is_idle = std::sync::atomic::AtomicBool::new(false);
+                    lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
+
+                    #(#stmts)*
+
+                    let __lgn_tracing_output = { #last_stmt };
+                    lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+                    __lgn_tracing_output
+                };
+            },
+            parse_quote! {
+                return __lgn_tracing_output;
+            },
+        ];
+    } else {
+        function.block.stmts = vec![
+            parse_quote! {
+                let __lgn_tracing_output = {
+                    lgn_tracing::span!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
+                    let __lgn_tracing_is_idle = std::sync::atomic::AtomicBool::new(false);
+                    lgn_tracing::dispatch::on_begin_scope(&_METADATA_FUNC);
+                    lgn_tracing::dispatch::on_end_scope(&_METADATA_FUNC);
+                };
+            },
+            parse_quote! {
+                return __lgn_tracing_output;
+            },
+        ];
+    }
 
     proc_macro::TokenStream::from(quote! {
         #function
