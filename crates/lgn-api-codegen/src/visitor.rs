@@ -147,19 +147,13 @@ impl Visitor {
                             request_body.content.iter().next().unwrap();
 
                         let type_ = match &media_type_data.schema {
-                            Some(schema_ref) => match schema_ref {
-                                openapiv3::ReferenceOr::Item(schema) => {
-                                    let name =
-                                        format!("{}_body", operation_name).to_case(Case::Pascal);
-                                    self.resolve_type(
-                                        &name.as_str().into(),
-                                        &request_body.as_element_ref(schema),
-                                    )?
-                                }
-                                openapiv3::ReferenceOr::Reference { reference } => {
-                                    reference.parse().map(OpenApiRef::into_named_type)?
-                                }
-                            },
+                            Some(schema_ref) => {
+                                let name = format!("{}_body", operation_name).to_case(Case::Pascal);
+                                self.resolve_type_ref(
+                                    &name.as_str().into(),
+                                    &request_body.as_element_ref(schema_ref),
+                                )?
+                            }
                             None => return Err(Error::Invalid(format!("schema: {}", path))),
                         };
 
@@ -196,19 +190,13 @@ impl Visitor {
                     let (media_type, media_type_data) = response.content.iter().next().unwrap();
 
                     let type_ = match &media_type_data.schema {
-                        Some(schema_ref) => Some(match schema_ref {
-                            openapiv3::ReferenceOr::Item(schema) => {
-                                let name =
-                                    format!("{}_response", operation_name).to_case(Case::Pascal);
+                        Some(schema_ref) => Some({
+                            let name = format!("{}_response", operation_name).to_case(Case::Pascal);
 
-                                self.resolve_type(
-                                    &name.as_str().into(),
-                                    &response.as_element_ref(schema),
-                                )?
-                            }
-                            openapiv3::ReferenceOr::Reference { reference } => {
-                                reference.parse().map(OpenApiRef::into_named_type)?
-                            }
+                            self.resolve_type_ref(
+                                &name.as_str().into(),
+                                &response.as_element_ref(schema_ref),
+                            )?
                         }),
                         None => None,
                     };
@@ -469,7 +457,11 @@ impl Visitor {
                 self.resolve_type(path, &array_type.as_element_ref(inner_schema))
             }
             openapiv3::ReferenceOr::Reference { reference } => {
-                reference.parse().map(OpenApiRef::into_named_type)
+                let ref_: OpenApiRef = reference.parse()?;
+
+                let name = ref_.type_name();
+                let schema = array_type.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
+                self.register_model_from_schema(name, &schema)
             }
         }?;
 
@@ -531,7 +523,12 @@ impl Visitor {
                     self.resolve_type(&path, &object_type.as_element_ref(inner_schema))
                 }
                 openapiv3::ReferenceOr::Reference { reference } => {
-                    reference.parse().map(OpenApiRef::into_named_type)
+                    let ref_: OpenApiRef = reference.parse()?;
+
+                    let name = ref_.type_name();
+                    let schema =
+                        object_type.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
+                    self.register_model_from_schema(name, &schema)
                 }
             }?;
             let property = Field {
@@ -575,15 +572,9 @@ impl Visitor {
             openapiv3::ReferenceOr::Reference { reference } => {
                 let ref_: OpenApiRef = reference.parse()?;
 
-                // If we have a reference location, we need to make sure that we
-                // resolve the schema and register the associated model.
-                if ref_.ref_location().is_some() {
-                    let name = ref_.type_name();
-                    let schema = schema.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
-                    self.register_model_from_schema(name, &schema)
-                } else {
-                    Ok(ref_.into_named_type())
-                }
+                let name = ref_.type_name();
+                let schema = schema.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
+                self.register_model_from_schema(name, &schema)
             }
         }
     }
