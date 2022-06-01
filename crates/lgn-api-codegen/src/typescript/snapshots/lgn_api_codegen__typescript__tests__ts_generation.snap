@@ -441,7 +441,7 @@ export class Client implements Api {
         
 
     
-            export type TestOneOfResponseModel = (| { type: "option1", value: PetModel }| { type: "option2", value: CarModel });
+            export type TestOneOf200ResponseModel = (| { type: "option1", value: PetModel }| { type: "option2", value: CarModel });
         
 
 
@@ -507,7 +507,7 @@ export class Client implements Api {
     
         
         
-        export type TestOneOfResponse = (| { /** Ok. */ type: "200", value: TestOneOfResponseModel });
+        export type TestOneOfResponse = (| { /** Ok. */ type: "200", value: TestOneOf200ResponseModel });
 
         export const TestOneOfResponse = {
             async fromResponse(response: Response): Promise<TestOneOfResponse> {

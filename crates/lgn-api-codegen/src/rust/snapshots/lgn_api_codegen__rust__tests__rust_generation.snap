@@ -741,7 +741,7 @@ pub mod models {
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub enum TestOneOfResponse {
+    pub enum TestOneOf200Response {
         #[serde(rename = "option1")]
         Option1(super::models::Pet),
         #[serde(rename = "option2")]
@@ -878,7 +878,7 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum TestOneOfResponse {
         /// Ok.
-        Status200(super::models::TestOneOfResponse),
+        Status200(super::models::TestOneOf200Response),
     }
 
     impl TestOneOfResponse {
