@@ -13,6 +13,12 @@ use lgn_online::codegen::Context;
 
 #[async_trait::async_trait]
 pub trait Api {
+    async fn test_headers(
+        &self,
+        context: &mut Context,
+        request: requests::TestHeadersRequest,
+    ) -> Result<responses::TestHeadersResponse>;
+
     async fn test_one_of(&self, context: &mut Context) -> Result<responses::TestOneOfResponse>;
 
     async fn get_cars(
@@ -132,6 +138,41 @@ pub mod client {
     where
         C: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
     {
+        async fn test_headers(
+            &self,
+            context: &mut Context,
+            request: requests::TestHeadersRequest,
+        ) -> Result<responses::TestHeadersResponse> {
+            let mut uri = format!("{}/test-headers", self.base_uri);
+
+            let mut req = Request::builder()
+                .method(Method::GET)
+                .uri(uri)
+                .body(Body::empty())
+                .unwrap();
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
+            if let Some(x_static_header) = request.x_static_header {
+                req.headers_mut().insert(
+                    "x-static-header",
+                    HeaderValue::from_str(&x_static_header)
+                        .map_err(|err| Error::InvalidHeader(format!("x-static-header: {}", err)))?,
+                );
+            }
+            let resp = self.inner.request(req).await?;
+
+            let (parts, body) = resp.into_parts();
+            let resp = responses::TestHeadersResponse::from_response(&parts, body).await;
+            context.set_response(parts);
+            resp
+        }
+
         async fn test_one_of(&self, context: &mut Context) -> Result<responses::TestOneOfResponse> {
             let mut uri = format!("{}/test-one-of", self.base_uri);
 
@@ -151,10 +192,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::TestOneOfResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::TestOneOfResponse::from_response(status, body).await
+            resp
         }
 
         async fn get_cars(
@@ -192,10 +232,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::GetCarsResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::GetCarsResponse::from_response(status, body).await
+            resp
         }
 
         async fn create_car(
@@ -236,10 +275,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::CreateCarResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::CreateCarResponse::from_response(status, body).await
+            resp
         }
 
         async fn get_car(
@@ -270,10 +308,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::GetCarResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::GetCarResponse::from_response(status, body).await
+            resp
         }
 
         async fn delete_car(
@@ -304,10 +341,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::DeleteCarResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::DeleteCarResponse::from_response(status, body).await
+            resp
         }
 
         async fn test_binary(
@@ -342,10 +378,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::TestBinaryResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::TestBinaryResponse::from_response(status, body).await
+            resp
         }
     }
 }
@@ -377,6 +412,7 @@ pub mod server {
         T: super::Api + Clone + Send + Sync + 'static,
     {
         router
+            .route("/test-headers", routing::get(test_headers::<T>))
             .route("/test-one-of", routing::get(test_one_of::<T>))
             .route(
                 "/v1/spaces/:space-id/car-service/cars",
@@ -391,6 +427,51 @@ pub mod server {
                 routing::post(test_binary::<T>),
             )
             .layer(Extension(api))
+    }
+
+    async fn test_headers<T>(
+        Extension(api): Extension<T>,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
+        parts: Parts,
+    ) -> Response
+    where
+        T: super::Api + Send + Sync + 'static,
+    {
+        let x_static_header = parts
+            .headers
+            .get(HeaderName::from_static("x-static-header"));
+        let x_static_header = x_static_header.map(|x_static_header| {
+            x_static_header
+                .to_str()
+                .map_err(|err| {
+                    error!("Failed to read `x-static-header` header: {}", err);
+                    Error::InvalidHeader("x-static-header".to_owned()).into_response()
+                })
+                .unwrap()
+                .to_owned()
+        });
+
+        let mut context = Context::default();
+        context.set_request_addr(addr);
+        context.set_request(parts);
+
+        let request = requests::TestHeadersRequest { x_static_header };
+
+        let resp = api.test_headers(&mut context, request).await;
+        let mut resp = match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
+        }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
     }
 
     async fn test_one_of<T>(
@@ -688,6 +769,11 @@ pub mod requests {
     use lgn_online::codegen::Bytes;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct TestHeadersRequest {
+        pub x_static_header: Option<String>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct GetCarsRequest {
         pub space_id: String,
         pub names: Option<Vec<String>>,
@@ -728,7 +814,66 @@ pub mod responses {
         response::{IntoResponse, Response},
         Json,
     };
+    use http::HeaderMap;
+    use http::HeaderValue;
     use lgn_online::codegen::Bytes;
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum TestHeadersResponse {
+        /// Ok.
+        Status200 {
+            x_static_header: String,
+            body: super::models::Pet,
+        },
+    }
+
+    impl TestHeadersResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                TestHeadersResponse::Status200 {
+                    x_static_header,
+                    body,
+                } => {
+                    let body = Json(body);
+                    let mut resp = (StatusCode::from_u16(200).unwrap(), body).into_response();
+                    match HeaderValue::from_str(&x_static_header) {
+                        Ok(value) => resp.headers_mut().insert("x-static-header", value),
+                        Err(err) => {
+                            return Error::InvalidHeader(format!("x-static-header: {}", err))
+                                .into_response();
+                        }
+                    };
+                    resp
+                }
+            }
+        }
+
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
+                200 => {
+                    let x_static_header = parts
+                        .headers
+                        .get("x-static-header")
+                        .ok_or_else(|| Error::MissingHeader("x-static-header".to_owned()))?
+                        .to_str()
+                        .map_err(|e| Error::InvalidHeader(format!("x-static-header: {}", e)))?;
+                    let bytes = hyper::body::to_bytes(body).await?;
+                    let body = serde_json::from_slice(&bytes)?;
+                    Ok(Self::Status200 {
+                        x_static_header: x_static_header.to_string(),
+                        body,
+                    })
+                }
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum TestOneOfResponse {
@@ -746,12 +891,14 @@ pub mod responses {
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
                     let body = serde_json::from_slice(&bytes)?;
-
                     Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
@@ -778,12 +925,14 @@ pub mod responses {
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
                     let body = serde_json::from_slice(&bytes)?;
-
                     Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
@@ -807,8 +956,11 @@ pub mod responses {
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 201 => Ok(Self::Status201),
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",
@@ -837,12 +989,14 @@ pub mod responses {
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
                     let body = serde_json::from_slice(&bytes)?;
-
                     Ok(Self::Status200(body))
                 }
 
@@ -871,8 +1025,11 @@ pub mod responses {
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => Ok(Self::Status200),
 
                 404 => Ok(Self::Status404),
@@ -900,12 +1057,14 @@ pub mod responses {
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
                     let body = bytes.into();
-
                     Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
