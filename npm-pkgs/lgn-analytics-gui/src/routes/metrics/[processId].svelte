@@ -18,6 +18,7 @@
     getMetricNames,
     getMetricStore,
     getRecentlyUsedMetricsStore,
+    getSelectedMetricStore,
   } from "@/components/Metric/Lib/MetricStore";
   import { MetricStreamer } from "@/components/Metric/Lib/MetricStreamer";
   import MetricDebugDisplay from "@/components/Metric/MetricDebugDisplay.svelte";
@@ -41,6 +42,8 @@
 
   const metricStore = getMetricStore(lastUsedMetricsStore, metricConfigStore);
 
+  const selectedMetricStore = getSelectedMetricStore(metricStore);
+
   const recentlyUsedMetricsStore = getRecentlyUsedMetricsStore(
     metricStore,
     metricConfigStore
@@ -49,6 +52,8 @@
   const metricNames = getMetricNames();
 
   setContext("metrics-store", metricStore);
+
+  setContext("selected-metrics-store", selectedMetricStore);
 
   setContext("metrics-config-store", metricConfigStore);
 
@@ -107,7 +112,7 @@
   $: if (!loading) {
     if (transform) {
       updateLod();
-      updatePoints($metricStore);
+      updatePoints($selectedMetricStore);
       updateChart();
       tick();
     }
@@ -127,7 +132,7 @@
 
     createChart();
     updateLod();
-    updatePoints($metricStore);
+    updatePoints($selectedMetricStore);
     updateChart();
     tick();
 
@@ -168,7 +173,7 @@
     totalMinMs = currentMinMs = metricStreamer.currentMinMs;
     totalMaxMs = currentMaxMs = metricStreamer.currentMaxMs;
 
-    pointSubscription = metricStore.subscribe((metricStates) => {
+    pointSubscription = selectedMetricStore.subscribe((metricStates) => {
       updateInternal(metricStates);
     });
   }
@@ -365,8 +370,9 @@
     }
 
     const scaleX = transform.rescaleX(x);
-    for (const metric of points) {
-      const color = (context.strokeStyle = getMetricColor(metric.name));
+    for (const index in points) {
+      const metric = points[index];
+      const color = (context.strokeStyle = getMetricColor(+index));
       const scaleY = axisCollection.getAxisScale(metric.unit, [height, 0]);
       var line = getLine(scaleX, scaleY);
       context.beginPath();
@@ -445,7 +451,7 @@
           </div>
         {/if}
         <div>
-          <MetricLegendGroup {metricStore} />
+          <MetricLegendGroup />
         </div>
         <div>
           <TimeRangeDetails timeRange={[brushStart, brushEnd]} {processId} />
