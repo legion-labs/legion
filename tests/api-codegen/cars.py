@@ -1,78 +1,252 @@
+# ---------- Models ----------
+from enum import Enum
+
+from json import JSONEncoder
+
+# TODO(kdaibov): starting with Python 3.11 we could use StrEnum
+# in that case we could remove the ModelEncoder
+class ModelEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Enum):
+            return o.value
+        else:
+            return o.__dict__
+
+
+# The car color.
+class CarColor(Enum):
+    RED = "red"
+    BLUE = "blue"
+    YELLOW = "yellow"
+
+# TODO(kdaibov): OneOf is not tested
+
+
+
+class Car:
+    def __init__(
+        self,
+        id : int, 
+        name : str, 
+        color : CarColor, # The car color.
+        is_new : bool, 
+        extra : bytearray, 
+    ):
+        self.id = id
+        self.name = name
+        self.color = color
+        self.is_new = is_new
+        self.extra = extra
+
+    def to_json(self):
+        return ModelEncoder().encode(self)
+   
+
+
+
+class Pet:
+    def __init__(
+        self,
+        name : str, 
+    ):
+        self.name = name
+
+    def to_json(self):
+        return ModelEncoder().encode(self)
+   
+
+
+
+class TestOneOfResponse:
+    def __init__(self, value):
+        self.value = value 
+        self.type = None
+    
+        if isinstance(value, Pet):
+            self.type = "Pet"
+    
+        if isinstance(value, Car):
+            self.type = "Car"
+    
+                
+
+
+
+# ---------- Requests -------
+
+
+
+class GetCarsRequest:
+    def __init__(
+        self,
+        space_id: str,
+        names: list[str] = None,
+        q: str = None,
+    ):
+        self.space_id = space_id
+        
+        if names:
+            self.names = names
+        if q:
+            self.q = q
+        pass
+
+
+class CreateCarRequest:
+    def __init__(
+        self,
+        space_id: str,
+        span_id: str = None,
+        body: Car = None,
+    ):
+        self.space_id = space_id
+        
+        if span_id:
+            self.span_id = span_id
+        self.body = body
+        
+        pass
+
+
+
+
+class GetCarRequest:
+    def __init__(
+        self,
+        space_id: str,
+        car_id: int,
+    ):
+        self.space_id = space_id
+        
+        self.car_id = car_id
+        
+        pass
+
+
+class DeleteCarRequest:
+    def __init__(
+        self,
+        space_id: str,
+        car_id: int,
+    ):
+        self.space_id = space_id
+        
+        self.car_id = car_id
+        
+        pass
+
+
+
+
+class TestBinaryRequest:
+    def __init__(
+        self,
+        space_id: str,
+        body: bytearray = None,
+    ):
+        self.space_id = space_id
+        
+        self.body = body
+        
+        pass
+
+
+
+
+class TestOneOfRequest:
+    def __init__(
+        self,
+    ):
+        pass
+
+
+
 # ---------- Responses -------
-from enum import Enum, auto
-class GetCarsResponse(Enum):
-    status_200 = 200 # list[Car] # List of cars.
+
+class GetCarsResponse:
+    # status_200 = 200 # list[Car] # List of cars.
     
     def __init__(self, response):
-        print(response)
+        print("response: {}".format(response))
+        print("response.text: {}".format(response.text))
         match response.status_code:
             case 200:
                 self.json = response.json()
                 pass
             case _:
-                raise Exception("unexpected status code: {}".format(response.status))
+                raise Exception("unexpected status code: {}".format(response.status_code))
      
 
-class CreateCarResponse(Enum):
-    status_201 = 201 # Created.
+class CreateCarResponse:
+    # status_201 = 201 # Created.
     
     def __init__(self, response):
+        print("response: {}".format(response))
+        print("response.text: {}".format(response.text))
         match response.status_code:
             case 201:pass
             case _:
-                raise Exception("unexpected status code: {}".format(response.status))
+                raise Exception("unexpected status code: {}".format(response.status_code))
      
 
 
-class GetCarResponse(Enum):
-    status_200 = 200 # Car # A car.
-    status_404 = 404 # Car not found.
+class GetCarResponse:
+    # status_200 = 200 # Car # A car.
+    # status_404 = 404 # Car not found.
     
     def __init__(self, response):
+        print("response: {}".format(response))
+        print("response.text: {}".format(response.text))
         match response.status_code:
             case 200:
                 self.json = response.json()
                 pass
             case 404:pass
             case _:
-                raise Exception("unexpected status code: {}".format(response.status))
+                raise Exception("unexpected status code: {}".format(response.status_code))
      
 
-class DeleteCarResponse(Enum):
-    status_200 = 200 # Car deleted.
-    status_404 = 404 # Car not found.
+class DeleteCarResponse:
+    # status_200 = 200 # Car deleted.
+    # status_404 = 404 # Car not found.
     
     def __init__(self, response):
+        print("response: {}".format(response))
+        print("response.text: {}".format(response.text))
         match response.status_code:
             case 200:pass
             case 404:pass
             case _:
-                raise Exception("unexpected status code: {}".format(response.status))
+                raise Exception("unexpected status code: {}".format(response.status_code))
      
 
 
-class TestBinaryResponse(Enum):
-    status_200 = 200 # bytearray # Ok.
+class TestBinaryResponse:
+    # status_200 = 200 # bytearray # Ok.
     
     def __init__(self, response):
+        print("response: {}".format(response))
+        print("response.text: {}".format(response.text))
         match response.status_code:
             case 200:
                 self.bytes = response.contentpass
             case _:
-                raise Exception("unexpected status code: {}".format(response.status))
+                raise Exception("unexpected status code: {}".format(response.status_code))
      
 
 
-class TestOneOfResponse(Enum):
-    status_200 = 200 # TestOneOfResponse # Ok.
+class TestOneOfResponse:
+    # status_200 = 200 # TestOneOfResponse # Ok.
     
     def __init__(self, response):
+        print("response: {}".format(response))
+        print("response.text: {}".format(response.text))
         match response.status_code:
             case 200:
                 self.json = response.json()
                 pass
             case _:
-                raise Exception("unexpected status code: {}".format(response.status))
+                raise Exception("unexpected status code: {}".format(response.status_code))
      
 
 
@@ -85,21 +259,14 @@ class Api(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_cars(
         self,
-        space_id : str,
-        names : list[str],
-        q : str,
-        body,
-        extra,
+        request: GetCarsRequest,
     ) -> GetCarsResponse:
         raise NotImplementedError
     
     @abc.abstractmethod
     def create_car(
         self,
-        space_id : str,
-        span_id : str,
-        body,
-        extra,
+        request: CreateCarRequest,
     ) -> CreateCarResponse:
         raise NotImplementedError
     
@@ -107,20 +274,14 @@ class Api(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_car(
         self,
-        space_id : str,
-        car_id : int,
-        body,
-        extra,
+        request: GetCarRequest,
     ) -> GetCarResponse:
         raise NotImplementedError
     
     @abc.abstractmethod
     def delete_car(
         self,
-        space_id : str,
-        car_id : int,
-        body,
-        extra,
+        request: DeleteCarRequest,
     ) -> DeleteCarResponse:
         raise NotImplementedError
     
@@ -128,9 +289,7 @@ class Api(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def test_binary(
         self,
-        space_id : str,
-        body,
-        extra,
+        request: TestBinaryRequest,
     ) -> TestBinaryResponse:
         raise NotImplementedError
     
@@ -138,8 +297,7 @@ class Api(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def test_one_of(
         self,
-        body,
-        extra,
+        request: TestOneOfRequest,
     ) -> TestOneOfResponse:
         raise NotImplementedError
     
@@ -177,134 +335,146 @@ class Client(Api):
     
     def get_cars(
         self,
-        space_id : str,
-        names : list[str],
-        q : str,
-        body,
-        extra,
+        request: GetCarsRequest,
     ) -> GetCarsResponse:
         uri = "{}/v1/spaces/{}/car-service/cars".format(
             self.uri,
-            space_id,
+            request.space_id,
         )
         params = {
-            "names" : names,
-            "q" : q,
+            "names" : request.names,
+            "q" : request.q,
         }
-        # Initalizing for consistency but not used
-        _params = GetCarsQuery(
-            names,
-            q,
-        )
+        # Initializing for consistency but not used
+        #_params = GetCarsQuery( 
+        #
+        #    names,
+        #
+        #    q,
+        #
+        #)
+
+        print("uri: {}".format(uri))
+        print("params: {}".format(params))
 
         resp = requests.get(
             uri,
             params = params,
         )
-        print(resp.status_code)
-        print('label 0')
+
+
         return GetCarsResponse(resp)
     def create_car(
         self,
-        space_id : str,
-        span_id : str,
-        body,
-        extra,
+        request: CreateCarRequest,
     ) -> CreateCarResponse:
         uri = "{}/v1/spaces/{}/car-service/cars".format(
             self.uri,
-            space_id,
+            request.space_id,
         )
         headers = {
             "Content-type": "application/json",
         }
         
-        if span_id != None:
-            headers["span-id"] = "span_id"
+        
+        if request.span_id != None:
+            headers["span-id"] = request.span_id
+
+        print("uri: {}".format(uri))
+        print("headers: {}".format(headers))
+        print("body: {}".format(request.body.to_json()))
 
         resp = requests.post(
             uri,
-            headers = headers
+            headers = headers,
+            json = request.body.to_json(),
         )
+
 
         return CreateCarResponse(resp)
     
     
     def get_car(
         self,
-        space_id : str,
-        car_id : int,
-        body,
-        extra,
+        request: GetCarRequest,
     ) -> GetCarResponse:
         uri = "{}/v1/spaces/{}/car-service/cars/{}".format(
             self.uri,
-            space_id,
-            car_id,
+            request.space_id,
+            request.car_id,
         )
+
+        print("uri: {}".format(uri))
 
         resp = requests.get(
             uri,
         )
 
+
         return GetCarResponse(resp)
     def delete_car(
         self,
-        space_id : str,
-        car_id : int,
-        body,
-        extra,
+        request: DeleteCarRequest,
     ) -> DeleteCarResponse:
         uri = "{}/v1/spaces/{}/car-service/cars/{}".format(
             self.uri,
-            space_id,
-            car_id,
+            request.space_id,
+            request.car_id,
         )
+
+        print("uri: {}".format(uri))
 
         resp = requests.delete(
             uri,
         )
+
 
         return DeleteCarResponse(resp)
     
     
     def test_binary(
         self,
-        space_id : str,
-        body,
-        extra,
+        request: TestBinaryRequest,
     ) -> TestBinaryResponse:
         uri = "{}/v1/spaces/{}/car-service/test-binary".format(
             self.uri,
-            space_id,
+            request.space_id,
         )
         headers = {
             "Content-type": "application/octet-stream",
         }
         
+        
+
+        print("uri: {}".format(uri))
+        print("headers: {}".format(headers))
+        print("body: {}".format(request.body.to_json()))
 
         resp = requests.post(
             uri,
-            headers = headers
+            headers = headers,
+            json = request.body.to_json(),
         )
+
 
         return TestBinaryResponse(resp)
     
     
     def test_one_of(
         self,
-        body,
-        extra,
+        request: TestOneOfRequest,
     ) -> TestOneOfResponse:
         uri = "{}/test-one-of".format(
             self.uri,
         )
 
+        print("uri: {}".format(uri))
+
         resp = requests.get(
             uri,
         )
 
+
         return TestOneOfResponse(resp)
     
     
-

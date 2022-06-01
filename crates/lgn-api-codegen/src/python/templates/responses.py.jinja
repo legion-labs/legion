@@ -1,21 +1,21 @@
-from enum import Enum, auto
-
 {%- for (path, routes) in api.paths %}
 {%- for route in routes %}
 {%- let enum_name = "{}Response"|format(route.name|pascal_case) %}
-class {{ enum_name }}(Enum):
+class {{ enum_name }}:
     {%- for (status_code, response) in route.responses %}
     {%- let status_name = "status_{}"|format(status_code) %}
     {%- if let Some(content) = response.content %}
-    {{ status_name }} = {{ status_code.as_u16() }} # {{ content.type_|fmt_type }}
+    # {{ status_name }} = {{ status_code.as_u16() }} # {{ content.type_|fmt_type }}
     {%- else %}
-    {{ status_name }} = {{ status_code.as_u16() }}
+    # {{ status_name }} = {{ status_code.as_u16() }}
     {%- endif %} # {{ response.description }}
     {%- endfor %}
     
     def __init__(self, response):
+        print("response: {}".format(response))
+        print("response.text: {}".format(response.text))
     {%- if route.responses.is_empty() %}
-        raise Exception("unexpected status code: {}".format(response.status))
+        raise Exception("Unimplemented response. Status: {}".format(response.status_code))
     {%- else %}
         match response.status_code:
             {%- for (status_code, response) in route.responses %}
@@ -31,7 +31,7 @@ class {{ enum_name }}(Enum):
                 pass
             {%- endfor %}
             case _:
-                raise Exception("unexpected status code: {}".format(response.status))
+                raise Exception("unexpected status code: {}".format(response.status_code))
     {% endif %} 
 {% endfor %}
 {% endfor %}

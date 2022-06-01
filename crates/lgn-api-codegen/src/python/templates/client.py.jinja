@@ -11,7 +11,7 @@ class Client(Api):
         uri = "{}{{ path|fmt_py_path }}".format(
             self.uri,
             {%- for parameter in route.parameters.path %}
-            {{ parameter.name|snake_case }},
+            request.{{ parameter.name|snake_case }},
             {%- endfor %}
         )
 
@@ -19,32 +19,42 @@ class Client(Api):
         headers = {
             "Content-type": "{{ request_body.content.media_type }}",
         }
+        
         {% endif %}
         
         {%- if !route.parameters.query.is_empty() %}
         params = {
             {%- for parameter in route.parameters.query %}
-            "{{ parameter.name|snake_case }}" : {{ parameter.name|snake_case }},
+            "{{ parameter.name|snake_case }}" : request.{{ parameter.name|snake_case }},
             {%- endfor %}
         }
         # Initializing for consistency but not used
-        _params = {{ route.name|pascal_case }}Query( 
-            {%- for parameter in route.parameters.query %}
-            {{ parameter.name|snake_case }},
-            {%- endfor %}
-        )
+        #_params = {{ route.name|pascal_case }}Query( 
+        #    {%- for parameter in route.parameters.query %}
+        #    {{ parameter.name|snake_case }},
+        #    {%- endfor %}
+        #)
         {%- endif -%}
 
         {%- if !route.parameters.header.is_empty() %}
         {%- for parameter in route.parameters.header %}
         {%- let param_name = "{}"|format(parameter.name|snake_case) %}
         {%- if parameter.required %}
-        headers["{{ parameter.name }}"] = "{{ param_name }}"
+        headers["{{ parameter.name }}"] = request.{{ param_name }}
         {% else %}
-        if {{ param_name }} != None:
-            headers["{{ parameter.name }}"] = "{{ param_name }}"
+        if request.{{ param_name }} != None:
+            headers["{{ parameter.name }}"] = request.{{ param_name }}
         {%- endif %}                
         {%- endfor %}
+        {%- endif %}
+
+        print("uri: {}".format(uri))
+        {%- if !route.parameters.query.is_empty() %}
+        print("params: {}".format(params))
+        {%- endif %}
+        {%- if let Some(request_body) = route.request_body %}
+        print("headers: {}".format(headers))
+        print("body: {}".format(request.body.to_json()))
         {%- endif %}
 
         resp = requests.{{ route.method|lowercase }}(
@@ -53,9 +63,11 @@ class Client(Api):
             params = params,
             {%- endif %}
             {%- if let Some(request_body) = route.request_body %}
-            headers = headers
+            headers = headers,
+            json = request.body.to_json(),
             {%- endif %}
         )
+
 
         return {{ enum_name }}(resp)
     {% endfor %}
