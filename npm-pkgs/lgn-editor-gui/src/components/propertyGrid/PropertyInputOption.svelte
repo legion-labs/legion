@@ -56,19 +56,19 @@
 </script>
 
 {#if property.subProperties[0]}
-  <div class="option-property">
-    <PropertyInput
-      on:input={(event) => dispatch("input", event.detail)}
-      property={property.subProperties[0]}
-      parentProperty={property}
-      {pathParts}
-      {index}
-    />
-    <PropertyActionButton
-      icon="ic:baseline-subdirectory-arrow-left"
-      on:click={(_) => setOptionProperty(false)}
-    />
-  </div>
+  <!-- <div class="option-property"> -->
+  <PropertyInput
+    on:input={(event) => dispatch("input", event.detail)}
+    property={property.subProperties[0]}
+    parentProperty={property}
+    {pathParts}
+    {index}
+  />
+  <PropertyActionButton
+    icon="ic:baseline-subdirectory-arrow-left"
+    on:click={(_) => setOptionProperty(false)}
+  />
+  <!-- </div> -->
 {:else}
   <PropertyActionButton
     icon="ic:baseline-add-circle-outline"
@@ -76,8 +76,12 @@
   />
 {/if}
 
-<style lang="postcss">
+<!-- <style lang="postcss">
   .option-property {
-    @apply flex flex-row justify-between gap-x-1;
+    @apply w-full;
   }
-</style>
+
+  .option-property-body {
+    @apply flex justify-end gap-x-1;
+  }
+</style> -->

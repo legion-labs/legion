@@ -80,23 +80,21 @@
       </div>
     {/if}
     <div class="property-input-container">
-      <div class="property-input">
-        <PropertyInput
-          on:input
-          on:removeVectorSubProperty
-          pathParts={property.name ? [...pathParts, property.name] : pathParts}
-          {property}
-          {index}
-          bind:parentProperty
-        />
-      </div>
+      <PropertyInput
+        on:input
+        on:removeVectorSubProperty
+        pathParts={property.name ? [...pathParts, property.name] : pathParts}
+        {property}
+        {index}
+        bind:parentProperty
+      />
     </div>
   </div>
 {/if}
 
 <style lang="postcss">
   .property-unit-root {
-    @apply flex flex-row justify-between items-center h-9 pr-2;
+    @apply flex flex-row justify-between items-center h-9 pr-2 gap-x-2;
   }
 
   .property-name {
@@ -104,10 +102,6 @@
   }
 
   .property-input-container {
-    @apply flex w-[10rem] flex-shrink-0 flex-grow-[0.5];
-  }
-
-  .property-input {
-    @apply flex w-full justify-end;
+    @apply flex-grow-[1];
   }
 </style>
