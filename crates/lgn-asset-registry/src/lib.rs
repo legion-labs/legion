@@ -113,20 +113,20 @@ impl AssetRegistryPlugin {
     // Request load for all assets specified in config.
     #[allow(clippy::needless_pass_by_value)]
     fn preload_assets(
-        config: ResMut<'_, AssetRegistrySettings>,
-        tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
+        _config: ResMut<'_, AssetRegistrySettings>,
+        _tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         //mut _asset_loading_states: ResMut<'_, AssetLoadingStates>,
-        asset_registry: Res<'_, Arc<AssetRegistry>>,
+        _asset_registry: Res<'_, Arc<AssetRegistry>>,
         mut commands: Commands<'_, '_>,
     ) {
-        for resource_id in config.assets_to_load.iter().copied() {
+        /*for resource_id in config.assets_to_load.iter().copied() {
             let asset_registry = asset_registry.clone();
             tokio_runtime.start_detached(async move {
                 if let Err(err) = asset_registry.load_async_untyped(resource_id).await {
                     lgn_tracing::error!("Load failed: {}", err);
                 }
             });
-        }
+        }*/
 
         /*for asset_id in &config.assets_to_load {
             asset_loading_states.insert(asset_id, LoadingState::Pending);

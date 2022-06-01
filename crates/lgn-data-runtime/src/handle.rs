@@ -3,7 +3,7 @@ use std::{
     fmt::{Debug, Formatter},
     marker::PhantomData,
     ops::{Deref, DerefMut},
-    sync::Arc,
+    sync::{Arc, RwLock, RwLockReadGuard},
 };
 
 slotmap::new_key_type! {
@@ -11,19 +11,40 @@ slotmap::new_key_type! {
     pub struct AssetRegistryHandleKey;
 }
 
+pub(crate) struct HandleEntry {
+    pub(crate) id: ResourceTypeAndId,
+    pub(crate) asset: RwLock<Box<dyn Resource>>,
+    registry: std::sync::Weak<AssetRegistry>,
+}
+
+impl HandleEntry {
+    pub(crate) fn new(
+        id: ResourceTypeAndId,
+        asset: Box<dyn Resource>,
+        registry: std::sync::Weak<AssetRegistry>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            id,
+            asset: RwLock::new(asset),
+            registry,
+        })
+    }
+}
+
 /// Type-less version of [`Handle`].
 pub struct HandleUntyped {
     key: AssetRegistryHandleKey,
-    id: Arc<ResourceTypeAndId>,
-    registry: Arc<AssetRegistry>,
+    entry: Arc<HandleEntry>,
 }
 
 impl Drop for HandleUntyped {
     fn drop(&mut self) {
         // If the refcount is 2, this handle is the last
         // Notify asset_registry of potential cleanup.
-        if Arc::strong_count(&self.id) == 2 {
-            self.registry.mark_for_cleanup(self.key);
+        if Arc::strong_count(&self.entry) == 2 {
+            if let Some(registry) = self.entry.registry.upgrade() {
+                registry.mark_for_cleanup(self.key);
+            }
         }
     }
 }
@@ -32,36 +53,46 @@ impl Clone for HandleUntyped {
     fn clone(&self) -> Self {
         Self {
             key: self.key,
-            id: self.id.clone(),
-            registry: self.registry.clone(),
+            entry: self.entry.clone(),
         }
     }
 }
 
 impl Debug for HandleUntyped {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}{:?}", &self.id, self.key)
+        write!(f, "{:?}{:?}", &self.entry.id, self.key)
     }
 }
 
 impl PartialEq for HandleUntyped {
     fn eq(&self, other: &Self) -> bool {
-        self.key == other.key
+        Arc::ptr_eq(&self.entry, &other.entry)
+    }
+}
+
+/// Return a Guarded Ref to a Asset
+pub struct HandleGuard<'a, T: ?Sized + 'a> {
+    _guard: RwLockReadGuard<'a, Box<dyn Resource>>,
+    ptr: *const T,
+}
+
+impl<'a, T: ?Sized + 'a> std::ops::Deref for HandleGuard<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr }
     }
 }
 
 impl HandleUntyped {
-    pub(crate) fn new_handle(
-        key: AssetRegistryHandleKey,
-        id: Arc<ResourceTypeAndId>,
-        registry: Arc<AssetRegistry>,
-    ) -> Self {
-        Self { key, id, registry }
+    pub(crate) fn new(key: AssetRegistryHandleKey, entry: Arc<HandleEntry>) -> Self {
+        Self { key, entry }
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<T: Resource>(&self) -> Option<crate::AssetRegistryGuard<'_, T>> {
-        self.registry.get::<T>(self.key)
+    pub fn get_untyped(&self) -> Option<crate::HandleGuard<'_, dyn Resource>> {
+        let guard = self.entry.asset.read().unwrap();
+        let ptr = guard.as_ref() as *const dyn Resource;
+        Some(HandleGuard { _guard: guard, ptr })
     }
 
     /// Retrieve the Slotmap key of a Handle
@@ -71,7 +102,7 @@ impl HandleUntyped {
 
     /// Retrieve the `ResourceTypeAndId` of a Handle.
     pub fn id(&self) -> ResourceTypeAndId {
-        *self.id
+        self.entry.id
     }
 }
 
@@ -129,8 +160,12 @@ impl<T: Resource> Debug for Handle<T> {
 
 impl<T: Resource> Handle<T> {
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get(&self) -> Option<crate::AssetRegistryGuard<'_, T>> {
-        self.handle.registry.get(self.handle.key)
+    pub fn get(&self) -> Option<crate::HandleGuard<'_, T>> {
+        let guard = self.handle.entry.asset.read().unwrap();
+        if let Some(ptr) = guard.as_ref().downcast_ref::<T>().map(|c| c as *const T) {
+            return Some(HandleGuard { _guard: guard, ptr });
+        }
+        None
     }
 
     pub(crate) fn key(&self) -> AssetRegistryHandleKey {

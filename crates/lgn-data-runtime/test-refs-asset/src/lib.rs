@@ -203,13 +203,15 @@ mod tests {
         let (parent_id, child_id, reg) = setup_dependency_test().await;
 
         let parent = reg.load_async::<RefsAsset>(parent_id).await.expect("");
-        let child = reg.lookup_untyped(&child_id).expect("be loaded indirectly");
+        let child = reg
+            .lookup::<RefsAsset>(&child_id)
+            .expect("be loaded indirectly");
         std::mem::drop(parent);
         reg.update();
 
         assert!(reg.lookup_untyped(&parent_id).is_none());
         assert!(
-            child.get::<RefsAsset>().is_some(),
+            child.get().is_some(),
             "The dependency should be kept alive because of the handle"
         );
         std::mem::drop(child);

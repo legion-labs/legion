@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     path::Path,
     pin::Pin,
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak},
 };
 
 use futures::{future::Shared, Future, FutureExt};
@@ -14,8 +14,8 @@ use slotmap::SlotMap;
 
 use crate::{
     asset_loader::AssetLoaderIO, manifest::Manifest, vfs, AssetRegistryHandleKey,
-    ComponentInstaller, EditHandle, EditHandleUntyped, Handle, HandleUntyped, Resource,
-    ResourceDescriptor, ResourceId, ResourceInstaller, ResourcePathId, ResourceProcessor,
+    ComponentInstaller, EditHandle, EditHandleUntyped, Handle, HandleEntry, HandleUntyped,
+    Resource, ResourceDescriptor, ResourceId, ResourceInstaller, ResourcePathId, ResourceProcessor,
     ResourceType, ResourceTypeAndId,
 };
 
@@ -235,7 +235,7 @@ impl AssetRegistryOptions {
 }
 
 struct Inner {
-    handles: SlotMap<AssetRegistryHandleKey, (Arc<ResourceTypeAndId>, Box<dyn Resource>)>,
+    handles: SlotMap<AssetRegistryHandleKey, Arc<HandleEntry>>,
     index: HashMap<ResourceId, AssetRegistryHandleKey>,
 }
 
@@ -271,10 +271,6 @@ pub enum AssetRegistryScheduling {
     AssetRegistryCreated,
 }
 
-/// Safety: it is safe share references to `AssetRegistry` between threads
-/// and the implementation will panic! if its safety rules are not fulfilled.
-unsafe impl Sync for AssetRegistry {}
-
 /// Async reader type for `AssetRegistry`/`AssetLoader`
 pub type AssetRegistryReader = Pin<Box<dyn tokio::io::AsyncRead + Send>>;
 
@@ -303,8 +299,8 @@ impl AssetRegistry {
     pub fn lookup_untyped(&self, resource_id: &ResourceTypeAndId) -> Option<HandleUntyped> {
         let guard = self.inner.read().unwrap();
         if let Some(key) = guard.index.get(&resource_id.id).copied() {
-            if let Some((id, _asset)) = guard.handles.get(key) {
-                return Some(HandleUntyped::new_handle(key, id.clone(), self.arc_self()));
+            if let Some(entry) = guard.handles.get(key) {
+                return Some(HandleUntyped::new(key, entry.clone()));
             }
         }
         None
@@ -322,17 +318,11 @@ impl AssetRegistry {
         result
     }
 
-    pub(crate) fn get<T: Resource>(
-        &self,
-        key: AssetRegistryHandleKey,
-    ) -> Option<AssetRegistryGuard<'_, T>> {
-        let guard = self.inner.read().unwrap();
-        if let Some((_id, asset)) = guard.handles.get(key) {
-            if let Some(ptr) = asset.as_ref().downcast_ref::<T>().map(|c| c as *const T) {
-                return Some(AssetRegistryGuard { _guard: guard, ptr });
-            }
-        }
-        None
+    fn weak_self(&self) -> Weak<Self> {
+        let registry = unsafe { Arc::from_raw(self as *const Self) };
+        let result = Arc::downgrade(&registry);
+        let _oldself = Arc::into_raw(registry);
+        result
     }
 
     /// Register a new resource at a specific Id. Replace the existing resource with the same id
@@ -343,13 +333,15 @@ impl AssetRegistry {
         id: ResourceTypeAndId,
         new_resource: Box<dyn Resource>,
     ) -> Result<HandleUntyped, AssetRegistryError> {
-        let (key, id) = {
-            let mut guard = self.inner.write().unwrap();
+        let (key, entry) = {
+            let guard = self.inner.read().unwrap();
             let key = if let Some(key) = guard.index.get(&id.id).copied() {
-                if let Some((res_id, old_resource)) = guard.handles.get_mut(key) {
+                if let Some(entry) = guard.handles.get(key) {
+                    let mut asset = entry.asset.write().unwrap();
+                    let asset: &mut Box<dyn Resource> = &mut asset;
+                    let _old = std::mem::replace::<Box<dyn Resource>>(asset, new_resource);
                     debug!("Replacing {:?} ({:?})", id, key);
-                    *old_resource = new_resource;
-                    (key, res_id.clone())
+                    (key, entry.clone())
                 } else {
                     error!(
                         "AssetRegistry index out of sync, cannot find entry for {}",
@@ -358,15 +350,17 @@ impl AssetRegistry {
                     return Err(AssetRegistryError::ResourceNotFound(id));
                 }
             } else {
-                let id = Arc::new(id);
-                let new_key = guard.handles.insert((id.clone(), new_resource));
-                guard.index.insert(id.id, new_key);
-                debug!("Registering {:?} ({:?})", id, new_key);
-                (new_key, id)
+                drop(guard);
+                let mut guard = self.inner.write().unwrap();
+                let entry = HandleEntry::new(id, new_resource, self.weak_self());
+                let key = guard.handles.insert(entry.clone());
+                guard.index.insert(id.id, key);
+                debug!("Registering {:?} ({:?})", id, key);
+                (key, entry)
             };
             key
         };
-        Ok(HandleUntyped::new_handle(key, id, self.arc_self()))
+        Ok(HandleUntyped::new(key, entry))
     }
 
     fn new_load_request(&self, id: ResourceTypeAndId) -> SharedLoadFuture {
@@ -391,8 +385,8 @@ impl AssetRegistry {
         {
             let guard = self.inner.read().unwrap();
             if let Some(key) = guard.index.get(&id.id).copied() {
-                if let Some((id, _)) = guard.handles.get(key) {
-                    return Ok(HandleUntyped::new_handle(key, id.clone(), self.arc_self()));
+                if let Some(entry) = guard.handles.get(key) {
+                    return Ok(HandleUntyped::new(key, entry.clone()));
                 }
             }
         }
@@ -432,8 +426,8 @@ impl AssetRegistry {
             .unwrap()
             .handles
             .get(handle.key())
-            .and_then(|(_id, asset)| {
-                if asset.as_ref().is::<T>() {
+            .and_then(|entry| {
+                if let Some(asset) = entry.asset.read().unwrap().downcast_ref::<T>() {
                     let edit = asset.clone_dyn();
                     let raw: *mut dyn Resource = Box::into_raw(edit);
                     let boxed_asset = unsafe { Box::from_raw(raw.cast::<T>()) };
@@ -448,17 +442,18 @@ impl AssetRegistry {
 
     /// Create a Clone that can be edited and commited
     pub fn edit_untyped(&self, handle: &HandleUntyped) -> Option<EditHandleUntyped> {
-        let boxed_asset =
-            self.inner
-                .read()
-                .unwrap()
-                .handles
-                .get(handle.key())
-                .map(|(_id, asset)| {
-                    let edit = asset.clone_dyn();
-                    let raw: *mut dyn Resource = Box::into_raw(edit);
-                    unsafe { Box::from_raw(raw as *mut dyn Resource) }
-                })?;
+        let boxed_asset = self
+            .inner
+            .read()
+            .unwrap()
+            .handles
+            .get(handle.key())
+            .map(|entry| {
+                let asset = entry.asset.read().unwrap();
+                let edit = asset.clone_dyn();
+                let raw: *mut dyn Resource = Box::into_raw(edit);
+                unsafe { Box::from_raw(raw as *mut dyn Resource) }
+            })?;
 
         Some(EditHandleUntyped::new(handle.clone(), boxed_asset))
     }
@@ -466,9 +461,10 @@ impl AssetRegistry {
     /// Commit a Resource
     pub fn commit<T: Resource>(&self, edit_handle: EditHandle<T>) -> Handle<T> {
         let mut guard = self.inner.write().unwrap();
-        if let Some((_id, asset)) = guard.handles.get_mut(edit_handle.handle.key()) {
-            // TODO: Notification
-            *asset = edit_handle.asset;
+        if let Some(entry) = guard.handles.get_mut(edit_handle.handle.key()) {
+            let mut asset = entry.asset.write().unwrap();
+            let asset: &mut Box<dyn Resource> = &mut asset;
+            let _old_value = std::mem::replace::<Box<dyn Resource>>(asset, edit_handle.asset);
         }
         edit_handle.handle
     }
@@ -476,9 +472,10 @@ impl AssetRegistry {
     /// Commit a Resource
     pub fn commit_untyped(&self, edit_handle: EditHandleUntyped) -> HandleUntyped {
         let mut guard = self.inner.write().unwrap();
-        if let Some((_id, asset)) = guard.handles.get_mut(edit_handle.handle.key()) {
-            // TODO: Notification
-            *asset = edit_handle.asset;
+        if let Some(entry) = guard.handles.get_mut(edit_handle.handle.key()) {
+            let mut asset = entry.asset.write().unwrap();
+            let asset: &mut Box<dyn Resource> = &mut asset;
+            let _old_value = std::mem::replace::<Box<dyn Resource>>(asset, edit_handle.asset);
         }
         edit_handle.handle
     }
@@ -493,12 +490,12 @@ impl AssetRegistry {
                 if guard
                     .handles
                     .get(key)
-                    .map(|(id, _asset)| Arc::strong_count(id) == 1)
+                    .map(|entry| Arc::strong_count(entry) == 1)
                     .is_some()
                 {
-                    if let Some((id, _asset)) = guard.handles.remove(key) {
-                        lgn_tracing::debug!("Dropping {:?}({:?})", id, key,);
-                        guard.index.remove(&id.id);
+                    if let Some(entry) = guard.handles.remove(key) {
+                        lgn_tracing::debug!("Dropping {:?}({:?})", entry.id, key,);
+                        guard.index.remove(&entry.id.id);
                     }
                 }
             }
@@ -532,11 +529,11 @@ impl AssetRegistry {
         if let Some(processor) = self.processors.get(&id.kind) {
             let resource = processor.new_resource();
 
+            let entry = HandleEntry::new(id, resource, self.weak_self());
             let mut guard = self.write_inner();
-            let id = Arc::new(id);
-            let key = guard.handles.insert((id.clone(), resource));
+            let key = guard.handles.insert(entry.clone());
             guard.index.insert(id.id, key);
-            Some(HandleUntyped::new_handle(key, id, self.arc_self()).into())
+            Some(HandleUntyped::new(key, entry).into())
         } else {
             None
         }
@@ -546,11 +543,12 @@ impl AssetRegistry {
     pub fn new_resource_untyped(&self, id: ResourceTypeAndId) -> Option<HandleUntyped> {
         if let Some(processor) = self.processors.get(&id.kind) {
             let resource = processor.new_resource();
+
+            let entry = HandleEntry::new(id, resource, self.weak_self());
             let mut guard = self.write_inner();
-            let id = Arc::new(id);
-            let key = guard.handles.insert((id.clone(), resource));
+            let key = guard.handles.insert(entry.clone());
             guard.index.insert(id.id, key);
-            Some(HandleUntyped::new_handle(key, id, self.arc_self()))
+            Some(HandleUntyped::new(key, entry))
         } else {
             None
         }
@@ -562,19 +560,6 @@ impl AssetRegistry {
             .iter()
             .map(|(k, _processor)| (*k, k.as_pretty()))
             .collect()
-    }
-
-    /// Interface to retrieve the Resource reflection interface
-    pub fn get_resource(
-        &self,
-        handle: impl AsRef<HandleUntyped>,
-    ) -> Option<AssetRegistryGuard<'_, dyn Resource>> {
-        let guard = self.inner.read().unwrap();
-        if let Some((_id, resource)) = guard.handles.get(handle.as_ref().key()) {
-            let ptr = resource.as_ref() as *const dyn Resource;
-            return Some(AssetRegistryGuard { _guard: guard, ptr });
-        }
-        None
     }
 
     /// Interface to initialize a new `Resource` from a stream
@@ -598,17 +583,20 @@ impl AssetRegistry {
         writer: &mut dyn std::io::Write,
     ) -> Result<(usize, Vec<ResourcePathId>), AssetRegistryError> {
         let guard = self.read_inner();
-        let (id, resource) = guard
+        let entry = guard
             .handles
             .get(handle.as_ref().key())
             .ok_or_else(|| AssetRegistryError::InvalidHandle(handle.as_ref().key()))?;
 
-        if let Some(processor) = self.processors.get(&id.kind) {
+        if let Some(processor) = self.processors.get(&entry.id.kind) {
+            let resource = entry.asset.read().unwrap();
+            let resource = &resource;
+
             let build_deps = processor.extract_build_dependencies(resource.as_ref());
             let written = processor.write_resource(resource.as_ref(), writer)?;
             Ok((written, build_deps))
         } else {
-            Err(AssetRegistryError::ProcessorNotFound(id.kind))
+            Err(AssetRegistryError::ProcessorNotFound(entry.id.kind))
         }
     }
 

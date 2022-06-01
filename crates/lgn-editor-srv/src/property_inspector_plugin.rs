@@ -246,7 +246,7 @@ impl PropertyInspector for PropertyInspectorRPC {
                 Status::internal(err.to_string())
             })?;
 
-        let mut property_bag = if let Some(resource) = asset_registry.get_resource(&handle) {
+        let mut property_bag = if let Some(resource) = handle.get_untyped() {
             collect_properties::<ResourcePropertyCollector>(resource.as_reflect())
                 .map_err(|err| Status::internal(err.to_string()))?
         } else {
