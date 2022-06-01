@@ -194,7 +194,7 @@
   }
 
   .select {
-    @apply w-full h-full text-item-low bg-dropdown-default rounded-sm outline-none appearance-none border-xs border-dropdown-root;
+    @apply w-full h-full text-item-low bg-dropdown-default rounded-sm outline-none appearance-none border border-dropdown-root;
   }
 
   .selected-label {
