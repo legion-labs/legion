@@ -28,7 +28,7 @@ use crate::{DataBuild, Error};
 /// # tokio_test::block_on(async {
 /// let source_control_content_provider = Arc::new(Provider::new_in_memory());
 /// let data_content_provider = Arc::new(Provider::new_in_memory());
-/// let project = Project::open("project/", source_control_content_provider).await.unwrap();
+/// let project = Project::new("project/", source_control_content_provider).await.unwrap();
 /// let build = DataBuildOptions::new("temp/".to_string(), data_content_provider, CompilerRegistryOptions::local_compilers("./"))
 ///         .create(&project).await.unwrap();
 /// # })

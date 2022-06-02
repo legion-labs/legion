@@ -129,7 +129,7 @@ mod tests {
             setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let mut project = Project::create_with_remote_mock(
+        let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )
@@ -267,7 +267,7 @@ mod tests {
         source_control_content_provider: Arc<Provider>,
     ) -> (Project, [ResourceTypeAndId; 5]) {
         let mut project =
-            Project::create_with_remote_mock(project_dir.as_ref(), source_control_content_provider)
+            Project::new_with_remote_mock(project_dir.as_ref(), source_control_content_provider)
                 .await
                 .expect("failed to create a project");
 
@@ -317,7 +317,7 @@ mod tests {
 
         let source_magic_value = String::from("47");
 
-        let mut project = Project::create_with_remote_mock(
+        let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )
@@ -547,7 +547,7 @@ mod tests {
 
         let magic_list = vec![String::from("47"), String::from("198")];
 
-        let mut project = Project::create_with_remote_mock(
+        let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )
@@ -805,7 +805,7 @@ mod tests {
             setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let mut project = Project::create_with_remote_mock(
+        let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )
@@ -914,7 +914,7 @@ mod tests {
             setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let mut project = Project::create_with_remote_mock(
+        let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )

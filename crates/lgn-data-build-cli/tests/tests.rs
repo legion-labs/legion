@@ -48,10 +48,11 @@ async fn build_device() {
     let initial_content = "foo";
 
     // create project that contains test resource.
-    let mut project = Project::create(
+    let mut project = Project::new(
         project_dir,
         &repository_index,
         &repository_name,
+        "main",
         Arc::clone(&source_control_content_provider),
     )
     .await
@@ -240,10 +241,11 @@ async fn no_intermediate_resource() {
 
     // create project that contains test resource.
     let resource_id = {
-        let mut project = Project::create(
+        let mut project = Project::new(
             project_dir,
             &repository_index,
             &repository_name,
+            "main",
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -355,10 +357,11 @@ async fn with_intermediate_resource() {
 
     // create project that contains test resource.
     let resource_id = {
-        let mut project = Project::create(
+        let mut project = Project::new(
             project_dir,
             &repository_index,
             &repository_name,
+            "main",
             Arc::clone(&source_control_content_provider),
         )
         .await

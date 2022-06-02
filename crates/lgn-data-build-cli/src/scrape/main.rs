@@ -431,7 +431,7 @@ async fn main() -> Result<(), String> {
                 .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
 
             let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
-            let project = Project::open(
+            let project = Project::new(
                 proj_file,
                 repository_index,
                 &repository_name,

@@ -44,7 +44,7 @@ mod tests {
             setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let mut project = Project::create_with_remote_mock(
+        let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )
@@ -90,7 +90,7 @@ mod tests {
             setup_dir(&work_dir);
         let resources = setup_registry().await;
 
-        let mut project = Project::create_with_remote_mock(
+        let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )

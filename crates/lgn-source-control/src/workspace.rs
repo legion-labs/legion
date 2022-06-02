@@ -3,8 +3,8 @@ use std::{collections::BTreeSet, sync::Arc};
 use lgn_content_store::{
     indexing::{
         self, BasicIndexer, IndexKey, ResourceByteReader, ResourceByteWriter, ResourceExists,
-        ResourceIdentifier, ResourceReader, ResourceWriter, StringPathIndexer, Tree,
-        TreeIdentifier, TreeLeafNode, TreeWriter,
+        ResourceIdentifier, ResourceReader, ResourceWriter, StringPathIndexer, TreeIdentifier,
+        TreeLeafNode,
     },
     Provider,
 };
@@ -68,71 +68,16 @@ impl<MainIndexer> Workspace<MainIndexer>
 where
     MainIndexer: BasicIndexer + Sync,
 {
-    /// Create a new workspace pointing at the given directory and using the
-    /// given configuration.
-    ///
-    /// The workspace must not already exist.
-    pub async fn init(
-        repository_index: impl RepositoryIndex,
-        repository_name: &RepositoryName,
-        provider: Arc<Provider>,
-        main_indexer: MainIndexer,
-    ) -> Result<Self> {
-        let workspace = Self::new(
-            repository_index,
-            repository_name,
-            provider,
-            "main",
-            main_indexer,
-        )
-        .await?;
-
-        workspace.initial_checkout().await?;
-
-        Ok(workspace)
-    }
-
     /// Load an existing workspace at the specified location.
     ///
     /// This method expect the target folder to be the root of an existing workspace.
     ///
     /// To load a workspace from a possible subfolder, use `Workspace::find`.
-    pub async fn load(
+    pub async fn new(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
         branch_name: &str,
         provider: Arc<Provider>,
-        main_indexer: MainIndexer,
-    ) -> Result<Self> {
-        Self::new(
-            repository_index,
-            repository_name,
-            provider,
-            branch_name,
-            main_indexer,
-        )
-        .await
-    }
-
-    /// Return the repository name of the workspace.
-    pub fn repository_name(&self) -> &RepositoryName {
-        self.index.repository_name()
-    }
-
-    /// Returns the name of the source control branch that is active in the workspace.
-    pub fn branch_name(&self) -> &str {
-        self.branch_name.as_str()
-    }
-
-    pub fn id(&self) -> &ContentId {
-        &self.content_id
-    }
-
-    async fn new(
-        repository_index: impl RepositoryIndex,
-        repository_name: &RepositoryName,
-        provider: Arc<Provider>,
-        branch_name: &str,
         main_indexer: MainIndexer,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
@@ -150,6 +95,20 @@ where
                 path_index_tree_id: commit.path_index_tree_id,
             },
         })
+    }
+
+    /// Return the repository name of the workspace.
+    pub fn repository_name(&self) -> &RepositoryName {
+        self.index.repository_name()
+    }
+
+    /// Returns the name of the source control branch that is active in the workspace.
+    pub fn branch_name(&self) -> &str {
+        self.branch_name.as_str()
+    }
+
+    pub fn id(&self) -> &ContentId {
+        &self.content_id
     }
 
     /// Get the commits chain, starting from the specified commit.
@@ -992,68 +951,6 @@ where
         Ok(changes)
         */
         Err(Error::Unspecified("todo".to_owned()))
-    }
-
-    /// Cache a file to the blob storage cache
-    ///
-    /// # Returns
-    ///
-    /// The hash of the file.
-    /*
-    async fn upload_file(&self, canonical_path: &CanonicalPath) -> Result<Identifier> {
-        debug!("caching blob for: {}", canonical_path);
-
-        let contents = tokio::fs::read(canonical_path.to_path_buf(&self.root))
-            .await
-            .map_other_err(format!("failed to read `{}`", &canonical_path))?;
-
-        self.provider
-            .write(&contents)
-            .await
-            .map_other_err(format!("failed to cache file `{}`", canonical_path))
-    }
-    */
-
-    /*
-    async fn download_file(
-        &self,
-        id: &Identifier,
-        path: &CanonicalPath,
-        read_only: Option<bool>,
-    ) -> Result<()> {
-        let abs_path = path.to_path_buf(&self.root);
-
-        match self.provider.get_reader(id).await {
-            Ok(mut reader) => {
-                let mut f = tokio::fs::File::create(&abs_path)
-                    .await
-                    .map_other_err(format!("failed to create `{}`", abs_path.display()))?;
-
-                tokio::io::copy(&mut reader, &mut f)
-                    .await
-                    .map_other_err(format!("failed to write file `{}`", abs_path.display()))?;
-
-                debug!("downloaded blob `{}` from cache", id);
-
-                if let Some(read_only) = read_only {
-                    self.make_file_read_only(abs_path, read_only).await
-                } else {
-                    Ok(())
-                }
-            }
-            Err(err) => Err(err).map_other_err("failed to download blob"),
-        }
-    }
-    */
-
-    async fn initial_checkout(&self) -> Result<()> {
-        // 1. Write initial empty indices to content store
-        self.transaction.write_tree(&Tree::default()).await.unwrap();
-
-        // 2. Read the head commit information.
-        let _commit = self.get_current_commit().await?;
-
-        Ok(())
     }
 
     /*

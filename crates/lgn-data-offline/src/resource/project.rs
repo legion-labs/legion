@@ -145,8 +145,36 @@ impl Project {
             .write(self.workspace.get_main_index_id());
     }
 
-    /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
-    pub async fn create_with_remote_mock(
+    /// Creates a new project index file turning the containing directory into a
+    /// project.
+    pub async fn new(
+        project_dir: impl AsRef<Path>,
+        repository_index: impl RepositoryIndex,
+        repository_name: &RepositoryName,
+        branch_name: &str,
+        source_control_content_provider: Arc<Provider>,
+    ) -> Result<Self, Error> {
+        let workspace = Workspace::new(
+            repository_index,
+            repository_name,
+            branch_name,
+            source_control_content_provider,
+            new_resource_type_and_id_indexer(),
+        )
+        .await?;
+
+        let manifest_id = workspace.get_main_index_id().clone();
+
+        Ok(Self {
+            project_dir: project_dir.as_ref().to_owned(),
+            workspace,
+            deleted_pending: HashMap::new(),
+            offline_manifest_id: Arc::new(ManifestId::new(manifest_id)),
+        })
+    }
+
+    /// Same as [`Self::new`] but it creates an origin source control index at ``project_dir/remote``.
+    pub async fn new_with_remote_mock(
         project_dir: impl AsRef<Path>,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
@@ -156,66 +184,14 @@ impl Project {
 
         repository_index.create_repository(&repository_name).await?;
 
-        Self::create(
+        Self::new(
             project_dir,
             repository_index,
             &repository_name,
+            "main",
             source_control_content_provider,
         )
         .await
-    }
-
-    /// Creates a new project index file turning the containing directory into a
-    /// project.
-    pub async fn create(
-        project_dir: impl AsRef<Path>,
-        repository_index: impl RepositoryIndex,
-        repository_name: &RepositoryName,
-        source_control_content_provider: Arc<Provider>,
-    ) -> Result<Self, Error> {
-        let workspace = Workspace::init(
-            repository_index,
-            repository_name,
-            source_control_content_provider,
-            new_resource_type_and_id_indexer(),
-        )
-        .await?;
-
-        Ok(Self::new_from_workspace(project_dir, workspace))
-    }
-
-    /// Opens the project index specified
-    pub async fn open(
-        project_dir: impl AsRef<Path>,
-        repository_index: impl RepositoryIndex,
-        repository_name: &RepositoryName,
-        branch_name: &str,
-        source_control_content_provider: Arc<Provider>,
-    ) -> Result<Self, Error> {
-        let workspace = Workspace::load(
-            repository_index,
-            repository_name,
-            branch_name,
-            source_control_content_provider,
-            new_resource_type_and_id_indexer(),
-        )
-        .await?;
-
-        Ok(Self::new_from_workspace(project_dir, workspace))
-    }
-
-    fn new_from_workspace(
-        project_dir: impl AsRef<Path>,
-        workspace: Workspace<ResourceTypeAndIdIndexer>,
-    ) -> Self {
-        let manifest_id = workspace.get_main_index_id().clone();
-
-        Self {
-            project_dir: project_dir.as_ref().to_owned(),
-            workspace,
-            deleted_pending: HashMap::new(),
-            offline_manifest_id: Arc::new(ManifestId::new(manifest_id)),
-        }
     }
 
     /*
@@ -940,18 +916,18 @@ mod tests {
     async fn proj_create_delete() {
         let root = tempfile::tempdir().unwrap();
 
-        let project = Project::create_with_remote_mock(root.path())
+        let project = Project::new_with_remote_mock(root.path())
             .await
             .expect("failed to create project");
-        let same_project = Project::create_with_remote_mock(root.path()).await;
+        let same_project = Project::new_with_remote_mock(root.path()).await;
         assert!(same_project.is_err());
 
         project.delete().await;
 
-        let _project = Project::create_with_remote_mock(root.path())
+        let _project = Project::new_with_remote_mock(root.path())
             .await
             .expect("failed to re-create project");
-        let same_project = Project::create_with_remote_mock(root.path()).await;
+        let same_project = Project::new_with_remote_mock(root.path()).await;
         assert!(same_project.is_err());
     }*/
 
@@ -959,7 +935,7 @@ mod tests {
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let _resources = create_actor(&mut project).await;
@@ -971,7 +947,7 @@ mod tests {
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1026,7 +1002,7 @@ mod tests {
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1071,7 +1047,7 @@ mod tests {
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let _resources = create_actor(&mut project).await;
@@ -1111,7 +1087,7 @@ mod tests {
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;

@@ -216,7 +216,7 @@ async fn setup_project(
     source_control_content_provider: Arc<Provider>,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
-    let project = Project::open(
+    let project = Project::new(
         root_folder,
         &repository_index,
         repository_name,
@@ -225,18 +225,6 @@ async fn setup_project(
     )
     .await
     .unwrap();
-    // {
-    //     Ok(project)
-    // } else {
-    //     Project::create(
-    //         root_folder,
-    //         repository_index,
-    //         repository_name,
-    //         source_control_content_provider,
-    //     )
-    //     .await
-    // }
-    // .unwrap();
 
     let mut registry = AssetRegistryOptions::new()
         .add_processor::<lgn_graphics_data::offline_texture::Texture>()

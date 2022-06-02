@@ -52,7 +52,7 @@ mod tests {
         let repository_name: RepositoryName = "default".parse().unwrap();
         let branch_name = "main";
 
-        let project = Project::open(
+        let project = Project::new(
             project_dir,
             repository_index,
             &repository_name,
@@ -89,7 +89,7 @@ mod tests {
         ) = setup_dir(&work_dir).await;
 
         let source_control_content_provider = Arc::new(Provider::new_in_memory());
-        let project = Project::create_with_remote_mock(
+        let project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )

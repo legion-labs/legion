@@ -97,7 +97,7 @@ async fn main() -> Result<(), String> {
                 .parse()
                 .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
 
-            let project = Project::open(
+            let project = Project::new(
                 project_dir,
                 repository_index,
                 &repository_name,
@@ -155,7 +155,7 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let project = Project::open(
+            let project = Project::new(
                 &project_dir,
                 repository_index,
                 &repository_name,

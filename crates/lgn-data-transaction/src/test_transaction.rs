@@ -145,7 +145,7 @@ async fn test_transaction_system() -> Result<(), Error> {
     let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
         Arc::new(Box::new(MemoryContentProvider::new()));
 
-    let project = Project::create_with_remote_mock(&project_dir, source_control_content_provider)
+    let project = Project::new_with_remote_mock(&project_dir, source_control_content_provider)
         .await
         .unwrap();
     let resource_dir = project.resource_dir();

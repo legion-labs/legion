@@ -474,7 +474,7 @@ mod tests {
         let source_control_content_provider = Arc::new(Provider::new_in_memory());
 
         let mut project =
-            Project::create_with_remote_mock(&work_dir.path(), source_control_content_provider)
+            Project::new_with_remote_mock(&work_dir.path(), source_control_content_provider)
                 .await
                 .expect("failed to create a project");
 
