@@ -250,6 +250,13 @@ impl GpuCullingPass {
                         .write(culling_debug_uav_id, RenderGraphLoadState::ClearValue(0))
                         .read(prev_hzb_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
+                            let mesh_renderer =
+                                execute_context.render_resources.get::<MeshRenderer>();
+                            mesh_renderer
+                                .culling_buffers
+                                .stats_buffer
+                                .clear_buffer(cmd_buffer);
+
                             Self::execute_culling_pass(
                                 context,
                                 execute_context,
@@ -330,7 +337,7 @@ impl GpuCullingPass {
                         .execute(move |context, execute_context, cmd_buffer| {
                             if depth_count_buffer_size > 0 {
                                 // Need to clear the depth instances part of the draw_count buffer
-                                // TODO: Should we have a copy pass type? So the graph would manage the resource transitions for us like it does in all other cases?
+                                // TODO(jsg): Should we have a copy pass type? So the graph would manage the resource transitions for us like it does in all other cases?
                                 cmd_buffer.cmd_resource_barrier(
                                     &[BufferBarrier {
                                         buffer: context.get_buffer(draw_count_buffer_id),
@@ -400,6 +407,20 @@ impl GpuCullingPass {
                         &mip_sampler,
                         builder,
                     )
+                })
+                .add_compute_pass("StatsReadback", |compute_pass_builder| {
+                    compute_pass_builder.execute(|_, execute_context, cmd_buffer| {
+                        let mesh_renderer = execute_context.render_resources.get::<MeshRenderer>();
+
+                        // TODO(jsg): Should we manage readback buffers in the graph as well?
+                        if let Some(readback) = &mesh_renderer.culling_buffers.stats_buffer_readback
+                        {
+                            mesh_renderer
+                                .culling_buffers
+                                .stats_buffer
+                                .copy_buffer_to_readback(cmd_buffer, readback);
+                        }
+                    })
                 })
         })
     }
