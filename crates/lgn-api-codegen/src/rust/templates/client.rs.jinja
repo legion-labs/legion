@@ -82,14 +82,16 @@ where
                 {%- for parameter in route.parameters.header -%}
                     {% let param_name = "{}"|format(parameter.name|snake_case) %}
                     {% if parameter.required -%}
+                        let {{ param_name }} = lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ param_name }})?;
                         req.headers_mut().insert(
                             "{{ parameter.name }}",
-                            HeaderValue::from_str(&request.{{ param_name }}).map_err(|err| {
+                            HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
                                 Error::InvalidHeader(format!("{{ parameter.name }}: {}", err))
                             })?,
                         );
                     {% else -%}
                         if let Some({{ param_name }}) = request.{{ param_name }} {
+                            let {{ param_name }} = lgn_online::codegen::encoding::to_percent_encoded_string(&{{ param_name }})?;
                             req.headers_mut().insert(
                                 "{{ parameter.name }}",
                                 HeaderValue::from_str(&{{ param_name }}).map_err(|err| {

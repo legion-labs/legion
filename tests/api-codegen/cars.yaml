@@ -116,10 +116,19 @@ paths:
     get:
       operationId: testHeaders
       parameters:
-        - name: x-static-header
+        - name: x-string-header
           in: header
           schema:
             type: string
+        - name: x-bytes-header
+          in: header
+          schema:
+            type: string
+            format: byte
+        - name: x-int-header
+          in: header
+          schema:
+            type: integer
       responses:
         "200":
           description: Ok.
@@ -128,9 +137,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/Pet"
           headers:
-            x-static-header:
+            x-string-header:
               schema:
                 type: string
+            x-bytes-header:
+              schema:
+                type: string
+                format: byte
+            x-int-header:
+              schema:
+                type: integer
 components:
   parameters:
     SpaceId:

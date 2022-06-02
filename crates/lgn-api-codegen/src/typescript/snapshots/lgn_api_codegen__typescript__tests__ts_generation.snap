@@ -21,7 +21,9 @@ export interface Api {
     
     
     headers: {
-        "x-static-header"?: string;
+        "x-string-header"?: string;
+        "x-bytes-header"?: Blob;
+        "x-int-header"?: number;
         },
     
     
@@ -153,7 +155,9 @@ export class Client implements Api {
     
     
     headers: {
-        "x-static-header"?: string;
+        "x-string-header"?: string;
+        "x-bytes-header"?: Blob;
+        "x-int-header"?: number;
         },
     
     

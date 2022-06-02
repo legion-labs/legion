@@ -122,7 +122,9 @@ async fn test_headers() {
     ctx.set_request_extensions(extensions);
     ctx.set_request_headers(headers);
     let req = TestHeadersRequest {
-        x_static_header: Some("static".to_string()),
+        x_string_header: Some("string".to_string()),
+        x_int_header: Some(5),
+        x_bytes_header: Some(b"bytes".to_vec().into()),
     };
     let resp = client.test_headers(&mut ctx, req).await.unwrap();
 
@@ -130,7 +132,9 @@ async fn test_headers() {
     assert_eq!(
         resp,
         TestHeadersResponse::Status200 {
-            x_static_header: "static".to_string(),
+            x_string_header: "string".to_string(),
+            x_int_header: 5,
+            x_bytes_header: b"bytes".to_vec().into(),
             body: models::Pet {
                 name: Some("Cat".to_string()),
             }

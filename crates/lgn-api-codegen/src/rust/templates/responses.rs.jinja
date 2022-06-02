@@ -58,7 +58,13 @@ use http::HeaderValue;
                                     {% endif -%}
                                     let mut resp = (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), body).into_response();
                                     {% for (header_name, header) in response.headers -%}
-                                        match HeaderValue::from_str(&{{ header_name|snake_case }}){
+                                        let {{ header_name|snake_case }}_value = match lgn_online::codegen::encoding::to_percent_encoded_string(&{{ header_name|snake_case }}){
+                                            Ok(value) => value,
+                                            Err(err) => {
+                                                return Error::InvalidHeader(format!("{{ header_name }}: {}", err)).into_response();
+                                            },
+                                        };
+                                        match HeaderValue::from_str(&{{ header_name|snake_case }}_value){
                                             Ok(value) => resp.headers_mut().insert("{{ header_name }}", value),
                                             Err(err) => {
                                                 return Error::InvalidHeader(format!("{{ header_name }}: {}", err)).into_response();
@@ -119,7 +125,7 @@ use http::HeaderValue;
 
                                         Ok(Self::Status{{ status_code }}{
                                             {% for (header_name, header) in response.headers -%}
-                                                {{ header_name|snake_case }}: {{ header_name|snake_case }}.to_string(),
+                                                {{ header_name|snake_case }}: lgn_online::codegen::encoding::from_percent_encoded_string({{ header_name|snake_case }})?,
                                             {% endfor -%}
                                             {% if let Some(content) = response.content -%}
                                                 body,

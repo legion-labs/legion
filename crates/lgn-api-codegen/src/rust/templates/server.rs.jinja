@@ -66,16 +66,20 @@ where
         {
             {%- for parameter in route.parameters.header -%}
             {% let param_name = "{}"|format(parameter.name|snake_case) %}
-                let {{ param_name }} = parts.headers.get(HeaderName::from_static("{{ parameter.name }}"));
-                let {{ param_name }} = {{ param_name }}.map(|{{ param_name }}| {
-                    {{ param_name }}
-                        .to_str()
+                let {{ param_name }} = parts.headers
+                    .get(HeaderName::from_static("{{ parameter.name }}"))
+                    .map(|h| {
+                        let s = h.to_str()
                         .map_err(|err| {
-                            error!("Failed to read `{{ parameter.name }}` header: {}", err);
+                            Error::InvalidHeader("{{ parameter.name }}".to_owned()).into_response()
+                        })
+                        .unwrap();
+
+                        lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                        .map_err(|err| {
                             Error::InvalidHeader("{{ parameter.name }}".to_owned()).into_response()
                         })
                         .unwrap()
-                        .to_owned()
                 });
 
                 {% if parameter.required %}
