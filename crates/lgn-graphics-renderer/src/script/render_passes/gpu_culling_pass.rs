@@ -264,6 +264,25 @@ impl GpuCullingPass {
                                 user_data,
                                 false,
                             );
+
+                            // Switch buffers needed for indirect args of following pass to indirect arg state.
+                            cmd_buffer.cmd_resource_barrier(
+                                &[
+                                    BufferBarrier {
+                                        buffer: context.get_buffer(draw_count_buffer_id),
+                                        src_state: ResourceState::UNORDERED_ACCESS,
+                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
+                                        queue_transition: BarrierQueueTransition::None,
+                                    },
+                                    BufferBarrier {
+                                        buffer: context.get_buffer(draw_args_buffer_id),
+                                        src_state: ResourceState::UNORDERED_ACCESS,
+                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
+                                        queue_transition: BarrierQueueTransition::None,
+                                    },
+                                ],
+                                &[],
+                            );
                         })
                 })
                 .add_graphics_pass("Depth first pass", |graphics_pass_builder| {
@@ -369,12 +388,42 @@ impl GpuCullingPass {
                                 );
                             }
 
+                            cmd_buffer.cmd_resource_barrier(
+                                &[
+                                    BufferBarrier {
+                                        buffer: context.get_buffer(culled_args_buffer_id),
+                                        src_state: ResourceState::UNORDERED_ACCESS,
+                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
+                                        queue_transition: BarrierQueueTransition::None,
+                                    },
+                                ],
+                                &[],
+                            );
                             Self::execute_culling_pass(
                                 context,
                                 execute_context,
                                 cmd_buffer,
                                 user_data,
                                 true,
+                            );
+
+                            // Switch buffers needed for indirect args of following pass to indirect arg state.
+                            cmd_buffer.cmd_resource_barrier(
+                                &[
+                                    BufferBarrier {
+                                        buffer: context.get_buffer(draw_count_buffer_id),
+                                        src_state: ResourceState::UNORDERED_ACCESS,
+                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
+                                        queue_transition: BarrierQueueTransition::None,
+                                    },
+                                    BufferBarrier {
+                                        buffer: context.get_buffer(draw_args_buffer_id),
+                                        src_state: ResourceState::UNORDERED_ACCESS,
+                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
+                                        queue_transition: BarrierQueueTransition::None,
+                                    },
+                                ],
+                                &[],
                             );
                         })
                 })
