@@ -81,7 +81,7 @@
 
 {#if processInstance.processInfo}
   <div
-    class="surface text-white flex h-8 items-center border-b border-[#202020] px-1"
+    class="background text-white flex h-8 items-center border-b border-[#202020] px-1"
   >
     <div
       class="truncate flex flex-row px-0.5"
