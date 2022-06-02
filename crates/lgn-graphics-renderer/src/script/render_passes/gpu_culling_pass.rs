@@ -1,10 +1,9 @@
 use lgn_graphics_api::{
-    AddressMode, BarrierQueueTransition, BlendState, BufferBarrier, BufferViewDef, CommandBuffer,
-    CompareOp, ComputePipelineDef, CullMode, DepthState, DepthStencilClearValue, FilterType,
-    Format, GPUViewType, GraphicsPipelineDef, MipMapMode, PlaneSlice, PrimitiveTopology,
-    RasterizerState, ResourceState, ResourceUsage, SampleCount, Sampler, SamplerDef, StencilOp,
-    TextureDef, VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
-    ViewDimension,
+    AddressMode, BlendState, BufferViewDef, CommandBuffer, CompareOp, ComputePipelineDef, CullMode,
+    DepthState, DepthStencilClearValue, FilterType, Format, GPUViewType, GraphicsPipelineDef,
+    MipMapMode, PlaneSlice, PrimitiveTopology, RasterizerState, ResourceUsage, SampleCount,
+    Sampler, SamplerDef, StencilOp, TextureDef, VertexAttributeRate, VertexLayout,
+    VertexLayoutAttribute, VertexLayoutBuffer, ViewDimension,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
@@ -105,22 +104,27 @@ impl GpuCullingPass {
             draw_count_buffer_desc,
             GPUViewType::UnorderedAccess,
         ));
-        let draw_count_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            draw_count_buffer_id,
-            draw_count_buffer_desc,
-            GPUViewType::ShaderResource,
-        ));
+        let draw_count_indirect_id =
+            builder.declare_view(&RenderGraphViewDef::new_indirect_buffer_view(
+                draw_count_buffer_id,
+                draw_count_buffer_desc,
+            ));
+        let draw_count_copy_dst_id =
+            builder.declare_view(&RenderGraphViewDef::new_copy_dst_buffer_view(
+                draw_count_buffer_id,
+                draw_count_buffer_desc,
+            ));
 
         let draw_args_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
             draw_args_buffer_id,
             draw_args_buffer_desc,
             GPUViewType::UnorderedAccess,
         ));
-        let draw_args_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            draw_args_buffer_id,
-            draw_args_buffer_desc,
-            GPUViewType::ShaderResource,
-        ));
+        let draw_args_indirect_id =
+            builder.declare_view(&RenderGraphViewDef::new_indirect_buffer_view(
+                draw_args_buffer_id,
+                draw_args_buffer_desc,
+            ));
 
         let culled_count_buffer_desc =
             RenderGraphResourceDef::new_buffer(std::mem::size_of::<u32>() as u64, 1);
@@ -156,11 +160,11 @@ impl GpuCullingPass {
             &culled_args_buffer_desc,
             GPUViewType::UnorderedAccess,
         ));
-        let culled_args_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            culled_args_buffer_id,
-            &culled_args_buffer_desc,
-            GPUViewType::ShaderResource,
-        ));
+        let culled_args_indirect_id =
+            builder.declare_view(&RenderGraphViewDef::new_indirect_buffer_view(
+                culled_args_buffer_id,
+                &culled_args_buffer_desc,
+            ));
 
         let tmp_culled_args_buffer_desc =
             RenderGraphResourceDef::new_buffer(3 * std::mem::size_of::<u32>() as u64, 1);
@@ -264,25 +268,6 @@ impl GpuCullingPass {
                                 user_data,
                                 false,
                             );
-
-                            // Switch buffers needed for indirect args of following pass to indirect arg state.
-                            cmd_buffer.cmd_resource_barrier(
-                                &[
-                                    BufferBarrier {
-                                        buffer: context.get_buffer(draw_count_buffer_id),
-                                        src_state: ResourceState::UNORDERED_ACCESS,
-                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    },
-                                    BufferBarrier {
-                                        buffer: context.get_buffer(draw_args_buffer_id),
-                                        src_state: ResourceState::UNORDERED_ACCESS,
-                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    },
-                                ],
-                                &[],
-                            );
                         })
                 })
                 .add_graphics_pass("Depth first pass", |graphics_pass_builder| {
@@ -299,8 +284,8 @@ impl GpuCullingPass {
                                 stencil: 0,
                             }),
                         )
-                        .read(draw_count_srv_id, RenderGraphLoadState::Load)
-                        .read(draw_args_srv_id, RenderGraphLoadState::Load)
+                        .read(draw_count_indirect_id, RenderGraphLoadState::Load)
+                        .read(draw_args_indirect_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
                             Self::execute_depth_layer_pass(
                                 context,
@@ -320,6 +305,24 @@ impl GpuCullingPass {
                         &mip_sampler,
                         builder,
                     )
+                })
+                .add_compute_pass("Clear depth count", |compute_pass_builder| {
+                    compute_pass_builder
+                        .write(draw_count_copy_dst_id, RenderGraphLoadState::Load)
+                        .execute(move |context, _, cmd_buffer| {
+                            // Need to clear the depth instances part of the draw_count buffer
+                            if depth_count_buffer_size > 0 {
+                                let depth_count_size =
+                                    depth_count_buffer_size * std::mem::size_of::<u32>() as u64;
+
+                                cmd_buffer.cmd_fill_buffer(
+                                    context.get_buffer(draw_count_buffer_id),
+                                    0,
+                                    depth_count_size,
+                                    0,
+                                );
+                            }
+                        })
                 })
                 .add_compute_pass("Culling current frame HZB", |compute_pass_builder| {
                     let user_data = GPUCullingUserData {
@@ -351,79 +354,15 @@ impl GpuCullingPass {
                         .write(culling_debug_uav_id, RenderGraphLoadState::Load)
                         .read(current_hzb_srv_id, RenderGraphLoadState::Load)
                         .read(culled_count_srv_id, RenderGraphLoadState::Load)
-                        .read(culled_args_srv_id, RenderGraphLoadState::Load)
+                        .read(culled_args_indirect_id, RenderGraphLoadState::Load)
                         .read(culled_instances_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
-                            if depth_count_buffer_size > 0 {
-                                // Need to clear the depth instances part of the draw_count buffer
-                                // TODO(jsg): Should we have a copy pass type? So the graph would manage the resource transitions for us like it does in all other cases?
-                                cmd_buffer.cmd_resource_barrier(
-                                    &[BufferBarrier {
-                                        buffer: context.get_buffer(draw_count_buffer_id),
-                                        src_state: ResourceState::UNORDERED_ACCESS,
-                                        dst_state: ResourceState::COPY_DST,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    }],
-                                    &[],
-                                );
-
-                                let depth_count_size =
-                                    depth_count_buffer_size * std::mem::size_of::<u32>() as u64;
-
-                                cmd_buffer.cmd_fill_buffer(
-                                    context.get_buffer(draw_count_buffer_id),
-                                    0,
-                                    depth_count_size,
-                                    0,
-                                );
-
-                                cmd_buffer.cmd_resource_barrier(
-                                    &[BufferBarrier {
-                                        buffer: context.get_buffer(draw_count_buffer_id),
-                                        src_state: ResourceState::COPY_DST,
-                                        dst_state: ResourceState::UNORDERED_ACCESS,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    }],
-                                    &[],
-                                );
-                            }
-
-                            cmd_buffer.cmd_resource_barrier(
-                                &[
-                                    BufferBarrier {
-                                        buffer: context.get_buffer(culled_args_buffer_id),
-                                        src_state: ResourceState::UNORDERED_ACCESS,
-                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    },
-                                ],
-                                &[],
-                            );
                             Self::execute_culling_pass(
                                 context,
                                 execute_context,
                                 cmd_buffer,
                                 user_data,
                                 true,
-                            );
-
-                            // Switch buffers needed for indirect args of following pass to indirect arg state.
-                            cmd_buffer.cmd_resource_barrier(
-                                &[
-                                    BufferBarrier {
-                                        buffer: context.get_buffer(draw_count_buffer_id),
-                                        src_state: ResourceState::UNORDERED_ACCESS,
-                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    },
-                                    BufferBarrier {
-                                        buffer: context.get_buffer(draw_args_buffer_id),
-                                        src_state: ResourceState::UNORDERED_ACCESS,
-                                        dst_state: ResourceState::INDIRECT_ARGUMENT,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    },
-                                ],
-                                &[],
                             );
                         })
                 })
@@ -435,8 +374,8 @@ impl GpuCullingPass {
 
                     graphics_pass_builder
                         .depth_stencil(depth_view_id, RenderGraphLoadState::Load)
-                        .read(draw_count_srv_id, RenderGraphLoadState::Load)
-                        .read(draw_args_srv_id, RenderGraphLoadState::Load)
+                        .read(draw_count_indirect_id, RenderGraphLoadState::Load)
+                        .read(draw_args_indirect_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
                             Self::execute_depth_layer_pass(
                                 context,

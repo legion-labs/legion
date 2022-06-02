@@ -114,6 +114,7 @@ pub struct RenderGraphBufferViewDef {
     pub element_size: u64,
     pub buffer_view_flags: BufferViewFlags,
     pub copy: bool,
+    pub indirect: bool,
 }
 
 impl From<RenderGraphBufferDef> for BufferDef {
@@ -267,6 +268,41 @@ impl RenderGraphViewDef {
             element_size: def.element_size,
             buffer_view_flags: BufferViewFlags::empty(),
             copy: false,
+            indirect: false,
+        })
+    }
+
+    pub fn new_indirect_buffer_view(
+        resource_id: RenderGraphResourceId,
+        def: &RenderGraphResourceDef,
+    ) -> Self {
+        let def: &RenderGraphBufferDef = def.try_into().unwrap();
+        Self::Buffer(RenderGraphBufferViewDef {
+            resource_id,
+            gpu_view_type: GPUViewType::ShaderResource,
+            byte_offset: 0,
+            element_count: def.element_count,
+            element_size: def.element_size,
+            buffer_view_flags: BufferViewFlags::empty(),
+            copy: false,
+            indirect: true,
+        })
+    }
+
+    pub fn new_copy_dst_buffer_view(
+        resource_id: RenderGraphResourceId,
+        def: &RenderGraphResourceDef,
+    ) -> Self {
+        let def: &RenderGraphBufferDef = def.try_into().unwrap();
+        Self::Buffer(RenderGraphBufferViewDef {
+            resource_id,
+            gpu_view_type: GPUViewType::UnorderedAccess,
+            byte_offset: 0,
+            element_count: def.element_count,
+            element_size: def.element_size,
+            buffer_view_flags: BufferViewFlags::empty(),
+            copy: true,
+            indirect: false,
         })
     }
 }
@@ -714,6 +750,8 @@ impl RenderGraph {
             GPUViewType::ShaderResource => {
                 if buffer_view_def.copy {
                     ResourceState::COPY_SRC
+                } else if buffer_view_def.indirect {
+                    ResourceState::INDIRECT_ARGUMENT
                 } else {
                     ResourceState::SHADER_RESOURCE
                 }
