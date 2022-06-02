@@ -136,6 +136,8 @@
 <canvas
   class="absolute"
   class:invisible={!actuallyVisible}
+  class:h-0={!actuallyVisible}
+  class:w-0={!actuallyVisible}
   bind:this={canvas}
   on:mousemove|preventDefault|stopPropagation={(e) =>
     e.buttons === 1 && onMouseEvent(e)}
