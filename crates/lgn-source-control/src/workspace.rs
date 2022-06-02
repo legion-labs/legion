@@ -154,28 +154,14 @@ where
         tree_id: &TreeIdentifier,
         id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>> {
-        let leaf_node = indexer.get_leaf(&self.transaction, tree_id, id).await;
+        let leaf_node = indexer.get_leaf(&self.transaction, tree_id, id).await?;
 
         match leaf_node {
-            Ok(leaf_node) => match leaf_node {
-                Some(leaf_node) => match leaf_node {
-                    TreeLeafNode::Resource(resource_id) => Ok(Some(resource_id)),
-                    TreeLeafNode::TreeRoot(tree_id) => Err(Error::CorruptedIndex { tree_id }),
-                },
-                None => Ok(None),
+            Some(leaf_node) => match leaf_node {
+                TreeLeafNode::Resource(resource_id) => Ok(Some(resource_id)),
+                TreeLeafNode::TreeRoot(tree_id) => Err(Error::CorruptedIndex { tree_id }),
             },
-            Err(e) => {
-                #[cfg(feature = "verbose")]
-                {
-                    error!(
-                        "failed to find resource '{}' in index '{}': {}",
-                        id, tree_id, e,
-                    );
-                    self.dump_all_indices(None).await;
-                }
-
-                Err(Error::ContentStoreIndexing(e))
-            }
+            None => Ok(None),
         }
     }
 
