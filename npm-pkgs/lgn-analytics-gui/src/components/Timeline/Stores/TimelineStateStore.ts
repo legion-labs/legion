@@ -241,6 +241,36 @@ export function createTimelineStateStore(state: TimelineState) {
     updateState((s) => (s.timelinePan = null));
   };
 
+  const collapseProcess = (processId: string) => {
+    updateState((timeline) => {
+      if (!timeline.collapsedProcesseIds.includes(processId)) {
+        timeline.collapsedProcesseIds.push(processId);
+      }
+    });
+  };
+
+  const expandProcess = (processId: string) => {
+    updateState((timeline) => {
+      if (timeline.collapsedProcesseIds.includes(processId)) {
+        timeline.collapsedProcesseIds = timeline.collapsedProcesseIds.filter(
+          (id) => id !== processId
+        );
+      }
+    });
+  };
+
+  const toggleCollapseProcess = (processId: string) => {
+    updateState((timeline) => {
+      if (timeline.collapsedProcesseIds.includes(processId)) {
+        timeline.collapsedProcesseIds = timeline.collapsedProcesseIds.filter(
+          (id) => id !== processId
+        );
+      } else {
+        timeline.collapsedProcesseIds.push(processId);
+      }
+    });
+  };
+
   return {
     subscribe,
     addProcessAsyncBlock,
@@ -264,5 +294,8 @@ export function createTimelineStateStore(state: TimelineState) {
     updateSelection,
     applyDrag,
     stopDrag,
+    collapseProcess,
+    expandProcess,
+    toggleCollapseProcess,
   };
 }

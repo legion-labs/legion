@@ -39,7 +39,7 @@
 {#if store}
   {#if $store.loading}
     <div
-      class="flex items-center justify-center h-full"
+      class="flex items-center justify-center h-8"
       style:max-height={`${size}px`}
     >
       <BarLoader size={32} />
