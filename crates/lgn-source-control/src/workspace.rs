@@ -169,14 +169,6 @@ where
         &self.transaction
     }
 
-    /*
-    /// Get the list of staged changes, regardless of the actual content of the
-    /// files or their existence on disk or in the current tree.
-    pub async fn get_staged_changes(&self) -> Result<BTreeMap<CanonicalPath, Change>> {
-        self.backend.get_staged_changes().await
-    }
-    */
-
     async fn get_resource_identifier(&self, id: &IndexKey) -> Result<Option<ResourceIdentifier>> {
         self.get_resource_identifier_from_index(&self.main_indexer, self.get_main_index_id(), id)
             .await
@@ -212,14 +204,13 @@ where
             },
             Err(e) => {
                 #[cfg(feature = "verbose")]
-                error!(
-                    "failed to find resource '{}' in index '{}': {}\nmain index: {}, path index: {}",
-                    id,
-                    tree_id,
-                    e,
-                    self.get_main_index_id(),
-                    self.content_id.path_index_tree_id
-                );
+                {
+                    error!(
+                        "failed to find resource '{}' in index '{}': {}",
+                        id, tree_id, e,
+                    );
+                    self.dump_all_indices(None).await;
+                }
 
                 Err(Error::ContentStoreIndexing(e))
             }
@@ -250,7 +241,7 @@ where
                     #[cfg(feature = "verbose")]
                     info!(
                         "reading resource '{}' -> {}\nmain index: {}, path index: {}",
-                        id,
+                        id.to_hex(),
                         resource_id,
                         self.get_main_index_id(),
                         self.content_id.path_index_tree_id
@@ -259,26 +250,15 @@ where
                 }
                 Err(e) => {
                     #[cfg(feature = "verbose")]
-                    error!(
-                        "failed to read resource '{}': {}\nmain index: {}, path index: {}",
-                        resource_id,
-                        e,
-                        self.get_main_index_id(),
-                        self.content_id.path_index_tree_id
-                    );
+                    {
+                        error!("failed to read resource '{}': {}", resource_id, e,);
+                        self.dump_all_indices(Some(&resource_id)).await;
+                    }
 
                     Err(Error::ContentStoreIndexing(e))
                 }
             }
         } else {
-            #[cfg(feature = "verbose")]
-            error!(
-                "failed to read resource '{}'\nmain index: {}, path index: {}",
-                id,
-                self.get_main_index_id(),
-                self.content_id.path_index_tree_id
-            );
-
             Err(Error::ResourceNotFound { id: id.clone() })
         }
     }
@@ -316,6 +296,54 @@ where
         indexing::enumerate_resources(&self.transaction, indexer, tree_id)
             .await
             .map_err(Error::ContentStoreIndexing)
+    }
+
+    #[cfg(feature = "verbose")]
+    async fn dump_index<F>(
+        &self,
+        indexer: &(impl BasicIndexer + Sync),
+        tree_id: &TreeIdentifier,
+        resource_id: Option<&ResourceIdentifier>,
+        f: F,
+    ) where
+        F: Fn(&IndexKey) -> String,
+    {
+        if let Ok(contents) = self.get_resources_by_index_and_id(indexer, tree_id).await {
+            match resource_id {
+                Some(resource_id) => {
+                    if let Some((index_key, resource_id)) = contents
+                        .iter()
+                        .find(|(_index_key, match_resource_id)| resource_id == match_resource_id)
+                    {
+                        info!("index: {}, [{}] -> {}", tree_id, f(index_key), resource_id);
+                    }
+                }
+                None => {
+                    info!("contents of index '{}'", tree_id);
+                    for (index_key, resource_id) in contents {
+                        info!("[{}] -> {}", f(&index_key), resource_id);
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(feature = "verbose")]
+    async fn dump_all_indices(&self, resource_id: Option<&ResourceIdentifier>) {
+        self.dump_index(
+            &self.main_indexer,
+            self.get_main_index_id(),
+            resource_id,
+            IndexKey::to_hex,
+        )
+        .await;
+        self.dump_index(
+            &self.path_indexer,
+            &self.content_id.path_index_tree_id,
+            resource_id,
+            |index_key| std::str::from_utf8(index_key.as_ref()).unwrap().to_owned(),
+        )
+        .await;
     }
 
     pub async fn reverse_lookup(&self, resource_id: &ResourceIdentifier) -> Result<IndexKey> {
@@ -382,14 +410,15 @@ where
             .map_err(Error::ContentStoreIndexing)?;
 
         #[cfg(feature = "verbose")]
-        info!(
-            "adding resource '{}', path: '{}' -> {}\nmain index: {}, path index: {}",
-            id,
-            path,
-            resource_identifier,
-            self.get_main_index_id(),
-            self.content_id.path_index_tree_id
-        );
+        {
+            info!(
+                "adding resource '{}', path: '{}' -> {}",
+                id.to_hex(),
+                path,
+                resource_identifier,
+            );
+            self.dump_all_indices(Some(&resource_identifier)).await;
+        }
 
         Ok(resource_identifier)
     }
@@ -401,6 +430,12 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
+        #[cfg(feature = "verbose")]
+        {
+            info!("before resource update '{}'", id.to_hex(),);
+            self.dump_all_indices(Some(old_identifier)).await;
+        }
+
         let resource_identifier = self
             .transaction
             .write_resource(&ResourceByteWriter::new(contents))
@@ -409,6 +444,11 @@ where
 
         if &resource_identifier != old_identifier {
             // content has changed
+            #[cfg(feature = "verbose")]
+            {
+                info!("resource id changed to {}", resource_identifier);
+                self.dump_all_indices(Some(&resource_identifier)).await;
+            }
 
             // update indices
             let (main_index_tree_id, _leaf_node) = self
@@ -423,6 +463,12 @@ where
                 .map_err(Error::ContentStoreIndexing)?;
             self.content_id.main_index_tree_id = main_index_tree_id;
 
+            #[cfg(feature = "verbose")]
+            {
+                info!("main index updated");
+                self.dump_all_indices(Some(&resource_identifier)).await;
+            }
+
             let (path_index_tree_id, _leaf_node) = self
                 .path_indexer
                 .replace_leaf(
@@ -435,19 +481,26 @@ where
                 .map_err(Error::ContentStoreIndexing)?;
             self.content_id.path_index_tree_id = path_index_tree_id;
 
+            #[cfg(feature = "verbose")]
+            {
+                info!("path index updated");
+                self.dump_all_indices(Some(&resource_identifier)).await;
+            }
+
             // unwrite previous resource content from content-store
             self.transaction.unwrite_resource(old_identifier).await?;
 
             #[cfg(feature = "verbose")]
-            info!(
-                "updating resource '{}', path: '{}' -> {} (was {})\nmain index: {}, path index: {}",
-                id,
-                path,
-                resource_identifier,
-                old_identifier,
-                self.get_main_index_id(),
-                self.content_id.path_index_tree_id
-            );
+            {
+                info!(
+                    "updating resource '{}', path: '{}' -> {} (was {})",
+                    id.to_hex(),
+                    path,
+                    resource_identifier,
+                    old_identifier,
+                );
+                self.dump_all_indices(Some(&resource_identifier)).await;
+            }
         }
 
         Ok(resource_identifier)
@@ -481,6 +534,19 @@ where
             )
             .await
             .map_err(Error::ContentStoreIndexing)?;
+
+        #[cfg(feature = "verbose")]
+        {
+            info!(
+                "updating path '{}' (was '{}') -> {}\nmain index: {}, path index: {}",
+                new_path,
+                old_path,
+                resource_identifier,
+                self.get_main_index_id(),
+                self.content_id.path_index_tree_id
+            );
+            self.dump_all_indices(Some(resource_identifier)).await;
+        }
 
         Ok(())
     }
@@ -523,14 +589,15 @@ where
             self.transaction.unwrite_resource(&resource_id).await?;
 
             #[cfg(feature = "verbose")]
-            info!(
-                "deleting resource '{}', path: '{}' -> {}\nmain index: {}, path index: {}",
-                id,
-                std::str::from_utf8(path.as_ref()).unwrap(),
-                resource_id,
-                self.get_main_index_id(),
-                self.content_id.path_index_tree_id
-            );
+            {
+                info!(
+                    "deleting resource '{}', path: '{}' -> {}",
+                    id.to_hex(),
+                    std::str::from_utf8(path.as_ref()).unwrap(),
+                    resource_id,
+                );
+                self.dump_all_indices(Some(&resource_id)).await;
+            }
         } else {
             return Err(Error::CorruptedIndex {
                 tree_id: self.get_main_index_id().clone(),
@@ -539,90 +606,6 @@ where
 
         Ok(())
     }
-
-    /*
-    /// Mark some local files for deletion.
-    ///
-    /// The list of new files edited is returned. If all the files were already
-    /// edited, an empty list is returned and call still succeeds.
-    #[deprecated = "use delete_resource instead"]
-    pub async fn delete_files(
-        &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
-    ) -> Result<BTreeSet<CanonicalPath>> {
-        debug!(
-            "delete_files: {}",
-            paths
-                .clone()
-                .into_iter()
-                .map(std::path::Path::display)
-                .join(", ")
-        );
-
-        let canonical_paths = self.to_canonical_paths(paths).await?;
-
-        let fs_tree = self.get_filesystem_tree(canonical_paths.clone()).await?;
-
-        // Also get the current tree to check if the files actually exist in the tree.
-        let commit = self.get_current_commit().await?;
-        let tree = self.get_tree_for_commit(&commit, canonical_paths).await?;
-
-        let staged_changes = self.get_staged_changes().await?;
-
-        let mut changes_to_save = vec![];
-        let mut changes_to_clear = vec![];
-
-        for (canonical_path, _) in fs_tree.files() {
-            self.remove_file(&canonical_path).await?;
-
-            if let Some(staged_change) = staged_changes.get(&canonical_path) {
-                match staged_change.change_type() {
-                    ChangeType::Add { .. } => {
-                        // The file was staged for addition: remove the staged change instead.
-                        changes_to_clear.push(staged_change.clone());
-                    }
-                    ChangeType::Edit {
-                        old_id: old_hash, ..
-                    } => {
-                        // The file was staged for edit: staged a deletion instead.
-
-                        changes_to_save.push(Change::new(
-                            canonical_path,
-                            ChangeType::Delete {
-                                old_id: old_hash.clone(),
-                            },
-                        ));
-                    }
-                    ChangeType::Delete { .. } => {
-                        // The file was staged for deletion already: nothing to do.
-                        continue;
-                    }
-                }
-            } else {
-                // Only stage the deletion if the file is already in the current tree.
-                if let Ok(Some(file)) = tree.find(&canonical_path) {
-                    changes_to_save.push(Change::new(
-                        canonical_path,
-                        ChangeType::Delete {
-                            old_id: file.cs_id().clone(),
-                        },
-                    ));
-                }
-            };
-
-            //assert_not_locked(workspace, &abs_path).await?;
-        }
-
-        self.backend.clear_staged_changes(&changes_to_clear).await?;
-        self.backend.save_staged_changes(&changes_to_save).await?;
-
-        Ok(changes_to_save
-            .into_iter()
-            .chain(changes_to_clear.into_iter())
-            .map(Into::into)
-            .collect())
-    }
-    */
 
     /*
     /// Returns the status of the workspace, according to the staging
