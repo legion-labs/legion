@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const config = require("../../tailwind.config.cjs");
+const { tailwindConfig } = require("../../tailwind.config.cjs");
 const path = require("path");
+
+const { withOpacity } = require("../tailwind.js");
 
 const {
   srcContentDir,
@@ -16,29 +18,7 @@ const plugin_ = require("tailwindcss/plugin");
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const plugin = plugin_;
 
-/**
- * @param {string} varName
- * @param {string} [defaultOpacityVariable]
- */
-function withOpacity(varName, defaultOpacityVariable) {
-  return (/** @type {{opacityVariable?: string }} */ { opacityVariable }) => {
-    const opacity =
-      typeof defaultOpacityVariable !== "undefined"
-        ? defaultOpacityVariable
-        : opacityVariable;
-
-    if (typeof opacity !== "undefined") {
-      return `rgba(var(${varName}), var(${opacity}))`;
-    }
-
-    return `rgb(var(${varName}))`;
-  };
-}
-
-// TODO: Extract to @lgn/web-client and reuse in editor
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 const themePlugin = plugin(function ({ addComponents }) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   addComponents({
     ".background": {
       "background-color": "rgb(var(--color-background))",
@@ -76,9 +56,8 @@ const themePlugin = plugin(function ({ addComponents }) {
   });
 });
 
-// eslint-disable-next-line no-undef
 module.exports = {
-  ...config,
+  ...tailwindConfig,
   content: [
     path.join(srcContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, contentGlobSuffix),

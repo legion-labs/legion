@@ -15,7 +15,10 @@
     "sourceMap": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": ["esnext", "dom"],
+    "lib": [
+      "esnext",
+      "dom"
+    ],
     "types": [
       "svelte",
       // The @testing-library/jest-dom lib relies on @types/jest
@@ -31,11 +34,19 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/resources/*": ["tests/resources/*"],
-      "@/*": ["src/*"],
+      "@/resources/*": [
+        "tests/resources/*"
+      ],
+      "@/*": [
+        "src/*"
+      ],
       // Sveltekit insists on having these two
-      "$lib": ["src/lib"],
-      "$lib/*": ["src/lib/*"]
+      "$lib": [
+        "src/lib"
+      ],
+      "$lib/*": [
+        "src/lib/*"
+      ]
     }
   },
   "include": [

@@ -16,7 +16,10 @@
     "sourceMap": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": ["esnext", "dom"],
+    "lib": [
+      "esnext",
+      "dom"
+    ],
     "types": [
       "svelte",
       // The @testing-library/jest-dom lib relies on @types/jest
@@ -31,8 +34,12 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/resources/*": ["tests/resources/*"],
-      "@/*": ["src/*"]
+      "@/resources/*": [
+        "tests/resources/*"
+      ],
+      "@/*": [
+        "src/*"
+      ]
     }
   },
   "include": [
@@ -43,6 +50,8 @@
     // Tests
     "tests/**/*.ts",
     // Benchmarks
-    "benchmarks/**/*.ts"
+    "benchmarks/**/*.ts",
+    "tailwind.config.cjs",
+    "*.js"
   ]
 }
