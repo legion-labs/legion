@@ -231,7 +231,9 @@ impl BasicIndexer for StringPathIndexer {
                 loop {
                     item.tree.count += 1;
 
-                    if let Some(old_node) = item.tree.insert_children(item.key, node) {
+                    if let Some(TreeNode::Branch(old_node)) =
+                        item.tree.insert_children(item.key, node)
+                    {
                         provider.unwrite(old_node.as_identifier()).await?;
                     }
 
@@ -270,7 +272,9 @@ impl BasicIndexer for StringPathIndexer {
                     let mut node = TreeNode::Leaf(leaf_node);
 
                     loop {
-                        if let Some(old_node) = item.tree.insert_children(item.key, node) {
+                        if let Some(TreeNode::Branch(old_node)) =
+                            item.tree.insert_children(item.key, node)
+                        {
                             provider.unwrite(old_node.as_identifier()).await?;
                         }
 
@@ -312,7 +316,7 @@ impl BasicIndexer for StringPathIndexer {
                 let mut item = stack.pop().expect("stack is not empty");
 
                 loop {
-                    if let Some(old_node) = item.tree.remove_children(item.key) {
+                    if let Some(TreeNode::Branch(old_node)) = item.tree.remove_children(item.key) {
                         provider.unwrite(old_node.as_identifier()).await?;
                     }
 
@@ -353,7 +357,9 @@ impl BasicIndexer for StringPathIndexer {
                         break Ok((node.into_branch().unwrap(), existing_leaf_node));
                     }
 
-                    if let Some(old_node) = item.tree.insert_children(item.key, node) {
+                    if let Some(TreeNode::Branch(old_node)) =
+                        item.tree.insert_children(item.key, node)
+                    {
                         provider.unwrite(old_node.as_identifier()).await?;
                     }
                 }
