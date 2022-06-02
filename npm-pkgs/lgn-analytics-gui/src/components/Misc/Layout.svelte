@@ -24,7 +24,7 @@
 
 <style lang="postcss">
   .layout {
-    @apply h-full w-full flex flex-col;
+    @apply w-full flex flex-col;
   }
 
   .header {

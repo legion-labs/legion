@@ -14,6 +14,7 @@ export class TimelineState {
   blocks: Record<string, ThreadBlock> = {};
   eventCount = 0;
   processes: Process[] = [];
+  collapsedProcesseIds: string[] = [];
   processAsyncData: Record<string, ProcessAsyncData> = {};
   scopes: Record<number, ScopeDesc> = {};
   ready = false;
@@ -21,18 +22,18 @@ export class TimelineState {
   currentSelection: [number, number] | undefined;
   viewRange: [number, number];
   timelinePan: TimelinePan | null = null;
-  private timelineStart: number | null;
-  private timelineEnd: number | null;
+  #timelineStart: number | null;
+  #timelineEnd: number | null;
   constructor(canvasWidth: number, start: number | null, end: number | null) {
     this.canvasWidth = canvasWidth;
-    this.timelineStart = start;
-    this.timelineEnd = end;
+    this.#timelineStart = start;
+    this.#timelineEnd = end;
 
     const viewRangeStart =
-      this.timelineStart !== null ? this.timelineStart : this.minMs;
+      this.#timelineStart !== null ? this.#timelineStart : this.minMs;
 
     const viewRangeEnd =
-      this.timelineEnd !== null ? this.timelineEnd : this.maxMs;
+      this.#timelineEnd !== null ? this.#timelineEnd : this.maxMs;
 
     this.viewRange = [viewRangeStart, viewRangeEnd];
   }
@@ -50,8 +51,8 @@ export class TimelineState {
 
   createdWithParameters() {
     return (
-      typeof this.timelineStart === "number" &&
-      typeof this.timelineEnd === "number"
+      typeof this.#timelineStart === "number" &&
+      typeof this.#timelineEnd === "number"
     );
   }
 

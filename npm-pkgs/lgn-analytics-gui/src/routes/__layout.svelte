@@ -192,6 +192,6 @@
 
 <style lang="postcss">
   .layout {
-    @apply antialiased h-full w-full flex flex-col;
+    @apply antialiased w-full flex flex-col;
   }
 </style>
