@@ -11,11 +11,10 @@ pub(crate) fn ui_animation_options(
     egui: Res<'_, Egui>,
     mut animation_options: ResMut<'_, AnimationOptions>,
 ) {
-    animation_options.show_collision_geometry = true;
-    egui.window("Physics options", |ui| {
+    egui.window("Animation options", |ui| {
         ui.checkbox(
             &mut animation_options.show_collision_geometry,
-            "Show collision geometry",
+            "Show animation bones",
         );
     });
 

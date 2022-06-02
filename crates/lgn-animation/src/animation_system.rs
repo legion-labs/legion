@@ -1,16 +1,13 @@
 #![allow(dead_code)]
 
 use crate::animation_skeleton::Skeleton;
-use crate::components::RuntimeAnimationTrack;
+use crate::components::AnimationClip;
 use crate::graph_instance::GraphInstance;
 use lgn_core::Time;
 use lgn_ecs::prelude::Query;
 use lgn_ecs::prelude::*;
 
-pub(crate) fn update(
-    mut animations: Query<'_, '_, &mut RuntimeAnimationTrack>,
-    time: Res<'_, Time>,
-) {
+pub(crate) fn update(mut animations: Query<'_, '_, &mut AnimationClip>, time: Res<'_, Time>) {
     for mut animation in animations.iter_mut() {
         let delta_time = time.delta_seconds();
 

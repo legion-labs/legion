@@ -1,5 +1,5 @@
 use crate::animation_options::AnimationOptions;
-use crate::components::RuntimeAnimationTrack;
+use crate::components::AnimationClip;
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::{Query, Res};
 use lgn_graphics_data::Color;
@@ -9,7 +9,7 @@ pub(crate) fn display_animation(
     debug_display: Res<'_, DebugDisplay>,
     bump_allocator_pool: Res<'_, BumpAllocatorPool>,
     animation_options: Res<'_, AnimationOptions>,
-    mut animations: Query<'_, '_, &RuntimeAnimationTrack>,
+    mut animations: Query<'_, '_, &AnimationClip>,
 ) {
     if !animation_options.show_collision_geometry {
         return;

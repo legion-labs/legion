@@ -1,4 +1,4 @@
-use lgn_animation::components::RuntimeAnimationTrack;
+use lgn_animation::components::AnimationClip;
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, ResourceDescriptor, ResourceTypeAndId};
@@ -205,7 +205,7 @@ impl SceneInstance {
                 } else if let Some(animation_data) =
                     component.downcast_ref::<lgn_animation::runtime::AnimationTrack>()
                 {
-                    let runtime_animation_data = RuntimeAnimationTrack::new(animation_data);
+                    let runtime_animation_data = AnimationClip::new(animation_data);
                     entity.insert(runtime_animation_data.clone());
                 } else {
                     error!(
