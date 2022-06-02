@@ -9,6 +9,8 @@ use lgn_content_store::{
     Provider,
 };
 use lgn_tracing::error;
+#[cfg(feature = "verbose")]
+use lgn_tracing::info;
 
 use crate::{
     Branch, Change, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
@@ -198,17 +200,29 @@ where
         tree_id: &TreeIdentifier,
         id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>> {
-        let leaf_node = indexer
-            .get_leaf(&self.transaction, tree_id, id)
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
+        let leaf_node = indexer.get_leaf(&self.transaction, tree_id, id).await;
 
         match leaf_node {
-            Some(leaf_node) => match leaf_node {
-                TreeLeafNode::Resource(resource_id) => Ok(Some(resource_id)),
-                TreeLeafNode::TreeRoot(tree_id) => Err(Error::CorruptedIndex { tree_id }),
+            Ok(leaf_node) => match leaf_node {
+                Some(leaf_node) => match leaf_node {
+                    TreeLeafNode::Resource(resource_id) => Ok(Some(resource_id)),
+                    TreeLeafNode::TreeRoot(tree_id) => Err(Error::CorruptedIndex { tree_id }),
+                },
+                None => Ok(None),
             },
-            None => Ok(None),
+            Err(e) => {
+                #[cfg(feature = "verbose")]
+                error!(
+                    "failed to find resource '{}' in index '{}': {}\nmain index: {}, path index: {}",
+                    id,
+                    tree_id,
+                    e,
+                    self.get_main_index_id(),
+                    self.content_id.path_index_tree_id
+                );
+
+                Err(Error::ContentStoreIndexing(e))
+            }
         }
     }
 
@@ -227,14 +241,44 @@ where
             .get_resource_identifier_from_index(&self.main_indexer, self.get_main_index_id(), id)
             .await?
         {
-            let resource_bytes = self
+            match self
                 .transaction
                 .read_resource::<ResourceByteReader>(&resource_id)
                 .await
-                .map_err(Error::ContentStoreIndexing)?;
+            {
+                Ok(resource_bytes) => {
+                    #[cfg(feature = "verbose")]
+                    info!(
+                        "reading resource '{}' -> {}\nmain index: {}, path index: {}",
+                        id,
+                        resource_id,
+                        self.get_main_index_id(),
+                        self.content_id.path_index_tree_id
+                    );
+                    Ok((resource_bytes.into_vec(), resource_id))
+                }
+                Err(e) => {
+                    #[cfg(feature = "verbose")]
+                    error!(
+                        "failed to read resource '{}': {}\nmain index: {}, path index: {}",
+                        resource_id,
+                        e,
+                        self.get_main_index_id(),
+                        self.content_id.path_index_tree_id
+                    );
 
-            Ok((resource_bytes.into_vec(), resource_id))
+                    Err(Error::ContentStoreIndexing(e))
+                }
+            }
         } else {
+            #[cfg(feature = "verbose")]
+            error!(
+                "failed to read resource '{}'\nmain index: {}, path index: {}",
+                id,
+                self.get_main_index_id(),
+                self.content_id.path_index_tree_id
+            );
+
             Err(Error::ResourceNotFound { id: id.clone() })
         }
     }
@@ -337,6 +381,16 @@ where
             .await
             .map_err(Error::ContentStoreIndexing)?;
 
+        #[cfg(feature = "verbose")]
+        info!(
+            "adding resource '{}', path: '{}' -> {}\nmain index: {}, path index: {}",
+            id,
+            path,
+            resource_identifier,
+            self.get_main_index_id(),
+            self.content_id.path_index_tree_id
+        );
+
         Ok(resource_identifier)
     }
 
@@ -383,6 +437,17 @@ where
 
             // unwrite previous resource content from content-store
             self.transaction.unwrite_resource(old_identifier).await?;
+
+            #[cfg(feature = "verbose")]
+            info!(
+                "updating resource '{}', path: '{}' -> {} (was {})\nmain index: {}, path index: {}",
+                id,
+                path,
+                resource_identifier,
+                old_identifier,
+                self.get_main_index_id(),
+                self.content_id.path_index_tree_id
+            );
         }
 
         Ok(resource_identifier)
@@ -442,6 +507,7 @@ where
                     &resource_id,
                 )
                 .await?;
+
             let (path_index_tree_id, _leaf_node) = self
                 .path_indexer
                 .remove_leaf(
@@ -455,6 +521,16 @@ where
 
             // unwrite resource from content-store
             self.transaction.unwrite_resource(&resource_id).await?;
+
+            #[cfg(feature = "verbose")]
+            info!(
+                "deleting resource '{}', path: '{}' -> {}\nmain index: {}, path index: {}",
+                id,
+                std::str::from_utf8(path.as_ref()).unwrap(),
+                resource_id,
+                self.get_main_index_id(),
+                self.content_id.path_index_tree_id
+            );
         } else {
             return Err(Error::CorruptedIndex {
                 tree_id: self.get_main_index_id().clone(),
@@ -708,7 +784,7 @@ where
             return Err(Error::stale_branch(branch));
         }
 
-        let empty_commit = commit.main_index_tree_id == self.content_id.main_index_tree_id
+        let empty_commit = &commit.main_index_tree_id == self.get_main_index_id()
             && commit.path_index_tree_id == self.content_id.path_index_tree_id;
 
         if empty_commit && matches!(behavior, CommitMode::Strict) {
