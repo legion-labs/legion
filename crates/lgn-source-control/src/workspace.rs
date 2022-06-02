@@ -2,9 +2,9 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        self, BasicIndexer, IndexKey, ResourceByteReader, ResourceByteWriter, ResourceIdentifier,
-        ResourceReader, ResourceWriter, StringPathIndexer, Tree, TreeIdentifier, TreeLeafNode,
-        TreeWriter,
+        self, BasicIndexer, IndexKey, ResourceByteReader, ResourceByteWriter, ResourceExists,
+        ResourceIdentifier, ResourceReader, ResourceWriter, StringPathIndexer, Tree,
+        TreeIdentifier, TreeLeafNode, TreeWriter,
     },
     Provider,
 };
@@ -239,13 +239,7 @@ where
             {
                 Ok(resource_bytes) => {
                     #[cfg(feature = "verbose")]
-                    info!(
-                        "reading resource '{}' -> {}\nmain index: {}, path index: {}",
-                        id.to_hex(),
-                        resource_id,
-                        self.get_main_index_id(),
-                        self.content_id.path_index_tree_id
-                    );
+                    info!("reading resource '{}' -> {}", id.to_hex(), resource_id);
                     Ok((resource_bytes.into_vec(), resource_id))
                 }
                 Err(e) => {
@@ -430,12 +424,6 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        #[cfg(feature = "verbose")]
-        {
-            info!("before resource update '{}'", id.to_hex(),);
-            self.dump_all_indices(Some(old_identifier)).await;
-        }
-
         let resource_identifier = self
             .transaction
             .write_resource(&ResourceByteWriter::new(contents))
@@ -446,8 +434,13 @@ where
             // content has changed
             #[cfg(feature = "verbose")]
             {
-                info!("resource id changed to {}", resource_identifier);
-                self.dump_all_indices(Some(&resource_identifier)).await;
+                info!(
+                    "updating resource '{}', path: '{}' -> {}...",
+                    id.to_hex(),
+                    path,
+                    old_identifier,
+                );
+                self.dump_all_indices(Some(old_identifier)).await;
             }
 
             // update indices
@@ -463,12 +456,6 @@ where
                 .map_err(Error::ContentStoreIndexing)?;
             self.content_id.main_index_tree_id = main_index_tree_id;
 
-            #[cfg(feature = "verbose")]
-            {
-                info!("main index updated");
-                self.dump_all_indices(Some(&resource_identifier)).await;
-            }
-
             let (path_index_tree_id, _leaf_node) = self
                 .path_indexer
                 .replace_leaf(
@@ -481,23 +468,16 @@ where
                 .map_err(Error::ContentStoreIndexing)?;
             self.content_id.path_index_tree_id = path_index_tree_id;
 
-            #[cfg(feature = "verbose")]
-            {
-                info!("path index updated");
-                self.dump_all_indices(Some(&resource_identifier)).await;
-            }
-
             // unwrite previous resource content from content-store
             self.transaction.unwrite_resource(old_identifier).await?;
 
             #[cfg(feature = "verbose")]
             {
                 info!(
-                    "updating resource '{}', path: '{}' -> {} (was {})",
+                    "... to resource '{}', path: '{}' -> {}",
                     id.to_hex(),
                     path,
                     resource_identifier,
-                    old_identifier,
                 );
                 self.dump_all_indices(Some(&resource_identifier)).await;
             }
@@ -514,6 +494,12 @@ where
     ) -> Result<()> {
         assert!(new_path != old_path);
 
+        assert!(self
+            .transaction
+            .resource_exists(resource_identifier)
+            .await
+            .unwrap());
+
         let (path_index_tree_id, _old_node) = self
             .path_indexer
             .remove_leaf(
@@ -523,12 +509,13 @@ where
             )
             .await
             .map_err(Error::ContentStoreIndexing)?;
+        self.content_id.path_index_tree_id = path_index_tree_id;
 
         self.content_id.path_index_tree_id = self
             .path_indexer
             .add_leaf(
                 &self.transaction,
-                &path_index_tree_id,
+                &self.content_id.path_index_tree_id,
                 &new_path.into(),
                 TreeLeafNode::Resource(resource_identifier.clone()),
             )
@@ -538,15 +525,17 @@ where
         #[cfg(feature = "verbose")]
         {
             info!(
-                "updating path '{}' (was '{}') -> {}\nmain index: {}, path index: {}",
-                new_path,
-                old_path,
-                resource_identifier,
-                self.get_main_index_id(),
-                self.content_id.path_index_tree_id
+                "updating path '{}' (was '{}') -> {}",
+                new_path, old_path, resource_identifier,
             );
             self.dump_all_indices(Some(resource_identifier)).await;
         }
+
+        assert!(self
+            .transaction
+            .resource_exists(resource_identifier)
+            .await
+            .unwrap());
 
         Ok(())
     }

@@ -615,6 +615,8 @@ impl Project {
             .update_path(old_name.as_str(), new_name.as_str(), &resource_id)
             .await?;
 
+        self.update_offline_manifest_id();
+
         Ok(old_name)
     }
 
