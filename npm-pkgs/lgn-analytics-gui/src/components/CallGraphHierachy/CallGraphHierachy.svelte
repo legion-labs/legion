@@ -28,7 +28,7 @@
 
   onMount(async () => {
     store = await getProcessCumulatedCallGraphHierarchy(
-      $client,
+      client,
       processId,
       begin,
       end

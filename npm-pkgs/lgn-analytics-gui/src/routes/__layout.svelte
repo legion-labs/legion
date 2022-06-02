@@ -34,8 +34,8 @@
           clientId,
           login: {
             cookies: {
-              accessToken: "analytics_access_token_v2",
-              refreshToken: "analytics_refresh_token_v2",
+              accessToken: accessTokenCookieName,
+              refreshToken: refreshTokenCookieName,
             },
             scopes: ["email", "openid", "profile"],
           },
@@ -82,7 +82,6 @@
   import log from "@lgn/web-client/src/lib/log";
   import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
   import { createL10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
-  import accessToken from "@lgn/web-client/src/stores/accessToken";
   import type { NotificationsStore } from "@lgn/web-client/src/stores/notifications";
   import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
@@ -91,11 +90,13 @@
   import LoadingBar from "@/components/Misc/LoadingBar.svelte";
   import { getThreadItemLength } from "@/components/Timeline/Values/TimelineValues";
   import {
+    accessTokenCookieName,
     localeStorageKey,
+    refreshTokenCookieName,
     themeStorageKey,
     threadItemLengthFallback,
   } from "@/constants";
-  import { createGrpcClientStore } from "@/lib/client";
+  import { createGrpcClient } from "@/lib/client";
 
   import "../assets/index.css";
 
@@ -141,7 +142,7 @@
 
   setContext(l10nOrchestratorContextKey, l10n);
 
-  setContext("http-client", createGrpcClientStore(accessToken));
+  setContext("http-client", createGrpcClient());
 
   setContext("notifications", notifications);
 
