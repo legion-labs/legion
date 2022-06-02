@@ -169,7 +169,10 @@ where
         &self.transaction
     }
 
-    async fn get_resource_identifier(&self, id: &IndexKey) -> Result<Option<ResourceIdentifier>> {
+    pub async fn get_resource_identifier(
+        &self,
+        id: &IndexKey,
+    ) -> Result<Option<ResourceIdentifier>> {
         self.get_resource_identifier_from_index(&self.main_indexer, self.get_main_index_id(), id)
             .await
     }
@@ -340,9 +343,18 @@ where
         .await;
     }
 
-    pub async fn reverse_lookup(&self, resource_id: &ResourceIdentifier) -> Result<IndexKey> {
+    pub async fn reverse_lookup_main(&self, resource_id: &ResourceIdentifier) -> Result<IndexKey> {
         self.reverse_lookup_in_tree_id(&self.main_indexer, self.get_main_index_id(), resource_id)
             .await
+    }
+
+    pub async fn reverse_lookup_path(&self, resource_id: &ResourceIdentifier) -> Result<IndexKey> {
+        self.reverse_lookup_in_tree_id(
+            &self.path_indexer,
+            &self.content_id.path_index_tree_id,
+            resource_id,
+        )
+        .await
     }
 
     async fn reverse_lookup_in_tree_id(
@@ -555,13 +567,7 @@ where
 
         if let TreeLeafNode::Resource(resource_id) = leaf_node {
             // reverse lookup in path index
-            let path = self
-                .reverse_lookup_in_tree_id(
-                    &self.path_indexer,
-                    &self.content_id.path_index_tree_id,
-                    &resource_id,
-                )
-                .await?;
+            let path = self.reverse_lookup_path(&resource_id).await?;
 
             let (path_index_tree_id, _leaf_node) = self
                 .path_indexer

@@ -8,7 +8,7 @@ use lgn_content_store::{
     Provider,
 };
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-use lgn_data_offline::resource::{serialize_metadata, ResourcePathName};
+use lgn_data_offline::resource::serialize_metadata;
 use lgn_data_runtime::{
     new_resource_type_and_id_indexer, Resource, ResourceProcessor, ResourceTypeAndId,
 };
@@ -47,9 +47,8 @@ pub async fn write_resource(
     let mut bytes = std::io::Cursor::new(Vec::new());
 
     // pre-pend metadata before serialized resource
-    let name = ResourcePathName::new("test_resource");
     let dependencies = proc.extract_build_dependencies(resource);
-    serialize_metadata(name, dependencies, &mut bytes);
+    serialize_metadata(dependencies, &mut bytes);
 
     proc.write_resource(resource, &mut bytes)
         .expect("write to memory");

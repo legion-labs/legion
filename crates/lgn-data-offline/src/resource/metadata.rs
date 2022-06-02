@@ -1,11 +1,8 @@
 use lgn_data_runtime::ResourcePathId;
 use serde::{Deserialize, Serialize};
 
-use crate::resource::ResourcePathName;
-
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Metadata {
-    pub(crate) name: ResourcePathName,
     pub(crate) dependencies: Vec<ResourcePathId>,
 }
 
@@ -17,19 +14,11 @@ impl Metadata {
     pub(crate) fn deserialize(reader: impl std::io::Read) -> Self {
         bincode::deserialize_from(reader).expect("failed to decode metadata contents")
     }
-
-    pub(crate) fn rename(&mut self, name: &ResourcePathName) -> ResourcePathName {
-        std::mem::replace(&mut self.name, name.clone())
-    }
 }
 
 /// Write serialized form of metadata
-pub fn serialize_metadata(
-    name: ResourcePathName,
-    dependencies: Vec<ResourcePathId>,
-    writer: impl std::io::Write,
-) {
-    let metadata = Metadata { name, dependencies };
+pub fn serialize_metadata(dependencies: Vec<ResourcePathId>, writer: impl std::io::Write) {
+    let metadata = Metadata { dependencies };
     metadata.serialize(writer);
 }
 

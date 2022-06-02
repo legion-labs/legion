@@ -16,7 +16,7 @@ path = "src/bin/server.rs"
 required-features = ["server"]
 
 [features]
-default = ["cli", "server", "verbose"]
+default = ["cli", "server"]
 cli = ["lgn-telemetry-sink", "atty", "clap", "termcolor"]
 server = ["lgn-telemetry-sink", "clap", "tonic-web", "tower", "tower-http"]
 verbose = []

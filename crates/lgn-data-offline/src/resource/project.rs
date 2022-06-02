@@ -100,6 +100,9 @@ pub enum Error {
     /// Name already used
     #[error("name '{0}' already used by resource '{1}'")]
     NameAlreadyUsed(ResourcePathName, ResourceTypeAndId),
+    /// Resource not found in content-store
+    #[error("resource '{0}' not found")]
+    ResourceNotFound(ResourceTypeAndId),
 }
 
 /// The type of change done to a resource.
@@ -273,7 +276,10 @@ impl Project {
             .await?
         {
             // reverse lookup main index
-            let index_key = self.workspace.reverse_lookup(&resource_identifier).await?;
+            let index_key = self
+                .workspace
+                .reverse_lookup_main(&resource_identifier)
+                .await?;
             return Ok(index_key.into());
         }
         Err(Error::FileNotFound(name.to_string()))
@@ -378,7 +384,7 @@ impl Project {
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<(), Error> {
-        let contents = Self::get_resource_contents(&name, type_id, handle, registry)?;
+        let contents = Self::get_resource_contents(type_id, handle, registry)?;
 
         self.workspace
             .add_resource(&type_id.into(), name.as_str(), &contents)
@@ -390,7 +396,6 @@ impl Project {
     }
 
     fn get_resource_contents(
-        name: &ResourcePathName,
         type_id: ResourceTypeAndId,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
@@ -402,10 +407,7 @@ impl Project {
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
         // pre-pend metadata before serialized resource
-        let metadata = Metadata {
-            name: name.clone(),
-            dependencies,
-        };
+        let metadata = Metadata { dependencies };
         metadata.serialize(&mut contents);
 
         let _written = registry
@@ -447,17 +449,11 @@ impl Project {
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<(), Error> {
-        let (metadata, resource_id) = self.read_meta(type_id).await?;
-
-        let contents = Self::get_resource_contents(&metadata.name, type_id, handle, registry)?;
+        let (name, resource_id) = self.lookup_name(type_id).await?;
+        let contents = Self::get_resource_contents(type_id, handle, registry)?;
 
         self.workspace
-            .update_resource(
-                &type_id.into(),
-                metadata.name.as_str(),
-                &contents,
-                &resource_id,
-            )
+            .update_resource(&type_id.into(), name.as_str(), &contents, &resource_id)
             .await?;
 
         self.update_offline_manifest_id();
@@ -498,9 +494,8 @@ impl Project {
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        let (meta, _resource_id) = self.read_meta(type_id).await?;
-        if let Some((resource_id, suffix)) = meta
-            .name
+        let name = self.raw_resource_name(type_id).await?;
+        if let Some((resource_id, suffix)) = name
             .as_str()
             .strip_prefix("/!")
             .and_then(|v| v.split_once('/'))
@@ -512,7 +507,7 @@ impl Project {
                 }
             }
         }
-        Ok(meta.name)
+        Ok(name)
     }
 
     /// Returns the name of the resource from its `.meta` file.
@@ -565,13 +560,29 @@ impl Project {
         Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
+    async fn lookup_name(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<(ResourcePathName, ResourceIdentifier), Error> {
+        let resource_id = self
+            .workspace
+            .get_resource_identifier(&type_id.into())
+            .await?
+            .ok_or(Error::ResourceNotFound(type_id))?;
+        let path = self.workspace.reverse_lookup_path(&resource_id).await?;
+        let path =
+            std::str::from_utf8(path.as_ref()).expect("failed to convert path index key to string");
+        let name = path.parse().expect("failed to parse path index key");
+        Ok((name, resource_id))
+    }
+
     /// Returns the raw name of the resource from its `.meta` file.
     pub async fn raw_resource_name(
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        let (meta, _resource_id) = self.read_meta(type_id).await?;
-        Ok(meta.name)
+        let (name, _resource_id) = self.lookup_name(type_id).await?;
+        Ok(name)
     }
 
     async fn read_meta(
@@ -597,19 +608,17 @@ impl Project {
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        let (mut metadata, resource_id) = self.read_meta(type_id).await?;
+        let (old_name, resource_id) = self.lookup_name(type_id).await?;
 
         // renaming to same name, no-op
-        if new_name == &metadata.name {
-            return Ok(metadata.name);
+        if new_name == &old_name {
+            return Ok(old_name);
         }
 
         // already used?
         if let Ok(existing_type_id) = self.find_resource(new_name).await {
             return Err(Error::NameAlreadyUsed(new_name.clone(), existing_type_id));
         }
-
-        let old_name = metadata.rename(new_name);
 
         self.workspace
             .update_path(old_name.as_str(), new_name.as_str(), &resource_id)
