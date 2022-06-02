@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::{animation_clip::AnimationClip, animation_task_system::TaskUpdateStage};
+use crate::{animation_task_system::TaskUpdateStage, components::AnimationClip};
 
 pub trait Task {
     fn execute();
