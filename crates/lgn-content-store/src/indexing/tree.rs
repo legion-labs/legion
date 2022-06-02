@@ -508,13 +508,6 @@ impl Display for TreeNode {
 }
 
 impl TreeNode {
-    pub fn as_identifier(&self) -> &Identifier {
-        match self {
-            TreeNode::Leaf(leaf) => leaf.as_identifier(),
-            TreeNode::Branch(branch) => branch.as_identifier(),
-        }
-    }
-
     pub fn into_leaf(self) -> Option<TreeLeafNode> {
         match self {
             TreeNode::Leaf(leaf) => Some(leaf),
