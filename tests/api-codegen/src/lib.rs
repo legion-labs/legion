@@ -9,4 +9,4 @@
 
 pub mod api_impl;
 
-lgn_online::include_api!(cars);
+lgn_online::include_api!();

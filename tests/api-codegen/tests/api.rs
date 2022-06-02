@@ -1,8 +1,7 @@
 use std::net::SocketAddr;
 
-use api_codegen::cars::{
+use api_codegen::api::cars::{
     client,
-    models::{self, CarColor, Cars},
     requests::{
         CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
         TestHeadersRequest,
@@ -11,7 +10,7 @@ use api_codegen::cars::{
         CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
         TestHeadersResponse, TestOneOfResponse,
     },
-    server, Api,
+    server, Api, Car, CarColor, Cars, Pet, TestOneOf200Response,
 };
 use axum::Router;
 use lgn_online::codegen::Context;
@@ -25,7 +24,7 @@ async fn test_crud() {
 
     let space_id = "ABCDEF".to_string();
     let span_id = "123456".to_string();
-    let car = models::Car {
+    let car = Car {
         id: 1,
         color: CarColor::Red,
         name: "car1".to_string(),
@@ -98,7 +97,7 @@ async fn test_one_of() {
     let resp = client.test_one_of(&mut ctx).await.unwrap();
     assert_eq!(
         resp,
-        TestOneOfResponse::Status200(models::TestOneOf200Response::Option1(models::Pet {
+        TestOneOfResponse::Status200(TestOneOf200Response::Option1(Pet {
             name: Some("Cat".to_string()),
         }),)
     );
@@ -135,7 +134,7 @@ async fn test_headers() {
             x_string_header: "string".to_string(),
             x_int_header: 5,
             x_bytes_header: b"bytes".to_vec().into(),
-            body: models::Pet {
+            body: Pet {
                 name: Some("Cat".to_string()),
             }
         }

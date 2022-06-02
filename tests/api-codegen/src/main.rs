@@ -5,7 +5,7 @@
 
 use std::net::SocketAddr;
 
-use api_codegen::{api_impl::ApiImpl, cars::server};
+use api_codegen::{api::cars::server, api_impl::ApiImpl};
 use axum::Router;
 use lgn_online::server::RouterExt;
 

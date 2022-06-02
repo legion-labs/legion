@@ -3,7 +3,7 @@ use regex::{Captures, Regex};
 
 pub use crate::filters::*;
 use crate::{
-    api::{Parameter, Path, Type},
+    api_types::{Parameter, Path, Type},
     errors::Error,
 };
 
@@ -20,7 +20,7 @@ pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
         Type::HashSet(inner) => format!("Set<{}>", fmt_type(inner).unwrap()),
         Type::Named(struct_) => format!("{}Model", struct_),
         Type::Enum { .. } | Type::Struct { .. } | Type::OneOf { .. } => {
-            return Err(askama::Error::Custom(Box::new(Error::Unsupported(
+            return Err(askama::Error::Custom(Box::new(Error::UnsupportedType(
                 "complex types cannot be formatted".to_string(),
             ))))
         }
