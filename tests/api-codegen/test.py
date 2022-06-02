@@ -1,62 +1,10 @@
-from enum import IntEnum, Enum, auto
-class NotEnum:
-    def __init__(self):
-        print("NotEnum")
-
-class YesEnum(Enum):
-    YES = auto()
-
-class Test:
-    def __init__(self):
-        self.x = 10
-
-class CarColor(Enum):
-
-    RED = "red"
-
-    BLUE = "blue"
-
-    YELLOW = "yellow"
-
-color = CarColor.RED
-print(color.__dict__)
-class Car:
-    def __init__(
-        self,
-        id : int, 
-        name : str, 
-        color : CarColor, # The car color.
-        #test: Test,
-        is_new : bool, 
-        extra : bytearray, 
-    ):
-        self.id = id
-        self.name = name
-        self.color = color
-        #self.test = test
-        self.is_new = is_new
-        self.extra = extra
-
-
-from json import JSONEncoder
-class ModelEncoder(JSONEncoder):
-    def default(self, o):
-        return o.__dict__
-
-print(ModelEncoder().encode(CarColor.RED))
-
-#x = YesEnum.YES
-print(ModelEncoder().encode(Car(
-        0,
-        "Keks",
-        CarColor.BLUE,
-        #Test(),
-        False, 
-        ""
-    )))
-
 
 import cars
+
+def my_print(something: str):
+    print(something)
+
+my_print(1)
 
 client = cars.Client("http://127.0.0.1:3000")
 
@@ -64,11 +12,37 @@ response = client.get_car(cars.GetCarRequest(
     "kd_space",
     0,
 ))
+print(vars(response))
 
 response = client.create_car(cars.CreateCarRequest(
     "kd_space",
     "kd_span",
     cars.Car(
-        0, "Keks", cars.CarColor.BLUE, False, []
+        0, "Opel", cars.CarColor.BLUE, False, ""
     )
 ))
+print(vars(response))
+
+response = client.create_car(cars.CreateCarRequest(
+    "kd_space",
+    "kd_span",
+    cars.Car(
+        1, "Lada", cars.CarColor.RED, True, ""
+    )
+))
+print(vars(response))
+print(cars.CarColor("red"))
+
+car_response = client.get_car(cars.GetCarRequest(
+    "kd_space",
+    1
+))
+print(car_response.car.__dict__)
+#print(car_response.car.__dict__)
+
+response = client.get_cars(cars.GetCarsRequest(
+    "kd_space",
+    ["Opel", "Lada"]
+))
+print(vars(response))
+

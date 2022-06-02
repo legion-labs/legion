@@ -1,4 +1,5 @@
 import requests
+import urllib
 
 class Client(Api):
     def __init__(self, uri):
@@ -23,17 +24,18 @@ class Client(Api):
         {% endif %}
         
         {%- if !route.parameters.query.is_empty() %}
-        params = {
-            {%- for parameter in route.parameters.query %}
-            "{{ parameter.name|snake_case }}" : request.{{ parameter.name|snake_case }},
-            {%- endfor %}
-        }
-        # Initializing for consistency but not used
-        #_params = {{ route.name|pascal_case }}Query( 
-        #    {%- for parameter in route.parameters.query %}
-        #    {{ parameter.name|snake_case }},
-        #    {%- endfor %}
-        #)
+        params = {}
+
+        {%- for parameter in route.parameters.query %}
+        {%- if parameter.required %}
+        params["{{ parameter.name|snake_case }}{}".format(("","[]")[isinstance(request.{{ parameter.name|snake_case }}, list)])] = request.{{ parameter.name|snake_case }}
+        {% else %}
+        if hasattr(request, "{{ parameter.name|snake_case }}") and request.{{ parameter.name|snake_case }}:
+            params["{{ parameter.name|snake_case}}{}".format(("","[]")[isinstance(request.{{ parameter.name|snake_case }}, list)])] = request.{{ parameter.name|snake_case }}
+        {%- endif %}
+        {%- endfor %}
+        
+        uri += "?{}".format(urllib.parse.urlencode(params, doseq=True))
         {%- endif -%}
 
         {%- if !route.parameters.header.is_empty() %}
@@ -60,11 +62,11 @@ class Client(Api):
         resp = requests.{{ route.method|lowercase }}(
             uri,
             {%- if !route.parameters.query.is_empty() %}
-            params = params,
+            #params = params,
             {%- endif %}
             {%- if let Some(request_body) = route.request_body %}
             headers = headers,
-            json = request.body.to_json(),
+            data = request.body.to_json(),
             {%- endif %}
         )
 

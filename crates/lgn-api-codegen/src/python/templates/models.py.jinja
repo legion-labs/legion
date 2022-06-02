@@ -19,9 +19,12 @@ class {{ enum_.name }}(Enum):
 {%- for variant in enum_.variants %}
     {{ variant|upper }} = "{{ variant }}"
 {%- endfor %}
+    def from_json(value):
+        return {{ enum_.name }}(value)
 
-# TODO(kdaibov): OneOf is not tested
+
 {% when Model::OneOf with (one_of) %}
+# TODO(kdaibov): OneOf is not tested
 {% if let Some(description) = one_of.description %}# {{ description }}{% endif %}
 class {{ one_of.name }}:
     def __init__(self, value):
@@ -47,6 +50,21 @@ class {{ struct_.name }}:
 
     def to_json(self):
         return ModelEncoder().encode(self)
+
+    def from_json(body):
+        {%- for field in struct_.fields %}
+        {%- match field.type_ %}
+        {%- when Type::Struct with (inner_struct_name)%}
+        {{field.name}} = {{inner_struct_name}}.from_json(body['{{field.name}}'])
+        {%- else %}
+        {{field.name}} = body['{{field.name}}']
+        {%- endmatch %}
+        {%- endfor %}
+        return {{ struct_.name }}(
+            {%- for field in struct_.fields %}
+            {{ field.name }},
+            {%- endfor %}
+        )
    
 {% endmatch %}
 {% endfor %}

@@ -23,7 +23,12 @@ class {{ enum_name }}:
                 {%- if let Some(content) = response.content -%}
                 {%- match content.media_type %}
                 {% when MediaType::Json %}
+                {%- match content.type_ %}
+                {%- when Type::Struct with (struct_name) %}
+                self.{{ struct_name|snake_case }} = {{ struct_name }}.from_json(response.json())
+                {%- else %}
                 self.json = response.json()
+                {%- endmatch %}
                 {% when MediaType::Bytes %}
                 self.bytes = response.content
                 {%- endmatch %}

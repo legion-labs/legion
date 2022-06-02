@@ -1,7 +1,7 @@
 use std::{ffi::OsStr, path::Path};
 
 use crate::{
-    api::{Api, MediaType, Model},
+    api::{Api, MediaType, Model, Type},
     Generator, Result,
 };
 use askama::Template;

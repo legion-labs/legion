@@ -14,7 +14,7 @@ pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
         Type::Boolean => "bool".to_string(),
         Type::Float32 => "float".to_string(),
         Type::Float64 => "float".to_string(),
-        Type::Bytes | Type::Binary => "bytearray".to_string(),
+        Type::Bytes | Type::Binary => "str".to_string(),
         Type::DateTime => "datetime".to_string(),
         Type::Date => "date".to_string(),
         Type::Array(inner) => format!("list[{}]", fmt_type(inner).unwrap()),
