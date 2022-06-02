@@ -115,10 +115,15 @@ impl Visitor {
                     )?);
                 }
                 openapiv3::Parameter::Header { parameter_data, .. } => {
-                    // Only string header parameters are supported for now.
-                    // There is no standard on how to parse them so we just
-                    // forward the raw string value to the implementor.
-                    let allowed_types = Some(vec![Type::String]);
+                    let allowed_types = Some(vec![
+                        Type::String,
+                        Type::Int32,
+                        Type::Int64,
+                        Type::Boolean,
+                        Type::Float32,
+                        Type::Float64,
+                        Type::Bytes,
+                    ]);
                     parameters.header.push(self.visit_parameter(
                         path,
                         &parameter.as_element_ref(parameter_data),

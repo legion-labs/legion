@@ -4,6 +4,10 @@ use thiserror::Error;
 pub enum Error {
     #[error("complex type `{0}` cannot be percent encoded")]
     Unsupported(String),
+    #[error("parsing error: {0}")]
+    Parsing(String),
+    #[error("utf8 error: {0}")]
+    Utf8(#[from] std::str::Utf8Error),
     #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }
@@ -15,6 +19,12 @@ impl Error {
 }
 
 impl serde::ser::Error for Error {
+    fn custom<T: std::fmt::Display>(msg: T) -> Self {
+        Self::Unknown(anyhow::anyhow!("{}", msg))
+    }
+}
+
+impl serde::de::Error for Error {
     fn custom<T: std::fmt::Display>(msg: T) -> Self {
         Self::Unknown(anyhow::anyhow!("{}", msg))
     }

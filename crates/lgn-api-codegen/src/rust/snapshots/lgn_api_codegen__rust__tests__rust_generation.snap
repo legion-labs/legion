@@ -158,11 +158,33 @@ pub mod client {
                 req.headers_mut().extend(headers);
             }
 
-            if let Some(x_static_header) = request.x_static_header {
+            if let Some(x_string_header) = request.x_string_header {
+                let x_string_header =
+                    lgn_online::codegen::encoding::to_percent_encoded_string(&x_string_header)?;
                 req.headers_mut().insert(
-                    "x-static-header",
-                    HeaderValue::from_str(&x_static_header)
-                        .map_err(|err| Error::InvalidHeader(format!("x-static-header: {}", err)))?,
+                    "x-string-header",
+                    HeaderValue::from_str(&x_string_header)
+                        .map_err(|err| Error::InvalidHeader(format!("x-string-header: {}", err)))?,
+                );
+            }
+
+            if let Some(x_bytes_header) = request.x_bytes_header {
+                let x_bytes_header =
+                    lgn_online::codegen::encoding::to_percent_encoded_string(&x_bytes_header)?;
+                req.headers_mut().insert(
+                    "x-bytes-header",
+                    HeaderValue::from_str(&x_bytes_header)
+                        .map_err(|err| Error::InvalidHeader(format!("x-bytes-header: {}", err)))?,
+                );
+            }
+
+            if let Some(x_int_header) = request.x_int_header {
+                let x_int_header =
+                    lgn_online::codegen::encoding::to_percent_encoded_string(&x_int_header)?;
+                req.headers_mut().insert(
+                    "x-int-header",
+                    HeaderValue::from_str(&x_int_header)
+                        .map_err(|err| Error::InvalidHeader(format!("x-int-header: {}", err)))?,
                 );
             }
             let resp = self.inner.request(req).await?;
@@ -266,6 +288,7 @@ pub mod client {
                 .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
             if let Some(span_id) = request.span_id {
+                let span_id = lgn_online::codegen::encoding::to_percent_encoded_string(&span_id)?;
                 req.headers_mut().insert(
                     "span-id",
                     HeaderValue::from_str(&span_id)
@@ -437,25 +460,65 @@ pub mod server {
     where
         T: super::Api + Send + Sync + 'static,
     {
-        let x_static_header = parts
+        let x_string_header = parts
             .headers
-            .get(HeaderName::from_static("x-static-header"));
-        let x_static_header = x_static_header.map(|x_static_header| {
-            x_static_header
-                .to_str()
-                .map_err(|err| {
-                    error!("Failed to read `x-static-header` header: {}", err);
-                    Error::InvalidHeader("x-static-header".to_owned()).into_response()
-                })
-                .unwrap()
-                .to_owned()
-        });
+            .get(HeaderName::from_static("x-string-header"))
+            .map(|h| {
+                let s = h
+                    .to_str()
+                    .map_err(|err| {
+                        Error::InvalidHeader("x-string-header".to_owned()).into_response()
+                    })
+                    .unwrap();
+
+                lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                    .map_err(|err| {
+                        Error::InvalidHeader("x-string-header".to_owned()).into_response()
+                    })
+                    .unwrap()
+            });
+
+        let x_bytes_header = parts
+            .headers
+            .get(HeaderName::from_static("x-bytes-header"))
+            .map(|h| {
+                let s = h
+                    .to_str()
+                    .map_err(|err| {
+                        Error::InvalidHeader("x-bytes-header".to_owned()).into_response()
+                    })
+                    .unwrap();
+
+                lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                    .map_err(|err| {
+                        Error::InvalidHeader("x-bytes-header".to_owned()).into_response()
+                    })
+                    .unwrap()
+            });
+
+        let x_int_header = parts
+            .headers
+            .get(HeaderName::from_static("x-int-header"))
+            .map(|h| {
+                let s = h
+                    .to_str()
+                    .map_err(|err| Error::InvalidHeader("x-int-header".to_owned()).into_response())
+                    .unwrap();
+
+                lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                    .map_err(|err| Error::InvalidHeader("x-int-header".to_owned()).into_response())
+                    .unwrap()
+            });
 
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
 
-        let request = requests::TestHeadersRequest { x_static_header };
+        let request = requests::TestHeadersRequest {
+            x_string_header,
+            x_bytes_header,
+            x_int_header,
+        };
 
         let resp = api.test_headers(&mut context, request).await;
         let mut resp = match resp {
@@ -550,17 +613,19 @@ pub mod server {
     where
         T: super::Api + Send + Sync + 'static,
     {
-        let span_id = parts.headers.get(HeaderName::from_static("span-id"));
-        let span_id = span_id.map(|span_id| {
-            span_id
-                .to_str()
-                .map_err(|err| {
-                    error!("Failed to read `span-id` header: {}", err);
-                    Error::InvalidHeader("span-id".to_owned()).into_response()
-                })
-                .unwrap()
-                .to_owned()
-        });
+        let span_id = parts
+            .headers
+            .get(HeaderName::from_static("span-id"))
+            .map(|h| {
+                let s = h
+                    .to_str()
+                    .map_err(|err| Error::InvalidHeader("span-id".to_owned()).into_response())
+                    .unwrap();
+
+                lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                    .map_err(|err| Error::InvalidHeader("span-id".to_owned()).into_response())
+                    .unwrap()
+            });
 
         let mut context = Context::default();
         context.set_request_addr(addr);
@@ -770,7 +835,9 @@ pub mod requests {
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct TestHeadersRequest {
-        pub x_static_header: Option<String>,
+        pub x_string_header: Option<String>,
+        pub x_bytes_header: Option<Bytes>,
+        pub x_int_header: Option<i32>,
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -822,7 +889,9 @@ pub mod responses {
     pub enum TestHeadersResponse {
         /// Ok.
         Status200 {
-            x_static_header: String,
+            x_bytes_header: Bytes,
+            x_int_header: i32,
+            x_string_header: String,
             body: super::models::Pet,
         },
     }
@@ -831,15 +900,61 @@ pub mod responses {
         pub(crate) fn into_response(self) -> Response {
             match self {
                 TestHeadersResponse::Status200 {
-                    x_static_header,
+                    x_bytes_header,
+                    x_int_header,
+                    x_string_header,
                     body,
                 } => {
                     let body = Json(body);
                     let mut resp = (StatusCode::from_u16(200).unwrap(), body).into_response();
-                    match HeaderValue::from_str(&x_static_header) {
-                        Ok(value) => resp.headers_mut().insert("x-static-header", value),
+                    let x_bytes_header_value =
+                        match lgn_online::codegen::encoding::to_percent_encoded_string(
+                            &x_bytes_header,
+                        ) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                return Error::InvalidHeader(format!("x-bytes-header: {}", err))
+                                    .into_response();
+                            }
+                        };
+                    match HeaderValue::from_str(&x_bytes_header_value) {
+                        Ok(value) => resp.headers_mut().insert("x-bytes-header", value),
                         Err(err) => {
-                            return Error::InvalidHeader(format!("x-static-header: {}", err))
+                            return Error::InvalidHeader(format!("x-bytes-header: {}", err))
+                                .into_response();
+                        }
+                    };
+                    let x_int_header_value =
+                        match lgn_online::codegen::encoding::to_percent_encoded_string(
+                            &x_int_header,
+                        ) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                return Error::InvalidHeader(format!("x-int-header: {}", err))
+                                    .into_response();
+                            }
+                        };
+                    match HeaderValue::from_str(&x_int_header_value) {
+                        Ok(value) => resp.headers_mut().insert("x-int-header", value),
+                        Err(err) => {
+                            return Error::InvalidHeader(format!("x-int-header: {}", err))
+                                .into_response();
+                        }
+                    };
+                    let x_string_header_value =
+                        match lgn_online::codegen::encoding::to_percent_encoded_string(
+                            &x_string_header,
+                        ) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                return Error::InvalidHeader(format!("x-string-header: {}", err))
+                                    .into_response();
+                            }
+                        };
+                    match HeaderValue::from_str(&x_string_header_value) {
+                        Ok(value) => resp.headers_mut().insert("x-string-header", value),
+                        Err(err) => {
+                            return Error::InvalidHeader(format!("x-string-header: {}", err))
                                 .into_response();
                         }
                     };
@@ -854,16 +969,37 @@ pub mod responses {
         ) -> Result<Self> {
             match parts.status.as_u16() {
                 200 => {
-                    let x_static_header = parts
+                    let x_bytes_header = parts
                         .headers
-                        .get("x-static-header")
-                        .ok_or_else(|| Error::MissingHeader("x-static-header".to_owned()))?
+                        .get("x-bytes-header")
+                        .ok_or_else(|| Error::MissingHeader("x-bytes-header".to_owned()))?
                         .to_str()
-                        .map_err(|e| Error::InvalidHeader(format!("x-static-header: {}", e)))?;
+                        .map_err(|e| Error::InvalidHeader(format!("x-bytes-header: {}", e)))?;
+                    let x_int_header = parts
+                        .headers
+                        .get("x-int-header")
+                        .ok_or_else(|| Error::MissingHeader("x-int-header".to_owned()))?
+                        .to_str()
+                        .map_err(|e| Error::InvalidHeader(format!("x-int-header: {}", e)))?;
+                    let x_string_header = parts
+                        .headers
+                        .get("x-string-header")
+                        .ok_or_else(|| Error::MissingHeader("x-string-header".to_owned()))?
+                        .to_str()
+                        .map_err(|e| Error::InvalidHeader(format!("x-string-header: {}", e)))?;
                     let bytes = hyper::body::to_bytes(body).await?;
                     let body = serde_json::from_slice(&bytes)?;
                     Ok(Self::Status200 {
-                        x_static_header: x_static_header.to_string(),
+                        x_bytes_header: lgn_online::codegen::encoding::from_percent_encoded_string(
+                            x_bytes_header,
+                        )?,
+                        x_int_header: lgn_online::codegen::encoding::from_percent_encoded_string(
+                            x_int_header,
+                        )?,
+                        x_string_header:
+                            lgn_online::codegen::encoding::from_percent_encoded_string(
+                                x_string_header,
+                            )?,
                         body,
                     })
                 }

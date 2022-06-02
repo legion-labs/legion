@@ -96,7 +96,9 @@ impl Api for ApiImpl {
         }
 
         Ok(TestHeadersResponse::Status200 {
-            x_static_header: request.x_static_header.unwrap(),
+            x_string_header: request.x_string_header.unwrap(),
+            x_bytes_header: request.x_bytes_header.unwrap(),
+            x_int_header: request.x_int_header.unwrap(),
             body: models::Pet {
                 name: Some("Cat".to_string()),
             },
