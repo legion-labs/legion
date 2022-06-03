@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use lgn_content_store::{
-    indexing::{BasicIndexer, ResourceReader, TreeLeafNode},
+    indexing::{BasicIndexer, ResourceReader, SharedTreeIdentifier, TreeLeafNode},
     Provider,
 };
 use lgn_data_runtime::{
-    manifest::ManifestId, new_resource_type_and_id_indexer, Device, ResourceTypeAndId,
-    ResourceTypeAndIdIndexer,
+    new_resource_type_and_id_indexer, Device, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 
 use crate::resource::deserialize_and_skip_metadata;
@@ -17,11 +16,11 @@ use crate::resource::deserialize_and_skip_metadata;
 pub(crate) struct CasDevice {
     provider: Arc<Provider>,
     indexer: ResourceTypeAndIdIndexer,
-    manifest_id: Arc<ManifestId>,
+    manifest_id: SharedTreeIdentifier,
 }
 
 impl CasDevice {
-    pub(crate) fn new(provider: Arc<Provider>, manifest_id: Arc<ManifestId>) -> Self {
+    pub(crate) fn new(provider: Arc<Provider>, manifest_id: SharedTreeIdentifier) -> Self {
         Self {
             provider,
             indexer: new_resource_type_and_id_indexer(),

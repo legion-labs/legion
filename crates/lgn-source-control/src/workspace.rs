@@ -3,7 +3,7 @@ use std::{collections::BTreeSet, sync::Arc};
 use lgn_content_store::{
     indexing::{
         self, BasicIndexer, IndexKey, ResourceExists, ResourceIdentifier, ResourceReader,
-        ResourceWriter, StringPathIndexer, TreeIdentifier, TreeLeafNode,
+        ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
@@ -28,7 +28,7 @@ pub struct Workspace<MainIndexer> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ContentId {
-    main_index_tree_id: TreeIdentifier,
+    main_index_tree_id: SharedTreeIdentifier,
     path_index_tree_id: TreeIdentifier,
 }
 
@@ -90,7 +90,7 @@ where
             main_indexer,
             path_indexer: StringPathIndexer::default(),
             content_id: ContentId {
-                main_index_tree_id: commit.main_index_tree_id,
+                main_index_tree_id: SharedTreeIdentifier::new(commit.main_index_tree_id),
                 path_index_tree_id: commit.path_index_tree_id,
             },
         })
@@ -131,7 +131,7 @@ where
         &self,
         id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>> {
-        self.get_resource_identifier_from_index(&self.main_indexer, self.get_main_index_id(), id)
+        self.get_resource_identifier_from_index(&self.main_indexer, &self.get_main_index_id(), id)
             .await
     }
 
@@ -176,7 +176,7 @@ where
 
     pub async fn load_resource(&self, id: &IndexKey) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.main_indexer, self.get_main_index_id(), id)
+            .get_resource_identifier_from_index(&self.main_indexer, &self.get_main_index_id(), id)
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
@@ -232,12 +232,20 @@ where
     }
 
     pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.get_resources_from_main_by_id(self.get_main_index_id())
+        self.get_resources_from_main_by_id(&self.get_main_index_id())
             .await
     }
 
-    pub fn get_main_index_id(&self) -> &TreeIdentifier {
-        &self.content_id.main_index_tree_id
+    fn get_main_index_id(&self) -> TreeIdentifier {
+        self.content_id.main_index_tree_id.read()
+    }
+
+    fn set_main_index_id(&self, tree_id: TreeIdentifier) {
+        self.content_id.main_index_tree_id.write(tree_id);
+    }
+
+    pub fn clone_main_index_id(&self) -> SharedTreeIdentifier {
+        self.content_id.main_index_tree_id.clone()
     }
 
     pub async fn get_resources_from_main_by_id(
@@ -292,7 +300,7 @@ where
     async fn dump_all_indices(&self, resource_id: Option<&ResourceIdentifier>) {
         self.dump_index(
             &self.main_indexer,
-            self.get_main_index_id(),
+            &self.get_main_index_id(),
             resource_id,
             IndexKey::to_hex,
         )
@@ -322,16 +330,17 @@ where
             .await
             .map_err(Error::ContentStoreIndexing)?;
 
-        self.content_id.main_index_tree_id = self
-            .main_indexer
-            .add_leaf(
-                &self.transaction,
-                self.get_main_index_id(),
-                id,
-                TreeLeafNode::Resource(resource_identifier.clone()),
-            )
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
+        self.set_main_index_id(
+            self.main_indexer
+                .add_leaf(
+                    &self.transaction,
+                    &self.get_main_index_id(),
+                    id,
+                    TreeLeafNode::Resource(resource_identifier.clone()),
+                )
+                .await
+                .map_err(Error::ContentStoreIndexing)?,
+        );
 
         self.content_id.path_index_tree_id = self
             .path_indexer
@@ -389,13 +398,13 @@ where
                 .main_indexer
                 .replace_leaf(
                     &self.transaction,
-                    self.get_main_index_id(),
+                    &self.get_main_index_id(),
                     id,
                     TreeLeafNode::Resource(resource_identifier.clone()),
                 )
                 .await
                 .map_err(Error::ContentStoreIndexing)?;
-            self.content_id.main_index_tree_id = main_index_tree_id;
+            self.set_main_index_id(main_index_tree_id);
 
             let (path_index_tree_id, _leaf_node) = self
                 .path_indexer
@@ -489,10 +498,10 @@ where
         // remove from main index
         let (main_index_tree_id, leaf_node) = self
             .main_indexer
-            .remove_leaf(&self.transaction, self.get_main_index_id(), id)
+            .remove_leaf(&self.transaction, &self.get_main_index_id(), id)
             .await
             .map_err(Error::ContentStoreIndexing)?;
-        self.content_id.main_index_tree_id = main_index_tree_id;
+        self.set_main_index_id(main_index_tree_id);
 
         if let TreeLeafNode::Resource(resource_id) = leaf_node {
             let (path_index_tree_id, _leaf_node) = self
@@ -521,7 +530,7 @@ where
             }
         } else {
             return Err(Error::CorruptedIndex {
-                tree_id: self.get_main_index_id().clone(),
+                tree_id: self.get_main_index_id(),
             });
         }
 
@@ -688,7 +697,7 @@ where
             return Err(Error::stale_branch(branch));
         }
 
-        let empty_commit = &commit.main_index_tree_id == self.get_main_index_id()
+        let empty_commit = commit.main_index_tree_id == self.get_main_index_id()
             && commit.path_index_tree_id == self.content_id.path_index_tree_id;
 
         if empty_commit && matches!(behavior, CommitMode::Strict) {
@@ -700,7 +709,7 @@ where
                 whoami::username(),
                 message,
                 commit.changes.clone(),
-                self.get_main_index_id().clone(),
+                self.get_main_index_id(),
                 self.content_id.path_index_tree_id.clone(),
                 BTreeSet::from([commit.id]),
             );

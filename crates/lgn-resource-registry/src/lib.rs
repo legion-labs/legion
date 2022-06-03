@@ -13,7 +13,7 @@ use lgn_content_store::indexing::SharedTreeIdentifier;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
-use lgn_data_runtime::{manifest::ManifestId, AssetRegistry, AssetRegistryScheduling};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, SelectionManager, TransactionManager};
 use lgn_ecs::prelude::*;
 pub use settings::ResourceRegistrySettings;

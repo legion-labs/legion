@@ -7,13 +7,12 @@ use std::{
 
 use async_recursion::async_recursion;
 use lgn_content_store::{
-    indexing::{IndexKey, ResourceIdentifier, TreeIdentifier},
+    indexing::{IndexKey, ResourceIdentifier, SharedTreeIdentifier, TreeIdentifier},
     Provider,
 };
 use lgn_data_runtime::{
-    manifest::ManifestId, new_resource_type_and_id_indexer, AssetRegistry, AssetRegistryError,
-    HandleUntyped, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
-    ResourceTypeAndIdIndexer,
+    new_resource_type_and_id_indexer, AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId,
+    ResourcePathId, ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
     CommitMode, ContentId, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
@@ -73,7 +72,6 @@ pub struct Project {
     project_dir: PathBuf,
     workspace: Workspace<ResourceTypeAndIdIndexer>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
-    offline_manifest_id: Arc<ManifestId>,
 }
 
 #[derive(Error, Debug)]
@@ -136,13 +134,8 @@ impl Project {
     }
 
     /// Returns current manifest (main index) of the workspace associated with the project
-    pub fn offline_manifest_id(&self) -> &Arc<ManifestId> {
-        &self.offline_manifest_id
-    }
-
-    fn update_offline_manifest_id(&self) {
-        self.offline_manifest_id
-            .write(self.workspace.get_main_index_id());
+    pub fn offline_manifest_id(&self) -> SharedTreeIdentifier {
+        self.workspace.clone_main_index_id()
     }
 
     /// Creates a new project index file turning the containing directory into a
@@ -163,13 +156,10 @@ impl Project {
         )
         .await?;
 
-        let manifest_id = workspace.get_main_index_id().clone();
-
         Ok(Self {
             project_dir: project_dir.as_ref().to_owned(),
             workspace,
             deleted_pending: HashMap::new(),
-            offline_manifest_id: Arc::new(ManifestId::new(manifest_id)),
         })
     }
 
@@ -355,8 +345,6 @@ impl Project {
             .add_resource(&type_id.into(), name.as_str(), &contents)
             .await?;
 
-        self.update_offline_manifest_id();
-
         Ok(())
     }
 
@@ -394,8 +382,6 @@ impl Project {
             .delete_resource(&type_id.into(), name.as_str())
             .await?;
 
-        self.update_offline_manifest_id();
-
         Ok(())
     }
 
@@ -428,8 +414,6 @@ impl Project {
         self.workspace
             .update_resource(&type_id.into(), meta.name.as_str(), &contents, &resource_id)
             .await?;
-
-        self.update_offline_manifest_id();
 
         Ok(())
     }
@@ -618,8 +602,6 @@ impl Project {
         self.workspace
             .update_path(metadata.name.as_str(), new_name.as_str(), &resource_id)
             .await?;
-
-        self.update_offline_manifest_id();
 
         Ok(metadata.name)
     }

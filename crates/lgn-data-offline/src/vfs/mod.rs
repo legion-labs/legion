@@ -3,8 +3,8 @@ mod cas_device;
 
 use std::sync::Arc;
 
-use lgn_content_store::Provider;
-use lgn_data_runtime::{manifest::ManifestId, AssetRegistryOptions};
+use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};
+use lgn_data_runtime::AssetRegistryOptions;
 
 /// Extend `AssetRegistryOptions` API, to add an offline CAS device
 pub trait AddDeviceCASOffline {
@@ -14,12 +14,16 @@ pub trait AddDeviceCASOffline {
     fn add_device_cas_offline(
         self,
         _provider: Arc<Provider>,
-        _manifest_id: Arc<ManifestId>,
+        _manifest_id: SharedTreeIdentifier,
     ) -> Self;
 }
 
 impl AddDeviceCASOffline for AssetRegistryOptions {
-    fn add_device_cas_offline(self, provider: Arc<Provider>, manifest_id: Arc<ManifestId>) -> Self {
+    fn add_device_cas_offline(
+        self,
+        provider: Arc<Provider>,
+        manifest_id: SharedTreeIdentifier,
+    ) -> Self {
         self.add_device(Box::new(cas_device::CasDevice::new(provider, manifest_id)))
     }
 }

@@ -92,7 +92,7 @@ use lgn_content_store::{
 use lgn_data_model::ReflectionError;
 use lgn_data_offline::vfs::AddDeviceCASOffline;
 use lgn_data_runtime::{
-    manifest::ManifestId, AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
+    AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
     ResourceProcessorError, Transform,
 };
 use serde::{Deserialize, Serialize};
@@ -490,7 +490,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 .last_transform()
                 .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
 
-            let offline_manifest_id = Arc::new(ManifestId::new(offline_manifest_id));
+            let offline_manifest_id = SharedTreeIdentifier::new(offline_manifest_id);
 
             let source_provider =
                 Arc::new(Config::load_and_instantiate_persistent_provider().await?);

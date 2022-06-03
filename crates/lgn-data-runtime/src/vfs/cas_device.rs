@@ -26,8 +26,8 @@ impl CasDevice {
         }
     }
 
-    pub(crate) async fn get_empty_manifest_id(provider: &Provider) -> ManifestId {
-        ManifestId::new(provider.write_tree(&Tree::default()).await.unwrap())
+    pub(crate) async fn get_empty_manifest_id(provider: &Provider) -> SharedTreeIdentifier {
+        SharedTreeIdentifier::new(provider.write_tree(&Tree::default()).await.unwrap())
     }
 }
 

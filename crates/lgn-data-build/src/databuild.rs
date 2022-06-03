@@ -24,8 +24,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::{resource::Project, vfs::AddDeviceCASOffline};
 use lgn_data_runtime::{
-    manifest::ManifestId, AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId,
-    Transform,
+    AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
 use lgn_tracing::{async_span_scope, debug, error, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
@@ -166,10 +165,10 @@ impl DataBuild {
                     AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_provider).await;
 
                 let mut options = AssetRegistryOptions::new()
-                    .add_device_cas(data_provider, Arc::new(empty_manifest_id))
+                    .add_device_cas(data_provider, empty_manifest_id)
                     .add_device_cas_offline(
                         Arc::clone(&config.source_control_content_provider),
-                        Arc::clone(project.offline_manifest_id()),
+                        project.offline_manifest_id(),
                     );
 
                 options = compilers.init_all(options).await;
