@@ -101,23 +101,30 @@ export class MetricState {
     });
   }
 
-  getClosestValue(time: number): MetricPoint | null {
-    let result = null;
-    for (const item of this.getViewportPoints(
-      time - this.min / 100,
-      time + this.max / 100,
-      0,
-      false
-    )) {
-      if (item.time > time) {
-        if (!result) {
-          result = item;
-        }
-        if (item.time < result.time) {
-          result = item;
-        }
+  getClosestValue({
+    time,
+    min,
+    max,
+    lod,
+  }: {
+    time: number;
+    min: number;
+    max: number;
+    lod: number;
+  }): MetricPoint | null {
+    let result: MetricPoint | null = null;
+
+    for (const point of this.getViewportPoints(min, max, lod, false)) {
+      if (!result) {
+        result = point;
+        continue;
+      }
+
+      if (Math.abs(time - point.time) < Math.abs(time - result.time)) {
+        result = point;
       }
     }
+
     return result;
   }
 }

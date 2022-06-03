@@ -436,6 +436,8 @@
             bind:this={metricTooltip}
             xScale={transform.rescaleX(x)}
             {zoomEvent}
+            {lod}
+            viewRange={[currentMinMs, currentMaxMs]}
           />
         </div>
       {/if}
