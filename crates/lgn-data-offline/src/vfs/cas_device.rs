@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use lgn_content_store::{
-    indexing::{BasicIndexer, ResourceByteReader, ResourceReader, TreeLeafNode},
+    indexing::{BasicIndexer, ResourceReader, TreeLeafNode},
     Provider,
 };
 use lgn_data_runtime::{
@@ -38,12 +38,8 @@ impl Device for CasDevice {
             .get_leaf(&self.provider, &self.manifest_id.read(), &type_id.into())
             .await
         {
-            if let Ok(resource_bytes) = self
-                .provider
-                .read_resource::<ResourceByteReader>(&leaf_id)
-                .await
-            {
-                let mut reader = std::io::Cursor::new(resource_bytes.into_vec());
+            if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&leaf_id).await {
+                let mut reader = std::io::Cursor::new(resource_bytes);
 
                 // skip over the pre-pended metadata
                 deserialize_and_skip_metadata(&mut reader);

@@ -116,8 +116,7 @@ async fn command_compile() {
         let content = volatile_content_provider
             .read_resource_as_bytes(content_id)
             .await
-            .expect("asset content")
-            .into_vec();
+            .expect("asset content");
         let loaded_resource = loader.load(&mut &content[..]).expect("valid data");
         loaded_resource
             .as_ref()

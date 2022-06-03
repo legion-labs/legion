@@ -26,8 +26,7 @@ pub use graphviz_visitor::GraphvizVisitor;
 pub use index_key::{IndexKey, IndexKeyBound, IndexKeyDisplayFormat};
 pub(crate) use index_path::{IndexPath, IndexPathItem};
 pub use indexable_resource::{
-    IndexableResource, ResourceByteReader, ResourceExists, ResourceIdentifier, ResourceReader,
-    ResourceWriter,
+    IndexableResource, ResourceExists, ResourceIdentifier, ResourceReader, ResourceWriter,
 };
 pub use json_visitor::JsonVisitor;
 pub(crate) use search_result::SearchResult;

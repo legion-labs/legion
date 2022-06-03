@@ -2,8 +2,8 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        self, BasicIndexer, IndexKey, ResourceByteReader, ResourceExists, ResourceIdentifier,
-        ResourceReader, ResourceWriter, StringPathIndexer, TreeIdentifier, TreeLeafNode,
+        self, BasicIndexer, IndexKey, ResourceExists, ResourceIdentifier, ResourceReader,
+        ResourceWriter, StringPathIndexer, TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
@@ -209,12 +209,8 @@ where
     }
 
     pub async fn load_resource_by_id(&self, resource_id: &ResourceIdentifier) -> Result<Vec<u8>> {
-        match self
-            .transaction
-            .read_resource::<ResourceByteReader>(resource_id)
-            .await
-        {
-            Ok(resource_bytes) => Ok(resource_bytes.into_vec()),
+        match self.transaction.read_resource_as_bytes(resource_id).await {
+            Ok(resource_bytes) => Ok(resource_bytes),
             Err(e) => {
                 #[cfg(feature = "verbose")]
                 {
