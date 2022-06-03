@@ -2,11 +2,14 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::{str::FromStr, sync::Arc};
+
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_model::json_utils::get_property_as_json_string;
-use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_offline::resource::{Project, ResourceHandles};
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName};
 use lgn_data_runtime::{
     Resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
@@ -16,25 +19,23 @@ use lgn_data_transaction::{
     TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
-use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
-use lgn_editor_proto::resource_browser::{
-    Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
-    DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest, GetActiveScenesResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, GetRuntimeSceneInfoRequest,
-    GetRuntimeSceneInfoResponse, ImportResourceRequest, ImportResourceResponse, ListAssetsRequest,
-    ListAssetsResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
-    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
-    SearchResourcesRequest,
+use lgn_editor_proto::{
+    property_inspector::UpdateResourcePropertiesRequest,
+    resource_browser::{
+        Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
+        DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest,
+        GetActiveScenesResponse, GetResourceTypeNamesRequest, GetResourceTypeNamesResponse,
+        GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse, ImportResourceRequest,
+        ImportResourceResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
+        OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+        ReparentResourceResponse, SearchResourcesRequest,
+    },
 };
-
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_scene_plugin::SceneMessage;
 use lgn_tracing::{error, info, span_scope, warn};
 use serde_json::json;
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
-use std::{str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
 

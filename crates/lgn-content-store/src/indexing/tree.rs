@@ -1305,6 +1305,12 @@ impl Debug for SharedTreeIdentifier {
     }
 }
 
+impl Display for SharedTreeIdentifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.read(), f)
+    }
+}
+
 impl PartialEq for SharedTreeIdentifier {
     fn eq(&self, other: &Self) -> bool {
         self.read() == other.read()
