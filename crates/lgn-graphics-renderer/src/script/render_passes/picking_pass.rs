@@ -88,7 +88,6 @@ impl PickingPass {
                         )
                         .execute(move |context, execute_context, cmd_buffer| {
                             let render_context = &execute_context.render_context;
-                            //let picking_renderpass = execute_context.debug_stuff.picking_renderpass;
                             let picking_renderpass = execute_context
                                 .debug_stuff
                                 .render_surface
@@ -131,14 +130,14 @@ impl PickingPass {
                                 picking_descriptor_set
                                     .set_picked_objects(picking_renderpass.picked_buffer.rw_view());
                                 let picking_descriptor_set_handle = render_context
-                                .write_descriptor_set(
-                                cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
-                                picking_descriptor_set.descriptor_refs(),
-                            );
+                                    .write_descriptor_set(
+                                        cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
+                                        picking_descriptor_set.descriptor_refs(),
+                                    );
                                 cmd_buffer.cmd_bind_descriptor_set_handle(
-                                cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
-                                picking_descriptor_set_handle,
-                            );
+                                    cgen::descriptor_set::PickingDescriptorSet::descriptor_set_layout(),
+                                    picking_descriptor_set_handle,
+                                );
 
                                 let mut push_constant_data =
                                     cgen::cgen_type::PickingPushConstantData::default();

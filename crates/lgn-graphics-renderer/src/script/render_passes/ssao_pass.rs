@@ -1,10 +1,7 @@
-use lgn_graphics_api::{Format, GPUViewType};
+use lgn_graphics_api::Format;
 
 use crate::{
-    core::{
-        RenderGraphBuilder, RenderGraphLoadState, RenderGraphResourceDef, RenderGraphViewDef,
-        RenderGraphViewId,
-    },
+    core::{RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId},
     script::RenderView,
 };
 
@@ -22,38 +19,22 @@ impl SSAOPass {
     ) -> RenderGraphBuilder<'a> {
         builder.add_scope("SSAO", |mut builder| {
             let view_extents = view.target.definition().extents;
-            let raw_ao_buffer_desc = RenderGraphResourceDef::new_texture_2D(
+            let raw_ao_buffer_id = builder.declare_single_mip_render_target(
+                "AORawBuffer",
                 view_extents.width,
                 view_extents.height,
                 Format::R8_UNORM,
             );
-            let raw_ao_buffer_id =
-                builder.declare_render_target("AORawBuffer", &raw_ao_buffer_desc);
-            let raw_ao_write_view_id =
-                builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                    raw_ao_buffer_id,
-                    0,
-                    GPUViewType::UnorderedAccess,
-                ));
-            let raw_ao_read_view_id =
-                builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                    raw_ao_buffer_id,
-                    0,
-                    GPUViewType::ShaderResource,
-                ));
-            let blur_buffer_id = builder.declare_render_target("AOBlurBuffer", &raw_ao_buffer_desc);
-            let blur_write_view_id =
-                builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                    blur_buffer_id,
-                    0,
-                    GPUViewType::UnorderedAccess,
-                ));
-            let blur_read_view_id =
-                builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                    blur_buffer_id,
-                    0,
-                    GPUViewType::ShaderResource,
-                ));
+            let raw_ao_write_view_id = builder.declare_single_mip_texture_uav(raw_ao_buffer_id);
+            let raw_ao_read_view_id = builder.declare_single_mip_texture_srv(raw_ao_buffer_id);
+            let blur_buffer_id = builder.declare_single_mip_render_target(
+                "AOBlurBuffer",
+                view_extents.width,
+                view_extents.height,
+                Format::R8_UNORM,
+            );
+            let blur_write_view_id = builder.declare_single_mip_texture_uav(blur_buffer_id);
+            let blur_read_view_id = builder.declare_single_mip_texture_srv(blur_buffer_id);
 
             builder
                 .add_compute_pass("AO", |compute_pass_builder| {

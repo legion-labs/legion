@@ -1,4 +1,4 @@
-use lgn_graphics_api::{CommandBuffer, DeviceContext, ResourceState, Texture};
+use lgn_graphics_api::{CommandBuffer, DeviceContext, Format, GPUViewType, ResourceState, Texture};
 
 use crate::{
     core::{
@@ -139,7 +139,8 @@ impl<'a> RenderGraphBuilder<'a> {
         }
     }
 
-    pub fn declare_render_target(
+    // Intentionally non-public, use utility methods which call this one.
+    fn declare_render_target(
         &mut self,
         name: &str,
         resource: &RenderGraphResourceDef,
@@ -155,6 +156,19 @@ impl<'a> RenderGraphBuilder<'a> {
         self.resources.push(resource.clone());
         self.resource_names.push(name.to_string());
         id
+    }
+
+    pub fn declare_single_mip_render_target(
+        &mut self,
+        name: &str,
+        width: u32,
+        height: u32,
+        format: Format,
+    ) -> RenderGraphResourceId {
+        self.declare_render_target(
+            name,
+            &RenderGraphResourceDef::new_texture(width, height, 1, 1, 1, format),
+        )
     }
 
     pub fn inject_render_target(
@@ -173,7 +187,8 @@ impl<'a> RenderGraphBuilder<'a> {
         id
     }
 
-    pub fn declare_buffer(
+    // Intentionally non-public, use utility methods which call this one.
+    fn declare_buffer(
         &mut self,
         name: &str,
         resource: &RenderGraphResourceDef,
@@ -191,7 +206,20 @@ impl<'a> RenderGraphBuilder<'a> {
         id
     }
 
-    pub fn declare_view(&mut self, view: &RenderGraphViewDef) -> RenderGraphViewId {
+    pub fn declare_buffer_sized(
+        &mut self,
+        name: &str,
+        element_size: u64,
+        element_count: u64,
+    ) -> RenderGraphResourceId {
+        self.declare_buffer(
+            name,
+            &RenderGraphResourceDef::new_buffer(element_size, element_count),
+        )
+    }
+
+    // Intentionally non-public, use utility methods which call this one.
+    fn declare_view(&mut self, view: &RenderGraphViewDef) -> RenderGraphViewId {
         if let Some(index) = self.views.iter().position(|v| v == view) {
             index as RenderGraphViewId
         } else {
@@ -200,6 +228,138 @@ impl<'a> RenderGraphBuilder<'a> {
             self.views.push(view.clone());
             id
         }
+    }
+
+    pub fn declare_single_mip_texture_srv(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+    ) -> RenderGraphViewId {
+        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+            resource_id,
+            0,
+            1,
+            GPUViewType::ShaderResource,
+            false,
+        ))
+    }
+
+    pub fn declare_single_mip_texture_rtv(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+    ) -> RenderGraphViewId {
+        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+            resource_id,
+            0,
+            1,
+            GPUViewType::RenderTarget,
+            false,
+        ))
+    }
+
+    pub fn declare_single_mip_texture_uav(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+    ) -> RenderGraphViewId {
+        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+            resource_id,
+            0,
+            1,
+            GPUViewType::UnorderedAccess,
+            false,
+        ))
+    }
+
+    pub fn declare_specific_mips_texture_rtv(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+        first_mip: u32,
+        mip_count: u32,
+    ) -> RenderGraphViewId {
+        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+            resource_id,
+            first_mip,
+            mip_count,
+            GPUViewType::RenderTarget,
+            false,
+        ))
+    }
+
+    pub fn declare_specific_mips_texture_srv(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+        first_mip: u32,
+        mip_count: u32,
+    ) -> RenderGraphViewId {
+        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+            resource_id,
+            first_mip,
+            mip_count,
+            GPUViewType::ShaderResource,
+            false,
+        ))
+    }
+
+    pub fn declare_single_mip_depth_texture_dsv(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+        read_only: bool,
+    ) -> RenderGraphViewId {
+        self.declare_view(&RenderGraphViewDef::new_single_mip_depth_texture_view(
+            resource_id,
+            0,
+            GPUViewType::DepthStencil,
+            read_only,
+        ))
+    }
+
+    pub fn declare_single_mip_depth_texture_srv(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+    ) -> RenderGraphViewId {
+        self.declare_view(&RenderGraphViewDef::new_single_mip_depth_texture_view(
+            resource_id,
+            0,
+            GPUViewType::ShaderResource,
+            false,
+        ))
+    }
+
+    pub fn declare_buffer_srv(&mut self, resource_id: RenderGraphResourceId) -> RenderGraphViewId {
+        let resource_def = self.resources[resource_id as usize].clone();
+        self.declare_view(&RenderGraphViewDef::new_srv_buffer_view(
+            resource_id,
+            &resource_def,
+        ))
+    }
+
+    pub fn declare_buffer_uav(&mut self, resource_id: RenderGraphResourceId) -> RenderGraphViewId {
+        let resource_def = self.resources[resource_id as usize].clone();
+        self.declare_view(&RenderGraphViewDef::new_uav_buffer_view(
+            resource_id,
+            &resource_def,
+        ))
+    }
+
+    pub fn declare_buffer_indirect(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+    ) -> RenderGraphViewId {
+        let resource_def = self.resources[resource_id as usize].clone();
+        self.declare_view(&RenderGraphViewDef::new_indirect_buffer_view(
+            resource_id,
+            &resource_def,
+        ))
+    }
+
+    pub fn declare_buffer_copy_dst(
+        &mut self,
+        resource_id: RenderGraphResourceId,
+    ) -> RenderGraphViewId {
+        let resource_def = self.resources[resource_id as usize].clone();
+        self.declare_view(&RenderGraphViewDef::new_copy_dst_buffer_view(
+            resource_id,
+            &resource_def,
+        ))
     }
 
     pub fn add_graphics_pass<F>(mut self, name: &str, f: F) -> Self

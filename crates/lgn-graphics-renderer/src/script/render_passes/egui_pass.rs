@@ -95,6 +95,10 @@ impl EguiPass {
             builder
                 .add_compute_pass("UpdateEguiTexture", |compute_pass_builder| {
                     compute_pass_builder.execute(|_, execute_context, cmd_buffer| {
+
+                        // TODO(jsg): This pass needs cleanup. The font texture should be injected 
+                        // into the graph, and its state should be managed by the graph.
+
                         let egui = execute_context.debug_stuff.egui;
 
                         if egui.is_enabled() {

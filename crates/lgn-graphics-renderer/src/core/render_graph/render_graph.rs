@@ -152,15 +152,22 @@ pub(crate) enum RenderGraphResourceDef {
 
 impl RenderGraphResourceDef {
     #[allow(non_snake_case)]
-    pub fn new_texture_2D(width: u32, height: u32, format: Format) -> Self {
+    pub fn new_texture(
+        width: u32,
+        height: u32,
+        depth: u32,
+        array_length: u32,
+        mip_count: u32,
+        format: Format,
+    ) -> Self {
         Self::Texture(RenderGraphTextureDef {
             extents: Extents3D {
                 width,
                 height,
-                depth: 1,
+                depth,
             },
-            array_length: 1,
-            mip_count: 1,
+            array_length,
+            mip_count,
             format,
         })
     }
@@ -205,14 +212,6 @@ pub(crate) enum RenderGraphViewDef {
 }
 
 impl RenderGraphViewDef {
-    pub fn new_single_mip_texture_view(
-        resource_id: RenderGraphResourceId,
-        first_mip: u32,
-        gpu_view_type: GPUViewType,
-    ) -> Self {
-        Self::new_specific_mips_texture_view(resource_id, first_mip, 1, gpu_view_type, false)
-    }
-
     pub fn new_single_mip_depth_texture_view(
         resource_id: RenderGraphResourceId,
         first_mip: u32,
@@ -254,15 +253,31 @@ impl RenderGraphViewDef {
         })
     }
 
-    pub fn new_buffer_view(
+    pub fn new_uav_buffer_view(
         resource_id: RenderGraphResourceId,
         def: &RenderGraphResourceDef,
-        gpu_view_type: GPUViewType,
     ) -> Self {
         let def: &RenderGraphBufferDef = def.try_into().unwrap();
         Self::Buffer(RenderGraphBufferViewDef {
             resource_id,
-            gpu_view_type,
+            gpu_view_type: GPUViewType::UnorderedAccess,
+            byte_offset: 0,
+            element_count: def.element_count,
+            element_size: def.element_size,
+            buffer_view_flags: BufferViewFlags::empty(),
+            copy: false,
+            indirect: false,
+        })
+    }
+
+    pub fn new_srv_buffer_view(
+        resource_id: RenderGraphResourceId,
+        def: &RenderGraphResourceDef,
+    ) -> Self {
+        let def: &RenderGraphBufferDef = def.try_into().unwrap();
+        Self::Buffer(RenderGraphBufferViewDef {
+            resource_id,
+            gpu_view_type: GPUViewType::ShaderResource,
             byte_offset: 0,
             element_count: def.element_count,
             element_size: def.element_size,
