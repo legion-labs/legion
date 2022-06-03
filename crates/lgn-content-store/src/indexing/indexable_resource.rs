@@ -84,6 +84,8 @@ pub trait ResourceWriter {
         resource: &R,
     ) -> Result<ResourceIdentifier>;
 
+    async fn write_resource_from_bytes(&self, data: &[u8]) -> Result<ResourceIdentifier>;
+
     async fn unwrite_resource(&self, id: &ResourceIdentifier) -> Result<()>;
 }
 
@@ -107,25 +109,6 @@ impl ResourceWriter for Provider {
 
     async fn unwrite_resource(&self, id: &ResourceIdentifier) -> Result<()> {
         self.unwrite(id.as_identifier()).await.map_err(Into::into)
-    }
-}
-
-pub struct ResourceByteWriter<'a>(&'a [u8]);
-
-impl<'a> IndexableResource for ResourceByteWriter<'a> {}
-
-impl<'a> ResourceByteWriter<'a> {
-    pub fn new(bytes: &'a [u8]) -> Self {
-        Self(bytes)
-    }
-}
-
-impl<'a> serde::Serialize for ResourceByteWriter<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_bytes(self.0)
     }
 }
 

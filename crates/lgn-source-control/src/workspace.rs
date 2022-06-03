@@ -2,9 +2,8 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        self, BasicIndexer, IndexKey, ResourceByteReader, ResourceByteWriter, ResourceExists,
-        ResourceIdentifier, ResourceReader, ResourceWriter, StringPathIndexer, TreeIdentifier,
-        TreeLeafNode,
+        self, BasicIndexer, IndexKey, ResourceByteReader, ResourceExists, ResourceIdentifier,
+        ResourceReader, ResourceWriter, StringPathIndexer, TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
@@ -323,7 +322,7 @@ where
     ) -> Result<ResourceIdentifier> {
         let resource_identifier = self
             .transaction
-            .write_resource(&ResourceByteWriter::new(contents))
+            .write_resource_from_bytes(contents)
             .await
             .map_err(Error::ContentStoreIndexing)?;
 
@@ -372,7 +371,7 @@ where
     ) -> Result<ResourceIdentifier> {
         let resource_identifier = self
             .transaction
-            .write_resource(&ResourceByteWriter::new(contents))
+            .write_resource_from_bytes(contents)
             .await
             .map_err(Error::ContentStoreIndexing)?;
 

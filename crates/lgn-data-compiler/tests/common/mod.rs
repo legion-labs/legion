@@ -1,10 +1,7 @@
 use std::{env, path::PathBuf};
 
 use lgn_content_store::{
-    indexing::{
-        BasicIndexer, ResourceByteWriter, ResourceWriter, Tree, TreeIdentifier, TreeLeafNode,
-        TreeWriter,
-    },
+    indexing::{BasicIndexer, ResourceWriter, Tree, TreeIdentifier, TreeLeafNode, TreeWriter},
     Provider,
 };
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
@@ -55,7 +52,7 @@ pub async fn write_resource(
         .expect("write to memory");
 
     let resource_id = provider
-        .write_resource(&ResourceByteWriter::new(&bytes.into_inner()))
+        .write_resource_from_bytes(&bytes.into_inner())
         .await
         .expect("write to content-store");
 
