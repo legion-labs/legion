@@ -1,4 +1,4 @@
-import type { Readable, Writable } from "svelte/store";
+import type { Writable } from "svelte/store";
 
 import type { PerformanceAnalyticsClientImpl } from "@lgn/proto-telemetry/dist/analytics";
 import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
@@ -23,7 +23,7 @@ declare module "svelte" {
   ): L10nOrchestrator<Fluent>;
   function setContext(
     key: "http-client",
-    context: Readable<PerformanceAnalyticsClientImpl>
+    context: PerformanceAnalyticsClientImpl
   ): PerformanceAnalyticsClientImpl;
   function setContext(
     key: "notifications",
@@ -62,9 +62,7 @@ declare module "svelte" {
   function getContext(
     key: typeof l10nOrchestratorContextKey
   ): L10nOrchestrator<Fluent>;
-  function getContext(
-    key: "http-client"
-  ): Readable<PerformanceAnalyticsClientImpl>;
+  function getContext(key: "http-client"): PerformanceAnalyticsClientImpl;
   function getContext(key: "notifications"): NotificationsStore<Fluent>;
   function getContext(key: "debug"): Writable<boolean>;
 

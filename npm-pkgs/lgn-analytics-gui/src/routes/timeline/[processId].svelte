@@ -61,7 +61,7 @@
     const canvasWidth = windowInnerWidth - threadItemLength;
 
     stateManager = new TimelineStateManager(
-      $client,
+      client,
       processId,
       canvasWidth,
       start,
@@ -92,7 +92,7 @@
       import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_TIMELINE_JIT_LAKEHOUSE ===
       "true"
     ) {
-      await $client.build_timeline_tables({
+      await client.build_timeline_tables({
         processId,
       });
     }

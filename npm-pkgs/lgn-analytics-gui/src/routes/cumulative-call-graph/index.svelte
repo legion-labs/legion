@@ -33,7 +33,7 @@
     loadingStore.reset(1);
 
     store = await getProcessCumulatedCallGraphFlat(
-      $client,
+      client,
       processId,
       beginMsFilter,
       endMsFilter,

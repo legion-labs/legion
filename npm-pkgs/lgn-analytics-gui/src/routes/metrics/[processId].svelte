@@ -162,7 +162,7 @@
 
   async function fetchMetrics() {
     metricStreamer = new MetricStreamer(
-      $client,
+      client,
       processId,
       metricStore,
       lastUsedMetricsStore,
