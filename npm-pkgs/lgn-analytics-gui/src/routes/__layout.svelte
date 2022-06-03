@@ -28,7 +28,7 @@
     try {
       const { dispose, initAuthStatus } = await headlessRun({
         auth: {
-          fetch,
+          fetch: fetch as typeof globalThis.fetch,
           issuerUrl,
           redirectUri,
           clientId,

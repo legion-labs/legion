@@ -83,7 +83,9 @@
     <div class="brand" title="Legion Editor">
       <BrandLogo class="brand-logo" />
     </div>
-    <MenuBar items={mainMenuItemDescriptions} container={div} />
+    <div>
+      <MenuBar items={mainMenuItemDescriptions} container={div} />
+    </div>
   </div>
   <div class="handle" bind:this={topBarHandle} style="-webkit-app-region: drag">
     <div class="document-title">
