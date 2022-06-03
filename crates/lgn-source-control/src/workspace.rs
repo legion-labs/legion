@@ -180,28 +180,51 @@ where
             .get_resource_identifier_from_index(&self.main_indexer, self.get_main_index_id(), id)
             .await?
         {
-            match self
-                .transaction
-                .read_resource::<ResourceByteReader>(&resource_id)
-                .await
-            {
-                Ok(resource_bytes) => {
-                    #[cfg(feature = "verbose")]
-                    info!("reading resource '{}' -> {}", id.to_hex(), resource_id);
-                    Ok((resource_bytes.into_vec(), resource_id))
-                }
-                Err(e) => {
-                    #[cfg(feature = "verbose")]
-                    {
-                        error!("failed to read resource '{}': {}", resource_id, e,);
-                        self.dump_all_indices(Some(&resource_id)).await;
-                    }
-
-                    Err(Error::ContentStoreIndexing(e))
-                }
-            }
+            let resource_bytes = self.load_resource_by_id(&resource_id).await?;
+            #[cfg(feature = "verbose")]
+            info!("reading resource '{}' -> {}", id.to_hex(), resource_id);
+            Ok((resource_bytes, resource_id))
         } else {
-            Err(Error::ResourceNotFound { id: id.clone() })
+            Err(Error::ResourceNotFoundById { id: id.clone() })
+        }
+    }
+
+    pub async fn load_resource_by_path(&self, path: &str) -> Result<(Vec<u8>, ResourceIdentifier)> {
+        if let Some(resource_id) = self
+            .get_resource_identifier_from_index(
+                &self.path_indexer,
+                &self.content_id.path_index_tree_id,
+                &path.into(),
+            )
+            .await?
+        {
+            let resource_bytes = self.load_resource_by_id(&resource_id).await?;
+            #[cfg(feature = "verbose")]
+            info!("reading resource '{}' -> {}", path, resource_id);
+            Ok((resource_bytes, resource_id))
+        } else {
+            Err(Error::ResourceNotFoundByPath {
+                path: path.to_owned(),
+            })
+        }
+    }
+
+    pub async fn load_resource_by_id(&self, resource_id: &ResourceIdentifier) -> Result<Vec<u8>> {
+        match self
+            .transaction
+            .read_resource::<ResourceByteReader>(resource_id)
+            .await
+        {
+            Ok(resource_bytes) => Ok(resource_bytes.into_vec()),
+            Err(e) => {
+                #[cfg(feature = "verbose")]
+                {
+                    error!("failed to read resource '{}': {}", resource_id, e,);
+                    self.dump_all_indices(Some(resource_id)).await;
+                }
+
+                Err(Error::ContentStoreIndexing(e))
+            }
         }
     }
 
@@ -286,40 +309,6 @@ where
             |index_key| std::str::from_utf8(index_key.as_ref()).unwrap().to_owned(),
         )
         .await;
-    }
-
-    pub async fn reverse_lookup_main(&self, resource_id: &ResourceIdentifier) -> Result<IndexKey> {
-        self.reverse_lookup_in_tree_id(&self.main_indexer, self.get_main_index_id(), resource_id)
-            .await
-    }
-
-    pub async fn reverse_lookup_path(&self, resource_id: &ResourceIdentifier) -> Result<IndexKey> {
-        self.reverse_lookup_in_tree_id(
-            &self.path_indexer,
-            &self.content_id.path_index_tree_id,
-            resource_id,
-        )
-        .await
-    }
-
-    async fn reverse_lookup_in_tree_id(
-        &self,
-        indexer: &(impl BasicIndexer + Sync),
-        tree_id: &TreeIdentifier,
-        resource_id: &ResourceIdentifier,
-    ) -> Result<IndexKey> {
-        if let Some((index_key, _matched_id)) = self
-            .get_resources_by_index_and_id(indexer, tree_id)
-            .await?
-            .iter()
-            .find(|(_index_key, matched_id)| resource_id == matched_id)
-        {
-            Ok(index_key.clone())
-        } else {
-            Err(Error::ReverseLookup {
-                id: resource_id.clone(),
-            })
-        }
     }
 
     /// Add a resource to the local changes.
@@ -501,7 +490,7 @@ where
     ///
     /// The list of new files edited is returned. If all the files were already
     /// edited, an empty list is returned and call still succeeds.
-    pub async fn delete_resource(&mut self, id: &IndexKey) -> Result<()> {
+    pub async fn delete_resource(&mut self, id: &IndexKey, path: &str) -> Result<()> {
         // remove from main index
         let (main_index_tree_id, leaf_node) = self
             .main_indexer
@@ -511,15 +500,12 @@ where
         self.content_id.main_index_tree_id = main_index_tree_id;
 
         if let TreeLeafNode::Resource(resource_id) = leaf_node {
-            // reverse lookup in path index
-            let path = self.reverse_lookup_path(&resource_id).await?;
-
             let (path_index_tree_id, _leaf_node) = self
                 .path_indexer
                 .remove_leaf(
                     &self.transaction,
                     &self.content_id.path_index_tree_id,
-                    &path,
+                    &path.into(),
                 )
                 .await
                 .map_err(Error::ContentStoreIndexing)?;

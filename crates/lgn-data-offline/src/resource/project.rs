@@ -246,19 +246,8 @@ impl Project {
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
     pub async fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
-        if let Some(resource_identifier) = self
-            .workspace
-            .get_resource_identifier_by_path(name.as_str())
-            .await?
-        {
-            // reverse lookup main index
-            let index_key = self
-                .workspace
-                .reverse_lookup_main(&resource_identifier)
-                .await?;
-            return Ok(index_key.into());
-        }
-        Err(Error::FileNotFound(name.to_string()))
+        let (meta, _resource_id) = self.read_meta_by_name(name).await?;
+        Ok(meta.type_id)
     }
 
     /// Checks if a resource with a given name is part of the project.
@@ -400,7 +389,10 @@ impl Project {
 
     /// Delete the resource+meta files, remove from Registry and Flush index
     pub async fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
-        self.workspace.delete_resource(&type_id.into()).await?;
+        let name = self.raw_resource_name(type_id).await?;
+        self.workspace
+            .delete_resource(&type_id.into(), name.as_str())
+            .await?;
 
         self.update_offline_manifest_id();
 
@@ -430,11 +422,11 @@ impl Project {
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<(), Error> {
-        let (name, resource_id) = self.lookup_name(type_id).await?;
-        let contents = Self::get_resource_contents(&name, type_id, handle, registry)?;
+        let (meta, resource_id) = self.read_meta(type_id).await?;
+        let contents = Self::get_resource_contents(&meta.name, type_id, handle, registry)?;
 
         self.workspace
-            .update_resource(&type_id.into(), name.as_str(), &contents, &resource_id)
+            .update_resource(&type_id.into(), meta.name.as_str(), &contents, &resource_id)
             .await?;
 
         self.update_offline_manifest_id();
@@ -541,44 +533,65 @@ impl Project {
         Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
-    async fn lookup_name(
-        &self,
-        type_id: ResourceTypeAndId,
-    ) -> Result<(ResourcePathName, ResourceIdentifier), Error> {
-        // Note, could replace with read of meta-data
-        let resource_id = self
-            .workspace
-            .get_resource_identifier(&type_id.into())
-            .await?
-            .ok_or(Error::ResourceNotFound(type_id))?;
-        let path = self.workspace.reverse_lookup_path(&resource_id).await?;
-        let path =
-            std::str::from_utf8(path.as_ref()).expect("failed to convert path index key to string");
-        let name = path.parse().expect("failed to parse path index key");
-        Ok((name, resource_id))
-    }
-
     /// Returns the raw name of the resource from its `.meta` file.
     pub async fn raw_resource_name(
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        let (name, _resource_id) = self.lookup_name(type_id).await?;
-        Ok(name)
+        let (meta, _resource_id) = self.read_meta(type_id).await?;
+        Ok(meta.name)
     }
 
     async fn read_meta(
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<(Metadata, ResourceIdentifier), Error> {
-        let (resource_bytes, resource_id) = self.workspace.load_resource(&type_id.into()).await?;
+        if let Some(resource_id) = self
+            .workspace
+            .get_resource_identifier(&type_id.into())
+            .await?
+        {
+            let metadata = self.read_meta_by_resource_id(&resource_id).await?;
+            Ok((metadata, resource_id))
+        } else {
+            Err(Error::SourceControl(
+                lgn_source_control::Error::ResourceNotFoundById { id: type_id.into() },
+            ))
+        }
+    }
+
+    async fn read_meta_by_name(
+        &self,
+        name: &ResourcePathName,
+    ) -> Result<(Metadata, ResourceIdentifier), Error> {
+        if let Some(resource_id) = self
+            .workspace
+            .get_resource_identifier_by_path(name.as_str())
+            .await?
+        {
+            let metadata = self.read_meta_by_resource_id(&resource_id).await?;
+            Ok((metadata, resource_id))
+        } else {
+            Err(Error::SourceControl(
+                lgn_source_control::Error::ResourceNotFoundByPath {
+                    path: name.as_str().to_owned(),
+                },
+            ))
+        }
+    }
+
+    async fn read_meta_by_resource_id(
+        &self,
+        resource_id: &ResourceIdentifier,
+    ) -> Result<Metadata, Error> {
+        let resource_bytes = self.workspace.load_resource_by_id(resource_id).await?;
 
         let mut reader = std::io::Cursor::new(resource_bytes);
 
         // just read the pre-pended metadata
         let metadata = Metadata::deserialize(&mut reader);
 
-        Ok((metadata, resource_id))
+        Ok(metadata)
     }
 
     /// Change the name of the resource.
@@ -590,11 +603,11 @@ impl Project {
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        let (old_name, resource_id) = self.lookup_name(type_id).await?;
+        let (metadata, resource_id) = self.read_meta(type_id).await?;
 
         // renaming to same name, no-op
-        if new_name == &old_name {
-            return Ok(old_name);
+        if new_name == &metadata.name {
+            return Ok(metadata.name);
         }
 
         // already used?
@@ -603,12 +616,12 @@ impl Project {
         }
 
         self.workspace
-            .update_path(old_name.as_str(), new_name.as_str(), &resource_id)
+            .update_path(metadata.name.as_str(), new_name.as_str(), &resource_id)
             .await?;
 
         self.update_offline_manifest_id();
 
-        Ok(old_name)
+        Ok(metadata.name)
     }
 
     /// Moves `local` resources to `remote` resource list.
