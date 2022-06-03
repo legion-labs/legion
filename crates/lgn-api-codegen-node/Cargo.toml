@@ -1,5 +1,5 @@
 [package]
-name = "lgn-config-node"
+name = "lgn-api-codegen-node"
 version = "0.1.0"
 authors = ["Legion Labs <devs@legionlabs.com>"]
 edition = "2021"
@@ -9,11 +9,9 @@ license = "MIT OR Apache-2.0"
 crate-type = ["cdylib"]
 
 [dependencies]
-lgn-config = { path = "../lgn-config", version = "0.1.0" }
-napi = { version = "2.4.3", features = ["serde-json"] }
+lgn-api-codegen = { path = "../lgn-api-codegen", version = "0.1.0" }
+napi = { version = "2.4.3", features = ["tokio_rt", "serde-json"] }
 napi-derive = "2.4.1"
-serde = "1.0.136"
-serde_json = "1.0.79"
 
 [build-dependencies]
 napi-build = "2.0.0"

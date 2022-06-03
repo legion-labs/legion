@@ -137,10 +137,7 @@ async function generateProtoForModule(
 /**
  * Automatically generates TypeScript code from proto before Vite build
  */
-export default function vitePluginProtoPack({
-  modules,
-  quiet = false,
-}: Config) {
+export default function vitePluginTsProto({ modules, quiet = false }: Config) {
   return {
     name: "@lgn/vite-plugin-ts-proto",
     async buildStart() {
