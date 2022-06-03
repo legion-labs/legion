@@ -11,8 +11,8 @@ import log from "./log";
  * _Warning: It's not possible to properly type the `client` argument,
  * so pretty much anything will be accepted by this function, don't overuse it_
  */
-export function enhanceGrpcClient(
-  client: object,
+export function enhanceGrpcClient<Client extends object>(
+  client: Client,
   accessTokenCookieName: string,
   { minLatency = 5 }: { minLatency?: number } = {}
 ) {
