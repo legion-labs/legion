@@ -85,13 +85,7 @@ pub fn fmt_module_path(module_path: &ModulePath) -> ::askama::Result<String> {
     Ok(module_path
         .0
         .iter()
-        .map(|s| {
-            if s == ".." {
-                "super".to_string()
-            } else {
-                s.to_case(Case::Pascal)
-            }
-        })
+        .map(|s| (if s == ".." { "super" } else { s }).to_string())
         .collect::<Vec<String>>()
         .join("::"))
 }

@@ -76,7 +76,7 @@ impl Api for ApiImpl {
         Ok(TestBinaryResponse::Status200(request.body))
     }
 
-    async fn test_one_of(&self, context: &mut Context) -> Result<TestOneOfResponse> {
+    async fn test_one_of(&self, _context: &mut Context) -> Result<TestOneOfResponse> {
         Ok(TestOneOfResponse::Status200(
             cars::TestOneOf200Response::Option1(cars::Pet {
                 name: Some("Cat".to_string()),

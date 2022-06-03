@@ -92,7 +92,7 @@ use http::HeaderValue;
                 }
             }
 
-            pub(crate) async fn from_response(parts: &http::response::Parts, body: hyper::Body) -> Result<Self> {
+            pub(crate) async fn from_response(parts: &http::response::Parts, {% if route.has_no_responses_content() %}_{% endif %}body: hyper::Body) -> Result<Self> {
                 {% if route.responses.is_empty() %}
                     Err(Error::Internal(format!(
                         "unexpected status code: {}",
