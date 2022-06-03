@@ -1,5 +1,5 @@
 /** @type {import("tailwindcss/tailwind-config").TailwindConfig } */
-exports.tailwindConfig = {
+module.exports = {
   presets: [require("./npm-pkgs/tailwind.preset.cjs")],
   theme: {},
 };
