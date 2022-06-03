@@ -360,7 +360,7 @@ impl Project {
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<(), Error> {
-        let contents = Self::get_resource_contents(type_id, handle, registry)?;
+        let contents = Self::get_resource_contents(&name, type_id, handle, registry)?;
 
         self.workspace
             .add_resource(&type_id.into(), name.as_str(), &contents)
@@ -372,6 +372,7 @@ impl Project {
     }
 
     fn get_resource_contents(
+        name: &ResourcePathName,
         type_id: ResourceTypeAndId,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
@@ -383,7 +384,11 @@ impl Project {
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
         // pre-pend metadata before serialized resource
-        let metadata = Metadata { dependencies };
+        let metadata = Metadata {
+            name: name.clone(),
+            type_id,
+            dependencies,
+        };
         metadata.serialize(&mut contents);
 
         let _written = registry
@@ -426,7 +431,7 @@ impl Project {
         registry: &AssetRegistry,
     ) -> Result<(), Error> {
         let (name, resource_id) = self.lookup_name(type_id).await?;
-        let contents = Self::get_resource_contents(type_id, handle, registry)?;
+        let contents = Self::get_resource_contents(&name, type_id, handle, registry)?;
 
         self.workspace
             .update_resource(&type_id.into(), name.as_str(), &contents, &resource_id)
@@ -540,6 +545,7 @@ impl Project {
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<(ResourcePathName, ResourceIdentifier), Error> {
+        // Note, could replace with read of meta-data
         let resource_id = self
             .workspace
             .get_resource_identifier(&type_id.into())
