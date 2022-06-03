@@ -10,8 +10,6 @@ use parquet::file::writer::SerializedFileWriter;
 use parquet::schema::parser::parse_message_type;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use crate::call_tree::CallTreeBuilder;
@@ -39,7 +37,10 @@ impl SpanTablePartitionLocalWriter {
         let schema =
             Arc::new(parse_message_type(message_type).with_context(|| "parsing spans schema")?);
         let props = Arc::new(WriterProperties::builder().build());
-        let file = std::fs::File::create(file_path)
+        let file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(file_path)
             .with_context(|| format!("creating file {}", file_path.display()))?;
         let file_writer = SerializedFileWriter::new(file, schema, props)
             .with_context(|| "creating parquet writer")?;
@@ -128,21 +129,22 @@ pub struct SpanRow {
     depth: u32,
     begin_ms: f64,
     end_ms: f64,
-    id: u64,
-    parent: u64,
+    id: i64,
+    parent: i64,
 }
 
 fn make_rows_from_tree_impl<RowFun>(
     tree: &CallTreeNode,
-    parent: u64,
+    parent: i64,
     depth: u32,
-    next_id: &AtomicU64,
+    next_id: &mut i64,
     process_row: &mut RowFun,
 ) where
     RowFun: FnMut(SpanRow),
 {
     assert!(tree.hash != 0);
-    let span_id = next_id.fetch_add(1, Ordering::Relaxed);
+    *next_id += 1;
+    let span_id = *next_id;
     let span = SpanRow {
         hash: tree.hash,
         depth,
@@ -157,7 +159,7 @@ fn make_rows_from_tree_impl<RowFun>(
     }
 }
 
-pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &AtomicU64, table: &mut SpanRowGroup) {
+pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &mut i64, table: &mut SpanRowGroup) {
     if tree.hash == 0 {
         for child in &tree.children {
             make_rows_from_tree_impl(child, 0, 0, next_id, &mut |row| table.append(&row));
@@ -169,15 +171,22 @@ pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &AtomicU64, table: &mut
 
 #[allow(clippy::cast_possible_wrap)]
 #[span_fn]
-pub fn write_local_partition(
+pub async fn write_local_partition(
     payload: &lgn_telemetry_proto::telemetry::BlockPayload,
     stream: &Stream,
     block: &BlockMetadata,
     convert_ticks: ConvertTicks,
-    next_id: &AtomicU64,
-    spans_table_path: &Path,
+    next_id: &mut i64,
+    relative_file_name: String,
+    parquet_full_path: &Path,
 ) -> Result<Option<deltalake::action::Action>> {
+    //todo: do not allow overwriting - it could break id generation
     info!("processing block {}", &block.block_id);
+    if let Some(parent) = parquet_full_path.parent() {
+        tokio::fs::create_dir_all(&parent)
+            .await
+            .with_context(|| format!("creating directory for {}", parquet_full_path.display()))?;
+    }
     let mut builder = CallTreeBuilder::new(block.begin_ticks, block.end_ticks, convert_ticks);
     parse_thread_block_payload(payload, stream, &mut builder)
         .with_context(|| "parsing thread block payload")?;
@@ -185,17 +194,18 @@ pub fn write_local_partition(
     if let Some(root) = processed_block.call_tree_root {
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, next_id, &mut rows);
-        let filename = format!("spans_block_id={}.parquet", &block.block_id);
-        let parquet_full_path = spans_table_path.join(&filename);
-        let mut writer = SpanTablePartitionLocalWriter::create(&parquet_full_path)?;
+        let mut writer = SpanTablePartitionLocalWriter::create(parquet_full_path)?;
         writer.append(&rows)?;
         writer.close()?;
-        let attr = std::fs::metadata(&parquet_full_path)?; //that's not cool, we should already know how big the file is
+        let attr = tokio::fs::metadata(&parquet_full_path).await?; //that's not cool, we should already know how big the file is
         Ok(Some(deltalake::action::Action::add(
             deltalake::action::Add {
-                path: filename,
+                path: relative_file_name,
                 size: attr.len() as i64,
-                partition_values: HashMap::new(),
+                partition_values: HashMap::from([
+                    ("block_id".to_owned(), Some(block.block_id.clone())),
+                    ("thread_id".to_owned(), Some(stream.stream_id.clone())),
+                ]),
                 partition_values_parsed: None,
                 modification_time: 0,
                 data_change: false,

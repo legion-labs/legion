@@ -25,8 +25,8 @@ pub enum ShaderPackage {
 impl ShaderPackage {
     pub fn module_def(&self) -> ShaderModuleDef<'_> {
         match self {
-            ShaderPackage::SpirV(bytes) => ShaderModuleDef::SpirVBytes(bytes),
-            ShaderPackage::Null => ShaderModuleDef::Null(PhantomData::default()),
+            Self::SpirV(bytes) => ShaderModuleDef::SpirVBytes(bytes),
+            Self::Null => ShaderModuleDef::Null(PhantomData::default()),
         }
     }
 }

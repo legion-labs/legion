@@ -115,10 +115,15 @@ impl Visitor {
                     )?);
                 }
                 openapiv3::Parameter::Header { parameter_data, .. } => {
-                    // Only string header parameters are supported for now.
-                    // There is no standard on how to parse them so we just
-                    // forward the raw string value to the implementor.
-                    let allowed_types = Some(vec![Type::String]);
+                    let allowed_types = Some(vec![
+                        Type::String,
+                        Type::Int32,
+                        Type::Int64,
+                        Type::Boolean,
+                        Type::Float32,
+                        Type::Float64,
+                        Type::Bytes,
+                    ]);
                     parameters.header.push(self.visit_parameter(
                         path,
                         &parameter.as_element_ref(parameter_data),
@@ -147,19 +152,13 @@ impl Visitor {
                             request_body.content.iter().next().unwrap();
 
                         let type_ = match &media_type_data.schema {
-                            Some(schema_ref) => match schema_ref {
-                                openapiv3::ReferenceOr::Item(schema) => {
-                                    let name =
-                                        format!("{}_body", operation_name).to_case(Case::Pascal);
-                                    self.resolve_type(
-                                        &name.as_str().into(),
-                                        &request_body.as_element_ref(schema),
-                                    )?
-                                }
-                                openapiv3::ReferenceOr::Reference { reference } => {
-                                    reference.parse().map(OpenApiRef::into_named_type)?
-                                }
-                            },
+                            Some(schema_ref) => {
+                                let name = format!("{}_body", operation_name).to_case(Case::Pascal);
+                                self.resolve_type_ref(
+                                    &name.as_str().into(),
+                                    &request_body.as_element_ref(schema_ref),
+                                )?
+                            }
                             None => return Err(Error::Invalid(format!("schema: {}", path))),
                         };
 
@@ -186,7 +185,7 @@ impl Visitor {
         };
 
         // Visit responses.
-        let mut responses = IndexMap::new();
+        let mut responses = BTreeMap::new();
         for (status_code, response_ref) in &operation.responses.responses {
             let response = operation.resolve_reference_or(response_ref)?;
 
@@ -196,19 +195,13 @@ impl Visitor {
                     let (media_type, media_type_data) = response.content.iter().next().unwrap();
 
                     let type_ = match &media_type_data.schema {
-                        Some(schema_ref) => Some(match schema_ref {
-                            openapiv3::ReferenceOr::Item(schema) => {
-                                let name =
-                                    format!("{}_response", operation_name).to_case(Case::Pascal);
-
-                                self.resolve_type(
-                                    &name.as_str().into(),
-                                    &response.as_element_ref(schema),
-                                )?
-                            }
-                            openapiv3::ReferenceOr::Reference { reference } => {
-                                reference.parse().map(OpenApiRef::into_named_type)?
-                            }
+                        Some(schema_ref) => Some({
+                            let name = format!("{}_{}_response", operation_name, status_code)
+                                .to_case(Case::Pascal);
+                            self.resolve_type_ref(
+                                &name.as_str().into(),
+                                &response.as_element_ref(schema_ref),
+                            )?
                         }),
                         None => None,
                     };
@@ -235,7 +228,7 @@ impl Visitor {
                 }
             };
 
-            let mut headers = IndexMap::new();
+            let mut headers = BTreeMap::new();
             for (header_name, header_ref) in &response.headers {
                 let header = response.resolve_reference_or(header_ref)?;
 
@@ -469,7 +462,11 @@ impl Visitor {
                 self.resolve_type(path, &array_type.as_element_ref(inner_schema))
             }
             openapiv3::ReferenceOr::Reference { reference } => {
-                reference.parse().map(OpenApiRef::into_named_type)
+                let ref_: OpenApiRef = reference.parse()?;
+
+                let name = ref_.type_name();
+                let schema = array_type.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
+                self.register_model_from_schema(name, &schema)
             }
         }?;
 
@@ -519,7 +516,7 @@ impl Visitor {
             )));
         }
 
-        let mut properties = Vec::new();
+        let mut properties = BTreeMap::new();
 
         for (property_name, property_ref) in &object_type.properties {
             let mut path = path.clone();
@@ -531,7 +528,12 @@ impl Visitor {
                     self.resolve_type(&path, &object_type.as_element_ref(inner_schema))
                 }
                 openapiv3::ReferenceOr::Reference { reference } => {
-                    reference.parse().map(OpenApiRef::into_named_type)
+                    let ref_: OpenApiRef = reference.parse()?;
+
+                    let name = ref_.type_name();
+                    let schema =
+                        object_type.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
+                    self.register_model_from_schema(name, &schema)
                 }
             }?;
             let property = Field {
@@ -540,7 +542,7 @@ impl Visitor {
                 type_,
                 required,
             };
-            properties.push(property);
+            properties.insert(property.name.clone(), property);
         }
 
         Ok(Type::Struct { fields: properties })
@@ -575,15 +577,9 @@ impl Visitor {
             openapiv3::ReferenceOr::Reference { reference } => {
                 let ref_: OpenApiRef = reference.parse()?;
 
-                // If we have a reference location, we need to make sure that we
-                // resolve the schema and register the associated model.
-                if ref_.ref_location().is_some() {
-                    let name = ref_.type_name();
-                    let schema = schema.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
-                    self.register_model_from_schema(name, &schema)
-                } else {
-                    Ok(ref_.into_named_type())
-                }
+                let name = ref_.type_name();
+                let schema = schema.resolve_reference::<openapiv3::Schema>(ref_.clone())?;
+                self.register_model_from_schema(name, &schema)
             }
         }
     }
@@ -595,7 +591,6 @@ mod tests {
         api::{Content, MediaType, Path},
         openapi_loader::OpenApiLoader,
     };
-    use indexmap::IndexMap;
 
     use super::*;
 
@@ -731,12 +726,15 @@ mod tests {
             name: "MyStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "my_enum".to_string(),
-                    description: None,
-                    type_: Type::Named("MyStructMyEnum".to_string()),
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "my_enum".to_string(),
+                    Field {
+                        name: "my_enum".to_string(),
+                        description: None,
+                        type_: Type::Named("MyStructMyEnum".to_string()),
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -830,20 +828,26 @@ mod tests {
             name: "MyStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![
-                    Field {
-                        name: "category".to_string(),
-                        description: None,
-                        type_: Type::Named("Category".to_string()),
-                        required: false,
-                    },
-                    Field {
-                        name: "tags".to_string(),
-                        description: None,
-                        type_: Type::Array(Box::new(Type::Named("Tag".to_string()))),
-                        required: false,
-                    },
-                ],
+                fields: BTreeMap::from([
+                    (
+                        "category".to_string(),
+                        Field {
+                            name: "category".to_string(),
+                            description: None,
+                            type_: Type::Named("Category".to_string()),
+                            required: false,
+                        },
+                    ),
+                    (
+                        "tags".to_string(),
+                        Field {
+                            name: "tags".to_string(),
+                            description: None,
+                            type_: Type::Array(Box::new(Type::Named("Tag".to_string()))),
+                            required: false,
+                        },
+                    ),
+                ]),
             },
         };
 
@@ -881,20 +885,26 @@ mod tests {
             name: "MyStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![
-                    Field {
-                        name: "my_prop1".to_string(),
-                        description: None,
-                        type_: Type::String,
-                        required: true,
-                    },
-                    Field {
-                        name: "my_prop2".to_string(),
-                        description: None,
-                        type_: Type::Int32,
-                        required: false,
-                    },
-                ],
+                fields: BTreeMap::from([
+                    (
+                        "my_prop1".to_string(),
+                        Field {
+                            name: "my_prop1".to_string(),
+                            description: None,
+                            type_: Type::String,
+                            required: true,
+                        },
+                    ),
+                    (
+                        "my_prop2".to_string(),
+                        Field {
+                            name: "my_prop2".to_string(),
+                            description: None,
+                            type_: Type::Int32,
+                            required: false,
+                        },
+                    ),
+                ]),
             },
         };
 
@@ -931,12 +941,15 @@ mod tests {
             name: "MyStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "my_inner_struct".to_string(),
-                    description: None,
-                    type_: Type::Named("MyStructMyInnerStruct".to_string()),
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "my_inner_struct".to_string(),
+                    Field {
+                        name: "my_inner_struct".to_string(),
+                        description: None,
+                        type_: Type::Named("MyStructMyInnerStruct".to_string()),
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -944,12 +957,15 @@ mod tests {
             name: "MyStructMyInnerStruct".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "my_inner_prop".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "my_inner_prop".to_string(),
+                    Field {
+                        name: "my_inner_prop".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1016,12 +1032,15 @@ mod tests {
             name: "Pet".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "name".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1039,7 +1058,7 @@ mod tests {
                 }],
                 ..Parameters::default()
             },
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
@@ -1047,7 +1066,7 @@ mod tests {
                         media_type: MediaType::Json,
                         type_: Type::Array(Box::new(Type::Named("Pet".to_string()))),
                     }),
-                    headers: IndexMap::new(),
+                    headers: BTreeMap::new(),
                 },
             )]),
         };
@@ -1109,12 +1128,15 @@ mod tests {
             name: "AddPetBody".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "pet_data".to_string(),
-                    description: None,
-                    type_: Type::Named("AddPetBodyPetData".to_string()),
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "pet_data".to_string(),
+                    Field {
+                        name: "pet_data".to_string(),
+                        description: None,
+                        type_: Type::Named("AddPetBodyPetData".to_string()),
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1122,12 +1144,15 @@ mod tests {
             name: "AddPetBodyPetData".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "name".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1144,12 +1169,12 @@ mod tests {
                 },
             }),
             parameters: Parameters::default(),
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
                     content: None,
-                    headers: IndexMap::new(),
+                    headers: BTreeMap::new(),
                 },
             )]),
         };
@@ -1222,12 +1247,15 @@ mod tests {
             name: "Pet".to_string(),
             description: None,
             type_: Type::Struct {
-                fields: vec![Field {
-                    name: "name".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                }],
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
             },
         };
 
@@ -1244,7 +1272,7 @@ mod tests {
                 },
             }),
             parameters: Parameters::default(),
-            responses: IndexMap::from([
+            responses: BTreeMap::from([
                 (
                     http::StatusCode::OK.into(),
                     Response {
@@ -1253,7 +1281,7 @@ mod tests {
                             media_type: MediaType::Json,
                             type_: Type::Named("Pet".to_string()),
                         }),
-                        headers: IndexMap::new(),
+                        headers: BTreeMap::new(),
                     },
                 ),
                 (
@@ -1261,7 +1289,7 @@ mod tests {
                     Response {
                         description: "Invalid input".to_string(),
                         content: None,
-                        headers: IndexMap::new(),
+                        headers: BTreeMap::new(),
                     },
                 ),
             ]),
@@ -1353,7 +1381,7 @@ mod tests {
         let api: Api = oas.try_into().unwrap();
 
         let expected_one_of = Model {
-            name: "TestOneOfResponse".to_string(),
+            name: "TestOneOf200Response".to_string(),
             description: None,
             type_: Type::OneOf {
                 types: vec![
@@ -1364,7 +1392,79 @@ mod tests {
         };
 
         assert_eq!(api.models.len(), 3);
-        assert_eq!(api.models.get("TestOneOfResponse"), Some(&expected_one_of));
+        assert_eq!(
+            api.models.get("TestOneOf200Response"),
+            Some(&expected_one_of)
+        );
+    }
+
+    #[test]
+    fn test_resolve_headers() {
+        let paths = serde_yaml::from_str::<openapiv3::Paths>(
+            r#"
+            /test-headers:
+              get:
+                operationId: testHeaders
+                parameters:
+                  - name: x-static-header
+                    in: header
+                    schema:
+                      type: string
+                responses:
+                  '200':
+                    description: Ok.
+                    headers:
+                      x-static-header:
+                        schema:
+                          type: string
+            "#,
+        )
+        .unwrap();
+
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
+            paths,
+            ..openapiv3::OpenAPI::default()
+        };
+        let oas: OpenApi<'_> = loader.import(&api).unwrap();
+        let api: Api = oas.try_into().unwrap();
+
+        let expected_route = Route {
+            name: "testHeaders".to_string(),
+            method: Method::Get,
+            summary: None,
+            request_body: None,
+            parameters: Parameters {
+                header: vec![Parameter {
+                    name: "x-static-header".to_string(),
+                    description: None,
+                    required: false,
+                    type_: Type::String,
+                }],
+                ..Parameters::default()
+            },
+            responses: BTreeMap::from([(
+                http::StatusCode::OK.into(),
+                Response {
+                    description: "Ok.".to_string(),
+                    content: None,
+                    headers: BTreeMap::from([(
+                        "x-static-header".to_string(),
+                        Header {
+                            description: None,
+                            type_: Type::String,
+                        },
+                    )]),
+                },
+            )]),
+        };
+
+        println!("{:#?}", api.paths);
+        assert_eq!(api.paths.len(), 1);
+        assert_eq!(
+            api.paths.get::<Path>(&"/test-headers".into()),
+            Some(&vec![expected_route])
+        );
     }
 
     #[test]
@@ -1440,12 +1540,12 @@ mod tests {
                 }],
                 ..Parameters::default()
             },
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
                     content: None,
-                    headers: IndexMap::new(),
+                    headers: BTreeMap::new(),
                 },
             )]),
         };

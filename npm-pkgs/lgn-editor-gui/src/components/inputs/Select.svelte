@@ -120,7 +120,7 @@
         {/if}
       </div>
       <div class="icon">
-        <Icon icon="ic:baseline-keyboard-arrow-down" />
+        <Icon icon="ic:outline-arrow-drop-down" height={"1.5rem"} />
       </div>
     </div>
   </div>
@@ -131,12 +131,12 @@
   class="options"
   class:hidden={!isOpen}
   use:keyboardNavigationContainer
-  style="width: {selectWidth}px"
+  style="width:{selectWidth}px"
 >
   {#if $$slots.unselect}
     <div
       class="option"
-      class:bg-gray-500={highlightedOptionIndex === 0}
+      class:bg-dropdown-default={highlightedOptionIndex === 0}
       on:mousemove={() => setHighlightedItem(0)}
       on:click={() => select("")}
       use:keyboardNavigationItem={0}
@@ -149,7 +149,7 @@
 
     <div
       class="option"
-      class:bg-gray-500={highlightedOptionIndex === actualIndex}
+      class:bg-dropdown-default={highlightedOptionIndex === actualIndex}
       on:mousemove={() => setHighlightedItem(actualIndex)}
       on:click={() => select(option)}
       use:keyboardNavigationItem={actualIndex}
@@ -174,7 +174,7 @@
 
 <style lang="postcss">
   .root {
-    @apply w-full bg-gray-800 rounded-sm cursor-pointer;
+    @apply w-full bg-dropdown-default rounded-sm cursor-pointer;
   }
 
   .root.disabled {
@@ -182,11 +182,11 @@
   }
 
   .root.default {
-    @apply h-8;
+    @apply h-6;
   }
 
   .root.lg {
-    @apply h-10;
+    @apply h-8;
   }
 
   .root.error {
@@ -194,7 +194,7 @@
   }
 
   .select {
-    @apply w-full h-full bg-gray-800 rounded-sm outline-none appearance-none;
+    @apply w-full h-full text-item-low bg-dropdown-default rounded-sm outline-none appearance-none border border-dropdown-root;
   }
 
   .selected-label {
@@ -206,7 +206,7 @@
   }
 
   .icon {
-    @apply flex items-center h-full text-orange-700;
+    @apply flex items-center pl-1 h-full text-item-low;
   }
 
   .options {

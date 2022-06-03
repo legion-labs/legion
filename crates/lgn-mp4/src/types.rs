@@ -109,9 +109,9 @@ pub enum TrackType {
 impl fmt::Display for TrackType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            TrackType::Video => DISPLAY_TYPE_VIDEO,
-            TrackType::Audio => DISPLAY_TYPE_AUDIO,
-            TrackType::Subtitle => DISPLAY_TYPE_SUBTITLE,
+            Self::Video => DISPLAY_TYPE_VIDEO,
+            Self::Audio => DISPLAY_TYPE_AUDIO,
+            Self::Subtitle => DISPLAY_TYPE_SUBTITLE,
         };
         write!(f, "{}", s)
     }
@@ -154,9 +154,9 @@ impl From<TrackType> for FourCC {
 impl TrackType {
     pub fn friendly_name(self) -> &'static str {
         match self {
-            TrackType::Video => "VideoHandler",
-            TrackType::Audio => "SoundHandler",
-            TrackType::Subtitle => "",
+            Self::Video => "VideoHandler",
+            Self::Audio => "SoundHandler",
+            Self::Subtitle => "",
         }
     }
 }
@@ -250,11 +250,11 @@ impl TryFrom<(u8, u8)> for AvcProfile {
 impl fmt::Display for AvcProfile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let profile = match self {
-            AvcProfile::ConstrainedBaseline => "Constrained Baseline",
-            AvcProfile::Baseline => "Baseline",
-            AvcProfile::Main => "Main",
-            AvcProfile::Extended => "Extended",
-            AvcProfile::High => "High",
+            Self::ConstrainedBaseline => "Constrained Baseline",
+            Self::Baseline => "Baseline",
+            Self::Main => "Main",
+            Self::Extended => "Extended",
+            Self::High => "High",
         };
         write!(f, "{}", profile)
     }
@@ -360,48 +360,48 @@ impl TryFrom<u8> for AudioObjectType {
 impl fmt::Display for AudioObjectType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let type_str = match self {
-            AudioObjectType::AacMain => "AAC Main",
-            AudioObjectType::AacLowComplexity => "LC",
-            AudioObjectType::AacScalableSampleRate => "SSR",
-            AudioObjectType::AacLongTermPrediction => "LTP",
-            AudioObjectType::SpectralBandReplication => "SBR",
-            AudioObjectType::AACScalable => "Scalable",
-            AudioObjectType::TwinVQ => "TwinVQ",
-            AudioObjectType::CodeExcitedLinearPrediction => "CELP",
-            AudioObjectType::HarmonicVectorExcitationCoding => "HVXC",
-            AudioObjectType::TextToSpeechtInterface => "TTSI",
-            AudioObjectType::MainSynthetic => "Main Synthetic",
-            AudioObjectType::WavetableSynthesis => "Wavetable Synthesis",
-            AudioObjectType::GeneralMIDI => "General MIDI",
-            AudioObjectType::AlgorithmicSynthesis => "Algorithmic Synthesis",
-            AudioObjectType::ErrorResilientAacLowComplexity => "ER AAC LC",
-            AudioObjectType::ErrorResilientAacLongTermPrediction => "ER AAC LTP",
-            AudioObjectType::ErrorResilientAacScalable => "ER AAC scalable",
-            AudioObjectType::ErrorResilientAacTwinVQ => "ER AAC TwinVQ",
-            AudioObjectType::ErrorResilientAacBitSlicedArithmeticCoding => "ER AAC BSAC",
-            AudioObjectType::ErrorResilientAacLowDelay => "ER AAC LD",
-            AudioObjectType::ErrorResilientCodeExcitedLinearPrediction => "ER CELP",
-            AudioObjectType::ErrorResilientHarmonicVectorExcitationCoding => "ER HVXC",
-            AudioObjectType::ErrorResilientHarmonicIndividualLinesNoise => "ER HILN",
-            AudioObjectType::ErrorResilientParametric => "ER Parametric",
-            AudioObjectType::SinuSoidalCoding => "SSC",
-            AudioObjectType::ParametricStereo => "Parametric Stereo",
-            AudioObjectType::MpegSurround => "MPEG surround",
-            AudioObjectType::MpegLayer1 => "MPEG Layer 1",
-            AudioObjectType::MpegLayer2 => "MPEG Layer 2",
-            AudioObjectType::MpegLayer3 => "MPEG Layer 3",
-            AudioObjectType::DirectStreamTransfer => "DST",
-            AudioObjectType::AudioLosslessCoding => "ALS",
-            AudioObjectType::ScalableLosslessCoding => "SLS",
-            AudioObjectType::ScalableLosslessCodingNoneCore => "SLS Non-core",
-            AudioObjectType::ErrorResilientAacEnhancedLowDelay => "ER AAC ELD",
-            AudioObjectType::SymbolicMusicRepresentationSimple => "SMR Simple",
-            AudioObjectType::SymbolicMusicRepresentationMain => "SMR Main",
-            AudioObjectType::UnifiedSpeechAudioCoding => "USAC",
-            AudioObjectType::SpatialAudioObjectCoding => "SAOC",
-            AudioObjectType::LowDelayMpegSurround => "LD MPEG Surround",
-            AudioObjectType::SpatialAudioObjectCodingDialogueEnhancement => "SAOC-DE",
-            AudioObjectType::AudioSync => "Audio Sync",
+            Self::AacMain => "AAC Main",
+            Self::AacLowComplexity => "LC",
+            Self::AacScalableSampleRate => "SSR",
+            Self::AacLongTermPrediction => "LTP",
+            Self::SpectralBandReplication => "SBR",
+            Self::AACScalable => "Scalable",
+            Self::TwinVQ => "TwinVQ",
+            Self::CodeExcitedLinearPrediction => "CELP",
+            Self::HarmonicVectorExcitationCoding => "HVXC",
+            Self::TextToSpeechtInterface => "TTSI",
+            Self::MainSynthetic => "Main Synthetic",
+            Self::WavetableSynthesis => "Wavetable Synthesis",
+            Self::GeneralMIDI => "General MIDI",
+            Self::AlgorithmicSynthesis => "Algorithmic Synthesis",
+            Self::ErrorResilientAacLowComplexity => "ER AAC LC",
+            Self::ErrorResilientAacLongTermPrediction => "ER AAC LTP",
+            Self::ErrorResilientAacScalable => "ER AAC scalable",
+            Self::ErrorResilientAacTwinVQ => "ER AAC TwinVQ",
+            Self::ErrorResilientAacBitSlicedArithmeticCoding => "ER AAC BSAC",
+            Self::ErrorResilientAacLowDelay => "ER AAC LD",
+            Self::ErrorResilientCodeExcitedLinearPrediction => "ER CELP",
+            Self::ErrorResilientHarmonicVectorExcitationCoding => "ER HVXC",
+            Self::ErrorResilientHarmonicIndividualLinesNoise => "ER HILN",
+            Self::ErrorResilientParametric => "ER Parametric",
+            Self::SinuSoidalCoding => "SSC",
+            Self::ParametricStereo => "Parametric Stereo",
+            Self::MpegSurround => "MPEG surround",
+            Self::MpegLayer1 => "MPEG Layer 1",
+            Self::MpegLayer2 => "MPEG Layer 2",
+            Self::MpegLayer3 => "MPEG Layer 3",
+            Self::DirectStreamTransfer => "DST",
+            Self::AudioLosslessCoding => "ALS",
+            Self::ScalableLosslessCoding => "SLS",
+            Self::ScalableLosslessCodingNoneCore => "SLS Non-core",
+            Self::ErrorResilientAacEnhancedLowDelay => "ER AAC ELD",
+            Self::SymbolicMusicRepresentationSimple => "SMR Simple",
+            Self::SymbolicMusicRepresentationMain => "SMR Main",
+            Self::UnifiedSpeechAudioCoding => "USAC",
+            Self::SpatialAudioObjectCoding => "SAOC",
+            Self::LowDelayMpegSurround => "LD MPEG Surround",
+            Self::SpatialAudioObjectCodingDialogueEnhancement => "SAOC-DE",
+            Self::AudioSync => "Audio Sync",
         };
         write!(f, "{}", type_str)
     }
@@ -449,19 +449,19 @@ impl TryFrom<u8> for SampleFreqIndex {
 impl SampleFreqIndex {
     pub fn freq(self) -> u32 {
         match self {
-            SampleFreqIndex::Freq96000 => 96000,
-            SampleFreqIndex::Freq88200 => 88200,
-            SampleFreqIndex::Freq64000 => 64000,
-            SampleFreqIndex::Freq48000 => 48000,
-            SampleFreqIndex::Freq44100 => 44100,
-            SampleFreqIndex::Freq32000 => 32000,
-            SampleFreqIndex::Freq24000 => 24000,
-            SampleFreqIndex::Freq22050 => 22050,
-            SampleFreqIndex::Freq16000 => 16000,
-            SampleFreqIndex::Freq12000 => 12000,
-            SampleFreqIndex::Freq11025 => 11025,
-            SampleFreqIndex::Freq8000 => 8000,
-            SampleFreqIndex::Freq7350 => 7350,
+            Self::Freq96000 => 96000,
+            Self::Freq88200 => 88200,
+            Self::Freq64000 => 64000,
+            Self::Freq48000 => 48000,
+            Self::Freq44100 => 44100,
+            Self::Freq32000 => 32000,
+            Self::Freq24000 => 24000,
+            Self::Freq22050 => 22050,
+            Self::Freq16000 => 16000,
+            Self::Freq12000 => 12000,
+            Self::Freq11025 => 11025,
+            Self::Freq8000 => 8000,
+            Self::Freq7350 => 7350,
         }
     }
 }
@@ -496,13 +496,13 @@ impl TryFrom<u8> for ChannelConfig {
 impl fmt::Display for ChannelConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            ChannelConfig::Mono => "mono",
-            ChannelConfig::Stereo => "stereo",
-            ChannelConfig::Three => "three",
-            ChannelConfig::Four => "four",
-            ChannelConfig::Five => "five",
-            ChannelConfig::FiveOne => "five.one",
-            ChannelConfig::SevenOne => "seven.one",
+            Self::Mono => "mono",
+            Self::Stereo => "stereo",
+            Self::Three => "three",
+            Self::Four => "four",
+            Self::Five => "five",
+            Self::FiveOne => "five.one",
+            Self::SevenOne => "seven.one",
         };
         write!(f, "{}", s)
     }

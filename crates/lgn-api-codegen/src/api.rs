@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, iter::Chain, slice::Iter};
 
 use crate::{Error, OpenAPIPath, Result};
-use indexmap::IndexMap;
 
 /// API is the resolved type that is fed to templates and contains helper
 /// methods to ease their writing.
@@ -30,7 +29,7 @@ pub enum Type {
     HashSet(Box<Self>),
     Named(String),
     Enum { variants: Vec<String> },
-    Struct { fields: Vec<Field> },
+    Struct { fields: BTreeMap<String, Field> },
     OneOf { types: Vec<Self> },
 }
 
@@ -86,7 +85,13 @@ pub struct Route {
     pub summary: Option<String>,
     pub request_body: Option<RequestBody>,
     pub parameters: Parameters,
-    pub responses: IndexMap<StatusCode, Response>,
+    pub responses: BTreeMap<StatusCode, Response>,
+}
+
+impl Route {
+    pub fn has_empty_request(&self) -> bool {
+        self.request_body.is_none() && self.parameters.is_empty()
+    }
 }
 
 #[derive(Debug, PartialEq, Default)]
@@ -95,6 +100,15 @@ pub struct Parameters {
     pub query: Vec<Parameter>,
     pub header: Vec<Parameter>,
     pub cookie: Vec<Parameter>,
+}
+
+impl Parameters {
+    pub fn is_empty(&self) -> bool {
+        self.path.is_empty()
+            && self.query.is_empty()
+            && self.header.is_empty()
+            && self.cookie.is_empty()
+    }
 }
 
 impl<'a> IntoIterator for &'a Parameters {
@@ -113,7 +127,7 @@ impl<'a> IntoIterator for &'a Parameters {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StatusCode(http::StatusCode);
 
 impl From<http::StatusCode> for StatusCode {
@@ -138,7 +152,7 @@ impl StatusCode {
 pub struct Response {
     pub description: String,
     pub content: Option<Content>,
-    pub headers: IndexMap<String, Header>,
+    pub headers: BTreeMap<String, Header>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -195,14 +209,14 @@ pub enum Method {
 impl std::fmt::Display for Method {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Method::Get => "GET",
-            Method::Post => "POST",
-            Method::Delete => "DELETE",
-            Method::Put => "PUT",
-            Method::Patch => "PATCH",
-            Method::Head => "HEAD",
-            Method::Options => "OPTIONS",
-            Method::Trace => "TRACE",
+            Self::Get => "GET",
+            Self::Post => "POST",
+            Self::Delete => "DELETE",
+            Self::Put => "PUT",
+            Self::Patch => "PATCH",
+            Self::Head => "HEAD",
+            Self::Options => "OPTIONS",
+            Self::Trace => "TRACE",
         })
     }
 }

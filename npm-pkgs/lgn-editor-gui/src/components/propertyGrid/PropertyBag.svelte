@@ -252,7 +252,7 @@
 
 <style lang="postcss">
   .property-root {
-    @apply flex-col justify-between bg-surface-600 text-item-high;
+    @apply flex flex-col bg-surface-600 text-item-high;
   }
 
   .property-header {

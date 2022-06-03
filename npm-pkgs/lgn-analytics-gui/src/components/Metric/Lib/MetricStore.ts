@@ -16,6 +16,8 @@ const lastUsedMetricStoreKey = "last-used-metric-store-key";
 
 export type MetricStore = ReturnType<typeof getMetricStore>;
 
+export type SelectedMetricStore = ReturnType<typeof getSelectedMetricStore>;
+
 export type RecentlyUsedMetricStore = ReturnType<
   typeof getRecentlyUsedMetricsStore
 >;
@@ -206,4 +208,10 @@ export function getMetricStore(
     switchHidden,
     clearSelection,
   };
+}
+
+export function getSelectedMetricStore(metricStore: MetricStore) {
+  return derived(metricStore, ($metricStore) =>
+    $metricStore.filter(({ selected }) => selected)
+  );
 }

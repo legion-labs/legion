@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const config = require("../../tailwind.config.cjs");
+const tailwindConfig = require("../../tailwind.config.cjs");
 const fs = require("fs");
 const path = require("path");
 
@@ -20,7 +20,7 @@ if (!fs.existsSync(lgnFrontendContentDir)) {
 
 /** @type {import("tailwindcss/tailwind-config").TailwindConfig } */
 module.exports = {
-  ...config,
+  ...tailwindConfig,
   content: [
     path.join(srcContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, contentGlobSuffix),

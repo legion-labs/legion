@@ -1,5 +1,7 @@
 import type { JsonValue } from "type-fest";
 
+import { getCookie, removeCookie, setCookie } from "./cookie";
+
 export interface Storage<Key, Value extends JsonValue> {
   get(key: Key): Value | null;
   has(key: Key): boolean;
@@ -140,6 +142,64 @@ export class DefaultSessionStorage<Key extends string, Value extends JsonValue>
   }
 
   canStore(_value: Value): boolean {
+    // TODO: Check the size of the incoming value and return false if it's too large
+
+    return true;
+  }
+}
+
+export class DefaultCookie<Key extends string>
+  implements Storage<Key, { value: string; expiresIn?: number }>
+{
+  get(key: Key): { value: string; expiresIn?: number | undefined } | null {
+    const value = getCookie(key);
+
+    if (value === null) {
+      return null;
+    }
+
+    return { value };
+  }
+
+  has(key: Key): boolean {
+    return this.get(key) !== null;
+  }
+
+  remove(key: Key): boolean {
+    removeCookie(key);
+
+    return true;
+  }
+
+  clear(): boolean {
+    // We probably don't want to clear all the cookies at once programmatically, does nothing and returns false for now
+
+    return false;
+  }
+
+  set(
+    key: Key,
+    { value, expiresIn }: { value: string; expiresIn?: number | undefined }
+  ): boolean {
+    setCookie(key, value, expiresIn);
+
+    return true;
+  }
+
+  entries(): [Key, { value: string; expiresIn?: number | undefined }][] {
+    const entries: [Key, { value: string; expiresIn?: number | undefined }][] =
+      [];
+
+    const parts = document.cookie.split(/[;=]/);
+
+    for (let i = 0; i < parts.length - 1; i += 2) {
+      entries.push([parts[i] as Key, { value: parts[i + 1] }]);
+    }
+
+    return entries;
+  }
+
+  canStore(_value: { value: string; expiresIn?: number | undefined }): boolean {
     // TODO: Check the size of the incoming value and return false if it's too large
 
     return true;

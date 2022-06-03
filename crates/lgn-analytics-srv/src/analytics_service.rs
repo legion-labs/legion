@@ -888,6 +888,7 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
+    #[span_fn]
     async fn build_timeline_tables(
         &self,
         request: Request<BuildTimelineTablesRequest>,

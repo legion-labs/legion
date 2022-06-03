@@ -1,14 +1,11 @@
 <script lang="ts">
   import { getContext } from "svelte";
 
-  import { getMetricColor } from "./Lib/MetricColor";
   import type { MetricState } from "./Lib/MetricState";
 
   export let metric: MetricState;
 
   const metricStore = getContext("metrics-store");
-
-  $: color = getMetricColor(metric.name);
 </script>
 
 <div
@@ -17,16 +14,12 @@
 >
   <div class="metric-selection-item">
     <div>
-      <input
-        type="checkbox"
-        style="accent-color:{color}"
-        checked={metric.selected}
-      />
+      <input type="checkbox" checked={metric.selected} />
     </div>
     <div>
       {metric.name}
       {#if metric.unit}
-        <span style="color:{color}">
+        <span>
           ({metric.unit})
         </span>
       {/if}

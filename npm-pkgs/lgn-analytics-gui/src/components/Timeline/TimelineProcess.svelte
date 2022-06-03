@@ -26,10 +26,11 @@
 
   const wheelDispatcher = createEventDispatcher<{ zoom: WheelEvent }>();
   const processOffsetMs = Date.parse(process.startTime) - rootStartTime;
+  const components: TimelineRow[] = [];
   const debug = getContext("debug");
   const { t } = getContext(l10nOrchestratorContextKey);
-  let collapsed = false;
-  let components: TimelineRow[] = [];
+
+  $: collapsed = $stateStore.collapsedProcesseIds.includes(process.processId);
 
   $: threads = Object.values($stateStore.threads).filter(
     (t) => t.streamInfo.processId === process.processId
@@ -44,14 +45,17 @@
     : undefined;
 
   onMount(() => {
-    collapsed = index !== 0;
+    if (index !== 0) {
+      stateStore.collapseProcess(process.processId);
+    }
   });
 </script>
 
 <div on:wheel|preventDefault={(e) => wheelDispatcher("zoom", e)} {style}>
   <div
     class="surface headline px-1 text-sm text-left mb-1 flex flex-row place-content-between items-center"
-    on:click|preventDefault={() => (collapsed = !collapsed)}
+    on:click|preventDefault={() =>
+      stateStore.toggleCollapseProcess(process.processId)}
   >
     <div>
       <span>

@@ -13,11 +13,13 @@ use lgn_online::codegen::Context;
 
 #[async_trait::async_trait]
 pub trait Api {
-    async fn test_one_of(
+    async fn test_headers(
         &self,
         context: &mut Context,
-        request: requests::TestOneOfRequest,
-    ) -> Result<responses::TestOneOfResponse>;
+        request: requests::TestHeadersRequest,
+    ) -> Result<responses::TestHeadersResponse>;
+
+    async fn test_one_of(&self, context: &mut Context) -> Result<responses::TestOneOfResponse>;
 
     async fn get_cars(
         &self,
@@ -56,7 +58,7 @@ pub mod errors {
         http::StatusCode,
         response::{IntoResponse, Response},
     };
-    use lgn_tracing::error;
+    use lgn_tracing::warn;
 
     #[derive(thiserror::Error, Debug)]
     pub enum Error {
@@ -68,6 +70,8 @@ pub mod errors {
         SerdeJson(#[from] serde_json::Error),
         #[error("serde qs: {0}")]
         SerdeQs(#[from] serde_qs::Error),
+        #[error("codegen encoding: {0}")]
+        CodegenEncoding(#[from] lgn_online::codegen::encoding::Error),
         #[error("invalid body: {0}")]
         InvalidBody(String),
         #[error("invalid header: {0}")]
@@ -76,40 +80,34 @@ pub mod errors {
         MissingHeader(String),
     }
 
-    pub type Result<T> = std::result::Result<T, Error>;
+    pub type Result<T, E = Error> = std::result::Result<T, E>;
 
     impl IntoResponse for Error {
         fn into_response(self) -> Response {
+            warn!("converted error into HTTP response: {}", self);
+
             match self {
-                Self::Internal(err) => {
-                    error!("Internal server error: {}", err);
+                Self::Internal(_) | Self::Hyper(_) | Self::SerdeJson(_) | Self::SerdeQs(_) => {
                     StatusCode::INTERNAL_SERVER_ERROR.into_response()
                 }
-                Self::Hyper(err) => {
-                    error!("Hyper error: {:?}", err);
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                }
-                Self::SerdeJson(err) => {
-                    error!("Serde Json error: {:?}", err);
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                }
-                Self::SerdeQs(err) => {
-                    error!("Serde Qs error: {:?}", err);
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                }
-                Self::InvalidBody(err) => {
-                    error!("Invalid body: {}", err);
-                    StatusCode::BAD_REQUEST.into_response()
-                }
-                Self::InvalidHeader(err) => {
-                    error!("Invalid header: {}", err);
-                    StatusCode::BAD_REQUEST.into_response()
-                }
-                Self::MissingHeader(err) => {
-                    error!("Missing header: {}", err);
-                    StatusCode::BAD_REQUEST.into_response()
-                }
+                Self::CodegenEncoding(_)
+                | Self::InvalidBody(_)
+                | Self::InvalidHeader(_)
+                | Self::MissingHeader(_) => StatusCode::BAD_REQUEST.into_response(),
             }
+        }
+    }
+
+    pub trait ErrorExt<T> {
+        /// Converts to an internal server error.
+        /// # Errors
+        /// If we fail to return a response.
+        fn into_internal_server_error(self) -> Result<T, Error>;
+    }
+
+    impl<T, E: std::error::Error> ErrorExt<T> for Result<T, E> {
+        fn into_internal_server_error(self) -> Result<T, Error> {
+            self.map_err(|err| Error::Internal(err.to_string()))
         }
     }
 }
@@ -140,11 +138,64 @@ pub mod client {
     where
         C: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
     {
-        async fn test_one_of(
+        async fn test_headers(
             &self,
             context: &mut Context,
-            request: requests::TestOneOfRequest,
-        ) -> Result<responses::TestOneOfResponse> {
+            request: requests::TestHeadersRequest,
+        ) -> Result<responses::TestHeadersResponse> {
+            let mut uri = format!("{}/test-headers", self.base_uri);
+
+            let mut req = Request::builder()
+                .method(Method::GET)
+                .uri(uri)
+                .body(Body::empty())
+                .unwrap();
+            if let Some(extensions) = context.request_extensions() {
+                req.extensions_mut().extend(extensions);
+            }
+
+            if let Some(headers) = context.request_headers() {
+                req.headers_mut().extend(headers);
+            }
+
+            if let Some(x_string_header) = request.x_string_header {
+                let x_string_header =
+                    lgn_online::codegen::encoding::to_percent_encoded_string(&x_string_header)?;
+                req.headers_mut().insert(
+                    "x-string-header",
+                    HeaderValue::from_str(&x_string_header)
+                        .map_err(|err| Error::InvalidHeader(format!("x-string-header: {}", err)))?,
+                );
+            }
+
+            if let Some(x_bytes_header) = request.x_bytes_header {
+                let x_bytes_header =
+                    lgn_online::codegen::encoding::to_percent_encoded_string(&x_bytes_header)?;
+                req.headers_mut().insert(
+                    "x-bytes-header",
+                    HeaderValue::from_str(&x_bytes_header)
+                        .map_err(|err| Error::InvalidHeader(format!("x-bytes-header: {}", err)))?,
+                );
+            }
+
+            if let Some(x_int_header) = request.x_int_header {
+                let x_int_header =
+                    lgn_online::codegen::encoding::to_percent_encoded_string(&x_int_header)?;
+                req.headers_mut().insert(
+                    "x-int-header",
+                    HeaderValue::from_str(&x_int_header)
+                        .map_err(|err| Error::InvalidHeader(format!("x-int-header: {}", err)))?,
+                );
+            }
+            let resp = self.inner.request(req).await?;
+
+            let (parts, body) = resp.into_parts();
+            let resp = responses::TestHeadersResponse::from_response(&parts, body).await;
+            context.set_response(parts);
+            resp
+        }
+
+        async fn test_one_of(&self, context: &mut Context) -> Result<responses::TestOneOfResponse> {
             let mut uri = format!("{}/test-one-of", self.base_uri);
 
             let mut req = Request::builder()
@@ -163,10 +214,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::TestOneOfResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::TestOneOfResponse::from_response(status, body).await
+            resp
         }
 
         async fn get_cars(
@@ -176,7 +226,8 @@ pub mod client {
         ) -> Result<responses::GetCarsResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/cars",
-                self.base_uri, request.space_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
             );
 
             let query = params::GetCarsQuery {
@@ -203,10 +254,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::GetCarsResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::GetCarsResponse::from_response(status, body).await
+            resp
         }
 
         async fn create_car(
@@ -216,7 +266,8 @@ pub mod client {
         ) -> Result<responses::CreateCarResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/cars",
-                self.base_uri, request.space_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
             );
 
             let mut req = Request::builder()
@@ -237,6 +288,7 @@ pub mod client {
                 .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
             if let Some(span_id) = request.span_id {
+                let span_id = lgn_online::codegen::encoding::to_percent_encoded_string(&span_id)?;
                 req.headers_mut().insert(
                     "span-id",
                     HeaderValue::from_str(&span_id)
@@ -246,10 +298,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::CreateCarResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::CreateCarResponse::from_response(status, body).await
+            resp
         }
 
         async fn get_car(
@@ -259,7 +310,9 @@ pub mod client {
         ) -> Result<responses::GetCarResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/cars/{}",
-                self.base_uri, request.space_id, request.car_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.car_id)?
             );
 
             let mut req = Request::builder()
@@ -278,10 +331,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::GetCarResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::GetCarResponse::from_response(status, body).await
+            resp
         }
 
         async fn delete_car(
@@ -291,7 +343,9 @@ pub mod client {
         ) -> Result<responses::DeleteCarResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/cars/{}",
-                self.base_uri, request.space_id, request.car_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.car_id)?
             );
 
             let mut req = Request::builder()
@@ -310,10 +364,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::DeleteCarResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::DeleteCarResponse::from_response(status, body).await
+            resp
         }
 
         async fn test_binary(
@@ -323,7 +376,8 @@ pub mod client {
         ) -> Result<responses::TestBinaryResponse> {
             let mut uri = format!(
                 "{}/v1/spaces/{}/car-service/test-binary",
-                self.base_uri, request.space_id
+                self.base_uri,
+                lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
             );
 
             let mut req = Request::builder()
@@ -347,10 +401,9 @@ pub mod client {
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::TestBinaryResponse::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::TestBinaryResponse::from_response(status, body).await
+            resp
         }
     }
 }
@@ -382,6 +435,7 @@ pub mod server {
         T: super::Api + Clone + Send + Sync + 'static,
     {
         router
+            .route("/test-headers", routing::get(test_headers::<T>))
             .route("/test-one-of", routing::get(test_one_of::<T>))
             .route(
                 "/v1/spaces/:space-id/car-service/cars",
@@ -398,6 +452,91 @@ pub mod server {
             .layer(Extension(api))
     }
 
+    async fn test_headers<T>(
+        Extension(api): Extension<T>,
+        ConnectInfo(addr): ConnectInfo<SocketAddr>,
+        parts: Parts,
+    ) -> Response
+    where
+        T: super::Api + Send + Sync + 'static,
+    {
+        let x_string_header = parts
+            .headers
+            .get(HeaderName::from_static("x-string-header"))
+            .map(|h| {
+                let s = h
+                    .to_str()
+                    .map_err(|err| {
+                        Error::InvalidHeader("x-string-header".to_owned()).into_response()
+                    })
+                    .unwrap();
+
+                lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                    .map_err(|err| {
+                        Error::InvalidHeader("x-string-header".to_owned()).into_response()
+                    })
+                    .unwrap()
+            });
+
+        let x_bytes_header = parts
+            .headers
+            .get(HeaderName::from_static("x-bytes-header"))
+            .map(|h| {
+                let s = h
+                    .to_str()
+                    .map_err(|err| {
+                        Error::InvalidHeader("x-bytes-header".to_owned()).into_response()
+                    })
+                    .unwrap();
+
+                lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                    .map_err(|err| {
+                        Error::InvalidHeader("x-bytes-header".to_owned()).into_response()
+                    })
+                    .unwrap()
+            });
+
+        let x_int_header = parts
+            .headers
+            .get(HeaderName::from_static("x-int-header"))
+            .map(|h| {
+                let s = h
+                    .to_str()
+                    .map_err(|err| Error::InvalidHeader("x-int-header".to_owned()).into_response())
+                    .unwrap();
+
+                lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                    .map_err(|err| Error::InvalidHeader("x-int-header".to_owned()).into_response())
+                    .unwrap()
+            });
+
+        let mut context = Context::default();
+        context.set_request_addr(addr);
+        context.set_request(parts);
+
+        let request = requests::TestHeadersRequest {
+            x_string_header,
+            x_bytes_header,
+            x_int_header,
+        };
+
+        let resp = api.test_headers(&mut context, request).await;
+        let mut resp = match resp {
+            Ok(resp) => resp.into_response(),
+            Err(err) => err.into_response(),
+        };
+
+        if let Some(extensions) = context.response_extensions() {
+            resp.extensions_mut().extend(extensions);
+        }
+
+        if let Some(headers) = context.response_headers() {
+            resp.headers_mut().extend(headers);
+        }
+
+        resp
+    }
+
     async fn test_one_of<T>(
         Extension(api): Extension<T>,
         ConnectInfo(addr): ConnectInfo<SocketAddr>,
@@ -409,9 +548,8 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
-        let request = requests::TestOneOfRequest {};
 
-        let resp = api.test_one_of(&mut context, request).await;
+        let resp = api.test_one_of(&mut context).await;
         let mut resp = match resp {
             Ok(resp) => resp.into_response(),
             Err(err) => err.into_response(),
@@ -441,6 +579,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::GetCarsRequest {
             space_id,
             names: query.names,
@@ -474,21 +613,24 @@ pub mod server {
     where
         T: super::Api + Send + Sync + 'static,
     {
-        let span_id = parts.headers.get(HeaderName::from_static("span-id"));
-        let span_id = span_id.map(|span_id| {
-            span_id
-                .to_str()
-                .map_err(|err| {
-                    error!("Failed to read `span-id` header: {}", err);
-                    Error::InvalidHeader("span-id".to_owned()).into_response()
-                })
-                .unwrap()
-                .to_owned()
-        });
+        let span_id = parts
+            .headers
+            .get(HeaderName::from_static("span-id"))
+            .map(|h| {
+                let s = h
+                    .to_str()
+                    .map_err(|err| Error::InvalidHeader("span-id".to_owned()).into_response())
+                    .unwrap();
+
+                lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                    .map_err(|err| Error::InvalidHeader("span-id".to_owned()).into_response())
+                    .unwrap()
+            });
 
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::CreateCarRequest {
             space_id,
             span_id,
@@ -524,6 +666,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::GetCarRequest { space_id, car_id };
 
         let resp = api.get_car(&mut context, request).await;
@@ -555,6 +698,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::DeleteCarRequest { space_id, car_id };
 
         let resp = api.delete_car(&mut context, request).await;
@@ -587,6 +731,7 @@ pub mod server {
         let mut context = Context::default();
         context.set_request_addr(addr);
         context.set_request(parts);
+
         let request = requests::TestBinaryRequest {
             space_id,
             body: body.into(),
@@ -647,6 +792,12 @@ pub mod models {
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Cars(pub Vec<super::models::Car>);
 
+    impl From<Vec<super::models::Car>> for Cars {
+        fn from(t: Vec<super::models::Car>) -> Self {
+            Self(t)
+        }
+    }
+
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Pet {
         #[serde(rename = "name")]
@@ -655,7 +806,7 @@ pub mod models {
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub enum TestOneOfResponse {
+    pub enum TestOneOf200Response {
         #[serde(rename = "option1")]
         Option1(super::models::Pet),
         #[serde(rename = "option2")]
@@ -683,7 +834,11 @@ pub mod requests {
     use lgn_online::codegen::Bytes;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct TestOneOfRequest {}
+    pub struct TestHeadersRequest {
+        pub x_string_header: Option<String>,
+        pub x_bytes_header: Option<Bytes>,
+        pub x_int_header: Option<i32>,
+    }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct GetCarsRequest {
@@ -726,37 +881,161 @@ pub mod responses {
         response::{IntoResponse, Response},
         Json,
     };
+    use http::HeaderMap;
+    use http::HeaderValue;
     use lgn_online::codegen::Bytes;
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum TestHeadersResponse {
+        /// Ok.
+        Status200 {
+            x_bytes_header: Bytes,
+            x_int_header: i32,
+            x_string_header: String,
+            body: super::models::Pet,
+        },
+    }
+
+    impl TestHeadersResponse {
+        pub(crate) fn into_response(self) -> Response {
+            match self {
+                TestHeadersResponse::Status200 {
+                    x_bytes_header,
+                    x_int_header,
+                    x_string_header,
+                    body,
+                } => {
+                    let body = Json(body);
+                    let mut resp = (StatusCode::from_u16(200).unwrap(), body).into_response();
+                    let x_bytes_header_value =
+                        match lgn_online::codegen::encoding::to_percent_encoded_string(
+                            &x_bytes_header,
+                        ) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                return Error::InvalidHeader(format!("x-bytes-header: {}", err))
+                                    .into_response();
+                            }
+                        };
+                    match HeaderValue::from_str(&x_bytes_header_value) {
+                        Ok(value) => resp.headers_mut().insert("x-bytes-header", value),
+                        Err(err) => {
+                            return Error::InvalidHeader(format!("x-bytes-header: {}", err))
+                                .into_response();
+                        }
+                    };
+                    let x_int_header_value =
+                        match lgn_online::codegen::encoding::to_percent_encoded_string(
+                            &x_int_header,
+                        ) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                return Error::InvalidHeader(format!("x-int-header: {}", err))
+                                    .into_response();
+                            }
+                        };
+                    match HeaderValue::from_str(&x_int_header_value) {
+                        Ok(value) => resp.headers_mut().insert("x-int-header", value),
+                        Err(err) => {
+                            return Error::InvalidHeader(format!("x-int-header: {}", err))
+                                .into_response();
+                        }
+                    };
+                    let x_string_header_value =
+                        match lgn_online::codegen::encoding::to_percent_encoded_string(
+                            &x_string_header,
+                        ) {
+                            Ok(value) => value,
+                            Err(err) => {
+                                return Error::InvalidHeader(format!("x-string-header: {}", err))
+                                    .into_response();
+                            }
+                        };
+                    match HeaderValue::from_str(&x_string_header_value) {
+                        Ok(value) => resp.headers_mut().insert("x-string-header", value),
+                        Err(err) => {
+                            return Error::InvalidHeader(format!("x-string-header: {}", err))
+                                .into_response();
+                        }
+                    };
+                    resp
+                }
+            }
+        }
+
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
+                200 => {
+                    let x_bytes_header = parts
+                        .headers
+                        .get("x-bytes-header")
+                        .ok_or_else(|| Error::MissingHeader("x-bytes-header".to_owned()))?
+                        .to_str()
+                        .map_err(|e| Error::InvalidHeader(format!("x-bytes-header: {}", e)))?;
+                    let x_int_header = parts
+                        .headers
+                        .get("x-int-header")
+                        .ok_or_else(|| Error::MissingHeader("x-int-header".to_owned()))?
+                        .to_str()
+                        .map_err(|e| Error::InvalidHeader(format!("x-int-header: {}", e)))?;
+                    let x_string_header = parts
+                        .headers
+                        .get("x-string-header")
+                        .ok_or_else(|| Error::MissingHeader("x-string-header".to_owned()))?
+                        .to_str()
+                        .map_err(|e| Error::InvalidHeader(format!("x-string-header: {}", e)))?;
+                    let bytes = hyper::body::to_bytes(body).await?;
+                    let body = serde_json::from_slice(&bytes)?;
+                    Ok(Self::Status200 {
+                        x_bytes_header: lgn_online::codegen::encoding::from_percent_encoded_string(
+                            x_bytes_header,
+                        )?,
+                        x_int_header: lgn_online::codegen::encoding::from_percent_encoded_string(
+                            x_int_header,
+                        )?,
+                        x_string_header:
+                            lgn_online::codegen::encoding::from_percent_encoded_string(
+                                x_string_header,
+                            )?,
+                        body,
+                    })
+                }
+                status => Err(Error::Internal(format!(
+                    "unexpected status code: {}",
+                    status
+                ))),
+            }
+        }
+    }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum TestOneOfResponse {
         /// Ok.
-        Status200(TestOneOf200Response),
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct TestOneOf200Response {
-        pub body: super::models::TestOneOfResponse,
+        Status200(super::models::TestOneOf200Response),
     }
 
     impl TestOneOfResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                TestOneOfResponse::Status200(r) => {
-                    let body = Json(r.body);
+                TestOneOfResponse::Status200(body) => {
+                    let body = Json(body);
                     (StatusCode::from_u16(200).unwrap(), body).into_response()
                 }
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = TestOneOf200Response {
-                        body: serde_json::from_slice(&bytes)?,
-                    };
-                    Ok(Self::Status200(resp))
+                    let body = serde_json::from_slice(&bytes)?;
+                    Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",
@@ -769,32 +1048,28 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum GetCarsResponse {
         /// List of cars.
-        Status200(GetCars200Response),
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct GetCars200Response {
-        pub body: super::models::Cars,
+        Status200(super::models::Cars),
     }
 
     impl GetCarsResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                GetCarsResponse::Status200(r) => {
-                    let body = Json(r.body);
+                GetCarsResponse::Status200(body) => {
+                    let body = Json(body);
                     (StatusCode::from_u16(200).unwrap(), body).into_response()
                 }
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = GetCars200Response {
-                        body: serde_json::from_slice(&bytes)?,
-                    };
-                    Ok(Self::Status200(resp))
+                    let body = serde_json::from_slice(&bytes)?;
+                    Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",
@@ -817,8 +1092,11 @@ pub mod responses {
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 201 => Ok(Self::Status201),
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",
@@ -831,35 +1109,31 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum GetCarResponse {
         /// A car.
-        Status200(GetCar200Response),
+        Status200(super::models::Car),
         /// Car not found.
         Status404,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct GetCar200Response {
-        pub body: super::models::Car,
     }
 
     impl GetCarResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                GetCarResponse::Status200(r) => {
-                    let body = Json(r.body);
+                GetCarResponse::Status200(body) => {
+                    let body = Json(body);
                     (StatusCode::from_u16(200).unwrap(), body).into_response()
                 }
                 GetCarResponse::Status404 => StatusCode::from_u16(404).unwrap().into_response(),
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = GetCar200Response {
-                        body: serde_json::from_slice(&bytes)?,
-                    };
-                    Ok(Self::Status200(resp))
+                    let body = serde_json::from_slice(&bytes)?;
+                    Ok(Self::Status200(body))
                 }
 
                 404 => Ok(Self::Status404),
@@ -887,8 +1161,11 @@ pub mod responses {
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => Ok(Self::Status200),
 
                 404 => Ok(Self::Status404),
@@ -903,30 +1180,28 @@ pub mod responses {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum TestBinaryResponse {
         /// Ok.
-        Status200(TestBinary200Response),
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct TestBinary200Response {
-        pub body: Bytes,
+        Status200(Bytes),
     }
 
     impl TestBinaryResponse {
         pub(crate) fn into_response(self) -> Response {
             match self {
-                TestBinaryResponse::Status200(r) => {
-                    let body: Vec<u8> = r.body.into();
+                TestBinaryResponse::Status200(body) => {
+                    let body: Vec<u8> = body.into();
                     (StatusCode::from_u16(200).unwrap(), body).into_response()
                 }
             }
         }
 
-        pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
-            match status.as_u16() {
+        pub(crate) async fn from_response(
+            parts: &http::response::Parts,
+            body: hyper::Body,
+        ) -> Result<Self> {
+            match parts.status.as_u16() {
                 200 => {
                     let bytes = hyper::body::to_bytes(body).await?;
-                    let resp = TestBinary200Response { body: bytes.into() };
-                    Ok(Self::Status200(resp))
+                    let body = bytes.into();
+                    Ok(Self::Status200(body))
                 }
                 status => Err(Error::Internal(format!(
                     "unexpected status code: {}",

@@ -182,7 +182,6 @@
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
   import ModalContainer from "@lgn/web-client/src/components/modal/ModalContainer.svelte";
 
-  import AuthModal from "@/components/AuthModal.svelte";
   import { fileName } from "@/lib/path";
   import { allActiveScenes } from "@/orchestrators/allActiveScenes";
   import { initMessageStream } from "@/orchestrators/selection";
@@ -197,11 +196,8 @@
   export let dispose: (() => void) | undefined;
 
   onMount(async () => {
-    if ($authStatus && $authStatus.type === "error") {
-      modal.open(Symbol.for("auth-modal"), AuthModal, {
-        payload: { authorizationUrl: $authStatus.authorizationUrl },
-        noTransition: true,
-      });
+    if ($authStatus?.type === "error") {
+      window.location.href = $authStatus.authorizationUrl;
     }
 
     const initLogStreamSubscriptions = initLogStreams();
@@ -269,10 +265,12 @@
   });
 </script>
 
-<ModalContainer store={modal} />
+{#if $authStatus?.type !== "error"}
+  <ModalContainer store={modal} />
 
-<ContextMenu store={contextMenu} />
+  <ContextMenu store={contextMenu} />
 
-<Notifications store={notifications} />
+  <Notifications store={notifications} />
 
-<slot />
+  <slot />
+{/if}

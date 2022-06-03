@@ -10,6 +10,7 @@ import type {
   MetricConfigStore,
   MetricStore,
   RecentlyUsedMetricStore,
+  SelectedMetricStore,
 } from "@/components/Metric/Lib/MetricStore";
 
 declare module "svelte" {
@@ -35,6 +36,10 @@ declare module "svelte" {
 
   // Metrics
   function setContext(key: "metrics-store", context: MetricStore): MetricStore;
+  function setContext(
+    key: "selected-metrics-store",
+    context: SelectedMetricStore
+  ): SelectedMetricStore;
   function setContext(
     key: "metrics-config-store",
     context: MetricConfigStore
@@ -63,6 +68,7 @@ declare module "svelte" {
 
   // Metrics
   function getContext(key: "metrics-store"): MetricStore;
+  function getContext(key: "selected-metrics-store"): SelectedMetricStore;
   function getContext(key: "metrics-config-store"): MetricConfigStore;
   function getContext(
     key: "recently-used-metrics-store"

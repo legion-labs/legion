@@ -5,12 +5,11 @@ use crate::cars::{
     models::{self},
     requests::{
         CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
-        TestOneOfRequest,
+        TestHeadersRequest,
     },
     responses::{
-        CreateCarResponse, DeleteCarResponse, GetCar200Response, GetCarResponse,
-        GetCars200Response, GetCarsResponse, TestBinary200Response, TestBinaryResponse,
-        TestOneOf200Response, TestOneOfResponse,
+        CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
+        TestHeadersResponse, TestOneOfResponse,
     },
     Api,
 };
@@ -31,9 +30,9 @@ impl Api for ApiImpl {
     ) -> Result<GetCarsResponse> {
         println!("Request addr: {}", context.request_addr().unwrap());
 
-        Ok(GetCarsResponse::Status200(GetCars200Response {
-            body: models::Cars(self.cars.read().await.values().cloned().collect()),
-        }))
+        Ok(GetCarsResponse::Status200(models::Cars(
+            self.cars.read().await.values().cloned().collect(),
+        )))
     }
 
     async fn get_car(
@@ -43,7 +42,7 @@ impl Api for ApiImpl {
     ) -> Result<GetCarResponse> {
         let car = self.cars.read().await.get(&request.car_id).cloned();
         match car {
-            Some(car) => Ok(GetCarResponse::Status200(GetCar200Response { body: car })),
+            Some(car) => Ok(GetCarResponse::Status200(car)),
             None => Ok(GetCarResponse::Status404),
         }
     }
@@ -74,26 +73,35 @@ impl Api for ApiImpl {
         _context: &mut Context,
         request: TestBinaryRequest,
     ) -> Result<TestBinaryResponse> {
-        Ok(TestBinaryResponse::Status200(TestBinary200Response {
-            body: request.body,
-        }))
+        Ok(TestBinaryResponse::Status200(request.body))
     }
 
-    async fn test_one_of(
+    async fn test_one_of(&self, context: &mut Context) -> Result<TestOneOfResponse> {
+        Ok(TestOneOfResponse::Status200(
+            models::TestOneOf200Response::Option1(models::Pet {
+                name: Some("Cat".to_string()),
+            }),
+        ))
+    }
+
+    async fn test_headers(
         &self,
         context: &mut Context,
-        _request: TestOneOfRequest,
-    ) -> Result<TestOneOfResponse> {
-        if let Some(value) = context.request().unwrap().headers.get("X-Test-Header") {
+        request: TestHeadersRequest,
+    ) -> Result<TestHeadersResponse> {
+        if let Some(value) = context.request().unwrap().headers.get("X-Dyn-Header") {
             let mut headers = http::HeaderMap::new();
-            headers.insert("X-Test-Header", value.clone());
+            headers.insert("X-Dyn-Header", value.clone());
             context.set_response_headers(headers);
         }
 
-        Ok(TestOneOfResponse::Status200(TestOneOf200Response {
-            body: models::TestOneOfResponse::Option1(models::Pet {
+        Ok(TestHeadersResponse::Status200 {
+            x_string_header: request.x_string_header.unwrap(),
+            x_bytes_header: request.x_bytes_header.unwrap(),
+            x_int_header: request.x_int_header.unwrap(),
+            body: models::Pet {
                 name: Some("Cat".to_string()),
-            }),
-        }))
+            },
+        })
     }
 }

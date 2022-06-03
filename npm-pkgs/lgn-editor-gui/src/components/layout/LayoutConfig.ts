@@ -27,7 +27,7 @@ export const defaultLayoutConfig: LayoutConfig = {
   },
   dimensions: {
     minItemHeight: 100,
-    minItemWidth: 200,
+    minItemWidth: 280,
   },
   root: {
     type: "row",

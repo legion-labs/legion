@@ -41,10 +41,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             <div>
               
               <div
-                class="menu svelte-141n1ii flex"
+                class="menu-root svelte-dh0n0 flex"
               >
                 <div
-                  class="menu-title svelte-141n1ii"
+                  class="menu-title svelte-dh0n0"
                 >
                   <div
                     class="self-center"
@@ -61,15 +61,15 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                 </div>
                  
                 <div
-                  class="menu-dropdown svelte-141n1ii hidden"
+                  class="menu-dropdown svelte-dh0n0 hidden"
                 >
                   <div
-                    class="menu-dropdown-items svelte-141n1ii"
+                    class="menu-dropdown-items svelte-dh0n0"
                     style=""
                   >
                     
                     <div
-                      class="menu-dropdown-item svelte-1ozv7s8"
+                      class="menu-dropdown-item svelte-1ld3o2c"
                     >
                       Copy Id
                     </div>
@@ -109,18 +109,18 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
       
       <div>
         <div
-          class="property-root svelte-vcn98g flex"
+          class="property-root svelte-mfhnjw flex"
         >
            
           <div>
             
             <div>
               <div
-                class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                class="property-unit-root svelte-z2ztnd bg-surface-700"
                 style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-1oxi3i9"
+                  class="property-name svelte-z2ztnd"
                   title="test_string (String)"
                 >
                   <mark
@@ -174,13 +174,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                 </div>
                  
                 <div
-                  class="property-input-container svelte-1oxi3i9"
+                  class="property-input-container svelte-z2ztnd"
                 >
                   <div
-                    class="property-input svelte-1oxi3i9"
+                    class="property-input-root svelte-43ah7h"
                   >
                     <div
-                      class="property-input-root svelte-6f7lir"
+                      class="fixed-size svelte-43ah7h"
                     >
                       <div
                         class="root svelte-yvswm7 w-full readonly default"
@@ -195,8 +195,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         />
                          
                       </div>
-                       
                     </div>
+                     
                   </div>
                 </div>
               </div>
@@ -206,10 +206,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-root svelte-vcn98g flex"
+                class="property-root svelte-mfhnjw flex"
               >
                 <div
-                  class="property-header svelte-vcn98g"
+                  class="property-header svelte-mfhnjw"
                   style="padding-left: 0.25rem;"
                 >
                   <div>
@@ -269,11 +269,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -290,10 +290,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -316,11 +316,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                      class="property-unit-root svelte-z2ztnd bg-surface-700"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="test_color (Color)"
                       >
                         <mark
@@ -370,13 +370,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="fixed-size svelte-43ah7h"
                           >
                             <div
                               class="color-property-root svelte-1473p73"
@@ -551,8 +551,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                 </div>
                               </div>
                             </div>
-                             
                           </div>
+                           
                         </div>
                       </div>
                     </div>
@@ -564,11 +564,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                      class="property-unit-root svelte-z2ztnd bg-surface-700"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="test_rotation (Quat)"
                       >
                         <mark
@@ -630,83 +630,79 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="quaternion-root svelte-119d0wj"
                           >
                             <div
-                              class="quaternion-root svelte-119d0wj"
+                              class="vector-value svelte-1tmof08"
                             >
                               <div
-                                class="vector-value svelte-1tmof08"
-                              >
-                                <div
-                                  class="vector-value-name svelte-1tmof08 bg-vector-w"
-                                />
-                                 
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-18m1n2f default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
+                                class="vector-value-name svelte-1tmof08 bg-vector-w"
+                              />
                                
-                              <div
-                                class="vector-value svelte-1tmof08"
-                              >
-                                <div
-                                  class="vector-value-name svelte-1tmof08 bg-vector-x"
-                                />
-                                 
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-18m1n2f default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
-                               
-                              <div
-                                class="vector-value svelte-1tmof08"
-                              >
-                                <div
-                                  class="vector-value-name svelte-1tmof08 bg-vector-y"
-                                />
-                                 
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-18m1n2f default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
-                               
-                              <div
-                                class="vector-value svelte-1tmof08"
-                              >
-                                <div
-                                  class="vector-value-name svelte-1tmof08 bg-vector-z"
-                                />
-                                 
-                                <input
-                                  aria-autocomplete="none"
-                                  autocomplete="none"
-                                  class="input svelte-18m1n2f default w-full no-arrow"
-                                  step="0"
-                                  type="number"
-                                />
-                              </div>
+                              <input
+                                aria-autocomplete="none"
+                                autocomplete="none"
+                                class="input svelte-18m1n2f default w-full no-arrow"
+                                step="0"
+                                type="number"
+                              />
                             </div>
                              
+                            <div
+                              class="vector-value svelte-1tmof08"
+                            >
+                              <div
+                                class="vector-value-name svelte-1tmof08 bg-vector-x"
+                              />
+                               
+                              <input
+                                aria-autocomplete="none"
+                                autocomplete="none"
+                                class="input svelte-18m1n2f default w-full no-arrow"
+                                step="0"
+                                type="number"
+                              />
+                            </div>
+                             
+                            <div
+                              class="vector-value svelte-1tmof08"
+                            >
+                              <div
+                                class="vector-value-name svelte-1tmof08 bg-vector-y"
+                              />
+                               
+                              <input
+                                aria-autocomplete="none"
+                                autocomplete="none"
+                                class="input svelte-18m1n2f default w-full no-arrow"
+                                step="0"
+                                type="number"
+                              />
+                            </div>
+                             
+                            <div
+                              class="vector-value svelte-1tmof08"
+                            >
+                              <div
+                                class="vector-value-name svelte-1tmof08 bg-vector-z"
+                              />
+                               
+                              <input
+                                aria-autocomplete="none"
+                                autocomplete="none"
+                                class="input svelte-18m1n2f default w-full no-arrow"
+                                step="0"
+                                type="number"
+                              />
+                            </div>
                           </div>
+                           
                         </div>
                       </div>
                     </div>
@@ -720,10 +716,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-root svelte-vcn98g flex"
+                class="property-root svelte-mfhnjw flex"
               >
                 <div
-                  class="property-header svelte-vcn98g"
+                  class="property-header svelte-mfhnjw"
                   style="padding-left: 0.25rem;"
                 >
                   <div>
@@ -783,11 +779,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -804,10 +800,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -830,11 +826,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                      class="property-unit-root svelte-z2ztnd bg-surface-700"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="test_bool (bool)"
                       >
                         <mark
@@ -880,27 +876,19 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="root group svelte-1d3pkyc"
                           >
                             <div
-                              class="boolean-property svelte-6f7lir"
-                            >
-                              <div
-                                class="root group svelte-1d3pkyc"
-                              >
-                                <div
-                                  class="handler svelte-1d3pkyc handler-off"
-                                />
-                              </div>
-                            </div>
-                             
+                              class="handler svelte-1d3pkyc handler-off"
+                            />
                           </div>
+                           
                         </div>
                       </div>
                     </div>
@@ -910,11 +898,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-800"
+                      class="property-unit-root svelte-z2ztnd bg-surface-800"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="test_float32 (f32)"
                       >
                         <mark
@@ -972,13 +960,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="fixed-size svelte-43ah7h"
                           >
                             <input
                               aria-autocomplete="none"
@@ -987,8 +975,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               step="0"
                               type="number"
                             />
-                             
                           </div>
+                           
                         </div>
                       </div>
                     </div>
@@ -998,11 +986,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                      class="property-unit-root svelte-z2ztnd bg-surface-700"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="test_int (i32)"
                       >
                         <mark
@@ -1044,13 +1032,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="fixed-size svelte-43ah7h"
                           >
                             <input
                               aria-autocomplete="none"
@@ -1059,8 +1047,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               step="0"
                               type="number"
                             />
-                             
                           </div>
+                           
                         </div>
                       </div>
                     </div>
@@ -1074,11 +1062,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-unit-root svelte-1oxi3i9 bg-surface-800"
+                class="property-unit-root svelte-z2ztnd bg-surface-800"
                 style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-1oxi3i9"
+                  class="property-name svelte-z2ztnd"
                   title="test_float64 (f64)"
                 >
                   <mark
@@ -1136,13 +1124,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                 </div>
                  
                 <div
-                  class="property-input-container svelte-1oxi3i9"
+                  class="property-input-container svelte-z2ztnd"
                 >
                   <div
-                    class="property-input svelte-1oxi3i9"
+                    class="property-input-root svelte-43ah7h"
                   >
                     <div
-                      class="property-input-root svelte-6f7lir"
+                      class="fixed-size svelte-43ah7h"
                     >
                       <input
                         aria-autocomplete="none"
@@ -1151,8 +1139,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         step="0"
                         type="number"
                       />
-                       
                     </div>
+                     
                   </div>
                 </div>
               </div>
@@ -1162,11 +1150,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-root svelte-vcn98g flex"
+                class="property-root svelte-mfhnjw flex"
                 hidden=""
               >
                 <div
-                  class="property-header svelte-vcn98g"
+                  class="property-header svelte-mfhnjw"
                   style="padding-left: 0.25rem;"
                 >
                   <div>
@@ -1222,10 +1210,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii flex"
+                      class="menu-root svelte-dh0n0 flex"
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -1242,15 +1230,15 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
                           <div
-                            class="menu-dropdown-item svelte-1ozv7s8"
+                            class="menu-dropdown-item svelte-1ld3o2c"
                           >
                             Add property to vector
                           </div>
@@ -1273,11 +1261,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                      class="property-unit-root svelte-z2ztnd bg-surface-700"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="[0] (u8)"
                       >
                         <mark
@@ -1299,13 +1287,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="fixed-size svelte-43ah7h"
                           >
                             <input
                               aria-autocomplete="none"
@@ -1314,12 +1302,12 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               step="0"
                               type="number"
                             />
-                             
-                            <div
-                              class="close-button svelte-6f7lir"
-                            >
-                              ×
-                            </div>
+                          </div>
+                           
+                          <div
+                            class="close-button svelte-43ah7h"
+                          >
+                            ×
                           </div>
                         </div>
                       </div>
@@ -1330,11 +1318,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-800"
+                      class="property-unit-root svelte-z2ztnd bg-surface-800"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="[1] (u8)"
                       >
                         <mark
@@ -1356,13 +1344,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="fixed-size svelte-43ah7h"
                           >
                             <input
                               aria-autocomplete="none"
@@ -1371,12 +1359,12 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               step="0"
                               type="number"
                             />
-                             
-                            <div
-                              class="close-button svelte-6f7lir"
-                            >
-                              ×
-                            </div>
+                          </div>
+                           
+                          <div
+                            class="close-button svelte-43ah7h"
+                          >
+                            ×
                           </div>
                         </div>
                       </div>
@@ -1387,11 +1375,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                      class="property-unit-root svelte-z2ztnd bg-surface-700"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="[2] (u8)"
                       >
                         <mark
@@ -1413,13 +1401,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="fixed-size svelte-43ah7h"
                           >
                             <input
                               aria-autocomplete="none"
@@ -1428,12 +1416,12 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               step="0"
                               type="number"
                             />
-                             
-                            <div
-                              class="close-button svelte-6f7lir"
-                            >
-                              ×
-                            </div>
+                          </div>
+                           
+                          <div
+                            class="close-button svelte-43ah7h"
+                          >
+                            ×
                           </div>
                         </div>
                       </div>
@@ -1444,11 +1432,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-800"
+                      class="property-unit-root svelte-z2ztnd bg-surface-800"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="[3] (u8)"
                       >
                         <mark
@@ -1470,13 +1458,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="fixed-size svelte-43ah7h"
                           >
                             <input
                               aria-autocomplete="none"
@@ -1485,12 +1473,12 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               step="0"
                               type="number"
                             />
-                             
-                            <div
-                              class="close-button svelte-6f7lir"
-                            >
-                              ×
-                            </div>
+                          </div>
+                           
+                          <div
+                            class="close-button svelte-43ah7h"
+                          >
+                            ×
                           </div>
                         </div>
                       </div>
@@ -1505,10 +1493,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-root svelte-vcn98g flex"
+                class="property-root svelte-mfhnjw flex"
               >
                 <div
-                  class="property-header svelte-vcn98g"
+                  class="property-header svelte-mfhnjw"
                   style="padding-left: 0.25rem;"
                 >
                   <div>
@@ -1580,11 +1568,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -1601,10 +1589,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -1627,10 +1615,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-root svelte-vcn98g flex"
+                      class="property-root svelte-mfhnjw flex"
                     >
                       <div
-                        class="property-header svelte-vcn98g"
+                        class="property-header svelte-mfhnjw"
                         style="padding-left: 0.5rem;"
                       >
                         <div>
@@ -1710,10 +1698,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <div>
                           
                           <div
-                            class="menu svelte-141n1ii flex"
+                            class="menu-root svelte-dh0n0 flex"
                           >
                             <div
-                              class="menu-title svelte-141n1ii"
+                              class="menu-title svelte-dh0n0"
                             >
                               <div
                                 class="self-center"
@@ -1730,15 +1718,15 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             </div>
                              
                             <div
-                              class="menu-dropdown svelte-141n1ii hidden"
+                              class="menu-dropdown svelte-dh0n0 hidden"
                             >
                               <div
-                                class="menu-dropdown-items svelte-141n1ii"
+                                class="menu-dropdown-items svelte-dh0n0"
                                 style=""
                               >
                                 
                                 <div
-                                  class="menu-dropdown-item svelte-1ozv7s8"
+                                  class="menu-dropdown-item svelte-1ld3o2c"
                                 >
                                   Add property to vector
                                 </div>
@@ -1761,10 +1749,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         
                         <div>
                           <div
-                            class="property-root svelte-vcn98g flex"
+                            class="property-root svelte-mfhnjw flex"
                           >
                             <div
-                              class="property-header svelte-vcn98g"
+                              class="property-header svelte-mfhnjw"
                               style="padding-left: 0.75rem;"
                             >
                               <div>
@@ -1788,10 +1776,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               <div>
                                 
                                 <div
-                                  class="menu svelte-141n1ii flex"
+                                  class="menu-root svelte-dh0n0 flex"
                                 >
                                   <div
-                                    class="menu-title svelte-141n1ii"
+                                    class="menu-title svelte-dh0n0"
                                   >
                                     <div
                                       class="self-center"
@@ -1808,14 +1796,14 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="menu-dropdown svelte-141n1ii hidden"
+                                    class="menu-dropdown svelte-dh0n0 hidden"
                                   >
                                     <div
-                                      class="menu-dropdown-items svelte-141n1ii"
+                                      class="menu-dropdown-items svelte-dh0n0"
                                       style=""
                                     >
                                       <div
-                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                        class="menu-dropdown-item svelte-1ld3o2c"
                                       >
                                         Delete component
                                       </div>
@@ -1839,11 +1827,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               
                               <div>
                                 <div
-                                  class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                                  class="property-unit-root svelte-z2ztnd bg-surface-700"
                                   style="padding-left: 1rem;"
                                 >
                                   <div
-                                    class="property-name svelte-1oxi3i9"
+                                    class="property-name svelte-z2ztnd"
                                     title="test_i32 (i32)"
                                   >
                                     <mark
@@ -1885,13 +1873,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="property-input-container svelte-1oxi3i9"
+                                    class="property-input-container svelte-z2ztnd"
                                   >
                                     <div
-                                      class="property-input svelte-1oxi3i9"
+                                      class="property-input-root svelte-43ah7h"
                                     >
                                       <div
-                                        class="property-input-root svelte-6f7lir"
+                                        class="fixed-size svelte-43ah7h"
                                       >
                                         <input
                                           aria-autocomplete="none"
@@ -1900,8 +1888,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                           step="0"
                                           type="number"
                                         />
-                                         
                                       </div>
+                                       
                                     </div>
                                   </div>
                                 </div>
@@ -1915,10 +1903,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         
                         <div>
                           <div
-                            class="property-root svelte-vcn98g flex"
+                            class="property-root svelte-mfhnjw flex"
                           >
                             <div
-                              class="property-header svelte-vcn98g"
+                              class="property-header svelte-mfhnjw"
                               style="padding-left: 0.75rem;"
                             >
                               <div>
@@ -1942,10 +1930,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               <div>
                                 
                                 <div
-                                  class="menu svelte-141n1ii flex"
+                                  class="menu-root svelte-dh0n0 flex"
                                 >
                                   <div
-                                    class="menu-title svelte-141n1ii"
+                                    class="menu-title svelte-dh0n0"
                                   >
                                     <div
                                       class="self-center"
@@ -1962,14 +1950,14 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="menu-dropdown svelte-141n1ii hidden"
+                                    class="menu-dropdown svelte-dh0n0 hidden"
                                   >
                                     <div
-                                      class="menu-dropdown-items svelte-141n1ii"
+                                      class="menu-dropdown-items svelte-dh0n0"
                                       style=""
                                     >
                                       <div
-                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                        class="menu-dropdown-item svelte-1ld3o2c"
                                       >
                                         Delete component
                                       </div>
@@ -1993,11 +1981,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               
                               <div>
                                 <div
-                                  class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                                  class="property-unit-root svelte-z2ztnd bg-surface-700"
                                   style="padding-left: 1rem;"
                                 >
                                   <div
-                                    class="property-name svelte-1oxi3i9"
+                                    class="property-name svelte-z2ztnd"
                                     title="test_i32 (i32)"
                                   >
                                     <mark
@@ -2039,13 +2027,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="property-input-container svelte-1oxi3i9"
+                                    class="property-input-container svelte-z2ztnd"
                                   >
                                     <div
-                                      class="property-input svelte-1oxi3i9"
+                                      class="property-input-root svelte-43ah7h"
                                     >
                                       <div
-                                        class="property-input-root svelte-6f7lir"
+                                        class="fixed-size svelte-43ah7h"
                                       >
                                         <input
                                           aria-autocomplete="none"
@@ -2054,8 +2042,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                           step="0"
                                           type="number"
                                         />
-                                         
                                       </div>
+                                       
                                     </div>
                                   </div>
                                 </div>
@@ -2069,10 +2057,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         
                         <div>
                           <div
-                            class="property-root svelte-vcn98g flex"
+                            class="property-root svelte-mfhnjw flex"
                           >
                             <div
-                              class="property-header svelte-vcn98g"
+                              class="property-header svelte-mfhnjw"
                               style="padding-left: 0.75rem;"
                             >
                               <div>
@@ -2096,10 +2084,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               <div>
                                 
                                 <div
-                                  class="menu svelte-141n1ii flex"
+                                  class="menu-root svelte-dh0n0 flex"
                                 >
                                   <div
-                                    class="menu-title svelte-141n1ii"
+                                    class="menu-title svelte-dh0n0"
                                   >
                                     <div
                                       class="self-center"
@@ -2116,14 +2104,14 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="menu-dropdown svelte-141n1ii hidden"
+                                    class="menu-dropdown svelte-dh0n0 hidden"
                                   >
                                     <div
-                                      class="menu-dropdown-items svelte-141n1ii"
+                                      class="menu-dropdown-items svelte-dh0n0"
                                       style=""
                                     >
                                       <div
-                                        class="menu-dropdown-item svelte-1ozv7s8"
+                                        class="menu-dropdown-item svelte-1ld3o2c"
                                       >
                                         Delete component
                                       </div>
@@ -2147,11 +2135,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               
                               <div>
                                 <div
-                                  class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                                  class="property-unit-root svelte-z2ztnd bg-surface-700"
                                   style="padding-left: 1rem;"
                                 >
                                   <div
-                                    class="property-name svelte-1oxi3i9"
+                                    class="property-name svelte-z2ztnd"
                                     title="test_i32 (i32)"
                                   >
                                     <mark
@@ -2193,13 +2181,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   </div>
                                    
                                   <div
-                                    class="property-input-container svelte-1oxi3i9"
+                                    class="property-input-container svelte-z2ztnd"
                                   >
                                     <div
-                                      class="property-input svelte-1oxi3i9"
+                                      class="property-input-root svelte-43ah7h"
                                     >
                                       <div
-                                        class="property-input-root svelte-6f7lir"
+                                        class="fixed-size svelte-43ah7h"
                                       >
                                         <input
                                           aria-autocomplete="none"
@@ -2208,8 +2196,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                           step="0"
                                           type="number"
                                         />
-                                         
                                       </div>
+                                       
                                     </div>
                                   </div>
                                 </div>
@@ -2227,11 +2215,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-unit-root svelte-1oxi3i9 bg-surface-800"
+                      class="property-unit-root svelte-z2ztnd bg-surface-800"
                       style="padding-left: 0.5rem;"
                     >
                       <div
-                        class="property-name svelte-1oxi3i9"
+                        class="property-name svelte-z2ztnd"
                         title="test_string (String)"
                       >
                         <mark
@@ -2285,13 +2273,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="property-input-container svelte-1oxi3i9"
+                        class="property-input-container svelte-z2ztnd"
                       >
                         <div
-                          class="property-input svelte-1oxi3i9"
+                          class="property-input-root svelte-43ah7h"
                         >
                           <div
-                            class="property-input-root svelte-6f7lir"
+                            class="fixed-size svelte-43ah7h"
                           >
                             <div
                               class="root svelte-yvswm7 w-full default"
@@ -2305,8 +2293,8 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                               />
                                
                             </div>
-                             
                           </div>
+                           
                         </div>
                       </div>
                     </div>
@@ -2316,10 +2304,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-root svelte-vcn98g flex"
+                      class="property-root svelte-mfhnjw flex"
                     >
                       <div
-                        class="property-header svelte-vcn98g"
+                        class="property-header svelte-mfhnjw"
                         style="padding-left: 0.5rem;"
                       >
                         <div>
@@ -2391,11 +2379,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         <div>
                           
                           <div
-                            class="menu svelte-141n1ii"
+                            class="menu-root svelte-dh0n0"
                             hidden=""
                           >
                             <div
-                              class="menu-title svelte-141n1ii"
+                              class="menu-title svelte-dh0n0"
                             >
                               <div
                                 class="self-center"
@@ -2412,10 +2400,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             </div>
                              
                             <div
-                              class="menu-dropdown svelte-141n1ii hidden"
+                              class="menu-dropdown svelte-dh0n0 hidden"
                             >
                               <div
-                                class="menu-dropdown-items svelte-141n1ii"
+                                class="menu-dropdown-items svelte-dh0n0"
                                 style=""
                               >
                                 
@@ -2438,11 +2426,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                         
                         <div>
                           <div
-                            class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                            class="property-unit-root svelte-z2ztnd bg-surface-700"
                             style="padding-left: 0.75rem;"
                           >
                             <div
-                              class="property-name svelte-1oxi3i9"
+                              class="property-name svelte-z2ztnd"
                               title="test_vec (Vec3)"
                             >
                               <mark
@@ -2484,67 +2472,63 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             </div>
                              
                             <div
-                              class="property-input-container svelte-1oxi3i9"
+                              class="property-input-container svelte-z2ztnd"
                             >
                               <div
-                                class="property-input svelte-1oxi3i9"
+                                class="property-input-root svelte-43ah7h"
                               >
                                 <div
-                                  class="property-input-root svelte-6f7lir"
+                                  class="vector-root svelte-135641u"
                                 >
                                   <div
-                                    class="vector-root svelte-135641u"
+                                    class="vector-value svelte-1tmof08"
                                   >
                                     <div
-                                      class="vector-value svelte-1tmof08"
-                                    >
-                                      <div
-                                        class="vector-value-name svelte-1tmof08 bg-vector-x"
-                                      />
-                                       
-                                      <input
-                                        aria-autocomplete="none"
-                                        autocomplete="none"
-                                        class="input svelte-18m1n2f default w-full no-arrow"
-                                        step="0"
-                                        type="number"
-                                      />
-                                    </div>
+                                      class="vector-value-name svelte-1tmof08 bg-vector-x"
+                                    />
                                      
-                                    <div
-                                      class="vector-value svelte-1tmof08"
-                                    >
-                                      <div
-                                        class="vector-value-name svelte-1tmof08 bg-vector-y"
-                                      />
-                                       
-                                      <input
-                                        aria-autocomplete="none"
-                                        autocomplete="none"
-                                        class="input svelte-18m1n2f default w-full no-arrow"
-                                        step="0"
-                                        type="number"
-                                      />
-                                    </div>
-                                     
-                                    <div
-                                      class="vector-value svelte-1tmof08"
-                                    >
-                                      <div
-                                        class="vector-value-name svelte-1tmof08 bg-vector-z"
-                                      />
-                                       
-                                      <input
-                                        aria-autocomplete="none"
-                                        autocomplete="none"
-                                        class="input svelte-18m1n2f default w-full no-arrow"
-                                        step="0"
-                                        type="number"
-                                      />
-                                    </div>
+                                    <input
+                                      aria-autocomplete="none"
+                                      autocomplete="none"
+                                      class="input svelte-18m1n2f default w-full no-arrow"
+                                      step="0"
+                                      type="number"
+                                    />
                                   </div>
                                    
+                                  <div
+                                    class="vector-value svelte-1tmof08"
+                                  >
+                                    <div
+                                      class="vector-value-name svelte-1tmof08 bg-vector-y"
+                                    />
+                                     
+                                    <input
+                                      aria-autocomplete="none"
+                                      autocomplete="none"
+                                      class="input svelte-18m1n2f default w-full no-arrow"
+                                      step="0"
+                                      type="number"
+                                    />
+                                  </div>
+                                   
+                                  <div
+                                    class="vector-value svelte-1tmof08"
+                                  >
+                                    <div
+                                      class="vector-value-name svelte-1tmof08 bg-vector-z"
+                                    />
+                                     
+                                    <input
+                                      aria-autocomplete="none"
+                                      autocomplete="none"
+                                      class="input svelte-18m1n2f default w-full no-arrow"
+                                      step="0"
+                                      type="number"
+                                    />
+                                  </div>
                                 </div>
+                                 
                               </div>
                             </div>
                           </div>
@@ -2562,10 +2546,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-root svelte-vcn98g flex"
+                class="property-root svelte-mfhnjw flex"
               >
                 <div
-                  class="property-header svelte-vcn98g"
+                  class="property-header svelte-mfhnjw"
                   style="padding-left: 0.25rem;"
                 >
                   <div>
@@ -2645,11 +2629,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -2666,10 +2650,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -2692,18 +2676,18 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   
                   <div>
                     <div
-                      class="property-root svelte-vcn98g flex"
+                      class="property-root svelte-mfhnjw flex"
                     >
                        
                       <div>
                         
                         <div>
                           <div
-                            class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                            class="property-unit-root svelte-z2ztnd bg-surface-700"
                             style="padding-left: 0.75rem;"
                           >
                             <div
-                              class="property-name svelte-1oxi3i9"
+                              class="property-name svelte-z2ztnd"
                               title="test_vec (Vec3)"
                             >
                               <mark
@@ -2745,67 +2729,63 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                             </div>
                              
                             <div
-                              class="property-input-container svelte-1oxi3i9"
+                              class="property-input-container svelte-z2ztnd"
                             >
                               <div
-                                class="property-input svelte-1oxi3i9"
+                                class="property-input-root svelte-43ah7h"
                               >
                                 <div
-                                  class="property-input-root svelte-6f7lir"
+                                  class="vector-root svelte-135641u"
                                 >
                                   <div
-                                    class="vector-root svelte-135641u"
+                                    class="vector-value svelte-1tmof08"
                                   >
                                     <div
-                                      class="vector-value svelte-1tmof08"
-                                    >
-                                      <div
-                                        class="vector-value-name svelte-1tmof08 bg-vector-x"
-                                      />
-                                       
-                                      <input
-                                        aria-autocomplete="none"
-                                        autocomplete="none"
-                                        class="input svelte-18m1n2f default w-full no-arrow"
-                                        step="0"
-                                        type="number"
-                                      />
-                                    </div>
+                                      class="vector-value-name svelte-1tmof08 bg-vector-x"
+                                    />
                                      
-                                    <div
-                                      class="vector-value svelte-1tmof08"
-                                    >
-                                      <div
-                                        class="vector-value-name svelte-1tmof08 bg-vector-y"
-                                      />
-                                       
-                                      <input
-                                        aria-autocomplete="none"
-                                        autocomplete="none"
-                                        class="input svelte-18m1n2f default w-full no-arrow"
-                                        step="0"
-                                        type="number"
-                                      />
-                                    </div>
-                                     
-                                    <div
-                                      class="vector-value svelte-1tmof08"
-                                    >
-                                      <div
-                                        class="vector-value-name svelte-1tmof08 bg-vector-z"
-                                      />
-                                       
-                                      <input
-                                        aria-autocomplete="none"
-                                        autocomplete="none"
-                                        class="input svelte-18m1n2f default w-full no-arrow"
-                                        step="0"
-                                        type="number"
-                                      />
-                                    </div>
+                                    <input
+                                      aria-autocomplete="none"
+                                      autocomplete="none"
+                                      class="input svelte-18m1n2f default w-full no-arrow"
+                                      step="0"
+                                      type="number"
+                                    />
                                   </div>
                                    
+                                  <div
+                                    class="vector-value svelte-1tmof08"
+                                  >
+                                    <div
+                                      class="vector-value-name svelte-1tmof08 bg-vector-y"
+                                    />
+                                     
+                                    <input
+                                      aria-autocomplete="none"
+                                      autocomplete="none"
+                                      class="input svelte-18m1n2f default w-full no-arrow"
+                                      step="0"
+                                      type="number"
+                                    />
+                                  </div>
+                                   
+                                  <div
+                                    class="vector-value svelte-1tmof08"
+                                  >
+                                    <div
+                                      class="vector-value-name svelte-1tmof08 bg-vector-z"
+                                    />
+                                     
+                                    <input
+                                      aria-autocomplete="none"
+                                      autocomplete="none"
+                                      class="input svelte-18m1n2f default w-full no-arrow"
+                                      step="0"
+                                      type="number"
+                                    />
+                                  </div>
                                 </div>
+                                 
                               </div>
                             </div>
                           </div>
@@ -2823,11 +2803,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-root svelte-vcn98g flex"
+                class="property-root svelte-mfhnjw flex"
                 hidden=""
               >
                 <div
-                  class="property-header svelte-vcn98g"
+                  class="property-header svelte-mfhnjw"
                   style="padding-left: 0.25rem;"
                 >
                   <div>
@@ -2911,11 +2891,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii"
+                      class="menu-root svelte-dh0n0"
                       hidden=""
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -2932,10 +2912,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
@@ -2961,11 +2941,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                class="property-unit-root svelte-z2ztnd bg-surface-700"
                 style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-1oxi3i9"
+                  class="property-name svelte-z2ztnd"
                   title="test_resource_path_option (Option<ResourcePathId>)"
                 >
                   <mark
@@ -3075,22 +3055,18 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                 </div>
                  
                 <div
-                  class="property-input-container svelte-1oxi3i9"
+                  class="property-input-container svelte-z2ztnd"
                 >
                   <div
-                    class="property-input svelte-1oxi3i9"
+                    class="property-input-root svelte-43ah7h"
                   >
                     <div
-                      class="property-input-root svelte-6f7lir"
+                      class="action-button svelte-9lo2x4"
                     >
-                      <div
-                        class="action-button svelte-9lo2x4"
-                      >
-                        
-                      </div>
                       
-                       
                     </div>
+                    
+                     
                   </div>
                 </div>
               </div>
@@ -3100,11 +3076,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-root svelte-vcn98g flex"
+                class="property-root svelte-mfhnjw flex"
                 hidden=""
               >
                 <div
-                  class="property-header svelte-vcn98g"
+                  class="property-header svelte-mfhnjw"
                   style="padding-left: 0.25rem;"
                 >
                   <div>
@@ -3212,10 +3188,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                   <div>
                     
                     <div
-                      class="menu svelte-141n1ii flex"
+                      class="menu-root svelte-dh0n0 flex"
                     >
                       <div
-                        class="menu-title svelte-141n1ii"
+                        class="menu-title svelte-dh0n0"
                       >
                         <div
                           class="self-center"
@@ -3232,15 +3208,15 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                       </div>
                        
                       <div
-                        class="menu-dropdown svelte-141n1ii hidden"
+                        class="menu-dropdown svelte-dh0n0 hidden"
                       >
                         <div
-                          class="menu-dropdown-items svelte-141n1ii"
+                          class="menu-dropdown-items svelte-dh0n0"
                           style=""
                         >
                           
                           <div
-                            class="menu-dropdown-item svelte-1ozv7s8"
+                            class="menu-dropdown-item svelte-1ld3o2c"
                           >
                             Add property to vector
                           </div>
@@ -3266,11 +3242,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-unit-root svelte-1oxi3i9 bg-surface-700"
+                class="property-unit-root svelte-z2ztnd bg-surface-700"
                 style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-1oxi3i9"
+                  class="property-name svelte-z2ztnd"
                   title="test_option_primitive_set (Option<Vec3>)"
                 >
                   <mark
@@ -3380,83 +3356,75 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                 </div>
                  
                 <div
-                  class="property-input-container svelte-1oxi3i9"
+                  class="property-input-container svelte-z2ztnd"
                 >
                   <div
-                    class="property-input svelte-1oxi3i9"
+                    class="property-input-root svelte-43ah7h"
                   >
                     <div
-                      class="property-input-root svelte-6f7lir"
+                      class="property-input-root svelte-43ah7h"
                     >
                       <div
-                        class="option-property svelte-1lh30ip"
+                        class="vector-root svelte-135641u"
                       >
                         <div
-                          class="property-input-root svelte-6f7lir"
+                          class="vector-value svelte-1tmof08"
                         >
                           <div
-                            class="vector-root svelte-135641u"
-                          >
-                            <div
-                              class="vector-value svelte-1tmof08"
-                            >
-                              <div
-                                class="vector-value-name svelte-1tmof08 bg-vector-x"
-                              />
-                               
-                              <input
-                                aria-autocomplete="none"
-                                autocomplete="none"
-                                class="input svelte-18m1n2f default w-full no-arrow"
-                                step="0"
-                                type="number"
-                              />
-                            </div>
-                             
-                            <div
-                              class="vector-value svelte-1tmof08"
-                            >
-                              <div
-                                class="vector-value-name svelte-1tmof08 bg-vector-y"
-                              />
-                               
-                              <input
-                                aria-autocomplete="none"
-                                autocomplete="none"
-                                class="input svelte-18m1n2f default w-full no-arrow"
-                                step="0"
-                                type="number"
-                              />
-                            </div>
-                             
-                            <div
-                              class="vector-value svelte-1tmof08"
-                            >
-                              <div
-                                class="vector-value-name svelte-1tmof08 bg-vector-z"
-                              />
-                               
-                              <input
-                                aria-autocomplete="none"
-                                autocomplete="none"
-                                class="input svelte-18m1n2f default w-full no-arrow"
-                                step="0"
-                                type="number"
-                              />
-                            </div>
-                          </div>
+                            class="vector-value-name svelte-1tmof08 bg-vector-x"
+                          />
                            
+                          <input
+                            aria-autocomplete="none"
+                            autocomplete="none"
+                            class="input svelte-18m1n2f default w-full no-arrow"
+                            step="0"
+                            type="number"
+                          />
                         </div>
                          
                         <div
-                          class="action-button svelte-9lo2x4"
+                          class="vector-value svelte-1tmof08"
                         >
-                          
+                          <div
+                            class="vector-value-name svelte-1tmof08 bg-vector-y"
+                          />
+                           
+                          <input
+                            aria-autocomplete="none"
+                            autocomplete="none"
+                            class="input svelte-18m1n2f default w-full no-arrow"
+                            step="0"
+                            type="number"
+                          />
+                        </div>
+                         
+                        <div
+                          class="vector-value svelte-1tmof08"
+                        >
+                          <div
+                            class="vector-value-name svelte-1tmof08 bg-vector-z"
+                          />
+                           
+                          <input
+                            aria-autocomplete="none"
+                            autocomplete="none"
+                            class="input svelte-18m1n2f default w-full no-arrow"
+                            step="0"
+                            type="number"
+                          />
                         </div>
                       </div>
-                      
                        
                     </div>
+                     
+                    <div
+                      class="action-button svelte-9lo2x4"
+                    >
+                      
+                    </div>
+                    
+                     
                   </div>
                 </div>
               </div>
@@ -3466,11 +3434,11 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
             
             <div>
               <div
-                class="property-unit-root svelte-1oxi3i9 bg-surface-800"
+                class="property-unit-root svelte-z2ztnd bg-surface-800"
                 style="padding-left: 0.25rem;"
               >
                 <div
-                  class="property-name svelte-1oxi3i9"
+                  class="property-name svelte-z2ztnd"
                   title="test_option_primitive_none (Option<Vec3>)"
                 >
                   <mark
@@ -3584,22 +3552,18 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                 </div>
                  
                 <div
-                  class="property-input-container svelte-1oxi3i9"
+                  class="property-input-container svelte-z2ztnd"
                 >
                   <div
-                    class="property-input svelte-1oxi3i9"
+                    class="property-input-root svelte-43ah7h"
                   >
                     <div
-                      class="property-input-root svelte-6f7lir"
+                      class="action-button svelte-9lo2x4"
                     >
-                      <div
-                        class="action-button svelte-9lo2x4"
-                      >
-                        
-                      </div>
                       
-                       
                     </div>
+                    
+                     
                   </div>
                 </div>
               </div>

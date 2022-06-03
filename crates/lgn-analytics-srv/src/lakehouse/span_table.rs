@@ -6,10 +6,9 @@ use lgn_blob_storage::BlobStorage;
 use lgn_tracing::prelude::*;
 use prost::Message;
 use sqlx::Row;
-use std::collections::HashMap;
-use std::sync::atomic::AtomicU64;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
+use std::{collections::HashMap, path::PathBuf};
 
 use deltalake::{
     action::Protocol, DeltaTable, DeltaTableMetaData, Schema, SchemaDataType, SchemaField,
@@ -17,8 +16,21 @@ use deltalake::{
 
 use crate::lakehouse::span_table_partition::write_local_partition;
 
+#[span_fn]
 fn get_delta_schema() -> Schema {
     Schema::new(vec![
+        SchemaField::new(
+            "block_id".to_string(),
+            SchemaDataType::primitive("string".to_string()),
+            false,
+            HashMap::new(),
+        ),
+        SchemaField::new(
+            "thread_id".to_string(),
+            SchemaDataType::primitive("string".to_string()),
+            false,
+            HashMap::new(),
+        ),
         SchemaField::new(
             "hash".to_string(),
             SchemaDataType::primitive("integer".to_string()),
@@ -45,19 +57,20 @@ fn get_delta_schema() -> Schema {
         ),
         SchemaField::new(
             "id".to_string(),
-            SchemaDataType::primitive("integer".to_string()),
+            SchemaDataType::primitive("long".to_string()),
             false,
             HashMap::new(),
         ),
         SchemaField::new(
             "parent".to_string(),
-            SchemaDataType::primitive("integer".to_string()),
+            SchemaDataType::primitive("long".to_string()),
             false,
             HashMap::new(),
         ),
     ])
 }
 
+#[span_fn]
 async fn create_empty_delta_table(table_uri: &str) -> Result<DeltaTable> {
     info!("creating table {}", table_uri);
     let storage = deltalake::storage::get_backend_for_uri(table_uri)?;
@@ -86,6 +99,21 @@ async fn create_empty_delta_table(table_uri: &str) -> Result<DeltaTable> {
     Ok(table)
 }
 
+#[span_fn]
+async fn open_or_create_table(table_uri: &str) -> Result<DeltaTable> {
+    match deltalake::open_table(table_uri).await {
+        Ok(table) => Ok(table),
+        Err(e) => {
+            info!(
+                "Error opening table {}: {:?}. Will try to create.",
+                table_uri, e
+            );
+            create_empty_delta_table(table_uri).await
+        }
+    }
+}
+
+#[span_fn]
 async fn read_block_payload(
     block_id: &str,
     buffer_from_db: Option<Vec<u8>>,
@@ -108,7 +136,7 @@ async fn read_block_payload(
     }
 }
 
-// todo: update_spans_delta_table should not assume the absence of the table, it should add the needed partitions
+#[span_fn]
 pub async fn update_spans_delta_table(
     pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
@@ -116,14 +144,19 @@ pub async fn update_spans_delta_table(
     convert_ticks: &ConvertTicks,
     spans_table_path: std::path::PathBuf,
 ) -> Result<()> {
+    let storage_uri = format!("{}", spans_table_path.display());
+    let mut table = open_or_create_table(&storage_uri).await?;
+    let files_already_in_table = table.get_file_set();
+    let mut partition_index: u32 = files_already_in_table.len() as u32;
+
     let mut handles = vec![];
 
     let (sender, receiver) = channel();
 
-    let next_id = Arc::new(AtomicU64::new(1));
     let mut connection = pool.acquire().await?;
     let streams = find_process_thread_streams(&mut connection, process_id).await?;
     for stream in streams {
+        //todo: do not fetch block info for blocks in files_already_in_table
         let mut block_rows = sqlx::query(
             "SELECT blocks.block_id, blocks.stream_id, blocks.begin_time, blocks.begin_ticks, blocks.end_time, blocks.end_ticks, blocks.nb_objects, blocks.payload_size, payloads.payload
              FROM blocks
@@ -134,32 +167,46 @@ pub async fn update_spans_delta_table(
             .bind(&stream.stream_id)
             .fetch( &mut connection );
         while let Some(block_row) = block_rows.try_next().await? {
+            partition_index += 1;
+            let mut partition_starting_span_id = i64::from(partition_index)
+                .checked_shl(31)
+                .with_context(|| "building partition starting span id")?;
             let convert_ticks = convert_ticks.clone();
             let blob_storage = blob_storage.clone();
             let stream = stream.clone();
-            let next_id = next_id.clone();
             let spans_table_path = spans_table_path.clone();
             let sender = sender.clone();
             let block = lgn_analytics::map_row_block(&block_row)?;
             let payload_buffer = block_row.try_get("payload")?;
-            handles.push(tokio::spawn(async move {
-                let payload =
-                    read_block_payload(&block.block_id, payload_buffer, blob_storage.clone())
-                        .await?;
-                let opt_action = write_local_partition(
-                    &payload,
-                    &stream,
-                    &block,
-                    convert_ticks,
-                    &*next_id,
-                    &spans_table_path,
-                )
-                .with_context(|| "writing local partition")?;
-                if let Some(action) = opt_action {
-                    sender.send(action)?;
-                }
-                Ok(()) as Result<()>
-            }));
+            let partition_folder = PathBuf::from(format!("block_id={}", &block.block_id));
+            let filename = partition_folder.join("spans.parquet");
+            let filename_string = filename
+                .to_str()
+                .with_context(|| "converting path to string")?
+                .to_string();
+            if !files_already_in_table.contains(&*filename_string) {
+                let parquet_full_path = spans_table_path.join(&filename);
+                handles.push(tokio::spawn(async move {
+                    let payload =
+                        read_block_payload(&block.block_id, payload_buffer, blob_storage.clone())
+                            .await?;
+                    let opt_action = write_local_partition(
+                        &payload,
+                        &stream,
+                        &block,
+                        convert_ticks,
+                        &mut partition_starting_span_id,
+                        filename_string,
+                        &parquet_full_path,
+                    )
+                    .await
+                    .with_context(|| "writing local partition")?;
+                    if let Some(action) = opt_action {
+                        sender.send(action)?;
+                    }
+                    Ok(()) as Result<()>
+                }));
+            }
         }
     }
     drop(sender);
@@ -167,14 +214,14 @@ pub async fn update_spans_delta_table(
         h.await??;
     }
 
-    let storage_uri = format!("{}", spans_table_path.display());
-    let mut table = create_empty_delta_table(&storage_uri).await?;
     let actions: Vec<deltalake::action::Action> = receiver.iter().collect();
-    let mut transaction = table.create_transaction(None);
-    transaction.add_actions(actions);
-    transaction
-        .commit(None, None)
-        .await
-        .with_context(|| "committing transaction")?;
+    if !actions.is_empty() {
+        let mut transaction = table.create_transaction(None);
+        transaction.add_actions(actions);
+        transaction
+            .commit(None, None)
+            .await
+            .with_context(|| "committing transaction")?;
+    }
     Ok(())
 }

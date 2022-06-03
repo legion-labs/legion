@@ -5,44 +5,81 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use http::HeaderMap;
+use http::HeaderValue;
 
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
-        
+
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum {{ enum_name }} {
             {% for (status_code, response) in route.responses -%}
                 /// {{ response.description }}
-                {% if let Some(content) = response.content -%}
-                    Status{{ status_code }}({{ route.name|pascal_case }}{{ status_code }}Response),
+                {% if !response.headers.is_empty() -%}
+                    Status{{ status_code }}{
+                        {% for (header_name, header) in response.headers -%}
+                            {{ header_name|snake_case }}: {{ header.type_|fmt_type }},
+                        {% endfor -%}
+                        {% if let Some(content) = response.content -%}
+                            body: {{ content.type_|fmt_type }},
+                        {% endif -%}
+                    },
+                {% else if let Some(content) = response.content -%}
+                    Status{{ status_code }}({{ content.type_|fmt_type }}),
                 {% else -%}
                     Status{{ status_code }},
                 {% endif -%}
             {% endfor -%}
         }
 
-        {% for (status_code, response) in route.responses -%}
-            {% if let Some(content) = response.content -%}
-                {% let response_name = "{}{}Response"|format(route.name|pascal_case, status_code) %}
-                #[derive(Debug, Clone, PartialEq, Eq)]
-                pub struct {{ response_name }} {
-                        pub body: {{ content.type_|fmt_type }},
-                }
-            {% endif -%}
-        {% endfor %}
-
         impl {{ enum_name }} {
             pub(crate) fn into_response(self) -> Response {
                 match self {
                     {% for (status_code, response) in route.responses %}
-                        {%- if let Some(content) = response.content -%}
-                            {{ enum_name }}::Status{{ status_code }}(r) => {
+                        {% if !response.headers.is_empty() -%}
+                            {{ enum_name }}::Status{{ status_code }}{
+                                {% for (header_name, header) in response.headers -%}
+                                    {{ header_name|snake_case }},
+                                {% endfor -%}
+                                {% if let Some(content) = response.content -%}
+                                    body,
+                                {% endif -%}
+                            } => {
+                                    {% if let Some(content) = response.content -%}
+                                        {% match content.media_type -%}
+                                            {% when MediaType::Json -%}
+                                                let body = Json(body);
+                                            {% when MediaType::Bytes -%}
+                                                let body: Vec<u8> = body.into();
+                                        {% endmatch -%}
+                                    {% else -%}
+                                        let body = bytes::Bytes::new();
+                                    {% endif -%}
+                                    let mut resp = (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), body).into_response();
+                                    {% for (header_name, header) in response.headers -%}
+                                        let {{ header_name|snake_case }}_value = match lgn_online::codegen::encoding::to_percent_encoded_string(&{{ header_name|snake_case }}){
+                                            Ok(value) => value,
+                                            Err(err) => {
+                                                return Error::InvalidHeader(format!("{{ header_name }}: {}", err)).into_response();
+                                            },
+                                        };
+                                        match HeaderValue::from_str(&{{ header_name|snake_case }}_value){
+                                            Ok(value) => resp.headers_mut().insert("{{ header_name }}", value),
+                                            Err(err) => {
+                                                return Error::InvalidHeader(format!("{{ header_name }}: {}", err)).into_response();
+                                            },
+                                        };
+                                    {% endfor -%}
+                                    resp
+                            },
+                        {% else if let Some(content) = response.content -%}
+                            {{ enum_name }}::Status{{ status_code }}(body) => {
                                     {% match content.media_type -%}
                                         {% when MediaType::Json -%}
-                                            let body = Json(r.body);
+                                            let body = Json(body);
                                         {% when MediaType::Bytes -%}
-                                            let body: Vec<u8> = r.body.into();
+                                            let body: Vec<u8> = body.into();
                                     {% endmatch -%}
                                     (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), body).into_response()
                             },
@@ -55,30 +92,54 @@ use axum::{
                 }
             }
 
-            pub(crate) async fn from_response(status: StatusCode, body: hyper::Body) -> Result<Self> {
+            pub(crate) async fn from_response(parts: &http::response::Parts, body: hyper::Body) -> Result<Self> {
                 {% if route.responses.is_empty() %}
                     Err(Error::Internal(format!(
                         "unexpected status code: {}",
-                        status.as_u16()
+                        parts.status.as_u16()
                     )))
                 {% else %}
-                    match status.as_u16() {
+                    match parts.status.as_u16() {
                         {% for (status_code, response) in route.responses %}
                             {% let response_name = "{}{}Response"|format(route.name|pascal_case, status_code) %}
-                            {{ status_code.as_u16() }} => 
+                            {{ status_code.as_u16() }} =>
                                 {
-                                    {%- if let Some(content) = response.content -%}
-                                        let bytes = hyper::body::to_bytes(body).await?;
-                                        let resp = {{ response_name }} {
-                                                {% match content.media_type %}
-                                                    {% when MediaType::Json %}
-                                                        body: serde_json::from_slice(&bytes)?,
-                                                    {% when MediaType::Bytes %}
-                                                        body: bytes.into(),
-                                                {% endmatch %}
+                                    {%- if !response.headers.is_empty() -%}
+                                        {% for (header_name, header) in response.headers -%}
+                                            let {{ header_name|snake_case }} = parts.headers
+                                                .get("{{ header_name }}")
+                                                .ok_or_else(|| Error::MissingHeader("{{ header_name }}".to_owned()))?
+                                                .to_str()
+                                                .map_err(|e| Error::InvalidHeader(format!("{{ header_name }}: {}", e)))?;
+                                        {% endfor -%}
 
-                                        };
-                                        Ok(Self::Status{{ status_code }}(resp))
+                                        {% if let Some(content) = response.content -%}
+                                            let bytes = hyper::body::to_bytes(body).await?;
+                                            let body = {% match content.media_type -%}
+                                                            {% when MediaType::Json -%}
+                                                                serde_json::from_slice(&bytes)?;
+                                                            {% when MediaType::Bytes -%}
+                                                                bytes.into();
+                                                        {% endmatch -%}
+                                        {% endif -%}
+
+                                        Ok(Self::Status{{ status_code }}{
+                                            {% for (header_name, header) in response.headers -%}
+                                                {{ header_name|snake_case }}: lgn_online::codegen::encoding::from_percent_encoded_string({{ header_name|snake_case }})?,
+                                            {% endfor -%}
+                                            {% if let Some(content) = response.content -%}
+                                                body,
+                                            {% endif -%}
+                                        })
+                                    {%- else if let Some(content) = response.content -%}
+                                        let bytes = hyper::body::to_bytes(body).await?;
+                                        let body = {% match content.media_type -%}
+                                                        {% when MediaType::Json -%}
+                                                            serde_json::from_slice(&bytes)?;
+                                                        {% when MediaType::Bytes -%}
+                                                            bytes.into();
+                                                    {% endmatch -%}
+                                        Ok(Self::Status{{ status_code }}(body))
                                     {%- else -%}
                                         Ok(Self::Status{{ status_code }})
                                     {%- endif -%}

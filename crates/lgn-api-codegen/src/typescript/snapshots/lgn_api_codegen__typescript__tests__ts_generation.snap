@@ -15,6 +15,23 @@ export interface Api {
 
     
         
+        testHeaders(input: {
+    params: {
+        },
+    
+    
+    headers: {
+        "x-string-header"?: string;
+        "x-bytes-header"?: Blob;
+        "x-int-header"?: number;
+        },
+    
+    
+    }): Promise<TestHeadersResponse>;
+    
+
+    
+        
         testOneOf(input: {
     params: {
         },
@@ -128,6 +145,43 @@ export class Client implements Api {
         this.#fetch = fetch;
     }
 
+    
+        
+            
+
+            async testHeaders(input: {
+    params: {
+        },
+    
+    
+    headers: {
+        "x-string-header"?: string;
+        "x-bytes-header"?: Blob;
+        "x-int-header"?: number;
+        },
+    
+    
+    }): Promise<TestHeadersResponse> {
+                const url = new URL(`${this.#baseUri}/test-headers`);
+
+                
+
+                const headers = new Headers();
+
+                
+
+
+                
+
+                const response = await this.#fetch(url.toString(), {
+                    method: "GET",
+                    headers,
+                    
+                });
+
+                return TestHeadersResponse.fromResponse(response);
+            }
+        
     
         
             
@@ -391,12 +445,16 @@ export class Client implements Api {
         
 
     
-            export type TestOneOfResponseModel = (| { type: "option1", value: PetModel }| { type: "option2", value: CarModel });
+            export type TestOneOf200ResponseModel = (| { type: "option1", value: PetModel }| { type: "option2", value: CarModel });
         
 
 
 // ---------- Parameters ----------
 
+
+        
+        
+    
 
         
         
@@ -430,7 +488,30 @@ export class Client implements Api {
     
         
         
-        export type TestOneOfResponse = (| { /** Ok. */ type: "200", value: TestOneOfResponseModel });
+        export type TestHeadersResponse = (| { /** Ok. */ type: "200", value: PetModel });
+
+        export const TestHeadersResponse = {
+            async fromResponse(response: Response): Promise<TestHeadersResponse> {
+                
+                    switch (response.status) {
+                        
+                            case 200: { 
+                                return {type: "200", value:
+                                                await response.json()
+                                            }
+                            }default: {
+                            throw new InternalError(`unexpected status code: ${status}`);
+                        }
+                    }
+                
+            } 
+        }
+    
+
+    
+        
+        
+        export type TestOneOfResponse = (| { /** Ok. */ type: "200", value: TestOneOf200ResponseModel });
 
         export const TestOneOfResponse = {
             async fromResponse(response: Response): Promise<TestOneOfResponse> {

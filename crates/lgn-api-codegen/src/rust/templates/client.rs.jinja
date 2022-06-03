@@ -30,7 +30,7 @@ where
                 "{}{{ path|fmt_rust_path }}",
                 self.base_uri
                 {% for parameter in route.parameters.path -%}
-                    , request.{{ parameter.name|snake_case }}
+                    , lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ parameter.name|snake_case }})?
                 {% endfor -%}
             );
 
@@ -82,14 +82,16 @@ where
                 {%- for parameter in route.parameters.header -%}
                     {% let param_name = "{}"|format(parameter.name|snake_case) %}
                     {% if parameter.required -%}
+                        let {{ param_name }} = lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ param_name }})?;
                         req.headers_mut().insert(
                             "{{ parameter.name }}",
-                            HeaderValue::from_str(&request.{{ param_name }}).map_err(|err| {
+                            HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
                                 Error::InvalidHeader(format!("{{ parameter.name }}: {}", err))
                             })?,
                         );
                     {% else -%}
                         if let Some({{ param_name }}) = request.{{ param_name }} {
+                            let {{ param_name }} = lgn_online::codegen::encoding::to_percent_encoded_string(&{{ param_name }})?;
                             req.headers_mut().insert(
                                 "{{ parameter.name }}",
                                 HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
@@ -104,10 +106,9 @@ where
             let resp = self.inner.request(req).await?;
 
             let (parts, body) = resp.into_parts();
-            let status = parts.status;
+            let resp = responses::{{ enum_name }}::from_response(&parts, body).await;
             context.set_response(parts);
-
-            responses::{{ enum_name }}::from_response(status, body).await
+            resp
         }
     {% endfor %}
 {% endfor %}

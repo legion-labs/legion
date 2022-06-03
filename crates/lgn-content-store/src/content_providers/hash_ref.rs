@@ -65,7 +65,7 @@ pub enum HashAlgorithm {
 impl Display for HashAlgorithm {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            HashAlgorithm::Blake3 => write!(f, "blake3"),
+            Self::Blake3 => write!(f, "blake3"),
         }
     }
 }

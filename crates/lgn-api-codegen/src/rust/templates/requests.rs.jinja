@@ -2,6 +2,7 @@ use lgn_online::codegen::{Bytes};
 
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
+        {% if !route.has_empty_request() %}
         {% let model_name = "{}Request"|format(route.name|pascal_case) %}
 
         #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,5 +22,6 @@ use lgn_online::codegen::{Bytes};
                 {%- endif -%}
             {% endif -%}
         }
+        {% endif %}
     {% endfor %}
 {% endfor %}

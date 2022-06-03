@@ -24,7 +24,7 @@ use lgn_online::codegen::Bytes;
         {% when Type::Struct with { fields } %}
             #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
             pub struct {{ model.name }} {
-                {% for field in fields %}
+                {% for field in fields.values() %}
                     {% if let Some(description) = field.description -%}/// {{ description }}{%- endif %}
                     #[serde(rename = "{{ field.name }}")]
                     {%- if field.required -%}
@@ -38,5 +38,11 @@ use lgn_online::codegen::Bytes;
         {% when t %}
             #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
             pub struct {{ model.name }}(pub {{ t|fmt_type }});
+
+            impl From<{{ t|fmt_type }}> for {{ model.name }} {
+                fn from(t: {{ t|fmt_type }}) -> Self {
+                    Self(t)
+                }
+            }
     {% endmatch %}
 {% endfor %}

@@ -112,6 +112,41 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/Pet"
                   - $ref: "#/components/schemas/Car"
+  /test-headers:
+    get:
+      operationId: testHeaders
+      parameters:
+        - name: x-string-header
+          in: header
+          schema:
+            type: string
+        - name: x-bytes-header
+          in: header
+          schema:
+            type: string
+            format: byte
+        - name: x-int-header
+          in: header
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+          headers:
+            x-string-header:
+              schema:
+                type: string
+            x-bytes-header:
+              schema:
+                type: string
+                format: byte
+            x-int-header:
+              schema:
+                type: integer
 components:
   parameters:
     SpaceId:

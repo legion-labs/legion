@@ -20,7 +20,7 @@ describe("MenuBar", () => {
       ],
     });
 
-    const menuRoot = container.getElementsByClassName("menu")[0];
+    const menuRoot = container.getElementsByClassName("menu-root")[0];
 
     await fireEvent.click(menuRoot);
 

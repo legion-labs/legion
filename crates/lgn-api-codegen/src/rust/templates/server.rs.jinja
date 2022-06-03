@@ -66,16 +66,20 @@ where
         {
             {%- for parameter in route.parameters.header -%}
             {% let param_name = "{}"|format(parameter.name|snake_case) %}
-                let {{ param_name }} = parts.headers.get(HeaderName::from_static("{{ parameter.name }}"));
-                let {{ param_name }} = {{ param_name }}.map(|{{ param_name }}| {
-                    {{ param_name }}
-                        .to_str()
+                let {{ param_name }} = parts.headers
+                    .get(HeaderName::from_static("{{ parameter.name }}"))
+                    .map(|h| {
+                        let s = h.to_str()
                         .map_err(|err| {
-                            error!("Failed to read `{{ parameter.name }}` header: {}", err);
+                            Error::InvalidHeader("{{ parameter.name }}".to_owned()).into_response()
+                        })
+                        .unwrap();
+
+                        lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                        .map_err(|err| {
                             Error::InvalidHeader("{{ parameter.name }}".to_owned()).into_response()
                         })
                         .unwrap()
-                        .to_owned()
                 });
 
                 {% if parameter.required %}
@@ -89,6 +93,7 @@ where
             let mut context = Context::default();
             context.set_request_addr(addr);
             context.set_request(parts);
+            {% if !route.has_empty_request() %}
             let request = requests::{{ route.name|pascal_case }}Request {
                 {%- for parameter in route.parameters.path -%}
                     {{ parameter.name|snake_case }},
@@ -108,8 +113,9 @@ where
                     {% endmatch -%}
                 {%- endif -%}
             };
+            {% endif %}
 
-            let resp = api.{{ route.name|snake_case }}(&mut context, request).await;
+            let resp = api.{{ route.name|snake_case }}(&mut context{% if !route.has_empty_request() %}, request{% endif %}).await;
             let mut resp = match resp {
                 Ok(resp) => resp.into_response(),
                 Err(err) => err.into_response(),
