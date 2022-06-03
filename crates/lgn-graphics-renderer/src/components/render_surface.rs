@@ -556,9 +556,12 @@ impl RenderSurface {
         [&self.hzb[0], &self.hzb[1]]
     }
 
-    pub(crate) fn clear_hzb(&mut self, cmd_buffer: &mut CommandBuffer) {
+    pub(crate) fn clear_hzb(&mut self, cmd_buffer: &mut CommandBuffer) -> bool {
+        let mut cleared_this_frame = false;
+
         if !self.hzb_cleared {
             self.hzb_cleared = true;
+            cleared_this_frame = true;
 
             cmd_buffer.with_label("Clear Prev HZB", |cmd_buffer| {
                 for i in 0..2 {
@@ -587,5 +590,7 @@ impl RenderSurface {
                 }
             });
         }
+
+        cleared_this_frame
     }
 }
