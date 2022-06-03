@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-const { tailwindConfig } = require("../../tailwind.config.cjs");
+const tailwindConfig = require("../../tailwind.config.cjs");
 const path = require("path");
 
 const { withOpacity } = require("../tailwind.js");
