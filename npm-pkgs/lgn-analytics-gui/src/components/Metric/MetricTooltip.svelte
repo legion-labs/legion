@@ -10,6 +10,8 @@
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export let zoomEvent: D3ZoomEvent<HTMLCanvasElement, any>;
   export let xScale: d3.ScaleLinear<number, number, never>;
+  export let lod: number;
+  export let viewRange: [number, number];
 
   const margin = 15;
 
@@ -57,7 +59,12 @@
       values = $selectedMetricStore.map((metric, index) => {
         return {
           metric,
-          value: getClosestValue(metric, time),
+          value: getClosestValue(metric, {
+            time,
+            min: viewRange[0],
+            max: viewRange[1],
+            lod,
+          }),
           color: getMetricColor(index),
         };
       });
@@ -70,11 +77,14 @@
     ? `top:${yValue}px;left:${xValue + margin}px`
     : `top:${yValue}px;right:${width - xValue + margin}px`;
 
-  function getClosestValue(metric: MetricState, time: number) {
+  function getClosestValue(
+    metric: MetricState,
+    options: { time: number; min: number; max: number; lod: number }
+  ) {
     const m = $selectedMetricStore.filter((m) => m.name === metric.name)[0];
 
     if (m) {
-      return m.getClosestValue(time);
+      return m.getClosestValue(options);
     }
 
     return null;
@@ -84,11 +94,11 @@
 <div bind:clientWidth={width}>
   {#if displayed && values && displayInternal}
     <div
-      class="shadow-md surface absolute pointer-events-none text-sm p-2 flex flex-col gap- z-20"
+      class="shadow-md surface absolute pointer-events-none text-sm p-2 flex flex-col z-20"
       {style}
     >
       {#each values as metric (metric.metric.name)}
-        {#if metric.value}
+        {#if metric.value !== null}
           <MetricTooltipItem {...metric} />
         {/if}
       {/each}
