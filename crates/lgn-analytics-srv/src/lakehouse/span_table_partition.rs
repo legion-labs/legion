@@ -9,21 +9,27 @@ use parquet::file::writer::FileWriter;
 use parquet::file::writer::SerializedFileWriter;
 use parquet::schema::parser::parse_message_type;
 use std::collections::HashMap;
+use std::io::Cursor;
+use std::io::Write;
 use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::call_tree::CallTreeBuilder;
 use crate::thread_block_processor::parse_thread_block_payload;
 
 use super::column::Column;
+use super::parquet_buffer::InMemStream;
 
 pub struct SpanTablePartitionLocalWriter {
-    file_writer: SerializedFileWriter<std::fs::File>,
+    buffer: Arc<Cursor<Vec<u8>>>,
+    file_writer: SerializedFileWriter<InMemStream>,
+    file_path: PathBuf,
 }
 
 impl SpanTablePartitionLocalWriter {
     #[span_fn]
-    pub fn create(file_path: &Path) -> Result<Self> {
+    pub fn create(file_path: PathBuf) -> Result<Self> {
         let message_type = "
   message schema {
     REQUIRED INT32 hash;
@@ -37,19 +43,27 @@ impl SpanTablePartitionLocalWriter {
         let schema =
             Arc::new(parse_message_type(message_type).with_context(|| "parsing spans schema")?);
         let props = Arc::new(WriterProperties::builder().build());
-        let file = std::fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(file_path)
-            .with_context(|| format!("creating file {}", file_path.display()))?;
-        let file_writer = SerializedFileWriter::new(file, schema, props)
-            .with_context(|| "creating parquet writer")?;
-        Ok(Self { file_writer })
+        let buffer = Arc::new(Cursor::new(Vec::new()));
+        let file_writer =
+            SerializedFileWriter::new(InMemStream::new(buffer.clone()), schema, props)
+                .with_context(|| "creating parquet writer")?;
+        Ok(Self {
+            buffer,
+            file_writer,
+            file_path,
+        })
     }
 
     #[span_fn]
     pub fn close(mut self) -> Result<()> {
         self.file_writer.close()?;
+        let mut file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&self.file_path)
+            .with_context(|| format!("creating file {}", self.file_path.display()))?;
+        file.write_all(self.buffer.get_ref())?;
+
         Ok(())
     }
 
@@ -194,7 +208,7 @@ pub async fn write_local_partition(
     if let Some(root) = processed_block.call_tree_root {
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, next_id, &mut rows);
-        let mut writer = SpanTablePartitionLocalWriter::create(parquet_full_path)?;
+        let mut writer = SpanTablePartitionLocalWriter::create(parquet_full_path.to_path_buf())?;
         writer.append(&rows)?;
         writer.close()?;
         let attr = tokio::fs::metadata(&parquet_full_path).await?; //that's not cool, we should already know how big the file is
