@@ -2,8 +2,8 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        self, BasicIndexer, IndexKey, ResourceIdentifier, ResourceReader,
-        ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier, TreeLeafNode,
+        self, BasicIndexer, IndexKey, ResourceIdentifier, ResourceReader, ResourceWriter,
+        SharedTreeIdentifier, StringPathIndexer, TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
@@ -453,7 +453,7 @@ where
             #[cfg(feature = "verbose")]
             {
                 println!(
-                    "updating resource '{}', path: '{}' -> {}...",
+                    "renaming resource '{}', path: '{}' -> {}...",
                     id.to_hex(),
                     old_path,
                     old_identifier,
