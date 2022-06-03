@@ -99,10 +99,10 @@ impl Hdr2Rgb {
             // swapchain texture.
             let final_target = render_surface.view_target();
 
-            assert_eq!(
-                final_target.definition().extents,
-                self.resolve_rt.texture().definition().extents
-            );
+            // assert_eq!(
+            //     final_target.definition().extents,
+            //     self.resolve_rt.texture().definition().extents
+            // );
 
             cmd_buffer.cmd_resource_barrier(
                 &[],
