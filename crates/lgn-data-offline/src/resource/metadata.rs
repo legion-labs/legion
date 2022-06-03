@@ -11,6 +11,10 @@ pub(crate) struct Metadata {
 }
 
 impl Metadata {
+    pub(crate) fn rename(&mut self, name: &ResourcePathName) -> ResourcePathName {
+        std::mem::replace(&mut self.name, name.clone())
+    }
+
     pub(crate) fn serialize(&self, writer: impl std::io::Write) {
         bincode::serialize_into(writer, &self).expect("failed to serialize metadata");
     }

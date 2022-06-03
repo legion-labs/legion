@@ -1,6 +1,7 @@
 use std::{
     collections::HashMap,
     fmt,
+    io::Write,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -587,23 +588,44 @@ impl Project {
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        let (metadata, resource_id) = self.read_meta(type_id).await?;
+        let (resource_bytes, resource_id) = self.workspace.load_resource(&type_id.into()).await?;
+        let mut reader = std::io::Cursor::new(resource_bytes);
 
-        // renaming to same name, no-op
-        if new_name == &metadata.name {
-            return Ok(metadata.name);
+        // read existing pre-pended metadata
+        let mut metadata = Metadata::deserialize(&mut reader);
+        let old_name = metadata.rename(new_name);
+
+        if new_name != &old_name {
+            // already used?
+            if let Ok(existing_type_id) = self.find_resource(new_name).await {
+                return Err(Error::NameAlreadyUsed(new_name.clone(), existing_type_id));
+            }
+
+            // update resource contents since embedded metadata has changed
+            let mut contents = std::io::Cursor::new(Vec::new());
+            metadata.serialize(&mut contents);
+            let resource_bytes = {
+                let pos = reader.position() as usize;
+                let resource_bytes = reader.into_inner();
+                resource_bytes[pos..].to_vec()
+            };
+            contents
+                .write_all(&resource_bytes)
+                .expect("failed to transfert buffer contents");
+            let contents = contents.into_inner();
+
+            self.workspace
+                .update_resource_and_path(
+                    &type_id.into(),
+                    old_name.as_str(),
+                    new_name.as_str(),
+                    &contents,
+                    &resource_id,
+                )
+                .await?;
         }
 
-        // already used?
-        if let Ok(existing_type_id) = self.find_resource(new_name).await {
-            return Err(Error::NameAlreadyUsed(new_name.clone(), existing_type_id));
-        }
-
-        self.workspace
-            .update_path(metadata.name.as_str(), new_name.as_str(), &resource_id)
-            .await?;
-
-        Ok(metadata.name)
+        Ok(old_name)
     }
 
     /// Moves `local` resources to `remote` resource list.
