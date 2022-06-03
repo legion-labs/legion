@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const defaultConfig = require("../../tailwind.config.cjs");
+const { tailwindConfig } = require("../../tailwind.config.cjs");
 
 module.exports = {
-  ...defaultConfig,
+  ...tailwindConfig,
   content: ["index.html", "./src/**/*.{svelte,ts}"],
 };

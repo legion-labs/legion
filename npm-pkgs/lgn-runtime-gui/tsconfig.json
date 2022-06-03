@@ -43,6 +43,8 @@
     // Tests
     "tests/**/*.ts",
     // Benchmarks
-    "benchmarks/**/*.ts"
+    "benchmarks/**/*.ts",
+    "tailwind.config.cjs",
+    "*.js"
   ]
 }
