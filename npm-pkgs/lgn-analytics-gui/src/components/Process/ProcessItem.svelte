@@ -1,5 +1,7 @@
 <script lang="ts">
   import { formatDistance } from "date-fns";
+  import enUsLocale from "date-fns/locale/en-US";
+  import frCaLocale from "date-fns/locale/fr-CA";
   import { getContext } from "svelte";
 
   import type { ProcessInstance } from "@lgn/proto-telemetry/dist/analytics";
@@ -67,6 +69,7 @@
       new Date(),
       {
         addSuffix: true,
+        locale: $locale === "fr-CA" ? frCaLocale : enUsLocale,
       }
     );
 
