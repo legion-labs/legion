@@ -232,6 +232,16 @@ impl Route {
     pub fn has_empty_request(&self) -> bool {
         self.request_body.is_none() && self.parameters.is_empty()
     }
+
+    pub fn has_no_responses_content(&self) -> bool {
+        for resp in self.responses.values() {
+            if resp.content.is_some() {
+                return false;
+            }
+        }
+
+        true
+    }
 }
 
 #[derive(Debug, PartialEq, Default)]

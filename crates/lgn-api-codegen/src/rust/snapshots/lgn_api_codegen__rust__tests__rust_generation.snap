@@ -1122,7 +1122,7 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                body: hyper::Body,
+                _body: hyper::Body,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     201 => Ok(Self::Status201),
@@ -1191,7 +1191,7 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                body: hyper::Body,
+                _body: hyper::Body,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     200 => Ok(Self::Status200),
