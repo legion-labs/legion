@@ -1,6 +1,9 @@
 pub mod alpha_blend_pass;
 pub use alpha_blend_pass::*;
 
+pub mod picking_pass;
+pub use picking_pass::*;
+
 pub mod debug_pass;
 pub use debug_pass::*;
 
@@ -21,3 +24,6 @@ pub use ssao_pass::*;
 
 pub mod ui_pass;
 pub use ui_pass::*;
+
+pub mod egui_pass;
+pub use egui_pass::*;

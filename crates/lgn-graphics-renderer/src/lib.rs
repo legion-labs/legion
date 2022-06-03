@@ -17,8 +17,8 @@ use crate::core::{DebugStuff, RenderGraphPersistentState, RenderObjects};
 use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::render_passes::{
-    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
-    PostProcessPass, SSAOPass, UiPass,
+    AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    PickingPass, PostProcessPass, SSAOPass, UiPass,
 };
 use crate::script::{Config, RenderScript, RenderView};
 use std::sync::Arc;
@@ -848,6 +848,7 @@ fn render_update(
                         };
 
                         let gpu_culling_pass = GpuCullingPass;
+                        let picking_pass = PickingPass;
                         let opaque_layer_pass = OpaqueLayerPass;
                         let ssao_pass = SSAOPass;
                         let alphablended_layer_pass = AlphaBlendedLayerPass;
@@ -855,12 +856,11 @@ fn render_update(
                         let postprocess_pass = PostProcessPass;
                         let lighting_pass = LightingPass;
                         let ui_pass = UiPass;
-
-                        let prev_hzb_idx = render_graph_frame_idx as usize % 2;
-                        let current_hzb_idx = (render_graph_frame_idx + 1) as usize % 2;
+                        let egui_pass = EguiPass;
 
                         let mut render_script = RenderScript {
                             gpu_culling_pass,
+                            picking_pass,
                             opaque_layer_pass,
                             ssao_pass,
                             alphablended_layer_pass,
@@ -868,8 +868,8 @@ fn render_update(
                             postprocess_pass,
                             lighting_pass,
                             ui_pass,
-                            prev_hzb: render_surface.hzb()[prev_hzb_idx],
-                            current_hzb: render_surface.hzb()[current_hzb_idx],
+                            egui_pass,
+                            hzb: [render_surface.hzb()[0], render_surface.hzb()[1]],
                         };
 
                         let config = Config {
@@ -885,17 +885,16 @@ fn render_update(
                             render_context.device_context,
                         ) {
                             Ok(render_graph) => {
-                                let debug_renderpass = render_surface.debug_renderpass();
-                                let debug_renderpass = debug_renderpass.write();
-
                                 let mut render_graph_context = render_graph.compile();
 
                                 let debug_stuff = DebugStuff {
-                                    debug_renderpass: &debug_renderpass,
+                                    render_surface,
+                                    picking_manager: &picking_manager,
                                     debug_display: &debug_display,
                                     picked_drawables: picked_drawables.as_slice(),
                                     manipulator_drawables: manipulator_drawables.as_slice(),
                                     camera_component,
+                                    egui: &egui,
                                 };
 
                                 render_graph.execute(

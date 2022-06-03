@@ -24,7 +24,11 @@ impl DebugPass {
                 .depth_stencil(depth_view_id, RenderGraphLoadState::Load)
                 .execute(move |_, execute_context, cmd_buffer| {
                     let render_context = &execute_context.render_context;
-                    let debug_renderpass = execute_context.debug_stuff.debug_renderpass;
+                    let debug_renderpass = execute_context
+                        .debug_stuff
+                        .render_surface
+                        .debug_renderpass();
+                    let debug_renderpass = debug_renderpass.write();
 
                     let mesh_manager = execute_context.render_resources.get::<MeshManager>();
                     let model_manager = execute_context.render_resources.get::<ModelManager>();

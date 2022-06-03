@@ -1,10 +1,8 @@
 use lgn_graphics_api::{
-    AddressMode, BarrierQueueTransition, BlendState, BufferBarrier, BufferViewDef, CommandBuffer,
-    CompareOp, ComputePipelineDef, CullMode, DepthState, DepthStencilClearValue, FilterType,
-    Format, GPUViewType, GraphicsPipelineDef, MipMapMode, PlaneSlice, PrimitiveTopology,
-    RasterizerState, ResourceState, ResourceUsage, SampleCount, Sampler, SamplerDef, StencilOp,
+    AddressMode, BlendState, BufferViewDef, CommandBuffer, CompareOp, ComputePipelineDef, CullMode,
+    DepthState, DepthStencilClearValue, FilterType, Format, GraphicsPipelineDef, MipMapMode,
+    PrimitiveTopology, RasterizerState, ResourceUsage, SampleCount, Sampler, SamplerDef, StencilOp,
     TextureDef, VertexAttributeRate, VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
-    ViewDimension,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
@@ -15,8 +13,7 @@ use crate::{
     cgen_type::{CullingDebugData, CullingOptions, GpuInstanceData, RenderPassData},
     core::{
         RenderGraphBuilder, RenderGraphContext, RenderGraphExecuteContext, RenderGraphLoadState,
-        RenderGraphResourceDef, RenderGraphResourceId, RenderGraphTextureDef,
-        RenderGraphTextureViewDef, RenderGraphViewDef, RenderGraphViewId,
+        RenderGraphResourceDef, RenderGraphResourceId, RenderGraphTextureDef, RenderGraphViewId,
     },
     gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
     resources::{PipelineDef, PipelineHandle, PipelineManager, UnifiedStaticBuffer},
@@ -63,9 +60,7 @@ impl GpuCullingPass {
         depth_buffer_id: RenderGraphResourceId,
         depth_view_id: RenderGraphViewId,
         draw_count_buffer_id: RenderGraphResourceId,
-        draw_count_buffer_desc: &RenderGraphResourceDef,
         draw_args_buffer_id: RenderGraphResourceId,
-        draw_args_buffer_desc: &RenderGraphResourceDef,
         depth_count_buffer_size: u64,
         prev_hzb_texture_desc: &TextureDef,
         prev_hzb_srv_id: RenderGraphViewId,
@@ -74,14 +69,11 @@ impl GpuCullingPass {
     ) -> RenderGraphBuilder<'a> {
         let hzb_desc = RenderGraphResourceDef::Texture((*current_hzb_texture_desc).into());
         let mut builder = builder;
-        let current_hzb_srv_id =
-            builder.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
-                current_hzb_id,
-                0,
-                current_hzb_texture_desc.mip_count,
-                GPUViewType::ShaderResource,
-                false,
-            ));
+        let current_hzb_srv_id = builder.declare_texture_srv_with_mips(
+            current_hzb_id,
+            0,
+            current_hzb_texture_desc.mip_count,
+        );
 
         let hzb_pso = Self::build_hzb_pso(builder.pipeline_manager);
         let mip_sampler = builder.device_context.create_sampler(SamplerDef {
@@ -100,116 +92,56 @@ impl GpuCullingPass {
 
         let mesh_renderer = builder.render_resources.get::<MeshRenderer>();
 
-        let draw_count_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            draw_count_buffer_id,
-            draw_count_buffer_desc,
-            GPUViewType::UnorderedAccess,
-        ));
-        let draw_count_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            draw_count_buffer_id,
-            draw_count_buffer_desc,
-            GPUViewType::ShaderResource,
-        ));
+        let draw_count_uav_id = builder.declare_buffer_uav(draw_count_buffer_id);
+        let draw_count_indirect_id = builder.declare_buffer_indirect(draw_count_buffer_id);
+        let draw_count_copy_dst_id = builder.declare_buffer_copy_dst(draw_count_buffer_id);
 
-        let draw_args_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            draw_args_buffer_id,
-            draw_args_buffer_desc,
-            GPUViewType::UnorderedAccess,
-        ));
+        let draw_args_uav_id = builder.declare_buffer_uav(draw_args_buffer_id);
+        let draw_args_indirect_id = builder.declare_buffer_indirect(draw_args_buffer_id);
 
-        let culled_count_buffer_desc =
-            RenderGraphResourceDef::new_buffer(std::mem::size_of::<u32>() as u64, 1);
         let culled_count_buffer_id =
-            builder.declare_buffer("CulledCountBuffer", &culled_count_buffer_desc);
-        let culled_count_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            culled_count_buffer_id,
-            &culled_count_buffer_desc,
-            GPUViewType::UnorderedAccess,
-        ));
-        let culled_count_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            culled_count_buffer_id,
-            &culled_count_buffer_desc,
-            GPUViewType::ShaderResource,
-        ));
+            builder.declare_buffer("CulledCountBuffer", std::mem::size_of::<u32>() as u64, 1);
+        let culled_count_uav_id = builder.declare_buffer_uav(culled_count_buffer_id);
+        let culled_count_srv_id = builder.declare_buffer_srv(culled_count_buffer_id);
 
-        let tmp_culled_count_buffer_desc =
-            RenderGraphResourceDef::new_buffer(std::mem::size_of::<u32>() as u64, 1);
         let tmp_culled_count_buffer_id =
-            builder.declare_buffer("TmpCulledCountBuffer", &tmp_culled_count_buffer_desc);
-        let tmp_culled_count_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            tmp_culled_count_buffer_id,
-            &tmp_culled_count_buffer_desc,
-            GPUViewType::UnorderedAccess,
-        ));
+            builder.declare_buffer("TmpCulledCountBuffer", std::mem::size_of::<u32>() as u64, 1);
+        let tmp_culled_count_uav_id = builder.declare_buffer_uav(tmp_culled_count_buffer_id);
 
-        let culled_args_buffer_desc =
-            RenderGraphResourceDef::new_buffer(3 * std::mem::size_of::<u32>() as u64, 1);
         let culled_args_buffer_id =
-            builder.declare_buffer("CulledArgsBuffer", &culled_args_buffer_desc);
-        let culled_args_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            culled_args_buffer_id,
-            &culled_args_buffer_desc,
-            GPUViewType::UnorderedAccess,
-        ));
-        let culled_args_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            culled_args_buffer_id,
-            &culled_args_buffer_desc,
-            GPUViewType::ShaderResource,
-        ));
+            builder.declare_buffer("CulledArgsBuffer", 3 * std::mem::size_of::<u32>() as u64, 1);
+        let culled_args_uav_id = builder.declare_buffer_uav(culled_args_buffer_id);
+        let culled_args_indirect_id = builder.declare_buffer_indirect(culled_args_buffer_id);
 
-        let tmp_culled_args_buffer_desc =
-            RenderGraphResourceDef::new_buffer(3 * std::mem::size_of::<u32>() as u64, 1);
-        let tmp_culled_args_buffer_id =
-            builder.declare_buffer("TmpCulledArgsBuffer", &tmp_culled_args_buffer_desc);
-        let tmp_culled_args_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            tmp_culled_args_buffer_id,
-            &tmp_culled_args_buffer_desc,
-            GPUViewType::UnorderedAccess,
-        ));
+        let tmp_culled_args_buffer_id = builder.declare_buffer(
+            "TmpCulledArgsBuffer",
+            3 * std::mem::size_of::<u32>() as u64,
+            1,
+        );
+        let tmp_culled_args_uav_id = builder.declare_buffer_uav(tmp_culled_args_buffer_id);
 
-        let culled_instances_buffer_desc = RenderGraphResourceDef::new_buffer(
+        let culled_instances_buffer_id = builder.declare_buffer(
+            "CulledInstancesBuffer",
             std::mem::size_of::<GpuInstanceData>() as u64,
             mesh_renderer.gpu_instance_data.len().max(1) as u64,
         );
-        let culled_instances_buffer_id =
-            builder.declare_buffer("CulledInstancesBuffer", &culled_instances_buffer_desc);
-        let culled_instances_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            culled_instances_buffer_id,
-            &culled_instances_buffer_desc,
-            GPUViewType::UnorderedAccess,
-        ));
-        let culled_instances_srv_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            culled_instances_buffer_id,
-            &culled_instances_buffer_desc,
-            GPUViewType::ShaderResource,
-        ));
+        let culled_instances_uav_id = builder.declare_buffer_uav(culled_instances_buffer_id);
+        let culled_instances_srv_id = builder.declare_buffer_srv(culled_instances_buffer_id);
 
-        let tmp_culled_instances_buffer_desc = RenderGraphResourceDef::new_buffer(
-            std::mem::size_of::<GpuInstanceData>() as u64,
-            mesh_renderer.gpu_instance_data.len().max(1) as u64,
-        );
         let tmp_culled_instances_buffer_id = builder.declare_buffer(
             "TmpCulledInstancesBuffer",
-            &tmp_culled_instances_buffer_desc,
+            std::mem::size_of::<GpuInstanceData>() as u64,
+            mesh_renderer.gpu_instance_data.len().max(1) as u64,
         );
         let tmp_culled_instances_uav_id =
-            builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-                tmp_culled_instances_buffer_id,
-                &tmp_culled_instances_buffer_desc,
-                GPUViewType::UnorderedAccess,
-            ));
+            builder.declare_buffer_uav(tmp_culled_instances_buffer_id);
 
-        let culling_debug_buffer_desc = RenderGraphResourceDef::new_buffer(
+        let culling_debug_buffer_id = builder.declare_buffer(
+            "CullingDebug",
             std::mem::size_of::<CullingDebugData>() as u64,
             mesh_renderer.gpu_instance_data.len().max(1) as u64,
         );
-        let culling_debug_buffer_id =
-            builder.declare_buffer("CullingDebug", &culling_debug_buffer_desc);
-        let culling_debug_uav_id = builder.declare_view(&RenderGraphViewDef::new_buffer_view(
-            culling_debug_buffer_id,
-            &culling_debug_buffer_desc,
-            GPUViewType::UnorderedAccess,
-        ));
+        let culling_debug_uav_id = builder.declare_buffer_uav(culling_debug_buffer_id);
 
         let gather_perf_stats = true;
 
@@ -245,6 +177,13 @@ impl GpuCullingPass {
                         .write(culling_debug_uav_id, RenderGraphLoadState::ClearValue(0))
                         .read(prev_hzb_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
+                            let mesh_renderer =
+                                execute_context.render_resources.get::<MeshRenderer>();
+                            mesh_renderer
+                                .culling_buffers
+                                .stats_buffer
+                                .clear_buffer(cmd_buffer);
+
                             Self::execute_culling_pass(
                                 context,
                                 execute_context,
@@ -268,7 +207,8 @@ impl GpuCullingPass {
                                 stencil: 0,
                             }),
                         )
-                        .read(draw_count_srv_id, RenderGraphLoadState::Load)
+                        .read(draw_count_indirect_id, RenderGraphLoadState::Load)
+                        .read(draw_args_indirect_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
                             Self::execute_depth_layer_pass(
                                 context,
@@ -288,6 +228,24 @@ impl GpuCullingPass {
                         &mip_sampler,
                         builder,
                     )
+                })
+                .add_compute_pass("Clear depth count", |compute_pass_builder| {
+                    compute_pass_builder
+                        .write(draw_count_copy_dst_id, RenderGraphLoadState::Load)
+                        .execute(move |context, _, cmd_buffer| {
+                            // Need to clear the depth instances part of the draw_count buffer
+                            if depth_count_buffer_size > 0 {
+                                let depth_count_size =
+                                    depth_count_buffer_size * std::mem::size_of::<u32>() as u64;
+
+                                cmd_buffer.cmd_fill_buffer(
+                                    context.get_buffer(draw_count_buffer_id),
+                                    0,
+                                    depth_count_size,
+                                    0,
+                                );
+                            }
+                        })
                 })
                 .add_compute_pass("Culling current frame HZB", |compute_pass_builder| {
                     let user_data = GPUCullingUserData {
@@ -319,43 +277,9 @@ impl GpuCullingPass {
                         .write(culling_debug_uav_id, RenderGraphLoadState::Load)
                         .read(current_hzb_srv_id, RenderGraphLoadState::Load)
                         .read(culled_count_srv_id, RenderGraphLoadState::Load)
-                        .read(culled_args_srv_id, RenderGraphLoadState::Load)
+                        .read(culled_args_indirect_id, RenderGraphLoadState::Load)
                         .read(culled_instances_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
-                            if depth_count_buffer_size > 0 {
-                                // Need to clear the depth instances part of the draw_count buffer
-                                // TODO: Should we have a copy pass type? So the graph would manage the resource transitions for us like it does in all other cases?
-                                cmd_buffer.cmd_resource_barrier(
-                                    &[BufferBarrier {
-                                        buffer: context.get_buffer(draw_count_buffer_id),
-                                        src_state: ResourceState::UNORDERED_ACCESS,
-                                        dst_state: ResourceState::COPY_DST,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    }],
-                                    &[],
-                                );
-
-                                let depth_count_size =
-                                    depth_count_buffer_size * std::mem::size_of::<u32>() as u64;
-
-                                cmd_buffer.cmd_fill_buffer(
-                                    context.get_buffer(draw_count_buffer_id),
-                                    0,
-                                    depth_count_size,
-                                    0,
-                                );
-
-                                cmd_buffer.cmd_resource_barrier(
-                                    &[BufferBarrier {
-                                        buffer: context.get_buffer(draw_count_buffer_id),
-                                        src_state: ResourceState::COPY_DST,
-                                        dst_state: ResourceState::UNORDERED_ACCESS,
-                                        queue_transition: BarrierQueueTransition::None,
-                                    }],
-                                    &[],
-                                );
-                            }
-
                             Self::execute_culling_pass(
                                 context,
                                 execute_context,
@@ -373,7 +297,8 @@ impl GpuCullingPass {
 
                     graphics_pass_builder
                         .depth_stencil(depth_view_id, RenderGraphLoadState::Load)
-                        .read(draw_count_srv_id, RenderGraphLoadState::Load)
+                        .read(draw_count_indirect_id, RenderGraphLoadState::Load)
+                        .read(draw_args_indirect_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
                             Self::execute_depth_layer_pass(
                                 context,
@@ -393,6 +318,20 @@ impl GpuCullingPass {
                         &mip_sampler,
                         builder,
                     )
+                })
+                .add_compute_pass("StatsReadback", |compute_pass_builder| {
+                    compute_pass_builder.execute(|_, execute_context, cmd_buffer| {
+                        let mesh_renderer = execute_context.render_resources.get::<MeshRenderer>();
+
+                        // TODO(jsg): Should we manage readback buffers in the graph as well?
+                        if let Some(readback) = &mesh_renderer.culling_buffers.stats_buffer_readback
+                        {
+                            mesh_renderer
+                                .culling_buffers
+                                .stats_buffer
+                                .copy_buffer_to_readback(cmd_buffer, readback);
+                        }
+                    })
                 })
         })
     }
@@ -510,19 +449,6 @@ impl GpuCullingPass {
     ) -> RenderGraphBuilder<'a> {
         let mut builder = builder;
 
-        let depth_view_def = RenderGraphTextureViewDef {
-            resource_id: depth_buffer_id,
-            gpu_view_type: lgn_graphics_api::GPUViewType::ShaderResource,
-            view_dimension: ViewDimension::_2D,
-            first_mip: 0,
-            mip_count: 1,
-            plane_slice: PlaneSlice::Depth,
-            first_array_slice: 0,
-            array_size: 1,
-            read_only: false,
-            copy: false,
-        };
-
         let hzb_desc: &RenderGraphTextureDef = hzb_desc.try_into().unwrap();
 
         let user_data = HZBUserData {
@@ -531,23 +457,13 @@ impl GpuCullingPass {
         };
 
         for i in 0..hzb_desc.mip_count {
-            let mut read_view_def = depth_view_def.clone();
             let read_view_id = if i == 0 {
-                builder.declare_view(&RenderGraphViewDef::Texture(read_view_def.clone()))
+                builder.declare_depth_texture_srv(depth_buffer_id)
             } else {
-                read_view_def.resource_id = hzb_id;
-                read_view_def.plane_slice = PlaneSlice::Default;
-                read_view_def.first_mip = i - 1;
-                builder.declare_view(&RenderGraphViewDef::Texture(read_view_def.clone()))
+                builder.declare_texture_srv_with_mips(hzb_id, i - 1, 1)
             };
 
-            let mut write_view_def = depth_view_def.clone();
-            write_view_def.resource_id = hzb_id;
-            write_view_def.gpu_view_type = GPUViewType::RenderTarget;
-            write_view_def.first_mip = i;
-            write_view_def.plane_slice = PlaneSlice::Default;
-            let write_view_id =
-                builder.declare_view(&RenderGraphViewDef::Texture(write_view_def.clone()));
+            let write_view_id = builder.declare_texture_rtv_with_mips(hzb_id, i, 1);
 
             let user_data = user_data.clone();
 
@@ -581,19 +497,6 @@ impl GpuCullingPass {
                                 descriptor_set_handle,
                             );
 
-                            #[rustfmt::skip]
-                            let vertex_data: [f32; 12] = [0.0, 2.0, 0.0, 2.0,
-                                                          0.0, 0.0, 0.0, 0.0,
-                                                          2.0, 0.0, 2.0, 0.0];
-
-                            let transient_buffer = render_context
-                                .transient_buffer_allocator
-                                .copy_data_slice(&vertex_data, ResourceUsage::AS_VERTEX_BUFFER);
-
-                            let vertex_binding = transient_buffer.vertex_buffer_binding();
-
-                            cmd_buffer.cmd_bind_vertex_buffer(0, vertex_binding);
-
                             cmd_buffer.cmd_draw(3, 0);
                         }
                     });
@@ -605,12 +508,8 @@ impl GpuCullingPass {
         // We need a dummy pass just to transition the last mip of the current frame HZB to ShaderResource.
         // We expect the whole resource to be in the same state when it comes to be used as previous frame
         // HZB in the next frame.
-        let mut last_mip_read_def = depth_view_def;
-        last_mip_read_def.resource_id = hzb_id;
-        last_mip_read_def.plane_slice = PlaneSlice::Default;
-        last_mip_read_def.first_mip = hzb_desc.mip_count - 1;
         let last_mip_read_id =
-            builder.declare_view(&RenderGraphViewDef::Texture(last_mip_read_def));
+            builder.declare_texture_srv_with_mips(hzb_id, hzb_desc.mip_count - 1, 1);
 
         builder.add_graphics_pass("ChangeLastMipState", |graphics_pass_builder| {
             graphics_pass_builder

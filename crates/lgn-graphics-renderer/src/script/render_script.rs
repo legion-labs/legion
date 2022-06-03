@@ -3,10 +3,7 @@ use crate::{
     core::render_graph::RenderGraphBuilder,
     core::RenderGraphLoadState,
     core::{
-        render_graph::{
-            RenderGraph, RenderGraphResourceDef, RenderGraphResourceId, RenderGraphTextureDef,
-            RenderGraphViewDef, RenderGraphViewId,
-        },
+        render_graph::{RenderGraph, RenderGraphResourceId, RenderGraphViewId},
         BinaryWriter, GpuUploadManager, RenderResources, UploadGPUBuffer, UploadGPUResource,
     },
     gpu_renderer::{DefaultLayers, MeshRenderer},
@@ -16,14 +13,14 @@ use crate::{
 
 use lgn_graphics_api::{
     AddressMode, BlendState, CompareOp, CullMode, DepthState, DeviceContext, FilterType, Format,
-    GPUViewType, GfxError, GfxResult, GraphicsPipelineDef, MipMapMode, PrimitiveTopology,
-    RasterizerState, ResourceState, SampleCount, SamplerDef, StencilOp, Texture, VertexLayout,
+    GfxError, GfxResult, GraphicsPipelineDef, MipMapMode, PrimitiveTopology, RasterizerState,
+    ResourceState, SampleCount, SamplerDef, StencilOp, Texture, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 
 use super::render_passes::{
-    AlphaBlendedLayerPass, DebugPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
-    PostProcessPass, SSAOPass, UiPass,
+    AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
+    PickingPass, PostProcessPass, SSAOPass, UiPass,
 };
 
 ///
@@ -68,6 +65,7 @@ impl Config {
 pub struct RenderScript<'a> {
     // Passes
     pub gpu_culling_pass: GpuCullingPass,
+    pub picking_pass: PickingPass,
     pub opaque_layer_pass: OpaqueLayerPass,
     pub ssao_pass: SSAOPass,
     pub alphablended_layer_pass: AlphaBlendedLayerPass,
@@ -75,10 +73,10 @@ pub struct RenderScript<'a> {
     pub postprocess_pass: PostProcessPass,
     pub lighting_pass: LightingPass,
     pub ui_pass: UiPass,
+    pub egui_pass: EguiPass,
 
     // Resources
-    pub prev_hzb: &'a Texture,
-    pub current_hzb: &'a Texture,
+    pub hzb: [&'a Texture; 2],
 }
 
 impl RenderScript<'_> {
@@ -122,38 +120,39 @@ impl RenderScript<'_> {
             return Err(GfxError::String("View target is invalid".to_string()));
         }
 
+        let w = view.target.extents().width;
+        let h = view.target.extents().height;
+
         //----------------------------------------------------------------
         // Inject external resources
 
         // TODO(jsg): need to think of a better way of doing this.
-        let prev_hzb_initial_state = if config.frame_idx == 0 {
-            ResourceState::RENDER_TARGET
-        } else {
-            ResourceState::SHADER_RESOURCE
-        };
-        let current_hzb_initial_state = if config.frame_idx == 0 {
+        let initial_state = if config.frame_idx == 0 {
             ResourceState::RENDER_TARGET
         } else {
             ResourceState::SHADER_RESOURCE
         };
 
-        let prev_hzb_id = render_graph_builder.inject_render_target(
-            "PrevFrameHZB",
-            self.prev_hzb,
-            prev_hzb_initial_state,
-        );
-        let prev_hzb_srv_id =
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
-                prev_hzb_id,
-                0,
-                self.prev_hzb.definition().mip_count,
-                GPUViewType::ShaderResource,
-                false,
-            ));
-        let current_hzb_id = render_graph_builder.inject_render_target(
-            "CurrentFrameHZB",
-            self.current_hzb,
-            current_hzb_initial_state,
+        let prev_hzb_idx = config.frame_idx as usize % 2;
+        let current_hzb_idx = (config.frame_idx + 1) as usize % 2;
+
+        let mut names = vec!["PrevFrameHZB", "CurrentFrameHZB"];
+        if prev_hzb_idx == 0 {
+            names = names.into_iter().rev().collect();
+        }
+
+        let hzb_ids = [
+            render_graph_builder.inject_render_target(names[0], self.hzb[0], initial_state),
+            render_graph_builder.inject_render_target(names[1], self.hzb[1], initial_state),
+        ];
+
+        let prev_hzb_id = hzb_ids[prev_hzb_idx];
+        let current_hzb_id = hzb_ids[current_hzb_idx];
+
+        let prev_hzb_srv_id = render_graph_builder.declare_texture_srv_with_mips(
+            prev_hzb_id,
+            0,
+            self.hzb[prev_hzb_idx].definition().mip_count,
         );
 
         let view_target_id = render_graph_builder.inject_render_target(
@@ -165,124 +164,52 @@ impl RenderScript<'_> {
         //----------------------------------------------------------------
         // Declare resources and views
 
-        let depth_buffer_desc = RenderGraphResourceDef::new_texture_2D(
-            view.target.extents().width,
-            view.target.extents().height,
-            Format::D32_SFLOAT,
-        );
         let depth_buffer_id =
-            render_graph_builder.declare_render_target("DepthBuffer", &depth_buffer_desc);
-        let depth_view_def = RenderGraphViewDef::new_single_mip_depth_texture_view(
-            depth_buffer_id,
-            0,
-            GPUViewType::DepthStencil,
-            false,
-        );
-        let depth_view_id = render_graph_builder.declare_view(&depth_view_def);
-        let depth_read_only_view_def = RenderGraphViewDef::new_single_mip_depth_texture_view(
-            depth_buffer_id,
-            0,
-            GPUViewType::DepthStencil,
-            true,
-        );
-        let depth_read_only_view_id = render_graph_builder.declare_view(&depth_read_only_view_def);
+            render_graph_builder.declare_render_target("DepthBuffer", w, h, Format::D32_SFLOAT);
+        let depth_view_id = render_graph_builder.declare_depth_texture_dsv(depth_buffer_id, false);
+        let depth_read_only_view_id =
+            render_graph_builder.declare_depth_texture_dsv(depth_buffer_id, true);
 
-        let gbuffer_descs = self.make_gbuffer_descs(view);
         let gbuffer_ids = [
-            render_graph_builder.declare_render_target("GBuffer0", &gbuffer_descs[0]),
-            render_graph_builder.declare_render_target("GBuffer1", &gbuffer_descs[1]),
-            render_graph_builder.declare_render_target("GBuffer2", &gbuffer_descs[2]),
-            render_graph_builder.declare_render_target("GBuffer3", &gbuffer_descs[3]),
+            render_graph_builder.declare_render_target(
+                "GBuffer0",
+                w,
+                h,
+                Format::R16G16B16A16_SFLOAT,
+            ),
+            render_graph_builder.declare_render_target("GBuffer1", w, h, Format::R16G16_SNORM),
+            render_graph_builder.declare_render_target("GBuffer2", w, h, Format::R8G8B8A8_UNORM),
+            render_graph_builder.declare_render_target("GBuffer3", w, h, Format::R8G8B8A8_UNORM),
         ];
         let gbuffer_read_view_ids = [
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                gbuffer_ids[0],
-                0,
-                GPUViewType::ShaderResource,
-            )),
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                gbuffer_ids[1],
-                0,
-                GPUViewType::ShaderResource,
-            )),
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                gbuffer_ids[2],
-                0,
-                GPUViewType::ShaderResource,
-            )),
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                gbuffer_ids[3],
-                0,
-                GPUViewType::ShaderResource,
-            )),
+            render_graph_builder.declare_texture_srv(gbuffer_ids[0]),
+            render_graph_builder.declare_texture_srv(gbuffer_ids[1]),
+            render_graph_builder.declare_texture_srv(gbuffer_ids[2]),
+            render_graph_builder.declare_texture_srv(gbuffer_ids[3]),
         ];
         let gbuffer_write_view_ids = [
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                gbuffer_ids[0],
-                0,
-                GPUViewType::RenderTarget,
-            )),
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                gbuffer_ids[1],
-                0,
-                GPUViewType::RenderTarget,
-            )),
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                gbuffer_ids[2],
-                0,
-                GPUViewType::RenderTarget,
-            )),
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                gbuffer_ids[3],
-                0,
-                GPUViewType::RenderTarget,
-            )),
+            render_graph_builder.declare_texture_rtv(gbuffer_ids[0]),
+            render_graph_builder.declare_texture_rtv(gbuffer_ids[1]),
+            render_graph_builder.declare_texture_rtv(gbuffer_ids[2]),
+            render_graph_builder.declare_texture_rtv(gbuffer_ids[3]),
         ];
 
-        let radiance_buffer_desc = RenderGraphResourceDef::new_texture_2D(
-            view.target.extents().width,
-            view.target.extents().height,
+        let radiance_buffer_id = render_graph_builder.declare_render_target(
+            "RadianceBuffer",
+            w,
+            h,
             Format::R16G16B16A16_SFLOAT,
         );
-        let radiance_buffer_id =
-            render_graph_builder.declare_render_target("RadianceBuffer", &radiance_buffer_desc);
         let radiance_write_uav_view_id =
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                radiance_buffer_id,
-                0,
-                GPUViewType::UnorderedAccess,
-            ));
+            render_graph_builder.declare_texture_uav(radiance_buffer_id);
         let radiance_write_rt_view_id =
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                radiance_buffer_id,
-                0,
-                GPUViewType::RenderTarget,
-            ));
-        let radiance_read_view_id =
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                radiance_buffer_id,
-                0,
-                GPUViewType::ShaderResource,
-            ));
+            render_graph_builder.declare_texture_rtv(radiance_buffer_id);
+        let radiance_read_view_id = render_graph_builder.declare_texture_srv(radiance_buffer_id);
 
-        let ao_buffer_desc = RenderGraphResourceDef::new_texture_2D(
-            view.target.extents().width,
-            view.target.extents().height,
-            Format::R8_UNORM,
-        );
-        let ao_buffer_id = render_graph_builder.declare_render_target("AOBuffer", &ao_buffer_desc);
-        let ao_write_view_id =
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                ao_buffer_id,
-                0,
-                GPUViewType::UnorderedAccess,
-            ));
-        let ao_read_view_id =
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                ao_buffer_id,
-                0,
-                GPUViewType::ShaderResource,
-            ));
+        let ao_buffer_id =
+            render_graph_builder.declare_render_target("AOBuffer", w, h, Format::R8_UNORM);
+        let ao_write_view_id = render_graph_builder.declare_texture_uav(ao_buffer_id);
+        let ao_read_view_id = render_graph_builder.declare_texture_srv(ao_buffer_id);
 
         //----------------------------------------------------------------
         // Build graph
@@ -321,33 +248,36 @@ impl RenderScript<'_> {
             }
         }
 
-        let draw_count_buffer_desc = RenderGraphResourceDef::new_buffer(
+        let draw_count_buffer_id = render_graph_builder.declare_buffer(
+            "DrawCountBuffer",
             std::mem::size_of::<u32>() as u64,
             count_buffer_size.max(1),
         );
-        let draw_count_buffer_id =
-            render_graph_builder.declare_buffer("DrawCountBuffer", &draw_count_buffer_desc);
 
-        let draw_args_buffer_desc = RenderGraphResourceDef::new_buffer(
+        let draw_args_buffer_id = render_graph_builder.declare_buffer(
+            "DrawArgsBuffer",
             5 * std::mem::size_of::<u32>() as u64,
             indirect_arg_buffer_size.max(1),
         );
-        let draw_args_buffer_id =
-            render_graph_builder.declare_buffer("DrawArgsBuffer", &draw_args_buffer_desc);
 
         render_graph_builder = self.gpu_culling_pass.build_render_graph(
             render_graph_builder,
             depth_buffer_id,
             depth_view_id,
             draw_count_buffer_id,
-            &draw_count_buffer_desc,
             draw_args_buffer_id,
-            &draw_args_buffer_desc,
             depth_count_buffer_size,
-            self.prev_hzb.definition(),
+            self.hzb[prev_hzb_idx].definition(),
             prev_hzb_srv_id,
-            self.current_hzb.definition(),
+            self.hzb[current_hzb_idx].definition(),
             current_hzb_id,
+        );
+        render_graph_builder = self.picking_pass.build_render_graph(
+            render_graph_builder,
+            view,
+            gbuffer_write_view_ids[0],
+            draw_count_buffer_id,
+            draw_args_buffer_id,
         );
         render_graph_builder = self.opaque_layer_pass.build_render_graph(
             render_graph_builder,
@@ -381,6 +311,11 @@ impl RenderScript<'_> {
             depth_view_id,
             gbuffer_write_view_ids[0], // radiance_write_rt_view_id
         );
+        render_graph_builder = self.egui_pass.build_render_graph(
+            render_graph_builder,
+            view,
+            gbuffer_write_view_ids[0], // radiance_write_rt_view_id
+        );
 
         if config.display_post_process() {
             render_graph_builder = self
@@ -389,27 +324,14 @@ impl RenderScript<'_> {
         }
 
         let ui_buffer_and_view_ids = if config.display_ui() {
-            let ui_buffer_desc = RenderGraphResourceDef::new_texture_2D(
-                view.target.extents().width,
-                view.target.extents().height,
+            let ui_buffer_id = render_graph_builder.declare_render_target(
+                "UIBuffer",
+                w,
+                h,
                 Format::R8G8B8A8_UNORM,
             );
-            let ui_buffer_id =
-                render_graph_builder.declare_render_target("UIBuffer", &ui_buffer_desc);
-            let ui_write_view_id = render_graph_builder.declare_view(
-                &RenderGraphViewDef::new_single_mip_texture_view(
-                    ui_buffer_id,
-                    0,
-                    GPUViewType::RenderTarget,
-                ),
-            );
-            let ui_read_view_id = render_graph_builder.declare_view(
-                &RenderGraphViewDef::new_single_mip_texture_view(
-                    ui_buffer_id,
-                    0,
-                    GPUViewType::ShaderResource,
-                ),
-            );
+            let ui_write_view_id = render_graph_builder.declare_texture_rtv(ui_buffer_id);
+            let ui_read_view_id = render_graph_builder.declare_texture_srv(ui_buffer_id);
             render_graph_builder = self
                 .ui_pass
                 .build_render_graph(render_graph_builder, ui_write_view_id);
@@ -418,12 +340,7 @@ impl RenderScript<'_> {
             None
         };
 
-        let view_target_view_id =
-            render_graph_builder.declare_view(&RenderGraphViewDef::new_single_mip_texture_view(
-                view_target_id,
-                0,
-                GPUViewType::RenderTarget,
-            ));
+        let view_target_view_id = render_graph_builder.declare_texture_rtv(view_target_id);
 
         render_graph_builder = self.combine_pass(
             render_graph_builder,
@@ -433,32 +350,6 @@ impl RenderScript<'_> {
         );
 
         Ok(render_graph_builder.build())
-    }
-
-    #[allow(clippy::unused_self)]
-    fn make_gbuffer_descs(&self, view: &RenderView<'_>) -> Vec<RenderGraphResourceDef> {
-        let mut texture_def = RenderGraphTextureDef {
-            extents: view.target.definition().extents,
-            array_length: 1,
-            mip_count: 1,
-            format: Format::R16G16B16A16_SFLOAT,
-        };
-
-        // Just to simulate different formats
-        let gbuffer0_def = texture_def.clone();
-        texture_def.format = Format::R16G16_SNORM; // Normals
-        let gbuffer1_def = texture_def.clone();
-        texture_def.format = Format::R8G8B8A8_UNORM;
-        let gbuffer2_def = texture_def.clone();
-        texture_def.format = Format::R8G8B8A8_UNORM;
-        let gbuffer3_def = texture_def;
-
-        vec![
-            RenderGraphResourceDef::Texture(gbuffer0_def),
-            RenderGraphResourceDef::Texture(gbuffer1_def),
-            RenderGraphResourceDef::Texture(gbuffer2_def),
-            RenderGraphResourceDef::Texture(gbuffer3_def),
-        ]
     }
 
     fn build_final_resolve_pso(pipeline_manager: &mut PipelineManager) -> PipelineHandle {
