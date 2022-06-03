@@ -1,12 +1,49 @@
-use errors::Result;
-use lgn_online::codegen::Context;
+// API {{ api.title }} v{{ api.version }}
+//
+// {% if let Some(description) = api.description %}{{ description|multilinecomment }}{% endif %}
+//
 
-#[async_trait::async_trait]
-pub trait Api {
-{% for (path, routes) in api.paths %}
-    {% for route in routes %}
-        {% if let Some(summary) = route.summary %}/// {{ summary }}{% endif %}
-        {% include "signature.rs.jinja" %};
-    {% endfor %}
-{% endfor %}
+// ---------- Api ----------
+{% include "trait.rs.jinja" %}
+
+// ---------- Errors ----------
+pub mod errors {
+    {% let module_path = module_path.join("errors") %}
+    {% include "errors.rs.jinja" %}
+    {% let module_path = module_path.parent() %}
+}
+
+// ---------- Client ----------
+pub mod client {
+    {% let module_path = module_path.join("client") %}
+    {% include "client.rs.jinja" %}
+    {% let module_path = module_path.parent() %}
+}
+
+// ---------- Server ----------
+pub mod server {
+    {% let module_path = module_path.join("server") %}
+    {% include "server.rs.jinja" %}
+    {% let module_path = module_path.parent() %}
+}
+
+// ---------- Params ----------
+pub(crate) mod params {
+    {% let module_path = module_path.join("params") %}
+    {% include "parameters.rs.jinja" %}
+    {% let module_path = module_path.parent() %}
+}
+
+// ---------- Requests ----------
+pub mod requests {
+    {% let module_path = module_path.join("requests") %}
+    {% include "requests.rs.jinja" %}
+    {% let module_path = module_path.parent() %}
+}
+
+// ---------- Responses ----------
+pub mod responses {
+    {% let module_path = module_path.join("responses") %}
+    {% include "responses.rs.jinja" %}
+    {% let module_path = module_path.parent() %}
 }

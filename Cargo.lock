@@ -3843,7 +3843,6 @@ dependencies = [
  "lgn-tracing",
  "openapiv3",
  "regex",
- "reqwest",
  "rust-format",
  "serde",
  "serde_json",

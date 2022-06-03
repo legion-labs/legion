@@ -41,7 +41,7 @@ where
         async fn {{ route.name|snake_case }}<T>(
             Extension(api): Extension<T>,
             {% if !route.parameters.path.is_empty() -%}
-                Path({{ route.parameters.path|join_names }}): Path<{{ route.parameters.path|join_types }}>,
+                Path({{ route.parameters.path|join_names }}): Path<{{ route.parameters.path|join_types(ctx, module_path) }}>,
             {% endif -%}
             {% if !route.parameters.query.is_empty() -%}
                 QsQuery(query): QsQuery<params::{{ route.name|pascal_case }}Query>,
@@ -50,9 +50,9 @@ where
                 {% match request_body.content.media_type -%}
                     {% when MediaType::Json -%}
                         {%- if request_body.required -%}
-                            Json(body): Json<{{ request_body.content.type_|fmt_type }}>,
+                            Json(body): Json<{{ request_body.content.type_|fmt_type(ctx, module_path) }}>,
                         {%- else -%}
-                            Json(body): Json<Option<{{ request_body.content.type_|fmt_type }}>>,
+                            Json(body): Json<Option<{{ request_body.content.type_|fmt_type(ctx, module_path) }}>>,
                         {%- endif -%}
                     {% when MediaType::Bytes -%}
                         body: axum::body::Bytes,

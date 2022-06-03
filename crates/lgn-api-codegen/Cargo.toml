@@ -27,13 +27,12 @@ anyhow = "1"
 indexmap = "1"
 http = "0.2"
 convert_case = "0.5"
-clap = { version = "3.0", features = ["derive"] }
+clap = { version = "3.0", features = ["derive", "env"] }
 chrono = { version = "0.4", features = ["serde"] }
 rust-format = "0.3"
 regex = "1"
 lazy_static = "1"
 base64 = "0.13"
-reqwest = "0.11"
 bytes = "1"
 
 [dev-dependencies]

@@ -19,14 +19,14 @@ use http::HeaderValue;
                 {% if !response.headers.is_empty() -%}
                     Status{{ status_code }}{
                         {% for (header_name, header) in response.headers -%}
-                            {{ header_name|snake_case }}: {{ header.type_|fmt_type }},
+                            {{ header_name|snake_case }}: {{ header.type_|fmt_type(ctx, module_path) }},
                         {% endfor -%}
                         {% if let Some(content) = response.content -%}
-                            body: {{ content.type_|fmt_type }},
+                            body: {{ content.type_|fmt_type(ctx, module_path) }},
                         {% endif -%}
                     },
                 {% else if let Some(content) = response.content -%}
-                    Status{{ status_code }}({{ content.type_|fmt_type }}),
+                    Status{{ status_code }}({{ content.type_|fmt_type(ctx, module_path) }}),
                 {% else -%}
                     Status{{ status_code }},
                 {% endif -%}
@@ -38,7 +38,7 @@ use http::HeaderValue;
                 match self {
                     {% for (status_code, response) in route.responses %}
                         {% if !response.headers.is_empty() -%}
-                            {{ enum_name }}::Status{{ status_code }}{
+                            Self::Status{{ status_code }}{
                                 {% for (header_name, header) in response.headers -%}
                                     {{ header_name|snake_case }},
                                 {% endfor -%}
@@ -74,7 +74,7 @@ use http::HeaderValue;
                                     resp
                             },
                         {% else if let Some(content) = response.content -%}
-                            {{ enum_name }}::Status{{ status_code }}(body) => {
+                            Self::Status{{ status_code }}(body) => {
                                     {% match content.media_type -%}
                                         {% when MediaType::Json -%}
                                             let body = Json(body);
@@ -84,7 +84,7 @@ use http::HeaderValue;
                                     (StatusCode::from_u16({{ status_code.as_u16() }}).unwrap(), body).into_response()
                             },
                         {%- else -%}
-                            {{ enum_name }}::Status{{ status_code }} => {
+                            Self::Status{{ status_code }} => {
                                 StatusCode::from_u16({{ status_code.as_u16() }}).unwrap().into_response()
                             },
                         {%- endif -%}
