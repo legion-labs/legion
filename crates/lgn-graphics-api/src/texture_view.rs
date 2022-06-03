@@ -2,7 +2,7 @@ use crate::backends::BackendTextureView;
 use crate::{deferred_drop::Drc, Texture};
 use crate::{Descriptor, GPUViewType, PlaneSlice, ResourceUsage, ShaderResourceType, TextureDef};
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum ViewDimension {
     _2D,
     _2DArray,

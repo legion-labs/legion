@@ -69,7 +69,7 @@ impl GpuCullingPass {
     ) -> RenderGraphBuilder<'a> {
         let hzb_desc = RenderGraphResourceDef::Texture((*current_hzb_texture_desc).into());
         let mut builder = builder;
-        let current_hzb_srv_id = builder.declare_specific_mips_texture_srv(
+        let current_hzb_srv_id = builder.declare_texture_srv_with_mips(
             current_hzb_id,
             0,
             current_hzb_texture_desc.mip_count,
@@ -100,33 +100,27 @@ impl GpuCullingPass {
         let draw_args_indirect_id = builder.declare_buffer_indirect(draw_args_buffer_id);
 
         let culled_count_buffer_id =
-            builder.declare_buffer_sized("CulledCountBuffer", std::mem::size_of::<u32>() as u64, 1);
+            builder.declare_buffer("CulledCountBuffer", std::mem::size_of::<u32>() as u64, 1);
         let culled_count_uav_id = builder.declare_buffer_uav(culled_count_buffer_id);
         let culled_count_srv_id = builder.declare_buffer_srv(culled_count_buffer_id);
 
-        let tmp_culled_count_buffer_id = builder.declare_buffer_sized(
-            "TmpCulledCountBuffer",
-            std::mem::size_of::<u32>() as u64,
-            1,
-        );
+        let tmp_culled_count_buffer_id =
+            builder.declare_buffer("TmpCulledCountBuffer", std::mem::size_of::<u32>() as u64, 1);
         let tmp_culled_count_uav_id = builder.declare_buffer_uav(tmp_culled_count_buffer_id);
 
-        let culled_args_buffer_id = builder.declare_buffer_sized(
-            "CulledArgsBuffer",
-            3 * std::mem::size_of::<u32>() as u64,
-            1,
-        );
+        let culled_args_buffer_id =
+            builder.declare_buffer("CulledArgsBuffer", 3 * std::mem::size_of::<u32>() as u64, 1);
         let culled_args_uav_id = builder.declare_buffer_uav(culled_args_buffer_id);
         let culled_args_indirect_id = builder.declare_buffer_indirect(culled_args_buffer_id);
 
-        let tmp_culled_args_buffer_id = builder.declare_buffer_sized(
+        let tmp_culled_args_buffer_id = builder.declare_buffer(
             "TmpCulledArgsBuffer",
             3 * std::mem::size_of::<u32>() as u64,
             1,
         );
         let tmp_culled_args_uav_id = builder.declare_buffer_uav(tmp_culled_args_buffer_id);
 
-        let culled_instances_buffer_id = builder.declare_buffer_sized(
+        let culled_instances_buffer_id = builder.declare_buffer(
             "CulledInstancesBuffer",
             std::mem::size_of::<GpuInstanceData>() as u64,
             mesh_renderer.gpu_instance_data.len().max(1) as u64,
@@ -134,7 +128,7 @@ impl GpuCullingPass {
         let culled_instances_uav_id = builder.declare_buffer_uav(culled_instances_buffer_id);
         let culled_instances_srv_id = builder.declare_buffer_srv(culled_instances_buffer_id);
 
-        let tmp_culled_instances_buffer_id = builder.declare_buffer_sized(
+        let tmp_culled_instances_buffer_id = builder.declare_buffer(
             "TmpCulledInstancesBuffer",
             std::mem::size_of::<GpuInstanceData>() as u64,
             mesh_renderer.gpu_instance_data.len().max(1) as u64,
@@ -142,7 +136,7 @@ impl GpuCullingPass {
         let tmp_culled_instances_uav_id =
             builder.declare_buffer_uav(tmp_culled_instances_buffer_id);
 
-        let culling_debug_buffer_id = builder.declare_buffer_sized(
+        let culling_debug_buffer_id = builder.declare_buffer(
             "CullingDebug",
             std::mem::size_of::<CullingDebugData>() as u64,
             mesh_renderer.gpu_instance_data.len().max(1) as u64,
@@ -464,12 +458,12 @@ impl GpuCullingPass {
 
         for i in 0..hzb_desc.mip_count {
             let read_view_id = if i == 0 {
-                builder.declare_single_mip_depth_texture_srv(depth_buffer_id)
+                builder.declare_depth_texture_srv(depth_buffer_id)
             } else {
-                builder.declare_specific_mips_texture_srv(hzb_id, i - 1, 1)
+                builder.declare_texture_srv_with_mips(hzb_id, i - 1, 1)
             };
 
-            let write_view_id = builder.declare_specific_mips_texture_rtv(hzb_id, i, 1);
+            let write_view_id = builder.declare_texture_rtv_with_mips(hzb_id, i, 1);
 
             let user_data = user_data.clone();
 
@@ -515,7 +509,7 @@ impl GpuCullingPass {
         // We expect the whole resource to be in the same state when it comes to be used as previous frame
         // HZB in the next frame.
         let last_mip_read_id =
-            builder.declare_specific_mips_texture_srv(hzb_id, hzb_desc.mip_count - 1, 1);
+            builder.declare_texture_srv_with_mips(hzb_id, hzb_desc.mip_count - 1, 1);
 
         builder.add_graphics_pass("ChangeLastMipState", |graphics_pass_builder| {
             graphics_pass_builder

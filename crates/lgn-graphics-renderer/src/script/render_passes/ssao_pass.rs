@@ -19,22 +19,22 @@ impl SSAOPass {
     ) -> RenderGraphBuilder<'a> {
         builder.add_scope("SSAO", |mut builder| {
             let view_extents = view.target.definition().extents;
-            let raw_ao_buffer_id = builder.declare_single_mip_render_target(
+            let raw_ao_buffer_id = builder.declare_render_target(
                 "AORawBuffer",
                 view_extents.width,
                 view_extents.height,
                 Format::R8_UNORM,
             );
-            let raw_ao_write_view_id = builder.declare_single_mip_texture_uav(raw_ao_buffer_id);
-            let raw_ao_read_view_id = builder.declare_single_mip_texture_srv(raw_ao_buffer_id);
-            let blur_buffer_id = builder.declare_single_mip_render_target(
+            let raw_ao_write_view_id = builder.declare_texture_uav(raw_ao_buffer_id);
+            let raw_ao_read_view_id = builder.declare_texture_srv(raw_ao_buffer_id);
+            let blur_buffer_id = builder.declare_render_target(
                 "AOBlurBuffer",
                 view_extents.width,
                 view_extents.height,
                 Format::R8_UNORM,
             );
-            let blur_write_view_id = builder.declare_single_mip_texture_uav(blur_buffer_id);
-            let blur_read_view_id = builder.declare_single_mip_texture_srv(blur_buffer_id);
+            let blur_write_view_id = builder.declare_texture_uav(blur_buffer_id);
+            let blur_read_view_id = builder.declare_texture_srv(blur_buffer_id);
 
             builder
                 .add_compute_pass("AO", |compute_pass_builder| {

@@ -33,7 +33,7 @@ pub struct RenderGraphTextureDef {
     pub format: Format,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct RenderGraphTextureViewDef {
     // TextureViewDef
     pub resource_id: RenderGraphResourceId,
@@ -104,7 +104,7 @@ pub struct RenderGraphBufferDef {
     pub element_count: u64,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct RenderGraphBufferViewDef {
     // BufferView
     pub resource_id: RenderGraphResourceId,
@@ -204,15 +204,14 @@ impl<'a> TryFrom<&'a RenderGraphResourceDef> for &'a RenderGraphBufferDef {
 
 pub type RenderGraphResourceId = u32;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) enum RenderGraphViewDef {
     Texture(RenderGraphTextureViewDef),
-    #[allow(dead_code)]
     Buffer(RenderGraphBufferViewDef),
 }
 
 impl RenderGraphViewDef {
-    pub fn new_single_mip_depth_texture_view(
+    pub fn new_depth_texture_view(
         resource_id: RenderGraphResourceId,
         first_mip: u32,
         gpu_view_type: GPUViewType,
@@ -232,7 +231,7 @@ impl RenderGraphViewDef {
         })
     }
 
-    pub fn new_specific_mips_texture_view(
+    pub fn new_texture_view_with_mips(
         resource_id: RenderGraphResourceId,
         first_mip: u32,
         mip_count: u32,
@@ -584,7 +583,7 @@ impl<'a> TryFrom<&'a RenderGraphView> for &'a BufferView {
 }
 
 pub struct RenderGraphContext {
-    api_resource_state: HashMap<(RenderGraphResourceId, u8), ResourceState>,
+    resource_state: HashMap<(RenderGraphResourceId, u8), ResourceState>,
     created: Vec<RenderGraphResourceId>,
     lifetimes: Vec<(*const RGNode, *const RGNode)>, // indexed by RenderGraphResourceId
     resources: Vec<Option<RenderGraphResource>>,    // indexed by RenderGraphResourceId
@@ -630,32 +629,34 @@ pub(crate) struct RenderGraphExecuteContext<'a, 'frame> {
     pub(crate) render_resources: &'a RenderResources,
     pub(crate) render_context: &'a mut RenderContext<'frame>,
 
-    // Stuff needed only for the debug pass
+    // Stuff needed only for the debug/picking/egui passes
     pub(crate) debug_stuff: &'a DebugStuff<'a>,
 
-    // TODO: need a better way to pass data from one pass to another, like a blackboard
+    // TODO(jsg): need a better way to pass data from one pass to another, like a blackboard
     // (but these buffers should be managed by the render graph anyways)
     pub(crate) count_readback: Handle<ReadbackBuffer>,
     pub(crate) picked_readback: Handle<ReadbackBuffer>,
 }
 
 pub(crate) struct RenderGraph {
-    pub(crate) root: RGNode,
-    pub(crate) resources: Vec<RenderGraphResourceDef>,
-    pub(crate) resource_names: Vec<String>,
+    pub(crate) root_nodes: Vec<RGNode>,
+    pub(crate) resource_defs: Vec<RenderGraphResourceDef>, // index is RenderGraphResourceId
+    pub(crate) resource_names: Vec<String>,                // indexed by RenderGraphResourceId
     pub(crate) injected_resources:
         Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>,
-    pub(crate) views: Vec<RenderGraphViewDef>,
+    pub(crate) view_defs: Vec<RenderGraphViewDef>, // index is RenderGraphViewId
 }
 
 pub(crate) struct RenderGraphPersistentState {
     resources: RwLock<HashMap<String, (RenderGraphResourceDef, RenderGraphResource)>>,
+    views: RwLock<HashMap<(RenderGraphViewDef, GPUViewType), RenderGraphView>>,
 }
 
 impl RenderGraphPersistentState {
     pub fn new() -> Self {
         Self {
             resources: RwLock::new(HashMap::new()),
+            views: RwLock::new(HashMap::new()),
         }
     }
 
@@ -700,6 +701,31 @@ impl RenderGraphPersistentState {
         let mut resources = self.resources.write().unwrap();
         resources.insert(name.to_string(), (def.clone(), resource.clone()));
     }
+
+    pub fn get_view(
+        &self,
+        def: &RenderGraphViewDef,
+        view_type: GPUViewType,
+    ) -> Option<RenderGraphView> {
+        {
+            let views = self.views.read().unwrap();
+            if let Some(view) = views.get(&(def.clone(), view_type)) {
+                return Some(view.clone());
+            }
+        }
+
+        None
+    }
+
+    pub fn add_view(
+        &mut self,
+        def: &RenderGraphViewDef,
+        view_type: GPUViewType,
+        view: &RenderGraphView,
+    ) {
+        let mut views = self.views.write().unwrap();
+        views.insert((def.clone(), view_type), view.clone());
+    }
 }
 
 struct ResourceBarrier {
@@ -725,7 +751,7 @@ impl RenderGraph {
         res_mip_id: (RenderGraphResourceId, u8),
     ) -> ResourceState {
         *context
-            .api_resource_state
+            .resource_state
             .entry(res_mip_id)
             .or_insert(ResourceState::UNDEFINED)
     }
@@ -793,7 +819,7 @@ impl RenderGraph {
         if !context.created.iter().any(|r| *r == resource_id) {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id) {
                 let name = &self.resource_names[res_idx];
-                let original_texture_def = &self.resources[res_idx];
+                let original_texture_def = &self.resource_defs[res_idx];
                 let texture_def: &RenderGraphTextureDef = original_texture_def.try_into().unwrap();
                 let texture_def: TextureDef = texture_def.clone().into();
 
@@ -817,7 +843,7 @@ impl RenderGraph {
                 for mip in 0..texture_def.mip_count {
                     let res_mip_id = (res_idx as u32, mip as u8);
                     context
-                        .api_resource_state
+                        .resource_state
                         .insert(res_mip_id, ResourceState::UNDEFINED);
                 }
             }
@@ -837,7 +863,7 @@ impl RenderGraph {
         if !context.created.iter().any(|r| *r == resource_id) {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id) {
                 let name = &self.resource_names[res_idx];
-                let original_buffer_def = &self.resources[res_idx];
+                let original_buffer_def = &self.resource_defs[res_idx];
                 let buffer_def: &RenderGraphBufferDef = original_buffer_def.try_into().unwrap();
                 let buffer_def: BufferDef = buffer_def.clone().into();
 
@@ -860,7 +886,7 @@ impl RenderGraph {
 
                 let res_mip_id = (res_idx as u32, 0);
                 context
-                    .api_resource_state
+                    .resource_state
                     .insert(res_mip_id, ResourceState::UNDEFINED);
             }
 
@@ -930,7 +956,7 @@ impl RenderGraph {
 
         // Create if needed
         let mip_0_id = (res_idx as u32, 0);
-        match context.api_resource_state.entry(mip_0_id) {
+        match context.resource_state.entry(mip_0_id) {
             Entry::Occupied(_) => {}
             Entry::Vacant(_) => {
                 self.create_texture(resource_id, context, execute_context);
@@ -969,7 +995,7 @@ impl RenderGraph {
                     }
                 }
 
-                context.api_resource_state.insert(res_mip_id, next_state);
+                context.resource_state.insert(res_mip_id, next_state);
             }
         }
     }
@@ -987,7 +1013,7 @@ impl RenderGraph {
 
         // Create if needed
         let mip_0_id = (res_idx as u32, 0);
-        match context.api_resource_state.entry(mip_0_id) {
+        match context.resource_state.entry(mip_0_id) {
             Entry::Occupied(_) => {}
             Entry::Vacant(_) => {
                 self.create_buffer(resource_id, context, execute_context);
@@ -1023,7 +1049,7 @@ impl RenderGraph {
                 }
             }
 
-            context.api_resource_state.insert(res_mip_id, next_state);
+            context.resource_state.insert(res_mip_id, next_state);
         }
     }
 
@@ -1036,7 +1062,7 @@ impl RenderGraph {
     ) {
         let view_idx = view_id as usize;
 
-        let view_def = &self.views[view_idx];
+        let view_def = &self.view_defs[view_idx];
         match view_def {
             RenderGraphViewDef::Texture(texture_view_def) => {
                 self.gather_texture_transitions(
@@ -1141,7 +1167,7 @@ impl RenderGraph {
 
         for barrier in &barriers {
             let view_idx = barrier.view_id as usize;
-            match &self.views[view_idx] {
+            match &self.view_defs[view_idx] {
                 RenderGraphViewDef::Texture(texture_view_def) => {
                     let texture = context.get_texture(texture_view_def.resource_id);
                     let res_mip_id = (texture_view_def.resource_id, barrier.mip);
@@ -1177,7 +1203,7 @@ impl RenderGraph {
     }
 
     fn get_view_def(&self, view_id: RenderGraphViewId) -> &RenderGraphViewDef {
-        &self.views[view_id as usize]
+        &self.view_defs[view_id as usize]
     }
 
     fn get_texture_view_def(&self, view_id: RenderGraphViewId) -> &RenderGraphTextureViewDef {
@@ -1278,6 +1304,7 @@ impl RenderGraph {
     fn create_view(
         &self,
         context: &mut RenderGraphContext,
+        execute_context: &mut RenderGraphExecuteContext<'_, '_>,
         resource_data: &ResourceData,
         view_type: GPUViewType,
     ) {
@@ -1291,46 +1318,83 @@ impl RenderGraph {
         if context.views[view_idx].is_none() {
             let view_def = self.get_view_def(view_id);
 
-            match view_def {
-                RenderGraphViewDef::Texture(texture_view_def) => {
-                    let texture = context.get_texture(texture_view_def.resource_id);
-                    let mut texture_view_def: TextureViewDef = texture_view_def.clone().into();
-                    texture_view_def.gpu_view_type = view_type;
-                    if view_type == GPUViewType::UnorderedAccess
-                        || view_type == GPUViewType::RenderTarget
-                        || view_type == GPUViewType::DepthStencil
-                    {
-                        assert_eq!(texture_view_def.mip_count, 1);
+            let mut persistent_state = execute_context
+                .render_resources
+                .get_mut::<RenderGraphPersistentState>();
+
+            if let Some(view) = persistent_state.get_view(view_def, view_type) {
+                context.views[view_idx] = Some(view);
+            } else {
+                match view_def {
+                    RenderGraphViewDef::Texture(texture_view_def) => {
+                        let texture = context.get_texture(texture_view_def.resource_id);
+                        let mut texture_view_def: TextureViewDef = texture_view_def.clone().into();
+                        texture_view_def.gpu_view_type = view_type;
+                        if view_type == GPUViewType::UnorderedAccess
+                            || view_type == GPUViewType::RenderTarget
+                            || view_type == GPUViewType::DepthStencil
+                        {
+                            assert_eq!(texture_view_def.mip_count, 1);
+                        }
+                        let texture_view_temp =
+                            RenderGraphView::TextureView(texture.create_view(texture_view_def));
+                        persistent_state.add_view(view_def, view_type, &texture_view_temp);
+                        context.views[view_idx] = Some(texture_view_temp);
                     }
-                    let texture_view_temp = texture.create_view(texture_view_def);
-                    context.views[view_idx] = Some(RenderGraphView::TextureView(texture_view_temp));
-                }
-                RenderGraphViewDef::Buffer(buffer_view_def) => {
-                    let buffer = context.get_buffer(buffer_view_def.resource_id);
-                    let mut buffer_view_def: BufferViewDef = buffer_view_def.clone().into();
-                    buffer_view_def.gpu_view_type = view_type;
-                    let buffer_view_temp = buffer.create_view(buffer_view_def);
-                    context.views[view_idx] = Some(RenderGraphView::BufferView(buffer_view_temp));
+                    RenderGraphViewDef::Buffer(buffer_view_def) => {
+                        let buffer = context.get_buffer(buffer_view_def.resource_id);
+                        let mut buffer_view_def: BufferViewDef = buffer_view_def.clone().into();
+                        buffer_view_def.gpu_view_type = view_type;
+                        let buffer_view_temp =
+                            RenderGraphView::BufferView(buffer.create_view(buffer_view_def));
+                        persistent_state.add_view(view_def, view_type, &buffer_view_temp);
+                        context.views[view_idx] = Some(buffer_view_temp);
+                    }
                 }
             }
         }
     }
 
-    fn create_views(&self, context: &mut RenderGraphContext, node: &RGNode) {
+    fn create_views(
+        &self,
+        context: &mut RenderGraphContext,
+        execute_context: &mut RenderGraphExecuteContext<'_, '_>,
+        node: &RGNode,
+    ) {
         for resource_data in node.render_targets.iter().flatten() {
-            self.create_view(context, resource_data, GPUViewType::RenderTarget);
+            self.create_view(
+                context,
+                execute_context,
+                resource_data,
+                GPUViewType::RenderTarget,
+            );
         }
 
         if let Some(resource_data) = &node.depth_stencil {
-            self.create_view(context, resource_data, GPUViewType::DepthStencil);
+            self.create_view(
+                context,
+                execute_context,
+                resource_data,
+                GPUViewType::DepthStencil,
+            );
         }
 
         for resource_data in &node.read_resources {
-            self.create_view(context, resource_data, GPUViewType::ShaderResource);
+            self.create_view(
+                context,
+                execute_context,
+                resource_data,
+                GPUViewType::ShaderResource,
+            );
         }
 
         for resource_data in &node.write_resources {
-            self.create_view(context, resource_data, GPUViewType::UnorderedAccess);
+            self.create_view(
+                context,
+                execute_context,
+                resource_data,
+                GPUViewType::UnorderedAccess,
+            );
         }
     }
 
@@ -1405,7 +1469,7 @@ impl RenderGraph {
                                 cmd_buffer,
                                 texture,
                                 &data,
-                                context.api_resource_state[&(resource_id, 0)],
+                                context.resource_state[&(resource_id, 0)],
                             );
                         }
                         RenderGraphViewDef::Buffer(_) => {
@@ -1442,7 +1506,7 @@ impl RenderGraph {
         self.do_resource_transitions(context, execute_context, node, cmd_buffer);
 
         // Create the views we will need for the next steps.
-        self.create_views(context, node);
+        self.create_views(context, execute_context, node);
 
         // Do begin render pass which will also clear render targets and depth stencil.
         self.do_begin_render_pass(context, node, cmd_buffer);
@@ -1479,11 +1543,11 @@ impl RenderGraph {
 
     pub fn compile(&self) -> RenderGraphContext {
         let mut context = RenderGraphContext {
-            api_resource_state: HashMap::with_capacity(self.resources.len()),
+            resource_state: HashMap::with_capacity(self.resource_defs.len()),
             created: vec![],
-            lifetimes: Vec::with_capacity(self.resources.len()),
-            resources: vec![None; self.resources.len()],
-            views: vec![None; self.views.len()],
+            lifetimes: Vec::with_capacity(self.resource_defs.len()),
+            resources: vec![None; self.resource_defs.len()],
+            views: vec![None; self.view_defs.len()],
         };
 
         // Add injected resources since they are already created (outside the graph)
@@ -1497,19 +1561,19 @@ impl RenderGraph {
                 RenderGraphResource::Texture(texture) => {
                     for mip in 0..texture.definition().mip_count {
                         let res_mip_id = (res_id, mip as u8);
-                        context.api_resource_state.insert(res_mip_id, initial_state);
+                        context.resource_state.insert(res_mip_id, initial_state);
                     }
                 }
                 RenderGraphResource::Buffer(_) => {
                     let res_mip_id = (res_id, 0);
-                    context.api_resource_state.insert(res_mip_id, initial_state);
+                    context.resource_state.insert(res_mip_id, initial_state);
                 }
             }
 
             context.resources[res_idx] = Some(resource);
         }
 
-        for (id, res) in self.resources.iter().enumerate() {
+        for (id, res) in self.resource_defs.iter().enumerate() {
             context
                 .lifetimes
                 .push(self.find_lifetime_start_and_end(id as u32, res));
@@ -1536,7 +1600,7 @@ impl RenderGraph {
 
         // We execute the root's children directly instead of executing the root, because the root never
         // does anything and it gives a useless level in the captures.
-        for child in &self.root.children {
+        for child in &self.root_nodes {
             self.execute_inner(context, &mut execute_context, child, cmd_buffer);
         }
     }
@@ -1569,13 +1633,9 @@ impl RenderGraph {
         let mut first_node: Option<&RGNode> = None;
         let mut last_node: Option<&RGNode> = None;
 
-        self.find_lifetime_start_and_end_inner(
-            id,
-            res,
-            &self.root,
-            &mut first_node,
-            &mut last_node,
-        );
+        for child in &self.root_nodes {
+            self.find_lifetime_start_and_end_inner(id, res, child, &mut first_node, &mut last_node);
+        }
 
         let _injected = self.injected_resources.iter().any(|r| r.0 == id);
 
@@ -1605,13 +1665,13 @@ impl RenderGraph {
         last_node: &mut Option<&'a RGNode>,
     ) {
         let resource_used = node.read_resources.iter().any(|resource_data| {
-            let view_def = &self.views[resource_data.key as usize];
+            let view_def = &self.view_defs[resource_data.key as usize];
             let resource_id = view_def.get_resource_id();
             resource_id == id
         });
         let resource_used = resource_used
             || node.write_resources.iter().any(|resource_data| {
-                let view_def = &self.views[resource_data.key as usize];
+                let view_def = &self.view_defs[resource_data.key as usize];
                 let resource_id = view_def.get_resource_id();
                 resource_id == id
             });
@@ -1621,7 +1681,7 @@ impl RenderGraph {
                 .iter()
                 .any(|resource_data| match resource_data {
                     Some(resource_data) => {
-                        let view_def = &self.views[resource_data.key as usize];
+                        let view_def = &self.view_defs[resource_data.key as usize];
                         let resource_id = view_def.get_resource_id();
                         resource_id == id
                     }
@@ -1630,7 +1690,7 @@ impl RenderGraph {
         let resource_used = resource_used
             || match &node.depth_stencil {
                 Some(resource_data) => {
-                    let view_def = &self.views[resource_data.key as usize];
+                    let view_def = &self.view_defs[resource_data.key as usize];
                     let resource_id = view_def.get_resource_id();
                     resource_id == id
                 }
@@ -1653,9 +1713,16 @@ impl RenderGraph {
 
 impl<'a> std::fmt::Display for RenderGraph {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let printed = self
-            .root
-            .print(0, &self.resources, &self.resource_names, &self.views);
-        write!(f, "{}", printed)
+        self.root_nodes.iter().fold(Ok(()), |result, child| {
+            result.and_then(|_| {
+                let printed = child.print(
+                    0,
+                    &self.resource_defs,
+                    &self.resource_names,
+                    &self.view_defs,
+                );
+                write!(f, "{}", printed)
+            })
+        })
     }
 }

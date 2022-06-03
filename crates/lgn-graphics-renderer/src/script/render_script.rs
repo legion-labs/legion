@@ -76,8 +76,7 @@ pub struct RenderScript<'a> {
     pub egui_pass: EguiPass,
 
     // Resources
-    pub prev_hzb: &'a Texture,
-    pub current_hzb: &'a Texture,
+    pub hzb: [&'a Texture; 2],
 }
 
 impl RenderScript<'_> {
@@ -128,31 +127,32 @@ impl RenderScript<'_> {
         // Inject external resources
 
         // TODO(jsg): need to think of a better way of doing this.
-        let prev_hzb_initial_state = if config.frame_idx == 0 {
-            ResourceState::RENDER_TARGET
-        } else {
-            ResourceState::SHADER_RESOURCE
-        };
-        let current_hzb_initial_state = if config.frame_idx == 0 {
+        let initial_state = if config.frame_idx == 0 {
             ResourceState::RENDER_TARGET
         } else {
             ResourceState::SHADER_RESOURCE
         };
 
-        let prev_hzb_id = render_graph_builder.inject_render_target(
-            "PrevFrameHZB",
-            self.prev_hzb,
-            prev_hzb_initial_state,
-        );
-        let prev_hzb_srv_id = render_graph_builder.declare_specific_mips_texture_srv(
+        let prev_hzb_idx = config.frame_idx as usize % 2;
+        let current_hzb_idx = (config.frame_idx + 1) as usize % 2;
+
+        let mut names = vec!["PrevFrameHZB", "CurrentFrameHZB"];
+        if prev_hzb_idx == 0 {
+            names = names.into_iter().rev().collect();
+        }
+
+        let hzb_ids = [
+            render_graph_builder.inject_render_target(names[0], self.hzb[0], initial_state),
+            render_graph_builder.inject_render_target(names[1], self.hzb[1], initial_state),
+        ];
+
+        let prev_hzb_id = hzb_ids[prev_hzb_idx];
+        let current_hzb_id = hzb_ids[current_hzb_idx];
+
+        let prev_hzb_srv_id = render_graph_builder.declare_texture_srv_with_mips(
             prev_hzb_id,
             0,
-            self.prev_hzb.definition().mip_count,
-        );
-        let current_hzb_id = render_graph_builder.inject_render_target(
-            "CurrentFrameHZB",
-            self.current_hzb,
-            current_hzb_initial_state,
+            self.hzb[prev_hzb_idx].definition().mip_count,
         );
 
         let view_target_id = render_graph_builder.inject_render_target(
@@ -164,77 +164,52 @@ impl RenderScript<'_> {
         //----------------------------------------------------------------
         // Declare resources and views
 
-        let depth_buffer_id = render_graph_builder.declare_single_mip_render_target(
-            "DepthBuffer",
-            w,
-            h,
-            Format::D32_SFLOAT,
-        );
-        let depth_view_id =
-            render_graph_builder.declare_single_mip_depth_texture_dsv(depth_buffer_id, false);
+        let depth_buffer_id =
+            render_graph_builder.declare_render_target("DepthBuffer", w, h, Format::D32_SFLOAT);
+        let depth_view_id = render_graph_builder.declare_depth_texture_dsv(depth_buffer_id, false);
         let depth_read_only_view_id =
-            render_graph_builder.declare_single_mip_depth_texture_dsv(depth_buffer_id, true);
+            render_graph_builder.declare_depth_texture_dsv(depth_buffer_id, true);
 
         let gbuffer_ids = [
-            render_graph_builder.declare_single_mip_render_target(
+            render_graph_builder.declare_render_target(
                 "GBuffer0",
                 w,
                 h,
                 Format::R16G16B16A16_SFLOAT,
             ),
-            render_graph_builder.declare_single_mip_render_target(
-                "GBuffer1",
-                w,
-                h,
-                Format::R16G16_SNORM,
-            ),
-            render_graph_builder.declare_single_mip_render_target(
-                "GBuffer2",
-                w,
-                h,
-                Format::R8G8B8A8_UNORM,
-            ),
-            render_graph_builder.declare_single_mip_render_target(
-                "GBuffer3",
-                w,
-                h,
-                Format::R8G8B8A8_UNORM,
-            ),
+            render_graph_builder.declare_render_target("GBuffer1", w, h, Format::R16G16_SNORM),
+            render_graph_builder.declare_render_target("GBuffer2", w, h, Format::R8G8B8A8_UNORM),
+            render_graph_builder.declare_render_target("GBuffer3", w, h, Format::R8G8B8A8_UNORM),
         ];
         let gbuffer_read_view_ids = [
-            render_graph_builder.declare_single_mip_texture_srv(gbuffer_ids[0]),
-            render_graph_builder.declare_single_mip_texture_srv(gbuffer_ids[1]),
-            render_graph_builder.declare_single_mip_texture_srv(gbuffer_ids[2]),
-            render_graph_builder.declare_single_mip_texture_srv(gbuffer_ids[3]),
+            render_graph_builder.declare_texture_srv(gbuffer_ids[0]),
+            render_graph_builder.declare_texture_srv(gbuffer_ids[1]),
+            render_graph_builder.declare_texture_srv(gbuffer_ids[2]),
+            render_graph_builder.declare_texture_srv(gbuffer_ids[3]),
         ];
         let gbuffer_write_view_ids = [
-            render_graph_builder.declare_single_mip_texture_rtv(gbuffer_ids[0]),
-            render_graph_builder.declare_single_mip_texture_rtv(gbuffer_ids[1]),
-            render_graph_builder.declare_single_mip_texture_rtv(gbuffer_ids[2]),
-            render_graph_builder.declare_single_mip_texture_rtv(gbuffer_ids[3]),
+            render_graph_builder.declare_texture_rtv(gbuffer_ids[0]),
+            render_graph_builder.declare_texture_rtv(gbuffer_ids[1]),
+            render_graph_builder.declare_texture_rtv(gbuffer_ids[2]),
+            render_graph_builder.declare_texture_rtv(gbuffer_ids[3]),
         ];
 
-        let radiance_buffer_id = render_graph_builder.declare_single_mip_render_target(
+        let radiance_buffer_id = render_graph_builder.declare_render_target(
             "RadianceBuffer",
             w,
             h,
             Format::R16G16B16A16_SFLOAT,
         );
         let radiance_write_uav_view_id =
-            render_graph_builder.declare_single_mip_texture_uav(radiance_buffer_id);
+            render_graph_builder.declare_texture_uav(radiance_buffer_id);
         let radiance_write_rt_view_id =
-            render_graph_builder.declare_single_mip_texture_rtv(radiance_buffer_id);
-        let radiance_read_view_id =
-            render_graph_builder.declare_single_mip_texture_srv(radiance_buffer_id);
+            render_graph_builder.declare_texture_rtv(radiance_buffer_id);
+        let radiance_read_view_id = render_graph_builder.declare_texture_srv(radiance_buffer_id);
 
-        let ao_buffer_id = render_graph_builder.declare_single_mip_render_target(
-            "AOBuffer",
-            w,
-            h,
-            Format::R8_UNORM,
-        );
-        let ao_write_view_id = render_graph_builder.declare_single_mip_texture_uav(ao_buffer_id);
-        let ao_read_view_id = render_graph_builder.declare_single_mip_texture_srv(ao_buffer_id);
+        let ao_buffer_id =
+            render_graph_builder.declare_render_target("AOBuffer", w, h, Format::R8_UNORM);
+        let ao_write_view_id = render_graph_builder.declare_texture_uav(ao_buffer_id);
+        let ao_read_view_id = render_graph_builder.declare_texture_srv(ao_buffer_id);
 
         //----------------------------------------------------------------
         // Build graph
@@ -273,13 +248,13 @@ impl RenderScript<'_> {
             }
         }
 
-        let draw_count_buffer_id = render_graph_builder.declare_buffer_sized(
+        let draw_count_buffer_id = render_graph_builder.declare_buffer(
             "DrawCountBuffer",
             std::mem::size_of::<u32>() as u64,
             count_buffer_size.max(1),
         );
 
-        let draw_args_buffer_id = render_graph_builder.declare_buffer_sized(
+        let draw_args_buffer_id = render_graph_builder.declare_buffer(
             "DrawArgsBuffer",
             5 * std::mem::size_of::<u32>() as u64,
             indirect_arg_buffer_size.max(1),
@@ -292,9 +267,9 @@ impl RenderScript<'_> {
             draw_count_buffer_id,
             draw_args_buffer_id,
             depth_count_buffer_size,
-            self.prev_hzb.definition(),
+            self.hzb[prev_hzb_idx].definition(),
             prev_hzb_srv_id,
-            self.current_hzb.definition(),
+            self.hzb[current_hzb_idx].definition(),
             current_hzb_id,
         );
         render_graph_builder = self.picking_pass.build_render_graph(
@@ -349,15 +324,14 @@ impl RenderScript<'_> {
         }
 
         let ui_buffer_and_view_ids = if config.display_ui() {
-            let ui_buffer_id = render_graph_builder.declare_single_mip_render_target(
+            let ui_buffer_id = render_graph_builder.declare_render_target(
                 "UIBuffer",
                 w,
                 h,
                 Format::R8G8B8A8_UNORM,
             );
-            let ui_write_view_id =
-                render_graph_builder.declare_single_mip_texture_rtv(ui_buffer_id);
-            let ui_read_view_id = render_graph_builder.declare_single_mip_texture_srv(ui_buffer_id);
+            let ui_write_view_id = render_graph_builder.declare_texture_rtv(ui_buffer_id);
+            let ui_read_view_id = render_graph_builder.declare_texture_srv(ui_buffer_id);
             render_graph_builder = self
                 .ui_pass
                 .build_render_graph(render_graph_builder, ui_write_view_id);
@@ -366,8 +340,7 @@ impl RenderScript<'_> {
             None
         };
 
-        let view_target_view_id =
-            render_graph_builder.declare_single_mip_texture_rtv(view_target_id);
+        let view_target_view_id = render_graph_builder.declare_texture_rtv(view_target_id);
 
         render_graph_builder = self.combine_pass(
             render_graph_builder,

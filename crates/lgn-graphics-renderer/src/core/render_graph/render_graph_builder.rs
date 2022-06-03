@@ -139,8 +139,7 @@ impl<'a> RenderGraphBuilder<'a> {
         }
     }
 
-    // Intentionally non-public, use utility methods which call this one.
-    fn declare_render_target(
+    pub fn declare_render_target_with_def(
         &mut self,
         name: &str,
         resource: &RenderGraphResourceDef,
@@ -158,14 +157,14 @@ impl<'a> RenderGraphBuilder<'a> {
         id
     }
 
-    pub fn declare_single_mip_render_target(
+    pub fn declare_render_target(
         &mut self,
         name: &str,
         width: u32,
         height: u32,
         format: Format,
     ) -> RenderGraphResourceId {
-        self.declare_render_target(
+        self.declare_render_target_with_def(
             name,
             &RenderGraphResourceDef::new_texture(width, height, 1, 1, 1, format),
         )
@@ -179,7 +178,8 @@ impl<'a> RenderGraphBuilder<'a> {
     ) -> RenderGraphResourceId {
         let texture_def = *texture.definition();
         let texture_def = texture_def.into();
-        let id = self.declare_render_target(name, &RenderGraphResourceDef::Texture(texture_def));
+        let id = self
+            .declare_render_target_with_def(name, &RenderGraphResourceDef::Texture(texture_def));
         self.injected_resources.push((
             id,
             (RenderGraphResource::Texture(texture.clone()), initial_state),
@@ -187,8 +187,7 @@ impl<'a> RenderGraphBuilder<'a> {
         id
     }
 
-    // Intentionally non-public, use utility methods which call this one.
-    fn declare_buffer(
+    pub fn declare_buffer_with_def(
         &mut self,
         name: &str,
         resource: &RenderGraphResourceDef,
@@ -206,20 +205,19 @@ impl<'a> RenderGraphBuilder<'a> {
         id
     }
 
-    pub fn declare_buffer_sized(
+    pub fn declare_buffer(
         &mut self,
         name: &str,
         element_size: u64,
         element_count: u64,
     ) -> RenderGraphResourceId {
-        self.declare_buffer(
+        self.declare_buffer_with_def(
             name,
             &RenderGraphResourceDef::new_buffer(element_size, element_count),
         )
     }
 
-    // Intentionally non-public, use utility methods which call this one.
-    fn declare_view(&mut self, view: &RenderGraphViewDef) -> RenderGraphViewId {
+    pub fn declare_view_with_def(&mut self, view: &RenderGraphViewDef) -> RenderGraphViewId {
         if let Some(index) = self.views.iter().position(|v| v == view) {
             index as RenderGraphViewId
         } else {
@@ -230,11 +228,8 @@ impl<'a> RenderGraphBuilder<'a> {
         }
     }
 
-    pub fn declare_single_mip_texture_srv(
-        &mut self,
-        resource_id: RenderGraphResourceId,
-    ) -> RenderGraphViewId {
-        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+    pub fn declare_texture_srv(&mut self, resource_id: RenderGraphResourceId) -> RenderGraphViewId {
+        self.declare_view_with_def(&RenderGraphViewDef::new_texture_view_with_mips(
             resource_id,
             0,
             1,
@@ -243,11 +238,8 @@ impl<'a> RenderGraphBuilder<'a> {
         ))
     }
 
-    pub fn declare_single_mip_texture_rtv(
-        &mut self,
-        resource_id: RenderGraphResourceId,
-    ) -> RenderGraphViewId {
-        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+    pub fn declare_texture_rtv(&mut self, resource_id: RenderGraphResourceId) -> RenderGraphViewId {
+        self.declare_view_with_def(&RenderGraphViewDef::new_texture_view_with_mips(
             resource_id,
             0,
             1,
@@ -256,11 +248,8 @@ impl<'a> RenderGraphBuilder<'a> {
         ))
     }
 
-    pub fn declare_single_mip_texture_uav(
-        &mut self,
-        resource_id: RenderGraphResourceId,
-    ) -> RenderGraphViewId {
-        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+    pub fn declare_texture_uav(&mut self, resource_id: RenderGraphResourceId) -> RenderGraphViewId {
+        self.declare_view_with_def(&RenderGraphViewDef::new_texture_view_with_mips(
             resource_id,
             0,
             1,
@@ -269,13 +258,13 @@ impl<'a> RenderGraphBuilder<'a> {
         ))
     }
 
-    pub fn declare_specific_mips_texture_rtv(
+    pub fn declare_texture_rtv_with_mips(
         &mut self,
         resource_id: RenderGraphResourceId,
         first_mip: u32,
         mip_count: u32,
     ) -> RenderGraphViewId {
-        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+        self.declare_view_with_def(&RenderGraphViewDef::new_texture_view_with_mips(
             resource_id,
             first_mip,
             mip_count,
@@ -284,13 +273,13 @@ impl<'a> RenderGraphBuilder<'a> {
         ))
     }
 
-    pub fn declare_specific_mips_texture_srv(
+    pub fn declare_texture_srv_with_mips(
         &mut self,
         resource_id: RenderGraphResourceId,
         first_mip: u32,
         mip_count: u32,
     ) -> RenderGraphViewId {
-        self.declare_view(&RenderGraphViewDef::new_specific_mips_texture_view(
+        self.declare_view_with_def(&RenderGraphViewDef::new_texture_view_with_mips(
             resource_id,
             first_mip,
             mip_count,
@@ -299,12 +288,12 @@ impl<'a> RenderGraphBuilder<'a> {
         ))
     }
 
-    pub fn declare_single_mip_depth_texture_dsv(
+    pub fn declare_depth_texture_dsv(
         &mut self,
         resource_id: RenderGraphResourceId,
         read_only: bool,
     ) -> RenderGraphViewId {
-        self.declare_view(&RenderGraphViewDef::new_single_mip_depth_texture_view(
+        self.declare_view_with_def(&RenderGraphViewDef::new_depth_texture_view(
             resource_id,
             0,
             GPUViewType::DepthStencil,
@@ -312,11 +301,11 @@ impl<'a> RenderGraphBuilder<'a> {
         ))
     }
 
-    pub fn declare_single_mip_depth_texture_srv(
+    pub fn declare_depth_texture_srv(
         &mut self,
         resource_id: RenderGraphResourceId,
     ) -> RenderGraphViewId {
-        self.declare_view(&RenderGraphViewDef::new_single_mip_depth_texture_view(
+        self.declare_view_with_def(&RenderGraphViewDef::new_depth_texture_view(
             resource_id,
             0,
             GPUViewType::ShaderResource,
@@ -326,7 +315,7 @@ impl<'a> RenderGraphBuilder<'a> {
 
     pub fn declare_buffer_srv(&mut self, resource_id: RenderGraphResourceId) -> RenderGraphViewId {
         let resource_def = self.resources[resource_id as usize].clone();
-        self.declare_view(&RenderGraphViewDef::new_srv_buffer_view(
+        self.declare_view_with_def(&RenderGraphViewDef::new_srv_buffer_view(
             resource_id,
             &resource_def,
         ))
@@ -334,7 +323,7 @@ impl<'a> RenderGraphBuilder<'a> {
 
     pub fn declare_buffer_uav(&mut self, resource_id: RenderGraphResourceId) -> RenderGraphViewId {
         let resource_def = self.resources[resource_id as usize].clone();
-        self.declare_view(&RenderGraphViewDef::new_uav_buffer_view(
+        self.declare_view_with_def(&RenderGraphViewDef::new_uav_buffer_view(
             resource_id,
             &resource_def,
         ))
@@ -345,7 +334,7 @@ impl<'a> RenderGraphBuilder<'a> {
         resource_id: RenderGraphResourceId,
     ) -> RenderGraphViewId {
         let resource_def = self.resources[resource_id as usize].clone();
-        self.declare_view(&RenderGraphViewDef::new_indirect_buffer_view(
+        self.declare_view_with_def(&RenderGraphViewDef::new_indirect_buffer_view(
             resource_id,
             &resource_def,
         ))
@@ -356,7 +345,7 @@ impl<'a> RenderGraphBuilder<'a> {
         resource_id: RenderGraphResourceId,
     ) -> RenderGraphViewId {
         let resource_def = self.resources[resource_id as usize].clone();
-        self.declare_view(&RenderGraphViewDef::new_copy_dst_buffer_view(
+        self.declare_view_with_def(&RenderGraphViewDef::new_copy_dst_buffer_view(
             resource_id,
             &resource_def,
         ))
@@ -434,18 +423,12 @@ impl<'a> RenderGraphBuilder<'a> {
             self.top_level_nodes.push(current_parent);
         }
 
-        let root = RGNode {
-            name: "root".to_string(),
-            children: self.top_level_nodes,
-            ..RGNode::default()
-        };
-
         RenderGraph {
-            root,
-            resources: self.resources,
+            root_nodes: self.top_level_nodes,
+            resource_defs: self.resources,
             resource_names: self.resource_names,
             injected_resources: self.injected_resources,
-            views: self.views,
+            view_defs: self.views,
         }
     }
 }

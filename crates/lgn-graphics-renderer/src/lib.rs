@@ -858,9 +858,6 @@ fn render_update(
                         let ui_pass = UiPass;
                         let egui_pass = EguiPass;
 
-                        let prev_hzb_idx = render_graph_frame_idx as usize % 2;
-                        let current_hzb_idx = (render_graph_frame_idx + 1) as usize % 2;
-
                         let mut render_script = RenderScript {
                             gpu_culling_pass,
                             picking_pass,
@@ -872,8 +869,7 @@ fn render_update(
                             lighting_pass,
                             ui_pass,
                             egui_pass,
-                            prev_hzb: render_surface.hzb()[prev_hzb_idx],
-                            current_hzb: render_surface.hzb()[current_hzb_idx],
+                            hzb: [render_surface.hzb()[0], render_surface.hzb()[1]],
                         };
 
                         let config = Config {
