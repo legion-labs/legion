@@ -44,10 +44,10 @@ pub enum InvalidIdentifier {
 ///
 /// # Comparison
 ///
-/// While identifiers are comparable, a given content could be respresented by
+/// While identifiers are comparable, a given content could be represented by
 /// many different identifiers.
 ///
-/// This means that two identical identifiers necesarily point to the same data,
+/// This means that two identical identifiers necessarily point to the same data,
 /// but two distinct identifiers could still point to the same data.
 ///
 /// Put otherwise, one can only compare identifiers to test for strict equality
