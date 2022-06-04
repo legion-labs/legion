@@ -28,14 +28,18 @@ mod tests {
     use crate::databuild::CompileOutput;
     use crate::DataBuildOptions;
 
-    pub(crate) fn setup_dir(
+    pub(crate) async fn setup_dir(
         work_dir: &TempDir,
     ) -> (PathBuf, PathBuf, Arc<Provider>, Arc<Provider>) {
         let project_dir = work_dir.path();
         let output_dir = project_dir.join("temp");
         std::fs::create_dir_all(&output_dir).unwrap();
 
-        let source_control_content_provider = Arc::new(Provider::new_in_memory());
+        let source_control_content_provider = Arc::new(
+            lgn_content_store::Config::load_and_instantiate_persistent_provider()
+                .await
+                .unwrap(),
+        );
         let data_content_provider = Arc::new(Provider::new_in_memory());
 
         (
@@ -126,7 +130,7 @@ mod tests {
     async fn compile_change_no_deps() {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
-            setup_dir(&work_dir);
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let mut project = Project::new_with_remote_mock(
@@ -150,6 +154,10 @@ mod tests {
                 )
                 .await
                 .unwrap();
+            project
+                .commit("compile_change_no_deps, add resource")
+                .await
+                .expect("failed to commit");
 
             (resource_id, resource_handle)
         };
@@ -205,6 +213,10 @@ mod tests {
                 .save_resource(resource_id, &resource_handle, &resources)
                 .await
                 .unwrap();
+            project
+                .commit("compile_change_no_deps, save resource")
+                .await
+                .expect("failed to commit");
         }
 
         // ..re-compile changed resource..
@@ -312,7 +324,7 @@ mod tests {
     async fn intermediate_resource() {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
-            setup_dir(&work_dir);
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let source_magic_value = String::from("47");
@@ -434,7 +446,7 @@ mod tests {
     async fn unnamed_cache_use() {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
-            setup_dir(&work_dir);
+            setup_dir(&work_dir).await;
 
         let (mut project, resource_list) =
             setup_project(&project_dir, Arc::clone(&source_control_content_provider)).await;
@@ -540,7 +552,7 @@ mod tests {
     async fn named_path_cache_use() {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
-            setup_dir(&work_dir);
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let magic_list = vec![String::from("47"), String::from("198")];
@@ -799,7 +811,7 @@ mod tests {
     async fn link() {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
-            setup_dir(&work_dir);
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let mut project = Project::new_with_remote_mock(
@@ -908,7 +920,7 @@ mod tests {
     async fn verify_manifest() {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
-            setup_dir(&work_dir);
+            setup_dir(&work_dir).await;
         let resources = setup_registry().await;
 
         let mut project = Project::new_with_remote_mock(
