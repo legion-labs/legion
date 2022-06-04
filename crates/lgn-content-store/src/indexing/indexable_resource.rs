@@ -33,8 +33,19 @@ impl ResourceIdentifier {
     }
 }
 
-/// A trait for resources that can be indexed.
 #[async_trait]
+pub trait ResourceExists {
+    async fn resource_exists(&self, id: &ResourceIdentifier) -> Result<bool>;
+}
+
+#[async_trait]
+impl ResourceExists for Provider {
+    async fn resource_exists(&self, id: &ResourceIdentifier) -> Result<bool> {
+        self.exists(id.as_identifier()).await.map_err(Into::into)
+    }
+}
+
+/// A trait for resources that can be indexed.
 pub trait IndexableResource {}
 
 #[async_trait]
@@ -43,6 +54,8 @@ pub trait ResourceReader {
         &self,
         id: &ResourceIdentifier,
     ) -> Result<R>;
+
+    async fn read_resource_as_bytes(&self, id: &ResourceIdentifier) -> Result<Vec<u8>>;
 }
 
 #[async_trait]
@@ -51,9 +64,13 @@ impl ResourceReader for Provider {
         &self,
         id: &ResourceIdentifier,
     ) -> Result<R> {
-        let buf = self.read(&id.0).await?;
+        let buf = self.read_resource_as_bytes(id).await?;
 
         Ok(rmp_serde::from_slice(&buf)?)
+    }
+
+    async fn read_resource_as_bytes(&self, id: &ResourceIdentifier) -> Result<Vec<u8>> {
+        self.read(&id.0).await.map_err(Into::into)
     }
 }
 
@@ -63,6 +80,10 @@ pub trait ResourceWriter {
         &self,
         resource: &R,
     ) -> Result<ResourceIdentifier>;
+
+    async fn write_resource_from_bytes(&self, data: &[u8]) -> Result<ResourceIdentifier>;
+
+    async fn unwrite_resource(&self, id: &ResourceIdentifier) -> Result<()>;
 }
 
 #[async_trait]
@@ -73,9 +94,17 @@ impl ResourceWriter for Provider {
     ) -> Result<ResourceIdentifier> {
         let buf = rmp_serde::to_vec(resource).unwrap();
 
-        self.write(&buf)
+        self.write_resource_from_bytes(&buf).await
+    }
+
+    async fn write_resource_from_bytes(&self, data: &[u8]) -> Result<ResourceIdentifier> {
+        self.write(data)
             .await
             .map(ResourceIdentifier)
             .map_err(Into::into)
+    }
+
+    async fn unwrite_resource(&self, id: &ResourceIdentifier) -> Result<()> {
+        self.unwrite(id.as_identifier()).await.map_err(Into::into)
     }
 }
