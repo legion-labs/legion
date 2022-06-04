@@ -78,7 +78,7 @@ pub trait ResourceProcessor {
 
     /// Interface returning a list of resources that `resource` depends on for
     /// building.
-    fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId>;
+    fn extract_build_dependencies(&self, resource: &dyn Resource) -> Vec<ResourcePathId>;
 
     /// Return the name of the Resource type that the processor can process.
     fn get_resource_type_name(&self) -> Option<&'static str> {

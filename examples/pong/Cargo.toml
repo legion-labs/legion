@@ -11,7 +11,6 @@ lgn-compiler-runtime-entity = { path = "../../crates/lgn-runtime-entity-compiler
 lgn-compiler-runtime-model = { path = "../../crates/lgn-runtime-model-compiler", version = "0.1.0" }
 lgn-compiler-scripting = { path = "../../crates/lgn-scripting-compiler", version = "0.1.0" }
 lgn-content-store = { path = "../../crates/lgn-content-store", version = "0.1.0" }
-lgn-source-control = { path = "../../crates/lgn-source-control", version = "0.1.0" }
 lgn-data-build = { path = "../../crates/lgn-data-build", version = "0.1.0" }
 lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
 lgn-data-compiler-remote = { path = "../../crates/lgn-data-compiler-remote", version = "0.1.0" }
@@ -23,12 +22,13 @@ lgn-graphics-data = { path = "../../crates/lgn-graphics-data", version = "0.1.0"
     "offline",
     "runtime",
 ] }
-lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
 lgn-graphics-renderer = { path = "../../crates/lgn-graphics-renderer", version = "0.1.0" }
+lgn-math = { path = "../../crates/lgn-math", version = "0.1.0" }
 lgn-scripting-data = { path = "../../crates/lgn-scripting-data", version = "0.1.0", features = [
     "offline",
     "runtime",
 ] }
+lgn-source-control = { path = "../../crates/lgn-source-control", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 

@@ -38,7 +38,7 @@ impl ResourceProcessor for MultiTextResourceProc {
         Box::new(MultiTextResource { text_list: vec![] })
     }
 
-    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
         vec![]
     }
 
