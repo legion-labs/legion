@@ -204,7 +204,7 @@ fn presenter_snapshot_system(
                 snapshot_descriptor.height as u32,
             ),
         );
-        let render_surface_id = render_surface.id();
+
         let device_context = renderer.device_context();
 
         render_surface.register_presenter(|| {
@@ -213,7 +213,6 @@ fn presenter_snapshot_system(
                 frame_counter.frame_target,
                 device_context,
                 &pipeline_manager,
-                render_surface_id,
                 RenderSurfaceExtents::new(
                     snapshot_descriptor.width as u32,
                     snapshot_descriptor.height as u32,

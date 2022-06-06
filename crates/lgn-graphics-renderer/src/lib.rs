@@ -816,8 +816,8 @@ fn render_update(
                         {
                             render_context.graphics_queue.queue_mut().submit(
                                 &[cmd_buffer],
-                                &[present_semaphore],
                                 &[],
+                                &[present_semaphore],
                                 None,
                             );
 
@@ -917,8 +917,8 @@ fn render_update(
                         {
                             render_context.graphics_queue.queue_mut().submit(
                                 &[cmd_buffer],
-                                &[present_semaphore],
                                 &[],
+                                &[present_semaphore],
                                 None,
                             );
 

@@ -246,6 +246,11 @@ impl OffscreenHelper {
         let sub_resource = copy_texture.map_texture(PlaneSlice::Default)?;
         copy_fn(sub_resource.data, sub_resource.row_pitch as usize);
         copy_texture.unmap_texture();
+
+        render_context
+            .transient_commandbuffer_allocator
+            .release(cmd_buffer_handle);
+
         Ok(())
     }
 }
