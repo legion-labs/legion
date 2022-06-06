@@ -33,6 +33,9 @@ impl DebugPass {
                     let mesh_manager = execute_context.render_resources.get::<MeshManager>();
                     let model_manager = execute_context.render_resources.get::<ModelManager>();
 
+                    cmd_buffer
+                        .cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
+
                     debug_renderpass.render_ground_plane(render_context, cmd_buffer, &mesh_manager);
 
                     debug_renderpass.render_picked(
