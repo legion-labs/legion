@@ -4,34 +4,19 @@ use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::telemetry::BlockMetadata;
 use lgn_telemetry_proto::telemetry::Stream;
 use lgn_tracing::prelude::*;
-use parquet::file::properties::WriterProperties;
-use parquet::file::writer::FileWriter;
-use parquet::file::writer::SerializedFileWriter;
-use parquet::schema::parser::parse_message_type;
 use std::collections::HashMap;
-use std::io::Cursor;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
-use std::sync::Arc;
 
 use crate::call_tree::CallTreeBuilder;
 use crate::thread_block_processor::parse_thread_block_payload;
 
 use super::column::Column;
-use super::parquet_buffer::InMemStream;
+use super::column::TableColumn;
+use super::parquet_buffer::ParquetBufferWriter;
 
-pub struct SpanTablePartitionLocalWriter {
-    buffer: Arc<Cursor<Vec<u8>>>,
-    file_writer: SerializedFileWriter<InMemStream>,
-    file_path: PathBuf,
-}
-
-impl SpanTablePartitionLocalWriter {
-    #[span_fn]
-    pub fn create(file_path: PathBuf) -> Result<Self> {
-        let message_type = "
-  message schema {
+pub fn write_spans_parquet(rows: &SpanRowGroup, parquet_full_path: &Path) -> Result<()> {
+    let schema = "message schema {
     REQUIRED INT32 hash;
     REQUIRED INT32 depth;
     REQUIRED DOUBLE begin_ms;
@@ -40,68 +25,17 @@ impl SpanTablePartitionLocalWriter {
     REQUIRED INT64 parent;
   }
 ";
-        let schema =
-            Arc::new(parse_message_type(message_type).with_context(|| "parsing spans schema")?);
-        let props = Arc::new(WriterProperties::builder().build());
-        let buffer = Arc::new(Cursor::new(Vec::new()));
-        let file_writer =
-            SerializedFileWriter::new(InMemStream::new(buffer.clone()), schema, props)
-                .with_context(|| "creating parquet writer")?;
-        Ok(Self {
-            buffer,
-            file_writer,
-            file_path,
-        })
-    }
-
-    #[span_fn]
-    pub fn close(mut self) -> Result<()> {
-        self.file_writer.close()?;
-        let mut file = std::fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&self.file_path)
-            .with_context(|| format!("creating file {}", self.file_path.display()))?;
-        file.write_all(self.buffer.get_ref())?;
-
-        Ok(())
-    }
-
-    #[span_fn]
-    pub fn append(&mut self, spans: &SpanRowGroup) -> Result<()> {
-        let mut row_group_writer = self
-            .file_writer
-            .next_row_group()
-            .with_context(|| "creating row group writer")?;
-        spans
-            .hashes
-            .write_batch(&mut *row_group_writer)
-            .with_context(|| "writing hash column")?;
-        spans
-            .depths
-            .write_batch(&mut *row_group_writer)
-            .with_context(|| "writing depth column")?;
-        spans
-            .begins
-            .write_batch(&mut *row_group_writer)
-            .with_context(|| "writing begins column")?;
-        spans
-            .ends
-            .write_batch(&mut *row_group_writer)
-            .with_context(|| "writing begins column")?;
-        spans
-            .ids
-            .write_batch(&mut *row_group_writer)
-            .with_context(|| "writing ids column")?;
-        spans
-            .parents
-            .write_batch(&mut *row_group_writer)
-            .with_context(|| "writing parents column")?;
-        self.file_writer
-            .close_row_group(row_group_writer)
-            .with_context(|| "closing row group")?;
-        Ok(())
-    }
+    let mut writer = ParquetBufferWriter::create(schema)?;
+    writer.write_row_group(&rows.get_columns())?;
+    let buffer = writer.close()?;
+    //todo: factor out
+    let mut file = std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(parquet_full_path)
+        .with_context(|| format!("creating file {}", parquet_full_path.display()))?;
+    file.write_all(buffer.as_ref().get_ref())?;
+    Ok(())
 }
 
 #[derive(Debug)]
@@ -135,6 +69,17 @@ impl SpanRowGroup {
         self.ids.append(row.id as i64);
         self.parents.append(row.parent as i64);
     }
+
+    pub fn get_columns(&self) -> Vec<&dyn TableColumn> {
+        vec![
+            &self.hashes,
+            &self.depths,
+            &self.begins,
+            &self.ends,
+            &self.ids,
+            &self.parents,
+        ]
+    }
 }
 
 #[derive(Debug)]
@@ -157,8 +102,8 @@ fn make_rows_from_tree_impl<RowFun>(
     RowFun: FnMut(SpanRow),
 {
     assert!(tree.hash != 0);
-    *next_id += 1;
     let span_id = *next_id;
+    *next_id += 1;
     let span = SpanRow {
         hash: tree.hash,
         depth,
@@ -208,9 +153,8 @@ pub async fn write_local_partition(
     if let Some(root) = processed_block.call_tree_root {
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, next_id, &mut rows);
-        let mut writer = SpanTablePartitionLocalWriter::create(parquet_full_path.to_path_buf())?;
-        writer.append(&rows)?;
-        writer.close()?;
+        write_spans_parquet(&rows, parquet_full_path)?;
+
         let attr = tokio::fs::metadata(&parquet_full_path).await?; //that's not cool, we should already know how big the file is
         Ok(Some(deltalake::action::Action::add(
             deltalake::action::Add {

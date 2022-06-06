@@ -1,13 +1,10 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{path::PathBuf, sync::Arc};
 
 use crate::{
     call_tree::{compute_block_spans, process_thread_block},
     lakehouse::{
         jit_lakehouse::JitLakehouse,
-        span_table_partition::{make_rows_from_tree, SpanRowGroup, SpanTablePartitionLocalWriter},
+        span_table_partition::{make_rows_from_tree, SpanRowGroup},
     },
 };
 use crate::{lakehouse::span_table::update_spans_delta_table, scope::ScopeHashMap};
@@ -18,6 +15,8 @@ use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::{BlockSpansReply, CallTree, SpanBlockLod};
 use lgn_tracing::prelude::*;
 use tokio::fs;
+
+use super::{scope_table::write_scopes_parquet, span_table_partition::write_spans_parquet};
 
 pub struct LocalJitLakehouse {
     pool: sqlx::any::AnyPool,
@@ -44,15 +43,20 @@ impl LocalJitLakehouse {
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
         spans_file_path: PathBuf,
-        _scopes_file_path: &Path,
+        scopes_file_path: PathBuf,
     ) -> Result<BlockSpansReply> {
         if let Some(parent) = spans_file_path.parent() {
             tokio::fs::create_dir_all(&parent)
                 .await
                 .with_context(|| format!("creating directory {}", parent.display()))?;
         }
+        if let Some(parent) = scopes_file_path.parent() {
+            tokio::fs::create_dir_all(&parent)
+                .await
+                .with_context(|| format!("creating directory {}", parent.display()))?;
+        }
 
-        let convert_ticks = ConvertTicks::new(&process);
+        let convert_ticks = ConvertTicks::new(process);
         let processed = process_thread_block(
             self.pool.clone(),
             self.blob_storage.clone(),
@@ -79,16 +83,16 @@ impl LocalJitLakehouse {
         let mut next_id = 1;
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, &mut next_id, &mut rows);
-        let mut writer = SpanTablePartitionLocalWriter::create(spans_file_path)?;
-        writer.append(&rows)?;
-        writer.close()?;
+        write_spans_parquet(&rows, &spans_file_path)?;
+
+        write_scopes_parquet(&processed.scopes, &scopes_file_path)?;
 
         //todo: do not iterate twice
         let tree = CallTree {
-            scopes: processed.scopes.clone(),
+            scopes: processed.scopes,
             root: Some(root),
         };
-        Ok(compute_block_spans(tree, &block_id))
+        Ok(compute_block_spans(tree, block_id))
     }
 }
 
@@ -139,16 +143,9 @@ impl JitLakehouse for LocalJitLakehouse {
             .join("scopes.parquet");
 
         if !spans_file_path.exists() || !scopes_file_path.exists() {
-            let res = self
-                .write_thread_block(
-                    process,
-                    stream,
-                    block_id,
-                    spans_file_path,
-                    &scopes_file_path,
-                )
-                .await?;
-            dbg!(res);
+            return self
+                .write_thread_block(process, stream, block_id, spans_file_path, scopes_file_path)
+                .await;
         }
 
         anyhow::bail!("not impl")

@@ -1,5 +1,14 @@
+use anyhow::{Context, Result};
+use lgn_tracing::prelude::*;
+use parquet::file::properties::WriterProperties;
+use parquet::file::writer::FileWriter;
+use parquet::file::writer::SerializedFileWriter;
 use parquet::file::writer::TryClone;
-use std::{io::Cursor, sync::Arc};
+use parquet::schema::parser::parse_message_type;
+use std::io::Cursor;
+use std::sync::Arc;
+
+use super::column::TableColumn;
 
 #[derive(Clone)]
 pub struct InMemStream {
@@ -42,5 +51,51 @@ impl std::io::Seek for InMemStream {
 impl TryClone for InMemStream {
     fn try_clone(&self) -> Result<Self, std::io::Error> {
         Ok(self.clone())
+    }
+}
+
+//
+// ParquetBufferWriter
+//
+pub struct ParquetBufferWriter {
+    buffer: Arc<Cursor<Vec<u8>>>,
+    file_writer: SerializedFileWriter<InMemStream>,
+}
+
+impl ParquetBufferWriter {
+    #[span_fn]
+    pub fn create(message_type: &str) -> Result<Self> {
+        let schema =
+            Arc::new(parse_message_type(message_type).with_context(|| "parsing parquet schema")?);
+        let props = Arc::new(WriterProperties::builder().build());
+        let buffer = Arc::new(Cursor::new(Vec::new()));
+        let file_writer =
+            SerializedFileWriter::new(InMemStream::new(buffer.clone()), schema, props)
+                .with_context(|| "creating parquet writer")?;
+        Ok(Self {
+            buffer,
+            file_writer,
+        })
+    }
+
+    #[span_fn]
+    pub fn close(mut self) -> Result<Arc<Cursor<Vec<u8>>>> {
+        self.file_writer.close()?;
+        Ok(self.buffer)
+    }
+    #[span_fn]
+    pub fn write_row_group(&mut self, columns: &[&dyn TableColumn]) -> Result<()> {
+        let mut row_group_writer = self
+            .file_writer
+            .next_row_group()
+            .with_context(|| "creating row group writer")?;
+        for c in columns {
+            c.write_batch(&mut *row_group_writer)
+                .with_context(|| "writing column")?;
+        }
+        self.file_writer
+            .close_row_group(row_group_writer)
+            .with_context(|| "closing row group")?;
+        Ok(())
     }
 }
