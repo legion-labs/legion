@@ -729,9 +729,10 @@ fn render_update(
                         );
                     }
 
-                    let test_render_graph = false;
+                    //let test_render_graph = false;
                     let frame_idx = render_scope.frame_idx();
-                    if !test_render_graph || frame_idx % 2 == 0 {
+                    if false {
+                        // !test_render_graph || frame_idx % 2 == 0 {
                         render_surface.set_use_view_target(false);
 
                         //****************************************************************
