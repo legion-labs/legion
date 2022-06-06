@@ -7,13 +7,6 @@ parameters:
     required: true
     schema:
       $ref: "#/schemas/SpaceId"
-  permission_id:
-    name: permission-id
-    in: path
-    description: The permission identifier.
-    required: true
-    schema:
-      $ref: "#/schemas/PermissionId"
   workspace_id:
     name: workspace-id
     in: path
@@ -22,15 +15,51 @@ parameters:
     schema:
       $ref: "#/schemas/WorkspaceId"
 schemas:
-  SpaceId:
-    description: An identifier to a unique data space.
-    type: string
   PermissionId:
-    description: An identifier to a unique permission.
+    description: An identifier to an unique permission.
+    type: string
+  RoleId:
+    description: An identifier to an unique role.
+    type: string
+  SpaceId:
+    description: An identifier to an unique data space.
     type: string
   UserId:
-    description: An identifier to a unique user.
+    description: An identifier to an unique user.
     type: string
+  Permission:
+    type: object
+    description: A permission.
+    properties:
+      id:
+        $ref: "#/schemas/PermissionId"
+      description:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      parent_id:
+        description: The parent permission.
+        $ref: "#/schemas/PermissionId"
+    required:
+      - id
+      - description
+      - created_at
+  Role:
+    type: object
+    description: A role.
+    properties:
+      id:
+        $ref: "#/schemas/RoleId"
+      description:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+    required:
+      - id
+      - description
+      - created_at
   Space:
     type: object
     description: A data space.
@@ -50,24 +79,6 @@ schemas:
       - description
       - created_at
       - cordoned
-  Permission:
-    type: object
-    description: A permission.
-    properties:
-      id:
-        $ref: "#/schemas/PermissionId"
-      description:
-        type: string
-      created_at:
-        type: string
-        format: date-time
-      parent_id:
-        description: The parent permission.
-        $ref: "#/schemas/PermissionId"
-    required:
-      - id
-      - description
-      - created_at
   WorkspaceId:
     description: An identifier to a unique workspace.
     type: string
@@ -106,16 +117,21 @@ schemas:
       - workspace_id
       - created_at
       - last_updated_at
-  SpaceList:
-    description: A list of spaces.
-    type: array
-    items:
-      $ref: "#/schemas/Space"
   PermissionList:
     description: A list of permissions.
     type: array
     items:
       $ref: "#/schemas/Permission"
+  RoleList:
+    description: A list of roles.
+    type: array
+    items:
+      $ref: "#/schemas/Role"
+  SpaceList:
+    description: A list of spaces.
+    type: array
+    items:
+      $ref: "#/schemas/Space"
   WorkspaceList:
     description: A list of workspace ids.
     type: array

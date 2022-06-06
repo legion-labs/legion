@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum Error {
     #[error("invalid permission id: {0}")]
     InvalidPermissionId(String),
+    #[error("invalid role id: {0}")]
+    InvalidRoleId(String),
 }
 
 /// A result type.

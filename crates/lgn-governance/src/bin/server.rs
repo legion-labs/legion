@@ -1,3 +1,5 @@
+//! The Governance server executable.
+
 use std::{net::SocketAddr, sync::Arc};
 
 use axum::Router;

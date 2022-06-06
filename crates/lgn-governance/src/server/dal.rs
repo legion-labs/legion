@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use sqlx::{migrate::Migrator, Row};
 
-use crate::{types::Permission, PermissionList, Space};
+use crate::{types::Permission, PermissionList, Role, RoleList, Space};
 
 use super::Result;
 
@@ -21,7 +21,7 @@ impl MySqlDal {
     }
 
     pub async fn list_permissions(&self) -> Result<PermissionList> {
-        sqlx::query("SELECT id, description, parent_id, created_at FROM permissions")
+        sqlx::query("SELECT id, description, parent_id, created_at FROM `permissions`")
             .fetch_all(&self.sqlx_pool)
             .await?
             .into_iter()
@@ -41,9 +41,29 @@ impl MySqlDal {
             })
     }
 
+    pub async fn list_roles(&self) -> Result<RoleList> {
+        sqlx::query("SELECT id, description, created_at FROM `roles`")
+            .fetch_all(&self.sqlx_pool)
+            .await?
+            .into_iter()
+            .map(|row| {
+                Ok(Role {
+                    id: row.get::<&str, _>(0).parse()?,
+                    description: Cow::Owned(row.get(1)),
+                    created_at: row.get(3),
+                })
+            })
+            .collect::<Result<_>>()
+            .map(|mut role_list| {
+                let mut r = RoleList::new_built_in();
+                r.append(&mut role_list);
+                r
+            })
+    }
+
     pub async fn list_spaces(&self) -> Result<Vec<Space>> {
         Ok(
-            sqlx::query("SELECT id, description, cordoned, created_at FROM spaces")
+            sqlx::query("SELECT id, description, cordoned, created_at FROM `spaces`")
                 .fetch_all(&self.sqlx_pool)
                 .await?
                 .into_iter()
