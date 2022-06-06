@@ -83,7 +83,7 @@ impl NullDeviceContext {
 pub(crate) struct NullBuffer;
 
 impl NullBuffer {
-    pub fn new(device_context: &DeviceContext, buffer_def: BufferDef) -> Self {
+    pub fn new(device_context: &DeviceContext, buffer_def: BufferDef) -> (Self, u32) {
         unimplemented!()
     }
 
