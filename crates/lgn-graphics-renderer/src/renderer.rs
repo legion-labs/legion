@@ -7,7 +7,7 @@ use lgn_tracing::span_fn;
 
 use crate::core::{
     RenderCommandBuilder, RenderCommandQueuePool, RenderObject, RenderObjectAllocator,
-    RenderObjects, RenderResources, ResourceHandle,
+    RenderObjects, RenderResources,
 };
 
 use crate::GraphicsQueue;

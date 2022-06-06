@@ -14,7 +14,7 @@ mod cgen {
 
 use crate::components::{tmp_debug_display_lights, EcsToRender};
 use crate::core::{DebugStuff, RenderGraphPersistentState, RenderObjects};
-use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
+use crate::features::{ModelFeature, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
@@ -603,13 +603,13 @@ fn render_update(
             // Visibility
             //
 
-            let bump = herd.get();
+            //WIP let bump = herd.get();
 
             //
             // Update
             //
 
-            let render_features = render_resources.get::<RenderFeatures>();
+            //WIP let render_features = render_resources.get::<RenderFeatures>();
 
             //
             // Egui (not thread safe as is)

@@ -63,6 +63,7 @@ pub(crate) type RenderLayerId = u32;
 pub(crate) struct RenderLayerMask(pub u64);
 
 impl RenderLayerMask {
+    #[allow(dead_code)]
     pub fn iter(self) -> RenderLayerIterator {
         RenderLayerIterator::new(self)
     }
