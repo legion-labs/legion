@@ -1203,6 +1203,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "casey"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fabe85130dda9cf267715582ce6cf1ab581c8dfe3cb33f7065fee0f14e3fea14"
+dependencies = [
+ "syn",
+]
+
+[[package]]
 name = "cast"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4692,6 +4701,7 @@ dependencies = [
  "async-trait",
  "axum",
  "base64 0.13.0",
+ "casey",
  "chrono",
  "clap 3.1.18",
  "http",

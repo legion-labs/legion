@@ -7,6 +7,8 @@ pub enum Error {
     Sqlx(#[from] sqlx::Error),
     #[error("sqlx migrate: {0}")]
     SqlxMigrate(#[from] sqlx::migrate::MigrateError),
+    #[error("types: {0}")]
+    Types(#[from] crate::types::Error),
 }
 
 /// A result type.

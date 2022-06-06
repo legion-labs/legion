@@ -1,4 +1,3 @@
--- Add up migration script here
 CREATE TABLE `spaces` (
 	`id` VARCHAR(64) NOT NULL COMMENT 'The space identifier.',
 	`description` VARCHAR(256) NOT NULL COMMENT 'A description for the space.',

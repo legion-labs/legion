@@ -13,4 +13,4 @@ pub use api::register_routes;
 pub use client::Client;
 pub use errors::{Error, Result};
 pub use server::Server;
-pub use types::{Space, SpaceId};
+pub use types::*;

@@ -3,8 +3,8 @@ use thiserror::Error;
 /// An error type.
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("types: {0}")]
-    Types(#[from] crate::types::Error),
+    #[error("invalid permission id: {0}")]
+    InvalidPermissionId(String),
 }
 
 /// A result type.

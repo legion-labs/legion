@@ -1,5 +1,6 @@
 mod dal;
 mod errors;
+mod permission;
 mod session;
 mod space;
 

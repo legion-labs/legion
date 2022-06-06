@@ -6,7 +6,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{Error, Result};
+use super::{Error, Result};
 
 /// A space identifier.
 #[derive(

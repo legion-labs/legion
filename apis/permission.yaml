@@ -1,0 +1,87 @@
+openapi: 3.1.0
+info:
+  title: "Permission API"
+  description: "The OpenAPI specification for the Legion Labs Permission API."
+  version: 1.0.0
+paths:
+  /v1/permissions/:
+    get:
+      description: List all the permissions that exist in the system.
+      operationId: listPermissions
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/PermissionList"
+    post:
+      description: Create a new permission.
+      operationId: createPermission
+      body:
+        description: The permission to create.
+        schema:
+          $ref: "#/components/schemas/NewPermission"
+      responses:
+        "201":
+          description: The permission was created.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Permission"
+        "409":
+          description: A permission with the same ID already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Permission"
+  /v1/permissions/{permission-id}/:
+    parameters:
+      - $ref: "./common.yaml#/parameters/permission_id"
+    put:
+      description: Update the specified permission.
+      operationId: updatePermission
+      body:
+        description: The permission to update.
+        schema:
+          $ref: "#/components/schemas/UpdatePermission"
+      responses:
+        "200":
+          description: The permission was updated.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Permission"
+        "404":
+          description: The permission was not found.
+    delete:
+      description: Delete the specified permission.
+      operationId: deletePermission
+      responses:
+        "204":
+          description: The permission was deleted.
+        "404":
+          description: The permission was not found.
+        "409":
+          description: The permission is being used and cannot be deleted at this time.
+components:
+  schemas:
+    NewPermission:
+      type: object
+      description: A new permission to create.
+      properties:
+        id:
+          $ref: "./common.yaml#/schemas/PermissionId"
+        description:
+          type: string
+      required:
+        - id
+        - description
+    UpdatePermission:
+      type: object
+      description: The new permission values.
+      properties:
+        description:
+          type: string
+      required:
+        - description
