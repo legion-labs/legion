@@ -919,12 +919,6 @@ impl MeshRenderer {
     }
 }
 
-impl Drop for MeshRenderer {
-    fn drop(&mut self) {
-        println!("MeshRenderer dropped");
-    }
-}
-
 fn create_or_replace_buffer(
     device_context: &DeviceContext,
     buffer: &mut Option<CullingArgBuffer>,
