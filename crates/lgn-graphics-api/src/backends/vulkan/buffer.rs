@@ -1,6 +1,10 @@
+use std::sync::atomic::Ordering;
+
 use lgn_tracing::trace;
 
 use crate::{Buffer, BufferCopy, BufferDef, BufferMappingInfo, DeviceContext, ResourceUsage};
+
+static NEXT_BUFFER_ID: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(1);
 
 #[derive(Debug)]
 pub(crate) struct VulkanBuffer {
@@ -10,7 +14,7 @@ pub(crate) struct VulkanBuffer {
 }
 
 impl VulkanBuffer {
-    pub fn new(device_context: &DeviceContext, buffer_def: BufferDef) -> Self {
+    pub fn new(device_context: &DeviceContext, buffer_def: BufferDef) -> (Self, u32) {
         trace!("creating VulkanBuffer");
 
         buffer_def.verify();
@@ -76,11 +80,16 @@ impl VulkanBuffer {
             buffer_info.size,
         );
 
-        Self {
-            vkmem_allocation: vk_allocation,
-            vkmem_allocation_info: vk_allocation_info,
-            vk_buffer,
-        }
+        let buffer_id = NEXT_BUFFER_ID.fetch_add(1, Ordering::Relaxed);
+
+        (
+            Self {
+                vkmem_allocation: vk_allocation,
+                vkmem_allocation_info: vk_allocation_info,
+                vk_buffer,
+            },
+            buffer_id,
+        )
     }
 
     pub(crate) fn destroy(&self, device_context: &DeviceContext, buffer_def: &BufferDef) {

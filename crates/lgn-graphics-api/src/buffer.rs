@@ -78,6 +78,7 @@ impl BufferDef {
 pub(crate) struct BufferInner {
     pub(crate) buffer_def: BufferDef,
     pub(crate) device_context: DeviceContext,
+    pub(crate) buffer_id: u32,
     pub(crate) backend_buffer: BackendBuffer,
 }
 
@@ -93,14 +94,21 @@ pub struct Buffer {
     pub(crate) inner: Drc<BufferInner>,
 }
 
+impl PartialEq for Buffer {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner.buffer_id == other.inner.buffer_id
+    }
+}
+
 impl Buffer {
     pub fn new(device_context: &DeviceContext, buffer_def: BufferDef) -> Self {
-        let platform_buffer = BackendBuffer::new(device_context, buffer_def);
+        let (platform_buffer, buffer_id) = BackendBuffer::new(device_context, buffer_def);
 
         Self {
             inner: device_context.deferred_dropper().new_drc(BufferInner {
                 device_context: device_context.clone(),
                 buffer_def,
+                buffer_id,
                 backend_buffer: platform_buffer,
             }),
         }

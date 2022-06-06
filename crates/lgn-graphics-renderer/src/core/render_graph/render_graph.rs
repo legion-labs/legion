@@ -526,7 +526,7 @@ impl RGNode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum RenderGraphResource {
     Texture(Texture),
     Buffer(Buffer),
@@ -672,6 +672,7 @@ pub(crate) struct RenderGraph {
 pub(crate) struct RenderGraphPersistentState {
     resources: RwLock<HashMap<String, (RenderGraphResourceDef, RenderGraphResource)>>,
     views: RwLock<HashMap<(RenderGraphViewDef, GPUViewType), RenderGraphView>>,
+    injected_resources: RwLock<Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>>,
 }
 
 impl RenderGraphPersistentState {
@@ -679,6 +680,7 @@ impl RenderGraphPersistentState {
         Self {
             resources: RwLock::new(HashMap::new()),
             views: RwLock::new(HashMap::new()),
+            injected_resources: RwLock::new(Vec::new()),
         }
     }
 
@@ -686,7 +688,6 @@ impl RenderGraphPersistentState {
         &self,
         name: &str,
         def: &RenderGraphResourceDef,
-        resource_id: RenderGraphResourceId,
     ) -> Option<RenderGraphResource> {
         let mut need_destroy = false;
 
@@ -703,18 +704,27 @@ impl RenderGraphPersistentState {
 
         if need_destroy {
             // Destroy resource and it will be recreated and re-added.
+            // Also destroy all views related to this resource so they will also be recreated.
             let mut resources = self.resources.write().unwrap();
+            let mut views = self.views.write().unwrap();
             let value = resources.get(name).unwrap();
             match &value.1 {
-                RenderGraphResource::Texture(_texture) => {}
-                RenderGraphResource::Buffer(_buffer) => {}
+                RenderGraphResource::Texture(texture) => {
+                    views.retain(|_, value| match value {
+                        RenderGraphView::TextureView(texture_view) => {
+                            texture_view.texture() != texture
+                        }
+                        RenderGraphView::BufferView(_) => true,
+                    });
+                }
+                RenderGraphResource::Buffer(buffer) => {
+                    views.retain(|_, value| match value {
+                        RenderGraphView::BufferView(buffer_view) => buffer_view.buffer() != buffer,
+                        RenderGraphView::TextureView(_) => true,
+                    });
+                }
             }
             resources.remove(name);
-
-            // Also destroy all views related to this resource so they will also be recreated.
-            // TODO(jsg) this relies on the fact that resource IDs are stable from frame to frame, which might not always be the case.
-            let mut views = self.views.write().unwrap();
-            views.retain(|key, _| key.0.get_resource_id() != resource_id);
         }
 
         None
@@ -855,9 +865,7 @@ impl RenderGraph {
                     .render_resources
                     .get_mut::<RenderGraphPersistentState>();
 
-                if let Some(texture) =
-                    persistent_state.get_resource(name, original_texture_def, resource_id)
-                {
+                if let Some(texture) = persistent_state.get_resource(name, original_texture_def) {
                     context.resources[res_idx] = Some(texture);
                 } else {
                     //println!("  !! Create {} ", self.get_resource_name(resource_id));
@@ -901,9 +909,7 @@ impl RenderGraph {
                     .render_resources
                     .get_mut::<RenderGraphPersistentState>();
 
-                if let Some(buffer) =
-                    persistent_state.get_resource(name, original_buffer_def, resource_id)
-                {
+                if let Some(buffer) = persistent_state.get_resource(name, original_buffer_def) {
                     context.resources[res_idx] = Some(buffer);
                 } else {
                     //println!("  !! Create {} ", self.get_resource_name(resource_id));
@@ -1630,37 +1636,33 @@ impl RenderGraph {
             picked_readback: Handle::invalid(),
         };
 
-        // Destroy views of any injected resource that was modified (for example, resized) since last frame.
-        // TODO(jsg) this relies on the fact that resource IDs are stable from frame to frame, which might not always be the case.
         {
-            let persistent_state = execute_context
+            let mut persistent_state = execute_context
                 .render_resources
                 .get_mut::<RenderGraphPersistentState>();
 
-            let mut views = persistent_state.views.write().unwrap();
-            for injected_resource in &self.injected_resources {
-                let res_id = injected_resource.0;
-                views.retain(|key, value| {
-                    let mut keep = true;
-                    if key.0.get_resource_id() == res_id {
-                        match value {
-                            RenderGraphView::TextureView(texture_view) => {
-                                let texture = context.get_texture(res_id);
-                                if texture_view.texture().definition() != texture.definition() {
-                                    keep = false;
-                                }
-                            }
-                            RenderGraphView::BufferView(buffer_view) => {
-                                let buffer = context.get_buffer(res_id);
-                                if buffer_view.buffer().definition() != buffer.definition() {
-                                    keep = false;
-                                }
-                            }
-                        }
+            // Destroy the views of any injected resource that was modified (for example, resized) since last frame.
+            {
+                let prev_frame_injected_resources =
+                    persistent_state.injected_resources.read().unwrap();
+                for prev_frame_injected_resource in prev_frame_injected_resources.iter() {
+                    let val = self
+                        .injected_resources
+                        .iter()
+                        .find(|val| prev_frame_injected_resource.1 .0 == val.1 .0);
+
+                    // If an injected resource from the previous frame was not found in this frame's injected resources, destroy its views.
+                    if val.is_none() {
+                        let mut views = persistent_state.views.write().unwrap();
+                        views.retain(|key, _| {
+                            key.0.get_resource_id() != prev_frame_injected_resource.0
+                        });
                     }
-                    keep
-                });
+                }
             }
+
+            // Keep the injected resources in the persistent state for next frame.
+            persistent_state.injected_resources = RwLock::new(self.injected_resources.clone());
         }
 
         for child in &self.root_nodes {
