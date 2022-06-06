@@ -57,6 +57,41 @@ struct GpuCullingOptions {
     gather_perf_stats: bool,
 }
 
+pub(crate) type RenderLayerId = u32;
+
+#[derive(Clone, Copy)]
+pub(crate) struct RenderLayerMask(pub u64);
+
+impl RenderLayerMask {
+    pub fn iter(self) -> RenderLayerIterator {
+        RenderLayerIterator::new(self)
+    }
+}
+
+pub(crate) struct RenderLayerIterator {
+    mask: RenderLayerMask,
+}
+
+impl RenderLayerIterator {
+    pub fn new(mask: RenderLayerMask) -> Self {
+        Self { mask }
+    }
+}
+
+impl Iterator for RenderLayerIterator {
+    type Item = RenderLayerId;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.mask.0 == 0 {
+            None
+        } else {
+            let leading_zero = self.mask.0.trailing_zeros();
+            self.mask.0 &= !(1 << leading_zero);
+            Some(leading_zero)
+        }
+    }
+}
+
 pub(crate) enum DefaultLayers {
     Depth = 0,
     Opaque,

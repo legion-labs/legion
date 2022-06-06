@@ -13,7 +13,7 @@ use lgn_window::WindowResized;
 use super::{picking_event::PickingEvent, ManipulatorManager, PickingIdContext, PickingManager};
 use crate::{
     components::{
-        CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurface,
+        CameraComponent, LightComponent, ManipulatorComponent, PickedComponent,
         RenderSurfaces,
     },
     CommandBufferLabel, RenderStage,
