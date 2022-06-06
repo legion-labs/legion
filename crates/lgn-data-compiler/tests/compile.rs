@@ -65,7 +65,7 @@ async fn compile_atoi() {
             &common::test_env(),
         );
 
-        let result = command.execute().expect("compile result");
+        let result = command.execute().await.expect("compile result");
         println!("{:?}", result);
 
         assert_eq!(result.compiled_resources.len(), 1);
@@ -137,7 +137,7 @@ async fn compile_intermediate() {
             &common::test_env(),
         );
 
-        let result = command.execute().expect("compile result");
+        let result = command.execute().await.expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), 1);
         result.compiled_resources[0].clone()
@@ -158,7 +158,7 @@ async fn compile_intermediate() {
             &common::test_env(),
         );
 
-        let result = command.execute().expect("compile result");
+        let result = command.execute().await.expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), 1);
         result.compiled_resources[0].clone()
@@ -234,7 +234,7 @@ async fn compile_multi_resource() {
             &common::test_env(),
         );
 
-        let result = command.execute().expect("compile result");
+        let result = command.execute().await.expect("compile result");
 
         assert_eq!(result.compiled_resources.len(), source_text_list.len());
         result.compiled_resources
@@ -323,7 +323,7 @@ async fn compile_base64() {
             &common::test_env(),
         );
 
-        let result = command.execute().expect("compile result");
+        let result = command.execute().await.expect("compile result");
         println!("{:?}", result);
 
         assert_eq!(result.compiled_resources.len(), 1);

@@ -1,23 +1,21 @@
-{% for model in api.models %}
-    {% match model %}
-        {% when Model::Enum with (enum_) %}
-            {% if let Some(description) = enum_.description %}/** {{ description }} */{% endif %}
-            export type {{ enum_.name }}Model = (
-                {%- for variant in enum_.variants -%}
+{% for model in api.models.values() %}
+    {% if let Some(description) = model.description %}/** {{ description }} */{% endif -%}
+    {% match model.type_ %}
+        {% when Type::Enum with { variants } %}
+            export type {{ model.name }}Model = (
+                {%- for variant in variants -%}
                     | "{{ variant }}"
                 {%- endfor -%}
             );
-        {% when Model::OneOf with (one_of) %}
-            {% if let Some(description) = one_of.description %}/** {{ description }} */{% endif %}
-            export type {{ one_of.name }}Model = (
-                {%- for type_ in one_of.types -%}
+        {% when Type::OneOf with { types } %}
+            export type {{ model.name }}Model = (
+                {%- for type_ in types -%}
                     | { type: "option{{loop.index}}", value: {{ type_|fmt_type }} }
                 {%- endfor -%}
             );
-        {% when Model::Struct with (struct_) %}
-            {% if let Some(description) = struct_.description %}/** {{ description }} */{% endif %}
-            export type {{ struct_.name }}Model = {
-                {% for field in struct_.fields %}
+        {% when Type::Struct with { fields } %}
+            export type {{ model.name }}Model = {
+                {% for field in fields.values() %}
                     {% if let Some(description) = field.description -%}/** {{ description }} */{%- endif %}
                     {# #[serde(rename = "{{ field.name }}")] #}
                     {%- if field.required -%}
@@ -27,5 +25,7 @@
                     {%- endif -%}
                 {% endfor %}
             };
+        {% when t %}
+            export type {{ model.name }}Model = {{ t|fmt_type }};
     {% endmatch %}
 {% endfor %}

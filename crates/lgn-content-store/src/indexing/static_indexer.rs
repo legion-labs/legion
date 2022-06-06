@@ -77,7 +77,7 @@ pub struct StaticIndexer {
     /// layers, which is almost never desirable as it causes excessive
     /// roundtrips to the content-store for all operations. This is only ever
     /// useful for very large trees. In such a case, you also probably need to
-    /// set `max_children_per_layer` to 1 as well, which will garantee that all
+    /// set `max_children_per_layer` to 1 as well, which will guarantee that all
     /// layers have a key length of 1.
     #[serde(default = "StaticIndexer::default_min_children_per_layer")]
     min_children_per_layer: usize,
@@ -147,11 +147,11 @@ impl StaticIndexer {
         self.max_children_per_layer = max_children_per_layer;
     }
 
-    fn default_min_children_per_layer() -> usize {
+    const fn default_min_children_per_layer() -> usize {
         2
     }
 
-    fn default_max_children_per_layer() -> usize {
+    const fn default_max_children_per_layer() -> usize {
         256
     }
 
@@ -346,7 +346,7 @@ impl StaticIndexer {
                         }
 
                         // The branch is actually removed from the tree as this point.
-                        provider.unwrite(tree_id.as_identifier()).await;
+                        provider.unwrite(tree_id.as_identifier()).await?;
                     }
                 }
             }
@@ -448,8 +448,10 @@ impl BasicIndexer for StaticIndexer {
                 loop {
                     item.tree.count += 1;
 
-                    if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await;
+                    if let Some(TreeNode::Branch(old_node)) =
+                        item.tree.insert_children(item.key, node)
+                    {
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
 
                     item.tree.total_size += size_delta;
@@ -460,7 +462,7 @@ impl BasicIndexer for StaticIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         break Ok(node.into_branch().unwrap());
                     }
@@ -490,8 +492,10 @@ impl BasicIndexer for StaticIndexer {
                     let mut node = TreeNode::Leaf(leaf_node);
 
                     loop {
-                        if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                            provider.unwrite(old_node.as_identifier()).await;
+                        if let Some(TreeNode::Branch(old_node)) =
+                            item.tree.insert_children(item.key, node)
+                        {
+                            provider.unwrite(old_node.as_identifier()).await?;
                         }
 
                         item.tree.total_size += data_size;
@@ -504,7 +508,7 @@ impl BasicIndexer for StaticIndexer {
                         if let Some(next) = stack.pop() {
                             item = next;
                         } else {
-                            provider.unwrite(root_id.as_identifier()).await;
+                            provider.unwrite(root_id.as_identifier()).await?;
 
                             break Ok((node.into_branch().unwrap(), existing_leaf_node));
                         }
@@ -534,8 +538,8 @@ impl BasicIndexer for StaticIndexer {
                 let mut item = stack.pop().expect("stack is not empty");
 
                 loop {
-                    if let Some(old_node) = item.tree.remove_children(item.key) {
-                        provider.unwrite(old_node.as_identifier()).await;
+                    if let Some(TreeNode::Branch(old_node)) = item.tree.remove_children(item.key) {
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
 
                     if !item.tree.is_empty() {
@@ -550,7 +554,7 @@ impl BasicIndexer for StaticIndexer {
                         // to return.
                         //
                         // This should always return an empty tree.
-                        provider.unwrite(root_id.as_identifier()).await;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         return Ok((
                             provider.write_tree(&Tree::default()).await?,
@@ -572,13 +576,15 @@ impl BasicIndexer for StaticIndexer {
                     if let Some(next) = stack.pop() {
                         item = next;
                     } else {
-                        provider.unwrite(root_id.as_identifier()).await;
+                        provider.unwrite(root_id.as_identifier()).await?;
 
                         break Ok((node.into_branch().unwrap(), existing_leaf_node));
                     }
 
-                    if let Some(old_node) = item.tree.insert_children(item.key, node) {
-                        provider.unwrite(old_node.as_identifier()).await;
+                    if let Some(TreeNode::Branch(old_node)) =
+                        item.tree.insert_children(item.key, node)
+                    {
+                        provider.unwrite(old_node.as_identifier()).await?;
                     }
                 }
             }

@@ -1,106 +1,101 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::PathBuf};
 
 use indexmap::IndexMap;
 
-use super::api::{
-    Api, Enum, Field, Method, Model, Parameter, RequestBody, Response, Route, StatusCode, Struct,
-    Type,
+use super::api_types::{
+    Api, Field, GenerationContext, Method, Model, Parameter, RequestBody, Response, Route,
+    StatusCode, Type,
 };
 use crate::{
-    api::{Content, OneOf, Parameters},
-    openapi_ext::{OpenAPIExt, OpenAPIPath},
-    Error, Result,
+    api_types::{Content, Header, ModelOrigin, Parameters},
+    openapi_loader::OpenApiRef,
+    Error, OpenApi, OpenApiElement, Result,
 };
 
-pub fn visit(oas: &openapiv3::OpenAPI) -> Result<Api> {
-    Visitor::new(oas).visit()
-}
-
 #[derive(Debug)]
-struct Visitor<'a> {
-    pub oas: &'a openapiv3::OpenAPI,
-    pub api: Api,
+pub struct Visitor {
+    pub ctx: GenerationContext,
 }
 
-impl<'a> Visitor<'a> {
-    fn new(oas: &'a openapiv3::OpenAPI) -> Self {
+impl Visitor {
+    pub fn new(root: PathBuf) -> Self {
         Self {
-            oas,
-            api: Api {
-                title: oas.info.title.clone(),
-                description: oas.info.description.clone(),
-                version: oas.info.version.clone(),
-                models: Vec::new(),
-                paths: IndexMap::new(),
-            },
+            ctx: GenerationContext::new(root),
         }
     }
 
-    fn visit(mut self) -> Result<Api> {
-        self.visit_schemas()?;
-        self.visit_paths()?;
-        Ok(self.api)
+    pub fn visit(mut self, openapis: &[OpenApi<'_>]) -> Result<GenerationContext> {
+        for openapi in openapis {
+            let api = self.visit_openapi(openapi)?;
+
+            self.ctx
+                .location_contexts
+                .entry(openapi.ref_().ref_location().clone())
+                .or_default()
+                .api = Some(api);
+        }
+
+        Ok(self.ctx)
     }
 
-    fn visit_schemas(&mut self) -> Result<()> {
-        if self.oas.components.is_some() {
-            for (name, schema_ref) in &self.oas.components.as_ref().unwrap().schemas {
-                let path = OpenAPIPath::from(name.as_str());
+    fn visit_openapi(&mut self, openapi: &OpenApi<'_>) -> Result<Api> {
+        let mut api = Api {
+            title: openapi.info.title.clone(),
+            description: openapi.info.description.clone(),
+            version: openapi.info.version.clone(),
+            paths: BTreeMap::new(),
+        };
 
-                match schema_ref {
-                    openapiv3::ReferenceOr::Item(schema) => {
-                        // Mandatory call to generate all models during visit.
-                        self.resolve_type(&path, schema)?;
-                    }
-                    openapiv3::ReferenceOr::Reference { reference } => {
-                        return Err(Error::Unsupported(format!("reference: {}", reference)));
-                    }
-                }
+        // Let's first resolve and register schemas.
+        if openapi.components.is_some() {
+            for (name, schema_ref) in &openapi.components.as_ref().unwrap().schemas {
+                let schema =
+                    openapi.resolve_reference_or(["components", "schemas", name], schema_ref)?;
+                self.register_model_from_schema(ModelOrigin::Schemas, &schema)?;
             }
         }
 
-        Ok(())
-    }
+        // Then resolve paths.
+        for (path, path_item_ref) in &openapi.paths.paths {
+            let path_item = openapi.resolve_reference_or(["paths", path], path_item_ref)?;
 
-    fn visit_paths(&mut self) -> Result<()> {
-        for (path, path_item_ref) in &self.oas.paths.paths {
-            self.api.paths.insert(path.as_str().into(), Vec::new());
-            let path = OpenAPIPath::from(path.as_str());
-
-            let path_item = match path_item_ref {
-                openapiv3::ReferenceOr::Item(path_item) => path_item,
-                openapiv3::ReferenceOr::Reference { reference } => {
-                    return Err(Error::Unsupported(format!("reference: {:?}", reference)));
-                }
-            };
+            let mut routes = Vec::new();
 
             for (method, operation) in path_item.iter() {
-                let method: Method = method.parse()?;
-                self.visit_operation(&path, path_item, method, operation)?;
+                let http_method: Method = method.parse()?;
+                let route = self.visit_operation(
+                    &path_item,
+                    http_method,
+                    &path_item.as_element_ref([method], operation),
+                )?;
+
+                routes.push(route);
             }
+
+            api.paths.insert(path.as_str().into(), routes);
         }
-        Ok(())
+
+        Ok(api)
     }
 
     fn visit_operation(
         &mut self,
-        path: &OpenAPIPath,
-        path_item: &'a openapiv3::PathItem,
+        path_item: &OpenApiElement<'_, openapiv3::PathItem>,
         method: Method,
-        operation: &'a openapiv3::Operation,
-    ) -> Result<()> {
+        operation: &OpenApiElement<'_, openapiv3::Operation>,
+    ) -> Result<Route> {
         if operation.security.is_some() {
-            return Err(Error::Unsupported(format!(
-                "security: {:?}",
-                operation.security
-            )));
+            return Err(Error::Unsupported(
+                operation.ref_().join(["security"]),
+                "security specifiers".to_string(),
+            ));
         }
 
         // We enforce an operation id for now.
         let operation_name = match &operation.operation_id {
             Some(name) => name,
             None => {
-                return Err(Error::MissingOperationID(path.to_string()));
+                return Err(Error::MissingOperationID(path_item.ref_().clone()));
             }
         };
 
@@ -112,48 +107,54 @@ impl<'a> Visitor<'a> {
         let raw_parameters = path_item
             .parameters
             .iter()
-            .chain(operation.parameters.iter())
             .map(|parameter_ref| {
-                match parameter_ref {
-                    openapiv3::ReferenceOr::Item(parameter) => Ok(parameter),
-                    openapiv3::ReferenceOr::Reference { reference } => self
-                        .oas
-                        .find_parameter(reference)
-                        .map(|parameter| parameter.1),
-                }
-                .map(|parameter| (parameter.parameter_data_ref().name.clone(), parameter))
+                path_item
+                    .resolve_reference_or(["parameters"], parameter_ref)
+                    .map(|parameter| (parameter.parameter_data_ref().name.clone(), parameter))
             })
-            .collect::<Result<BTreeMap<_, _>>>()?;
+            .chain(operation.parameters.iter().map(|parameter_ref| {
+                operation
+                    .resolve_reference_or(["parameters"], parameter_ref)
+                    .map(|parameter| (parameter.parameter_data_ref().name.clone(), parameter))
+            }))
+            .collect::<Result<IndexMap<_, _>>>()?;
 
         for parameter in raw_parameters.into_values() {
-            match parameter {
+            match parameter.as_ref() {
                 openapiv3::Parameter::Path { parameter_data, .. } => {
-                    parameters
-                        .path
-                        .push(self.visit_parameter(path, parameter_data, None)?);
+                    parameters.path.push(self.visit_parameter(
+                        &parameter.as_element_ref([&parameter_data.name], parameter_data),
+                        None,
+                    )?);
                 }
                 openapiv3::Parameter::Query { parameter_data, .. } => {
-                    parameters
-                        .query
-                        .push(self.visit_parameter(path, parameter_data, None)?);
+                    parameters.query.push(self.visit_parameter(
+                        &parameter.as_element_ref([&parameter_data.name], parameter_data),
+                        None,
+                    )?);
                 }
                 openapiv3::Parameter::Header { parameter_data, .. } => {
-                    // Only string header parameters are supported for now.
-                    // There is no standard on how to parse them so we just
-                    // forward the raw string value to the implementor.
-                    let allowed_types = Some(vec![Type::String]);
+                    let allowed_types = Some(vec![
+                        Type::String,
+                        Type::Int32,
+                        Type::Int64,
+                        Type::Boolean,
+                        Type::Float32,
+                        Type::Float64,
+                        Type::Bytes,
+                    ]);
+
                     parameters.header.push(self.visit_parameter(
-                        path,
-                        parameter_data,
+                        &parameter.as_element_ref([&parameter_data.name], parameter_data),
                         allowed_types,
                     )?);
                 }
                 // We don't support cookie parameters for now.
                 openapiv3::Parameter::Cookie { parameter_data, .. } => {
-                    return Err(Error::Unsupported(format!(
-                        "cookie parameter: {}",
-                        parameter_data.name
-                    )));
+                    return Err(Error::Unsupported(
+                        parameter.ref_().join([&parameter_data.name]),
+                        "cookie parameters".to_string(),
+                    ));
                 }
             };
         }
@@ -161,41 +162,42 @@ impl<'a> Visitor<'a> {
         // Visit request body.
         let request_body = match &operation.request_body {
             Some(request_body) => {
-                let request_body = match request_body {
-                    openapiv3::ReferenceOr::Item(request_body) => request_body,
-                    openapiv3::ReferenceOr::Reference { reference } => {
-                        self.oas.find_request_body(reference)?.1
-                    }
-                };
+                let request_body = operation.resolve_reference_or(["requestBody"], request_body)?;
 
                 let (type_, media_type) = match request_body.content.len() {
-                    0 => return Err(Error::Invalid(format!("schema: {}", path))),
+                    0 => {
+                        return Err(Error::Invalid(
+                            request_body.ref_().clone(),
+                            "requests with no media-types".to_string(),
+                        ))
+                    }
                     1 => {
                         let (media_type, media_type_data) =
                             request_body.content.iter().next().unwrap();
 
                         let type_ = match &media_type_data.schema {
-                            Some(schema_ref) => match &schema_ref {
-                                openapiv3::ReferenceOr::Item(schema) => {
-                                    // Use the operation id and the body suffix to generate the type name.
-                                    let mut path = OpenAPIPath::from(operation_name.as_str());
-                                    path.push("body");
-                                    self.resolve_type(&path, schema)?
-                                }
-                                openapiv3::ReferenceOr::Reference { reference } => {
-                                    self.resolve_schema_ref(path, reference)?
-                                }
-                            },
-                            None => return Err(Error::Invalid(format!("schema: {}", path))),
+                            Some(schema_ref) => self.resolve_type_ref(
+                                ModelOrigin::RequestBody {
+                                    operation_name: operation_name.clone(),
+                                },
+                                &request_body
+                                    .as_element_ref(["content", media_type, "schema"], schema_ref),
+                            )?,
+                            None => {
+                                return Err(Error::Invalid(
+                                    request_body.ref_().join(["content", media_type]),
+                                    "no schema".to_string(),
+                                ))
+                            }
                         };
 
                         (type_, media_type)
                     }
                     _ => {
-                        return Err(Error::Unsupported(format!(
-                            "multiple media type on request body: {} {}",
-                            path, method
-                        )));
+                        return Err(Error::Invalid(
+                            request_body.ref_().join(["content"]),
+                            "requests with multiple media-types".to_string(),
+                        ))
                     }
                 };
 
@@ -203,7 +205,7 @@ impl<'a> Visitor<'a> {
                     description: request_body.description.clone(),
                     required: request_body.required,
                     content: Content {
-                        media_type: media_type.as_str().try_into()?,
+                        media_type: media_type.parse()?,
                         type_,
                     },
                 })
@@ -212,12 +214,26 @@ impl<'a> Visitor<'a> {
         };
 
         // Visit responses.
-        let mut responses = IndexMap::new();
+        let mut responses = BTreeMap::new();
+
         for (status_code, response_ref) in &operation.responses.responses {
-            let response = match response_ref {
-                openapiv3::ReferenceOr::Item(response) => response,
-                openapiv3::ReferenceOr::Reference { reference } => {
-                    self.oas.find_response(reference)?.1
+            let response = operation
+                .resolve_reference_or(["responses", &status_code.to_string()], response_ref)?;
+
+            let status_code: StatusCode = match status_code {
+                openapiv3::StatusCode::Code(v) => http::StatusCode::from_u16(*v)
+                    .map_err(|e| {
+                        Error::Invalid(
+                            response.ref_().clone(),
+                            format!("inconvertible status codes ({})", e),
+                        )
+                    })?
+                    .into(),
+                openapiv3::StatusCode::Range(_) => {
+                    return Err(Error::Unsupported(
+                        response.ref_().clone(),
+                        "status code ranges".to_string(),
+                    ));
                 }
             };
 
@@ -227,16 +243,15 @@ impl<'a> Visitor<'a> {
                     let (media_type, media_type_data) = response.content.iter().next().unwrap();
 
                     let type_ = match &media_type_data.schema {
-                        Some(schema_ref) => Some(match &schema_ref {
-                            openapiv3::ReferenceOr::Item(schema) => {
-                                // Use the operation id and the response suffix to generate the type name.
-                                let mut path = OpenAPIPath::from(operation_name.as_str());
-                                path.push("response");
-                                self.resolve_type(&path, schema)?
-                            }
-                            openapiv3::ReferenceOr::Reference { reference } => {
-                                self.resolve_schema_ref(path, reference)?
-                            }
+                        Some(schema_ref) => Some({
+                            self.resolve_type_ref(
+                                ModelOrigin::ResponseBody {
+                                    operation_name: operation_name.clone(),
+                                    status_code: status_code.clone(),
+                                },
+                                &response
+                                    .as_element_ref(["content", media_type, "schema"], schema_ref),
+                            )?
                         }),
                         None => None,
                     };
@@ -244,24 +259,38 @@ impl<'a> Visitor<'a> {
                     (Some(media_type), type_)
                 }
                 _ => {
-                    return Err(Error::Unsupported(format!(
-                        "multiple media type on response: {} {}",
-                        path, method
-                    )));
+                    return Err(Error::Invalid(
+                        response.ref_().join(["content"]),
+                        "responses with multiple media-types".to_string(),
+                    ))
                 }
             };
 
-            let status_code: StatusCode = match status_code {
-                openapiv3::StatusCode::Code(v) => http::StatusCode::from_u16(*v)
-                    .map_err(|e| Error::Invalid(format!("status code: {}", e)))?
-                    .into(),
-                openapiv3::StatusCode::Range(_) => {
-                    return Err(Error::Unsupported(format!(
-                        "status code ranges: {}",
-                        status_code
-                    )));
-                }
-            };
+            let mut headers = BTreeMap::new();
+
+            for (header_name, header_ref) in &response.headers {
+                let header = response.resolve_reference_or(["headers", header_name], header_ref)?;
+
+                headers.insert(
+                    header_name.clone(),
+                    Header {
+                        description: header.description.clone(),
+                        type_: match &header.format {
+                            openapiv3::ParameterSchemaOrContent::Schema(schema_ref) => self
+                                .resolve_type_ref(
+                                    ModelOrigin::Schemas,
+                                    &header.as_element_ref(["format"], schema_ref),
+                                )?,
+                            openapiv3::ParameterSchemaOrContent::Content(_) => {
+                                return Err(Error::Unsupported(
+                                    header.ref_().join(["format"]),
+                                    "header content formats".to_string(),
+                                ));
+                            }
+                        },
+                    },
+                );
+            }
 
             responses.insert(
                 status_code,
@@ -269,13 +298,17 @@ impl<'a> Visitor<'a> {
                     description: response.description.clone(),
                     content: match media_type {
                         Some(media_type) => Some(Content {
-                            media_type: media_type.as_str().try_into()?,
+                            media_type: media_type.parse()?,
                             type_: type_.ok_or_else(|| {
-                                Error::Invalid("content should have a schema".to_string())
+                                Error::Invalid(
+                                    response.ref_().clone(),
+                                    "content without a schema".to_string(),
+                                )
                             })?,
                         }),
                         None => None,
                     },
+                    headers,
                 },
             );
         }
@@ -289,41 +322,32 @@ impl<'a> Visitor<'a> {
             responses,
         };
 
-        // We are guarenteed to have the path key in the map.
-        self.api
-            .paths
-            .get_mut::<crate::api::Path>(&path.into())
-            .unwrap()
-            .push(route);
-        Ok(())
+        Ok(route)
     }
 
     fn visit_parameter(
         &mut self,
-        path: &OpenAPIPath,
-        parameter_data: &'a openapiv3::ParameterData,
+        parameter_data: &OpenApiElement<'_, openapiv3::ParameterData>,
         allowed_types: Option<Vec<Type>>,
     ) -> Result<Parameter> {
         let type_ = match &parameter_data.format {
-            openapiv3::ParameterSchemaOrContent::Schema(schema_ref) => match schema_ref {
-                openapiv3::ReferenceOr::Item(schema) => self.resolve_type(path, schema)?,
-                openapiv3::ReferenceOr::Reference { reference } => {
-                    self.resolve_schema_ref(path, reference)?
-                }
-            },
+            openapiv3::ParameterSchemaOrContent::Schema(schema_ref) => self.resolve_type_ref(
+                ModelOrigin::Schemas,
+                &parameter_data.as_element_ref(["format", "schema"], schema_ref),
+            )?,
             openapiv3::ParameterSchemaOrContent::Content(_) => {
-                return Err(Error::Unsupported(format!(
-                    "parameter content: {}",
-                    parameter_data.name
-                )));
+                return Err(Error::Unsupported(
+                    parameter_data.ref_().join(["format", "content"]),
+                    "parameter content specifiers".to_string(),
+                ));
             }
         };
 
         if allowed_types.is_some() && !allowed_types.unwrap().contains(&type_) {
-            return Err(Error::Unsupported(format!(
-                "parameter type: {}",
-                parameter_data.name,
-            )));
+            return Err(Error::Unsupported(
+                parameter_data.ref_().join(["format"]),
+                format!("parameters of type `{:?}`", type_),
+            ));
         }
 
         Ok(Parameter {
@@ -334,90 +358,48 @@ impl<'a> Visitor<'a> {
         })
     }
 
-    fn new_model_from_object(
+    fn register_model_from_schema(
         &mut self,
-        path: &OpenAPIPath,
-        schema_data: &'a openapiv3::SchemaData,
-        object_type: &'a openapiv3::ObjectType,
-    ) -> Result<Model> {
-        if object_type.additional_properties.is_some() {
-            return Err(Error::Unsupported(format!(
-                "additional_properties: {}",
-                path
-            )));
-        }
-
-        let mut properties = Vec::new();
-        for (property_name, property_ref) in &object_type.properties {
-            let mut path = path.clone();
-            path.push(property_name.to_string());
-
-            let required = object_type.required.contains(property_name);
-            let property = match property_ref {
-                openapiv3::ReferenceOr::Item(schema) => Field {
-                    name: property_name.to_string(),
-                    description: schema.schema_data.description.clone(),
-                    type_: self.resolve_type(&path, schema)?,
-                    required,
-                },
-                openapiv3::ReferenceOr::Reference { reference } => Field {
-                    name: property_name.to_string(),
-                    description: None,
-                    type_: self.resolve_schema_ref(&path, reference)?,
-                    required,
-                },
-            };
-            properties.push(property);
-        }
-        let struct_ = Struct {
-            name: path.to_pascal_case(),
-            description: schema_data.description.clone(),
-            fields: properties,
+        origin: ModelOrigin,
+        schema: &OpenApiElement<'_, openapiv3::Schema>,
+    ) -> Result<Type> {
+        let model = Model {
+            ref_: schema.ref_().clone(),
+            description: schema.schema_data.description.clone(),
+            origin,
+            type_: self.resolve_type_from_schema(schema)?,
         };
 
-        Ok(Model::Struct(struct_))
+        self.register_model(model)
     }
 
-    fn resolve_schema_ref(&mut self, path: &OpenAPIPath, reference: &str) -> Result<Type> {
-        let (schema_path, schema) = self.oas.find_schema(reference)?;
-        if matches!(
-            schema.schema_kind,
-            openapiv3::SchemaKind::Type(openapiv3::Type::Object(_))
-        ) {
-            Ok(Type::Struct(schema_path.to_pascal_case()))
-        } else {
-            self.resolve_type(path, schema)
+    fn register_model(&mut self, model: Model) -> Result<Type> {
+        let type_ = model.to_named_type();
+
+        let models = &mut self
+            .ctx
+            .location_contexts
+            .entry(model.ref_.ref_location().clone())
+            .or_default()
+            .models;
+
+        if let Some(old_model) = models.get(model.ref_.json_pointer()) {
+            if old_model != &model {
+                return Err(Error::ModelAlreadyRegistered(model));
+            }
         }
+
+        models.insert(model.ref_.json_pointer().clone(), model);
+
+        Ok(type_)
     }
 
-    fn resolve_type(&mut self, path: &OpenAPIPath, schema: &'a openapiv3::Schema) -> Result<Type> {
-        Ok(match &schema.schema_kind {
-            openapiv3::SchemaKind::Type(type_) => match type_ {
-                openapiv3::Type::Boolean {} => Type::Boolean,
-                openapiv3::Type::Integer(t) => Visitor::resolve_integer(path, t)?,
-                openapiv3::Type::Number(t) => Visitor::resolve_number(path, t)?,
-                openapiv3::Type::String(t) => self.resolve_string(path, &schema.schema_data, t)?,
-                openapiv3::Type::Array(t) => self.resolve_array(path, t)?,
-                openapiv3::Type::Object(t) => self.resolve_object(path, &schema.schema_data, t)?,
-            },
-            openapiv3::SchemaKind::OneOf { one_of } => {
-                self.resolve_one_of(path, &schema.schema_data, one_of)?
-            }
-            _ => {
-                return Err(Error::Unsupported(format!(
-                    "schema kind: {:?}",
-                    &schema.schema_kind
-                )));
-            }
-        })
-    }
-
-    fn resolve_integer(_path: &OpenAPIPath, integer_type: &openapiv3::IntegerType) -> Result<Type> {
+    fn resolve_integer(integer_type: &OpenApiElement<'_, openapiv3::IntegerType>) -> Result<Type> {
         if !integer_type.enumeration.is_empty() {
-            return Err(Error::Unsupported(format!(
-                "integer enum: {:?}",
-                integer_type.enumeration
-            )));
+            return Err(Error::Unsupported(
+                integer_type.ref_().clone(),
+                "integer enums".to_string(),
+            ));
         }
 
         Ok(match &integer_type.format {
@@ -429,12 +411,12 @@ impl<'a> Visitor<'a> {
         })
     }
 
-    fn resolve_number(_path: &OpenAPIPath, number_type: &openapiv3::NumberType) -> Result<Type> {
+    fn resolve_number(number_type: &OpenApiElement<'_, openapiv3::NumberType>) -> Result<Type> {
         if !number_type.enumeration.is_empty() {
-            return Err(Error::Unsupported(format!(
-                "number enum: {:?}",
-                number_type.enumeration
-            )));
+            return Err(Error::Unsupported(
+                number_type.ref_().clone(),
+                "number enums".to_string(),
+            ));
         }
 
         Ok(match &number_type.format {
@@ -448,257 +430,312 @@ impl<'a> Visitor<'a> {
 
     fn resolve_array(
         &mut self,
-        path: &OpenAPIPath,
-        array_type: &'a openapiv3::ArrayType,
+        array_type: &OpenApiElement<'_, openapiv3::ArrayType>,
     ) -> Result<Type> {
-        if array_type.items.is_none() {
-            return Err(Error::Invalid(format!("array items: {:?}", array_type)));
-        }
+        match &array_type.items {
+            None => Err(Error::Invalid(
+                array_type.ref_().clone(),
+                "no items".to_string(),
+            )),
+            Some(items) => {
+                let type_ = self.resolve_type_ref(
+                    ModelOrigin::Schemas,
+                    &array_type.as_element_ref(["items"], &items.clone().unbox()),
+                )?;
 
-        let inner_schema_ref = array_type.items.as_ref().unwrap();
-        let type_ = match inner_schema_ref {
-            openapiv3::ReferenceOr::Item(schema) => self.resolve_type(path, schema)?,
-            openapiv3::ReferenceOr::Reference { reference } => {
-                self.resolve_schema_ref(path, reference)?
+                if array_type.unique_items {
+                    Ok(Type::HashSet(Box::new(type_)))
+                } else {
+                    Ok(Type::Array(Box::new(type_)))
+                }
             }
-        };
-
-        if array_type.unique_items {
-            return Ok(Type::HashSet(Box::new(type_)));
         }
-
-        Ok(Type::Array(Box::new(type_)))
     }
 
-    fn resolve_string(
-        &mut self,
-        path: &OpenAPIPath,
-        schema_data: &'a openapiv3::SchemaData,
-        string_type: &'a openapiv3::StringType,
-    ) -> Result<Type> {
-        if !string_type.enumeration.is_empty() {
-            let enum_ = Model::Enum(Enum {
-                name: path.to_pascal_case(),
-                description: schema_data.description.clone(),
+    fn resolve_string(string_type: &OpenApiElement<'_, openapiv3::StringType>) -> Result<Type> {
+        Ok(if !string_type.enumeration.is_empty() {
+            Type::Enum {
                 variants: string_type
                     .enumeration
                     .iter()
                     .filter(|&s| s.is_some())
                     .map(|s| s.clone().unwrap())
                     .collect(),
-            });
-
-            let model_name = enum_.name().to_owned();
-            self.api.models.push(enum_);
-            return Ok(Type::Struct(model_name));
-        }
-
-        Ok(match &string_type.format {
-            openapiv3::VariantOrUnknownOrEmpty::Item(format) => match format {
-                openapiv3::StringFormat::Byte => Type::Bytes,
-                openapiv3::StringFormat::Binary => Type::Binary,
-                openapiv3::StringFormat::Date => Type::Date,
-                openapiv3::StringFormat::DateTime => Type::DateTime,
-                openapiv3::StringFormat::Password => {
-                    return Err(Error::Unsupported(format!("format: {:?}", format)))
-                }
-            },
-            _ => Type::String,
+            }
+        } else {
+            match &string_type.format {
+                openapiv3::VariantOrUnknownOrEmpty::Item(format) => match format {
+                    openapiv3::StringFormat::Byte => Type::Bytes,
+                    openapiv3::StringFormat::Binary => Type::Binary,
+                    openapiv3::StringFormat::Date => Type::Date,
+                    openapiv3::StringFormat::DateTime => Type::DateTime,
+                    openapiv3::StringFormat::Password => {
+                        return Err(Error::Unsupported(
+                            string_type.ref_().join(["format"]),
+                            "password strings".to_string(),
+                        ))
+                    }
+                },
+                _ => Type::String,
+            }
         })
     }
 
     fn resolve_object(
         &mut self,
-        path: &OpenAPIPath,
-        schema_data: &'a openapiv3::SchemaData,
-        object_type: &'a openapiv3::ObjectType,
+        object_type: &OpenApiElement<'_, openapiv3::ObjectType>,
     ) -> Result<Type> {
         // New model is created on the fly for each object type.
-        let model = self.new_model_from_object(path, schema_data, object_type)?;
-        let model_name = model.name().to_owned();
-        self.api.models.push(model);
-        Ok(Type::Struct(model_name))
+        if object_type.additional_properties.is_some() {
+            return Err(Error::Unsupported(
+                object_type.ref_().clone(),
+                "additional properties".to_string(),
+            ));
+        }
+
+        let mut properties = BTreeMap::new();
+
+        for (property_name, property_ref) in &object_type.properties {
+            let required = object_type.required.contains(property_name);
+            let type_ = self.resolve_type_ref(
+                ModelOrigin::ObjectProperty {
+                    object_pointer: object_type.ref_().json_pointer().clone(),
+                },
+                &object_type
+                    .as_element_ref(["properties", property_name], &property_ref.clone().unbox()),
+            )?;
+            let property = Field {
+                name: property_name.to_string(),
+                description: None, // TODO: Revisit this.
+                type_,
+                required,
+            };
+
+            properties.insert(property.name.clone(), property);
+        }
+
+        Ok(Type::Struct { fields: properties })
     }
 
     fn resolve_one_of(
         &mut self,
-        path: &OpenAPIPath,
-        schema_data: &'a openapiv3::SchemaData,
-        one_of: &'a [openapiv3::ReferenceOr<openapiv3::Schema>],
+        one_of: &OpenApiElement<'_, Vec<openapiv3::ReferenceOr<openapiv3::Schema>>>,
     ) -> Result<Type> {
-        // New enum model is created on the fly for each oneof.
-        let one_of = Model::OneOf(OneOf {
-            name: path.to_pascal_case(),
-            description: schema_data.description.clone(),
+        Ok(Type::OneOf {
             types: one_of
                 .iter()
-                .map(|schema_ref| match schema_ref {
-                    openapiv3::ReferenceOr::Item(schema) => self.resolve_type(path, schema),
-                    openapiv3::ReferenceOr::Reference { reference } => {
-                        self.resolve_schema_ref(path, reference)
-                    }
+                .enumerate()
+                .map(|(i, schema_ref)| {
+                    self.resolve_type_ref(
+                        ModelOrigin::Schemas,
+                        &one_of.as_element_ref([&i.to_string()], schema_ref),
+                    )
                 })
                 .collect::<Result<Vec<_>>>()?,
-        });
+        })
+    }
 
-        let model_name = one_of.name().to_owned();
-        self.api.models.push(one_of);
-        Ok(Type::Struct(model_name))
+    fn resolve_type_from_schema(
+        &mut self,
+        schema: &OpenApiElement<'_, openapiv3::Schema>,
+    ) -> Result<Type> {
+        match &schema.schema_kind {
+            openapiv3::SchemaKind::Type(type_) => match type_ {
+                openapiv3::Type::Boolean {} => Ok(Type::Boolean),
+                openapiv3::Type::Integer(t) => {
+                    Self::resolve_integer(&schema.as_self_element_ref(t))
+                }
+                openapiv3::Type::Number(t) => Self::resolve_number(&schema.as_self_element_ref(t)),
+                openapiv3::Type::String(t) => Self::resolve_string(&schema.as_self_element_ref(t)),
+                openapiv3::Type::Array(t) => self.resolve_array(&schema.as_self_element_ref(t)),
+                openapiv3::Type::Object(t) => self.resolve_object(&schema.as_self_element_ref(t)),
+            },
+            openapiv3::SchemaKind::OneOf { one_of } => {
+                self.resolve_one_of(&schema.as_element_ref(["one_of"], one_of))
+            }
+            _ => Err(Error::Unsupported(
+                schema.ref_().clone(),
+                format!("schemas of kind `{:?}`", &schema.schema_kind),
+            )),
+        }
+    }
+
+    fn resolve_type_ref(
+        &mut self,
+        origin: ModelOrigin,
+        schema: &OpenApiElement<'_, openapiv3::ReferenceOr<openapiv3::Schema>>,
+    ) -> Result<Type> {
+        match schema.as_ref() {
+            openapiv3::ReferenceOr::Item(inner_schema) => {
+                let schema = &schema.as_self_element_ref(inner_schema);
+                let type_ = self.resolve_type_from_schema(schema)?;
+
+                // TODO: If we find another way to check for that, we may
+                // simplify the whole function using `resolve_reference_or`
+                // followed by `register_model_from_schema`.
+                //
+                // Moreover, this check is pretty language-specific (Rust) so it
+                // feels wrong. Perhaps we should inject the logic of that check
+                // into the visitor, depending on the language.
+                if type_.requires_model() {
+                    self.register_model_from_schema(origin, schema)
+                } else {
+                    Ok(type_)
+                }
+            }
+            openapiv3::ReferenceOr::Reference { reference } => {
+                let ref_ = OpenApiRef::new(schema.ref_().ref_location(), reference)?;
+
+                let schema = schema
+                    .loader()
+                    .resolve_reference::<openapiv3::Schema>(ref_)?;
+                self.register_model_from_schema(ModelOrigin::Schemas, &schema)
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{Content, MediaType, Path};
-    use indexmap::IndexMap;
+    use crate::{
+        api_types::{Content, LocationContext, MediaType, Path},
+        openapi_loader::{JsonPointer, OpenApiLoader},
+    };
 
     use super::*;
 
     #[test]
     fn test_resolve_integer() {
-        let int = serde_yaml::from_str::<openapiv3::IntegerType>(
-            r#"
+        let loader = OpenApiLoader::default();
+        let int = loader
+            .import_from_yaml(
+                "int",
+                r#"
             type: integer
             "#,
-        )
-        .unwrap();
-        let int32 = serde_yaml::from_str::<openapiv3::IntegerType>(
-            r#"
+            )
+            .unwrap();
+        let int32 = loader
+            .import_from_yaml(
+                "int32",
+                r#"
             type: integer
             format: int32
             "#,
-        )
-        .unwrap();
-        let int64 = serde_yaml::from_str::<openapiv3::IntegerType>(
-            r#"
+            )
+            .unwrap();
+        let int64 = loader
+            .import_from_yaml(
+                "int64",
+                r#"
             type: integer
             format: int64
             "#,
-        )
-        .unwrap();
+            )
+            .unwrap();
 
-        assert_eq!(
-            Visitor::resolve_integer(&"my_int".into(), &int).unwrap(),
-            Type::Int32
-        );
-        assert_eq!(
-            Visitor::resolve_integer(&"my_int32".into(), &int32).unwrap(),
-            Type::Int32
-        );
-        assert_eq!(
-            Visitor::resolve_integer(&"my_int64".into(), &int64).unwrap(),
-            Type::Int64
-        );
+        assert_eq!(Visitor::resolve_integer(&int).unwrap(), Type::Int32);
+        assert_eq!(Visitor::resolve_integer(&int32).unwrap(), Type::Int32);
+        assert_eq!(Visitor::resolve_integer(&int64).unwrap(), Type::Int64);
     }
 
     #[test]
     fn test_resolve_number() {
-        let num = serde_yaml::from_str::<openapiv3::NumberType>(
-            r#"
+        let loader = OpenApiLoader::default();
+        let num = loader
+            .import_from_yaml(
+                "num",
+                r#"
             type: number
             "#,
-        )
-        .unwrap();
-        let num32 = serde_yaml::from_str::<openapiv3::NumberType>(
-            r#"
+            )
+            .unwrap();
+        let num32 = loader
+            .import_from_yaml(
+                "num32",
+                r#"
             type: number
             format: float
             "#,
-        )
-        .unwrap();
-        let num64 = serde_yaml::from_str::<openapiv3::NumberType>(
-            r#"
+            )
+            .unwrap();
+        let num64 = loader
+            .import_from_yaml(
+                "num64",
+                r#"
             type: number
             format: double
             "#,
-        )
-        .unwrap();
+            )
+            .unwrap();
 
-        assert_eq!(
-            Visitor::resolve_number(&"my_num".into(), &num).unwrap(),
-            Type::Float64
-        );
-        assert_eq!(
-            Visitor::resolve_number(&"my_num32".into(), &num32).unwrap(),
-            Type::Float32
-        );
-        assert_eq!(
-            Visitor::resolve_number(&"my_num64".into(), &num64).unwrap(),
-            Type::Float64
-        );
+        assert_eq!(Visitor::resolve_number(&num).unwrap(), Type::Float64);
+        assert_eq!(Visitor::resolve_number(&num32).unwrap(), Type::Float32);
+        assert_eq!(Visitor::resolve_number(&num64).unwrap(), Type::Float64);
     }
 
     #[test]
     fn test_resolve_string() {
-        let str = serde_yaml::from_str::<openapiv3::StringType>(
-            r#"
+        let loader = OpenApiLoader::default();
+        let str = loader
+            .import_from_yaml(
+                "str",
+                r#"
             type: string
             "#,
-        )
-        .unwrap();
-        let str_date = serde_yaml::from_str::<openapiv3::StringType>(
-            r#"
+            )
+            .unwrap();
+        let str_date = loader
+            .import_from_yaml(
+                "str_date",
+                r#"
             type: string
             format: date
             "#,
-        )
-        .unwrap();
-        let str_date_time = serde_yaml::from_str::<openapiv3::StringType>(
-            r#"
+            )
+            .unwrap();
+        let str_date_time = loader
+            .import_from_yaml(
+                "str_date_time",
+                r#"
             type: string
             format: date-time
             "#,
-        )
-        .unwrap();
-        let str_bytes = serde_yaml::from_str::<openapiv3::StringType>(
-            r#"
+            )
+            .unwrap();
+        let str_bytes = loader
+            .import_from_yaml(
+                "str_bytes",
+                r#"
             type: string
             format: byte
             "#,
-        )
-        .unwrap();
-        let str_binary = serde_yaml::from_str::<openapiv3::StringType>(
-            r#"
+            )
+            .unwrap();
+        let str_binary = loader
+            .import_from_yaml(
+                "str_binary",
+                r#"
             type: string
             format: binary
             "#,
-        )
-        .unwrap();
+            )
+            .unwrap();
 
-        let data = openapiv3::SchemaData::default();
-        let oas = openapiv3::OpenAPI::default();
-        let mut v = Visitor::new(&oas);
-
+        assert_eq!(Visitor::resolve_string(&str).unwrap(), Type::String);
+        assert_eq!(Visitor::resolve_string(&str_date).unwrap(), Type::Date);
         assert_eq!(
-            v.resolve_string(&"my_str".into(), &data, &str).unwrap(),
-            Type::String
-        );
-        assert_eq!(
-            v.resolve_string(&"my_str_date".into(), &data, &str_date)
-                .unwrap(),
-            Type::Date
-        );
-        assert_eq!(
-            v.resolve_string(&"my_str_date_time".into(), &data, &str_date_time)
-                .unwrap(),
+            Visitor::resolve_string(&str_date_time).unwrap(),
             Type::DateTime
         );
-        assert_eq!(
-            v.resolve_string(&"my_str_bytes".into(), &data, &str_bytes)
-                .unwrap(),
-            Type::Bytes
-        );
-        assert_eq!(
-            v.resolve_string(&"my_str_binary".into(), &data, &str_binary)
-                .unwrap(),
-            Type::Binary
-        );
+        assert_eq!(Visitor::resolve_string(&str_bytes).unwrap(), Type::Bytes);
+        assert_eq!(Visitor::resolve_string(&str_binary).unwrap(), Type::Binary);
     }
 
     #[test]
     fn test_resolve_string_enum() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -712,79 +749,121 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: Some(components),
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api.yaml", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
-        let expected_struct = Model::Struct(Struct {
-            name: "MyStruct".to_string(),
-            fields: vec![Field {
-                name: "my_enum".to_string(),
-                description: None,
-                type_: Type::Struct("MyStructMyEnum".to_string()),
-                required: false,
-            }],
-            ..Struct::default()
-        });
+        let my_struct_ref = oas.ref_().join(
+            "/components/schemas/MyStruct"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
+        let my_struct_my_enum_ref = oas.ref_().join(
+            "/components/schemas/MyStruct/properties/my_enum"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
 
-        let expected_enum = Model::Enum(Enum {
-            name: "MyStructMyEnum".to_string(),
-            variants: vec!["foo".to_string(), "bar".to_string()],
-            ..Enum::default()
-        });
+        let expected_struct = Model {
+            ref_: my_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::Schemas,
+            type_: Type::Struct {
+                fields: BTreeMap::from([(
+                    "my_enum".to_string(),
+                    Field {
+                        name: "my_enum".to_string(),
+                        description: None,
+                        type_: Type::Named(my_struct_my_enum_ref.clone()),
+                        required: false,
+                    },
+                )]),
+            },
+        };
 
-        assert_eq!(api.models.len(), 2);
-        assert!(api.models.contains(&expected_struct));
-        assert!(api.models.contains(&expected_enum));
+        let expected_enum = Model {
+            ref_: my_struct_my_enum_ref.clone(),
+            description: None,
+            origin: ModelOrigin::ObjectProperty {
+                object_pointer: my_struct_ref.json_pointer().clone(),
+            },
+            type_: Type::Enum {
+                variants: vec!["foo".to_string(), "bar".to_string()],
+            },
+        };
+
+        let models = &ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap()
+            .models;
+
+        assert_eq!(models.len(), 2);
+        assert_eq!(
+            models.get(my_struct_ref.json_pointer()),
+            Some(&expected_struct)
+        );
+        assert_eq!(
+            models.get(my_struct_my_enum_ref.json_pointer()),
+            Some(&expected_enum)
+        );
     }
 
     #[test]
     fn test_resolve_array() {
-        let array = serde_yaml::from_str::<openapiv3::ArrayType>(
-            r#"
+        let loader = OpenApiLoader::default();
+        let array = loader
+            .import_from_yaml(
+                "array",
+                r#"
             type: array
             items:
               type: string
             "#,
-        )
-        .unwrap();
+            )
+            .unwrap();
 
-        let oas = openapiv3::OpenAPI::default();
-        let mut v = Visitor::new(&oas);
+        let mut v = Visitor::new(std::env::current_dir().unwrap());
 
         assert_eq!(
-            v.resolve_array(&"my_array".into(), &array).unwrap(),
+            v.resolve_array(&array).unwrap(),
             Type::Array(Box::new(Type::String))
         );
     }
 
     #[test]
     fn test_resolve_hashset() {
-        let array = serde_yaml::from_str::<openapiv3::ArrayType>(
-            r#"
+        let loader = OpenApiLoader::default();
+        let array = loader
+            .import_from_yaml(
+                "array",
+                r#"
             type: array
             items:
               type: string
             uniqueItems: true
             "#,
-        )
-        .unwrap();
+            )
+            .unwrap();
 
-        let oas = openapiv3::OpenAPI::default();
-        let mut v = Visitor::new(&oas);
+        let mut v = Visitor::new(std::env::current_dir().unwrap());
 
         assert_eq!(
-            v.resolve_array(&"my_hashset".into(), &array).unwrap(),
+            v.resolve_array(&array).unwrap(),
             Type::HashSet(Box::new(Type::String))
         );
     }
 
     #[test]
     fn test_resolve_array_ref() {
-        let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+        let components = serde_yaml::from_str(
+            r#"
             schemas:
               Category:
                 type: string
@@ -803,58 +882,75 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: Some(components),
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
-        let expected_struct = Model::Struct(Struct {
-            name: "MyStruct".to_string(),
-            fields: vec![
-                Field {
-                    name: "category".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: false,
-                },
-                Field {
-                    name: "tags".to_string(),
-                    description: None,
-                    type_: Type::Array(Box::new(Type::String)),
-                    required: false,
-                },
-            ],
-            ..Struct::default()
-        });
+        let my_struct_ref = oas.ref_().join(
+            "/components/schemas/MyStruct"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
+        let category_ref = oas.ref_().join(
+            "/components/schemas/Category"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
+        let tag_ref = oas
+            .ref_()
+            .join("/components/schemas/Tag".parse::<JsonPointer>().unwrap());
 
-        assert_eq!(api.models.len(), 1);
-        assert!(api.models.contains(&expected_struct));
-    }
+        let expected_struct = Model {
+            ref_: my_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::Schemas,
+            type_: Type::Struct {
+                fields: BTreeMap::from([
+                    (
+                        "category".to_string(),
+                        Field {
+                            name: "category".to_string(),
+                            description: None,
+                            type_: Type::Named(category_ref),
+                            required: false,
+                        },
+                    ),
+                    (
+                        "tags".to_string(),
+                        Field {
+                            name: "tags".to_string(),
+                            description: None,
+                            type_: Type::Array(Box::new(Type::Named(tag_ref))),
+                            required: false,
+                        },
+                    ),
+                ]),
+            },
+        };
 
-    #[test]
-    fn test_resolve_object() {
-        let object = serde_yaml::from_str::<openapiv3::ObjectType>(
-            r#"
-            type: object
-            "#,
-        )
-        .unwrap();
+        let models = &ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap()
+            .models;
 
-        let data = openapiv3::SchemaData::default();
-        let oas = openapiv3::OpenAPI::default();
-        let mut v = Visitor::new(&oas);
-
+        assert_eq!(models.len(), 3);
         assert_eq!(
-            v.resolve_object(&"my_obj".into(), &data, &object).unwrap(),
-            Type::Struct("MyObj".to_string())
+            models.get(my_struct_ref.json_pointer()),
+            Some(&expected_struct)
         );
     }
 
     #[test]
     fn test_resolve_struct() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -869,39 +965,67 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: Some(components),
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
-        let expected_struct = Model::Struct(Struct {
-            name: "MyStruct".to_string(),
-            fields: vec![
-                Field {
-                    name: "my_prop1".to_string(),
-                    description: None,
-                    type_: Type::String,
-                    required: true,
-                },
-                Field {
-                    name: "my_prop2".to_string(),
-                    description: None,
-                    type_: Type::Int32,
-                    required: false,
-                },
-            ],
-            ..Struct::default()
-        });
+        let my_struct_ref = oas.ref_().join(
+            "/components/schemas/MyStruct"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
 
-        assert_eq!(api.models.len(), 1);
-        assert!(api.models.contains(&expected_struct));
+        let expected_struct = Model {
+            ref_: my_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::Schemas,
+            type_: Type::Struct {
+                fields: BTreeMap::from([
+                    (
+                        "my_prop1".to_string(),
+                        Field {
+                            name: "my_prop1".to_string(),
+                            description: None,
+                            type_: Type::String,
+                            required: true,
+                        },
+                    ),
+                    (
+                        "my_prop2".to_string(),
+                        Field {
+                            name: "my_prop2".to_string(),
+                            description: None,
+                            type_: Type::Int32,
+                            required: false,
+                        },
+                    ),
+                ]),
+            },
+        };
+
+        let models = &ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap()
+            .models;
+
+        assert_eq!(models.len(), 1);
+        assert_eq!(
+            models.get(my_struct_ref.json_pointer()),
+            Some(&expected_struct)
+        );
     }
 
     #[test]
     fn test_resolve_inner_struct() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               MyStruct:
                 type: object
@@ -915,43 +1039,84 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: Some(components),
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
-        let expected_struct = Model::Struct(Struct {
-            name: "MyStruct".to_string(),
-            fields: vec![Field {
-                name: "my_inner_struct".to_string(),
-                description: None,
-                type_: Type::Struct("MyStructMyInnerStruct".to_string()),
-                required: false,
-            }],
-            ..Struct::default()
-        });
+        let my_struct_ref = oas.ref_().join(
+            "/components/schemas/MyStruct"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
+        let my_inner_struct_ref = oas.ref_().join(
+            "/components/schemas/MyStruct/properties/my_inner_struct"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
 
-        let expected_inner_struct = Model::Struct(Struct {
-            name: "MyStructMyInnerStruct".to_string(),
-            fields: vec![Field {
-                name: "my_inner_prop".to_string(),
-                description: None,
-                type_: Type::String,
-                required: false,
-            }],
-            ..Struct::default()
-        });
+        let expected_struct = Model {
+            ref_: my_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::Schemas,
+            type_: Type::Struct {
+                fields: BTreeMap::from([(
+                    "my_inner_struct".to_string(),
+                    Field {
+                        name: "my_inner_struct".to_string(),
+                        description: None,
+                        type_: Type::Named(my_inner_struct_ref.clone()),
+                        required: false,
+                    },
+                )]),
+            },
+        };
 
-        assert_eq!(api.models.len(), 2);
-        assert!(api.models.contains(&expected_struct));
-        assert!(api.models.contains(&expected_inner_struct));
+        let expected_inner_struct = Model {
+            ref_: my_inner_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::ObjectProperty {
+                object_pointer: my_struct_ref.json_pointer().clone(),
+            },
+            type_: Type::Struct {
+                fields: BTreeMap::from([(
+                    "my_inner_prop".to_string(),
+                    Field {
+                        name: "my_inner_prop".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
+            },
+        };
+
+        let models = &ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap()
+            .models;
+
+        assert_eq!(models.len(), 2);
+        assert_eq!(
+            models.get(my_struct_ref.json_pointer()),
+            Some(&expected_struct)
+        );
+        assert_eq!(
+            models.get(my_inner_struct_ref.json_pointer()),
+            Some(&expected_inner_struct)
+        );
     }
 
     #[test]
     fn test_resolve_get_operation() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"    
+            r#"
             schemas:
               Pet:
                 type: object
@@ -963,7 +1128,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               get:
                 summary: Finds pets by tags.
@@ -990,23 +1155,37 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: Some(components),
             paths,
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
-        let expected_struct = Model::Struct(Struct {
-            name: "Pet".to_string(),
-            fields: vec![Field {
-                name: "name".to_string(),
-                description: None,
-                type_: Type::String,
-                required: false,
-            }],
-            ..Struct::default()
-        });
+        let my_struct_ref = oas
+            .ref_()
+            .join("/components/schemas/Pet".parse::<JsonPointer>().unwrap());
+
+        let expected_struct = Model {
+            ref_: my_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::Schemas,
+            type_: Type::Struct {
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
+            },
+        };
 
         let expected_route = Route {
             name: "findPetsByTags".to_string(),
@@ -1022,20 +1201,30 @@ mod tests {
                 }],
                 ..Parameters::default()
             },
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
                     content: Some(Content {
                         media_type: MediaType::Json,
-                        type_: Type::Array(Box::new(Type::Struct("Pet".to_string()))),
+                        type_: Type::Array(Box::new(Type::Named(my_struct_ref.clone()))),
                     }),
+                    headers: BTreeMap::new(),
                 },
             )]),
         };
 
-        assert_eq!(api.models.len(), 1);
-        assert!(api.models.contains(&expected_struct));
+        let LocationContext { api, models } = ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap();
+        let api = api.as_ref().unwrap();
+
+        assert_eq!(models.len(), 1);
+        assert_eq!(
+            models.get(my_struct_ref.json_pointer()),
+            Some(&expected_struct)
+        );
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(
@@ -1047,7 +1236,7 @@ mod tests {
     #[test]
     fn test_resolve_request_body() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             requestBodies:
               Pet:
                 content:
@@ -1065,7 +1254,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               post:
                 operationId: addPet
@@ -1078,34 +1267,65 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: Some(components),
             paths,
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
-        let expected_struct = Model::Struct(Struct {
-            name: "AddPetBody".to_string(),
-            fields: vec![Field {
-                name: "pet_data".to_string(),
-                description: None,
-                type_: Type::Struct("AddPetBodyPetData".to_string()),
-                required: false,
-            }],
-            ..Struct::default()
-        });
+        let my_struct_ref = oas.ref_().join(
+            "/components/requestBodies/Pet/content/application~1json/schema"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
+        let my_inner_struct_ref = oas.ref_().join(
+            "/components/requestBodies/Pet/content/application~1json/schema/properties/pet_data"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
 
-        let expected_inner_struct = Model::Struct(Struct {
-            name: "AddPetBodyPetData".to_string(),
-            fields: vec![Field {
-                name: "name".to_string(),
-                description: None,
-                type_: Type::String,
-                required: false,
-            }],
-            ..Struct::default()
-        });
+        let expected_struct = Model {
+            ref_: my_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::RequestBody {
+                operation_name: "addPet".to_string(),
+            },
+            type_: Type::Struct {
+                fields: BTreeMap::from([(
+                    "pet_data".to_string(),
+                    Field {
+                        name: "pet_data".to_string(),
+                        description: None,
+                        type_: Type::Named(my_inner_struct_ref.clone()),
+                        required: false,
+                    },
+                )]),
+            },
+        };
+
+        let expected_inner_struct = Model {
+            ref_: my_inner_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::ObjectProperty {
+                object_pointer: my_struct_ref.json_pointer().clone(),
+            },
+            type_: Type::Struct {
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
+            },
+        };
 
         let expected_route = Route {
             name: "addPet".to_string(),
@@ -1116,22 +1336,35 @@ mod tests {
                 required: false,
                 content: Content {
                     media_type: MediaType::Json,
-                    type_: Type::Struct("AddPetBody".to_string()),
+                    type_: Type::Named(my_struct_ref.clone()),
                 },
             }),
             parameters: Parameters::default(),
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
                     content: None,
+                    headers: BTreeMap::new(),
                 },
             )]),
         };
 
-        assert_eq!(api.models.len(), 2);
-        assert!(api.models.contains(&expected_struct));
-        assert!(api.models.contains(&expected_inner_struct));
+        let LocationContext { api, models } = ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap();
+        let api = api.as_ref().unwrap();
+
+        assert_eq!(models.len(), 2);
+        assert_eq!(
+            models.get(my_struct_ref.json_pointer()),
+            Some(&expected_struct)
+        );
+        assert_eq!(
+            models.get(my_inner_struct_ref.json_pointer()),
+            Some(&expected_inner_struct)
+        );
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(
@@ -1143,13 +1376,13 @@ mod tests {
     #[test]
     fn test_resolve_post_operation() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             requestBodies:
               Pet:
                 content:
                   application/json:
                     schema:
-                      $ref: '#/components/schemas/Pet'  
+                      $ref: '#/components/schemas/Pet'
             schemas:
               Pet:
                 type: object
@@ -1161,7 +1394,7 @@ mod tests {
         .unwrap();
 
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /pets:
               post:
                 summary: Add a new pet to the store.
@@ -1181,23 +1414,37 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: Some(components),
             paths,
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
-        let expected_struct = Model::Struct(Struct {
-            name: "Pet".to_string(),
-            fields: vec![Field {
-                name: "name".to_string(),
-                description: None,
-                type_: Type::String,
-                required: false,
-            }],
-            ..Struct::default()
-        });
+        let my_struct_ref = oas
+            .ref_()
+            .join("/components/schemas/Pet".parse::<JsonPointer>().unwrap());
+
+        let expected_struct = Model {
+            ref_: my_struct_ref.clone(),
+            description: None,
+            origin: ModelOrigin::Schemas,
+            type_: Type::Struct {
+                fields: BTreeMap::from([(
+                    "name".to_string(),
+                    Field {
+                        name: "name".to_string(),
+                        description: None,
+                        type_: Type::String,
+                        required: false,
+                    },
+                )]),
+            },
+        };
 
         let expected_route = Route {
             name: "addPet".to_string(),
@@ -1208,19 +1455,20 @@ mod tests {
                 required: false,
                 content: Content {
                     media_type: MediaType::Json,
-                    type_: Type::Struct("Pet".to_string()),
+                    type_: Type::Named(my_struct_ref.clone()),
                 },
             }),
             parameters: Parameters::default(),
-            responses: IndexMap::from([
+            responses: BTreeMap::from([
                 (
                     http::StatusCode::OK.into(),
                     Response {
                         description: "Successful".to_string(),
                         content: Some(Content {
                             media_type: MediaType::Json,
-                            type_: Type::Struct("Pet".to_string()),
+                            type_: Type::Named(my_struct_ref.clone()),
                         }),
+                        headers: BTreeMap::new(),
                     },
                 ),
                 (
@@ -1228,13 +1476,23 @@ mod tests {
                     Response {
                         description: "Invalid input".to_string(),
                         content: None,
+                        headers: BTreeMap::new(),
                     },
                 ),
             ]),
         };
 
-        assert_eq!(api.models.len(), 1);
-        assert!(api.models.contains(&expected_struct));
+        let LocationContext { api, models } = ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap();
+        let api = api.as_ref().unwrap();
+
+        assert_eq!(models.len(), 1);
+        assert_eq!(
+            models.get(my_struct_ref.json_pointer()),
+            Some(&expected_struct)
+        );
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(
@@ -1262,18 +1520,21 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             paths,
             ..openapiv3::OpenAPI::default()
         };
-        let result = visit(&oas);
-        assert!(result.is_err());
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas])
+            .unwrap_err();
     }
 
     #[test]
-    fn test() {
+    fn test_resolve_one_of() {
         let components = serde_yaml::from_str::<openapiv3::Components>(
-            r#"  
+            r#"
             schemas:
               Pet:
                 type: object
@@ -1307,30 +1568,136 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: Some(components),
             paths,
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
-        let expected_one_of = Model::OneOf(OneOf {
-            name: "TestOneOfResponse".to_string(),
-            types: vec![
-                Type::Struct("Pet".to_string()),
-                Type::Struct("Car".to_string()),
-            ],
-            ..OneOf::default()
-        });
+        let response_ref = oas.ref_().join(
+            "/paths/~1test-one-of/get/responses/200/content/application~1json/schema"
+                .parse::<JsonPointer>()
+                .unwrap(),
+        );
+        let pet_ref = oas
+            .ref_()
+            .join("/components/schemas/Pet".parse::<JsonPointer>().unwrap());
+        let car_ref = oas
+            .ref_()
+            .join("/components/schemas/Car".parse::<JsonPointer>().unwrap());
 
-        assert_eq!(api.models.len(), 3);
-        assert!(api.models.contains(&expected_one_of));
+        let expected_one_of = Model {
+            ref_: response_ref.clone(),
+            description: None,
+            origin: ModelOrigin::ResponseBody {
+                operation_name: "testOneOf".to_string(),
+                status_code: http::StatusCode::OK.into(),
+            },
+            type_: Type::OneOf {
+                types: vec![Type::Named(pet_ref), Type::Named(car_ref)],
+            },
+        };
+
+        let models = &ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap()
+            .models;
+
+        assert_eq!(models.len(), 3);
+        assert_eq!(
+            models.get(response_ref.json_pointer()),
+            Some(&expected_one_of)
+        );
+    }
+
+    #[test]
+    fn test_resolve_headers() {
+        let paths = serde_yaml::from_str::<openapiv3::Paths>(
+            r#"
+            /test-headers:
+              get:
+                operationId: testHeaders
+                parameters:
+                  - name: x-static-header
+                    in: header
+                    schema:
+                      type: string
+                responses:
+                  '200':
+                    description: Ok.
+                    headers:
+                      x-static-header:
+                        schema:
+                          type: string
+            "#,
+        )
+        .unwrap();
+
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
+            paths,
+            ..openapiv3::OpenAPI::default()
+        };
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
+
+        let expected_route = Route {
+            name: "testHeaders".to_string(),
+            method: Method::Get,
+            summary: None,
+            request_body: None,
+            parameters: Parameters {
+                header: vec![Parameter {
+                    name: "x-static-header".to_string(),
+                    description: None,
+                    required: false,
+                    type_: Type::String,
+                }],
+                ..Parameters::default()
+            },
+            responses: BTreeMap::from([(
+                http::StatusCode::OK.into(),
+                Response {
+                    description: "Ok.".to_string(),
+                    content: None,
+                    headers: BTreeMap::from([(
+                        "x-static-header".to_string(),
+                        Header {
+                            description: None,
+                            type_: Type::String,
+                        },
+                    )]),
+                },
+            )]),
+        };
+
+        let api = ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap()
+            .api
+            .as_ref()
+            .unwrap();
+
+        assert_eq!(api.paths.len(), 1);
+        assert_eq!(
+            api.paths.get::<Path>(&"/test-headers".into()),
+            Some(&vec![expected_route])
+        );
     }
 
     #[test]
     fn test_resolve_operation_with_path_level_parameters() {
         let paths = serde_yaml::from_str::<openapiv3::Paths>(
-            r#"    
+            r#"
             /foo/{a}/bar/{b}:
               parameters:
                 - name: a
@@ -1363,12 +1730,16 @@ mod tests {
         )
         .unwrap();
 
-        let oas = openapiv3::OpenAPI {
+        let loader = OpenApiLoader::default();
+        let api = openapiv3::OpenAPI {
             components: None,
             paths,
             ..openapiv3::OpenAPI::default()
         };
-        let api = visit(&oas).unwrap();
+        let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
+        let ctx = Visitor::new(std::env::current_dir().unwrap())
+            .visit(&[oas.clone()])
+            .unwrap();
 
         let expected_route = Route {
             name: "foo".to_string(),
@@ -1398,14 +1769,23 @@ mod tests {
                 }],
                 ..Parameters::default()
             },
-            responses: IndexMap::from([(
+            responses: BTreeMap::from([(
                 http::StatusCode::OK.into(),
                 Response {
                     description: "Successful".to_string(),
                     content: None,
+                    headers: BTreeMap::new(),
                 },
             )]),
         };
+
+        let api = ctx
+            .location_contexts
+            .get(oas.ref_().ref_location())
+            .unwrap()
+            .api
+            .as_ref()
+            .unwrap();
 
         assert_eq!(api.paths.len(), 1);
         assert_eq!(

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { CallGraphNode } from "@/lib/CallGraph/CallGraphNode";
   import { CallGraphNodeStatType } from "@/lib/CallGraph/CallGraphNodeStatType";
-  import { CallGraphNodeTableKind } from "@/lib/CallGraph/CallGraphNodeTableKind";
+  import type { CallGraphNodeTableKind } from "@/lib/CallGraph/CallGraphNodeTableKind";
   import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
 
   import GraphNodeTableRow from "./CallGraphFlatNodeTableRow.svelte";
@@ -10,8 +10,7 @@
   export let kind: CallGraphNodeTableKind;
   export let store: CumulatedCallGraphFlatStore;
 
-  $: data =
-    kind == CallGraphNodeTableKind.Callees ? node.children : node.parents;
+  $: data = kind === "callees" ? node.children : node.parents;
 </script>
 
 <table class="headline font-thin self-start border-separate">
@@ -19,29 +18,20 @@
     <thead class="select-none">
       <tr>
         <td style:width="0" />
-        <td
-          >{kind === CallGraphNodeTableKind.Callees ? "Callees" : "Callers"}</td
-        >
+        <td>{kind === "callees" ? "Callees" : "Callers"}</td>
         <td class="stat">{CallGraphNodeStatType[CallGraphNodeStatType.Avg]}</td>
         <td class="stat">{CallGraphNodeStatType[CallGraphNodeStatType.Min]}</td>
         <td class="stat">{CallGraphNodeStatType[CallGraphNodeStatType.Max]}</td>
         <td class="stat">{CallGraphNodeStatType[CallGraphNodeStatType.Sd]}</td>
-        <td class="stat"
-          >{CallGraphNodeStatType[CallGraphNodeStatType.Count]}</td
-        >
+        <td class="stat">
+          {CallGraphNodeStatType[CallGraphNodeStatType.Count]}
+        </td>
         <td class="stat">{CallGraphNodeStatType[CallGraphNodeStatType.Sum]}</td>
       </tr>
     </thead>
     <tbody>
       {#each [...data] as [key, value] (key)}
-        <GraphNodeTableRow
-          hash={key}
-          {kind}
-          on:clicked
-          {value}
-          {node}
-          {store}
-        />
+        <GraphNodeTableRow on:click hash={key} {kind} {value} {node} {store} />
       {/each}
     </tbody>
   {/if}

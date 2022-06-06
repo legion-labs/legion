@@ -1,15 +1,17 @@
-import * as d3 from "d3";
+const colors = [
+  "#79CDAF",
+  "#3984B6",
+  "#F0A04B",
+  "#EC7C92",
+  "#7E84FA",
+  "#62CB5A",
+  "#147AF3",
+  "#A73B8F",
+  "#FBDB68",
+  "#E5632F",
+  "#008F5D",
+];
 
-export function getMetricColor(name: string) {
-  const color = Math.abs(hashString(name)) % 10;
-  return d3.schemeCategory10[color];
-}
-
-function hashString(string: string): number {
-  let hash = 0;
-  for (let i = 0; i < string.length; i++) {
-    hash = string.charCodeAt(i) + ((hash << 5) - hash);
-    hash = hash & hash;
-  }
-  return hash;
+export function getMetricColor(index: number) {
+  return colors[index % colors.length];
 }

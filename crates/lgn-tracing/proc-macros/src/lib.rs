@@ -40,27 +40,28 @@ pub fn span_fn(
     args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
-    let args = parse_macro_input!(args as TraceArgs);
     let mut function = parse_macro_input!(input as ItemFn);
+
+    if function.sig.asyncness.is_some() {
+        // NOOP For now
+        return proc_macro::TokenStream::from(quote! {
+            #function
+        });
+    };
+
+    let args = parse_macro_input!(args as TraceArgs);
 
     let function_name = args
         .alternative_name
         .map_or(function.sig.ident.to_string(), |n| n.to_string());
 
-    let statement = match function.sig.asyncness {
-        None => {
-            parse_quote! {
-                lgn_tracing::span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
-            }
-        }
-        Some(_) => {
-            parse_quote! {
-                lgn_tracing::async_span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
-            }
-        }
-    };
+    function.block.stmts.insert(
+        0,
+        parse_quote! {
+            lgn_tracing::span_scope!(_METADATA_FUNC, concat!(module_path!(), "::", #function_name));
+        },
+    );
 
-    function.block.stmts.insert(0, statement);
     proc_macro::TokenStream::from(quote! {
         #function
     })

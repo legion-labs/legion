@@ -1,32 +1,46 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
   import { createEventDispatcher } from "svelte";
+  import type { Writable } from "svelte/store";
 
+  import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import MenuBar from "@lgn/web-client/src/components/menu/MenuBar.svelte";
+  import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
+  import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
 
   import type { PropertyUpdate } from "@/api";
   import {
+    isPropertyDisplayable,
     propertyIsDynComponent,
     propertyIsGroup,
     propertyIsOption,
     propertyIsVec,
-  } from "@/lib/propertyGrid";
-  import type { BagResourceProperty } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
+  import type { BagResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
   import { currentResource } from "@/orchestrators/currentResource";
   import modal from "@/stores/modal";
-  import type { PropertyGridStore } from "@/stores/propertyGrid";
 
   import Checkbox from "../inputs/Checkbox.svelte";
   import PropertyContainer from "./PropertyContainer.svelte";
+  import type { PropertyGridStore } from "./lib/propertyGridStore";
   import type {
     AddVectorSubPropertyEvent,
     RemoveVectorSubPropertyEvent,
   } from "./types";
 
+  type $$Events = {
+    input: CustomEvent<PropertyUpdate>;
+    addVectorSubProperty: CustomEvent<AddVectorSubPropertyEvent>;
+    removeVectorSubProperty: CustomEvent<RemoveVectorSubPropertyEvent>;
+    displayable: CustomEvent<boolean>;
+  };
+
   const dispatch = createEventDispatcher<{
     input: PropertyUpdate;
     addVectorSubProperty: AddVectorSubPropertyEvent;
     removeVectorSubProperty: RemoveVectorSubPropertyEvent;
+    displayable: boolean;
   }>();
 
   // TODO: Optional property bags are disabled until they're properly supported
@@ -46,11 +60,15 @@
 
   export let propertyGridStore: PropertyGridStore;
 
+  export let search: Writable<string>;
+
   let removePromptId: symbol | null = null;
 
-  $: collapsed = propertyGridStore
-    ? $propertyGridStore.get(propertyBagKey)
-    : false;
+  let childDisplayable = true;
+
+  let div: HTMLElement;
+
+  $: collapsed = $propertyGridStore.get(propertyBagKey) === true;
 
   function addVectorSubProperty() {
     const index = property.subProperties.length;
@@ -117,50 +135,94 @@
     parentProperty.subProperties.splice(subPropertyIndex, 1);
     parentProperty.subProperties = parentProperty.subProperties;
   }
+
+  function beautifyComponentName(name: string) {
+    return name.replace("[", "").replace("]", "");
+  }
+
+  let displayable = true;
+
+  function onChildDisplayable(e: boolean) {
+    if (e) {
+      childDisplayable = e;
+      dispatch("displayable", e);
+    }
+  }
+
+  $: {
+    childDisplayable = false;
+    displayable = isPropertyDisplayable(property.name, $search);
+
+    if (displayable) {
+      collapsed = false;
+      dispatch("displayable", displayable);
+    }
+  }
+
+  const menuItems = [
+    {
+      visible: true,
+      icon: "ic:outline-more-vert",
+      children: [
+        {
+          title: "Delete component",
+          visible:
+            (parentProperty && propertyIsDynComponent(parentProperty)) ?? false,
+          action: () => {
+            requestRemoveComponent();
+          },
+        },
+        {
+          title: "Add property to vector",
+          visible: propertyIsVec(property),
+          action: () => {
+            addVectorSubProperty();
+          },
+        },
+      ],
+    },
+  ] as MenuItemDescription[];
 </script>
 
 <svelte:window on:prompt-answer={removeComponent} />
 
-<div class="root" class:with-indent={level > 1}>
+<div
+  bind:this={div}
+  class:flex={childDisplayable || displayable}
+  hidden={!(childDisplayable && displayable)}
+  class="property-root"
+>
   {#if property.name}
     <div
       on:click={(_) => propertyGridStore.switchCollapse(propertyBagKey)}
-      class="flex flex-row items-center justify-between h-7 pl-1 my-0.5 font-semibold bg-gray-800 rounded-sm cursor-pointer"
-      title={property.name}
+      class="property-header"
+      style="padding-left:{level / 4}rem"
     >
       <div>
         <Icon
           class="float-left"
           width={"1.5em"}
           icon={`ic:baseline-arrow-${
-            $propertyGridStore.get(propertyBagKey) ? "right" : "drop-down"
+            $propertyGridStore.get(propertyBagKey) === true
+              ? "right"
+              : "drop-down"
           }`}
         />
-        <div class="truncate">
-          {property.name}
+        <div class="truncate my-auto" title={property.ptype}>
+          {#if search}
+            <HighlightedText
+              pattern={stringToSafeRegExp($search, "gi")}
+              text={beautifyComponentName(property.name)}
+            />
+          {:else}
+            {beautifyComponentName(property.name)}
+          {/if}
         </div>
       </div>
-      {#if parentProperty && propertyIsDynComponent(parentProperty)}
-        <div
-          class="delete-button"
-          on:click={requestRemoveComponent}
-          title="Remove Component"
-        >
-          &#215;
-        </div>
-      {/if}
+      <MenuBar enableHover={false} items={menuItems} container={div} />
       {#if !disabledOptionalProperty && propertyIsOption(property)}
         <div class="optional">
           <Checkbox value={true} />
-        </div>
-      {/if}
-      {#if propertyIsVec(property)}
-        <div
-          class="add-vector"
-          on:click={addVectorSubProperty}
-          title="Add property to vector"
-        >
-          +
         </div>
       {/if}
     </div>
@@ -169,6 +231,7 @@
     {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
       {#if !subProperty.attributes.hidden}
         <PropertyContainer
+          on:displayable={(e) => onChildDisplayable(e.detail)}
           on:input
           on:addVectorSubProperty
           on:removeVectorSubProperty
@@ -178,6 +241,7 @@
           property={subProperty}
           bind:parentProperty={property}
           level={level + 1}
+          {search}
           {index}
           {propertyGridStore}
         />
@@ -187,23 +251,19 @@
 </div>
 
 <style lang="postcss">
-  .root {
-    @apply flex flex-col justify-between;
+  .property-root {
+    @apply flex flex-col bg-surface-600 text-item-high;
   }
 
-  .root.with-indent {
-    @apply pl-1;
+  .property-header {
+    @apply pl-0 h-8;
+    @apply border-t-[1px] border-content-max;
+    @apply flex flex-row items-center justify-between;
+    @apply font-semibold rounded-sm cursor-pointer;
+    @apply relative;
   }
 
   .optional {
     @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 cursor-pointer;
-  }
-
-  .add-vector {
-    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-green-800 bg-opacity-70 rounded-r-sm cursor-pointer;
-  }
-
-  .delete-button {
-    @apply flex items-center justify-center h-7 w-7 border-l-2 border-gray-700 bg-red-800 bg-opacity-70 rounded-r-sm cursor-pointer;
   }
 </style>

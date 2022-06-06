@@ -13,33 +13,39 @@ export class MetricState {
   min = -Infinity;
   max = Infinity;
   hidden = false;
-  selected = true;
+  selected;
   lastUse: number | null = null;
-  private blocks: Map<string, MetricBlockState> = new Map();
-  constructor(metricDesc: MetricDesc) {
+
+  #blocks: Map<string, MetricBlockState> = new Map();
+
+  constructor(
+    metricDesc: MetricDesc,
+    { selected = true }: { selected?: boolean } = {}
+  ) {
     this.name = metricDesc.name;
     this.unit = metricDesc.unit;
+    this.selected = selected;
   }
 
   canBeDisplayed = () => this.selected && !this.hidden;
 
   registerBlock(manifest: MetricBlockManifest) {
     if (manifest.desc) {
-      this.blocks.set(
+      this.#blocks.set(
         manifest.desc.blockId,
         new MetricBlockState(manifest.desc)
       );
     }
     this.min = Math.min(
-      ...Array.from(this.blocks.values()).map((v) => v.minMs)
+      ...Array.from(this.#blocks.values()).map((v) => v.minMs)
     );
     this.max = Math.max(
-      ...Array.from(this.blocks.values()).map((b) => b.maxMs)
+      ...Array.from(this.#blocks.values()).map((b) => b.maxMs)
     );
   }
 
   *getViewportBlocks(minMs: number, maxMs: number) {
-    for (const [_, value] of this.blocks) {
+    for (const [_, value] of this.#blocks) {
       if (value.isInViewport(minMs, maxMs)) {
         yield value;
       }
@@ -61,7 +67,7 @@ export class MetricState {
     withBoundaries: boolean
   ) {
     for (const block of this.getViewportBlocks(min, max)) {
-      const blockState = this.blocks.get(block.blockId);
+      const blockState = this.#blocks.get(block.blockId);
       if (blockState) {
         for (const point of blockState.getPoints(
           min,
@@ -77,7 +83,7 @@ export class MetricState {
 
   store(blockId: string, metricBlockData: MetricBlockData): boolean {
     let mutated = false;
-    const block = this.blocks.get(blockId);
+    const block = this.#blocks.get(blockId);
     if (block) {
       if (block.store(metricBlockData.lod, this.mapToPoints(metricBlockData))) {
         mutated = true;
@@ -95,23 +101,30 @@ export class MetricState {
     });
   }
 
-  getClosestValue(time: number): MetricPoint | null {
-    let result = null;
-    for (const item of this.getViewportPoints(
-      time - this.min / 100,
-      time + this.max / 100,
-      0,
-      false
-    )) {
-      if (item.time > time) {
-        if (!result) {
-          result = item;
-        }
-        if (item.time < result.time) {
-          result = item;
-        }
+  getClosestValue({
+    time,
+    min,
+    max,
+    lod,
+  }: {
+    time: number;
+    min: number;
+    max: number;
+    lod: number;
+  }): MetricPoint | null {
+    let result: MetricPoint | null = null;
+
+    for (const point of this.getViewportPoints(min, max, lod, false)) {
+      if (!result) {
+        result = point;
+        continue;
+      }
+
+      if (Math.abs(time - point.time) < Math.abs(time - result.time)) {
+        result = point;
       }
     }
+
     return result;
   }
 }

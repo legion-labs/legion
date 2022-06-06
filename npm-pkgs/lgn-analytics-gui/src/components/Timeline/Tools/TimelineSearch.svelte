@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { getL10nOrchestratorContext } from "@/contexts";
+  import { getContext } from "svelte";
+
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
 
   import { TimelineContext } from "../Stores/TimelineContext";
 
   const searchStore = TimelineContext.search;
 
-  const { t } = getL10nOrchestratorContext();
-
+  const { t } = getContext(l10nOrchestratorContextKey);
   export let searching: boolean;
 </script>
 

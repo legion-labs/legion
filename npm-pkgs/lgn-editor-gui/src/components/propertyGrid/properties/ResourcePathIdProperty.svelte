@@ -4,9 +4,9 @@
   import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
   import { dropzone } from "@lgn/web-client/src/actions/dnd";
 
+  import { getResourceNameFromEntries } from "@/components/propertyGrid/lib/propertyGrid";
   import { resourceDragAndDropType } from "@/constants";
   import type { Entry } from "@/lib/hierarchyTree";
-  import { getResourceNameFromEntries } from "@/lib/propertyGrid";
   import { createResourcePathId } from "@/lib/resourceBrowser";
   import { resourceEntries } from "@/orchestrators/resourceBrowserEntries";
 
@@ -49,3 +49,9 @@
 >
   <TextInput on:input bind:value fluid autoSelect {readonly} />
 </div>
+
+<style lang="postcss">
+  div {
+    @apply w-full;
+  }
+</style>

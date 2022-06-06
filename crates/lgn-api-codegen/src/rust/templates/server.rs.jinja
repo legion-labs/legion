@@ -1,22 +1,32 @@
-use crate::{api};
-use crate::params;
-use crate::errors::{Error, Result};
+use super::params;
+use super::requests;
+use super::errors::{Error, Result};
 use axum::{
-    body::Bytes, extract::Json, extract::Path, extract::Query, http::HeaderMap, response::{IntoResponse, Response}, routing, Extension, Router,
+    extract::ConnectInfo,
+    extract::Json,
+    extract::Path,
+    http::Request,
+    response::{IntoResponse, Response},
+    routing,
+    Extension,
+    Router,
 };
+use std::net::SocketAddr;
+use serde_qs::axum::QsQuery;
+use http::request::Parts;
 use http::header::HeaderName;
-use lgn_online::codegen::{ByteArray, Extra};
+use lgn_online::codegen::{Bytes, Context};
 use lgn_tracing::error;
 
 /// Register all the routes for that API to the specified Router.
 #[must_use]
 pub fn register_routes<T>(router: Router, api: T) -> Router
 where
-    T: api::Api + Clone + Send + Sync + 'static,
+    T: super::Api + Clone + Send + Sync + 'static,
 {
     router
     {% for (path, routes) in api.paths %}
-        .route("{{ path|fmt_axum_path }}", 
+        .route("{{ path|fmt_axum_path }}",
             {% for route in routes -%}
                 {% if loop.first %}routing::{% else %}.{% endif -%}
                 {{ route.method|lower }}({{ route.name|snake_case }}::<T>)
@@ -31,40 +41,45 @@ where
         async fn {{ route.name|snake_case }}<T>(
             Extension(api): Extension<T>,
             {% if !route.parameters.path.is_empty() -%}
-                Path({{ route.parameters.path|join_names }}): Path<{{ route.parameters.path|join_types }}>,
+                Path({{ route.parameters.path|join_names }}): Path<{{ route.parameters.path|join_types(ctx, module_path) }}>,
             {% endif -%}
             {% if !route.parameters.query.is_empty() -%}
-                Query(query): Query<params::{{ route.name|pascal_case }}Query>,
+                QsQuery(query): QsQuery<params::{{ route.name|pascal_case }}Query>,
             {% endif -%}
             {% if let Some(request_body) = route.request_body -%}
                 {% match request_body.content.media_type -%}
                     {% when MediaType::Json -%}
                         {%- if request_body.required -%}
-                            Json(body): Json<{{ request_body.content.type_|fmt_type }}>,
+                            Json(body): Json<{{ request_body.content.type_|fmt_type(ctx, module_path) }}>,
                         {%- else -%}
-                            Json(body): Json<Option<{{ request_body.content.type_|fmt_type }}>>,
+                            Json(body): Json<Option<{{ request_body.content.type_|fmt_type(ctx, module_path) }}>>,
                         {%- endif -%}
                     {% when MediaType::Bytes -%}
-                        body: Bytes,
+                        body: axum::body::Bytes,
                 {% endmatch -%}
             {% endif -%}
-            headers: HeaderMap,
+            ConnectInfo(addr): ConnectInfo<SocketAddr>,
+            parts: Parts,
         ) -> Response
         where
-            T: api::Api + Send + Sync + 'static,
+            T: super::Api + Send + Sync + 'static,
         {
             {%- for parameter in route.parameters.header -%}
             {% let param_name = "{}"|format(parameter.name|snake_case) %}
-                let {{ param_name }} = headers.get(HeaderName::from_static("{{ parameter.name }}"));
-                let {{ param_name }} = {{ param_name }}.map(|{{ param_name }}| {
-                    {{ param_name }}
-                        .to_str()
+                let {{ param_name }} = parts.headers
+                    .get(HeaderName::from_static("{{ parameter.name }}"))
+                    .map(|h| {
+                        let s = h.to_str()
                         .map_err(|err| {
-                            error!("Failed to read `{{ parameter.name }}` header: {}", err);
+                            Error::InvalidHeader("{{ parameter.name }}".to_owned()).into_response()
+                        })
+                        .unwrap();
+
+                        lgn_online::codegen::encoding::from_percent_encoded_string(s)
+                        .map_err(|err| {
                             Error::InvalidHeader("{{ parameter.name }}".to_owned()).into_response()
                         })
                         .unwrap()
-                        .to_owned()
                 });
 
                 {% if parameter.required %}
@@ -75,30 +90,46 @@ where
                 {% endif %}
             {% endfor %}
 
-            let resp = api.{{ route.name|snake_case }}( 
+            let mut context = Context::default();
+            context.set_request_addr(addr);
+            context.set_request(parts);
+            {% if !route.has_empty_request() %}
+            let request = requests::{{ route.name|pascal_case }}Request {
                 {%- for parameter in route.parameters.path -%}
-                    {{ parameter.name|snake_case }}, 
+                    {{ parameter.name|snake_case }},
                 {%- endfor -%}
                 {%- for parameter in route.parameters.query -%}
-                    query.{{ parameter.name|snake_case }}, 
+                    {{ parameter.name|snake_case }}: query.{{ parameter.name|snake_case }},
                 {%- endfor -%}
                 {%- for parameter in route.parameters.header -%}
-                    {{ parameter.name|snake_case }}, 
+                    {{ parameter.name|snake_case }},
                 {%- endfor -%}
                 {%- if let Some(request_body) = route.request_body -%}
                     {% match request_body.content.media_type -%}
                         {% when MediaType::Json -%}
                             body,
                         {% when MediaType::Bytes -%}
-                            body.into(),
+                            body: body.into(),
                     {% endmatch -%}
                 {%- endif -%}
-                Extra{ headers },
-            ).await;
-            match resp {
+            };
+            {% endif %}
+
+            let resp = api.{{ route.name|snake_case }}(&mut context{% if !route.has_empty_request() %}, request{% endif %}).await;
+            let mut resp = match resp {
                 Ok(resp) => resp.into_response(),
                 Err(err) => err.into_response(),
+            };
+
+            if let Some(extensions) = context.response_extensions() {
+                resp.extensions_mut().extend(extensions);
             }
+
+            if let Some(headers) = context.response_headers() {
+                resp.headers_mut().extend(headers);
+            }
+
+            resp
         }
     {% endfor %}
 {% endfor %}

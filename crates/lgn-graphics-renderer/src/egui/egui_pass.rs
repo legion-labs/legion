@@ -12,7 +12,7 @@ use crate::resources::{PipelineDef, PipelineHandle, PipelineManager};
 
 pub struct EguiPass {
     pipeline_handle: PipelineHandle,
-    texture_data: Option<(u64, Texture, TextureView)>,
+    pub(crate) texture_data: Option<(u64, Texture, TextureView)>,
     sampler: Sampler,
 }
 

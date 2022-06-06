@@ -1,9 +1,10 @@
-import { grpc } from "@improbable-eng/grpc-web";
-
 import {
   GrpcWebImpl,
   PerformanceAnalyticsClientImpl,
 } from "@lgn/proto-telemetry/dist/analytics";
+import { enhanceGrpcClient } from "@lgn/web-client/src/lib/grpcClient";
+
+import { accessTokenCookieName } from "@/constants";
 
 export function getRemoteHost(): string {
   return import.meta.env.VITE_LEGION_ANALYTICS_REMOTE_HOST as string;
@@ -13,18 +14,11 @@ export function getUrl(): string {
   return import.meta.env.VITE_LEGION_ANALYTICS_API_URL as string;
 }
 
-export function makeGrpcClient(accessToken: string | null) {
-  if (accessToken === null) {
-    return new PerformanceAnalyticsClientImpl(new GrpcWebImpl(getUrl(), {}));
-  }
+export function createGrpcClient() {
+  const rpc = new GrpcWebImpl(getUrl(), {});
 
-  const metadata = new grpc.Metadata();
-
-  metadata.set("Authorization", `Bearer ${accessToken}`);
-
-  const client = new PerformanceAnalyticsClientImpl(
-    new GrpcWebImpl(getUrl(), { metadata })
+  return enhanceGrpcClient(
+    new PerformanceAnalyticsClientImpl(rpc),
+    accessTokenCookieName
   );
-
-  return client;
 }

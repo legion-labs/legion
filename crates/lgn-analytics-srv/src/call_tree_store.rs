@@ -36,9 +36,8 @@ impl CallTreeStore {
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<(CallTree, BlockAsyncData)> {
-        let mut connection = self.pool.acquire().await?;
         let processed = process_thread_block(
-            &mut connection,
+            self.pool.clone(),
             self.blob_storage.clone(),
             convert_ticks,
             stream,

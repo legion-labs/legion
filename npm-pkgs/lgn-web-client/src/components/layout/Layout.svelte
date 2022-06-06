@@ -1,7 +1,7 @@
 <script lang="ts" context="module">
   export type ComponentLayoutState = {
     state: object;
-    onDestroyed?: () => void;
+    onClosed?: () => void;
   };
 </script>
 
@@ -35,6 +35,7 @@
 
   export let layoutConfig: LayoutConfig;
   export let componentMap: Record<string, typeof SvelteComponentDev>;
+  export let surfaceClass: string | null;
 
   let height: number;
   let width: number;
@@ -53,37 +54,48 @@
     );
   }
 
-  function cleanSvelteComponentProxyName(name: string) {
-    return name.replace("Proxy<", "").replace(">", "");
-  }
-
   export function addComponent(
     componentType: string,
+    id: string,
     componentState?: ComponentLayoutState,
-    title?: string,
-    id?: string
+    title?: string
   ) {
     // Poor man's way to optionally ensure unicity per id which currently allows to avoid opening <SceneExplorer> duplicates.
     // A better system would check if a given component is allowed to be created multiple times (singleton or singleton-by-key).
-    if (id) {
-      const lc = layoutComponents.find((l) => l.id === id);
+    const lc = layoutComponents.find((l) => l.id === id);
 
-      if (lc) {
-        lc.container.focus();
+    if (lc) {
+      lc.container.focus();
 
-        return;
-      }
+      return;
     }
 
     const config: ComponentItemConfig = {
       type: "component",
-      componentType: cleanSvelteComponentProxyName(componentType),
+      componentType: componentType,
       componentState,
       title,
       id,
     };
 
-    return layout.addItemAtLocation(config);
+    const existingOfType = layoutComponents.find(
+      (c) => c.type === componentType
+    );
+
+    if (existingOfType !== undefined) {
+      const existingLayoutComponent = layout.findFirstComponentItemById(
+        existingOfType.id
+      );
+
+      if (existingLayoutComponent !== undefined) {
+        existingLayoutComponent.layoutManager.addItem(config);
+      }
+    } else {
+      return layout.addItemAtLocation(config, [
+        { typeId: 4, index: 0 },
+        { typeId: 7, index: 1 },
+      ]);
+    }
   }
 
   function initializeLayout(divElement: HTMLDivElement) {
@@ -161,13 +173,19 @@
 
     const state = itemConfig.componentState as ComponentLayoutState;
 
-    if (state.onDestroyed) {
-      container.on("destroy", () => {
-        if (state.onDestroyed) {
-          state.onDestroyed();
-        }
-      });
-    }
+    container.on("initialised", () => {
+      if (state.onClosed) {
+        container.tab.closeElement?.addEventListener(
+          "click",
+          () => {
+            if (state.onClosed) {
+              state.onClosed();
+            }
+          },
+          { once: true }
+        );
+      }
+    });
 
     return {
       virtual: true,
@@ -183,13 +201,19 @@
       refreshComponents();
     }
   }
+
+  function initialised(_: HTMLElement, c: LayoutComponent) {
+    c.container.emit("initialised");
+  }
 </script>
 
 <div class="layout" bind:offsetHeight={height} bind:offsetWidth={width}>
   <div class="virtual-layout-container" use:initializeLayout />
   {#each layoutComponents as c (c.container)}
     <div
+      use:initialised={c}
       class="component"
+      class:bg-surface={surfaceClass}
       class:hidden={!c.visible}
       style:z-index={c.zIndex}
       style:left={`${c.rect.left}px`}
@@ -219,9 +243,8 @@
   }
 
   .component {
-    @apply bg-gray-700;
-    overflow: auto;
-    position: absolute;
+    @apply absolute;
+    overflow: visible;
   }
 
   .component.hidden {

@@ -9,7 +9,7 @@ use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::ResourceType;
-use lgn_source_control::LocalRepositoryIndex;
+use lgn_source_control::RepositoryIndex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -41,10 +41,8 @@ impl Config {
         &self,
         source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,
+        repository_index: impl RepositoryIndex,
     ) -> Result<(DataBuild, Project), String> {
-        let repository_index = LocalRepositoryIndex::new(self.project.join("remote"))
-            .await
-            .map_err(|e| e.to_string())?;
         let project = Project::open(
             &self.project,
             repository_index,

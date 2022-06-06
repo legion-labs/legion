@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { getL10nOrchestratorContext } from "@/contexts";
+  import { getContext } from "svelte";
+
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
+
   import { formatExecutionTime } from "@/lib/format";
   import { MergeThresholdForLOD, getLodFromPixelSizeMs } from "@/lib/lod";
 
@@ -7,8 +10,7 @@
 
   export let store: TimelineStateStore;
 
-  const { t } = getL10nOrchestratorContext();
-
+  const { t } = getContext(l10nOrchestratorContextKey);
   let pixelSize: number;
   let lod: number;
   let mergeThreshold: number;

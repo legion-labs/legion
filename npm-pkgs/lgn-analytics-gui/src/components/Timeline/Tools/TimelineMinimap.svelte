@@ -1,7 +1,6 @@
 <script lang="ts">
+  import { getContext } from "svelte";
   import { createEventDispatcher, onMount } from "svelte";
-
-  import { getThreadItemLengthContext } from "@/contexts";
 
   import { TimelineMinimapViewport } from "../Lib/TimelineViewport";
   import type { TimelineStateStore } from "../Stores/TimelineStateStore";
@@ -10,12 +9,12 @@
   export let canvasHeight: number;
   export let scrollHeight: number;
   export let scrollTop: number;
+  export let visible: boolean;
 
-  const threadItemLength = getThreadItemLengthContext();
+  const threadItemLength = getContext("thread-item-length");
   const canvasToMinimapRatio = 5;
-  const minimapBreakpoint = 300;
-  const bottomPadding = 20;
-  const leftPadding = 4;
+  const bottomPadding = 120;
+  const leftPadding = 12;
 
   const wheelDispatch = createEventDispatcher<{ zoom: WheelEvent }>();
   const minimapDispatch = createEventDispatcher<{
@@ -28,16 +27,18 @@
 
   let width: number;
   let height: number;
-  let visible: boolean;
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
   let viewport = new TimelineMinimapViewport();
   let x: number;
   let y: number;
+  let mouseFocus = false;
+  let mouseActionInitiated = false;
 
+  $: actuallyVisible = ctx && $stateStore.isFullyVisible() && visible;
   $: canvasWidth = $stateStore?.canvasWidth;
   $: top = canvasHeight - height + bottomPadding;
-  $: left = canvasWidth - width - leftPadding + threadItemLength;
+  $: left = canvasWidth - width + leftPadding + threadItemLength;
   $: style = `top:${top}px;left:${left}px`;
   $: [x, y] = $stateStore?.viewRange ?? [-Infinity, Infinity];
   $: (x || y) && draw();
@@ -52,10 +53,6 @@
     draw();
   }
 
-  $: if ($stateStore?.viewRange) {
-    visible = $stateStore.isFullyVisible();
-  }
-
   onMount(() => {
     const context = canvas.getContext("2d");
     if (context) {
@@ -64,7 +61,7 @@
   });
 
   async function draw() {
-    if (visible && ctx && canvasHeight > minimapBreakpoint) {
+    if (actuallyVisible) {
       requestAnimationFrame(() => {
         if (canvas) {
           canvas.width = width;
@@ -79,7 +76,7 @@
   }
 
   function drawViewport() {
-    if (ctx && visible) {
+    if (actuallyVisible) {
       ctx.save();
       ctx.globalAlpha = 0.5;
       ctx.fillStyle = "#fea446";
@@ -118,6 +115,10 @@
   }
 
   async function onMouseEvent(mouseEvent: MouseEvent) {
+    if (!mouseFocus || !mouseActionInitiated) {
+      return;
+    }
+
     const beginRatio = (mouseEvent.offsetX - viewport.width / 2) / width;
     const endRatio = (mouseEvent.offsetX + viewport.width / 2) / width;
     const maxRange = $stateStore.getMaxRange();
@@ -132,13 +133,20 @@
   }
 </script>
 
-<span style={visible ? "display:block" : "display:none"}>
-  <canvas
-    class="absolute"
-    bind:this={canvas}
-    on:mousemove|preventDefault={(e) => e.buttons === 1 && onMouseEvent(e)}
-    on:mousedown|preventDefault={(e) => onMouseEvent(e)}
-    on:wheel|preventDefault={(e) => wheelDispatch("zoom", e)}
-    {style}
-  />
-</span>
+<canvas
+  class="absolute"
+  class:invisible={!actuallyVisible}
+  class:h-0={!actuallyVisible}
+  class:w-0={!actuallyVisible}
+  bind:this={canvas}
+  on:mousemove|preventDefault|stopPropagation={(e) =>
+    e.buttons === 1 && onMouseEvent(e)}
+  on:mousedown|preventDefault|stopPropagation={(e) =>
+    e.buttons === 1 && ((mouseActionInitiated = true), onMouseEvent(e))}
+  on:mouseup|preventDefault|stopPropagation={() =>
+    (mouseActionInitiated = false)}
+  on:mouseenter|preventDefault|stopPropagation={() => (mouseFocus = true)}
+  on:mouseleave|preventDefault|stopPropagation={() => (mouseFocus = false)}
+  on:wheel|preventDefault|stopPropagation={(e) => wheelDispatch("zoom", e)}
+  {style}
+/>

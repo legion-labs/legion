@@ -30,9 +30,10 @@ float aabb_min_z(float4 aabb, float2 view_port, float debug_index) {
 
 [numthreads(256, 1, 1)]
 void main_cs(uint3 dt_id : SV_DispatchThreadID) {
+    bool enable_culling = true;
     if (dt_id.x < gpu_instance_count[0]) {
         GpuInstanceData instance_data = gpu_instance_data[dt_id.x];
-        
+
         uint va_table_address = va_table_address_buffer[instance_data.gpu_instance_id];
         GpuInstanceVATable addresses = LoadGpuInstanceVATable(static_buffer, va_table_address);
         MeshDescription mesh_desc = LoadMeshDescription(static_buffer, addresses.mesh_description_va);
@@ -51,7 +52,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
         for (uint i = 0; i < 6 && !culled; i++) {
             float plane_test = dot(view_data.culling_planes[i], float4(sphere_world_pos, 1.0));
 
-            if (plane_test - bv_radius > 0.0) {
+            if (enable_culling && plane_test - bv_radius > 0.0) {
                 culled = true;
             }
         }
@@ -81,7 +82,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             culling_debug[debug_index].depth = depth;
             culling_debug[debug_index].min_z = min_z;
 
-            if (depth > 0.0f && depth < min_z) {
+            if (enable_culling && depth > 0.0f && depth < min_z) {
                 culled = true;
 
             #if FIRST_PASS
@@ -93,9 +94,9 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
 
                 culled_instances[previous_count] = instance_data;
             #endif
-            }            
+            }
         }
-        
+
         if (!culled) {
             if (push_constant.options.is_set(CullingOptions_GATHER_PERF_STATS)) {
                 InterlockedAdd(culling_efficiency[0].occlusion_visible, 1);
@@ -108,13 +109,13 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
 
                 uint offset_base_va = render_pass_data[pass_idx].offset_base_va;
                 uint offset_va = offset_base_va + (instance_data.state_id * 8);
-        
+
                 uint count_offset = static_buffer.Load<uint>(offset_va);
                 uint indirect_arg_offset = static_buffer.Load<uint>(offset_va + 4);
 
                 uint prev_draw_count = 0;
                 InterlockedAdd(draw_count[count_offset], 1, prev_draw_count);
-                
+
                 uint indirect_offset = (indirect_arg_offset + prev_draw_count) * 5;
 
                 draw_args[indirect_offset + 0] = mesh_desc.index_count;

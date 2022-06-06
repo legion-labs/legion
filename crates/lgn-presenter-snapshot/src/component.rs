@@ -3,7 +3,7 @@
 use lgn_ecs::prelude::Component;
 use lgn_graphics_api::DeviceContext;
 use lgn_graphics_renderer::{
-    components::{Presenter, RenderSurface, RenderSurfaceExtents, RenderSurfaceId},
+    components::{Presenter, RenderSurface, RenderSurfaceExtents},
     resources::PipelineManager,
     RenderContext,
 };
@@ -15,7 +15,6 @@ pub struct PresenterSnapshot {
     snapshot_name: String,
     frame_idx: i32,
     frame_target: i32,
-    render_surface_id: RenderSurfaceId,
     offscreen_helper: OffscreenHelper,
 }
 
@@ -31,7 +30,6 @@ impl PresenterSnapshot {
         frame_target: i32,
         device_context: &DeviceContext,
         pipeline_manager: &PipelineManager,
-        render_surface_id: RenderSurfaceId,
         resolution: RenderSurfaceExtents,
     ) -> Self {
         let offscreen_helper = OffscreenHelper::new(pipeline_manager, device_context, resolution);
@@ -40,7 +38,6 @@ impl PresenterSnapshot {
             snapshot_name: snapshot_name.to_string(),
             frame_idx: 0,
             frame_target,
-            render_surface_id,
             offscreen_helper,
         }
     }
@@ -82,10 +79,6 @@ impl PresenterSnapshot {
         } else {
             Ok(false)
         }
-    }
-
-    pub fn render_surface_id(&self) -> RenderSurfaceId {
-        self.render_surface_id
     }
 }
 

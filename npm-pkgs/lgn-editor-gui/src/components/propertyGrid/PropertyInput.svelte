@@ -18,11 +18,11 @@
     propertyIsString,
     propertyIsVec,
     propertyIsVec3,
-  } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import type {
     BagResourceProperty,
     ResourceProperty,
-  } from "@/lib/propertyGrid";
+  } from "@/components/propertyGrid/lib/propertyGrid";
   import { currentResource } from "@/orchestrators/currentResource";
 
   import PropertyInputOption from "./PropertyInputOption.svelte";
@@ -98,15 +98,13 @@
   }
 </script>
 
-<div class="root">
+<div class="property-input-root">
   {#if propertyIsBoolean(property)}
-    <div class="boolean-property">
-      <BooleanProperty
-        disabled={isReadonly()}
-        on:input={({ detail }) => onInput({ value: detail })}
-        bind:value={property.value}
-      />
-    </div>
+    <BooleanProperty
+      disabled={isReadonly()}
+      on:input={({ detail }) => onInput({ value: detail })}
+      bind:value={property.value}
+    />
   {:else if propertyIsScript(property)}
     <ScriptProperty
       readonly={isReadonly()}
@@ -114,11 +112,13 @@
       bind:value={property.value}
     />
   {:else if propertyIsString(property)}
-    <StringProperty
-      readonly={isReadonly()}
-      on:input={({ detail }) => onInput({ value: detail })}
-      bind:value={property.value}
-    />
+    <div class="fixed-size">
+      <StringProperty
+        readonly={isReadonly()}
+        on:input={({ detail }) => onInput({ value: detail })}
+        bind:value={property.value}
+      />
+    </div>
   {:else if propertyIsResourcePathId(property)}
     <ResourcePathIdProperty
       readonly={isReadonly()}
@@ -127,30 +127,36 @@
       resourceType={propertyType}
     />
   {:else if propertyIsEnum(property)}
-    <EnumProperty
-      disabled={isReadonly()}
-      on:input={({ detail }) => onInput({ value: detail })}
-      value={{
-        item: property.value,
-        value: property.value,
-      }}
-      options={property.subProperties.map((variant) => ({
-        item: variant.name,
-        value: variant.name,
-      }))}
-    />
+    <div class="fixed-size">
+      <EnumProperty
+        disabled={isReadonly()}
+        on:input={({ detail }) => onInput({ value: detail })}
+        value={{
+          item: property.value,
+          value: property.value,
+        }}
+        options={property.subProperties.map((variant) => ({
+          item: variant.name,
+          value: variant.name,
+        }))}
+      />
+    </div>
   {:else if propertyIsNumber(property)}
-    <NumberProperty
-      readonly={isReadonly()}
-      on:input={({ detail }) => onInput({ value: detail })}
-      bind:value={property.value}
-    />
+    <div class="fixed-size">
+      <NumberProperty
+        readonly={isReadonly()}
+        on:input={({ detail }) => onInput({ value: detail })}
+        bind:value={property.value}
+      />
+    </div>
   {:else if propertyIsColor(property)}
-    <ColorProperty
-      readonly={isReadonly()}
-      on:input={({ detail }) => onInput({ value: detail })}
-      bind:value={property.value}
-    />
+    <div class="fixed-size">
+      <ColorProperty
+        readonly={isReadonly()}
+        on:input={({ detail }) => onInput({ value: detail })}
+        bind:value={property.value}
+      />
+    </div>
   {:else if propertyIsSpeed(property)}
     <SpeedProperty
       readonly={isReadonly()}
@@ -184,12 +190,14 @@
 </div>
 
 <style lang="postcss">
-  .root {
-    @apply flex flex-row h-full w-full items-center;
+  .property-input-root {
+    @apply text-item-mid;
+    @apply flex justify-end;
+    @apply w-full;
   }
 
-  .boolean-property {
-    @apply flex flex-row w-full justify-end;
+  .fixed-size {
+    @apply w-[16rem];
   }
 
   .unknown-property {
@@ -197,6 +205,6 @@
   }
 
   .close-button {
-    @apply flex flex-row flex-shrink-0 items-center justify-center h-6 w-6 rounded-sm text-xl bg-gray-800 ml-1 cursor-pointer;
+    @apply flex flex-row items-center justify-center h-6 w-6 rounded-sm text-xl bg-surface-500 ml-1 cursor-pointer border border-black;
   }
 </style>

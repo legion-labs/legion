@@ -61,24 +61,20 @@ pub enum DescriptorDef {
 impl DescriptorDef {
     pub fn shader_resource_type(&self) -> ShaderResourceType {
         match self {
-            crate::db::DescriptorDef::Sampler => ShaderResourceType::Sampler,
-            crate::db::DescriptorDef::ConstantBuffer(_) => ShaderResourceType::ConstantBuffer,
-            crate::db::DescriptorDef::StructuredBuffer(_) => ShaderResourceType::StructuredBuffer,
-            crate::db::DescriptorDef::RWStructuredBuffer(_) => {
-                ShaderResourceType::RWStructuredBuffer
-            }
-            crate::db::DescriptorDef::ByteAddressBuffer => ShaderResourceType::ByteAddressBuffer,
-            crate::db::DescriptorDef::RWByteAddressBuffer => {
-                ShaderResourceType::RWByteAddressBuffer
-            }
-            crate::db::DescriptorDef::Texture2D(_) => ShaderResourceType::Texture2D,
-            crate::db::DescriptorDef::RWTexture2D(_) => ShaderResourceType::RWTexture2D,
-            crate::db::DescriptorDef::Texture3D(_) => ShaderResourceType::Texture3D,
-            crate::db::DescriptorDef::RWTexture3D(_) => ShaderResourceType::RWTexture3D,
-            crate::db::DescriptorDef::Texture2DArray(_) => ShaderResourceType::Texture2DArray,
-            crate::db::DescriptorDef::RWTexture2DArray(_) => ShaderResourceType::RWTexture2DArray,
-            crate::db::DescriptorDef::TextureCube(_) => ShaderResourceType::TextureCube,
-            crate::db::DescriptorDef::TextureCubeArray(_) => ShaderResourceType::TextureCubeArray,
+            Self::Sampler => ShaderResourceType::Sampler,
+            Self::ConstantBuffer(_) => ShaderResourceType::ConstantBuffer,
+            Self::StructuredBuffer(_) => ShaderResourceType::StructuredBuffer,
+            Self::RWStructuredBuffer(_) => ShaderResourceType::RWStructuredBuffer,
+            Self::ByteAddressBuffer => ShaderResourceType::ByteAddressBuffer,
+            Self::RWByteAddressBuffer => ShaderResourceType::RWByteAddressBuffer,
+            Self::Texture2D(_) => ShaderResourceType::Texture2D,
+            Self::RWTexture2D(_) => ShaderResourceType::RWTexture2D,
+            Self::Texture3D(_) => ShaderResourceType::Texture3D,
+            Self::RWTexture3D(_) => ShaderResourceType::RWTexture3D,
+            Self::Texture2DArray(_) => ShaderResourceType::Texture2DArray,
+            Self::RWTexture2DArray(_) => ShaderResourceType::RWTexture2DArray,
+            Self::TextureCube(_) => ShaderResourceType::TextureCube,
+            Self::TextureCubeArray(_) => ShaderResourceType::TextureCubeArray,
         }
     }
 }

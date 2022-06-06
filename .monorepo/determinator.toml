@@ -24,10 +24,17 @@ globs = [
     "legion.toml",
     "npm-pkgs/**/*",
     "package.json",
+    "postcss.config.cjs",
+    "tailwind.config.cjs",
+    "npm-pkgs/tailwind.preset.cjs",
     "dccs/**/*",
     # Ignore *.md documentation
     "*.md",
 ]
+mark-changed = []
+
+[[path-rule]]
+globs = ["apis/*"]
 mark-changed = []
 
 [[package-rule]]

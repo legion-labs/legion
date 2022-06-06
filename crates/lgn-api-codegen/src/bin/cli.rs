@@ -3,6 +3,8 @@
 //! Provides code generation commands.
 //!
 
+use std::path::PathBuf;
+
 use clap::Parser;
 use lgn_api_codegen::{generate, Language};
 use lgn_telemetry_sink::TelemetryGuardBuilder;
@@ -27,18 +29,17 @@ struct Args {
         help = "The language to generate code for."
     )]
     language: Language,
+    #[clap(name = "root", help = "The root where to find the APIs.")]
+    root: PathBuf,
+    #[clap(name = "openapis", help = "The OpenAPIs to generate the code for.")]
+    openapis: Vec<String>,
     #[clap(
-        name = "openapi-file",
+        name = "out-dir",
         long,
-        help = "The OpenAPI specification to use."
-    )]
-    openapi_file: String,
-    #[clap(
-        name = "output-dir",
-        long,
+        env,
         help = "The directory to output generated code to."
     )]
-    output_dir: String,
+    out_dir: PathBuf,
 }
 
 #[allow(clippy::let_unit_value)]
@@ -50,7 +51,7 @@ fn main() -> anyhow::Result<()> {
         .with_local_sink_max_level(LevelFilter::Debug)
         .build();
 
-    let res = generate(&args.language, &args.openapi_file, &args.output_dir)?;
+    generate(args.language, args.root, &args.openapis, &args.out_dir)?;
 
-    Ok(res)
+    Ok(())
 }

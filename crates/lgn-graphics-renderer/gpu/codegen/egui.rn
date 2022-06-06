@@ -1,4 +1,4 @@
-pub fn main() {    
+pub fn main() {
     [
         #{
             type: "DescriptorSet",
@@ -6,7 +6,7 @@ pub fn main() {
             frequency: 0,
             descriptors: [
                 #{name: "font_texture", type: "Texture2D", content:"Float4" },
-                #{name: "font_sampler", type: "Sampler" },    
+                #{name: "font_sampler", type: "Sampler" },
             ]
         },
         #{
@@ -25,25 +25,25 @@ pub fn main() {
             descriptor_sets: [ "EguiDescriptorSet" ],
             push_constant: "EguiPushConstantData"
         },
-        #{            
+        #{
             type: "Shader",
             name: "EguiShader",
             path: "gpu/shaders/ui.hlsl",
             pipeline_layout: "EguiPipelineLayout",
             options: [ "TOTO", "TITI" ],
             instances: [
-                #{                      
+                #{
                     stages: [ "VS", "PS" ],
                 },
-                #{  
+                #{
                     key: [ "TOTO" ],
                     stages: [ "VS", "PS" ],
                 },
-                #{  
+                #{
                     key: [ "TITI", "TOTO" ],
                     stages: [ "VS", "PS" ],
                 },
-            ]            
+            ]
         }
     ]
 }

@@ -86,7 +86,10 @@ export class CookieStorage {
   constructor({
     accessTokenName,
     refreshTokenName,
-  }: { accessTokenName?: string; refreshTokenName?: string } = {}) {
+  }: {
+    accessTokenName?: string;
+    refreshTokenName?: string;
+  } = {}) {
     this.accessTokenName = accessTokenName || "access_token";
     this.refreshTokenName = refreshTokenName || "refresh_token";
   }
@@ -414,7 +417,13 @@ export class LegionClient extends Client<UserInfo> {
       throw new Error("Refresh token not found");
     }
 
-    return this.exchangeRefreshTokenRequest(this.refreshToken);
+    const clientTokenSet = await this.exchangeRefreshTokenRequest(
+      this.refreshToken
+    );
+
+    accessToken.set(clientTokenSet.access_token);
+
+    return clientTokenSet;
   }
 
   async getAuthorizationUrl() {
@@ -488,6 +497,8 @@ export class LegionClient extends Client<UserInfo> {
     if (!clientTokenSet) {
       throw new Error("No client token set returned by the provider");
     }
+
+    accessToken.set(clientTokenSet.access_token);
 
     return clientTokenSet;
   }
@@ -574,7 +585,7 @@ export async function initAuth({
     authClient = client;
   }
 
-  if (globalThis.isElectron && globalThis.electron) {
+  if (globalThis.isElectron === true && globalThis.electron) {
     await globalThis.electron.auth.initOAuthClient();
 
     try {
@@ -599,6 +610,8 @@ export async function initAuth({
         authorizationUrl: await authClient.getAuthorizationUrl(),
       };
     }
+
+    accessToken.set(authClient.accessToken);
 
     return { type: "success" };
   }
@@ -673,7 +686,6 @@ export async function initAuth({
   // At that point this request should not fail
   try {
     await userInfo.run(() => authClient.userInfo());
-    accessToken.set(authClient.accessToken);
   } catch (error) {
     log.warn(
       log.json`An error occured while trying to get the user info ${error}`
@@ -684,6 +696,8 @@ export async function initAuth({
       authorizationUrl: await authClient.getAuthorizationUrl(),
     };
   }
+
+  accessToken.set(authClient.accessToken);
 
   // All good
   return { type: "success" };

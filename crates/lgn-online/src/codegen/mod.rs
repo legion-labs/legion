@@ -1,5 +1,13 @@
-pub mod byte_array;
-pub mod extra;
+mod bytes;
+mod context;
+pub mod encoding;
 
-pub use byte_array::ByteArray;
-pub use extra::Extra;
+pub use self::bytes::Bytes;
+pub use context::Context;
+
+#[macro_export]
+macro_rules! include_api {
+    () => {
+        include!(concat!(env!("OUT_DIR"), "/api.rs"));
+    };
+}

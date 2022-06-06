@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-
+const tailwindConfig = require("../../tailwind.config.cjs");
 const path = require("path");
 
-const contentGlobSuffix = "**/*.{svelte,ts}";
+const { withOpacity } = require("../tailwind.js");
 
-const srcContentDir = "./src";
+const {
+  srcContentDir,
+  contentGlobSuffix,
+  lgnFrontendContentDir,
+} = require("./../tailwind.const.js");
 
-const lgnFrontendContentDir = "./node_modules/@lgn/web-client/src";
-
-// It's really painful that the type denition doesn't support commonjs
+// It's really painful that the type definition doesn't support commonjs
 /** @type {any} */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, no-undef
 const plugin_ = require("tailwindcss/plugin");
@@ -16,29 +18,7 @@ const plugin_ = require("tailwindcss/plugin");
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const plugin = plugin_;
 
-/**
- * @param {string} varName
- * @param {string} [defaultOpacityVariable]
- */
-function withOpacity(varName, defaultOpacityVariable) {
-  return (/** @type {{opacityVariable?: string }} */ { opacityVariable }) => {
-    const opacity =
-      typeof defaultOpacityVariable !== "undefined"
-        ? defaultOpacityVariable
-        : opacityVariable;
-
-    if (typeof opacity !== "undefined") {
-      return `rgba(var(${varName}), var(${opacity}))`;
-    }
-
-    return `rgb(var(${varName}))`;
-  };
-}
-
-// TODO: Extract to @lgn/web-client and reuse in editor
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 const themePlugin = plugin(function ({ addComponents }) {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   addComponents({
     ".background": {
       "background-color": "rgb(var(--color-background))",
@@ -76,18 +56,14 @@ const themePlugin = plugin(function ({ addComponents }) {
   });
 });
 
-// eslint-disable-next-line no-undef
 module.exports = {
-  mode: "jit",
+  ...tailwindConfig,
   content: [
     path.join(srcContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, "app.html"),
   ],
   theme: {
-    fontFamily: {
-      default: "Inter,Arial,sans-serif",
-    },
     extend: {
       borderRadius: {
         DEFAULT: "var(--roundness)",
@@ -113,9 +89,6 @@ module.exports = {
         "thread-item": "var(--thread-item-length)",
       },
     },
-  },
-  variants: {
-    extend: {},
   },
   plugins: [themePlugin],
 };

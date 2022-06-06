@@ -122,8 +122,8 @@ pub fn main() {
         type: "DescriptorSet",
         name: "PersistentDescriptorSet",
         frequency: PERSISTENT_DESCRIPTOR_SET_FREQUENCY,
-        descriptors: [
-            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:10240, bindless:true },
+        descriptors: [            
+            #{ type:"Texture2D", name:"material_textures", content:"Float4", array_len:10240, bindless:true },            
             #{ type:"Sampler", name:"material_samplers", array_len:64, bindless:true },
         ]
     };

@@ -1,29 +1,29 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { afterUpdate, onMount, tick } from "svelte";
+  import { getContext } from "svelte";
   import { get } from "svelte/store";
 
   import CallGraph from "@/components/CallGraphHierachy/CallGraphHierachy.svelte";
   import DisplayError from "@/components/Misc/DisplayError.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
   import Loader from "@/components/Misc/Loader.svelte";
+  import TimeRange from "@/components/Misc/TimeRange.svelte";
   import { TimelineStateManager } from "@/components/Timeline/Stores/TimelineStateManager";
   import type { TimelineStateStore } from "@/components/Timeline/Stores/TimelineStateStore";
   import TimelineProcess from "@/components/Timeline/TimelineProcess.svelte";
   import TimelineAction from "@/components/Timeline/Tools/TimelineAction.svelte";
   import TimelineAxis from "@/components/Timeline/Tools/TimelineAxis.svelte";
   import TimelineMinimap from "@/components/Timeline/Tools/TimelineMinimap.svelte";
-  import TimelineRange from "@/components/Timeline/Tools/TimelineRange.svelte";
   import TimelineSearch from "@/components/Timeline/Tools/TimelineSearch.svelte";
   import { pixelMargin } from "@/components/Timeline/Values/TimelineValues";
-  import { getHttpClientContext, getThreadItemLengthContext } from "@/contexts";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
   import { endQueryParam, startQueryParam } from "@/lib/time";
 
   const processId = $page.params.processId;
 
-  const client = getHttpClientContext();
-  const threadItemLength = getThreadItemLengthContext();
+  const client = getContext("http-client");
+  const threadItemLength = getContext("thread-item-length");
 
   let stateManager: TimelineStateManager;
   let windowInnerWidth: number;
@@ -39,6 +39,7 @@
   let y: number;
   let callGraphBegin: number | undefined;
   let callGraphEnd: number | undefined;
+  let mouseActionInitiated = false;
 
   $: if (mainWidth && stateStore) {
     stateStore.updateWidth(mainWidth - threadItemLength - pixelMargin);
@@ -46,6 +47,9 @@
 
   $: [x, y] = $stateStore?.viewRange ?? [-Infinity, Infinity];
   $: (x || y) && new Promise(async () => await stateManager?.fetchDynData());
+
+  $: allProcessCollapsed =
+    $stateStore?.collapsedProcesseIds.length === $stateStore?.processes.length;
 
   onMount(async () => {
     loadingStore.reset(10);
@@ -107,6 +111,10 @@
   }
 
   async function onMouseMove(event: MouseEvent) {
+    if (!mouseActionInitiated) {
+      return;
+    }
+
     if (event.buttons === 1) {
       const x = getMouseX(event);
       if (event.shiftKey) {
@@ -126,6 +134,8 @@
   }
 
   function onMouseDown(event: MouseEvent) {
+    mouseActionInitiated = true;
+
     if (event.shiftKey) {
       const x = getMouseX(event);
       if (x) {
@@ -135,6 +145,8 @@
   }
 
   function onMouseUp(_: MouseEvent) {
+    mouseActionInitiated = false;
+
     stateStore.stopDrag();
     const selection = $stateStore.currentSelection;
     if (selection) {
@@ -242,7 +254,9 @@
       {:else}
         <div class="timeline">
           {#if stateManager?.process && $stateStore.ready}
-            <div class="pb-1 flex flex-1 flex-row items-center justify-between">
+            <div
+              class="pb-1 flex flex-row items-center flex-shrink-0 flex-grow-0"
+            >
               <TimelineAction
                 {processId}
                 process={stateManager.process}
@@ -251,54 +265,71 @@
               <TimelineSearch bind:searching />
             </div>
           {/if}
-          <div class="main relative flex flex-col">
-            <div
-              class="canvas cursor-pointer basis-auto"
-              bind:this={div}
-              bind:clientHeight={canvasHeight}
-              bind:clientWidth={mainWidth}
-              on:wheel|preventDefault
-              on:scroll={(e) => onScroll(e)}
-              on:mousedown|preventDefault={(e) => onMouseDown(e)}
-              on:mousemove|preventDefault={(e) => onMouseMove(e)}
-              on:mouseleave|preventDefault={(_) => onMouseLeave()}
-              on:mouseup|preventDefault={(e) => onMouseUp(e)}
-            >
-              {#if stateStore}
-                {#each $stateStore.processes as p, index (p.processId)}
-                  <TimelineProcess
-                    process={p}
-                    {index}
-                    {stateStore}
-                    rootStartTime={stateManager.rootStartTime}
-                    on:zoom={(e) => onZoom(e.detail)}
+
+          <div class="flex flex-col justify-between flex-1 overflow-hidden">
+            <div class="canvas">
+              <div
+                bind:this={div}
+                on:wheel|preventDefault
+                on:scroll={(e) => onScroll(e)}
+                on:mousedown|preventDefault={(e) => onMouseDown(e)}
+                on:mousemove|preventDefault={(e) => onMouseMove(e)}
+                on:mouseleave|preventDefault={(_) => onMouseLeave()}
+                on:mouseup|preventDefault={(e) => onMouseUp(e)}
+                bind:offsetHeight={canvasHeight}
+                bind:clientWidth={mainWidth}
+                class="relative overflow-auto"
+              >
+                {#if stateStore}
+                  {#each $stateStore.processes as process, index (process.processId)}
+                    <TimelineProcess
+                      {process}
+                      {index}
+                      {stateStore}
+                      rootStartTime={stateManager.rootStartTime}
+                      on:zoom={({ detail }) => onZoom(detail)}
+                    />
+                  {/each}
+                {/if}
+              </div>
+              <TimelineMinimap
+                {stateStore}
+                {canvasHeight}
+                {scrollHeight}
+                {scrollTop}
+                visible={!allProcessCollapsed}
+                on:zoom={(e) => onZoom(e.detail)}
+                on:tick={(e) => onMinimapTick(e.detail)}
+              />
+              {#if !allProcessCollapsed}
+                <TimelineAxis {stateStore} />
+              {/if}
+              <div class="pt-3">
+                {#if $stateStore && $stateStore.currentSelection && !allProcessCollapsed}
+                  <div class="flex">
+                    <div class="min-w-thread-item" />
+                    <TimeRange
+                      width={$stateStore.canvasWidth}
+                      selectionRange={$stateStore.currentSelection}
+                      viewRange={$stateStore.viewRange}
+                    />
+                  </div>
+                {/if}
+              </div>
+            </div>
+            <div class="down">
+              {#if callGraphBegin && callGraphEnd}
+                <div class="basis-1/5">
+                  <CallGraph
+                    begin={callGraphBegin}
+                    end={callGraphEnd}
+                    {processId}
+                    debug={false}
+                    size={250}
                   />
-                {/each}
+                </div>
               {/if}
             </div>
-            <TimelineMinimap
-              {stateStore}
-              {canvasHeight}
-              {scrollHeight}
-              {scrollTop}
-              on:zoom={(e) => onZoom(e.detail)}
-              on:tick={(e) => onMinimapTick(e.detail)}
-            />
-            <TimelineAxis {stateStore} />
-            <div class="pt-3">
-              <TimelineRange {stateStore} />
-            </div>
-            {#if callGraphBegin && callGraphEnd}
-              <div class="basis-1/5">
-                <CallGraph
-                  begin={callGraphBegin}
-                  end={callGraphEnd}
-                  {processId}
-                  debug={false}
-                  size={250}
-                />
-              </div>
-            {/if}
           </div>
         </div>
       {/if}
@@ -308,17 +339,13 @@
 
 <style lang="postcss">
   .timeline {
-    @apply flex flex-col pt-4 px-2;
-  }
+    /* TODO: Quick hack to prevent the x overflow, find a better fix */
+    @apply overflow-x-hidden;
 
-  .main {
-    height: calc(100vh - 130px);
+    @apply overflow-y-hidden pt-4 pb-2 px-2 flex space-y-2 flex-col h-[calc(100vh-3.5rem)];
   }
 
   .canvas {
-    overflow-x: hidden;
-    display: flex;
-    flex-direction: column;
-    @apply gap-y-1;
+    @apply cursor-pointer basis-auto h-full overflow-x-hidden flex flex-col gap-y-1;
   }
 </style>

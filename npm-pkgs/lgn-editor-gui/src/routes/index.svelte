@@ -8,8 +8,6 @@
   import { onMount } from "svelte";
   import { setContext } from "svelte";
 
-  import Log from "@lgn/web-client/src/components/Log.svelte";
-  import RemoteWindow from "@lgn/web-client/src/components/RemoteWindow.svelte";
   import StatusBar from "@lgn/web-client/src/components/StatusBar.svelte";
   import Tile from "@lgn/web-client/src/components/Tile.svelte";
   import TopBar from "@lgn/web-client/src/components/TopBar.svelte";
@@ -21,12 +19,10 @@
   import DynamicPanel from "@/components/DynamicPanel.svelte";
   import ExtraPanel from "@/components/ExtraPanel.svelte";
   import ResourceBrowser from "@/components/ResourceBrowser.svelte";
-  import SceneExplorer from "@/components/SceneExplorer.svelte";
   import {
     AppComponentMap as appComponentMap,
     defaultLayoutConfig,
   } from "@/components/layout/LayoutConfig";
-  import LocalChanges from "@/components/localChanges/LocalChanges.svelte";
   import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
   import { fileName } from "@/lib/path";
   import {
@@ -44,6 +40,14 @@
   import workspace, { sceneExplorerTileId } from "@/stores/workspace";
   import { viewportTileId } from "@/stores/workspace";
 
+  let layout: Layout;
+
+  setContext<RootContext>("root", {
+    getLayout() {
+      return layout;
+    },
+  });
+
   $: if ($allResourcesError) {
     refetchResources().catch(() => {
       // TODO: Handle errors
@@ -60,18 +64,18 @@
     return allActiveScenes.subscribe((scenes) => {
       scenes?.forEach((s) => {
         layout.addComponent(
-          SceneExplorer.name,
+          "SceneExplorer",
+          s.rootScene.id,
           {
             state: {
               activeScenes: s.scenes,
             },
-            onDestroyed: async () => {
+            onClosed: async () => {
               await closeScene({ id: s.rootScene.id });
               await fetchAllActiveScenes();
             },
           },
-          fileName(s.rootScene.path) ?? "undefined",
-          s.rootScene.id
+          fileName(s.rootScene.path) ?? "undefined"
         );
       });
     });
@@ -87,12 +91,15 @@
   const mainMenuItemDescriptions: MenuItemDescription[] = [
     {
       title: "Window",
+      visible: true,
       children: [
         {
           title: "Editor",
+          visible: true,
           action: () => {
             layout.addComponent(
-              RemoteWindow.name,
+              "RemoteWindow",
+              "Editor",
               {
                 state: {
                   serverType: "editor",
@@ -104,9 +111,11 @@
         },
         {
           title: "Runtime",
+          visible: true,
           action: () => {
             layout.addComponent(
-              RemoteWindow.name,
+              "RemoteWindow",
+              "Runtime",
               {
                 state: {
                   serverType: "runtime",
@@ -118,39 +127,35 @@
         },
         {
           title: "Property Grid",
+          visible: true,
           action: () => {
-            layout.addComponent(PropertyGrid.name);
+            layout.addComponent("PropertyGrid", "PropertyGrid");
           },
         },
         {
           title: "Resource Browser",
+          visible: true,
           action: () => {
-            layout.addComponent(ResourceBrowser.name);
+            layout.addComponent("ResourceBrowser", "ResourceBrowser");
           },
         },
         {
           title: "Local Changes",
+          visible: true,
           action: () => {
-            layout.addComponent(LocalChanges.name);
+            layout.addComponent("LocalChanges", "LocalChanges");
           },
         },
         {
           title: "Logs",
+          visible: true,
           action: () => {
-            layout.addComponent(Log.name);
+            layout.addComponent("Log", "Log");
           },
         },
       ],
     },
   ];
-
-  let layout: Layout;
-
-  setContext<RootContext>("root", {
-    getLayout() {
-      return layout;
-    },
-  });
 
   const enableOld = false;
 </script>
@@ -160,6 +165,7 @@
   <div class="content-wrapper" class:electron={window.isElectron}>
     <div class="content">
       <Layout
+        surfaceClass="700"
         layoutConfig={defaultLayoutConfig}
         componentMap={appComponentMap}
         bind:this={layout}

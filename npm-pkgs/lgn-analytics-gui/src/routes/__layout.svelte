@@ -14,6 +14,10 @@
 
   const notifications = createNotificationsStore<Fluent>();
 
+  const issuerUrl = import.meta.env.VITE_LEGION_ANALYTICS_ISSUER_URL as string;
+
+  const clientId = import.meta.env.VITE_LEGION_ANALYTICS_CLIENT_ID as string;
+
   let loaded = false;
 
   export const load: Load = async ({ fetch, url }) => {
@@ -24,15 +28,14 @@
     try {
       const { dispose, initAuthStatus } = await headlessRun({
         auth: {
-          fetch,
-          issuerUrl:
-            "https://cognito-idp.ca-central-1.amazonaws.com/ca-central-1_SkZKDimWz",
+          fetch: fetch as typeof globalThis.fetch,
+          issuerUrl,
           redirectUri,
-          clientId: "2kp01gr54dfc7qp1325hibcro3",
+          clientId,
           login: {
             cookies: {
-              accessToken: "analytics_access_token_v2",
-              refreshToken: "analytics_refresh_token_v2",
+              accessToken: accessTokenCookieName,
+              refreshToken: refreshTokenCookieName,
             },
             scopes: ["email", "openid", "profile"],
           },
@@ -72,13 +75,13 @@
   import { writable } from "svelte/store";
 
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
   import { DefaultLocalStorage } from "@lgn/web-client/src/lib/storage";
   import { createL10nOrchestrator } from "@lgn/web-client/src/orchestrators/l10n";
-  import accessToken from "@lgn/web-client/src/stores/accessToken";
   import type { NotificationsStore } from "@lgn/web-client/src/stores/notifications";
   import { createThemeStore } from "@lgn/web-client/src/stores/theme";
 
@@ -87,17 +90,13 @@
   import LoadingBar from "@/components/Misc/LoadingBar.svelte";
   import { getThreadItemLength } from "@/components/Timeline/Values/TimelineValues";
   import {
-    debugContextKey,
-    httpClientContextKey,
-    l10nOrchestratorContextKey,
+    accessTokenCookieName,
     localeStorageKey,
-    notificationsContextKey,
-    themeContextKey,
+    refreshTokenCookieName,
     themeStorageKey,
-    threadItemLengthContextKey,
     threadItemLengthFallback,
   } from "@/constants";
-  import { makeGrpcClient } from "@/lib/client";
+  import { createGrpcClient } from "@/lib/client";
 
   import "../assets/index.css";
 
@@ -109,7 +108,7 @@
 
   const theme = createThemeStore(themeStorageKey, "dark");
 
-  const l10n = createL10nOrchestrator(
+  const l10n = createL10nOrchestrator<Fluent>(
     [
       {
         names: ["en-US", "en"],
@@ -139,21 +138,21 @@
     }
   );
 
-  setContext(themeContextKey, theme);
+  setContext("theme", theme);
 
   setContext(l10nOrchestratorContextKey, l10n);
 
-  setContext(httpClientContextKey, makeGrpcClient($accessToken));
+  setContext("http-client", createGrpcClient());
 
-  setContext(notificationsContextKey, notifications);
+  setContext("notifications", notifications);
 
   setContext(
-    debugContextKey,
+    "debug",
     writable(import.meta.env.VITE_LEGION_ANALYTICS_DEBUG === "true")
   );
 
   try {
-    setContext(threadItemLengthContextKey, getThreadItemLength());
+    setContext("thread-item-length", getThreadItemLength());
   } catch (error) {
     log.warn(
       `Couldn't get the proper thread item length, defaulting to the arbitrary value "${threadItemLengthFallback}": ${displayError(
@@ -161,10 +160,10 @@
       )}`
     );
 
-    setContext(threadItemLengthContextKey, threadItemLengthFallback);
+    setContext("thread-item-length", threadItemLengthFallback);
   }
 
-  // TODO: Here we can control the UI and display a modal like in the Editor
+  // TODO: Here we can control the UI and display a modal or change the page content
   onMount(() => {
     if (initAuthStatus?.type === "error") {
       window.location.href = initAuthStatus.authorizationUrl;
@@ -182,16 +181,18 @@
   });
 </script>
 
-<Notifications store={notifications} />
+{#if initAuthStatus?.type !== "error"}
+  <Notifications store={notifications} />
 
-<LoadingBar />
+  <LoadingBar />
 
-<div class="layout">
-  <slot />
-</div>
+  <div class="layout">
+    <slot />
+  </div>
+{/if}
 
 <style lang="postcss">
   .layout {
-    @apply antialiased h-full w-full flex flex-col;
+    @apply antialiased w-full flex flex-col;
   }
 </style>

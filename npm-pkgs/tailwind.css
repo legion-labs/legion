@@ -1,0 +1,63 @@
+:root {
+  /* Charcoal 500 */
+  --color-background-500: rgba(61, 61, 61, 1);
+  /* Charcoal 600 */
+  --color-background-600: rgba(43, 43, 43, 1);
+  /* Charcoal 700 */
+  --color-background-700: rgba(32, 32, 32, 1);
+  /* Charcoal 800 */
+  --color-background-800: rgba(24, 24, 24, 1);
+  /* Charcoal 900 */
+  --color-background-900: rgba(15, 15, 15, 1);
+  /* Black Opacity 100 */
+  --color-background-max: rgba(1, 1, 1, 1);
+
+  /* White/100 */
+  --color-item-max: rgba(255, 255, 255, 1);
+  /* White/87 */
+  --color-item-high: rgba(255, 255, 255, 0.87);
+  /* White/72 */
+  --color-item-mid: rgba(255, 255, 255, 0.72);
+  /* White/60 */
+  --color-item-low: rgba(255, 255, 255, 0.6);
+  /* White/38 */
+  --color-item-min: rgba(255, 255, 255, 0.38);
+
+  /* Charcoal 700 */
+  --list-item-bg-even: rgba(32, 32, 32, 1);
+  /* Charcoal 800 */
+  --list-item-bg-odd: rgba(24, 24, 24, 1);
+  /* Charcoal 900 */
+  --list-item-bg-header: rgba(15, 15, 15, 1);
+
+  /* Black Opacity 100 */
+  --text-box-bg: rgba(1, 1, 1, 1);
+
+  /* Vector : X*/
+  --color-vector-x: rgba(183, 113, 106, 1);
+  /* Vector : Y*/
+  --color-vector-y: rgba(90, 165, 84, 1);
+  /* Vector : Z*/
+  --color-vector-z: rgba(74, 137, 211, 1);
+  /* Vector : W*/
+  --color-vector-w: rgba(211, 172, 74, 1);
+
+  /* Charcoal 700 */
+  --menu-surface-default: rgba(32, 32, 32, 1);
+  /* Charcoal 900 */
+  --menu-surface-hovered: rgba(15, 15, 15, 1);
+
+  /* Charcoal 500 */
+  --dropdown-surface-default: rgba(61, 61, 61, 1);
+  /* Black Opacity 100 */
+  --dropdown-root: rgba(1, 1, 1, 1);
+
+  /* White/38 */
+  --menu-text-disabled: rgba(255, 255, 255, 0.38);
+  /* White/60 */
+  --menu-text-enabled: rgba(255, 255, 255, 0.6);
+  /* White/87 */
+  --menu-text-hovered: rgba(255, 255, 255, 0.87);
+  /* White/87 */
+  --menu-text-selected: rgba(255, 255, 255, 0.87);
+}

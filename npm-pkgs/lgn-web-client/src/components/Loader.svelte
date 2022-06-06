@@ -1,3 +1,7 @@
+<script lang="ts">
+  // This script tag is present only so that this file is considered a valid Svelte file
+</script>
+
 <svg
   class="animate-spin h-4 w-4 text-white"
   xmlns="http://www.w3.org/2000/svg"

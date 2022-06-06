@@ -1,19 +1,20 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { onMount } from "svelte";
+  import { getContext } from "svelte";
+  import { tick } from "svelte";
 
   import GraphHeader from "@/components/CallGraphFlat/CallGraphFlatHeader.svelte";
   import GraphNode from "@/components/CallGraphFlat/CallGraphFlatNode.svelte";
   import Layout from "@/components/Misc/Layout.svelte";
   import Loader from "@/components/Misc/Loader.svelte";
-  import { getHttpClientContext } from "@/contexts";
   import { CallGraphParameters } from "@/lib/CallGraph/CallGraphParameters";
   import { getProcessCumulatedCallGraphFlat } from "@/lib/CallGraph/CallGraphStore";
   import type { CumulatedCallGraphFlatStore } from "@/lib/CallGraph/CallGraphStore";
   import { loadingStore } from "@/lib/Misc/LoadingStore";
 
   const components: Record<number, GraphNode> = {};
-  const client = getHttpClientContext();
+  const client = getContext("http-client");
 
   let beginMsFilter = 0;
   let endMsFilter = 0;
@@ -40,8 +41,18 @@
     );
   });
 
-  function onEdgeClicked(e: CustomEvent<{ hash: number }>) {
-    components[e.detail.hash]?.setCollapse(false);
+  async function onEdgeClicked({
+    detail: { hash },
+  }: CustomEvent<{ hash: number }>) {
+    const component = components[hash];
+
+    if (!component) {
+      return;
+    }
+
+    component.setCollapse(false);
+    await tick();
+    component.scrollTo();
   }
 </script>
 
@@ -59,7 +70,7 @@
             <GraphNode
               {node}
               {store}
-              on:clicked={(e) => onEdgeClicked(e)}
+              on:click={onEdgeClicked}
               bind:this={components[node.hash]}
             />
           {/each}

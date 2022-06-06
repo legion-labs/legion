@@ -41,7 +41,11 @@
   }
 </script>
 
-<div class="root" use:clickOutside on:click-outside={hideDropdown}>
+<div
+  class="color-property-root"
+  use:clickOutside
+  on:click-outside={hideDropdown}
+>
   <TextInput
     value={hexValue}
     on:input={setColorsFromTextInput}
@@ -50,7 +54,7 @@
     {readonly}
   >
     <div
-      class="h-full w-full flex items-center justify-center text-xl font-bold"
+      class="h-full w-full flex items-center justify-center"
       slot="leftExtension"
       title="Hexadecimal color value"
     >
@@ -68,7 +72,7 @@
 </div>
 
 <style lang="postcss">
-  .root {
+  .color-property-root {
     @apply w-full;
   }
 </style>

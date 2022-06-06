@@ -227,8 +227,6 @@ impl UnifiedStaticBufferAllocator {
 
         let alloc_range = allocator.allocate(alloc_size).unwrap();
 
-        println!("Alloc {:?}", &alloc_range);
-
         assert_eq!(alloc_range.begin() % self.required_alignment, 0);
         assert!(alloc_range.size() >= required_size);
 
@@ -236,7 +234,6 @@ impl UnifiedStaticBufferAllocator {
     }
 
     fn free(&self, range: Range) {
-        println!("Free {:?}", &range);
         let allocator = &mut *self.allocator.lock().unwrap();
         allocator.free(range);
     }

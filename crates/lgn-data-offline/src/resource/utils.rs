@@ -61,7 +61,7 @@ macro_rules! implement_raw_resource {
             }
 
             fn extract_build_dependencies(
-                &mut self,
+                &self,
                 _resource: &dyn lgn_data_runtime::Resource,
             ) -> Vec<lgn_data_runtime::ResourcePathId> {
                 vec![]

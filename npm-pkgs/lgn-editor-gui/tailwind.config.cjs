@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-
+const tailwindConfig = require("../../tailwind.config.cjs");
 const fs = require("fs");
 const path = require("path");
 
-const contentGlobSuffix = "**/*.{svelte,ts}";
-
-const srcContentDir = "./src";
-
-const lgnFrontendContentDir = "./node_modules/@lgn/web-client/src";
+const {
+  srcContentDir,
+  contentGlobSuffix,
+  lgnFrontendContentDir,
+} = require("./../tailwind.const.js");
 
 if (!fs.existsSync(lgnFrontendContentDir)) {
   // eslint-disable-next-line no-console
@@ -18,35 +18,12 @@ if (!fs.existsSync(lgnFrontendContentDir)) {
   process.exit(1);
 }
 
+/** @type {import("tailwindcss/tailwind-config").TailwindConfig } */
 module.exports = {
-  mode: "jit",
+  ...tailwindConfig,
   content: [
     path.join(srcContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, contentGlobSuffix),
     path.join(lgnFrontendContentDir, "app.html"),
   ],
-  theme: {
-    fontFamily: {
-      default: "Inter,Arial,sans-serif",
-    },
-    extend: {
-      colors: {
-        white: "#eeeeee",
-        black: "#181818",
-        gray: {
-          400: "#666666",
-          500: "#555555",
-          700: "#333333",
-          800: "#222222",
-        },
-        orange: {
-          700: "#fc4d0f",
-        },
-      },
-    },
-  },
-  variants: {
-    extend: {},
-  },
-  plugins: [],
 };

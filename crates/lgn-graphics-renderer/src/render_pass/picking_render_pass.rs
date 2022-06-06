@@ -20,8 +20,8 @@ use crate::{
 };
 
 pub struct PickingRenderPass {
-    count_buffer: GpuBufferWithReadback,
-    picked_buffer: GpuBufferWithReadback,
+    pub(crate) count_buffer: GpuBufferWithReadback,
+    pub(crate) picked_buffer: GpuBufferWithReadback,
 }
 
 impl PickingRenderPass {

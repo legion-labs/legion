@@ -1,11 +1,13 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
+  import { getContext } from "svelte";
 
   import type { LogEntry } from "@lgn/proto-telemetry/dist/log";
   import { Level } from "@lgn/proto-telemetry/dist/log";
   import type { Process } from "@lgn/proto-telemetry/dist/process";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
+  import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
   import { stringToSafeRegExp } from "@lgn/web-client/src/lib/html";
   import {
     deleteSearchParam,
@@ -21,15 +23,13 @@
   import SearchInput from "@/components/Misc/SearchInput.svelte";
   import SelectInput from "@/components/Misc/SelectInput.svelte";
   import Table from "@/components/Misc/Table.svelte";
-  import { getHttpClientContext, getL10nOrchestratorContext } from "@/contexts";
   import { formatProcessName, formatTime } from "@/lib/format";
 
   const MAX_NB_ENTRIES_IN_PAGE = 1_000;
 
-  const client = getHttpClientContext();
+  const client = getContext("http-client");
 
-  const { t } = getL10nOrchestratorContext();
-
+  const { t } = getContext(l10nOrchestratorContextKey);
   const columns = [
     { name: "level" as const, width: "7%" },
     { name: "timeMs" as const, width: "8%" },

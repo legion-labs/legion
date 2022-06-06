@@ -22,12 +22,12 @@ macro_rules! implement_option_descriptor {
                     Result::<Option::<$type_id>, $crate::ReflectionError>::Ok(Option::<$type_id>::None)),
                 inner_type: <$type_id as $crate::TypeReflection>::get_type_def(),
                 get_inner:  |option: *const ()| unsafe {
-                    (*(option as *const Option<$type_id>))
+                    (*option.cast::<Option<$type_id>>())
                         .as_ref()
                         .map(|val| (val as *const $type_id).cast::<()>())
                 },
                 get_inner_mut: |option: *mut ()| unsafe {
-                    (*(option as *mut Option<$type_id>))
+                    (*option.cast::<Option<$type_id>>())
                         .as_mut()
                         .map(|val| (val as *mut $type_id).cast::<()>())
                 },

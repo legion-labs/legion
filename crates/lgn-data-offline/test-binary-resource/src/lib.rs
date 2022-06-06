@@ -39,7 +39,7 @@ impl ResourceProcessor for BinaryResourceProc {
         Box::new(BinaryResource { content: vec![] })
     }
 
-    fn extract_build_dependencies(&mut self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
+    fn extract_build_dependencies(&self, _resource: &dyn Resource) -> Vec<ResourcePathId> {
         vec![]
     }
 

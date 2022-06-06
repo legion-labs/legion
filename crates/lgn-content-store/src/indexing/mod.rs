@@ -11,34 +11,35 @@ mod search_result;
 mod static_indexer;
 mod string_path_indexer;
 mod tree;
+mod utils;
 
 use std::{ops::RangeBounds, pin::Pin};
 
 use async_stream::stream;
 use async_trait::async_trait;
+use futures::Stream;
+use tokio_stream::StreamExt;
+
 pub use composite_indexer::CompositeIndexer;
 pub use errors::{Error, Result};
 pub use graphviz_visitor::GraphvizVisitor;
 pub use index_key::{IndexKey, IndexKeyBound, IndexKeyDisplayFormat};
+pub(crate) use index_path::{IndexPath, IndexPathItem};
 pub use indexable_resource::{
-    IndexableResource, ResourceIdentifier, ResourceReader, ResourceWriter,
+    IndexableResource, ResourceExists, ResourceIdentifier, ResourceReader, ResourceWriter,
 };
 pub use json_visitor::JsonVisitor;
 pub(crate) use search_result::SearchResult;
 pub use static_indexer::StaticIndexer;
 pub use string_path_indexer::StringPathIndexer;
-use tokio_stream::StreamExt;
 pub(crate) use tree::tree_leaves;
 pub use tree::{
-    tree_diff, Tree, TreeBranchInfo, TreeDiffSide, TreeIdentifier, TreeLeafInfo, TreeLeafNode,
-    TreeNode, TreeReader, TreeVisitor, TreeVisitorAction, TreeWriter,
+    tree_diff, SharedTreeIdentifier, Tree, TreeBranchInfo, TreeDiffSide, TreeIdentifier,
+    TreeLeafInfo, TreeLeafNode, TreeNode, TreeReader, TreeVisitor, TreeVisitorAction, TreeWriter,
 };
-
-pub(crate) use index_path::{IndexPath, IndexPathItem};
+pub use utils::enumerate_resources;
 
 use crate::Provider;
-
-use futures::Stream;
 
 /// BasicIndexer implements the basic method that all indexers should implement.
 ///

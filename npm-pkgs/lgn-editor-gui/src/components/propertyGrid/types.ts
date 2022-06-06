@@ -1,4 +1,4 @@
-import type { ResourceProperty } from "@/lib/propertyGrid";
+import type { ResourceProperty } from "@/components/propertyGrid/lib/propertyGrid";
 
 /** Add a sub property to a vector event payload */
 export type AddVectorSubPropertyEvent = {
