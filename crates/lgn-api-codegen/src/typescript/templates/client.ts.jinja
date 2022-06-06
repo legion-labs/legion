@@ -25,7 +25,8 @@ export class Client implements Api {
                         {% endfor -%}
                     };
 
-                    url.search = `?${qs.stringify(query)}`;
+                    {# TODO: Supports only the default serialization style: form, explode: true for now #}
+                    url.search = qs.stringify(query, { arrayFormat: "repeat" });
                 {% endif %}
 
                 const headers = new Headers();
@@ -38,24 +39,47 @@ export class Client implements Api {
                 {% endif %}
 
 
-                {# {% if !route.parameters.header.is_empty() -%}
+                {% if !route.parameters.header.is_empty() -%}
                     {%- for parameter in route.parameters.header -%}
-                        {% let param_name = "{}"|format(parameter.name) %}
                         {% if parameter.required -%}
                             headers.set(
                                 "{{ parameter.name }}",
-                                "{{ param_name }}",
+                                {% if parameter.type_ == Type::String %}
+                                        input.headers["{{ parameter.name }}"],
+                                {% else if parameter.type_ == Type::Int32 ||
+                                    parameter.type_ == Type::Int64 ||
+                                    parameter.type_ == Type::Boolean ||
+                                    parameter.type_ == Type::Float32 ||
+                                    parameter.type_ == Type::Float64 %}
+                                        input.headers["{{ parameter.name }}"].toString(),
+                                {% else if parameter.type_ == Type::Bytes %}
+                                    await input.headers["{{ parameter.name }}"].text(),
+                                {% else %}
+                                    "unknown",
+                                {% endif %}
                             ); 
                         {% else %}
-                            if let Some({{ param_name }}) = {{ param_name }} {
+                            if ("{{ parameter.name }}" in input.headers) {
                                 headers.set(
                                     "{{ parameter.name }}",
-                                    "{{ param_name}}",
+                                    {% if parameter.type_ == Type::String %}
+                                            input.headers["{{ parameter.name }}"],
+                                    {% else if parameter.type_ == Type::Int32 ||
+                                        parameter.type_ == Type::Int64 ||
+                                        parameter.type_ == Type::Boolean ||
+                                        parameter.type_ == Type::Float32 ||
+                                        parameter.type_ == Type::Float64 %}
+                                            input.headers["{{ parameter.name }}"].toString(),
+                                    {% else if parameter.type_ == Type::Bytes %}
+                                        await input.headers["{{ parameter.name }}"].text(),
+                                    {% else %}
+                                        "unknown",
+                                    {% endif %}
                                 );
                             }
                         {% endif -%}                
                     {% endfor %}
-                {% endif -%} #}
+                {% endif -%}
 
                 const response = await this.#fetch(url.toString(), {
                     method: "{{ route.method|uppercase }}",

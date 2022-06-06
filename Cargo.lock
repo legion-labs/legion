@@ -3847,7 +3847,9 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "tempfile",
  "thiserror",
+ "which",
 ]
 
 [[package]]
@@ -3929,7 +3931,7 @@ dependencies = [
  "hyper-rustls 0.23.0",
  "lgn-config",
  "lgn-tracing",
- "napi-build 1.2.1",
+ "napi-build",
  "openidconnect",
  "reqwest",
  "ring",
@@ -3951,7 +3953,7 @@ dependencies = [
  "http",
  "lgn-auth",
  "napi",
- "napi-build 1.2.1",
+ "napi-build",
  "napi-derive",
  "once_cell",
  "serde",
@@ -4272,7 +4274,7 @@ version = "0.1.0"
 dependencies = [
  "lgn-config",
  "napi",
- "napi-build 1.2.1",
+ "napi-build",
  "napi-derive",
  "serde",
  "serde_json",
@@ -5824,12 +5826,6 @@ dependencies = [
  "thread_local",
  "tokio",
 ]
-
-[[package]]
-name = "napi-build"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6bba07d993e9865e6000062849a7644194be1b08c81968e7f02efd00e2dd49b"
 
 [[package]]
 name = "napi-build"

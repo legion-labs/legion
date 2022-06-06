@@ -1,14 +1,19 @@
+use convert_case::{Case, Casing};
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
 pub use crate::filters::*;
 use crate::{
-    api_types::{Parameter, Path, Type},
+    api_types::{GenerationContext, Model, ModelOrigin, ModulePath, Parameter, Path, Type},
     errors::Error,
 };
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
+pub fn fmt_type(
+    type_: &Type,
+    ctx: &GenerationContext,
+    module_path: &ModulePath,
+) -> ::askama::Result<String> {
     Ok(match type_ {
         Type::Int32 | Type::Float32 => "number".to_string(),
         Type::Int64 | Type::Float64 => "bigint".to_string(),
@@ -16,15 +21,39 @@ pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
         Type::Boolean => "boolean".to_string(),
         Type::Bytes | Type::Binary => "Blob".to_string(),
         Type::DateTime | Type::Date => "Date".to_string(),
-        Type::Array(inner) => format!("{}[]", fmt_type(inner).unwrap()),
-        Type::HashSet(inner) => format!("Set<{}>", fmt_type(inner).unwrap()),
-        Type::Named(struct_) => format!("{}Model", struct_),
+        Type::Array(inner) => format!("{}[]", fmt_type(inner, ctx, module_path).unwrap()),
+        Type::HashSet(inner) => format!("Set<{}>", fmt_type(inner, ctx, module_path).unwrap()),
+        Type::Named(ref_) => {
+            let ref_module_path = ctx.ref_loc_to_module_path(ref_.ref_location())?;
+
+            fmt_module_path(
+                &ref_module_path
+                    .relative_to(module_path)
+                    .join(fmt_model_name(ctx.get_model(ref_)?, ctx)?),
+            )?
+        }
         Type::Enum { .. } | Type::Struct { .. } | Type::OneOf { .. } => {
             return Err(askama::Error::Custom(Box::new(Error::UnsupportedType(
                 "complex types cannot be formatted".to_string(),
             ))))
         }
     })
+}
+
+#[allow(clippy::unnecessary_wraps)]
+pub fn fmt_module_path(module_path: &ModulePath) -> ::askama::Result<String> {
+    Ok(module_path
+        .0
+        .iter()
+        .filter_map(|name| {
+            if name == ".." {
+                None
+            } else {
+                Some(name.to_case(Case::Pascal))
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("."))
 }
 
 #[allow(clippy::unnecessary_wraps)]
@@ -49,6 +78,32 @@ pub fn fmt_ts_path(path: &Path, parameters: &[Parameter]) -> ::askama::Result<St
             "unknown".to_string()
         })
         .to_string())
+}
+
+#[allow(clippy::unnecessary_wraps)]
+pub fn fmt_model_name(model: &Model, ctx: &GenerationContext) -> ::askama::Result<String> {
+    let name = match &model.origin {
+        ModelOrigin::Schemas => model.ref_.json_pointer().type_name().to_string(),
+        ModelOrigin::ObjectProperty { object_pointer } => {
+            format!(
+                "{}_{}",
+                fmt_model_name(
+                    ctx.get_model(&model.ref_.clone().with_json_pointer(object_pointer.clone()))?,
+                    ctx,
+                )?,
+                model.ref_.json_pointer().type_name()
+            )
+        }
+        ModelOrigin::RequestBody { operation_name } => {
+            format!("{}_body", operation_name)
+        }
+        ModelOrigin::ResponseBody {
+            operation_name,
+            status_code,
+        } => format!("{}_{}_response", operation_name, status_code),
+    };
+
+    Ok(format!("{}_model", name).to_case(Case::Pascal))
 }
 
 #[cfg(test)]
