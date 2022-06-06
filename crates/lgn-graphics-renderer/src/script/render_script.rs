@@ -108,6 +108,7 @@ impl RenderScript<'_> {
         render_resources: &RenderResources,
         pipeline_manager: &mut PipelineManager,
         device_context: &DeviceContext,
+        hzb_cleared: bool,
     ) -> GfxResult<RenderGraph> {
         let mut render_graph_builder =
             RenderGraph::builder(render_resources, pipeline_manager, device_context);
@@ -127,11 +128,6 @@ impl RenderScript<'_> {
         // Inject external resources
 
         // TODO(jsg): need to think of a better way of doing this.
-        let initial_state = if config.frame_idx == 0 {
-            ResourceState::RENDER_TARGET
-        } else {
-            ResourceState::SHADER_RESOURCE
-        };
 
         let prev_hzb_idx = config.frame_idx as usize % 2;
         let current_hzb_idx = (config.frame_idx + 1) as usize % 2;
@@ -141,9 +137,26 @@ impl RenderScript<'_> {
             names = names.into_iter().rev().collect();
         }
 
+        // Initial state is important because we need the contents of the previous_frame_hzb.
         let hzb_ids = [
-            render_graph_builder.inject_render_target(names[0], self.hzb[0], initial_state),
-            render_graph_builder.inject_render_target(names[1], self.hzb[1], initial_state),
+            render_graph_builder.inject_render_target(
+                names[0],
+                self.hzb[0],
+                if hzb_cleared {
+                    ResourceState::RENDER_TARGET
+                } else {
+                    ResourceState::SHADER_RESOURCE
+                },
+            ),
+            render_graph_builder.inject_render_target(
+                names[1],
+                self.hzb[1],
+                if hzb_cleared {
+                    ResourceState::RENDER_TARGET
+                } else {
+                    ResourceState::SHADER_RESOURCE
+                },
+            ),
         ];
 
         let prev_hzb_id = hzb_ids[prev_hzb_idx];
@@ -155,6 +168,7 @@ impl RenderScript<'_> {
             self.hzb[prev_hzb_idx].definition().mip_count,
         );
 
+        // Initial state doesn't matter because we don't use the previous contents.
         let view_target_id = render_graph_builder.inject_render_target(
             "ViewTarget",
             view.target,

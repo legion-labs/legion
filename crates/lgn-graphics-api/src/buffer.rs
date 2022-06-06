@@ -4,7 +4,7 @@ use crate::{
 };
 
 /// Used to create a `Buffer`
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BufferDef {
     pub size: u64,
     pub usage_flags: ResourceUsage,

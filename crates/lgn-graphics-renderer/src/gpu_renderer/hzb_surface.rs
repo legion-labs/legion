@@ -3,8 +3,7 @@ use lgn_graphics_api::{
     CullMode, DepthState, DeviceContext, Extents3D, FilterType, Format, GraphicsPipelineDef,
     LoadOp, MemoryUsage, MipMapMode, PrimitiveTopology, RasterizerState, ResourceFlags,
     ResourceState, ResourceUsage, SampleCount, Sampler, SamplerDef, StencilOp, StoreOp, Texture,
-    TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef, VertexAttributeRate,
-    VertexLayout, VertexLayoutAttribute, VertexLayoutBuffer,
+    TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Vec2;
@@ -190,24 +189,6 @@ impl HzbSurface {
 fn build_hzb_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     let root_signature = cgen::pipeline_layout::HzbPipelineLayout::root_signature();
 
-    let mut vertex_layout = VertexLayout::default();
-    vertex_layout.attributes[0] = Some(VertexLayoutAttribute {
-        format: Format::R32G32_SFLOAT,
-        buffer_index: 0,
-        location: 0,
-        byte_offset: 0,
-    });
-    vertex_layout.attributes[1] = Some(VertexLayoutAttribute {
-        format: Format::R32G32_SFLOAT,
-        buffer_index: 0,
-        location: 1,
-        byte_offset: 8,
-    });
-    vertex_layout.buffers[0] = Some(VertexLayoutBuffer {
-        stride: 16,
-        rate: VertexAttributeRate::Vertex,
-    });
-
     let depth_state = DepthState {
         depth_test_enable: false,
         depth_write_enable: false,
@@ -239,7 +220,7 @@ fn build_hzb_pso(pipeline_manager: &PipelineManager) -> PipelineHandle {
     pipeline_manager.register_pipeline(PipelineDef::Graphics(GraphicsPipelineDef {
         shader,
         root_signature: root_signature.clone(),
-        vertex_layout,
+        vertex_layout: VertexLayout::default(),
         blend_state: BlendState::default_alpha_disabled(),
         depth_state,
         rasterizer_state,
