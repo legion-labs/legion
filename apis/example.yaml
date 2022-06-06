@@ -1,0 +1,79 @@
+openapi: 3.1.0
+
+info:
+  title: "Session API"
+  description: "The OpenAPI specification for the Legion Labs session service."
+  version: 1.0.0
+
+paths:
+  /v1/current-user/spaces/{space-id}/sessions/:
+    parameters:
+      - name: space-id
+        in: path
+        description: The space identifier.
+        required: true
+        schema:
+          description: An identifier to a unique data space.
+          type: string
+
+    get:
+      description: List all the sessions for the current user in the specified space.
+      operationId: listCurrentUserSessions
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                description: A list of sessions.
+                type: array
+                items:
+                  description: A session.
+                  type: object
+                  properties:
+                    created_at:
+                      type: string
+                      format: date-time
+                    last_updated_at:
+                      type: string
+                      format: date-time
+                  required:
+                    - created_at
+                    - last_updated_at
+
+  /v1/current-user/spaces/{space-id}/workspaces/:
+    parameters:
+      - name: space-id
+        in: path
+        description: The space identifier.
+        required: true
+        schema:
+          description: An identifier to a unique data space.
+          type: string
+
+    get:
+      description: List all the workspaces for the current user in the specified space.
+      operationId: listCurrentUserWorkspaces
+      responses:
+        "200":
+          description: The list of workspaces.
+          content:
+            application/json:
+              schema:
+                description: A list of workspace ids.
+                type: array
+                items:
+                  description: A workspace.
+                  type: object
+                  properties:
+                    created_at:
+                      type: string
+                      format: date-time
+                    last_updated_at:
+                      type: string
+                      format: date-time
+                  required:
+                    - created_at
+                    - last_updated_at
+
+components: {}
