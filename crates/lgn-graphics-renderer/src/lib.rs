@@ -497,7 +497,7 @@ fn render_update(
                     render_commands.push(renderdoc::RenderDocCaptureCommand::default());
                 }
             }
-        }        
+        }
     }
 
     let picked_drawables = q_picked_drawables

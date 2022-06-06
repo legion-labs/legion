@@ -29,7 +29,7 @@ impl PresenterSnapshot {
         snapshot_name: &str,
         frame_target: i32,
         device_context: &DeviceContext,
-        pipeline_manager: &PipelineManager,        
+        pipeline_manager: &PipelineManager,
         resolution: RenderSurfaceExtents,
     ) -> Self {
         let offscreen_helper = OffscreenHelper::new(pipeline_manager, device_context, resolution);
