@@ -57,26 +57,26 @@ impl RenderCommandQueuePool {
 }
 
 pub struct RenderCommandBuilder {
-    safe_pool: RenderCommandQueuePool,
-    queue_handle: Handle<RenderCommandQueue>,
+    pool: RenderCommandQueuePool,
+    handle: Handle<RenderCommandQueue>,
 }
 
 impl RenderCommandBuilder {
-    pub fn new(safe_pool: &RenderCommandQueuePool) -> Self {
+    pub fn new(pool: &RenderCommandQueuePool) -> Self {
         Self {
-            safe_pool: safe_pool.clone(),
-            queue_handle: safe_pool.acquire(),
+            pool: pool.clone(),
+            handle: pool.acquire(),
         }
     }
 
     pub fn push<C: RenderCommand>(&mut self, command: C) {
-        self.queue_handle.push(command);
+        self.handle.push(command);
     }
 }
 
 impl Drop for RenderCommandBuilder {
     fn drop(&mut self) {
-        self.safe_pool.release(self.queue_handle.transfer());
+        self.pool.release(self.handle.transfer());
     }
 }
 

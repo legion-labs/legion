@@ -367,15 +367,48 @@ impl RenderSurface {
     pub fn resize(
         &mut self,
         device_context: &DeviceContext,
-        extents: RenderSurfaceExtents,
+        render_surface_extents: RenderSurfaceExtents,
         pipeline_manager: &PipelineManager,
     ) {
-        if self.extents != extents {
-            self.resources = SizeDependentResources::new(device_context, extents, pipeline_manager);
+        if self.extents != render_surface_extents {
+            self.resources = SizeDependentResources::new(
+                device_context,
+                render_surface_extents,
+                pipeline_manager,
+            );
+
+            let extents = Extents3D {
+                width: render_surface_extents.width(),
+                height: render_surface_extents.height(),
+                depth: 1,
+            };
+            let view_desc = TextureDef {
+                extents,
+                array_length: 1,
+                mip_count: 1,
+                format: Format::B8G8R8A8_UNORM,
+                usage_flags: ResourceUsage::AS_RENDER_TARGET
+                    | ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_UNORDERED_ACCESS
+                    | ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                memory_usage: MemoryUsage::GpuOnly,
+                tiling: TextureTiling::Optimal,
+            };
+            self.view_target = device_context.create_texture(view_desc, "ViewBuffer");
+
+            let hzb_desc = Self::make_hzb_desc(&extents);
+
+            self.hzb = [
+                device_context.create_texture(hzb_desc, "HZB 0"),
+                device_context.create_texture(hzb_desc, "HZB 1"),
+            ];
+            self.hzb_cleared = false;
+
             for presenter in &mut self.presenters {
-                presenter.resize(device_context, extents);
+                presenter.resize(device_context, render_surface_extents);
             }
-            self.extents = extents;
+            self.extents = render_surface_extents;
         }
     }
 
@@ -556,9 +589,12 @@ impl RenderSurface {
         [&self.hzb[0], &self.hzb[1]]
     }
 
-    pub(crate) fn clear_hzb(&mut self, cmd_buffer: &mut CommandBuffer) {
+    pub(crate) fn clear_hzb(&mut self, cmd_buffer: &mut CommandBuffer) -> bool {
+        let mut cleared_this_frame = false;
+
         if !self.hzb_cleared {
             self.hzb_cleared = true;
+            cleared_this_frame = true;
 
             cmd_buffer.with_label("Clear Prev HZB", |cmd_buffer| {
                 for i in 0..2 {
@@ -587,5 +623,7 @@ impl RenderSurface {
                 }
             });
         }
+
+        cleared_this_frame
     }
 }

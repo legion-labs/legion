@@ -526,7 +526,7 @@ impl RGNode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum RenderGraphResource {
     Texture(Texture),
     Buffer(Buffer),
@@ -536,7 +536,7 @@ impl<'a> TryFrom<&'a RenderGraphResource> for &'a Texture {
     type Error = &'static str;
 
     fn try_from(value: &'a RenderGraphResource) -> Result<Self, Self::Error> {
-        match &value {
+        match value {
             RenderGraphResource::Texture(texture) => Ok(texture),
             RenderGraphResource::Buffer(_) => Err("Conversion of RenderGraphResource to Texture failed because resource contains a Buffer."),
         }
@@ -547,7 +547,7 @@ impl<'a> TryFrom<&'a RenderGraphResource> for &'a Buffer {
     type Error = &'static str;
 
     fn try_from(value: &'a RenderGraphResource) -> Result<Self, Self::Error> {
-        match &value {
+        match value {
             RenderGraphResource::Texture(_) => Err("Conversion of RenderGraphResource to Buffer failed because resource contains a Texture."),
             RenderGraphResource::Buffer(buffer) => Ok(buffer),
         }
@@ -564,7 +564,18 @@ impl<'a> TryFrom<&'a RenderGraphView> for &'a TextureView {
     type Error = &'static str;
 
     fn try_from(value: &'a RenderGraphView) -> Result<Self, Self::Error> {
-        match &value {
+        match value {
+            RenderGraphView::TextureView(texture_view) => Ok(texture_view),
+            RenderGraphView::BufferView(_) => Err("Conversion of RenderGraphView to TextureView failed because view contains a BufferView."),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a mut RenderGraphView> for &'a mut TextureView {
+    type Error = &'static str;
+
+    fn try_from(value: &'a mut RenderGraphView) -> Result<Self, Self::Error> {
+        match value {
             RenderGraphView::TextureView(texture_view) => Ok(texture_view),
             RenderGraphView::BufferView(_) => Err("Conversion of RenderGraphView to TextureView failed because view contains a BufferView."),
         }
@@ -575,7 +586,18 @@ impl<'a> TryFrom<&'a RenderGraphView> for &'a BufferView {
     type Error = &'static str;
 
     fn try_from(value: &'a RenderGraphView) -> Result<Self, Self::Error> {
-        match &value {
+        match value {
+            RenderGraphView::TextureView(_) => Err("Conversion of RenderGraphView to BufferView failed because view contains a TextureView."),
+            RenderGraphView::BufferView(buffer_view) => Ok(buffer_view),
+        }
+    }
+}
+
+impl<'a> TryFrom<&'a mut RenderGraphView> for &'a mut BufferView {
+    type Error = &'static str;
+
+    fn try_from(value: &'a mut RenderGraphView) -> Result<Self, Self::Error> {
+        match value {
             RenderGraphView::TextureView(_) => Err("Conversion of RenderGraphView to BufferView failed because view contains a TextureView."),
             RenderGraphView::BufferView(buffer_view) => Ok(buffer_view),
         }
@@ -650,6 +672,7 @@ pub(crate) struct RenderGraph {
 pub(crate) struct RenderGraphPersistentState {
     resources: RwLock<HashMap<String, (RenderGraphResourceDef, RenderGraphResource)>>,
     views: RwLock<HashMap<(RenderGraphViewDef, GPUViewType), RenderGraphView>>,
+    injected_resources: RwLock<Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>>,
 }
 
 impl RenderGraphPersistentState {
@@ -657,6 +680,7 @@ impl RenderGraphPersistentState {
         Self {
             resources: RwLock::new(HashMap::new()),
             views: RwLock::new(HashMap::new()),
+            injected_resources: RwLock::new(Vec::new()),
         }
     }
 
@@ -680,11 +704,25 @@ impl RenderGraphPersistentState {
 
         if need_destroy {
             // Destroy resource and it will be recreated and re-added.
+            // Also destroy all views related to this resource so they will also be recreated.
             let mut resources = self.resources.write().unwrap();
+            let mut views = self.views.write().unwrap();
             let value = resources.get(name).unwrap();
             match &value.1 {
-                RenderGraphResource::Texture(_texture) => {}
-                RenderGraphResource::Buffer(_buffer) => {}
+                RenderGraphResource::Texture(texture) => {
+                    views.retain(|_, value| match value {
+                        RenderGraphView::TextureView(texture_view) => {
+                            texture_view.texture() != texture
+                        }
+                        RenderGraphView::BufferView(_) => true,
+                    });
+                }
+                RenderGraphResource::Buffer(buffer) => {
+                    views.retain(|_, value| match value {
+                        RenderGraphView::BufferView(buffer_view) => buffer_view.buffer() != buffer,
+                        RenderGraphView::TextureView(_) => true,
+                    });
+                }
             }
             resources.remove(name);
         }
@@ -818,7 +856,7 @@ impl RenderGraph {
 
         if !context.created.iter().any(|r| *r == resource_id) {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id) {
-                let name = &self.resource_names[res_idx];
+                let name = &self.get_resource_name(resource_id);
                 let original_texture_def = &self.resource_defs[res_idx];
                 let texture_def: &RenderGraphTextureDef = original_texture_def.try_into().unwrap();
                 let texture_def: TextureDef = texture_def.clone().into();
@@ -862,7 +900,7 @@ impl RenderGraph {
 
         if !context.created.iter().any(|r| *r == resource_id) {
             if !self.injected_resources.iter().any(|r| r.0 == resource_id) {
-                let name = &self.resource_names[res_idx];
+                let name = &self.get_resource_name(resource_id);
                 let original_buffer_def = &self.resource_defs[res_idx];
                 let buffer_def: &RenderGraphBufferDef = original_buffer_def.try_into().unwrap();
                 let buffer_def: BufferDef = buffer_def.clone().into();
@@ -1598,8 +1636,35 @@ impl RenderGraph {
             picked_readback: Handle::invalid(),
         };
 
-        // We execute the root's children directly instead of executing the root, because the root never
-        // does anything and it gives a useless level in the captures.
+        {
+            let mut persistent_state = execute_context
+                .render_resources
+                .get_mut::<RenderGraphPersistentState>();
+
+            // Destroy the views of any injected resource that was modified (for example, resized) since last frame.
+            {
+                let prev_frame_injected_resources =
+                    persistent_state.injected_resources.read().unwrap();
+                for prev_frame_injected_resource in prev_frame_injected_resources.iter() {
+                    let val = self
+                        .injected_resources
+                        .iter()
+                        .find(|val| prev_frame_injected_resource.1 .0 == val.1 .0);
+
+                    // If an injected resource from the previous frame was not found in this frame's injected resources, destroy its views.
+                    if val.is_none() {
+                        let mut views = persistent_state.views.write().unwrap();
+                        views.retain(|key, _| {
+                            key.0.get_resource_id() != prev_frame_injected_resource.0
+                        });
+                    }
+                }
+            }
+
+            // Keep the injected resources in the persistent state for next frame.
+            persistent_state.injected_resources = RwLock::new(self.injected_resources.clone());
+        }
+
         for child in &self.root_nodes {
             self.execute_inner(context, &mut execute_context, child, cmd_buffer);
         }
@@ -1642,7 +1707,7 @@ impl RenderGraph {
         assert!(
             first_node.is_some() && last_node.is_some(),
             "Resource {} is never used in the render graph (as read, write, rt or ds)",
-            self.resource_names[id as usize]
+            self.get_resource_name(id)
         );
 
         // println!(
