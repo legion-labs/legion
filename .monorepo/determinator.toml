@@ -33,6 +33,10 @@ globs = [
 ]
 mark-changed = []
 
+[[path-rule]]
+globs = ["apis/*"]
+mark-changed = []
+
 [[package-rule]]
 on-affected = ["monorepo"]
 mark-changed = "all"

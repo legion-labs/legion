@@ -9,16 +9,16 @@ use lgn_online::codegen::{Bytes};
         pub struct {{ model_name }} {
             {% for parameter in route.parameters -%}
                 {%- if parameter.required -%}
-                    pub {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type }},
+                    pub {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type(ctx, module_path) }},
                 {%- else -%}
-                    pub {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type }}>,
+                    pub {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type(ctx, module_path) }}>,
                 {%- endif -%}
             {% endfor -%}
             {% if let Some(request_body) = route.request_body -%}
                 {%- if request_body.required -%}
-                    pub body: {{ request_body.content.type_|fmt_type }},
+                    pub body: {{ request_body.content.type_|fmt_type(ctx, module_path) }},
                 {%- else -%}
-                    pub body: Option<{{ request_body.content.type_|fmt_type }}>,
+                    pub body: Option<{{ request_body.content.type_|fmt_type(ctx, module_path) }}>,
                 {%- endif -%}
             {% endif -%}
         }

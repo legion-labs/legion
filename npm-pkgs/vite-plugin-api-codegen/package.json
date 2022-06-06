@@ -1,0 +1,24 @@
+{
+  "name": "@lgn/vite-plugin-api-codegen",
+  "version": "0.1.0",
+  "description": "Legion's monorepo",
+  "repository": "https://github.com/legion-labs/legion",
+  "author": "devs@legionlabs.com",
+  "license": "MIT OR Apache-2.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "packageManager": "pnpm@6.24.1",
+  "scripts": {
+    "postinstall": "tsc --build"
+  },
+  "devDependencies": {
+    "@lgn/api-codegen": "^0.1.0",
+    "@types/mkdirp": "^1.0.2",
+    "@types/node": "^17.0.39",
+    "mkdirp": "^1.0.4",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.7.2"
+  }
+}

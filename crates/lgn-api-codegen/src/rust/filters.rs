@@ -1,8 +1,9 @@
 pub use crate::filters::*;
 use crate::{
-    api::{Parameter, Path, Type},
+    api_types::{GenerationContext, Model, ModelOrigin, ModulePath, Parameter, Path, Type},
     errors::Error,
 };
+use convert_case::{Case, Casing};
 use lazy_static::lazy_static;
 use regex::Regex;
 
@@ -15,7 +16,36 @@ const KEYWORDS: &[&str] = &[
 ];
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
+pub fn fmt_model_name(model: &Model, ctx: &GenerationContext) -> ::askama::Result<String> {
+    Ok(match &model.origin {
+        ModelOrigin::Schemas => model.ref_.json_pointer().type_name().to_string(),
+        ModelOrigin::ObjectProperty { object_pointer } => {
+            format!(
+                "{}_{}",
+                fmt_model_name(
+                    ctx.get_model(&model.ref_.clone().with_json_pointer(object_pointer.clone()))?,
+                    ctx,
+                )?,
+                model.ref_.json_pointer().type_name()
+            )
+        }
+        ModelOrigin::RequestBody { operation_name } => {
+            format!("{}_body", operation_name)
+        }
+        ModelOrigin::ResponseBody {
+            operation_name,
+            status_code,
+        } => format!("{}_{}_response", operation_name, status_code),
+    }
+    .to_case(Case::Pascal))
+}
+
+#[allow(clippy::unnecessary_wraps)]
+pub fn fmt_type(
+    type_: &Type,
+    ctx: &GenerationContext,
+    module_path: &ModulePath,
+) -> ::askama::Result<String> {
     Ok(match type_ {
         Type::Int32 => "i32".to_string(),
         Type::Int64 => "i64".to_string(),
@@ -26,15 +56,38 @@ pub fn fmt_type(type_: &Type) -> ::askama::Result<String> {
         Type::Bytes | Type::Binary => "Bytes".to_string(),
         Type::DateTime => "chrono::DateTime::<chrono::Utc>".to_string(),
         Type::Date => "chrono::Date::<chrono::Utc>".to_string(),
-        Type::Array(inner) => format!("Vec<{}>", fmt_type(inner).unwrap()),
-        Type::HashSet(inner) => format!("std::collections::HashSet<{}>", fmt_type(inner).unwrap()),
-        Type::Named(struct_) => format!("super::models::{}", struct_),
+        Type::Array(inner) => format!("Vec<{}>", fmt_type(inner, ctx, module_path).unwrap()),
+        Type::HashSet(inner) => format!(
+            "std::collections::HashSet<{}>",
+            fmt_type(inner, ctx, module_path).unwrap()
+        ),
+        Type::Named(ref_) => {
+            // We need to compute the relative module path.
+
+            let ref_module_path = ctx.ref_loc_to_module_path(ref_.ref_location())?;
+
+            fmt_module_path(
+                &ref_module_path
+                    .relative_to(module_path)
+                    .join(fmt_model_name(ctx.get_model(ref_)?, ctx)?),
+            )?
+        }
         Type::Enum { .. } | Type::Struct { .. } | Type::OneOf { .. } => {
-            return Err(askama::Error::Custom(Box::new(Error::Unsupported(
+            return Err(askama::Error::Custom(Box::new(Error::UnsupportedType(
                 "complex types cannot be formatted".to_string(),
             ))))
         }
     })
+}
+
+#[allow(clippy::unnecessary_wraps)]
+pub fn fmt_module_path(module_path: &ModulePath) -> ::askama::Result<String> {
+    Ok(module_path
+        .0
+        .iter()
+        .map(|s| (if s == ".." { "super" } else { s }).to_string())
+        .collect::<Vec<String>>()
+        .join("::"))
 }
 
 #[allow(clippy::unnecessary_wraps)]
@@ -80,11 +133,15 @@ pub fn join_names(params: &[Parameter]) -> ::askama::Result<String> {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn join_types(params: &[Parameter]) -> ::askama::Result<String> {
+pub fn join_types(
+    params: &[Parameter],
+    ctx: &GenerationContext,
+    module_path: &ModulePath,
+) -> ::askama::Result<String> {
     let joined = params
         .iter()
         .map(|param| {
-            let type_ = fmt_type(&param.type_).unwrap();
+            let type_ = fmt_type(&param.type_, ctx, module_path).unwrap();
             if param.required {
                 type_
             } else {
@@ -107,6 +164,8 @@ fn is_keyword(name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
 
     #[test]
@@ -129,6 +188,9 @@ mod tests {
 
     #[test]
     fn test_join_types() {
+        let ctx = GenerationContext::new(PathBuf::from("/"));
+        let module_path = "foo/bar".parse().unwrap();
+
         let p1 = Parameter {
             name: "foo".to_string(),
             description: None,
@@ -141,9 +203,12 @@ mod tests {
             type_: Type::String,
             required: false,
         };
-        assert_eq!(join_types(&[p1.clone()]).unwrap(), "i32".to_string());
         assert_eq!(
-            join_types(&[p1, p2]).unwrap(),
+            join_types(&[p1.clone()], &ctx, &module_path).unwrap(),
+            "i32".to_string()
+        );
+        assert_eq!(
+            join_types(&[p1, p2], &ctx, &module_path).unwrap(),
             "(i32, Option<String>)".to_string()
         );
     }

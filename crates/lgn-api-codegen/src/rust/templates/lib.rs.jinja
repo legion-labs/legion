@@ -1,43 +1,5 @@
-// Auto-generated file for Api: {{ api.title }} : {{ api.version }}
-//
-// {% if let Some(description) = api.description %}{{ description|multilinecomment }}{% endif %}
-//
+// Auto-generated file.
 
-// ---------- Api ----------
-{% include "api.rs.jinja" %}
-
-// ---------- Errors ----------
-pub mod errors {
-    {% include "errors.rs.jinja" %}
-}
-
-// ---------- Client ----------
-pub mod client {
-    {% include "client.rs.jinja" %}
-}
-
-// ---------- Server ----------
-pub mod server {
-    {% include "server.rs.jinja" %}
-}
-
-// ---------- Models ----------
-pub mod models {
-    {% include "models.rs.jinja" %}
-}
-
-// ---------- Params ----------
-pub(crate) mod params {
-    {% include "parameters.rs.jinja" %}
-}
-
-// ---------- Requests ----------
-pub mod requests {
-    {% include "requests.rs.jinja" %}
-}
-
-// ---------- Responses ----------
-pub mod responses {
-    {% include "responses.rs.jinja" %}
-}
-
+{% for (module_path, location_ctx) in ctx.as_modules()? %}
+{% include "location_context.rs.jinja" %}
+{% endfor %}

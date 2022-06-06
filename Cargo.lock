@@ -1076,6 +1076,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
+name = "bumpalo-herd"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "280808c55cf72fb6b47e43c1d0e80d2417d3d84e6ebce360b9d0f2d1e7cc8f5c"
+dependencies = [
+ "bumpalo",
+]
+
+[[package]]
 name = "bytemuck"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3843,12 +3852,21 @@ dependencies = [
  "lgn-tracing",
  "openapiv3",
  "regex",
- "reqwest",
  "rust-format",
  "serde",
  "serde_json",
  "serde_yaml",
  "thiserror",
+]
+
+[[package]]
+name = "lgn-api-codegen-node"
+version = "0.1.0"
+dependencies = [
+ "lgn-api-codegen",
+ "napi",
+ "napi-build",
+ "napi-derive",
 ]
 
 [[package]]
@@ -4770,6 +4788,7 @@ dependencies = [
  "bit-set",
  "bitflags",
  "bumpalo",
+ "bumpalo-herd",
  "crossbeam-channel",
  "dolly",
  "egui",
@@ -5818,9 +5837,9 @@ dependencies = [
 
 [[package]]
 name = "napi-build"
-version = "1.2.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebd4419172727423cf30351406c54f6cc1b354a2cfb4f1dba3e6cd07f6d5522b"
+checksum = "d6bba07d993e9865e6000062849a7644194be1b08c81968e7f02efd00e2dd49b"
 
 [[package]]
 name = "napi-derive"

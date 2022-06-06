@@ -180,6 +180,12 @@ impl Debug for IndexKey {
     }
 }
 
+impl Display for IndexKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_hex())
+    }
+}
+
 impl Deref for IndexKey {
     type Target = SmallVec<[u8; 16]>;
 
@@ -263,6 +269,12 @@ impl From<u64> for IndexKey {
     }
 }
 
+impl From<IndexKey> for u64 {
+    fn from(key: IndexKey) -> Self {
+        byteorder::BigEndian::read_u64(key.as_slice())
+    }
+}
+
 impl From<i64> for IndexKey {
     fn from(v: i64) -> Self {
         let mut buf = SmallVec::<[u8; 16]>::new();
@@ -278,6 +290,12 @@ impl From<u128> for IndexKey {
         buf.resize(16, 0);
         byteorder::BigEndian::write_u128(&mut buf, v);
         Self(buf)
+    }
+}
+
+impl From<IndexKey> for u128 {
+    fn from(key: IndexKey) -> Self {
+        byteorder::BigEndian::read_u128(key.as_slice())
     }
 }
 

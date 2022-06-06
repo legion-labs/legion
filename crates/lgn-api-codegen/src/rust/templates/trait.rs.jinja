@@ -1,0 +1,12 @@
+use errors::Result;
+use lgn_online::codegen::Context;
+
+#[async_trait::async_trait]
+pub trait Api {
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% if let Some(summary) = route.summary %}/// {{ summary }}{% endif %}
+        {% include "signature.rs.jinja" %};
+    {% endfor %}
+{% endfor %}
+}

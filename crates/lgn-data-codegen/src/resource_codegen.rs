@@ -92,7 +92,7 @@ pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
                 Box::new(#offline_identifier::default())
             }
 
-            fn extract_build_dependencies(&mut self, resource: &dyn lgn_data_runtime::Resource) -> Vec<lgn_data_runtime::ResourcePathId> {
+            fn extract_build_dependencies(&self, resource: &dyn lgn_data_runtime::Resource) -> Vec<lgn_data_runtime::ResourcePathId> {
                 let instance = resource.downcast_ref::<#offline_identifier>().unwrap();
                 lgn_data_runtime::extract_resource_dependencies(instance)
                     .unwrap_or_default()

@@ -8,10 +8,10 @@
                 {% for parameter in route.parameters.query -%}
                     #[serde(rename = "{{ parameter.name }}")]
                     {%- if parameter.required -%}
-                        pub {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type }},
+                        pub {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type(ctx, module_path) }},
                     {%- else -%}
                         #[serde(skip_serializing_if = "Option::is_none")]
-                        pub {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type }}>,
+                        pub {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type(ctx, module_path) }}>,
                     {%- endif -%}
                 {% endfor -%}
             }

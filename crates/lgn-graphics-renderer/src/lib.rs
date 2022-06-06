@@ -14,7 +14,7 @@ mod cgen {
 
 use crate::components::{tmp_debug_display_lights, EcsToRender};
 use crate::core::{DebugStuff, RenderGraphPersistentState, RenderObjects};
-use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
+use crate::features::{ModelFeature, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
@@ -24,6 +24,7 @@ use crate::script::{Config, RenderScript, RenderView};
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
+use bumpalo_herd::Herd;
 #[allow(unused_imports, clippy::wildcard_imports)]
 use cgen::*;
 
@@ -369,6 +370,7 @@ impl Plugin for RendererPlugin {
             .insert(missing_visuals_tracker)
             .insert(render_features)
             .insert(render_graph_persistent_state)
+            .insert(Herd::new())
             .finalize();
 
         let renderer = Renderer::new(
@@ -546,6 +548,7 @@ fn render_update(
                 &default_camera
             };
 
+            let mut herd = render_resources.get_mut::<Herd>();
             let mut render_scope = render_resources.get_mut::<RenderScope>();
             let mut descriptor_heap_manager = render_resources.get_mut::<DescriptorHeapManager>();
             let device_context = render_resources.get::<GfxApiArc>().device_context().clone();
@@ -558,6 +561,7 @@ fn render_update(
             // Begin frame (before commands)
             //
 
+            herd.reset();
             render_scope.begin_frame();
             descriptor_heap_manager.begin_frame();
 
@@ -599,14 +603,13 @@ fn render_update(
             // Visibility
             //
 
-            //...
+            //WIP let bump = herd.get();
 
             //
             // Update
             //
 
-            let render_features = render_resources.get::<RenderFeatures>();
-            render_features.update();
+            //WIP let render_features = render_resources.get::<RenderFeatures>();
 
             //
             // Egui (not thread safe as is)
@@ -816,8 +819,8 @@ fn render_update(
                         {
                             render_context.graphics_queue.queue_mut().submit(
                                 &[cmd_buffer],
-                                &[present_semaphore],
                                 &[],
+                                &[present_semaphore],
                                 None,
                             );
 
@@ -918,8 +921,8 @@ fn render_update(
                         {
                             render_context.graphics_queue.queue_mut().submit(
                                 &[cmd_buffer],
-                                &[present_semaphore],
                                 &[],
+                                &[present_semaphore],
                                 None,
                             );
 

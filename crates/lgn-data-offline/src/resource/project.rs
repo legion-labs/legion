@@ -805,7 +805,7 @@ mod tests {
             })
         }
 
-        fn extract_build_dependencies(&mut self, resource: &dyn Resource) -> Vec<ResourcePathId> {
+        fn extract_build_dependencies(&self, resource: &dyn Resource) -> Vec<ResourcePathId> {
             resource
                 .downcast_ref::<NullResource>()
                 .unwrap()

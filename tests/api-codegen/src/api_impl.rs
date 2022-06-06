@@ -1,8 +1,8 @@
 use std::{collections::HashMap, sync::Arc};
 
-use crate::cars::{
+use crate::api::cars::{
+    self,
     errors::Result,
-    models::{self},
     requests::{
         CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
         TestHeadersRequest,
@@ -18,7 +18,7 @@ use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Default)]
 pub struct ApiImpl {
-    cars: Arc<RwLock<HashMap<i64, models::Car>>>,
+    cars: Arc<RwLock<HashMap<i64, cars::Car>>>,
 }
 
 #[async_trait::async_trait]
@@ -30,7 +30,7 @@ impl Api for ApiImpl {
     ) -> Result<GetCarsResponse> {
         println!("Request addr: {}", context.request_addr().unwrap());
 
-        Ok(GetCarsResponse::Status200(models::Cars(
+        Ok(GetCarsResponse::Status200(cars::Cars(
             self.cars.read().await.values().cloned().collect(),
         )))
     }
@@ -76,9 +76,9 @@ impl Api for ApiImpl {
         Ok(TestBinaryResponse::Status200(request.body))
     }
 
-    async fn test_one_of(&self, context: &mut Context) -> Result<TestOneOfResponse> {
+    async fn test_one_of(&self, _context: &mut Context) -> Result<TestOneOfResponse> {
         Ok(TestOneOfResponse::Status200(
-            models::TestOneOf200Response::Option1(models::Pet {
+            cars::TestOneOf200Response::Option1(cars::Pet {
                 name: Some("Cat".to_string()),
             }),
         ))
@@ -99,7 +99,7 @@ impl Api for ApiImpl {
             x_string_header: request.x_string_header.unwrap(),
             x_bytes_header: request.x_bytes_header.unwrap(),
             x_int_header: request.x_int_header.unwrap(),
-            body: models::Pet {
+            body: cars::Pet {
                 name: Some("Cat".to_string()),
             },
         })

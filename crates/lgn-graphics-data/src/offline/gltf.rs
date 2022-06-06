@@ -425,7 +425,7 @@ impl ResourceProcessor for GltfFileProcessor {
     }
 
     fn extract_build_dependencies(
-        &mut self,
+        &self,
         _resource: &dyn Resource,
     ) -> Vec<lgn_data_runtime::ResourcePathId> {
         Vec::new()
