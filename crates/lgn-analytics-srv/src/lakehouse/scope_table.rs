@@ -32,7 +32,8 @@ impl ScopeRowGroup {
     pub fn append(&mut self, row: &ScopeDesc) {
         self.hashes.append(row.hash as i32);
         self.names.append(ByteArray::from(row.name.as_str()));
-        self.filenames.append(ByteArray::from(row.filename.as_str()));
+        self.filenames
+            .append(ByteArray::from(row.filename.as_str()));
         self.lines.append(row.line as i32);
     }
 

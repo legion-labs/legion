@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use lgn_tracing::prelude::*;
-use parquet::{column::writer::ColumnWriter, file::writer::RowGroupWriter};
 use parquet::data_type::ByteArray;
+use parquet::{column::writer::ColumnWriter, file::writer::RowGroupWriter};
 
 pub trait TableColumn {
     fn write_batch(&self, row_group_writer: &mut dyn RowGroupWriter) -> Result<()>;
