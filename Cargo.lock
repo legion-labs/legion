@@ -4706,6 +4706,7 @@ dependencies = [
  "clap 3.1.18",
  "http",
  "hyper",
+ "lazy_static",
  "lgn-api-codegen",
  "lgn-cli-utils",
  "lgn-online",

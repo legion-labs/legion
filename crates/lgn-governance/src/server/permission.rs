@@ -82,6 +82,7 @@ impl Api for Arc<Server> {
         Ok(responses::CreateRoleResponse::Status201(common::Role {
             id: "lol".to_string().into(),
             description: "Some role".to_string(),
+            permissions: vec![],
             created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
                 .into_internal_server_error()?
                 .with_timezone(&Utc),
@@ -96,6 +97,7 @@ impl Api for Arc<Server> {
         Ok(responses::UpdateRoleResponse::Status200(common::Role {
             id: "lol".to_string().into(),
             description: "Some role".to_string(),
+            permissions: vec![],
             created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
                 .into_internal_server_error()?
                 .with_timezone(&Utc),

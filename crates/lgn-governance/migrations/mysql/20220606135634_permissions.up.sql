@@ -27,3 +27,12 @@ SET NEW.id = LOWER(NEW.id);
 
 CREATE TRIGGER roles_update_lcase BEFORE UPDATE ON `roles` FOR EACH ROW
 SET NEW.id = LOWER(NEW.id);
+
+CREATE TABLE `roles_to_permissions` (
+	`role_id` VARCHAR(64) NOT NULL COMMENT 'The role identifier.',
+	`permission_id` VARCHAR(64) NOT NULL COMMENT 'The permission identifier.',
+    `built_in` BOOLEAN NOT NULL DEFAULT FALSE COMMENT 'Whether the permission is built-in.',
+	PRIMARY KEY (`role_id`, `permission_id`),
+    FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`),
+    FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`)
+);

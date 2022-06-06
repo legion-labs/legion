@@ -56,10 +56,16 @@ schemas:
       created_at:
         type: string
         format: date-time
+      permissions:
+        description: The permissions that this role has.
+        type: array
+        items:
+          $ref: "#/schemas/PermissionId"
     required:
       - id
       - description
       - created_at
+      - permissions
   Space:
     type: object
     description: A data space.

@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     fmt::{Display, Formatter},
     hash::Hash,
     str::FromStr,
@@ -23,7 +23,7 @@ macro_rules! optional_permission_id {
 
 #[macro_export]
 macro_rules! declare_built_in_permissions {
-    ($($name:ident$(($parent_name:ident))? => $description:literal), *$(,)?) => {
+    ($($name:ident$(($parent_name:ident))?: $description:literal), *$(,)?) => {
         impl crate::types::PermissionId {
             $(
             pub const $name: Self =
@@ -40,11 +40,7 @@ macro_rules! declare_built_in_permissions {
                 Self::ALL_BY_NAME.iter().find(|(name, _)| *name == s).map(|(_, id)| *id)
             }
 
-            pub fn is_built_in(&self) -> bool {
-                Self::ALL_BY_NAME.iter().any(|(name, _)| *name == self.0.as_ref())
-            }
-
-            pub const BUILT_INS: &'static [&'static Self] = &[
+            pub(crate) const BUILT_INS: &'static [&'static Self] = &[
                 $(
                     &Self::$name,
                 )*
@@ -61,21 +57,7 @@ macro_rules! declare_built_in_permissions {
             };
             )*
 
-            const ALL_BY_ID: &'static [(&'static crate::types::PermissionId, &'static Self)] = &[
-                $(
-                    (&crate::types::PermissionId::$name, &Self::$name),
-                )*
-            ];
-
-            pub(crate) fn get_built_in(permission_id: &crate::types::PermissionId) -> Option<&'static Self> {
-                Self::ALL_BY_ID.iter().find(|(id, _)| *id == permission_id).map(|(_, permission)| *permission)
-            }
-
-            pub fn is_built_in(&self) -> bool {
-                Self::get_built_in(&self.id).is_some()
-            }
-
-            pub const BUILT_INS: &'static [&'static crate::types::Permission] = &[
+            pub(crate) const BUILT_INS: &'static [&'static crate::types::Permission] = &[
                 $(
                     &Self::$name,
                 )*
@@ -105,7 +87,7 @@ impl FromStr for PermissionId {
             return Err(Error::InvalidPermissionId(s.to_string()));
         }
 
-        if s.contains(|c: char| !c.is_ascii_alphanumeric()) {
+        if s.contains(|c: char| !c.is_ascii()) {
             return Err(Error::InvalidPermissionId(s.to_string()));
         }
 
@@ -173,58 +155,15 @@ impl TryFrom<crate::api::common::Permission> for Permission {
 /// A set of permissions.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct PermissionSet(pub(crate) HashSet<PermissionId>);
-
-impl PermissionSet {
-    /// Create a new permission set from the list of built-in permissions.
-    pub fn new_built_in() -> Self {
-        Self(PermissionId::BUILT_INS.iter().copied().cloned().collect())
-    }
-
-    /// Get a permission by its identifier.
-    pub fn contains(&self, permission_id: &PermissionId) -> bool {
-        self.0.contains(permission_id)
-    }
-
-    /// Insert a permission.
-    ///
-    /// Returns `true` if the permission was inserted, `false` if it was already
-    /// present.
-    pub fn insert(&mut self, permission_id: PermissionId) -> bool {
-        self.0.insert(permission_id)
-    }
-
-    /// Remove a permission.
-    ///
-    /// Returns `true` if the permission was removed, `false` if it was not
-    pub fn remove(&mut self, permission_id: &PermissionId) -> bool {
-        self.0.remove(permission_id)
-    }
-}
-
-impl IntoIterator for PermissionSet {
-    type Item = PermissionId;
-    type IntoIter = std::collections::hash_set::IntoIter<PermissionId>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
-/// A set of permissions.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
 pub struct PermissionList(pub(crate) Vec<Permission>);
 
 impl PermissionList {
-    /// Create a new permission list from the list of built-in permissions.
-    pub fn new_built_in() -> Self {
-        Self(Permission::BUILT_INS.iter().copied().cloned().collect())
+    pub fn iter(&self) -> impl Iterator<Item = &Permission> {
+        self.0.iter()
     }
 
-    /// Move all the elements from `other` into `self`, leaving `other` empty.
-    pub fn append(&mut self, other: &mut PermissionList) {
-        self.0.extend(other.0.iter().cloned());
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Permission> {
+        self.0.iter_mut()
     }
 }
 
@@ -286,5 +225,64 @@ impl IntoIterator for PermissionList {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+/// A set of permissions.
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct PermissionSet(pub(crate) BTreeSet<PermissionId>);
+
+impl PermissionSet {
+    /// Create a new permission set from the list of built-in permissions.
+    pub fn new_built_in() -> Self {
+        Self(PermissionId::BUILT_INS.iter().copied().cloned().collect())
+    }
+
+    /// Get a permission by its identifier.
+    pub fn contains(&self, permission_id: &PermissionId) -> bool {
+        self.0.contains(permission_id)
+    }
+
+    /// Insert a permission.
+    ///
+    /// Returns `true` if the permission was inserted, `false` if it was already
+    /// present.
+    pub fn insert(&mut self, permission_id: PermissionId) -> bool {
+        self.0.insert(permission_id)
+    }
+
+    /// Remove a permission.
+    ///
+    /// Returns `true` if the permission was removed, `false` if it was not
+    pub fn remove(&mut self, permission_id: &PermissionId) -> bool {
+        self.0.remove(permission_id)
+    }
+}
+
+impl IntoIterator for PermissionSet {
+    type Item = PermissionId;
+    type IntoIter = std::collections::btree_set::IntoIter<PermissionId>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl FromIterator<PermissionId> for PermissionSet {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = PermissionId>,
+    {
+        Self(iter.into_iter().collect())
+    }
+}
+
+impl<'a> IntoIterator for &'a PermissionSet {
+    type Item = &'a PermissionId;
+    type IntoIter = std::collections::btree_set::Iter<'a, PermissionId>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
     }
 }

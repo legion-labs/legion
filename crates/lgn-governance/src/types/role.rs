@@ -9,11 +9,13 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::PermissionSet;
+
 use super::{Error, Result};
 
 #[macro_export]
 macro_rules! declare_built_in_roles {
-    ($($name:ident => $description:literal), *$(,)?) => {
+    ($($name:ident: $description:literal => $($permission:ident)_*), *$(,)?) => {
         impl crate::types::RoleId {
             $(
             pub const $name: Self =
@@ -30,45 +32,38 @@ macro_rules! declare_built_in_roles {
                 Self::ALL_BY_NAME.iter().find(|(name, _)| *name == s).map(|(_, id)| *id)
             }
 
-            pub fn is_built_in(&self) -> bool {
-                Self::ALL_BY_NAME.iter().any(|(name, _)| *name == self.0.as_ref())
-            }
-
-            pub const BUILT_INS: &'static [&'static Self] = &[
+            pub(crate) const BUILT_INS: &'static [&'static Self] = &[
                 $(
                     &Self::$name,
                 )*
             ];
         }
 
-        impl crate::types::Role {
+        lazy_static::lazy_static!{
+            static ref STATIC_ROLES: std::collections::HashMap<crate::types::RoleId, crate::types::Role> = [
             $(
-            pub const $name: Self = Self {
-                id: crate::types::RoleId::$name,
-                description: std::borrow::Cow::Borrowed($description),
-                created_at: chrono::MIN_DATETIME,
-            };
+                crate::types::Role {
+                    id: crate::types::RoleId::$name,
+                    description: std::borrow::Cow::Borrowed($description),
+                    permissions: [
+                        $(
+                            crate::types::PermissionId::$permission,
+                        )*
+                    ].iter().cloned().collect(),
+                    created_at: chrono::MIN_DATETIME,
+                },
             )*
+            ].into_iter().map(|role| (role.id.clone(), role)).collect();
+        }
 
-            const ALL_BY_ID: &'static [(&'static crate::types::RoleId, &'static Self)] = &[
-                $(
-                    (&crate::types::RoleId::$name, &Self::$name),
-                )*
-            ];
-
-            pub(crate) fn get_built_in(role_id: &crate::types::RoleId) -> Option<&'static Self> {
-                Self::ALL_BY_ID.iter().find(|(id, _)| *id == role_id).map(|(_, role)| *role)
+        impl crate::types::Role {
+            pub(crate) fn get_built_ins() -> [&'static Self; crate::types::RoleId::BUILT_INS.len()] {
+                [
+                    $(
+                        STATIC_ROLES.get(&crate::types::RoleId::$name).unwrap()
+                    )*
+                ]
             }
-
-            pub fn is_built_in(&self) -> bool {
-                Self::get_built_in(&self.id).is_some()
-            }
-
-            pub const BUILT_INS: &'static [&'static crate::types::Role] = &[
-                $(
-                    &Self::$name,
-                )*
-            ];
         }
     };
 }
@@ -94,7 +89,7 @@ impl FromStr for RoleId {
             return Err(Error::InvalidRoleId(s.to_string()));
         }
 
-        if s.contains(|c: char| !c.is_ascii_alphanumeric()) {
+        if s.contains(|c: char| !c.is_ascii()) {
             return Err(Error::InvalidRoleId(s.to_string()));
         }
 
@@ -126,6 +121,7 @@ pub struct Role {
     pub id: RoleId,
     pub description: Cow<'static, str>,
     pub created_at: DateTime<Utc>,
+    pub permissions: PermissionSet,
 }
 
 impl Display for Role {
@@ -139,6 +135,7 @@ impl From<Role> for crate::api::common::Role {
         Self {
             id: role.id.into(),
             description: role.description.into(),
+            permissions: role.permissions.into_iter().map(Into::into).collect(),
             created_at: role.created_at,
         }
     }
@@ -151,6 +148,11 @@ impl TryFrom<crate::api::common::Role> for Role {
         Ok(Self {
             id: role.id.try_into()?,
             description: role.description.into(),
+            permissions: role
+                .permissions
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_>>()?,
             created_at: role.created_at,
         })
     }
@@ -162,14 +164,12 @@ impl TryFrom<crate::api::common::Role> for Role {
 pub struct RoleList(pub(crate) Vec<Role>);
 
 impl RoleList {
-    /// Create a new role list from the list of built-in roles.
-    pub fn new_built_in() -> Self {
-        Self(Role::BUILT_INS.iter().copied().cloned().collect())
+    pub fn iter(&self) -> impl Iterator<Item = &Role> {
+        self.0.iter()
     }
 
-    /// Move all the elements from `other` into `self`, leaving `other` empty.
-    pub fn append(&mut self, other: &mut RoleList) {
-        self.0.extend(other.0.iter().cloned());
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Role> {
+        self.0.iter_mut()
     }
 }
 
