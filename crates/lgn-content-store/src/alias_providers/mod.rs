@@ -1,11 +1,11 @@
 //! Content providers for various backends.
 
 mod alias;
+mod api;
 #[cfg(feature = "aws")]
 mod aws_dynamodb;
 mod cache;
 mod errors;
-mod grpc;
 mod local;
 #[cfg(feature = "lru")]
 mod lru;
@@ -25,12 +25,12 @@ pub use self::lru::LruAliasProvider;
 #[cfg(feature = "redis")]
 pub use self::redis::RedisAliasProvider;
 pub use alias::Alias;
+pub use api::ApiAliasProvider;
 use async_trait::async_trait;
 #[cfg(feature = "aws")]
 pub use aws_dynamodb::AwsDynamoDbAliasProvider;
 pub use cache::AliasProviderCache;
 pub use errors::{Error, Result};
-pub use grpc::GrpcAliasProvider;
 pub use local::LocalAliasProvider;
 pub use memory::MemoryAliasProvider;
 

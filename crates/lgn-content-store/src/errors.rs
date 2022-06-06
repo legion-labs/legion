@@ -25,6 +25,8 @@ pub enum Error {
     AliasProvider(crate::alias_providers::Error),
     #[error("indexing error: {0}")]
     Indexing(#[from] crate::indexing::Error),
+    #[error("invalid argument: {0}")]
+    InvalidArgument(String),
     #[error("invalid data-space: {0}")]
     InvalidDataSpace(String),
     #[error("i/o: {0}")]

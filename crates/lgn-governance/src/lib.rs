@@ -3,7 +3,7 @@
 //! This crate contains both the API and the implementation of the governance
 //! service, which controls the main aspects of the Legion Engine ecosystem.
 
-mod api;
+pub mod api;
 mod client;
 mod errors;
 mod server;

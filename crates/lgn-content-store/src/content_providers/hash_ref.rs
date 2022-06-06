@@ -104,6 +104,20 @@ impl FromStr for HashRef {
     }
 }
 
+impl From<&HashRef> for crate::api::content_store::ContentId {
+    fn from(ref_: &HashRef) -> Self {
+        Self(ref_.to_string())
+    }
+}
+
+impl TryFrom<crate::api::content_store::ContentId> for HashRef {
+    type Error = InvalidHashRef;
+
+    fn try_from(id: crate::api::content_store::ContentId) -> Result<Self, InvalidHashRef> {
+        Self::from_str(&id.0)
+    }
+}
+
 impl HashRef {
     pub(crate) const HASH_SIZE: usize = 32;
 
