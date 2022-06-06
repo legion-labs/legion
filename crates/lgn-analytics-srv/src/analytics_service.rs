@@ -2,7 +2,6 @@ use anyhow::Context;
 use anyhow::{bail, Result};
 use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
-use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
 use lgn_telemetry_proto::analytics::AsyncSpansReply;
@@ -52,7 +51,6 @@ use tonic::{Request, Response, Status};
 use crate::async_spans::compute_async_spans;
 use crate::async_spans::compute_block_async_stats;
 use crate::cache::DiskCache;
-use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
 use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph::compute_cumulative_call_graph;
@@ -173,11 +171,10 @@ impl AnalyticsService {
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
         if lod_id == 0 {
-            let tree = self
-                .call_trees
-                .get_call_tree(ConvertTicks::new(process), stream, block_id)
-                .await?;
-            return Ok(compute_block_spans(tree, block_id));
+            return self
+                .jit_lakehouse
+                .get_thread_block(process, stream, block_id)
+                .await;
         }
         let lod0_reply = self.block_spans_impl(process, stream, block_id, 0).await?;
         let lod0 = lod0_reply.lod.unwrap();
