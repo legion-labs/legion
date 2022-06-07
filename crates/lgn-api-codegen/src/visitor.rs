@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::collections::BTreeMap;
 
 use indexmap::IndexMap;
 
@@ -18,10 +18,8 @@ pub struct Visitor {
 }
 
 impl Visitor {
-    pub fn new(root: PathBuf) -> Self {
-        Self {
-            ctx: GenerationContext::new(root),
-        }
+    pub fn new(ctx: GenerationContext) -> Self {
+        Self { ctx }
     }
 
     pub fn visit(mut self, openapis: &[OpenApi<'_>]) -> Result<GenerationContext> {
@@ -598,7 +596,7 @@ impl Visitor {
 #[cfg(test)]
 mod tests {
     use crate::{
-        api_types::{Content, LocationContext, MediaType, Path},
+        api_types::{Content, GenerationOptions, LocationContext, MediaType, Path},
         openapi_loader::{JsonPointer, OpenApiLoader},
     };
 
@@ -755,9 +753,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api.yaml", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let my_struct_ref = oas.ref_().join(
             "/components/schemas/MyStruct"
@@ -829,7 +830,10 @@ mod tests {
             )
             .unwrap();
 
-        let mut v = Visitor::new(std::env::current_dir().unwrap());
+        let mut v = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ));
 
         assert_eq!(
             v.resolve_array(&array).unwrap(),
@@ -852,7 +856,10 @@ mod tests {
             )
             .unwrap();
 
-        let mut v = Visitor::new(std::env::current_dir().unwrap());
+        let mut v = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ));
 
         assert_eq!(
             v.resolve_array(&array).unwrap(),
@@ -888,9 +895,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let my_struct_ref = oas.ref_().join(
             "/components/schemas/MyStruct"
@@ -971,9 +981,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let my_struct_ref = oas.ref_().join(
             "/components/schemas/MyStruct"
@@ -1045,9 +1058,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let my_struct_ref = oas.ref_().join(
             "/components/schemas/MyStruct"
@@ -1162,9 +1178,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let my_struct_ref = oas
             .ref_()
@@ -1274,9 +1293,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let my_struct_ref = oas.ref_().join(
             "/components/requestBodies/Pet/content/application~1json/schema"
@@ -1421,9 +1443,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let my_struct_ref = oas
             .ref_()
@@ -1526,9 +1551,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas])
-            .unwrap_err();
+        Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas])
+        .unwrap_err();
     }
 
     #[test]
@@ -1575,9 +1603,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let response_ref = oas.ref_().join(
             "/paths/~1test-one-of/get/responses/200/content/application~1json/schema"
@@ -1645,9 +1676,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let expected_route = Route {
             name: "testHeaders".to_string(),
@@ -1737,9 +1771,12 @@ mod tests {
             ..openapiv3::OpenAPI::default()
         };
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
-        let ctx = Visitor::new(std::env::current_dir().unwrap())
-            .visit(&[oas.clone()])
-            .unwrap();
+        let ctx = Visitor::new(GenerationContext::new(
+            std::env::current_dir().unwrap(),
+            GenerationOptions::default(),
+        ))
+        .visit(&[oas.clone()])
+        .unwrap();
 
         let expected_route = Route {
             name: "foo".to_string(),
