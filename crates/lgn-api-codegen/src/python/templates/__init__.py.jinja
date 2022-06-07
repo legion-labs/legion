@@ -1,24 +1,5 @@
-#used by fmt_type
-from datetime import datetime, date
+# Generated python API
 
-# ---------- Models ----------
-{% include "models.py.jinja" %}
-
-# ---------- Requests -------
-{% include "requests.py.jinja" %}
-
-# ---------- Responses -------
-{% include "responses.py.jinja" %}
-
-# ---------- Api ----------
-{% include "api.py.jinja" %}
-
-# ---------- Parameters -------
-{#
-At the moment we don't use query classes to form calls.
-Parameters are parsed directly (see client.py.jinja)
-{% include "parameters.py.jinja" %}
-#}
-
-# ---------- Client -------
-{% include "client.py.jinja" %}
+{% for (module_path, location_ctx) in ctx.as_modules()? %}
+{% include "location_context.py.jinja" %}
+{% endfor %}

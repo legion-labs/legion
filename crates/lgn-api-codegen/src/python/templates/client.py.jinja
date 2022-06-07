@@ -7,7 +7,7 @@ class Client(Api):
 
     {% for (path, routes) in api.paths %}
     {% for route in routes %}
-    {%- let enum_name = "{}Response"|format(route.name|pascal_case) -%}
+    {%- let response_name = "{}Response"|format(route.name|pascal_case) -%}
     {% include "signature.py.jinja" %}
         uri = "{}{{ path|fmt_py_path }}".format(
             self.uri,
@@ -15,6 +15,8 @@ class Client(Api):
             request.{{ parameter.name|snake_case }},
             {%- endfor %}
         )
+
+        headers = {}
 
         {%- if let Some(request_body) = route.request_body %}
         headers = {
@@ -40,12 +42,15 @@ class Client(Api):
         if required or (hasattr(request, "{{ parameter.name|snake_case }}") and request.{{ parameter.name|snake_case }}):
             if isinstance(request.{{ parameter.name|snake_case }}, list):
                 for num, item in enumerate(request.{{ parameter.name|snake_case }}):
+                    if num > 0:
+                        uri += '&'
                     uri += "{{ parameter.name|snake_case }}[{}]={}".format(num, item)
             else:
                 params["{{ parameter.name|snake_case }}"] = request.{{ parameter.name|snake_case }}
         {%- endfor %}
-        
-        uri += urllib.parse.urlencode(params, doseq=True)
+        more_params = urllib.parse.urlencode(params, doseq=True)
+        if uri[-1] != '?' and more_params:
+            uri += "&{}".format(more_params)
         {%- endif -%}
 
         {%- if !route.parameters.header.is_empty() %}
@@ -74,14 +79,14 @@ class Client(Api):
             {%- if !route.parameters.query.is_empty() %}
             #params = params,
             {%- endif %}
-            {%- if let Some(request_body) = route.request_body %}
             headers = headers,
+            {%- if let Some(request_body) = route.request_body %}
             data = data,
             {%- endif %}
         )
 
 
-        return {{ enum_name }}(resp)
+        return {{ response_name }}(resp)
     {% endfor %}
     {% endfor %}
     

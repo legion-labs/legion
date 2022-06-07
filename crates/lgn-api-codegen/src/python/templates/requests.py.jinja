@@ -1,20 +1,20 @@
-{% for (path, routes) in api.paths %}
-{% for route in routes %}
+{%- for (path, routes) in api.paths %}
+{%- for route in routes %}
 {% let model_name = "{}Request"|format(route.name|pascal_case) %}
 class {{ model_name }}:
     def __init__(
         self,
         {%- for parameter in route.parameters %}
-        {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type }} {%- if !parameter.required %} = None{% endif %},
+        {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type(ctx) }} {%- if !parameter.required %} = None{% endif %},
         {%- endfor %}
         {%- if let Some(request_body) = route.request_body %}
-        body: {{ request_body.content.type_|fmt_type }} {%- if request_body.required %} = None{% endif %},
+        body: {{ request_body.content.type_|fmt_type(ctx) }} {%- if request_body.required %} = None{% endif %},
         {%- endif %}
     ):
         {%- for parameter in route.parameters %}
         {%- if parameter.required %}
         self.{{ parameter.name|snake_case }} = {{ parameter.name|snake_case }}
-        {% else %}
+        {%- else %}
         if {{ parameter.name|snake_case }}:
             self.{{ parameter.name|snake_case }} = {{ parameter.name|snake_case }}
         {%- endif %}
@@ -23,7 +23,7 @@ class {{ model_name }}:
         {%- if let Some(request_body) = route.request_body %}
         {%- if request_body.required %}
         self.body = body
-        {% else %}
+        {%- else %}
         if body:
             self.body = body
         {%- endif %}

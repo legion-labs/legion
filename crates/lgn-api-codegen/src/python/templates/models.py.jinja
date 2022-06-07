@@ -1,6 +1,8 @@
 from enum import Enum
-
 from json import JSONEncoder
+
+#used by fmt_type
+from datetime import datetime, date
 
 # TODO(kdaibov): starting with Python 3.11 we could use StrEnum
 # in that case we could remove the ModelEncoder
@@ -11,49 +13,51 @@ class ModelEncoder(JSONEncoder):
         else:
             return o.__dict__
 
-{% for model in api.models %}
-{%- match model %}
-{% when Model::Enum with (enum_) %}
-{% if let Some(description) = enum_.description %}# {{ description }}{% endif %}
-class {{ enum_.name }}(Enum):
-{%- for variant in enum_.variants %}
+{% for model in location_ctx.models.values() %}
+{% if let Some(description) = model.description %}# {{ description }}{% endif %}
+{%- let model_name = model|fmt_model_name(ctx) %}
+{%- match model.type_ %}
+{%- when Type::Enum with { variants } %}
+class {{ model_name }}(Enum):
+{%- for variant in variants %}
     {{ variant|upper }} = "{{ variant }}"
 {%- endfor %}
     def from_json(value):
-        return {{ enum_.name }}(value)
+        return {{ model_name }}(value)
 
-
-{% when Model::OneOf with (one_of) %}
-{% if let Some(description) = one_of.description %}# {{ description }}{% endif %}
-class {{ one_of.name }}:
+{%- when Type::OneOf with { types } %}
+class {{ model_name }}:
     def __init__(self, value):
         self.value = value 
         self.type = None
-        {% for type_ in one_of.types %}
-        if isinstance(value, {{type_|fmt_type}}):
-            self.type = {{ type_|fmt_type }}
+        {% for type_ in types %}
+        if isinstance(value, {{type_|fmt_type(ctx)}}):
+            self.type = {{ type_|fmt_type(ctx) }}
         {% endfor %}
 
     def from_json(body):
         value = None
-        {% for type_ in one_of.types %}
-        if body["option{{ loop.index }}"]:
-            value = {{ type_|fmt_type }}.from_json(body["option{{ loop.index }}"])
+        {% for type_ in types %}
+        if "option{{ loop.index }}" in body:
+            value = {{ type_|fmt_type(ctx) }}.from_json(body["option{{ loop.index }}"])
         {% endfor %}
-        return {{ one_of.name }}(
+        return {{ model_name }}(
             value
         )
+
+    def __str__(self):
+        return "{{ model_name }} ( value: {} )".format(self.value)
+
                 
-{% when Model::Struct with (struct_) %}
-{% if let Some(description) = struct_.description %}# {{ description }}{% endif %}
-class {{ struct_.name }}:
+{% when Type::Struct with { fields } %}
+class {{ model_name }}:
     def __init__(
         self,
-        {%- for field in struct_.fields %}
-        {{ field.name }} : {{ field.type_|fmt_type }}, {% if let Some(description) = field.description -%} # {{ description }}{%- endif %}
+        {%- for field in fields.values() %}
+        {{ field.name }}, # : {{ field.type_|fmt_type(ctx) }} {% if let Some(description) = field.description -%} # {{ description }}{%- endif %}
         {%- endfor %}
     ):
-    {%- for field in struct_.fields %}
+    {%- for field in fields.values() %}
         self.{{ field.name }} = {{ field.name }}
     {%- endfor %}
 
@@ -61,16 +65,16 @@ class {{ struct_.name }}:
         return ModelEncoder().encode(self)
 
     def from_json(body):
-        {%- for field in struct_.fields %}
+        {%- for field in fields.values() %}
         {%- match field.type_ %}
-        {%- when Type::Struct with (inner_struct_name)%}
-        {{field.name}} = {{inner_struct_name}}.from_json(body['{{field.name}}'])
+        {%- when Type::Named with ( type_name ) %}
+        {{field.name}} = {{ field.type_|fmt_type(ctx) }}.from_json(body['{{field.name}}'])
         {%- when Type::Array with (inner_type)%}
-        {%- match field.type_ %}
-        {%- when Type::Struct with (array_struct_type)%}
+        {%- match inner_type.deref() %}
+        {%- when Type::Named with (array_type_name)%}
         {{field.name}} = []
         for item in body['{{field.name}}']:
-            {{field.name}}.append({{array_struct_type}}.from_json(item))
+            {{field.name}}.append({{ inner_type.deref()|fmt_type(ctx) }}.from_json(item))
         {%- else %}
         {{field.name}} = body['{{field.name}}']
         {%- endmatch %}
@@ -78,11 +82,40 @@ class {{ struct_.name }}:
         {{field.name}} = body['{{field.name}}']
         {%- endmatch %}
         {%- endfor %}
-        return {{ struct_.name }}(
-            {%- for field in struct_.fields %}
+        return {{ model_name }}(
+            {%- for field in fields.values() %}
             {{ field.name }},
             {%- endfor %}
         )
+
+    def __str__(self):
+        return ("{{ model_name }} (\n"
+        {%- for field in fields.values() %}
+        "  {{field.name}} : {}\n"
+        {%- endfor %}
+        ")"
+        ).format(
+        {%- for field in fields.values() %}
+            self.{{ field.name }},
+        {%- endfor %}
+        )
+    
+{%- when t %}
+class {{ model_name }}:
+    def __init__(
+        self,
+        value: {{ t|fmt_type(ctx) }}
+    ):
+        self.value = value
+
+    def to_json(self):
+        return ModelEncoder().encode(self)
+
+    def from_json(body):
+        return {{ model_name }}(body)
+
+    def __str__(self):
+        return "{{ model_name }} ( value: {} )".format(self.value)
    
 {% endmatch %}
 {% endfor %}

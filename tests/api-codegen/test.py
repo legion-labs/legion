@@ -1,54 +1,50 @@
 
-import cars
+import api
 
-client = cars.Client("http://127.0.0.1:3000")
+client = api.Client("http://127.0.0.1:3000")
 
-response = client.get_car(cars.GetCarRequest(
+response = client.get_car(api.GetCarRequest(
     "kd_space",
     0,
 ))
-print(vars(response))
+print(response)
 
-response = client.create_car(cars.CreateCarRequest(
+response = client.create_car(api.CreateCarRequest(
     "kd_space",
     "kd_span",
-    cars.Car(
-        0, "Opel", cars.CarColor.BLUE, False, ""
+    api.Car(
+        api.CarColor.BLUE, "", 0, False, "Opel"
     )
 ))
-print(vars(response))
+print(response)
 
-response = client.create_car(cars.CreateCarRequest(
+response = client.create_car(api.CreateCarRequest(
     "kd_space",
     "kd_span",
-    cars.Car(
-        1, "Lada", cars.CarColor.RED, True, ""
+    api.Car(
+        api.CarColor.RED, "", 1, True, "Lada"
     )
 ))
-print(vars(response))
-print(cars.CarColor("red"))
+print(response)
 
-car_response = client.get_car(cars.GetCarRequest(
+response = client.get_car(api.GetCarRequest(
     "kd_space",
     1
 ))
-print(car_response.car.__dict__)
+print(response)
 
-response = client.get_cars(cars.GetCarsRequest(
+response = client.get_cars(api.GetCarsRequest(
     "kd_space",
     ["Opel", "Lada"]
 ))
-print(vars(response))
-for car in response.car:
-    print(vars(car))
+print(response)
 
-response = client.delete_car(cars.DeleteCarRequest("kd_space", 0))
-print(vars(response))
+response = client.delete_car(api.DeleteCarRequest("kd_space", 0))
+print(response)
 
-response = client.test_binary(cars.TestBinaryRequest("kd_space", "-- test string --"))
-print(vars(response))
+response = client.test_binary(api.TestBinaryRequest("kd_space", "-- test string --"))
+print(response)
 
-response = client.test_one_of(cars.TestOneOfRequest())
-print(response.json())
-print(vars(response))
+response = client.test_one_of(api.TestOneOfRequest())
+print(response)
 

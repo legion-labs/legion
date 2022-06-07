@@ -1,5 +1,14 @@
 import abc
 
+
+# ---------- Requests -------
+{% include "requests.py.jinja" %}
+
+# ---------- Responses -------
+{% include "responses.py.jinja" %}
+
+
+# ---------- Api ----------
 class Api(metaclass=abc.ABCMeta):
 {% for (path, routes) in api.paths %}
     {%- for route in routes -%}
@@ -9,3 +18,13 @@ class Api(metaclass=abc.ABCMeta):
         raise NotImplementedError
     {% endfor %}
 {% endfor %}
+
+# ---------- Parameters -------
+{#
+At the moment we don't use query classes to form calls.
+Parameters are parsed directly (see client.py.jinja)
+{% include "parameters.py.jinja" %}
+#}
+
+# ---------- Client -------
+{% include "client.py.jinja" %}
