@@ -2,7 +2,11 @@
 
 use std::path::PathBuf;
 
+<<<<<<< HEAD
 use lgn_api_codegen::{Language, TypeScriptOptions};
+=======
+use lgn_api_codegen::{GenerationOptions, Language};
+>>>>>>> f25890514 (Codegen: Optionally generate node modules when targetting TS)
 use napi::bindgen_prelude::{Error, Result};
 use napi_derive::napi;
 
