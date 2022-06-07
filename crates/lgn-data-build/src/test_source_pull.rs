@@ -51,8 +51,8 @@ mod tests {
         .await
         .expect("failed to create a project");
 
-        let resource = ResourcePathId::from(
-            project
+        let resource = ResourcePathId::from({
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     refs_resource::TestResource::TYPE,
@@ -62,8 +62,10 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap(),
-        );
+                .unwrap();
+            project.commit("add resource").await.unwrap();
+            resource_id
+        });
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,

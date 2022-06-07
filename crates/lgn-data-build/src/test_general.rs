@@ -71,8 +71,6 @@ mod tests {
             .await;
 
             assert!(build.is_err());
-        } else {
-            panic!();
         }
     }
 
