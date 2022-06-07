@@ -64,7 +64,7 @@ pub fn fmt_type(
         Type::Named(ref_) => {
             // We need to compute the relative module path.
 
-            let ref_module_path = ctx.ref_loc_to_module_path(ref_.ref_location())?;
+            let ref_module_path = ctx.ref_loc_to_rust_module_path(ref_.ref_location())?;
 
             fmt_module_path(
                 &ref_module_path
@@ -82,12 +82,7 @@ pub fn fmt_type(
 
 #[allow(clippy::unnecessary_wraps)]
 pub fn fmt_module_path(module_path: &ModulePath) -> ::askama::Result<String> {
-    Ok(module_path
-        .0
-        .iter()
-        .map(|s| (if s == ".." { "super" } else { s }).to_string())
-        .collect::<Vec<String>>()
-        .join("::"))
+    Ok(module_path.to_rust_module_path())
 }
 
 #[allow(clippy::unnecessary_wraps)]
@@ -166,6 +161,8 @@ fn is_keyword(name: &str) -> bool {
 mod tests {
     use std::path::PathBuf;
 
+    use crate::api_types::GenerationOptions;
+
     use super::*;
 
     #[test]
@@ -188,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_join_types() {
-        let ctx = GenerationContext::new(PathBuf::from("/"));
+        let ctx = GenerationContext::new(PathBuf::from("/"), GenerationOptions::default());
         let module_path = "foo/bar".parse().unwrap();
 
         let p1 = Parameter {

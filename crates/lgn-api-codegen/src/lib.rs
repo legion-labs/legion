@@ -15,6 +15,7 @@ pub(crate) mod typescript;
 pub(crate) mod visitor;
 
 use api_types::GenerationContext;
+pub use api_types::{GenerationOptions, ModulePath};
 use clap::ArgEnum;
 use errors::{Error, Result};
 use openapi_loader::{OpenApi, OpenApiElement, OpenApiLoader, OpenApiRefLocation};
@@ -43,6 +44,7 @@ pub enum Language {
 /// If the generation fails to complete.
 pub fn generate(
     language: Language,
+    mut options: GenerationOptions,
     root: impl AsRef<Path>,
     openapis: impl IntoIterator<Item = impl AsRef<str>>,
     output_dir: impl AsRef<Path>,
@@ -56,6 +58,23 @@ pub fn generate(
     }
     .canonicalize()?;
 
+    // Make sure the Rust module mappings are absolute and canonicalized.
+    options.rust_module_mappings = options
+        .rust_module_mappings
+        .into_iter()
+        .map(|(p, module)| {
+            Ok((
+                if p.is_relative() {
+                    std::env::current_dir()?.join(p)
+                } else {
+                    p
+                }
+                .canonicalize()?,
+                module,
+            ))
+        })
+        .collect::<Result<_>>()?;
+
     let loader = OpenApiLoader::default();
 
     let openapis = openapis
@@ -68,7 +87,8 @@ pub fn generate(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let ctx = Visitor::new(root).visit(&openapis)?;
+    let ctx = GenerationContext::new(root, options);
+    let ctx = Visitor::new(ctx).visit(&openapis)?;
 
     generator.generate(&ctx, output_dir.as_ref())?;
 
@@ -77,9 +97,16 @@ pub fn generate(
 
 #[macro_export]
 macro_rules! generate {
-    ($language:ident, $root:expr, $openapis:expr) => {{
+    ($language:ident, $root:expr, $openapis:expr $(, rust_module_mappings => $rust_module_mappings:expr)? $(,)?) => {{
+        let mut options = lgn_api_codegen::GenerationOptions::default();
+
+        $(
+            options.rust_module_mappings = $rust_module_mappings.iter().map(|(k, v)| (std::path::PathBuf::from(k), lgn_api_codegen::ModulePath::from_absolute_rust_module_path(*v))).collect();
+        )?;
+
         match lgn_api_codegen::generate(
             lgn_api_codegen::Language::$language,
+            options,
             $root,
             $openapis,
             std::env::var("OUT_DIR")?,

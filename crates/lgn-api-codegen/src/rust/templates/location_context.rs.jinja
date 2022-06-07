@@ -1,6 +1,6 @@
 // Models and API from: {{ module_path }}
 
-{% for module in module_path.0.iter() %}
+{% for module in module_path.parts().iter() %}
 pub mod {{ module }} {
 {% endfor %}
 
@@ -10,6 +10,6 @@ pub mod {{ module }} {
 {% include "api.rs.jinja" %}
 {% endif %}
 
-{% for module in module_path.0.iter() %}
+{% for module in module_path.parts().iter() %}
 }
 {% endfor %}

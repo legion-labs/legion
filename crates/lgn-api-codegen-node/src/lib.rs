@@ -25,6 +25,7 @@ pub struct GenerateOption {
 pub fn generate(options: GenerateOption) -> Result<()> {
     if let Err(error) = lgn_api_codegen::generate(
         Language::TypeScript,
+        lgn_api_codegen::GenerationOptions::default(),
         &options.path,
         &options.api_names,
         &options.out_dir,

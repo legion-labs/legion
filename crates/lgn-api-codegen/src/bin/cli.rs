@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 
 use clap::Parser;
-use lgn_api_codegen::{generate, Language};
+use lgn_api_codegen::{generate, GenerationOptions, Language};
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::LevelFilter;
 
@@ -51,7 +51,15 @@ fn main() -> anyhow::Result<()> {
         .with_local_sink_max_level(LevelFilter::Debug)
         .build();
 
-    generate(args.language, args.root, &args.openapis, &args.out_dir)?;
+    let options = GenerationOptions::default();
+
+    generate(
+        args.language,
+        options,
+        args.root,
+        &args.openapis,
+        &args.out_dir,
+    )?;
 
     Ok(())
 }
