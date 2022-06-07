@@ -1437,7 +1437,6 @@ impl RenderGraph {
         }
     }
 
-    // TODO(jsg): Move to some utils file because the same code is used in egui_pass.rs
     fn upload_texture_data<T: Copy>(
         device_context: &DeviceContext,
         cmd_buffer: &mut CommandBuffer,

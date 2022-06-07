@@ -198,7 +198,6 @@ fn presenter_snapshot_system(
     if frame_counter.frame_count == 0 {
         let mut render_surface = RenderSurface::new_offscreen_window(
             &renderer,
-            &pipeline_manager,
             RenderSurfaceExtents::new(
                 snapshot_descriptor.width as u32,
                 snapshot_descriptor.height as u32,

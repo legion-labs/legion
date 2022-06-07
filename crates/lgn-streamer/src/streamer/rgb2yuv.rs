@@ -167,34 +167,37 @@ impl RgbToYuvConverter {
 
         cmd_buffer.begin();
 
-        render_surface
-            .hdr_rt_mut()
-            .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
+        let view_target = render_surface.view_target();
+        let view_target_srv = render_surface.view_target_srv();
+
+        cmd_buffer.cmd_resource_barrier(&[], &[]);
+
         {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
             cmd_buffer.cmd_resource_barrier(
                 &[],
-                &[TextureBarrier::state_transition(
-                    &yuv_images.0,
-                    ResourceState::COPY_SRC,
-                    ResourceState::UNORDERED_ACCESS,
-                )],
-            );
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &yuv_images.1,
-                    ResourceState::COPY_SRC,
-                    ResourceState::UNORDERED_ACCESS,
-                )],
-            );
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &yuv_images.2,
-                    ResourceState::COPY_SRC,
-                    ResourceState::UNORDERED_ACCESS,
-                )],
+                &[
+                    TextureBarrier::state_transition(
+                        view_target,
+                        ResourceState::RENDER_TARGET,
+                        ResourceState::SHADER_RESOURCE,
+                    ),
+                    TextureBarrier::state_transition(
+                        &yuv_images.0,
+                        ResourceState::COPY_SRC,
+                        ResourceState::UNORDERED_ACCESS,
+                    ),
+                    TextureBarrier::state_transition(
+                        &yuv_images.1,
+                        ResourceState::COPY_SRC,
+                        ResourceState::UNORDERED_ACCESS,
+                    ),
+                    TextureBarrier::state_transition(
+                        &yuv_images.2,
+                        ResourceState::COPY_SRC,
+                        ResourceState::UNORDERED_ACCESS,
+                    ),
+                ],
             );
 
             let pipeline = render_context
@@ -207,7 +210,7 @@ impl RgbToYuvConverter {
                 &self.resolution_dependent_resources.yuv_image_uavs[render_frame_idx];
 
             let mut descriptor_set = cgen::descriptor_set::RGB2YUVDescriptorSet::default();
-            descriptor_set.set_hdr_image(render_surface.hdr_rt().srv());
+            descriptor_set.set_hdr_image(view_target_srv);
             descriptor_set.set_y_image(&yuv_images_views.0);
             descriptor_set.set_u_image(&yuv_images_views.1);
             descriptor_set.set_v_image(&yuv_images_views.2);
@@ -234,35 +237,33 @@ impl RgbToYuvConverter {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
             cmd_buffer.cmd_resource_barrier(
                 &[],
-                &[TextureBarrier::state_transition(
-                    &yuv_images.0,
-                    ResourceState::UNORDERED_ACCESS,
-                    ResourceState::COPY_SRC,
-                )],
-            );
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &yuv_images.1,
-                    ResourceState::UNORDERED_ACCESS,
-                    ResourceState::COPY_SRC,
-                )],
-            );
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    &yuv_images.2,
-                    ResourceState::UNORDERED_ACCESS,
-                    ResourceState::COPY_SRC,
-                )],
-            );
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    copy_texture_yuv,
-                    ResourceState::COMMON,
-                    ResourceState::COPY_DST,
-                )],
+                &[
+                    TextureBarrier::state_transition(
+                        view_target,
+                        ResourceState::SHADER_RESOURCE,
+                        ResourceState::RENDER_TARGET,
+                    ),
+                    TextureBarrier::state_transition(
+                        &yuv_images.0,
+                        ResourceState::UNORDERED_ACCESS,
+                        ResourceState::COPY_SRC,
+                    ),
+                    TextureBarrier::state_transition(
+                        &yuv_images.1,
+                        ResourceState::UNORDERED_ACCESS,
+                        ResourceState::COPY_SRC,
+                    ),
+                    TextureBarrier::state_transition(
+                        &yuv_images.2,
+                        ResourceState::UNORDERED_ACCESS,
+                        ResourceState::COPY_SRC,
+                    ),
+                    TextureBarrier::state_transition(
+                        copy_texture_yuv,
+                        ResourceState::COMMON,
+                        ResourceState::COPY_DST,
+                    ),
+                ],
             );
 
             let mut copy_extents = copy_texture_yuv.definition().extents;

@@ -128,36 +128,23 @@ impl OffscreenHelper {
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;
 
-        let final_target_srv = if render_surface.use_view_target() {
-            let view_target = render_surface.view_target();
-
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
-                    view_target,
-                    ResourceState::RENDER_TARGET,
-                    ResourceState::SHADER_RESOURCE,
-                )],
-            );
-
-            // Ideally we should not create this view each frame.
-            view_target.create_view(TextureViewDef::as_shader_resource_view(
-                view_target.definition(),
-            ))
-        } else {
-            render_surface
-                .hdr_rt_mut()
-                .transition_to(cmd_buffer, ResourceState::SHADER_RESOURCE);
-            render_surface.hdr_rt().srv().clone()
-        };
+        let view_target = render_surface.view_target();
+        let view_target_srv = render_surface.view_target_srv();
 
         cmd_buffer.cmd_resource_barrier(
             &[],
-            &[TextureBarrier::state_transition(
-                render_texture,
-                ResourceState::COPY_SRC,
-                ResourceState::RENDER_TARGET,
-            )],
+            &[
+                TextureBarrier::state_transition(
+                    render_texture,
+                    ResourceState::COPY_SRC,
+                    ResourceState::RENDER_TARGET,
+                ),
+                TextureBarrier::state_transition(
+                    view_target,
+                    ResourceState::RENDER_TARGET,
+                    ResourceState::SHADER_RESOURCE,
+                ),
+            ],
         );
 
         cmd_buffer.cmd_begin_render_pass(
@@ -177,7 +164,7 @@ impl OffscreenHelper {
         cmd_buffer.cmd_bind_pipeline(pipeline);
 
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
-        descriptor_set.set_hdr_image(&final_target_srv);
+        descriptor_set.set_hdr_image(view_target_srv);
         descriptor_set.set_hdr_sampler(&self.bilinear_sampler);
         let descriptor_set_handle = render_context.write_descriptor_set(
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),
@@ -194,38 +181,28 @@ impl OffscreenHelper {
 
         cmd_buffer.cmd_resource_barrier(
             &[],
-            &[TextureBarrier::state_transition(
-                render_texture,
-                ResourceState::RENDER_TARGET,
-                ResourceState::COPY_SRC,
-            )],
-        );
-
-        if render_surface.use_view_target() {
-            let view_target = render_surface.view_target();
-
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
+            &[
+                TextureBarrier::state_transition(
+                    render_texture,
+                    ResourceState::RENDER_TARGET,
+                    ResourceState::COPY_SRC,
+                ),
+                TextureBarrier::state_transition(
                     view_target,
                     ResourceState::SHADER_RESOURCE,
                     ResourceState::RENDER_TARGET,
-                )],
-            );
-        }
+                ),
+                TextureBarrier::state_transition(
+                    copy_texture,
+                    ResourceState::COMMON,
+                    ResourceState::COPY_DST,
+                ),
+            ],
+        );
 
         //
         // Copy
         //
-
-        cmd_buffer.cmd_resource_barrier(
-            &[],
-            &[TextureBarrier::state_transition(
-                copy_texture,
-                ResourceState::COMMON,
-                ResourceState::COPY_DST,
-            )],
-        );
 
         let copy_extents = render_texture.definition().extents;
         assert_eq!(copy_texture.definition().extents, copy_extents);
