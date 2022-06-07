@@ -710,6 +710,8 @@ mod tests {
                 .await
                 .expect("successful save");
 
+            project.commit("change text_1").await.unwrap();
+
             build.source_pull(&project).await.expect("pulled change");
         }
 
@@ -753,6 +755,8 @@ mod tests {
                 .save_resource(source_id, &handle, &resources)
                 .await
                 .expect("successful save");
+
+            project.commit("change text_0 and text_1").await.unwrap();
 
             build.source_pull(&project).await.expect("pulled change");
         }

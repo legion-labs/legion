@@ -332,6 +332,10 @@ impl SourceIndex {
     }
 
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<(), Error> {
+        if project.has_uncommited_changes().await {
+            return Err(Error::ProjectNotCommitted);
+        }
+
         let root_checksum = project.root_checksum();
 
         if let Some((current_checksum, _source_index)) = &self.current {

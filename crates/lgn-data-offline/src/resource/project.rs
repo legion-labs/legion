@@ -673,6 +673,11 @@ impl Project {
     pub fn root_checksum(&self) -> &ContentId {
         self.workspace.id()
     }
+
+    /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.
+    pub async fn has_uncommited_changes(&self) -> bool {
+        self.workspace.has_uncommited_changes().await
+    }
 }
 
 impl fmt::Debug for Project {

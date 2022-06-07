@@ -697,6 +697,11 @@ where
     }
     */
 
+    /// Does the current transaction hold any changes that have not yet been committed?
+    pub async fn has_uncommited_changes(&self) -> bool {
+        self.transaction.has_references().await
+    }
+
     /// Commit the changes in the workspace.
     ///
     /// # Returns
