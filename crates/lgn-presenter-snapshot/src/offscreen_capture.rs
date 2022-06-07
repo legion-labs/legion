@@ -129,11 +129,7 @@ impl OffscreenHelper {
         let copy_texture = &self.copy_image;
 
         let view_target = render_surface.view_target();
-
-        // TODO(jsg): Ideally we should not create this view each frame.
-        let final_target_srv = view_target.create_view(TextureViewDef::as_shader_resource_view(
-            view_target.definition(),
-        ));
+        let view_target_srv = render_surface.view_target_srv();
 
         cmd_buffer.cmd_resource_barrier(
             &[],
@@ -168,7 +164,7 @@ impl OffscreenHelper {
         cmd_buffer.cmd_bind_pipeline(pipeline);
 
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
-        descriptor_set.set_hdr_image(&final_target_srv);
+        descriptor_set.set_hdr_image(view_target_srv);
         descriptor_set.set_hdr_sampler(&self.bilinear_sampler);
         let descriptor_set_handle = render_context.write_descriptor_set(
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),

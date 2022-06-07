@@ -168,13 +168,9 @@ impl RgbToYuvConverter {
         cmd_buffer.begin();
 
         let view_target = render_surface.view_target();
+        let view_target_srv = render_surface.view_target_srv();
 
         cmd_buffer.cmd_resource_barrier(&[], &[]);
-
-        // TODO(jsg): Ideally we should not create this view each frame.
-        let final_target_srv = view_target.create_view(TextureViewDef::as_shader_resource_view(
-            view_target.definition(),
-        ));
 
         {
             let yuv_images = &self.resolution_dependent_resources.yuv_images[render_frame_idx];
@@ -214,7 +210,7 @@ impl RgbToYuvConverter {
                 &self.resolution_dependent_resources.yuv_image_uavs[render_frame_idx];
 
             let mut descriptor_set = cgen::descriptor_set::RGB2YUVDescriptorSet::default();
-            descriptor_set.set_hdr_image(&final_target_srv);
+            descriptor_set.set_hdr_image(view_target_srv);
             descriptor_set.set_y_image(&yuv_images_views.0);
             descriptor_set.set_u_image(&yuv_images_views.1);
             descriptor_set.set_v_image(&yuv_images_views.2);

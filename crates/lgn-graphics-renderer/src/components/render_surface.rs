@@ -4,7 +4,8 @@ use std::{cmp::max, sync::Arc};
 use lgn_graphics_api::{
     ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DeviceContext, Extents2D, Extents3D,
     Format, GPUViewType, LoadOp, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, Semaphore,
-    SemaphoreDef, StoreOp, Texture, TextureDef, TextureTiling, TextureViewDef, ViewDimension,
+    SemaphoreDef, StoreOp, Texture, TextureDef, TextureTiling, TextureView, TextureViewDef,
+    ViewDimension,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -194,6 +195,7 @@ pub struct RenderSurface {
 
     // For render graph
     view_target: Texture,
+    view_target_srv: TextureView,
     hzb: [Texture; 2],
     hzb_cleared: bool,
 }
@@ -244,6 +246,9 @@ impl RenderSurface {
             tiling: TextureTiling::Optimal,
         };
         let view_target = device_context.create_texture(view_desc, "ViewBuffer");
+        let view_target_srv = view_target.create_view(TextureViewDef::as_shader_resource_view(
+            view_target.definition(),
+        ));
 
         let hzb_desc = Self::make_hzb_desc(&extents);
 
@@ -264,6 +269,7 @@ impl RenderSurface {
             presenters: Vec::new(),
             presenting_status: RenderSurfacePresentingStatus::Presenting,
             view_target,
+            view_target_srv,
             hzb,
             hzb_cleared: false,
         }
@@ -314,6 +320,11 @@ impl RenderSurface {
                 tiling: TextureTiling::Optimal,
             };
             self.view_target = device_context.create_texture(view_desc, "ViewBuffer");
+            self.view_target_srv =
+                self.view_target
+                    .create_view(TextureViewDef::as_shader_resource_view(
+                        self.view_target.definition(),
+                    ));
 
             let hzb_desc = Self::make_hzb_desc(&extents);
 
@@ -424,6 +435,10 @@ impl RenderSurface {
 
     pub fn view_target(&self) -> &Texture {
         &self.view_target
+    }
+
+    pub fn view_target_srv(&self) -> &TextureView {
+        &self.view_target_srv
     }
 
     pub(crate) fn hzb(&self) -> [&Texture; 2] {
