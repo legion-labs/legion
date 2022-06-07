@@ -13,13 +13,13 @@ use crate::resource::deserialize_and_skip_metadata;
 
 /// Content addressable storage device. Resources are accessed through a
 /// manifest access table.
-pub(crate) struct CasDevice {
+pub(crate) struct SourceCasDevice {
     provider: Arc<Provider>,
     indexer: ResourceTypeAndIdIndexer,
     manifest_id: SharedTreeIdentifier,
 }
 
-impl CasDevice {
+impl SourceCasDevice {
     pub(crate) fn new(provider: Arc<Provider>, manifest_id: SharedTreeIdentifier) -> Self {
         Self {
             provider,
@@ -30,7 +30,7 @@ impl CasDevice {
 }
 
 #[async_trait]
-impl Device for CasDevice {
+impl Device for SourceCasDevice {
     async fn load(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         if let Ok(Some(TreeLeafNode::Resource(leaf_id))) = self
             .indexer

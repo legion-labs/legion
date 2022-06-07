@@ -90,7 +90,7 @@ use lgn_content_store::{
     Config, Provider,
 };
 use lgn_data_model::ReflectionError;
-use lgn_data_offline::vfs::AddDeviceCASOffline;
+use lgn_data_offline::vfs::AddDeviceSourceCas;
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
     ResourceProcessorError, Transform,

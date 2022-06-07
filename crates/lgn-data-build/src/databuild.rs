@@ -22,7 +22,7 @@ use lgn_data_compiler::{
     compiler_node::{CompilerNode, CompilerStub},
     CompiledResource, CompiledResources,
 };
-use lgn_data_offline::{resource::Project, vfs::AddDeviceCASOffline};
+use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
@@ -166,7 +166,7 @@ impl DataBuild {
                         Arc::clone(&config.data_content_provider),
                         runtime_manifest_id.clone(),
                     )
-                    .add_device_cas_offline(
+                    .add_device_source_cas(
                         Arc::clone(&config.source_control_content_provider),
                         project.source_manifest_id(),
                     );

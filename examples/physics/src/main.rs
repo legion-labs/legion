@@ -12,7 +12,7 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
     resource::{Project, ResourcePathName},
-    vfs::AddDeviceCASOffline,
+    vfs::AddDeviceSourceCas,
 };
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
@@ -91,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to create a project");
 
-    let mut asset_registry = AssetRegistryOptions::new().add_device_cas_offline(
+    let mut asset_registry = AssetRegistryOptions::new().add_device_source_cas(
         Arc::clone(&source_control_content_provider),
         project.source_manifest_id(),
     );
