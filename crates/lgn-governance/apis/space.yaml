@@ -14,7 +14,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/SpaceList"
+                $ref: "#/components/schemas/SpaceList"
     post:
       description: Create a new space.
       operationId: createSpace
@@ -28,16 +28,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Space"
+                $ref: "#/components/schemas/Space"
         "409":
           description: A space with the same ID already exists.
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Space"
+                $ref: "#/components/schemas/Space"
   /v1/spaces/{space-id}/:
     parameters:
-      - $ref: "./common.yaml#/parameters/space_id"
+      - $ref: "#/components/parameters/space_id"
     put:
       description: Update the specified space.
       operationId: updateSpace
@@ -51,7 +51,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Space"
+                $ref: "#/components/schemas/Space"
         "404":
           description: The space was not found.
     delete:
@@ -66,7 +66,7 @@ paths:
           description: The space is being used and cannot be deleted at this time.
   /v1/spaces/{space-id}/cordon/:
     parameters:
-      - $ref: "./common.yaml#/parameters/space_id"
+      - $ref: "#/components/parameters/space_id"
     put:
       description: Cordon the specified space.
       operationId: cordonSpace
@@ -76,12 +76,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Space"
+                $ref: "#/components/schemas/Space"
         "404":
           description: The space was not found.
   /v1/spaces/{space-id}/uncordon/:
     parameters:
-      - $ref: "./common.yaml#/parameters/space_id"
+      - $ref: "#/components/parameters/space_id"
     put:
       description: Uncordon the specified space.
       operationId: uncordonSpace
@@ -91,17 +91,52 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Space"
+                $ref: "#/components/schemas/Space"
         "404":
           description: The space was not found.
 components:
+  parameters:
+    space_id:
+      name: space-id
+      in: path
+      description: The space identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/SpaceId"
   schemas:
+    SpaceId:
+      description: An identifier to an unique data space.
+      type: string
+    Space:
+      type: object
+      description: A data space.
+      properties:
+        id:
+          $ref: "#/components/schemas/SpaceId"
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        cordoned:
+          description: Whether the space is cordoned.
+          type: boolean
+      required:
+        - id
+        - description
+        - created_at
+        - cordoned
+    SpaceList:
+      description: A list of spaces.
+      type: array
+      items:
+        $ref: "#/components/schemas/Space"
     NewSpace:
       type: object
       description: A new data space to create.
       properties:
         id:
-          $ref: "./common.yaml#/schemas/SpaceId"
+          $ref: "#/components/schemas/SpaceId"
         description:
           type: string
       required:

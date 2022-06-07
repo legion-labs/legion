@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use lgn_tracing::info;
 use sqlx::{migrate::Migrator, Row};
 
-use crate::{types::Permission, PermissionList, PermissionSet, Role, RoleList, Space};
+use crate::types::{Permission, PermissionList, PermissionSet, Role, RoleList, Space};
 
 use super::Result;
 

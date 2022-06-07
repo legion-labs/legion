@@ -375,7 +375,15 @@ impl OpenApiRefLocation {
 
     /// Loads the document referenced by this reference.
     pub fn load(&self) -> Result<serde_json::Value> {
-        let file = std::fs::File::open(self.path())?;
+        let file = match std::fs::File::open(self.path()) {
+            Ok(file) => file,
+            Err(err) => match err.kind() {
+                std::io::ErrorKind::NotFound => {
+                    return Err(Error::BrokenReference(self.clone().into()))
+                }
+                _ => return Err(err.into()),
+            },
+        };
         serde_yaml::from_reader(file).map_err(Into::into)
     }
 }

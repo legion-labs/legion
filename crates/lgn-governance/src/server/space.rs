@@ -1,21 +1,17 @@
-use std::sync::Arc;
-
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use lgn_online::codegen::Context;
 
-use crate::api::{
-    common,
-    space::{
-        errors::{ErrorExt, Result},
-        requests, responses, Api,
-    },
+use crate::api::space::{
+    self,
+    errors::{ErrorExt, Result},
+    requests, responses, Api,
 };
 
 use super::Server;
 
 #[async_trait]
-impl Api for Arc<Server> {
+impl Api for Server {
     async fn list_spaces(&self, _context: &mut Context) -> Result<responses::ListSpacesResponse> {
         let spaces = self.dal.list_spaces().await.into_internal_server_error()?;
 
@@ -29,7 +25,7 @@ impl Api for Arc<Server> {
     }
 
     async fn create_space(&self, _context: &mut Context) -> Result<responses::CreateSpaceResponse> {
-        Ok(responses::CreateSpaceResponse::Status201(common::Space {
+        Ok(responses::CreateSpaceResponse::Status201(space::Space {
             id: "lol".to_string().into(),
             description: "Some space".to_string(),
             cordoned: false,
@@ -44,7 +40,7 @@ impl Api for Arc<Server> {
         _context: &mut Context,
         _request: requests::UpdateSpaceRequest,
     ) -> Result<responses::UpdateSpaceResponse> {
-        Ok(responses::UpdateSpaceResponse::Status200(common::Space {
+        Ok(responses::UpdateSpaceResponse::Status200(space::Space {
             id: "lol".to_string().into(),
             description: "Some space".to_string(),
             cordoned: false,
@@ -67,7 +63,7 @@ impl Api for Arc<Server> {
         _context: &mut Context,
         _request: requests::CordonSpaceRequest,
     ) -> Result<responses::CordonSpaceResponse> {
-        Ok(responses::CordonSpaceResponse::Status200(common::Space {
+        Ok(responses::CordonSpaceResponse::Status200(space::Space {
             id: "lol".to_string().into(),
             description: "Some space".to_string(),
             cordoned: false,
@@ -82,7 +78,7 @@ impl Api for Arc<Server> {
         _context: &mut Context,
         _request: requests::UncordonSpaceRequest,
     ) -> Result<responses::UncordonSpaceResponse> {
-        Ok(responses::UncordonSpaceResponse::Status200(common::Space {
+        Ok(responses::UncordonSpaceResponse::Status200(space::Space {
             id: "lol".to_string().into(),
             description: "Some space".to_string(),
             cordoned: false,

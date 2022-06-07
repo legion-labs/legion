@@ -25,18 +25,26 @@ impl FromStr for SpaceId {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self> {
+        if s.len() < 3 {
+            return Err(Error::InvalidSpaceId(s.to_string()));
+        }
+
+        if s.contains(|c: char| !matches!(c, '0'..='9' | 'a'..='z' | '_')) {
+            return Err(Error::InvalidSpaceId(s.to_string()));
+        }
+
         Ok(Self(s.to_string()))
     }
 }
 
-impl From<SpaceId> for crate::api::common::SpaceId {
+impl From<SpaceId> for crate::api::space::SpaceId {
     fn from(space_id: SpaceId) -> Self {
         Self(space_id.0)
     }
 }
 
-impl From<crate::api::common::SpaceId> for SpaceId {
-    fn from(space_id: crate::api::common::SpaceId) -> Self {
+impl From<crate::api::space::SpaceId> for SpaceId {
+    fn from(space_id: crate::api::space::SpaceId) -> Self {
         Self(space_id.0)
     }
 }
@@ -50,7 +58,7 @@ pub struct Space {
     pub created_at: DateTime<Utc>,
 }
 
-impl From<Space> for crate::api::common::Space {
+impl From<Space> for crate::api::space::Space {
     fn from(space: Space) -> Self {
         Self {
             id: space.id.into(),
@@ -61,13 +69,38 @@ impl From<Space> for crate::api::common::Space {
     }
 }
 
-impl From<crate::api::common::Space> for Space {
-    fn from(space: crate::api::common::Space) -> Self {
+impl From<crate::api::space::Space> for Space {
+    fn from(space: crate::api::space::Space) -> Self {
         Self {
             id: space.id.into(),
             description: space.description,
             cordoned: space.cordoned,
             created_at: space.created_at,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_space_id() {
+        // Build a few valid space ids.
+        let space_id = SpaceId::from_str("abc").unwrap();
+        assert_eq!(space_id.0, "abc");
+
+        let space_id = SpaceId::from_str("some_space_id").unwrap();
+        assert_eq!(space_id.0, "some_space_id");
+
+        let space_id = SpaceId::from_str("i_contain_numb3rs").unwrap();
+        assert_eq!(space_id.0, "i_contain_numb3rs");
+
+        // Build a few invalid space ids.
+        assert!(SpaceId::from_str("").is_err());
+        assert!(SpaceId::from_str("a").is_err());
+        assert!(SpaceId::from_str("ABC").is_err());
+        assert!(SpaceId::from_str("abc-d").is_err());
+        assert!(SpaceId::from_str("ab c").is_err());
     }
 }
