@@ -17,21 +17,79 @@ use crate::{
 pub struct GenerationContext {
     pub root: PathBuf,
     pub location_contexts: BTreeMap<OpenApiRefLocation, LocationContext>,
-    pub options: GenerationOptions,
+    pub language: Language,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct GenerationOptions {
+#[derive(Debug, Default, PartialEq)]
+pub struct RustOptions {
     /// A mapping of files to Rust modules.
-    pub rust_module_mappings: HashMap<PathBuf, ModulePath>,
+    pub module_mappings: HashMap<PathBuf, ModulePath>,
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub struct TypeScriptOptions {
+    pub prettier_config_path: Option<PathBuf>,
+    pub with_package_json: bool,
+    pub skip_format: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Language {
+    Rust(RustOptions),
+    TypeScript(TypeScriptOptions),
+    Python,
+}
+
+impl Language {
+    pub fn rust_options(&self) -> Option<&RustOptions> {
+        match self {
+            Self::Rust(rust_options) => Some(rust_options),
+            Self::TypeScript(_) | Self::Python => None,
+        }
+    }
+
+    pub fn into_rust_options(self) -> Option<RustOptions> {
+        match self {
+            Self::Rust(rust_options) => Some(rust_options),
+            Self::TypeScript(_) | Self::Python => None,
+        }
+    }
+
+    pub fn rust_options_mut(&mut self) -> Option<&mut RustOptions> {
+        match self {
+            Self::Rust(rust_options) => Some(rust_options),
+            Self::TypeScript(_) | Self::Python => None,
+        }
+    }
+
+    pub fn type_script_options(&self) -> Option<&TypeScriptOptions> {
+        match self {
+            Self::TypeScript(type_script_options) => Some(type_script_options),
+            Self::Rust(_) | Self::Python => None,
+        }
+    }
+
+    pub fn into_type_script_options(self) -> Option<TypeScriptOptions> {
+        match self {
+            Self::TypeScript(type_script_options) => Some(type_script_options),
+            Self::Rust(_) | Self::Python => None,
+        }
+    }
+
+    pub fn type_script_options_mut(&mut self) -> Option<&mut TypeScriptOptions> {
+        match self {
+            Self::TypeScript(type_script_options) => Some(type_script_options),
+            Self::Rust(_) | Self::Python => None,
+        }
+    }
 }
 
 impl GenerationContext {
-    pub fn new(root: PathBuf, options: GenerationOptions) -> Self {
+    pub fn new(root: PathBuf, language: Language) -> Self {
         Self {
             root,
             location_contexts: BTreeMap::new(),
-            options,
+            language,
         }
     }
 
@@ -39,7 +97,11 @@ impl GenerationContext {
         let file_path = ref_loc.path();
 
         Ok(
-            if let Some(module_path) = self.options.rust_module_mappings.get(file_path) {
+            if let Some(module_path) = self
+                .language
+                .rust_options()
+                .and_then(|options| options.module_mappings.get(file_path))
+            {
                 module_path.clone()
             } else {
                 let file_path = file_path.strip_prefix(&self.root).map_err(|_err| {

@@ -1,6 +1,8 @@
 //! Api Codegen crate used in Node applications
 
-use lgn_api_codegen::Language;
+use std::path::PathBuf;
+
+use lgn_api_codegen::{Language, TypeScriptOptions};
 use napi::bindgen_prelude::{Error, Result};
 use napi_derive::napi;
 
@@ -13,6 +15,12 @@ pub struct GenerateOption {
     pub api_names: Vec<String>,
     /// Output directory, prefer absolute paths
     pub out_dir: String,
+    /// Path to a Prettier config file
+    pub prettier_config_path: Option<String>,
+    /// Generates a full-fledged node module including a `package.json` file
+    pub with_package_json: Option<bool>,
+    /// Skips code formatting
+    pub skip_format: Option<bool>,
 }
 
 /// Generate api clients.
@@ -24,8 +32,11 @@ pub struct GenerateOption {
 #[napi]
 pub fn generate(options: GenerateOption) -> Result<()> {
     if let Err(error) = lgn_api_codegen::generate(
-        Language::TypeScript,
-        lgn_api_codegen::GenerationOptions::default(),
+        Language::TypeScript(TypeScriptOptions {
+            prettier_config_path: options.prettier_config_path.map(PathBuf::from),
+            with_package_json: options.with_package_json.unwrap_or_default(),
+            skip_format: options.skip_format.unwrap_or_default(),
+        }),
         &options.path,
         &options.api_names,
         &options.out_dir,

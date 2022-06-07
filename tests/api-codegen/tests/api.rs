@@ -10,8 +10,9 @@ use api_codegen::api::cars::{
         CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
         TestHeadersResponse, TestOneOfResponse,
     },
-    server, Api, Car, CarColor, Cars, Pet, TestOneOf200Response,
+    server, Api, TestOneOf200Response,
 };
+use api_codegen::api::components::{Car, CarColor, Cars, Pet};
 use axum::Router;
 use lgn_online::codegen::Context;
 use tokio::task::JoinHandle;

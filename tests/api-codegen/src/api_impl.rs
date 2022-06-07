@@ -13,12 +13,13 @@ use crate::api::cars::{
     },
     Api,
 };
+use crate::api::components;
 use lgn_online::codegen::Context;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Default)]
 pub struct ApiImpl {
-    cars: Arc<RwLock<HashMap<i64, cars::Car>>>,
+    cars: Arc<RwLock<HashMap<i64, components::Car>>>,
 }
 
 #[async_trait::async_trait]
@@ -30,7 +31,7 @@ impl Api for ApiImpl {
     ) -> Result<GetCarsResponse> {
         println!("Request addr: {}", context.request_addr().unwrap());
 
-        Ok(GetCarsResponse::Status200(cars::Cars(
+        Ok(GetCarsResponse::Status200(components::Cars(
             self.cars.read().await.values().cloned().collect(),
         )))
     }
@@ -78,7 +79,7 @@ impl Api for ApiImpl {
 
     async fn test_one_of(&self, _context: &mut Context) -> Result<TestOneOfResponse> {
         Ok(TestOneOfResponse::Status200(
-            cars::TestOneOf200Response::Option1(cars::Pet {
+            cars::TestOneOf200Response::Option1(components::Pet {
                 name: Some("Cat".to_string()),
             }),
         ))
@@ -99,7 +100,7 @@ impl Api for ApiImpl {
             x_string_header: request.x_string_header.unwrap(),
             x_bytes_header: request.x_bytes_header.unwrap(),
             x_int_header: request.x_int_header.unwrap(),
-            body: cars::Pet {
+            body: components::Pet {
                 name: Some("Cat".to_string()),
             },
         })

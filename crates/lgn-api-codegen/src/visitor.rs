@@ -596,8 +596,9 @@ impl Visitor {
 #[cfg(test)]
 mod tests {
     use crate::{
-        api_types::{Content, GenerationOptions, LocationContext, MediaType, Path},
+        api_types::{Content, Language, LocationContext, MediaType, Path},
         openapi_loader::{JsonPointer, OpenApiLoader},
+        RustOptions,
     };
 
     use super::*;
@@ -755,7 +756,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api.yaml", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -832,7 +833,7 @@ mod tests {
 
         let mut v = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ));
 
         assert_eq!(
@@ -858,7 +859,7 @@ mod tests {
 
         let mut v = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ));
 
         assert_eq!(
@@ -897,7 +898,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -983,7 +984,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -1060,7 +1061,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -1180,7 +1181,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -1295,7 +1296,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -1445,7 +1446,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -1553,7 +1554,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas])
         .unwrap_err();
@@ -1605,7 +1606,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -1678,7 +1679,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();
@@ -1773,7 +1774,7 @@ mod tests {
         let oas: OpenApi<'_> = loader.import("api", &api).unwrap();
         let ctx = Visitor::new(GenerationContext::new(
             std::env::current_dir().unwrap(),
-            GenerationOptions::default(),
+            Language::Rust(RustOptions::default()),
         ))
         .visit(&[oas.clone()])
         .unwrap();

@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Rust,
         "../../apis",
         ["space", "session", "user", "permission"],
-        //rust_module_mappings => [("../../apis/common.yaml", "lgn_common::foo"),],
+        //module_mappings => [("../../apis/common.yaml", "lgn_common::foo"),],
     )?;
 
     println!("cargo:rerun-if-changed=migrations");

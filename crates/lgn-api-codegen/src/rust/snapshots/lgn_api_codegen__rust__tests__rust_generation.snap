@@ -11,57 +11,11 @@ pub mod cars {
     use lgn_online::codegen::Bytes;
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub struct Car {
-        #[serde(rename = "color")]
-        pub color: CarColor,
-
-        #[serde(rename = "extra")]
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub extra: Option<Bytes>,
-
-        #[serde(rename = "id")]
-        pub id: i64,
-
-        #[serde(rename = "is_new")]
-        pub is_new: bool,
-
-        #[serde(rename = "name")]
-        pub name: String,
-    }
-
-    /// The car color.
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub enum CarColor {
-        #[serde(rename = "red")]
-        Red,
-        #[serde(rename = "blue")]
-        Blue,
-        #[serde(rename = "yellow")]
-        Yellow,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub struct Cars(pub Vec<Car>);
-
-    impl From<Vec<Car>> for Cars {
-        fn from(t: Vec<Car>) -> Self {
-            Self(t)
-        }
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub struct Pet {
-        #[serde(rename = "name")]
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub name: Option<String>,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub enum TestOneOf200Response {
         #[serde(rename = "option1")]
-        Option1(Pet),
+        Option1(super::components::Pet),
         #[serde(rename = "option2")]
-        Option2(Car),
+        Option2(super::components::Car),
     }
 
     // API Test API v1.0.0
@@ -682,7 +636,7 @@ pub mod cars {
         async fn create_car<T>(
             Extension(api): Extension<T>,
             Path(space_id): Path<String>,
-            Json(body): Json<super::Car>,
+            Json(body): Json<super::super::components::Car>,
             ConnectInfo(addr): ConnectInfo<SocketAddr>,
             parts: Parts,
         ) -> Response
@@ -870,7 +824,7 @@ pub mod cars {
         pub struct CreateCarRequest {
             pub space_id: String,
             pub span_id: Option<String>,
-            pub body: super::Car,
+            pub body: super::super::components::Car,
         }
 
         #[derive(Debug, Clone, PartialEq, Eq)]
@@ -912,7 +866,7 @@ pub mod cars {
                 x_bytes_header: Bytes,
                 x_int_header: i32,
                 x_string_header: String,
-                body: super::Pet,
+                body: super::super::components::Pet,
             },
         }
 
@@ -1076,7 +1030,7 @@ pub mod cars {
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum GetCarsResponse {
             /// List of cars.
-            Status200(super::Cars),
+            Status200(super::super::components::Cars),
         }
 
         impl GetCarsResponse {
@@ -1137,7 +1091,7 @@ pub mod cars {
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum GetCarResponse {
             /// A car.
-            Status200(super::Car),
+            Status200(super::super::components::Car),
             /// Car not found.
             Status404,
         }
@@ -1238,6 +1192,59 @@ pub mod cars {
                 }
             }
         }
+    }
+}
+
+// Models and API from: components
+
+pub mod components {
+
+    use lgn_online::codegen::Bytes;
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Car {
+        #[serde(rename = "color")]
+        pub color: CarColor,
+
+        #[serde(rename = "extra")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub extra: Option<Bytes>,
+
+        #[serde(rename = "id")]
+        pub id: i64,
+
+        #[serde(rename = "is_new")]
+        pub is_new: bool,
+
+        #[serde(rename = "name")]
+        pub name: String,
+    }
+
+    /// The car color.
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub enum CarColor {
+        #[serde(rename = "red")]
+        Red,
+        #[serde(rename = "blue")]
+        Blue,
+        #[serde(rename = "yellow")]
+        Yellow,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Cars(pub Vec<Car>);
+
+    impl From<Vec<Car>> for Cars {
+        fn from(t: Vec<Car>) -> Self {
+            Self(t)
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Pet {
+        #[serde(rename = "name")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub name: Option<String>,
     }
 }
 

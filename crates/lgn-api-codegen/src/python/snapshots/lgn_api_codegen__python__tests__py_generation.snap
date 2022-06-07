@@ -1,6 +1,5 @@
 ---
 source: crates/lgn-api-codegen/src/python/mod.rs
-assertion_line: 61
 expression: content
 ---
 # Generated python API
@@ -23,107 +22,6 @@ class ModelEncoder(JSONEncoder):
         else:
             return o.__dict__
 
-
-
-class Car:
-    def __init__(
-        self,
-        color, # : CarColor 
-        extra, # : str 
-        id, # : int 
-        is_new, # : bool 
-        name, # : str 
-    ):
-        self.color = color
-        self.extra = extra
-        self.id = id
-        self.is_new = is_new
-        self.name = name
-
-    def to_json(self):
-        return ModelEncoder().encode(self)
-
-    def from_json(body):
-        color = CarColor.from_json(body['color'])
-        extra = body['extra']
-        id = body['id']
-        is_new = body['is_new']
-        name = body['name']
-        return Car(
-            color,
-            extra,
-            id,
-            is_new,
-            name,
-        )
-
-    def __str__(self):
-        return ("Car (\n"
-        "  color : {}\n"
-        "  extra : {}\n"
-        "  id : {}\n"
-        "  is_new : {}\n"
-        "  name : {}\n"
-        ")"
-        ).format(
-            self.color,
-            self.extra,
-            self.id,
-            self.is_new,
-            self.name,
-        )
-
-# The car color.
-class CarColor(Enum):
-    RED = "red"
-    BLUE = "blue"
-    YELLOW = "yellow"
-    def from_json(value):
-        return CarColor(value)
-
-
-class Cars:
-    def __init__(
-        self,
-        value: list[Car]
-    ):
-        self.value = value
-
-    def to_json(self):
-        return ModelEncoder().encode(self)
-
-    def from_json(body):
-        return Cars(body)
-
-    def __str__(self):
-        return "Cars ( value: {} )".format(self.value)
-   
-
-
-
-class Pet:
-    def __init__(
-        self,
-        name, # : str 
-    ):
-        self.name = name
-
-    def to_json(self):
-        return ModelEncoder().encode(self)
-
-    def from_json(body):
-        name = body['name']
-        return Pet(
-            name,
-        )
-
-    def __str__(self):
-        return ("Pet (\n"
-        "  name : {}\n"
-        ")"
-        ).format(
-            self.name,
-        )
 
 
 class TestOneOf200Response:
@@ -769,5 +667,127 @@ class Client(Api):
         return TestBinaryResponse(resp)
     
     
+
+
+# Models and API from: components
+
+from enum import Enum
+from json import JSONEncoder
+
+#used by fmt_type
+from datetime import datetime, date
+
+# TODO(kdaibov): starting with Python 3.11 we could use StrEnum
+# in that case we could remove the ModelEncoder
+class ModelEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Enum):
+            return o.value
+        else:
+            return o.__dict__
+
+
+
+class Car:
+    def __init__(
+        self,
+        color, # : CarColor 
+        extra, # : str 
+        id, # : int 
+        is_new, # : bool 
+        name, # : str 
+    ):
+        self.color = color
+        self.extra = extra
+        self.id = id
+        self.is_new = is_new
+        self.name = name
+
+    def to_json(self):
+        return ModelEncoder().encode(self)
+
+    def from_json(body):
+        color = CarColor.from_json(body['color'])
+        extra = body['extra']
+        id = body['id']
+        is_new = body['is_new']
+        name = body['name']
+        return Car(
+            color,
+            extra,
+            id,
+            is_new,
+            name,
+        )
+
+    def __str__(self):
+        return ("Car (\n"
+        "  color : {}\n"
+        "  extra : {}\n"
+        "  id : {}\n"
+        "  is_new : {}\n"
+        "  name : {}\n"
+        ")"
+        ).format(
+            self.color,
+            self.extra,
+            self.id,
+            self.is_new,
+            self.name,
+        )
+
+# The car color.
+class CarColor(Enum):
+    RED = "red"
+    BLUE = "blue"
+    YELLOW = "yellow"
+    def from_json(value):
+        return CarColor(value)
+
+
+class Cars:
+    def __init__(
+        self,
+        value: list[Car]
+    ):
+        self.value = value
+
+    def to_json(self):
+        return ModelEncoder().encode(self)
+
+    def from_json(body):
+        return Cars(body)
+
+    def __str__(self):
+        return "Cars ( value: {} )".format(self.value)
+   
+
+
+
+class Pet:
+    def __init__(
+        self,
+        name, # : str 
+    ):
+        self.name = name
+
+    def to_json(self):
+        return ModelEncoder().encode(self)
+
+    def from_json(body):
+        name = body['name']
+        return Pet(
+            name,
+        )
+
+    def __str__(self):
+        return ("Pet (\n"
+        "  name : {}\n"
+        ")"
+        ).format(
+            self.name,
+        )
+
+
 
 
