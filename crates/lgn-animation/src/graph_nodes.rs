@@ -5,11 +5,6 @@ use crate::{
     animation_bone_mask::BoneMask, animation_graph_events::SampledEventRange, animation_pose::Pose,
     animation_sync_track::SyncTrack, components::AnimationClip,
 };
-
-// pub struct Settings {
-//     node_idx: i16,
-// }
-
 pub enum GraphValueType {
     Unknown = 0,
     Bool,
