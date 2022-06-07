@@ -137,12 +137,19 @@ where
         &self,
         path: &str,
     ) -> Result<Option<ResourceIdentifier>> {
-        self.get_resource_identifier_from_index(
-            &self.path_indexer,
-            &self.content_id.path_index_tree_id,
-            &path.into(),
-        )
-        .await
+        if path.len() > 1 {
+            self.get_resource_identifier_from_index(
+                &self.path_indexer,
+                &self.content_id.path_index_tree_id,
+                &path.into(),
+            )
+            .await
+        } else {
+            // path is invalid, too short
+            Err(Error::InvalidPath {
+                path: path.to_owned(),
+            })
+        }
     }
 
     async fn get_resource_identifier_from_index(
@@ -462,34 +469,45 @@ where
             }
 
             // update indices
-            let (main_index_tree_id, _leaf_node) = self
+            let main_index_id = &self.get_main_index_id();
+            let (new_main_index_id, main_leaf_node) = self
                 .main_indexer
                 .replace_leaf(
                     &self.transaction,
-                    &self.get_main_index_id(),
+                    main_index_id,
                     id,
                     TreeLeafNode::Resource(resource_identifier.clone()),
                 )
                 .await
                 .map_err(Error::ContentStoreIndexing)?;
-            self.set_main_index_id(main_index_tree_id);
+            if let TreeLeafNode::Resource(resource_id) = main_leaf_node {
+                assert_eq!(&resource_id, old_identifier);
+            } else {
+                return Err(Error::CorruptedIndex {
+                    tree_id: main_index_id.clone(),
+                });
+            }
+            self.set_main_index_id(new_main_index_id);
 
-            let (path_index_tree_id, _old_node) = self
+            let path_index_id = &self.content_id.path_index_tree_id;
+            let (new_path_index_id, path_leaf_node) = self
                 .path_indexer
-                .remove_leaf(
-                    &self.transaction,
-                    &self.content_id.path_index_tree_id,
-                    &old_path.into(),
-                )
+                .remove_leaf(&self.transaction, path_index_id, &old_path.into())
                 .await
                 .map_err(Error::ContentStoreIndexing)?;
-            self.content_id.path_index_tree_id = path_index_tree_id;
+            if let TreeLeafNode::Resource(resource_id) = path_leaf_node {
+                assert_eq!(&resource_id, old_identifier);
+            } else {
+                return Err(Error::CorruptedIndex {
+                    tree_id: path_index_id.clone(),
+                });
+            }
 
             self.content_id.path_index_tree_id = self
                 .path_indexer
                 .add_leaf(
                     &self.transaction,
-                    &self.content_id.path_index_tree_id,
+                    &new_path_index_id,
                     &new_path.into(),
                     TreeLeafNode::Resource(resource_identifier.clone()),
                 )

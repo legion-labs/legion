@@ -297,6 +297,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             }))
             .await?;
 
+        /*
         // Reparent under folder entity
         resource_browser
             .reparent_resource(Request::new(ReparentResourceRequest {
@@ -304,6 +305,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 new_path: "/root_entity/test_folder".into(),
             }))
             .await?;
+        */
 
         // Reparent under root
         resource_browser

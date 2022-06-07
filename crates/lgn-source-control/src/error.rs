@@ -101,6 +101,8 @@ pub enum Error {
     ResourceNotFoundByPath { path: String },
     #[error("corrupted resource index  `{tree_id}` in content store")]
     CorruptedIndex { tree_id: TreeIdentifier },
+    #[error("path `{path}` is not valid for storage in content store")]
+    InvalidPath { path: String },
 }
 
 impl Error {

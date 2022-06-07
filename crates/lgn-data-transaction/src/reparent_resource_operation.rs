@@ -44,6 +44,8 @@ impl TransactionOperation for ReparentResourceOperation {
 
         let mut raw_path: ResourcePathName = if parent_id.is_some() {
             format!("/!{}/{}", parent_id.unwrap(), name).into()
+        } else if self.new_path == ResourcePathName::new("/") {
+            format!("/{}", name).into()
         } else {
             format!("{}/{}", self.new_path, name).into()
         };
