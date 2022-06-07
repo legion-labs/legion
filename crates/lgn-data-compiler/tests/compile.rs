@@ -32,7 +32,7 @@ async fn compile_atoi() {
 
     let source_magic_value = String::from("47");
 
-    let (source, offline_manifest_id) = {
+    let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
@@ -47,10 +47,10 @@ async fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let offline_manifest_id =
+        let source_manifest_id =
             common::write_resource(source, &persistent_content_provider, &proc, resource).await;
 
-        (source, offline_manifest_id)
+        (source, source_manifest_id)
     };
 
     let asset_info = {
@@ -63,7 +63,7 @@ async fn compile_atoi() {
             &compile_path,
             &[],
             &[],
-            &offline_manifest_id,
+            &source_manifest_id,
             &common::test_env(),
         );
 
@@ -109,7 +109,7 @@ async fn compile_intermediate() {
 
     let source_magic_value = String::from("47");
 
-    let (source, offline_manifest_id) = {
+    let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: text_resource::TextResource::TYPE,
             id: ResourceId::new(),
@@ -122,10 +122,10 @@ async fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let offline_manifest_id =
+        let source_manifest_id =
             common::write_resource(source, &persistent_content_provider, &proc, resource).await;
 
-        (source, offline_manifest_id)
+        (source, source_manifest_id)
     };
 
     let intermediate_info = {
@@ -137,7 +137,7 @@ async fn compile_intermediate() {
             &compile_path,
             &[],
             &[],
-            &offline_manifest_id,
+            &source_manifest_id,
             &common::test_env(),
         );
 
@@ -158,7 +158,7 @@ async fn compile_intermediate() {
             &compile_path,
             &[],
             &[intermediate_info],
-            &offline_manifest_id,
+            &source_manifest_id,
             &common::test_env(),
         );
 
@@ -206,7 +206,7 @@ async fn compile_multi_resource() {
 
     let source_text_list = vec![String::from("hello"), String::from("world")];
 
-    let (source, offline_manifest_id) = {
+    let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: multitext_resource::MultiTextResource::TYPE,
             id: ResourceId::new(),
@@ -219,10 +219,10 @@ async fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let offline_manifest_id =
+        let source_manifest_id =
             common::write_resource(source, &persistent_content_provider, &proc, resource).await;
 
-        (source, offline_manifest_id)
+        (source, source_manifest_id)
     };
 
     let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
@@ -236,7 +236,7 @@ async fn compile_multi_resource() {
             &compile_path,
             &[],
             &[],
-            &offline_manifest_id,
+            &source_manifest_id,
             &common::test_env(),
         );
 
@@ -293,7 +293,7 @@ async fn compile_base64() {
     let source_binary_value = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let expected_base64_value = String::from("AQIDBAUGBwgJ");
 
-    let (source, offline_manifest_id) = {
+    let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: binary_resource::BinaryResource::TYPE,
             id: ResourceId::new(),
@@ -308,10 +308,10 @@ async fn compile_base64() {
 
         resource.content = source_binary_value;
 
-        let offline_manifest_id =
+        let source_manifest_id =
             common::write_resource(source, &persistent_content_provider, &proc, resource).await;
 
-        (source, offline_manifest_id)
+        (source, source_manifest_id)
     };
 
     let asset_info = {
@@ -324,7 +324,7 @@ async fn compile_base64() {
             &compile_path,
             &[],
             &[],
-            &offline_manifest_id,
+            &source_manifest_id,
             &common::test_env(),
         );
 

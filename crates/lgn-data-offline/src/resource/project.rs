@@ -129,7 +129,7 @@ impl<'a> From<&'a lgn_source_control::ChangeType> for ChangeType {
 
 impl Project {
     /// Returns current manifest (main index) of the workspace associated with the project
-    pub fn offline_manifest_id(&self) -> SharedTreeIdentifier {
+    pub fn source_manifest_id(&self) -> SharedTreeIdentifier {
         self.workspace.clone_main_index_id()
     }
 

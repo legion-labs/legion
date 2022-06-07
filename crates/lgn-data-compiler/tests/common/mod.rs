@@ -57,13 +57,13 @@ pub async fn write_resource(
         .expect("write to content-store");
 
     let indexer = new_resource_type_and_id_indexer();
-    let offline_manifest_id = empty_tree_id(provider)
+    let source_manifest_id = empty_tree_id(provider)
         .await
         .expect("initialize content-store manifest");
     indexer
         .add_leaf(
             provider,
-            &offline_manifest_id,
+            &source_manifest_id,
             &id.into(),
             TreeLeafNode::Resource(resource_id),
         )

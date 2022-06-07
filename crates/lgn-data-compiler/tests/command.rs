@@ -80,7 +80,7 @@ async fn command_compile() {
         kind: refs_resource::TestResource::TYPE,
         id: ResourceId::new(),
     };
-    let offline_manifest_id =
+    let source_manifest_id =
         create_test_resource(source, &persistent_content_provider, content).await;
 
     let exe_path = common::compiler_exe("test-refs");
@@ -92,7 +92,7 @@ async fn command_compile() {
         &compile_path,
         &[],
         &[],
-        &offline_manifest_id,
+        &source_manifest_id,
         &common::test_env(),
     );
 

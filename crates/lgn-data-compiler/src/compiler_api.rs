@@ -100,7 +100,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     compiler_cmd::{
         CompilerHashCmdOutput, CompilerInfoCmdOutput, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
-        COMMAND_ARG_OFFLINE_MANIFEST_ID, COMMAND_ARG_PLATFORM, COMMAND_ARG_SRC_DEPS,
+        COMMAND_ARG_PLATFORM, COMMAND_ARG_SOURCE_MANIFEST_ID, COMMAND_ARG_SRC_DEPS,
         COMMAND_ARG_TARGET, COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE,
         COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
@@ -460,7 +460,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
             resource: resource_path,
             src_deps,
             der_deps,
-            offline_manifest_id,
+            source_manifest_id,
             target,
             platform,
             locale,
@@ -493,7 +493,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 Arc::new(Config::load_and_instantiate_persistent_provider().await?);
             let data_provider = Arc::new(Config::load_and_instantiate_volatile_provider().await?);
 
-            let offline_manifest_id = SharedTreeIdentifier::new(offline_manifest_id);
+            let source_manifest_id = SharedTreeIdentifier::new(source_manifest_id);
             let runtime_manifest_id = {
                 let manifest = CompiledResources {
                     compiled_resources: derived_deps.clone(),
@@ -535,7 +535,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &derived_deps,
                     shell.registry(),
                     &data_provider,
-                    &offline_manifest_id,
+                    &source_manifest_id,
                     &runtime_manifest_id,
                     &env,
                 )
@@ -593,8 +593,8 @@ enum Commands {
         #[clap(long = COMMAND_ARG_DER_DEPS, multiple_values=true)]
         der_deps: Vec<String>,
         /// Offline manifest id
-        #[clap(long = COMMAND_ARG_OFFLINE_MANIFEST_ID)]
-        offline_manifest_id: TreeIdentifier,
+        #[clap(long = COMMAND_ARG_SOURCE_MANIFEST_ID)]
+        source_manifest_id: TreeIdentifier,
         /// Build target (Game, Server, etc).
         #[clap(long = COMMAND_ARG_TARGET)]
         target: String,

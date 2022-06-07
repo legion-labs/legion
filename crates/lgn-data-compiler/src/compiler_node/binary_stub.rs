@@ -54,7 +54,7 @@ impl CompilerStub for BinCompilerStub {
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
         _provider: &Provider,
-        offline_manifest_id: &SharedTreeIdentifier,
+        source_manifest_id: &SharedTreeIdentifier,
         _runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
@@ -63,7 +63,7 @@ impl CompilerStub for BinCompilerStub {
             &compile_path,
             dependencies,
             derived_deps,
-            &offline_manifest_id.read(),
+            &source_manifest_id.read(),
             env,
         )
         .execute()

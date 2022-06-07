@@ -178,7 +178,7 @@ mod tests {
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
         let source_control_content_provider = Provider::new_in_memory();
-        let offline_manifest_id = SharedTreeIdentifier::new(
+        let source_manifest_id = SharedTreeIdentifier::new(
             empty_tree_id(&source_control_content_provider)
                 .await
                 .expect("initialize content-store manifest"),
@@ -201,7 +201,7 @@ mod tests {
                     &[],
                     registry,
                     &data_content_provider,
-                    &offline_manifest_id,
+                    &source_manifest_id,
                     &runtime_manifest_id,
                     &env,
                 )

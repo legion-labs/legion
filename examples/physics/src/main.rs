@@ -93,7 +93,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut asset_registry = AssetRegistryOptions::new().add_device_cas_offline(
         Arc::clone(&source_control_content_provider),
-        project.offline_manifest_id(),
+        project.source_manifest_id(),
     );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
