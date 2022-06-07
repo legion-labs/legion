@@ -84,15 +84,7 @@ async fn main() -> anyhow::Result<()> {
             .unwrap(),
     );
 
-    let absolute_project_dir = {
-        if !project_dir.is_absolute() {
-            std::env::current_dir().unwrap().join(&project_dir)
-        } else {
-            project_dir.clone()
-        }
-    };
     let mut project = Project::new(
-        absolute_project_dir,
         &repository_index,
         &repository_name,
         "main",

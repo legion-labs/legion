@@ -49,7 +49,6 @@ async fn build_device() {
 
     // create project that contains test resource.
     let mut project = Project::new(
-        project_dir,
         &repository_index,
         &repository_name,
         "main",
@@ -242,7 +241,6 @@ async fn no_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let mut project = Project::new(
-            project_dir,
             &repository_index,
             &repository_name,
             "main",
@@ -358,7 +356,6 @@ async fn with_intermediate_resource() {
     // create project that contains test resource.
     let resource_id = {
         let mut project = Project::new(
-            project_dir,
             &repository_index,
             &repository_name,
             "main",

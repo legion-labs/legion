@@ -42,7 +42,7 @@ mod tests {
     async fn invalid_project() {
         let work_dir = tempfile::tempdir().unwrap();
         let (
-            project_dir,
+            _project_dir,
             output_dir,
             repository_index,
             source_control_content_provider,
@@ -53,7 +53,6 @@ mod tests {
         let branch_name = "main";
 
         let project = Project::new(
-            project_dir,
             repository_index,
             &repository_name,
             branch_name,

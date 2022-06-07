@@ -28,9 +28,6 @@ enum Commands {
         /// Path to build output database.
         #[clap(long = "output")]
         build_output: String,
-        /// Source project path.
-        #[clap(long)]
-        project: PathBuf,
         /// Name of the source control repository.
         repository_name: String,
         /// Name of the source control branch.
@@ -41,9 +38,6 @@ enum Commands {
     Compile {
         /// Path in build graph to compile.
         resource: String,
-        /// Source project path.
-        #[clap(long = "project")]
-        project: PathBuf,
         /// Name of the source control repository.
         repository_name: String,
         /// Name of the source control branch.
@@ -89,7 +83,6 @@ async fn main() -> Result<(), String> {
     match args.command {
         Commands::Create {
             build_output,
-            project: project_dir,
             repository_name,
             branch_name,
         } => {
@@ -98,7 +91,6 @@ async fn main() -> Result<(), String> {
                 .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
 
             let project = Project::new(
-                project_dir,
                 repository_index,
                 &repository_name,
                 &branch_name,
@@ -123,7 +115,6 @@ async fn main() -> Result<(), String> {
         }
         Commands::Compile {
             resource,
-            project: project_dir,
             repository_name,
             branch_name,
             build_output,
@@ -156,7 +147,6 @@ async fn main() -> Result<(), String> {
                 .unwrap_or_default();
 
             let project = Project::new(
-                &project_dir,
                 repository_index,
                 &repository_name,
                 &branch_name,

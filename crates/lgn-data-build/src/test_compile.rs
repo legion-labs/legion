@@ -151,7 +151,7 @@ mod tests {
                 .await
                 .unwrap();
             project
-                .commit("compile_change_no_deps, add resource")
+                .commit("add resource")
                 .await
                 .expect("failed to commit");
 
@@ -210,7 +210,7 @@ mod tests {
                 .await
                 .unwrap();
             project
-                .commit("compile_change_no_deps, save resource")
+                .commit("save resource")
                 .await
                 .expect("failed to commit");
         }
@@ -314,6 +314,8 @@ mod tests {
         )
         .await;
 
+        project.commit("setup project").await.unwrap();
+
         (project, [res_a, res_b, res_c, res_d, res_e])
     }
 
@@ -341,7 +343,7 @@ mod tests {
             let mut edit = resource_handle.instantiate(&resources).unwrap();
             edit.content = source_magic_value.clone();
             resource_handle.apply(edit, &resources);
-            project
+            let source_id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     text_resource::TextResource::TYPE,
@@ -349,12 +351,16 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+            project.commit("added resource").await.unwrap();
+            source_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+            CompilerRegistryOptions::default()
+                .add_compiler(&lgn_compiler_test_reverse::COMPILER_INFO)
+                .add_compiler(&lgn_compiler_test_atoi::COMPILER_INFO),
             Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
         )
@@ -451,7 +457,7 @@ mod tests {
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+            CompilerRegistryOptions::default().add_compiler(&lgn_compiler_test_refs::COMPILER_INFO),
             Arc::clone(&source_control_content_provider),
             data_content_provider,
         )

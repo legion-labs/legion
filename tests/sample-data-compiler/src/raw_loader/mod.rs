@@ -48,7 +48,6 @@ pub async fn build_offline(
     };
 
     let (mut project, resources) = setup_project(
-        root_folder.as_ref(),
         repository_index,
         repository_name,
         branch_name,
@@ -209,7 +208,6 @@ pub async fn build_offline(
 }
 
 async fn setup_project(
-    root_folder: &Path,
     repository_index: impl RepositoryIndex,
     repository_name: &RepositoryName,
     branch_name: &str,
@@ -217,7 +215,6 @@ async fn setup_project(
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
     let project = Project::new(
-        root_folder,
         &repository_index,
         repository_name,
         branch_name,

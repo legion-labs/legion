@@ -46,7 +46,6 @@ impl Config {
         repository_index: impl RepositoryIndex,
     ) -> Result<(DataBuild, Project), String> {
         let project = Project::new(
-            &self.project,
             repository_index,
             repository_name,
             branch_name,

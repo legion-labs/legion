@@ -67,7 +67,6 @@ impl ResourceRegistryPlugin {
             );
 
             let project = Project::new(
-                &project_dir,
                 &settings.source_control_repository_index,
                 &settings.source_control_repository_name,
                 &settings.source_control_branch_name,

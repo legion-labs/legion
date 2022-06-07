@@ -236,8 +236,6 @@ enum Commands {
     /// Parse project index for source resource information
     #[clap(name = "source")]
     Source {
-        /// Path to directory containing the project
-        path: Option<PathBuf>,
         /// Name of the source control repository
         repository_name: String,
         /// Name of the source control branch.
@@ -421,7 +419,6 @@ async fn main() -> Result<(), String> {
             }
         }
         Commands::Source {
-            path,
             repository_name,
             branch_name,
             command,
@@ -430,9 +427,7 @@ async fn main() -> Result<(), String> {
                 .parse()
                 .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
 
-            let proj_file = path.unwrap_or_else(|| std::env::current_dir().unwrap());
             let project = Project::new(
-                proj_file,
                 repository_index,
                 &repository_name,
                 &branch_name,

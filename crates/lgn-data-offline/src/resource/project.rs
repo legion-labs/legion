@@ -70,7 +70,6 @@ use super::deserialize_and_skip_metadata;
 /// Note: Resource's [`ResourcePathName`] is only used for display purposes and
 /// can be changed freely.
 pub struct Project {
-    project_dir: PathBuf,
     workspace: Workspace<ResourceTypeAndIdIndexer>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
 }
@@ -129,11 +128,6 @@ impl<'a> From<&'a lgn_source_control::ChangeType> for ChangeType {
 }
 
 impl Project {
-    /// Returns directory the project is in, relative to CWD.
-    pub fn project_dir(&self) -> &Path {
-        &self.project_dir
-    }
-
     /// Returns current manifest (main index) of the workspace associated with the project
     pub fn offline_manifest_id(&self) -> SharedTreeIdentifier {
         self.workspace.clone_main_index_id()
@@ -142,7 +136,6 @@ impl Project {
     /// Creates a new project index file turning the containing directory into a
     /// project.
     pub async fn new(
-        project_dir: impl AsRef<Path>,
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
         branch_name: &str,
@@ -158,7 +151,6 @@ impl Project {
         .await?;
 
         Ok(Self {
-            project_dir: project_dir.as_ref().to_owned(),
             workspace,
             deleted_pending: HashMap::new(),
         })
@@ -176,7 +168,6 @@ impl Project {
         repository_index.create_repository(&repository_name).await?;
 
         Self::new(
-            project_dir,
             repository_index,
             &repository_name,
             "main",
