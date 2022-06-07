@@ -1,6 +1,5 @@
 use anyhow::Context;
 use anyhow::{bail, Result};
-use async_recursion::async_recursion;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
@@ -170,13 +169,13 @@ impl AnalyticsService {
         block_id: &str,
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
+        let lod0_reply = self
+            .jit_lakehouse
+            .get_thread_block(process, stream, block_id)
+            .await?;
         if lod_id == 0 {
-            return self
-                .jit_lakehouse
-                .get_thread_block(process, stream, block_id)
-                .await;
+            return Ok(lod0_reply);
         }
-        let lod0_reply = self.block_spans_impl(process, stream, block_id, 0).await?;
         let lod0 = lod0_reply.lod.unwrap();
         let reduced = reduce_lod(&lod0, lod_id);
         Ok(BlockSpansReply {
@@ -188,7 +187,7 @@ impl AnalyticsService {
         })
     }
 
-    #[async_recursion]
+    #[span_fn]
     async fn block_spans_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -197,13 +196,19 @@ impl AnalyticsService {
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
         async_span_scope!("AnalyticsService::block_spans_impl");
-        let cache_item_name = format!("spans_{}_{}", block_id, lod_id);
-        self.cache
-            .get_or_put(&cache_item_name, async {
-                self.compute_spans_lod(process, stream, block_id, lod_id)
-                    .await
-            })
-            .await
+        if lod_id == 0 {
+            self.jit_lakehouse
+                .get_thread_block(process, stream, block_id)
+                .await
+        } else {
+            let cache_item_name = format!("spans_{}_{}", block_id, lod_id);
+            self.cache
+                .get_or_put(&cache_item_name, async {
+                    self.compute_spans_lod(process, stream, block_id, lod_id)
+                        .await
+                })
+                .await
+        }
     }
 
     #[span_fn]
