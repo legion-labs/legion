@@ -3266,6 +3266,35 @@ dependencies = [
     "lgn-tracing",
     "lgn-transform",
     "memoffset",
+    "physx",
+    "physx-sys",
+    "serde",
+    "thiserror",
+    "typetag",
+]
+
+[[package]]
+name = "lgn-animation"
+version = "0.1.0"
+dependencies = [
+    "chrono",
+    "crossbeam-channel",
+    "egui",
+    "erased-serde",
+    "inventory",
+    "lazy_static",
+    "lgn-app",
+    "lgn-core",
+    "lgn-data-codegen",
+    "lgn-data-model",
+    "lgn-data-runtime",
+    "lgn-ecs",
+    "lgn-graphics-data",
+    "lgn-graphics-renderer",
+    "lgn-math",
+    "lgn-tracing",
+    "lgn-transform",
+    "memoffset",
     "serde",
     "thiserror",
     "typetag",
