@@ -178,9 +178,11 @@ mod tests {
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
         let source_control_content_provider = Provider::new_in_memory();
-        let offline_manifest_id = empty_tree_id(&source_control_content_provider)
-            .await
-            .expect("initialize content-store manifest");
+        let offline_manifest_id = SharedTreeIdentifier::new(
+            empty_tree_id(&source_control_content_provider)
+                .await
+                .expect("initialize content-store manifest"),
+        );
 
         let data_content_provider = Arc::new(Provider::new_in_memory());
         let runtime_manifest_id = SharedTreeIdentifier::new(
@@ -199,6 +201,7 @@ mod tests {
                     &[],
                     registry,
                     &data_content_provider,
+                    &offline_manifest_id,
                     &runtime_manifest_id,
                     &env,
                 )

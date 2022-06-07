@@ -115,6 +115,7 @@ fn compute_context_hash(
 pub struct DataBuild {
     source_index: SourceIndex,
     output_index: OutputIndex,
+    offline_manifest_id: SharedTreeIdentifier,
     runtime_manifest_id: SharedTreeIdentifier,
     data_content_provider: Arc<Provider>,
     compilers: CompilerNode,
@@ -160,12 +161,11 @@ impl DataBuild {
             Some(r) => r,
             None => {
                 // setup default asset registry
-                let data_provider = Arc::clone(&config.data_content_provider);
-                let empty_manifest_id =
-                    SharedTreeIdentifier::new(empty_tree_id(&data_provider).await.unwrap());
-
                 let mut options = AssetRegistryOptions::new()
-                    .add_device_cas(data_provider, empty_manifest_id)
+                    .add_device_cas(
+                        Arc::clone(&config.data_content_provider),
+                        runtime_manifest_id.clone(),
+                    )
                     .add_device_cas_offline(
                         Arc::clone(&config.source_control_content_provider),
                         project.offline_manifest_id(),
@@ -180,6 +180,7 @@ impl DataBuild {
         Ok(Self {
             source_index,
             output_index,
+            offline_manifest_id: project.offline_manifest_id(),
             runtime_manifest_id,
             data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
@@ -263,6 +264,7 @@ impl DataBuild {
     async fn compile_node(
         output_index: &OutputIndex,
         data_provider: &Provider,
+        offline_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         compile_node: &ResourcePathId,
         context_hash: AssetHash,
@@ -312,6 +314,7 @@ impl DataBuild {
                         derived_deps,
                         resources,
                         data_provider,
+                        offline_manifest_id,
                         runtime_manifest_id,
                         env,
                     )
@@ -686,6 +689,7 @@ impl DataBuild {
 
                     let output_index = &self.output_index;
                     let data_content_provider = &self.data_content_provider;
+                    let offline_manifest_id = &self.offline_manifest_id;
                     let runtime_manifest_id = &self.runtime_manifest_id;
                     let resources = self.compilers.registry();
                     let acc_deps = accumulated_dependencies.clone();
@@ -703,6 +707,7 @@ impl DataBuild {
                         let (resource_infos, resource_references, stats) = Self::compile_node(
                             output_index,
                             data_content_provider,
+                            offline_manifest_id,
                             runtime_manifest_id,
                             &compile_node,
                             context_hash,

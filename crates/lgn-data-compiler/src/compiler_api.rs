@@ -489,13 +489,11 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
             let transform = derived
                 .last_transform()
                 .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
-
-            let offline_manifest_id = SharedTreeIdentifier::new(offline_manifest_id);
-
             let source_provider =
                 Arc::new(Config::load_and_instantiate_persistent_provider().await?);
             let data_provider = Arc::new(Config::load_and_instantiate_volatile_provider().await?);
 
+            let offline_manifest_id = SharedTreeIdentifier::new(offline_manifest_id);
             let runtime_manifest_id = {
                 let manifest = CompiledResources {
                     compiled_resources: derived_deps.clone(),
@@ -537,6 +535,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &derived_deps,
                     shell.registry(),
                     &data_provider,
+                    &offline_manifest_id,
                     &runtime_manifest_id,
                     &env,
                 )

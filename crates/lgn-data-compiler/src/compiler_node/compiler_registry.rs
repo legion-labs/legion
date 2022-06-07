@@ -43,6 +43,7 @@ pub trait CompilerStub: Send + Sync {
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
         provider: &Provider,
+        offline_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError>;
