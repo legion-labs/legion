@@ -97,7 +97,11 @@ mod tests {
         project
             .save_resource(resource_id, &handle, &resources)
             .await
-            .expect("successful save");
+            .expect("failed to save resource");
+        project
+            .commit("change resource")
+            .await
+            .expect("failed to commit");
     }
 
     fn test_env() -> CompilationEnv {
