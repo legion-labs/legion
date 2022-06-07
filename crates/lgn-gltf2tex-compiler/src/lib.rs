@@ -46,39 +46,45 @@ impl Compiler for Gltf2TexCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let outputs = {
-            let resource = resources
-                .load_async::<lgn_graphics_data::offline_gltf::GltfFile>(
-                    context.source.resource_id(),
-                )
-                .await;
-            let resource = resource.get(&resources).ok_or_else(|| {
+        let resource = resources
+            .load_async::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id())
+            .await;
+        let resource = resource
+            .get(&resources)
+            .ok_or_else(|| {
                 CompilerError::CompilationError(format!(
                     "Failed to retrieve resource '{}'",
                     context.source.resource_id()
                 ))
-            })?;
+            })?
+            .clone();
 
-            let mut compiled_resources = vec![];
-            let texture_proc = TextureProcessor {};
+        let outputs = {
+            let source = context.source.clone();
+            let target_unnamed = context.target_unnamed.clone();
 
-            let textures = resource.gather_textures();
-            for texture in textures {
-                let mut compiled_asset = vec![];
-                texture_proc
-                    .write_resource(&texture.0, &mut compiled_asset)
-                    .map_err(|err| {
-                        CompilerError::CompilationError(format!(
-                            "Writing to file '{}' failed: {}",
-                            context.source.resource_id(),
-                            err
-                        ))
-                    })?;
+            CompilerContext::execute_workload(move || {
+                let mut compiled_resources = vec![];
+                let texture_proc = TextureProcessor {};
 
-                compiled_resources
-                    .push((context.target_unnamed.new_named(&texture.1), compiled_asset));
-            }
-            compiled_resources
+                let textures = resource.gather_textures();
+                for texture in textures {
+                    let mut compiled_asset = vec![];
+                    texture_proc
+                        .write_resource(&texture.0, &mut compiled_asset)
+                        .map_err(|err| {
+                            CompilerError::CompilationError(format!(
+                                "Writing to file '{}' failed: {}",
+                                source.resource_id(),
+                                err
+                            ))
+                        })?;
+
+                    compiled_resources.push((target_unnamed.new_named(&texture.1), compiled_asset));
+                }
+                Ok(compiled_resources)
+            })
+            .await?
         };
 
         let mut compiled_resources = vec![];
