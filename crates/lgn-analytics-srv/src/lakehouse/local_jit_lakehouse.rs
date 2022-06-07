@@ -10,9 +10,13 @@ use crate::{
 use crate::{lakehouse::span_table::update_spans_delta_table, scope::ScopeHashMap};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use datafusion::arrow::{self, array::PrimitiveArray};
+use datafusion::prelude::*;
 use lgn_analytics::{prelude::*, time::ConvertTicks};
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::{BlockSpansReply, CallTree, SpanBlockLod};
+use lgn_telemetry_proto::analytics::{
+    BlockSpansReply, CallTree, ScopeDesc, Span, SpanBlockLod, SpanTrack,
+};
 use lgn_tracing::prelude::*;
 use tokio::fs;
 
@@ -45,6 +49,7 @@ impl LocalJitLakehouse {
         spans_file_path: PathBuf,
         scopes_file_path: PathBuf,
     ) -> Result<BlockSpansReply> {
+        info!("writing thread block {}", block_id);
         if let Some(parent) = spans_file_path.parent() {
             tokio::fs::create_dir_all(&parent)
                 .await
@@ -93,6 +98,121 @@ impl LocalJitLakehouse {
             root: Some(root),
         };
         Ok(compute_block_spans(tree, block_id))
+    }
+
+    async fn read_thread_block(
+        &self,
+        block_id: &str,
+        spans_file_uri: &str,
+        scopes_file_uri: &str,
+    ) -> Result<BlockSpansReply> {
+        let ctx = SessionContext::new();
+        ctx.register_parquet("spans", spans_file_uri, ParquetReadOptions::default())
+            .await?;
+        ctx.register_parquet("scopes", scopes_file_uri, ParquetReadOptions::default())
+            .await?;
+        let df_scopes = ctx
+            .sql("SELECT hash, name, filename, line from scopes")
+            .await?;
+        let mut scopes = ScopeHashMap::new();
+        for batch in df_scopes.collect().await? {
+            let hashes = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<PrimitiveArray<arrow::datatypes::Int32Type>>()
+                .with_context(|| "casting hashes array")?;
+
+            let names = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<arrow::array::BinaryArray>()
+                .with_context(|| "casting names array")?;
+
+            let filenames = batch
+                .column(2)
+                .as_any()
+                .downcast_ref::<arrow::array::BinaryArray>()
+                .with_context(|| "casting filenames array")?;
+
+            let lines = batch
+                .column(3)
+                .as_any()
+                .downcast_ref::<PrimitiveArray<arrow::datatypes::Int32Type>>()
+                .with_context(|| "casting lines array")?;
+
+            for row in 0..batch.num_rows() {
+                let hash = hashes.value(row) as u32;
+                scopes.insert(
+                    hash,
+                    ScopeDesc {
+                        name: String::from_utf8_lossy(names.value(row)).to_string(),
+                        filename: String::from_utf8_lossy(filenames.value(row)).to_string(),
+                        line: lines.value(row) as u32,
+                        hash,
+                    },
+                );
+            }
+        }
+        let span_batches = ctx
+            .sql("select hash, depth, begin_ms, end_ms from spans")
+            .await?
+            .collect()
+            .await?;
+        let mut lod = SpanBlockLod {
+            lod_id: 0,
+            tracks: vec![],
+        };
+        for batch in span_batches {
+            let hashes = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<PrimitiveArray<arrow::datatypes::Int32Type>>()
+                .with_context(|| "casting hashes array")?;
+            let depths = batch
+                .column(1)
+                .as_any()
+                .downcast_ref::<PrimitiveArray<arrow::datatypes::Int32Type>>()
+                .with_context(|| "casting depths array")?;
+            let begins = batch
+                .column(2)
+                .as_any()
+                .downcast_ref::<PrimitiveArray<arrow::datatypes::Float64Type>>()
+                .with_context(|| "casting begins array")?;
+            let ends = batch
+                .column(3)
+                .as_any()
+                .downcast_ref::<PrimitiveArray<arrow::datatypes::Float64Type>>()
+                .with_context(|| "casting ends array")?;
+            for row in 0..batch.num_rows() {
+                let depth = depths.value(row) as u32;
+                if lod.tracks.len() <= depth as usize {
+                    lod.tracks.push(SpanTrack { spans: vec![] });
+                }
+                assert!(lod.tracks.len() > depth as usize);
+                let span = Span {
+                    scope_hash: hashes.value(row) as u32,
+                    begin_ms: begins.value(row),
+                    end_ms: ends.value(row),
+                    alpha: 255,
+                };
+                lod.tracks[depth as usize].spans.push(span);
+            }
+        }
+        let (min_begin, max_end) = if !lod.tracks.is_empty() && !lod.tracks[0].spans.is_empty() {
+            (
+                lod.tracks[0].spans[0].begin_ms,
+                lod.tracks[0].spans[lod.tracks[0].spans.len() - 1].end_ms,
+            )
+        } else {
+            (f64::MAX, f64::MIN)
+        };
+        Ok(BlockSpansReply {
+            scopes,
+            lod: Some(lod),
+            block_id: block_id.to_owned(),
+            begin_ms: min_begin,
+            end_ms: max_end,
+        })
     }
 }
 
@@ -148,6 +268,11 @@ impl JitLakehouse for LocalJitLakehouse {
                 .await;
         }
 
-        anyhow::bail!("not impl")
+        self.read_thread_block(
+            block_id,
+            &spans_file_path.to_string_lossy(),
+            &scopes_file_path.to_string_lossy(),
+        )
+        .await
     }
 }
