@@ -4,7 +4,9 @@ mod model_feature;
 pub use model_feature::*;
 
 use lgn_utils::HashMap;
-use std::any::TypeId;
+use std::{any::TypeId, slice::Iter};
+
+use crate::core::{LayerId, RenderListSlice, Requirement, ViewId};
 
 #[derive(PartialEq, Eq, Hash)]
 struct RenderFeatureId(TypeId);
@@ -18,10 +20,19 @@ impl RenderFeatureId {
     }
 }
 
-pub trait RenderFeature: 'static + Send + Sync {}
+pub trait RenderFeature: 'static + Send + Sync {
+    fn get_render_list_requirement(
+        &self,
+        view_id: ViewId,
+        layer_id: LayerId,
+    ) -> Option<Requirement>;
+    fn prepare_render_list(&self, view_id: ViewId, layer_id: LayerId, builder: RenderListSlice);
+}
+
+type BoxedRenderFeature = Box<dyn RenderFeature>;
 
 pub struct RenderFeaturesBuilder {
-    features: HashMap<RenderFeatureId, Box<dyn RenderFeature>>,
+    features: HashMap<RenderFeatureId, BoxedRenderFeature>,
 }
 
 impl RenderFeaturesBuilder {
@@ -59,10 +70,15 @@ impl RenderFeaturesBuilder {
 
 pub struct RenderFeatures {
     _features_map: HashMap<RenderFeatureId, usize>,
-    _features: Vec<Box<dyn RenderFeature>>,
+    _features: Vec<BoxedRenderFeature>,
 }
 
 impl RenderFeatures {
-    #[allow(clippy::unused_self)]
-    pub fn update(&self) {}
+    pub fn iter(&self) -> Iter<'_, BoxedRenderFeature> {
+        self._features.iter()
+    }
+
+    pub fn as_slice(&self) -> &'_ [BoxedRenderFeature] {
+        &self._features
+    }
 }

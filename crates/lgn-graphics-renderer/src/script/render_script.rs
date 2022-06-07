@@ -1,10 +1,10 @@
 use crate::{
     cgen,
-    core::render_graph::RenderGraphBuilder,
+    core::RenderGraphBuilder,
     core::RenderGraphLoadState,
     core::{
-        render_graph::{RenderGraph, RenderGraphResourceId, RenderGraphViewId},
-        BinaryWriter, GpuUploadManager, RenderResources, UploadGPUBuffer, UploadGPUResource,
+        BinaryWriter, GpuUploadManager, RenderGraph, RenderGraphResourceId, RenderGraphViewId,
+        RenderResources, UploadGPUBuffer, UploadGPUResource,
     },
     gpu_renderer::{DefaultLayers, MeshRenderer},
     resources::{PipelineDef, PipelineHandle, PipelineManager, UnifiedStaticBuffer},

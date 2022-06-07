@@ -13,8 +13,10 @@ mod cgen {
 }
 
 use crate::components::{tmp_debug_display_lights, EcsToRender};
-use crate::core::{DebugStuff, RenderGraphPersistentState, RenderObjects};
-use crate::features::{ModelFeature, RenderFeaturesBuilder};
+use crate::core::{
+    DebugStuff, PrepareRenderContext, RenderGraphPersistentState, RenderObjects, VisibilityContext,
+};
+use crate::features::{ModelFeature, RenderFeatures, RenderFeaturesBuilder};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
@@ -24,6 +26,7 @@ use crate::script::{Config, RenderScript, RenderView};
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
+
 use bumpalo_herd::Herd;
 #[allow(unused_imports, clippy::wildcard_imports)]
 use cgen::*;
@@ -599,17 +602,43 @@ fn render_update(
                 &graphics_queue,
             );
 
+            let herd_member = herd.get();
+            let bump = herd_member.as_bump();
+
+            // TODO: #1997 From this point, we should be per RenderViewport, each viewport owning its own top level camera and properties (grid, gizmos etc...).
+
             //
             // Visibility
             //
 
-            //WIP let bump = herd.get();
+            let visibility_context = VisibilityContext {
+                herd: &herd,
+                bump,
+                camera: camera_component,
+            };
+
+            let visibility_set = visibility_context.execute();
 
             //
             // Update
             //
 
-            //WIP let render_features = render_resources.get::<RenderFeatures>();
+            // ==== TODO ====
+
+            //
+            // PrepareRender
+            //
+
+            let features = render_resources.get::<RenderFeatures>();
+
+            let prepare_render_context = PrepareRenderContext {
+                herd: &herd,
+                bump,
+                visibility_set,
+                features: &features,
+            };
+
+            let render_list_set = prepare_render_context.execute();
 
             //
             // Egui (not thread safe as is)
