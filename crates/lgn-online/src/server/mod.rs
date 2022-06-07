@@ -2,8 +2,22 @@ use std::{sync::Arc, time::Duration};
 
 use axum::{error_handling::HandleErrorLayer, BoxError, Router};
 use http::{header, Method, StatusCode};
+use lgn_auth::{
+    jwt::{
+        signature_validation::{
+            BoxedSignatureValidation, NoSignatureValidation, SignatureValidationExt,
+        },
+        RequestAuthorizer, Validation,
+    },
+    UserInfo,
+};
 use tower::ServiceBuilder;
-use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::{
+    auth::RequireAuthorizationLayer,
+    cors::{AllowOrigin, CorsLayer},
+};
+
+use crate::Config;
 
 pub struct RouterOptions {
     /// The list of origins that are allowed to make requests, for CORS.
@@ -24,6 +38,9 @@ pub struct RouterOptions {
     ///
     /// If this is `None`, a default function returning `true` will be used.
     ready_fn: Option<Box<dyn Fn() -> bool + Send + Sync>>,
+
+    /// The signature validation function.
+    signature_validation: Validation<BoxedSignatureValidation>,
 }
 
 impl RouterOptions {
@@ -35,17 +52,27 @@ impl RouterOptions {
             allow_credentials: false,
             health_fn: None,
             ready_fn: None,
+            signature_validation: Validation::new(NoSignatureValidation.into_boxed()),
         }
     }
 
     /// Instantiates a new `RouterOptions` with the specified CORS origins.
-    pub fn new(allow_origins: Vec<http::HeaderValue>, allow_credentials: bool) -> Self {
-        Self {
+    pub async fn new(
+        allow_origins: Vec<http::HeaderValue>,
+        allow_credentials: bool,
+    ) -> crate::Result<Self> {
+        let signature_validation = Config::load()?
+            .signature_validation
+            .instantiate_validation()
+            .await?;
+
+        Ok(Self {
             allow_origin: AllowOrigin::list(allow_origins),
             allow_credentials,
             health_fn: None,
             ready_fn: None,
-        }
+            signature_validation,
+        })
     }
 
     /// Set the health function to use to determine service health.
@@ -87,9 +114,21 @@ pub trait RouterExt: Sized {
 /// This is a convenience method to help create routers that have the
 /// appropriate service routes and behavior.
 ///
-/// Namely, it sets up the CORS headers and adds the health check route.
+/// Namely, it sets up the CORS headers, authentication and adds the health
+/// check routes.
 impl RouterExt for Router {
     fn apply_router_options(mut self, options: RouterOptions) -> Router {
+        // Note: only routes that were added BEFORE the layer will benefit from
+        // it.
+        // Make sure to register all API routes before calling this function or
+        // the routes won't have neither CORS nor authenciation!
+
+        let auth = RequireAuthorizationLayer::custom(RequestAuthorizer::<UserInfo, _, _>::new(
+            options.signature_validation,
+        ));
+
+        self = self.layer(auth);
+
         let cors = CorsLayer::new()
             .allow_origin(options.allow_origin)
             .allow_credentials(options.allow_credentials)
@@ -110,9 +149,6 @@ impl RouterExt for Router {
                 Method::CONNECT,
             ]);
 
-        // Note: only routes that were added BEFORE the layer will benefit from
-        // it.
-        // Make sure to register all API routes before.
         self = self.layer(cors);
 
         // Add the health check route.
