@@ -17,6 +17,7 @@ use lgn_graphics_api::{
     ResourceState, SampleCount, SamplerDef, StencilOp, Texture, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
+use lgn_tracing::span_scope;
 
 use super::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
@@ -110,6 +111,8 @@ impl RenderScript<'_> {
         device_context: &DeviceContext,
         hzb_cleared: bool,
     ) -> GfxResult<RenderGraph> {
+        span_scope!("build_render_graph");
+
         let mut render_graph_builder =
             RenderGraph::builder(render_resources, pipeline_manager, device_context);
 

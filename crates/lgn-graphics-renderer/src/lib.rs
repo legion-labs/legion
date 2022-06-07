@@ -46,7 +46,7 @@ use lgn_input::keyboard::{KeyCode, KeyboardInput};
 use lgn_math::Vec2;
 
 use lgn_tasks::ComputeTaskPool;
-use lgn_tracing::span_scope_named;
+use lgn_tracing::span_scope;
 pub use renderer::*;
 
 mod render_context;
@@ -538,7 +538,7 @@ fn render_update(
 
     task_pool.scope(|scope| {
         scope.spawn(async move {
-            span_scope_named!("render_thread");
+            span_scope!("render_thread");
 
             let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
             let default_camera = CameraComponent::default();
@@ -729,9 +729,10 @@ fn render_update(
                         );
                     }
 
-                    let test_render_graph = false;
+                    //let test_render_graph = false;
                     let frame_idx = render_scope.frame_idx();
-                    if !test_render_graph || frame_idx % 2 == 0 {
+                    if false {
+                        // !test_render_graph || frame_idx % 2 == 0 {
                         render_surface.set_use_view_target(false);
 
                         //****************************************************************

@@ -12,6 +12,7 @@ use lgn_graphics_api::{
     TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef, ViewDimension,
     MAX_RENDER_TARGET_ATTACHMENTS,
 };
+use lgn_tracing::span_scope;
 use lgn_transform::prelude::GlobalTransform;
 
 use crate::components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent};
@@ -1580,6 +1581,7 @@ impl RenderGraph {
     }
 
     pub fn compile(&self) -> RenderGraphContext {
+        span_scope!("compile_render_graph");
         let mut context = RenderGraphContext {
             resource_state: HashMap::with_capacity(self.resource_defs.len()),
             created: vec![],
@@ -1628,6 +1630,8 @@ impl RenderGraph {
         debug_stuff: &DebugStuff<'_>,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("execute_render_graph");
+
         let mut execute_context = RenderGraphExecuteContext {
             render_resources,
             render_context,
@@ -1677,6 +1681,9 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        // TODO: #1993 change that to node.name asap
+        span_scope!("execute_inner");
+
         cmd_buffer.with_label(&node.name, |cmd_buffer| {
             if let Some(execute_fn) = &node.execute_fn {
                 self.begin_execute(context, execute_context, node, cmd_buffer);
