@@ -1,0 +1,117 @@
+openapi: 3.1.0
+info:
+  title: "Space API"
+  description: "The OpenAPI specification for the Legion Labs Space API."
+  version: 1.0.0
+paths:
+  /v1/spaces/:
+    get:
+      description: List all the spaces that exist in the system.
+      operationId: listSpaces
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/SpaceList"
+    post:
+      description: Create a new space.
+      operationId: createSpace
+      body:
+        description: The space to create.
+        schema:
+          $ref: "#/components/schemas/NewSpace"
+      responses:
+        "201":
+          description: The space was created.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Space"
+        "409":
+          description: A space with the same ID already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Space"
+  /v1/spaces/{space-id}/:
+    parameters:
+      - $ref: "./common.yaml#/parameters/space_id"
+    put:
+      description: Update the specified space.
+      operationId: updateSpace
+      body:
+        description: The space to update.
+        schema:
+          $ref: "#/components/schemas/UpdateSpace"
+      responses:
+        "200":
+          description: The space was updated.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Space"
+        "404":
+          description: The space was not found.
+    delete:
+      description: Delete the specified space.
+      operationId: deleteSpace
+      responses:
+        "204":
+          description: The space was deleted.
+        "404":
+          description: The space was not found.
+        "409":
+          description: The space is being used and cannot be deleted at this time.
+  /v1/spaces/{space-id}/cordon/:
+    parameters:
+      - $ref: "./common.yaml#/parameters/space_id"
+    put:
+      description: Cordon the specified space.
+      operationId: cordonSpace
+      responses:
+        "200":
+          description: The space is cordoned.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Space"
+        "404":
+          description: The space was not found.
+  /v1/spaces/{space-id}/uncordon/:
+    parameters:
+      - $ref: "./common.yaml#/parameters/space_id"
+    put:
+      description: Uncordon the specified space.
+      operationId: uncordonSpace
+      responses:
+        "200":
+          description: The space is uncordoned.
+          content:
+            application/json:
+              schema:
+                $ref: "./common.yaml#/schemas/Space"
+        "404":
+          description: The space was not found.
+components:
+  schemas:
+    NewSpace:
+      type: object
+      description: A new data space to create.
+      properties:
+        id:
+          $ref: "./common.yaml#/schemas/SpaceId"
+        description:
+          type: string
+      required:
+        - id
+        - description
+    UpdateSpace:
+      type: object
+      description: The new space values.
+      properties:
+        description:
+          type: string
+      required:
+        - description

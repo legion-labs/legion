@@ -103,6 +103,14 @@ pub trait SignatureValidation {
     ) -> ValidationResult<'a>;
 }
 
+pub trait SignatureValidationExt: SignatureValidation + Send + Sync + Sized + 'static {
+    fn into_boxed(self) -> BoxedSignatureValidation {
+        BoxedSignatureValidation(Box::new(self))
+    }
+}
+
+impl<T: SignatureValidation + Send + Sync + Sized + 'static> SignatureValidationExt for T {}
+
 /// Blanket implementation boxed signature validation types.
 impl<T> SignatureValidation for Box<T>
 where

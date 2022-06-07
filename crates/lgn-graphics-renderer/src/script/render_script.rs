@@ -17,7 +17,7 @@ use lgn_graphics_api::{
     ResourceState, SampleCount, SamplerDef, StencilOp, Texture, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
-use lgn_tracing::span_scope;
+use lgn_tracing::span_fn;
 
 use super::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
@@ -102,6 +102,7 @@ impl RenderScript<'_> {
     /// # Errors
     ///
     /// This function will return an error if .
+    #[span_fn]
     pub(crate) fn build_render_graph(
         &mut self,
         view: &RenderView<'_>,
@@ -109,10 +110,7 @@ impl RenderScript<'_> {
         render_resources: &RenderResources,
         pipeline_manager: &mut PipelineManager,
         device_context: &DeviceContext,
-        hzb_cleared: bool,
     ) -> GfxResult<RenderGraph> {
-        span_scope!("build_render_graph");
-
         let mut render_graph_builder =
             RenderGraph::builder(render_resources, pipeline_manager, device_context);
 
@@ -130,8 +128,6 @@ impl RenderScript<'_> {
         //----------------------------------------------------------------
         // Inject external resources
 
-        // TODO(jsg): need to think of a better way of doing this.
-
         let prev_hzb_idx = config.frame_idx as usize % 2;
         let current_hzb_idx = (config.frame_idx + 1) as usize % 2;
 
@@ -145,20 +141,12 @@ impl RenderScript<'_> {
             render_graph_builder.inject_render_target(
                 names[0],
                 self.hzb[0],
-                if hzb_cleared {
-                    ResourceState::RENDER_TARGET
-                } else {
-                    ResourceState::SHADER_RESOURCE
-                },
+                ResourceState::SHADER_RESOURCE,
             ),
             render_graph_builder.inject_render_target(
                 names[1],
                 self.hzb[1],
-                if hzb_cleared {
-                    ResourceState::RENDER_TARGET
-                } else {
-                    ResourceState::SHADER_RESOURCE
-                },
+                ResourceState::SHADER_RESOURCE,
             ),
         ];
 
@@ -230,10 +218,6 @@ impl RenderScript<'_> {
 
         //----------------------------------------------------------------
         // Build graph
-        //
-        // TODO(jsg): Passes still missing:
-        //       * egui
-        //       * picking
 
         let mut count_buffer_size: u64 = 0;
         let mut indirect_arg_buffer_size: u64 = 0;

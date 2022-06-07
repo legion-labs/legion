@@ -10,7 +10,7 @@ use lgn_graphics_cgen_runtime::{
 use lgn_pso_compiler::{
     CompileDefine, CompileParams, EntryPoint, HlslCompiler, ShaderSource, TargetProfile,
 };
-use lgn_tracing::{error, span_fn};
+use lgn_tracing::{error, span_fn, span_scope};
 use parking_lot::RwLock;
 use smallvec::SmallVec;
 use strum::{EnumCount, IntoEnumIterator};
@@ -98,14 +98,16 @@ impl PipelineManager {
         }
     }
 
-    #[span_fn]
     pub fn create_shader(&self, crate_id: CGenCrateID, key: CGenShaderKey) -> Option<Shader> {
         {
+            span_scope!("create_shader_check_cache");
             let shaders = self.shaders.read();
             if let Some(shader) = shaders.get(&(crate_id, key)) {
                 return shader.clone();
             };
         }
+
+        span_scope!("create_shader");
 
         // get the instance
         let shader_instance = self.shader_instance(crate_id, key).unwrap();

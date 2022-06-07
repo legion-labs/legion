@@ -5,7 +5,7 @@
         export type {{ enum_name }} = (
             {%- for (status_code, response) in route.responses -%}
                 {% if let Some(content) = response.content -%}
-                    | { /** {{ response.description }} */ type: "{{ status_code }}", value: {{ content.type_|fmt_type }} }
+                    | { /** {{ response.description }} */ type: "{{ status_code }}", value: {{ content.type_|fmt_type(ctx, module_path) }} }
                 {%- else -%}
                     | { /** {{ response.description }} */ type: "{{ status_code }}" }
                 {%- endif -%}
@@ -20,20 +20,23 @@
                     switch (response.status) {
                         {% for (status_code, response) in route.responses %}
                             case {{ status_code.as_u16() }}: { 
-                                return {type: "{{ status_code }}", value: {%- if let Some(content) = response.content -%}
+                                return {
+                                    type: "{{ status_code }}",
+                                    {%- if let Some(content) = response.content -%}
+                                    value: 
                                         {% match content.media_type %}
                                             {% when MediaType::Json %}
                                                 await response.json()
                                             {% when MediaType::Bytes %}
                                                 await response.blob()
-                                        {% endmatch %}
+                                        {% endmatch %},
                                     {%- endif -%}
                                 }
                             }
                         {%- endfor -%}
 
                         default: {
-                            throw new InternalError(`unexpected status code: ${status}`);
+                            throw new InternalError(`unexpected status code: ${response.status}`);
                         }
                     }
                 {% endif %}

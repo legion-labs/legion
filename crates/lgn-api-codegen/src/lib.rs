@@ -26,6 +26,7 @@ use visitor::Visitor;
 #[derive(Debug, Copy, Clone, ArgEnum)]
 pub enum Language {
     Rust,
+    #[clap(name = "typescript")]
     TypeScript,
 }
 

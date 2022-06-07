@@ -1,31 +1,31 @@
-{% for model in api.models.values() %}
+{% for model in location_ctx.models.values() %}
     {% if let Some(description) = model.description %}/** {{ description }} */{% endif -%}
     {% match model.type_ %}
         {% when Type::Enum with { variants } %}
-            export type {{ model.name }}Model = (
+            export type {{ model|fmt_model_name(ctx) }} = (
                 {%- for variant in variants -%}
                     | "{{ variant }}"
                 {%- endfor -%}
             );
         {% when Type::OneOf with { types } %}
-            export type {{ model.name }}Model = (
+            export type {{ model|fmt_model_name(ctx) }} = (
                 {%- for type_ in types -%}
-                    | { type: "option{{loop.index}}", value: {{ type_|fmt_type }} }
+                    | { type: "option{{loop.index}}", value: {{ type_|fmt_type(ctx, module_path) }} }
                 {%- endfor -%}
             );
         {% when Type::Struct with { fields } %}
-            export type {{ model.name }}Model = {
+            export type {{ model|fmt_model_name(ctx) }} = {
                 {% for field in fields.values() %}
                     {% if let Some(description) = field.description -%}/** {{ description }} */{%- endif %}
                     {# #[serde(rename = "{{ field.name }}")] #}
                     {%- if field.required -%}
-                    "{{ field.name }}": {{ field.type_|fmt_type }};
+                    "{{ field.name }}": {{ field.type_|fmt_type(ctx, module_path) }};
                     {%- else -%}
-                    "{{ field.name }}"?: {{ field.type_|fmt_type }};
+                    "{{ field.name }}"?: {{ field.type_|fmt_type(ctx, module_path) }};
                     {%- endif -%}
                 {% endfor %}
             };
         {% when t %}
-            export type {{ model.name }}Model = {{ t|fmt_type }};
+            export type {{ model|fmt_model_name(ctx) }} = {{ t|fmt_type(ctx, module_path) }};
     {% endmatch %}
 {% endfor %}

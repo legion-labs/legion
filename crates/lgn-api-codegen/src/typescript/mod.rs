@@ -1,9 +1,19 @@
-use std::{ffi::OsStr, path::Path};
+use std::{
+    borrow::Cow,
+    fs::{read_to_string, File},
+    io::Write,
+    path::Path,
+    process::Command,
+};
 
+use anyhow::anyhow;
 use askama::Template;
+use tempfile::tempdir;
+use which::which;
 
 use crate::{
-    api_types::{Api, GenerationContext, MediaType},
+    api_types::{GenerationContext, MediaType, Type},
+    errors::Error,
     Generator, Result,
 };
 
@@ -12,7 +22,7 @@ mod filters;
 #[derive(askama::Template)]
 #[template(path = "index.ts.jinja", escape = "none")]
 struct TypeScriptTemplate<'a> {
-    pub api: &'a Api,
+    pub ctx: &'a GenerationContext,
 }
 
 #[derive(Default)]
@@ -22,31 +32,67 @@ impl Generator for TypeScriptGenerator {
     fn generate(&self, ctx: &GenerationContext, output_dir: &Path) -> Result<()> {
         std::fs::create_dir_all(output_dir)?;
 
-        for (ref_loc, api_ctx) in &ctx.location_contexts {
-            if let Some(api) = &api_ctx.api {
-                let content = generate_api(api)?;
+        let output_file = output_dir.join("index.ts");
+        let content = generate_content(ctx)?;
 
-                let output_file = output_dir.join(
-                    ref_loc
-                        .path()
-                        .with_extension("ts")
-                        .file_name()
-                        .unwrap_or_else(|| OsStr::new("index.ts")),
-                );
-                std::fs::write(output_file, content)?;
-            }
-
-            //TODO: Generate models.
-        }
+        std::fs::write(output_file, content)?;
 
         Ok(())
     }
 }
 
-fn generate_api(api: &Api) -> Result<String> {
-    let content = TypeScriptTemplate { api }.render()?;
+fn prettier(content: &str) -> Result<Cow<'_, str>> {
+    let dir =
+        tempdir().map_err(|_err| Error::TypeScriptFormat(anyhow!("couldn't create a tmp dir")))?;
 
-    Ok(content)
+    let file_path = dir.path().join("index.ts");
+
+    let mut file = File::create(&file_path)?;
+
+    write!(file, "{}", content)
+        .map_err(|_err| Error::TypeScriptFormat(anyhow!("couldn't write content to tmp file")))?;
+
+    let binary_path = match which("npx") {
+        Err(_) => return Ok(content.into()),
+        Ok(path) => path,
+    };
+
+    let mut command = Command::new(binary_path);
+
+    command.args([
+        "--yes",
+        "prettier",
+        "--loglevel",
+        "silent",
+        "--write",
+        file_path.as_path().to_string_lossy().as_ref(),
+    ]);
+
+    let status = command.status().map_err(|error| {
+        Error::TypeScriptFormat(anyhow!(
+            "npx prettier command was not successful: {}",
+            error
+        ))
+    })?;
+
+    if status.success() {
+        let formatted_content = read_to_string(file_path)
+            .map_err(|_err| Error::TypeScriptFormat(anyhow!("couldn't read tmp file")))?;
+
+        Ok(formatted_content.into())
+    } else {
+        Err(Error::TypeScriptFormat(anyhow!(
+            "npx prettier command was not successful: {}",
+            status
+        )))
+    }
+}
+
+fn generate_content(ctx: &GenerationContext) -> Result<String> {
+    let content = TypeScriptTemplate { ctx }.render()?;
+    let content = prettier(&content)?;
+
+    Ok(content.into_owned())
 }
 
 #[cfg(test)]
@@ -57,7 +103,6 @@ mod tests {
 
     use super::*;
 
-    #[ignore]
     #[test]
     fn test_ts_generation() {
         let loader = OpenApiLoader::default();
@@ -69,15 +114,7 @@ mod tests {
             .load_openapi(OpenApiRefLocation::new(&root, "cars.yaml".into()))
             .unwrap();
         let ctx = Visitor::new(root).visit(&[openapi.clone()]).unwrap();
-        let content = generate_api(
-            ctx.location_contexts
-                .get(openapi.ref_().ref_location())
-                .unwrap()
-                .api
-                .as_ref()
-                .unwrap(),
-        )
-        .unwrap();
+        let content = generate_content(&ctx).unwrap();
 
         insta::assert_snapshot!(content);
     }
