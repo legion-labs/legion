@@ -5,6 +5,7 @@ use crate::{
     Generator, Result,
 };
 use askama::Template;
+use lazy_static::__Deref;
 
 mod filters;
 
@@ -40,4 +41,18 @@ fn generate(api: &Api) -> Result<String> {
     let content = PythonTemplate { api }.render()?;
 
     Ok(content)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_py_generation() {
+        let data = include_str!("../../../../tests/api-codegen/cars.yaml");
+        let api = Api::try_from(&serde_yaml::from_str(data).unwrap()).unwrap();
+        let content = generate(&api).unwrap();
+
+        insta::assert_snapshot!(content);
+    }
 }

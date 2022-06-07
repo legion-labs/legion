@@ -1,3 +1,6 @@
+#used by fmt_type
+from datetime import datetime, date
+
 # ---------- Models ----------
 {% include "models.py.jinja" %}
 
@@ -11,7 +14,11 @@
 {% include "api.py.jinja" %}
 
 # ---------- Parameters -------
+{#
+At the moment we don't use query classes to form calls.
+Parameters are parsed directly (see client.py.jinja)
 {% include "parameters.py.jinja" %}
+#}
 
 # ---------- Client -------
 {% include "client.py.jinja" %}

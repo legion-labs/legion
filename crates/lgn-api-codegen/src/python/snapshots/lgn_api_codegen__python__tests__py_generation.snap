@@ -1,3 +1,11 @@
+---
+source: crates/lgn-api-codegen/src/python/mod.rs
+assertion_line: 56
+expression: content
+---
+#used by fmt_type
+from datetime import datetime, date
+
 # ---------- Models ----------
 from enum import Enum
 
@@ -22,7 +30,6 @@ class CarColor(Enum):
         return CarColor(value)
 
 
-# TODO(kdaibov): OneOf is not tested
 
 
 
@@ -79,6 +86,7 @@ class Pet:
    
 
 
+# TODO(kdaibov): OneOf is not tested
 
 class TestOneOfResponse:
     def __init__(self, value):
@@ -194,7 +202,10 @@ class GetCarsResponse:
         print("response.text: {}".format(response.text))
         match response.status_code:
             case 200:
-                self.json = response.json()
+                self.car = []
+                for item in response.json():
+                    self.car.append(Car.from_json(item))
+                
                 pass
             case _:
                 raise Exception("unexpected status code: {}".format(response.status_code))
@@ -207,7 +218,8 @@ class CreateCarResponse:
         print("response: {}".format(response))
         print("response.text: {}".format(response.text))
         match response.status_code:
-            case 201:pass
+            case 201:
+                pass
             case _:
                 raise Exception("unexpected status code: {}".format(response.status_code))
      
@@ -223,8 +235,10 @@ class GetCarResponse:
         match response.status_code:
             case 200:
                 self.car = Car.from_json(response.json())
+                
                 pass
-            case 404:pass
+            case 404:
+                pass
             case _:
                 raise Exception("unexpected status code: {}".format(response.status_code))
      
@@ -237,8 +251,10 @@ class DeleteCarResponse:
         print("response: {}".format(response))
         print("response.text: {}".format(response.text))
         match response.status_code:
-            case 200:pass
-            case 404:pass
+            case 200:
+                pass
+            case 404:
+                pass
             case _:
                 raise Exception("unexpected status code: {}".format(response.status_code))
      
@@ -252,7 +268,8 @@ class TestBinaryResponse:
         print("response.text: {}".format(response.text))
         match response.status_code:
             case 200:
-                self.bytes = response.contentpass
+                self.bytes = response.content
+                pass
             case _:
                 raise Exception("unexpected status code: {}".format(response.status_code))
      
@@ -267,6 +284,7 @@ class TestOneOfResponse:
         match response.status_code:
             case 200:
                 self.test_one_of_response = TestOneOfResponse.from_json(response.json())
+                
                 pass
             case _:
                 raise Exception("unexpected status code: {}".format(response.status_code))
@@ -328,25 +346,6 @@ class Api(metaclass=abc.ABCMeta):
 
 # ---------- Parameters -------
 
-class GetCarsQuery:
-    def __init__(
-        self,
-        names : list[str],
-        q : str,
-    ):
-        self.names = names
-        self.q = q
-
-
-
-
-
-
-
-
-
-
-
 
 # ---------- Client -------
 import requests
@@ -366,12 +365,23 @@ class Client(Api):
             request.space_id,
         )
         params = {}
-        if hasattr(request, "names") and request.names:
-            params["names{}".format(("","[]")[isinstance(request.names, list)])] = request.names
-        if hasattr(request, "q") and request.q:
-            params["q{}".format(("","[]")[isinstance(request.q, list)])] = request.q
+        uri+= "?"
+        required = False
+        if required or (hasattr(request, "names") and request.names):
+            if isinstance(request.names, list):
+                for num, item in enumerate(request.names):
+                    uri += "names[{}]={}".format(num, item)
+            else:
+                params["names"] = request.names
+        required = False
+        if required or (hasattr(request, "q") and request.q):
+            if isinstance(request.q, list):
+                for num, item in enumerate(request.q):
+                    uri += "q[{}]={}".format(num, item)
+            else:
+                params["q"] = request.q
         
-        uri += "?{}".format(urllib.parse.urlencode(params, doseq=True))
+        uri += urllib.parse.urlencode(params, doseq=True)
 
         print("uri: {}".format(uri))
         print("params: {}".format(params))

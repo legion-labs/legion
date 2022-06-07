@@ -24,16 +24,25 @@ class {{ enum_.name }}(Enum):
 
 
 {% when Model::OneOf with (one_of) %}
-# TODO(kdaibov): OneOf is not tested
 {% if let Some(description) = one_of.description %}# {{ description }}{% endif %}
 class {{ one_of.name }}:
     def __init__(self, value):
         self.value = value 
         self.type = None
-    {% for type_ in one_of.types %}
+        {% for type_ in one_of.types %}
         if isinstance(value, {{type_|fmt_type}}):
-            self.type = "{{ type_|fmt_type }}"
-    {% endfor %}
+            self.type = {{ type_|fmt_type }}
+        {% endfor %}
+
+    def from_json(body):
+        value = None
+        {% for type_ in one_of.types %}
+        if body["option{{ loop.index }}"]:
+            value = {{ type_|fmt_type }}.from_json(body["option{{ loop.index }}"])
+        {% endfor %}
+        return {{ one_of.name }}(
+            value
+        )
                 
 {% when Model::Struct with (struct_) %}
 {% if let Some(description) = struct_.description %}# {{ description }}{% endif %}
@@ -56,6 +65,15 @@ class {{ struct_.name }}:
         {%- match field.type_ %}
         {%- when Type::Struct with (inner_struct_name)%}
         {{field.name}} = {{inner_struct_name}}.from_json(body['{{field.name}}'])
+        {%- when Type::Array with (inner_type)%}
+        {%- match field.type_ %}
+        {%- when Type::Struct with (array_struct_type)%}
+        {{field.name}} = []
+        for item in body['{{field.name}}']:
+            {{field.name}}.append({{array_struct_type}}.from_json(item))
+        {%- else %}
+        {{field.name}} = body['{{field.name}}']
+        {%- endmatch %}
         {%- else %}
         {{field.name}} = body['{{field.name}}']
         {%- endmatch %}

@@ -1,11 +1,6 @@
 
 import cars
 
-def my_print(something: str):
-    print(something)
-
-my_print(1)
-
 client = cars.Client("http://127.0.0.1:3000")
 
 response = client.get_car(cars.GetCarRequest(
@@ -38,11 +33,22 @@ car_response = client.get_car(cars.GetCarRequest(
     1
 ))
 print(car_response.car.__dict__)
-#print(car_response.car.__dict__)
 
 response = client.get_cars(cars.GetCarsRequest(
     "kd_space",
     ["Opel", "Lada"]
 ))
+print(vars(response))
+for car in response.car:
+    print(vars(car))
+
+response = client.delete_car(cars.DeleteCarRequest("kd_space", 0))
+print(vars(response))
+
+response = client.test_binary(cars.TestBinaryRequest("kd_space", "-- test string --"))
+print(vars(response))
+
+response = client.test_one_of(cars.TestOneOfRequest())
+print(response.json())
 print(vars(response))
 
