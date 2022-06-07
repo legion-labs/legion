@@ -2,6 +2,7 @@
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
 mod animation_bone_mask;
+mod animation_clip;
 mod animation_editor_flow_graph;
 mod animation_editor_graph_definition;
 mod animation_event;

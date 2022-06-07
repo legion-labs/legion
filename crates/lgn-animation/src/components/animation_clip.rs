@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use crate::animation_skeleton::Skeleton;
 use crate::runtime::{AnimationTrack, VecAnimationTransform};
 
@@ -16,7 +14,6 @@ pub struct AnimationClip {
     pub time_since_last_tick: f32,
     pub looping: bool,
     pub skeleton: Skeleton,
-    // nodes: Vec<Vec3>,
 }
 
 impl AnimationClip {
@@ -52,11 +49,7 @@ pub(crate) fn convert_raw_pose_data(
                     rotation: anim_transform_bundle.local.rotation,
                     scale: anim_transform_bundle.local.scale,
                 },
-                global: GlobalTransform {
-                    translation: anim_transform_bundle.global.translation,
-                    rotation: anim_transform_bundle.global.rotation,
-                    scale: anim_transform_bundle.global.scale,
-                },
+                global: GlobalTransform::identity(),
             });
         }
         poses.push(vec_transform_bundle);
@@ -72,6 +65,8 @@ pub(crate) fn update_children_transforms(skeleton: &mut Skeleton) {
                     [skeleton.parent_indices[n_bone] as usize]
                     .global
                     .mul_transform(skeleton.poses[n_pose][n_bone].local);
+            } else {
+                skeleton.poses[n_pose][n_bone].global = skeleton.poses[n_pose][n_bone].local.into();
             }
         }
     }
