@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use std::{
-        env,
         path::{Path, PathBuf},
         sync::Arc,
         vec,
@@ -53,19 +52,6 @@ mod tests {
             .add_processor::<multitext_resource::MultiTextResource>()
             .create()
             .await
-    }
-
-    fn target_dir() -> PathBuf {
-        env::current_exe().ok().map_or_else(
-            || panic!("cannot find test directory"),
-            |mut path| {
-                path.pop();
-                if path.ends_with("deps") {
-                    path.pop();
-                }
-                path
-            },
-        )
     }
 
     async fn create_resource(
@@ -589,7 +575,7 @@ mod tests {
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+            CompilerRegistryOptions::default(),
             Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
         )
@@ -960,7 +946,7 @@ mod tests {
                 .push(ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE));
             child_handle.apply(edit, &resources);
 
-            project
+            let parent_id = project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPE,
@@ -968,12 +954,16 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            project.commit("add parent and child").await.unwrap();
+
+            parent_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+            CompilerRegistryOptions::default().add_compiler(&lgn_compiler_test_refs::COMPILER_INFO),
             Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
         )
