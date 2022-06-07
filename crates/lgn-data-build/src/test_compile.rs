@@ -856,7 +856,7 @@ mod tests {
                 vec![ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE)];
             parent_handle.apply(parent, &resources);
 
-            project
+            let parent_id = project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPE,
@@ -864,12 +864,16 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            project.commit("create parent and child").await.unwrap();
+
+            parent_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
-            CompilerRegistryOptions::local_compilers(target_dir()),
+            CompilerRegistryOptions::default().add_compiler(&lgn_compiler_test_refs::COMPILER_INFO),
             Arc::clone(&source_control_content_provider),
             data_content_provider,
         )
