@@ -3,9 +3,9 @@ use std::{cmp::max, sync::Arc};
 
 use lgn_graphics_api::{
     ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DeviceContext, Extents2D, Extents3D,
-    Format, GPUViewType, LoadOp, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, Semaphore,
-    SemaphoreDef, StoreOp, Texture, TextureDef, TextureTiling, TextureView, TextureViewDef,
-    ViewDimension,
+    Format, GPUViewType, LoadOp, MemoryUsage, PlaneSlice, ResourceFlags, ResourceState,
+    ResourceUsage, Semaphore, SemaphoreDef, StoreOp, Texture, TextureBarrier, TextureDef,
+    TextureTiling, TextureView, TextureViewDef, ViewDimension,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -445,16 +445,23 @@ impl RenderSurface {
         [&self.hzb[0], &self.hzb[1]]
     }
 
-    pub(crate) fn clear_hzb(&mut self, cmd_buffer: &mut CommandBuffer) -> bool {
-        let mut cleared_this_frame = false;
-
+    pub(crate) fn clear_hzb_if_needed(&mut self, cmd_buffer: &mut CommandBuffer) {
         if !self.hzb_cleared {
             self.hzb_cleared = true;
-            cleared_this_frame = true;
 
             cmd_buffer.with_label("Clear Prev HZB", |cmd_buffer| {
                 for i in 0..2 {
                     for mip in 0..self.hzb[i].definition().mip_count {
+                        cmd_buffer.cmd_resource_barrier(
+                            &[],
+                            &[TextureBarrier::state_transition_for_mip(
+                                &self.hzb[i],
+                                ResourceState::UNDEFINED,
+                                ResourceState::RENDER_TARGET,
+                                Some(mip as u8),
+                            )],
+                        );
+
                         let hzb_view = self.hzb[i].create_view(TextureViewDef {
                             gpu_view_type: GPUViewType::RenderTarget,
                             view_dimension: ViewDimension::_2D,
@@ -475,11 +482,19 @@ impl RenderSurface {
                             &None,
                         );
                         cmd_buffer.cmd_end_render_pass();
+
+                        cmd_buffer.cmd_resource_barrier(
+                            &[],
+                            &[TextureBarrier::state_transition_for_mip(
+                                &self.hzb[i],
+                                ResourceState::RENDER_TARGET,
+                                ResourceState::SHADER_RESOURCE,
+                                Some(mip as u8),
+                            )],
+                        );
                     }
                 }
             });
         }
-
-        cleared_this_frame
     }
 }

@@ -733,7 +733,7 @@ fn render_update(
 
                     cmd_buffer.begin();
 
-                    let hzb_cleared = render_surface.clear_hzb(cmd_buffer);
+                    render_surface.clear_hzb_if_needed(cmd_buffer);
 
                     let view = RenderView {
                         target: render_surface.view_target(),
@@ -775,7 +775,6 @@ fn render_update(
                         &render_resources,
                         render_context.pipeline_manager,
                         render_context.device_context,
-                        hzb_cleared,
                     ) {
                         Ok(render_graph) => {
                             let mut render_graph_context = render_graph.compile();

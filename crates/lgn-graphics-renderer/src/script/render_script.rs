@@ -110,7 +110,6 @@ impl RenderScript<'_> {
         render_resources: &RenderResources,
         pipeline_manager: &mut PipelineManager,
         device_context: &DeviceContext,
-        hzb_cleared: bool,
     ) -> GfxResult<RenderGraph> {
         let mut render_graph_builder =
             RenderGraph::builder(render_resources, pipeline_manager, device_context);
@@ -129,8 +128,6 @@ impl RenderScript<'_> {
         //----------------------------------------------------------------
         // Inject external resources
 
-        // TODO(jsg): need to think of a better way of doing this.
-
         let prev_hzb_idx = config.frame_idx as usize % 2;
         let current_hzb_idx = (config.frame_idx + 1) as usize % 2;
 
@@ -144,20 +141,12 @@ impl RenderScript<'_> {
             render_graph_builder.inject_render_target(
                 names[0],
                 self.hzb[0],
-                if hzb_cleared {
-                    ResourceState::RENDER_TARGET
-                } else {
-                    ResourceState::SHADER_RESOURCE
-                },
+                ResourceState::SHADER_RESOURCE,
             ),
             render_graph_builder.inject_render_target(
                 names[1],
                 self.hzb[1],
-                if hzb_cleared {
-                    ResourceState::RENDER_TARGET
-                } else {
-                    ResourceState::SHADER_RESOURCE
-                },
+                ResourceState::SHADER_RESOURCE,
             ),
         ];
 
