@@ -562,7 +562,7 @@ mod tests {
             edit.text_list = magic_list.clone();
             resource_handle.apply(edit, &resources);
 
-            project
+            let source_id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     multitext_resource::MultiTextResource::TYPE,
@@ -570,12 +570,18 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            project.commit("add resource").await.unwrap();
+
+            source_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
             output_dir,
-            CompilerRegistryOptions::default(),
+            CompilerRegistryOptions::default()
+                .add_compiler(&lgn_compiler_test_split::COMPILER_INFO)
+                .add_compiler(&lgn_compiler_test_atoi::COMPILER_INFO),
             Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
         )
