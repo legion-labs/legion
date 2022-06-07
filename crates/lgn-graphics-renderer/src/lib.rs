@@ -831,8 +831,6 @@ fn render_update(
                 render_scope.end_frame(&graphics_queue);
                 transient_buffer.end_frame();
                 transient_commandbuffer_manager.end_frame();
-                let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
-                mesh_renderer.end_frame();
             }
 
             renderdoc_manager.end_frame_capture();

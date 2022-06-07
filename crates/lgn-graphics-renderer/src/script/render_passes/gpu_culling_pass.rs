@@ -9,7 +9,7 @@ use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_math::Vec2;
 
 use crate::{
-    cgen::{self, shader},
+    cgen::{self, cgen_type::CullingEfficiencyStats, shader},
     cgen_type::{CullingDebugData, CullingOptions, GpuInstanceData, RenderPassData},
     core::{
         RenderGraphBuilder, RenderGraphContext, RenderGraphExecuteContext, RenderGraphLoadState,
@@ -177,8 +177,24 @@ impl GpuCullingPass {
                         .write(culling_debug_uav_id, RenderGraphLoadState::ClearValue(0))
                         .read(prev_hzb_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
-                            let mesh_renderer =
-                                execute_context.render_resources.get::<MeshRenderer>();
+                            let mut mesh_renderer =
+                                execute_context.render_resources.get_mut::<MeshRenderer>();
+
+                            let readback = mesh_renderer
+                                .culling_buffers
+                                .stats_buffer
+                                .begin_readback(execute_context.render_context.device_context);
+
+                            readback.read_gpu_data(
+                                0,
+                                usize::MAX,
+                                u64::MAX,
+                                |data: &[CullingEfficiencyStats]| {
+                                    mesh_renderer.culling_stats = data[0];
+                                },
+                            );
+                            mesh_renderer.culling_buffers.stats_buffer_readback = Some(readback);
+
                             mesh_renderer
                                 .culling_buffers
                                 .stats_buffer
@@ -188,6 +204,7 @@ impl GpuCullingPass {
                                 context,
                                 execute_context,
                                 cmd_buffer,
+                                &mesh_renderer,
                                 user_data,
                                 false,
                             );
@@ -280,10 +297,14 @@ impl GpuCullingPass {
                         .read(culled_args_indirect_id, RenderGraphLoadState::Load)
                         .read(culled_instances_srv_id, RenderGraphLoadState::Load)
                         .execute(move |context, execute_context, cmd_buffer| {
+                            let mesh_renderer =
+                                execute_context.render_resources.get::<MeshRenderer>();
+
                             Self::execute_culling_pass(
                                 context,
                                 execute_context,
                                 cmd_buffer,
+                                &mesh_renderer,
                                 user_data,
                                 true,
                             );
@@ -321,7 +342,8 @@ impl GpuCullingPass {
                 })
                 .add_compute_pass("StatsReadback", |compute_pass_builder| {
                     compute_pass_builder.execute(|_, execute_context, cmd_buffer| {
-                        let mesh_renderer = execute_context.render_resources.get::<MeshRenderer>();
+                        let mut mesh_renderer =
+                            execute_context.render_resources.get_mut::<MeshRenderer>();
 
                         // TODO(jsg): Should we manage readback buffers in the graph as well?
                         if let Some(readback) = &mesh_renderer.culling_buffers.stats_buffer_readback
@@ -330,6 +352,17 @@ impl GpuCullingPass {
                                 .culling_buffers
                                 .stats_buffer
                                 .copy_buffer_to_readback(cmd_buffer, readback);
+                        }
+
+                        let readback = std::mem::take(
+                            &mut mesh_renderer.culling_buffers.stats_buffer_readback,
+                        );
+
+                        if let Some(readback) = readback {
+                            mesh_renderer
+                                .culling_buffers
+                                .stats_buffer
+                                .end_readback(readback);
                         }
                     })
                 })
@@ -535,25 +568,17 @@ impl GpuCullingPass {
         context: &RenderGraphContext,
         execute_context: &mut RenderGraphExecuteContext<'_, '_>,
         cmd_buffer: &mut CommandBuffer,
+        mesh_renderer: &MeshRenderer,
         user_data: GPUCullingUserData,
         second_pass: bool,
     ) {
         let render_context: &mut RenderContext<'_> = execute_context.render_context;
-        let mesh_renderer = execute_context.render_resources.get::<MeshRenderer>();
 
         if !mesh_renderer.gpu_instance_data.is_empty() {
             if let Some(pipeline) = render_context.pipeline_manager.get_pipeline(user_data.pso) {
                 cmd_buffer.cmd_bind_pipeline(pipeline);
 
-                cmd_buffer.cmd_bind_descriptor_set_handle(
-                    render_context.frame_descriptor_set().0,
-                    render_context.frame_descriptor_set().1,
-                );
-
-                cmd_buffer.cmd_bind_descriptor_set_handle(
-                    render_context.view_descriptor_set().0,
-                    render_context.view_descriptor_set().1,
-                );
+                render_context.bind_default_descriptor_sets(cmd_buffer);
 
                 let mut culling_descriptor_set =
                     cgen::descriptor_set::CullingDescriptorSet::default();

@@ -109,11 +109,6 @@ impl MeshRenderer {
                 .after(GpuInstanceManagerLabel::UpdateDone)
                 .label(MeshRendererLabel::UpdateDone),
         );
-
-        app.add_system_to_stage(
-            RenderStage::Prepare,
-            prepare.after(MeshRendererLabel::UpdateDone),
-        );
     }
 }
 
@@ -158,19 +153,13 @@ pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, renderer: ResMut<'_, Rendere
     });
 }
 
-#[allow(clippy::needless_pass_by_value)]
-fn prepare(renderer: Res<'_, Renderer>) {
-    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
-    mesh_renderer.prepare(&renderer);
-}
-
 // TMP -- what is public here is because they are used in the render graph
 pub(crate) struct CullingArgBuffers {
     pub(crate) stats_buffer: GpuBufferWithReadback,
     pub(crate) stats_buffer_readback: Option<Handle<ReadbackBuffer>>,
 }
 
-// TMP -- what is public here is because they are used in the render graph
+// TODO(jsg): Move this somewhere else to be able to remove this struct entirely.
 pub struct MeshRenderer {
     pub(crate) default_layers: Vec<RenderLayer>,
 
@@ -178,7 +167,7 @@ pub struct MeshRenderer {
     pub(crate) gpu_instance_data: Vec<GpuInstanceData>,
 
     pub(crate) culling_buffers: CullingArgBuffers,
-    culling_stats: CullingEfficiencyStats,
+    pub(crate) culling_stats: CullingEfficiencyStats,
 
     tmp_batch_ids: Vec<u32>,
     tmp_pipeline_handles: Vec<PipelineHandle>,
@@ -300,33 +289,6 @@ impl MeshRenderer {
                 let gpu_instance_data = &self.gpu_instance_data[*slot_idx as usize];
                 assert!(gpu_instance_data.gpu_instance_id() == (instance_idx as u32).into());
             }
-        }
-    }
-
-    fn prepare(&mut self, renderer: &Renderer) {
-        let device_context = renderer.device_context();
-
-        let readback = self
-            .culling_buffers
-            .stats_buffer
-            .begin_readback(device_context);
-
-        readback.read_gpu_data(
-            0,
-            usize::MAX,
-            u64::MAX,
-            |data: &[CullingEfficiencyStats]| {
-                self.culling_stats = data[0];
-            },
-        );
-        self.culling_buffers.stats_buffer_readback = Some(readback);
-    }
-
-    pub(crate) fn end_frame(&mut self) {
-        let readback = std::mem::take(&mut self.culling_buffers.stats_buffer_readback);
-
-        if let Some(readback) = readback {
-            self.culling_buffers.stats_buffer.end_readback(readback);
         }
     }
 }
