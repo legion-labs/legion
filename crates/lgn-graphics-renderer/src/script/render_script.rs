@@ -17,7 +17,7 @@ use lgn_graphics_api::{
     ResourceState, SampleCount, SamplerDef, StencilOp, Texture, VertexLayout,
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
-use lgn_tracing::span_scope;
+use lgn_tracing::span_fn;
 
 use super::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
@@ -102,6 +102,7 @@ impl RenderScript<'_> {
     /// # Errors
     ///
     /// This function will return an error if .
+    #[span_fn]
     pub(crate) fn build_render_graph(
         &mut self,
         view: &RenderView<'_>,
@@ -111,8 +112,6 @@ impl RenderScript<'_> {
         device_context: &DeviceContext,
         hzb_cleared: bool,
     ) -> GfxResult<RenderGraph> {
-        span_scope!("build_render_graph");
-
         let mut render_graph_builder =
             RenderGraph::builder(render_resources, pipeline_manager, device_context);
 
@@ -230,10 +229,6 @@ impl RenderScript<'_> {
 
         //----------------------------------------------------------------
         // Build graph
-        //
-        // TODO(jsg): Passes still missing:
-        //       * egui
-        //       * picking
 
         let mut count_buffer_size: u64 = 0;
         let mut indirect_arg_buffer_size: u64 = 0;

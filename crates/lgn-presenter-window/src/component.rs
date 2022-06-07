@@ -57,96 +57,62 @@ impl PresenterWindow {
 
         cmd_buffer.begin();
 
-        if render_surface.use_view_target() {
-            // This means we rendered using the render graph, so the final resolve render pass
-            // is already done. We just need to copy the result from the view_target to the
-            // swapchain texture.
-            let final_target = render_surface.view_target();
+        let final_target = render_surface.view_target();
 
-            assert_eq!(
-                final_target.definition().extents,
-                swapchain_texture.definition().extents
-            );
+        assert_eq!(
+            final_target.definition().extents,
+            swapchain_texture.definition().extents
+        );
 
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[
-                    TextureBarrier::state_transition(
-                        swapchain_texture,
-                        ResourceState::PRESENT,
-                        ResourceState::COPY_DST,
-                    ),
-                    TextureBarrier::state_transition(
-                        final_target,
-                        ResourceState::RENDER_TARGET,
-                        ResourceState::COPY_SRC,
-                    ),
-                ],
-            );
-
-            cmd_buffer.cmd_copy_image(
-                final_target,
-                swapchain_texture,
-                &CmdCopyTextureParams {
-                    src_state: ResourceState::COPY_SRC,
-                    dst_state: ResourceState::COPY_DST,
-                    src_offset: Offset3D { x: 0, y: 0, z: 0 },
-                    dst_offset: Offset3D { x: 0, y: 0, z: 0 },
-                    src_mip_level: 0,
-                    dst_mip_level: 0,
-                    src_array_slice: 0,
-                    dst_array_slice: 0,
-                    src_plane_slice: PlaneSlice::Default,
-                    dst_plane_slice: PlaneSlice::Default,
-                    extent: final_target.definition().extents,
-                },
-            );
-
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[
-                    TextureBarrier::state_transition(
-                        swapchain_texture,
-                        ResourceState::COPY_DST,
-                        ResourceState::PRESENT,
-                    ),
-                    TextureBarrier::state_transition(
-                        final_target,
-                        ResourceState::COPY_SRC,
-                        ResourceState::RENDER_TARGET,
-                    ),
-                ],
-            );
-        } else {
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
+        cmd_buffer.cmd_resource_barrier(
+            &[],
+            &[
+                TextureBarrier::state_transition(
                     swapchain_texture,
                     ResourceState::PRESENT,
+                    ResourceState::COPY_DST,
+                ),
+                TextureBarrier::state_transition(
+                    final_target,
                     ResourceState::RENDER_TARGET,
-                )],
-            );
+                    ResourceState::COPY_SRC,
+                ),
+            ],
+        );
 
-            // final resolve
-            let final_resolve_render_pass = render_surface.final_resolve_render_pass();
-            let final_resolve_render_pass = final_resolve_render_pass.write();
+        cmd_buffer.cmd_copy_image(
+            final_target,
+            swapchain_texture,
+            &CmdCopyTextureParams {
+                src_state: ResourceState::COPY_SRC,
+                dst_state: ResourceState::COPY_DST,
+                src_offset: Offset3D { x: 0, y: 0, z: 0 },
+                dst_offset: Offset3D { x: 0, y: 0, z: 0 },
+                src_mip_level: 0,
+                dst_mip_level: 0,
+                src_array_slice: 0,
+                dst_array_slice: 0,
+                src_plane_slice: PlaneSlice::Default,
+                dst_plane_slice: PlaneSlice::Default,
+                extent: final_target.definition().extents,
+            },
+        );
 
-            final_resolve_render_pass.render(
-                render_context,
-                render_surface,
-                cmd_buffer,
-                presentable_frame.swapchain_rtv(),
-            );
-
-            cmd_buffer.cmd_resource_barrier(
-                &[],
-                &[TextureBarrier::state_transition(
+        cmd_buffer.cmd_resource_barrier(
+            &[],
+            &[
+                TextureBarrier::state_transition(
                     swapchain_texture,
-                    ResourceState::RENDER_TARGET,
+                    ResourceState::COPY_DST,
                     ResourceState::PRESENT,
-                )],
-            );
-        }
+                ),
+                TextureBarrier::state_transition(
+                    final_target,
+                    ResourceState::COPY_SRC,
+                    ResourceState::RENDER_TARGET,
+                ),
+            ],
+        );
 
         cmd_buffer.end();
 

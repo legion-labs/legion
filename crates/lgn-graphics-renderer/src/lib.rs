@@ -84,7 +84,6 @@ use crate::core::{
 };
 
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
-use crate::render_pass::TmpRenderPass;
 use crate::renderdoc::RenderDocManager;
 use crate::{
     components::{
@@ -391,14 +390,13 @@ fn on_window_created(
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
-    pipeline_manager: Res<'_, PipelineManager>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut event_render_surface_created: ResMut<'_, Events<RenderSurfaceCreatedForWindow>>,
 ) {
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(wnd.id(), &renderer, &pipeline_manager, extents);
+        let render_surface = RenderSurface::new(wnd.id(), &renderer, extents);
 
         render_surfaces.insert(render_surface);
 
@@ -412,7 +410,6 @@ fn on_window_resized(
     wnd_list: Res<'_, Windows>,
     renderer: Res<'_, Renderer>,
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
-    pipeline_manager: Res<'_, PipelineManager>,
 ) {
     let device_context = renderer.device_context();
     for ev in ev_wnd_resized.iter() {
@@ -422,7 +419,6 @@ fn on_window_resized(
             render_surface.resize(
                 device_context,
                 RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
-                &pipeline_manager,
             );
         }
     }
@@ -729,211 +725,102 @@ fn render_update(
                         );
                     }
 
-                    //let test_render_graph = false;
                     let frame_idx = render_scope.frame_idx();
-                    if false {
-                        // !test_render_graph || frame_idx % 2 == 0 {
-                        render_surface.set_use_view_target(false);
 
-                        //****************************************************************
-                        // PREVIOUS RENDER PATH (WITHOUT RENDER GRAPH)
-                        //****************************************************************
+                    let mut cmd_buffer_handle =
+                        render_context.transient_commandbuffer_allocator.acquire();
+                    let cmd_buffer = cmd_buffer_handle.as_mut();
 
-                        let mesh_renderer = render_resources.get::<MeshRenderer>();
-                        let instance_manager = render_resources.get::<GpuInstanceManager>();
-                        let mesh_manager = render_resources.get::<MeshManager>();
-                        let model_manager = render_resources.get::<ModelManager>();
+                    cmd_buffer.begin();
 
-                        let mut cmd_buffer_handle =
-                            render_context.transient_commandbuffer_allocator.acquire();
-                        let cmd_buffer = cmd_buffer_handle.as_mut();
+                    let hzb_cleared = render_surface.clear_hzb(cmd_buffer);
 
-                        cmd_buffer.begin();
+                    let view = RenderView {
+                        target: render_surface.view_target(),
+                    };
 
-                        mesh_renderer.gen_occlusion_and_cull(
-                            &mut render_context,
-                            cmd_buffer,
-                            render_surface,
-                            &instance_manager,
-                        );
+                    let gpu_culling_pass = GpuCullingPass;
+                    let picking_pass = PickingPass;
+                    let opaque_layer_pass = OpaqueLayerPass;
+                    let ssao_pass = SSAOPass;
+                    let alphablended_layer_pass = AlphaBlendedLayerPass;
+                    let debug_pass = DebugPass;
+                    let postprocess_pass = PostProcessPass;
+                    let lighting_pass = LightingPass;
+                    let ui_pass = UiPass;
+                    let egui_pass = EguiPass;
 
-                        cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
-                        cmd_buffer
-                            .cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
+                    let mut render_script = RenderScript {
+                        gpu_culling_pass,
+                        picking_pass,
+                        opaque_layer_pass,
+                        ssao_pass,
+                        alphablended_layer_pass,
+                        debug_pass,
+                        postprocess_pass,
+                        lighting_pass,
+                        ui_pass,
+                        egui_pass,
+                        hzb: [render_surface.hzb()[0], render_surface.hzb()[1]],
+                    };
 
-                        let picking_pass = render_surface.picking_renderpass();
-                        let mut picking_pass = picking_pass.write();
-                        picking_pass.render(
-                            &picking_manager,
-                            &render_context,
-                            cmd_buffer,
-                            render_surface,
-                            &instance_manager,
-                            manipulator_drawables.as_slice(),
-                            &render_objects,
-                            &mesh_manager,
-                            camera_component,
-                            &mesh_renderer,
-                        );
+                    let config = Config {
+                        frame_idx,
+                        ..Config::default()
+                    };
 
-                        cmd_buffer.cmd_bind_index_buffer(static_buffer.index_buffer_binding());
-                        cmd_buffer
-                            .cmd_bind_vertex_buffer(0, instance_manager.vertex_buffer_binding());
+                    match render_script.build_render_graph(
+                        &view,
+                        &config,
+                        &render_resources,
+                        render_context.pipeline_manager,
+                        render_context.device_context,
+                        hzb_cleared,
+                    ) {
+                        Ok(render_graph) => {
+                            let mut render_graph_context = render_graph.compile();
 
-                        TmpRenderPass::render(
-                            &render_context,
-                            cmd_buffer,
-                            render_surface,
-                            &mesh_renderer,
-                        );
-
-                        let debug_renderpass = render_surface.debug_renderpass();
-                        let debug_renderpass = debug_renderpass.write();
-                        debug_renderpass.render(
-                            &render_context,
-                            cmd_buffer,
-                            render_surface,
-                            picked_drawables.as_slice(),
-                            manipulator_drawables.as_slice(),
-                            camera_component,
-                            &mesh_manager,
-                            &model_manager,
-                            &debug_display,
-                        );
-
-                        if egui.is_enabled() {
-                            let egui_pass = render_surface.egui_renderpass();
-                            let mut egui_pass = egui_pass.write();
-                            egui_pass.update_font_texture(&render_context, cmd_buffer, egui.ctx());
-                            egui_pass.render(
-                                &mut render_context,
-                                cmd_buffer,
+                            let debug_stuff = DebugStuff {
                                 render_surface,
-                                &egui,
+                                picking_manager: &picking_manager,
+                                debug_display: &debug_display,
+                                picked_drawables: picked_drawables.as_slice(),
+                                manipulator_drawables: manipulator_drawables.as_slice(),
+                                camera_component,
+                                egui: &egui,
+                            };
+
+                            render_graph.execute(
+                                &mut render_graph_context,
+                                &render_resources,
+                                &mut render_context,
+                                &debug_stuff,
+                                cmd_buffer,
                             );
                         }
-
-                        cmd_buffer.end();
-
-                        // queue
-                        let present_semaphore = render_surface.acquire();
-                        {
-                            render_context.graphics_queue.queue_mut().submit(
-                                &[cmd_buffer],
-                                &[],
-                                &[present_semaphore],
-                                None,
-                            );
-
-                            render_surface.present(&mut render_context);
+                        Err(error) => {
+                            println!("{}", error);
                         }
-
-                        render_context
-                            .transient_commandbuffer_allocator
-                            .release(cmd_buffer_handle);
-                    } else {
-                        let render_graph_frame_idx = frame_idx / 2;
-                        render_surface.set_use_view_target(true);
-
-                        //****************************************************************
-                        // RENDER GRAPH TEST
-                        //****************************************************************
-
-                        let mut cmd_buffer_handle =
-                            render_context.transient_commandbuffer_allocator.acquire();
-                        let cmd_buffer = cmd_buffer_handle.as_mut();
-
-                        cmd_buffer.begin();
-
-                        let hzb_cleared = render_surface.clear_hzb(cmd_buffer);
-
-                        let view = RenderView {
-                            target: render_surface.view_target(),
-                        };
-
-                        let gpu_culling_pass = GpuCullingPass;
-                        let picking_pass = PickingPass;
-                        let opaque_layer_pass = OpaqueLayerPass;
-                        let ssao_pass = SSAOPass;
-                        let alphablended_layer_pass = AlphaBlendedLayerPass;
-                        let debug_pass = DebugPass;
-                        let postprocess_pass = PostProcessPass;
-                        let lighting_pass = LightingPass;
-                        let ui_pass = UiPass;
-                        let egui_pass = EguiPass;
-
-                        let mut render_script = RenderScript {
-                            gpu_culling_pass,
-                            picking_pass,
-                            opaque_layer_pass,
-                            ssao_pass,
-                            alphablended_layer_pass,
-                            debug_pass,
-                            postprocess_pass,
-                            lighting_pass,
-                            ui_pass,
-                            egui_pass,
-                            hzb: [render_surface.hzb()[0], render_surface.hzb()[1]],
-                        };
-
-                        let config = Config {
-                            frame_idx: render_graph_frame_idx,
-                            ..Config::default()
-                        };
-
-                        match render_script.build_render_graph(
-                            &view,
-                            &config,
-                            &render_resources,
-                            render_context.pipeline_manager,
-                            render_context.device_context,
-                            hzb_cleared,
-                        ) {
-                            Ok(render_graph) => {
-                                let mut render_graph_context = render_graph.compile();
-
-                                let debug_stuff = DebugStuff {
-                                    render_surface,
-                                    picking_manager: &picking_manager,
-                                    debug_display: &debug_display,
-                                    picked_drawables: picked_drawables.as_slice(),
-                                    manipulator_drawables: manipulator_drawables.as_slice(),
-                                    camera_component,
-                                    egui: &egui,
-                                };
-
-                                render_graph.execute(
-                                    &mut render_graph_context,
-                                    &render_resources,
-                                    &mut render_context,
-                                    &debug_stuff,
-                                    cmd_buffer,
-                                );
-                            }
-                            Err(error) => {
-                                println!("{}", error);
-                            }
-                        }
-
-                        cmd_buffer.end();
-
-                        // queue
-                        let present_semaphore = render_surface.acquire();
-                        {
-                            render_context.graphics_queue.queue_mut().submit(
-                                &[cmd_buffer],
-                                &[],
-                                &[present_semaphore],
-                                None,
-                            );
-
-                            render_surface.present(&mut render_context);
-                        }
-
-                        render_context
-                            .transient_commandbuffer_allocator
-                            .release(cmd_buffer_handle);
                     }
+
+                    cmd_buffer.end();
+
+                    // queue
+                    let present_semaphore = render_surface.acquire();
+                    {
+                        render_context.graphics_queue.queue_mut().submit(
+                            &[cmd_buffer],
+                            &[],
+                            &[present_semaphore],
+                            None,
+                        );
+
+                        render_surface.present(&mut render_context);
+                    }
+
+                    render_context
+                        .transient_commandbuffer_allocator
+                        .release(cmd_buffer_handle);
                 }
 
                 descriptor_heap_manager.release_descriptor_pool(descriptor_pool);

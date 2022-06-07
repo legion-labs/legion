@@ -2,9 +2,8 @@ use std::collections::hash_map::{Values, ValuesMut};
 use std::{cmp::max, sync::Arc};
 
 use lgn_graphics_api::{
-    ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DepthStencilClearValue,
-    DepthStencilRenderTargetBinding, DeviceContext, Extents2D, Extents3D, Format, GPUViewType,
-    LoadOp, MemoryUsage, PlaneSlice, ResourceFlags, ResourceState, ResourceUsage, Semaphore,
+    ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DeviceContext, Extents2D, Extents3D,
+    Format, GPUViewType, LoadOp, MemoryUsage, PlaneSlice, ResourceFlags, ResourceUsage, Semaphore,
     SemaphoreDef, StoreOp, Texture, TextureDef, TextureTiling, TextureViewDef, ViewDimension,
 };
 use lgn_window::WindowId;
@@ -13,11 +12,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::egui::egui_pass::EguiPass;
-use crate::gpu_renderer::HzbSurface;
-use crate::render_pass::{
-    DebugRenderPass, FinalResolveRenderPass, PickingRenderPass, RenderTarget,
-};
-use crate::resources::PipelineManager;
+use crate::render_pass::PickingRenderPass;
 use crate::{RenderContext, Renderer};
 
 pub trait Presenter: Send + Sync {
@@ -179,45 +174,6 @@ pub struct RenderSurfaceCreatedForWindow {
     pub window_id: WindowId,
 }
 
-#[allow(dead_code)]
-struct SizeDependentResources {
-    hdr_rt: RenderTarget,
-    depth_rt: RenderTarget,
-    hzb_surface: HzbSurface,
-    hzb_init: bool,
-}
-
-impl SizeDependentResources {
-    fn new(
-        device_context: &DeviceContext,
-        extents: RenderSurfaceExtents,
-        pipeline_manager: &PipelineManager,
-    ) -> Self {
-        Self {
-            hdr_rt: RenderTarget::new(
-                device_context,
-                "HDR_RT",
-                extents,
-                Format::R16G16B16A16_SFLOAT,
-                ResourceUsage::AS_RENDER_TARGET
-                    | ResourceUsage::AS_SHADER_RESOURCE
-                    | ResourceUsage::AS_TRANSFERABLE,
-                GPUViewType::RenderTarget,
-            ),
-            depth_rt: RenderTarget::new(
-                device_context,
-                "Depth_RT",
-                extents,
-                Format::D32_SFLOAT,
-                ResourceUsage::AS_DEPTH_STENCIL | ResourceUsage::AS_SHADER_RESOURCE,
-                GPUViewType::DepthStencil,
-            ),
-            hzb_surface: HzbSurface::new(device_context, extents, pipeline_manager),
-            hzb_init: false,
-        }
-    }
-}
-
 pub enum RenderSurfacePresentingStatus {
     Presenting,
     Paused,
@@ -227,52 +183,40 @@ pub struct RenderSurface {
     id: RenderSurfaceId,
     window_id: Option<WindowId>,
     extents: RenderSurfaceExtents,
-    resources: SizeDependentResources,
     presenters: Vec<Box<dyn Presenter>>,
     // tmp
     num_render_frames: u64,
     render_frame_idx: u64,
     presenter_semaphores: Vec<Semaphore>,
     picking_renderpass: Arc<RwLock<PickingRenderPass>>,
-    debug_renderpass: Arc<RwLock<DebugRenderPass>>,
     egui_renderpass: Arc<RwLock<EguiPass>>,
-    final_resolve_render_pass: Arc<RwLock<FinalResolveRenderPass>>,
     presenting_status: RenderSurfacePresentingStatus,
 
     // For render graph
     view_target: Texture,
     hzb: [Texture; 2],
     hzb_cleared: bool,
-    use_view_target: bool,
 }
 
 impl RenderSurface {
     pub fn new(
         window_id: WindowId,
         renderer: &Renderer,
-        pipeline_manager: &PipelineManager,
         render_surface_extents: RenderSurfaceExtents,
     ) -> Self {
-        Self::new_internal(
-            Some(window_id),
-            renderer,
-            pipeline_manager,
-            render_surface_extents,
-        )
+        Self::new_internal(Some(window_id), renderer, render_surface_extents)
     }
 
     pub fn new_offscreen_window(
         renderer: &Renderer,
-        pipeline_manager: &PipelineManager,
         render_surface_extents: RenderSurfaceExtents,
     ) -> Self {
-        Self::new_internal(None, renderer, pipeline_manager, render_surface_extents)
+        Self::new_internal(None, renderer, render_surface_extents)
     }
 
     fn new_internal(
         window_id: Option<WindowId>,
         renderer: &Renderer,
-        pipeline_manager: &PipelineManager,
         render_surface_extents: RenderSurfaceExtents,
     ) -> Self {
         let num_render_frames = renderer.num_render_frames();
@@ -312,27 +256,16 @@ impl RenderSurface {
             id: RenderSurfaceId::new(),
             window_id,
             extents: render_surface_extents,
-            resources: SizeDependentResources::new(
-                device_context,
-                render_surface_extents,
-                pipeline_manager,
-            ),
             num_render_frames,
             render_frame_idx: 0,
             presenter_semaphores,
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
-            debug_renderpass: Arc::new(RwLock::new(DebugRenderPass::new(pipeline_manager))),
-            egui_renderpass: Arc::new(RwLock::new(EguiPass::new(device_context, pipeline_manager))),
-            final_resolve_render_pass: Arc::new(RwLock::new(FinalResolveRenderPass::new(
-                device_context,
-                pipeline_manager,
-            ))),
+            egui_renderpass: Arc::new(RwLock::new(EguiPass::new())),
             presenters: Vec::new(),
             presenting_status: RenderSurfacePresentingStatus::Presenting,
             view_target,
             hzb,
             hzb_cleared: false,
-            use_view_target: false,
         }
     }
 
@@ -352,31 +285,16 @@ impl RenderSurface {
         self.picking_renderpass.clone()
     }
 
-    pub fn debug_renderpass(&self) -> Arc<RwLock<DebugRenderPass>> {
-        self.debug_renderpass.clone()
-    }
-
     pub fn egui_renderpass(&self) -> Arc<RwLock<EguiPass>> {
         self.egui_renderpass.clone()
-    }
-
-    pub fn final_resolve_render_pass(&self) -> Arc<RwLock<FinalResolveRenderPass>> {
-        self.final_resolve_render_pass.clone()
     }
 
     pub fn resize(
         &mut self,
         device_context: &DeviceContext,
         render_surface_extents: RenderSurfaceExtents,
-        pipeline_manager: &PipelineManager,
     ) {
         if self.extents != render_surface_extents {
-            self.resources = SizeDependentResources::new(
-                device_context,
-                render_surface_extents,
-                pipeline_manager,
-            );
-
             let extents = Extents3D {
                 width: render_surface_extents.width(),
                 height: render_surface_extents.height(),
@@ -415,75 +333,6 @@ impl RenderSurface {
     pub fn register_presenter<T: 'static + Presenter>(&mut self, create_fn: impl FnOnce() -> T) {
         let presenter = create_fn();
         self.presenters.push(Box::new(presenter));
-    }
-
-    pub fn hdr_rt(&self) -> &RenderTarget {
-        &self.resources.hdr_rt
-    }
-
-    pub fn hdr_rt_mut(&mut self) -> &mut RenderTarget {
-        &mut self.resources.hdr_rt
-    }
-
-    pub fn depth_rt(&self) -> &RenderTarget {
-        &self.resources.depth_rt
-    }
-
-    pub fn depth_rt_mut(&mut self) -> &mut RenderTarget {
-        &mut self.resources.depth_rt
-    }
-
-    pub(crate) fn init_hzb_if_needed(
-        &mut self,
-        render_context: &mut RenderContext<'_>,
-        cmd_buffer: &mut CommandBuffer,
-    ) {
-        if !self.resources.hzb_init {
-            self.resources
-                .depth_rt
-                .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
-
-            cmd_buffer.cmd_begin_render_pass(
-                &[],
-                &Some(DepthStencilRenderTargetBinding {
-                    texture_view: self.resources.depth_rt.rtv(),
-                    depth_load_op: LoadOp::Clear,
-                    stencil_load_op: LoadOp::DontCare,
-                    depth_store_op: StoreOp::Store,
-                    stencil_store_op: StoreOp::DontCare,
-                    clear_value: DepthStencilClearValue {
-                        depth: 0.0,
-                        stencil: 0,
-                    },
-                }),
-            );
-            cmd_buffer.cmd_end_render_pass();
-
-            self.generate_hzb(render_context, cmd_buffer);
-
-            self.resources.hzb_init = true;
-        }
-    }
-
-    pub(crate) fn generate_hzb(
-        &mut self,
-        render_context: &mut RenderContext<'_>,
-        cmd_buffer: &mut CommandBuffer,
-    ) {
-        cmd_buffer.with_label("Generate HZB", |cmd_buffer| {
-            self.depth_rt_mut()
-                .transition_to(cmd_buffer, ResourceState::PIXEL_SHADER_RESOURCE);
-
-            self.get_hzb_surface()
-                .generate_hzb(render_context, cmd_buffer, self.depth_rt().srv());
-
-            self.depth_rt_mut()
-                .transition_to(cmd_buffer, ResourceState::DEPTH_WRITE);
-        });
-    }
-
-    pub(crate) fn get_hzb_surface(&self) -> &HzbSurface {
-        &self.resources.hzb_surface
     }
 
     /// Call the `present` method of all the registered presenters.
@@ -575,14 +424,6 @@ impl RenderSurface {
 
     pub fn view_target(&self) -> &Texture {
         &self.view_target
-    }
-
-    pub fn use_view_target(&self) -> bool {
-        self.use_view_target
-    }
-
-    pub fn set_use_view_target(&mut self, enable: bool) {
-        self.use_view_target = enable;
     }
 
     pub(crate) fn hzb(&self) -> [&Texture; 2] {
