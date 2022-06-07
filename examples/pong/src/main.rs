@@ -4,8 +4,6 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use clap::{ArgEnum, Parser};
-use lgn_source_control::RepositoryName;
 use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
 
 use clap::{ArgEnum, Parser};
@@ -139,7 +137,7 @@ async fn main() -> anyhow::Result<()> {
     .asset_registry(asset_registry.clone());
 
     let runtime_manifest_id =
-        AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_content_provider).await;
+        SharedTreeIdentifier::new(empty_tree_id(&data_content_provider).await.unwrap());
     let mut build_manager = BuildManager::new(data_build, &project, runtime_manifest_id.clone())
         .await
         .unwrap();

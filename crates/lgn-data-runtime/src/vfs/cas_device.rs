@@ -25,10 +25,6 @@ impl CasDevice {
             manifest_id,
         }
     }
-
-    pub(crate) async fn get_empty_manifest_id(provider: &Provider) -> SharedTreeIdentifier {
-        SharedTreeIdentifier::new(provider.write_tree(&Tree::default()).await.unwrap())
-    }
 }
 
 #[async_trait]

@@ -162,7 +162,7 @@ impl DataBuild {
                 // setup default asset registry
                 let data_provider = Arc::clone(&config.data_content_provider);
                 let empty_manifest_id =
-                    AssetRegistryOptions::get_device_cas_empty_manifest_id(&data_provider).await;
+                    SharedTreeIdentifier::new(empty_tree_id(&data_provider).await.unwrap());
 
                 let mut options = AssetRegistryOptions::new()
                     .add_device_cas(data_provider, empty_manifest_id)

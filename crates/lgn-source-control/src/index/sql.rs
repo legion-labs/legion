@@ -381,13 +381,10 @@ impl SqlIndex {
         .await?;
 
         let empty_tree_id = {
-            use lgn_content_store::{
-                indexing::{Tree, TreeWriter},
-                Provider,
-            };
+            use lgn_content_store::{indexing::empty_tree_id, Provider};
 
             let provider = Provider::new_in_memory();
-            provider.write_tree(&Tree::default()).await.unwrap()
+            empty_tree_id(&provider).await.unwrap()
         };
 
         let initial_commit = Commit::new_unique_now(

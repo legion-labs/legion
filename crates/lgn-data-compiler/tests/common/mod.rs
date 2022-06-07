@@ -1,7 +1,7 @@
 use std::{env, path::PathBuf};
 
 use lgn_content_store::{
-    indexing::{BasicIndexer, ResourceWriter, Tree, TreeIdentifier, TreeLeafNode, TreeWriter},
+    indexing::{empty_tree_id, BasicIndexer, ResourceWriter, TreeIdentifier, TreeLeafNode},
     Provider,
 };
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
@@ -57,8 +57,7 @@ pub async fn write_resource(
         .expect("write to content-store");
 
     let indexer = new_resource_type_and_id_indexer();
-    let offline_manifest_id = provider
-        .write_tree(&Tree::default())
+    let offline_manifest_id = empty_tree_id(provider)
         .await
         .expect("initialize content-store manifest");
     indexer
