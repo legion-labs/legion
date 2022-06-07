@@ -17,9 +17,11 @@
     "fmt": "prettier --write . --plugin-search-dir=. ./**/*.svelte",
     "svelte:check": "tsc && svelte-check --use-new-transformation",
     "clean": "rimraf node_modules",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "node build.js"
   },
   "devDependencies": {
+    "@lgn/vite-plugin-api-codegen": "workspace:^0.1.0",
     "@sveltejs/kit": "1.0.0-next.347",
     "@sveltejs/vite-plugin-svelte": "1.0.0-next.47",
     "@swc/core": "^1.2.196",
@@ -29,6 +31,7 @@
     "@types/color-convert": "^2.0.0",
     "@types/estree": "^0.0.51",
     "@types/jest": "^28.1.0",
+    "@types/qs": "^6.9.7",
     "@types/testing-library__jest-dom": "^5.14.3",
     "@typescript-eslint/eslint-plugin": "^5.27.0",
     "@typescript-eslint/parser": "^5.27.0",
@@ -42,6 +45,7 @@
     "postcss-load-config": "^4.0.1",
     "prettier": "^2.6.2",
     "prettier-plugin-svelte": "^2.7.0",
+    "qs": "^6.10.5",
     "rimraf": "^3.0.2",
     "svelte": "^3.48.0",
     "svelte-check": "^2.7.2",
@@ -61,7 +65,6 @@
     "@lgn/proto-editor": "^0.1.0",
     "@lgn/proto-log-stream": "^0.1.0",
     "@lgn/proto-runtime": "^0.1.0",
-    "@lgn/proto-streaming": "^0.1.0",
     "browser-headers": "^0.4.1",
     "golden-layout": "^2.5.0",
     "google-protobuf": "^3.20.1",

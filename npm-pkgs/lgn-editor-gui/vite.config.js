@@ -5,6 +5,7 @@ import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import { loadAll } from "@lgn/config";
+import viteApiCodegen from "@lgn/vite-plugin-api-codegen";
 import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
 // import viteWasmPack from "@lgn/vite-plugin-wasm";
@@ -22,8 +23,16 @@ const plugins = [
       { name: "@lgn/proto-editor", glob: "*.proto" },
       { name: "@lgn/proto-log-stream", glob: "*.proto" },
       { name: "@lgn/proto-runtime", glob: "*.proto" },
-      { name: "@lgn/proto-streaming", glob: "*.proto" },
     ],
+  }),
+  viteApiCodegen({
+    path: "../../crates/lgn-streamer/apis",
+    apiNames: ["streaming"],
+    withPackageJson: true,
+    aliasMappings: {
+      "../../crates/lgn-governance/apis/space.yaml": "Space",
+      "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
+    },
   }),
   // viteWasmPack({
   //   crates: [

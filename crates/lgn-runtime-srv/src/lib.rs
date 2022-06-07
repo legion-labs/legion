@@ -64,9 +64,12 @@ use crate::grpc::{GRPCServer, RuntimeServerCommand};
     author
 )]
 struct Args {
-    /// The address to listen on
+    /// The address to listen on (gRpc)
     #[clap(long)]
     listen_endpoint: Option<SocketAddr>,
+    /// The address to listen on (Rest)
+    #[clap(long)]
+    rest_listen_endpoint: Option<SocketAddr>,
     /// Path to the game manifest
     #[clap(long)]
     manifest: Option<String>,
@@ -80,9 +83,13 @@ struct Args {
 
 #[derive(Debug, Clone, Deserialize)]
 struct Config {
-    /// The endpoint to listen on.
+    /// The endpoint to listen on (gRpc).
     #[serde(default = "Config::default_listen_endpoint")]
     listen_endpoint: SocketAddr,
+
+    /// The endpoint to listen on (Rest).
+    #[serde(default = "Config::default_rest_listen_endpoint")]
+    rest_listen_endpoint: SocketAddr,
 
     /// The root asset.
     root_asset: Option<String>,
@@ -102,12 +109,17 @@ impl Config {
     fn default_listen_endpoint() -> SocketAddr {
         "[::1]:50052".parse().unwrap()
     }
+
+    fn default_rest_listen_endpoint() -> SocketAddr {
+        "[::1]:5052".parse().unwrap()
+    }
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             listen_endpoint: Self::default_listen_endpoint(),
+            rest_listen_endpoint: Self::default_rest_listen_endpoint(),
             root_asset: None,
             streamer: lgn_streamer::Config::default(),
             enable_aws_ec2_nat_public_ipv4_auto_discovery: false,
@@ -145,8 +157,14 @@ pub fn build_runtime() -> App {
         .unwrap_or_default();
 
     let listen_endpoint = args.listen_endpoint.unwrap_or(config.listen_endpoint);
+    let rest_listen_endpoint = args
+        .rest_listen_endpoint
+        .unwrap_or(config.rest_listen_endpoint);
 
-    info!("Listening on {}", listen_endpoint);
+    info!(
+        "Listening on (gRpc) {} and (rest) {}",
+        listen_endpoint, rest_listen_endpoint
+    );
 
     let root_asset = if cfg!(feature = "standalone") {
         // default root object is in sample data
@@ -278,10 +296,13 @@ pub fn build_runtime() -> App {
             add_primary_window: false,
             exit_on_close: false,
         })
-        .insert_resource(GRPCPluginSettings::new(listen_endpoint))
+        .insert_resource(GRPCPluginSettings::hybrid(
+            listen_endpoint,
+            rest_listen_endpoint,
+        ))
         .insert_resource(trace_events_receiver)
         .add_plugin(LogStreamPlugin::default())
-        .add_plugin(GRPCPlugin::default())
+        .add_plugin(GRPCPlugin::hybrid())
         .add_plugin(streamer_plugin);
 
         app.add_startup_system_to_stage(

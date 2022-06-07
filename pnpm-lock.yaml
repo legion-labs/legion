@@ -23,7 +23,7 @@ importers:
       '@napi-rs/cli': ^2.9.0
       rimraf: ^3.0.2
     devDependencies:
-      '@napi-rs/cli': 2.9.0
+      '@napi-rs/cli': 2.10.0
       rimraf: 3.0.2
 
   crates/lgn-auth-node:
@@ -31,7 +31,7 @@ importers:
       '@napi-rs/cli': ^2.8.0
       rimraf: ^3.0.2
     devDependencies:
-      '@napi-rs/cli': 2.9.0
+      '@napi-rs/cli': 2.10.0
       rimraf: 3.0.2
 
   crates/lgn-config-node:
@@ -39,7 +39,7 @@ importers:
       '@napi-rs/cli': ^2.8.0
       rimraf: ^3.0.2
     devDependencies:
-      '@napi-rs/cli': 2.9.0
+      '@napi-rs/cli': 2.10.0
       rimraf: 3.0.2
 
   crates/lgn-content-store-proto:
@@ -62,7 +62,7 @@ importers:
       protobufjs: 6.11.3
     devDependencies:
       rimraf: 3.0.2
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
 
   crates/lgn-editor-proto:
@@ -87,7 +87,7 @@ importers:
       rxjs: 7.5.5
     devDependencies:
       rimraf: 3.0.2
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
 
   crates/lgn-log-stream-proto:
@@ -110,7 +110,7 @@ importers:
       protobufjs: 6.11.3
       rxjs: 7.5.5
     devDependencies:
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
 
   crates/lgn-runtime-proto:
@@ -133,7 +133,7 @@ importers:
       protobufjs: 6.11.3
     devDependencies:
       rimraf: 3.0.2
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
 
   crates/lgn-source-control-proto:
@@ -156,30 +156,7 @@ importers:
       protobufjs: 6.11.3
     devDependencies:
       rimraf: 3.0.2
-      ts-proto: 1.115.1
-      typescript: 4.7.2
-
-  crates/lgn-streaming-proto:
-    specifiers:
-      '@improbable-eng/grpc-web': ^0.15.0
-      browser-headers: ^0.4.1
-      google-protobuf: ^3.20.1
-      long: ^5.2.0
-      pnpm: ^7.1.7
-      protobufjs: ^6.11.3
-      rimraf: ^3.0.2
-      ts-proto: ^1.115.1
-      typescript: ^4.7.2
-    dependencies:
-      '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.20.1
-      browser-headers: 0.4.1
-      google-protobuf: 3.20.1
-      long: 5.2.0
-      pnpm: 7.1.7
-      protobufjs: 6.11.3
-    devDependencies:
-      rimraf: 3.0.2
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
 
   crates/lgn-telemetry-proto:
@@ -202,7 +179,7 @@ importers:
       protobufjs: 6.11.3
     devDependencies:
       rimraf: 3.0.2
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
 
   npm-pkgs/lgn-analytics-gui:
@@ -278,7 +255,7 @@ importers:
       browser-headers: 0.4.1
       d3: 7.4.4
       date-fns: 2.28.0
-      electron: 19.0.3
+      electron: 19.0.4
       electron-serve: 1.1.0
       google-protobuf: 3.20.1
       grpc-web: 1.3.1
@@ -296,7 +273,7 @@ importers:
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.47_svelte@3.48.0+vite@2.9.9
       '@swc/core': 1.2.196
       '@testing-library/jest-dom': 5.16.4
-      '@testing-library/svelte': 3.1.2_svelte@3.48.0
+      '@testing-library/svelte': 3.1.3_svelte@3.48.0
       '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.2
       '@types/babel__core': 7.1.19
       '@types/d3': 7.4.0
@@ -319,14 +296,14 @@ importers:
       postcss-load-config: 4.0.1_postcss@8.4.14
       prettier: 2.6.2
       prettier-plugin-svelte: 2.7.0_kkjbqzpydplecjtkxrgomroeru
-      puppeteer: 14.2.1
+      puppeteer: 14.3.0
       replace-in-file: 6.3.5
       rimraf: 3.0.2
       svelte: 3.48.0
       svelte-check: 2.7.2_x4nqt44wnukty73um2kz4qdzya
       svelte-preprocess: 4.10.6_mzsheb5iucdxpz63weqo4c6ruu
       tailwindcss: 3.0.24
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
       vite: 2.9.9
       vite-tsconfig-paths: 3.5.0_vite@2.9.9
@@ -343,7 +320,6 @@ importers:
       '@lgn/proto-editor': ^0.1.0
       '@lgn/proto-log-stream': ^0.1.0
       '@lgn/proto-runtime': ^0.1.0
-      '@lgn/proto-streaming': ^0.1.0
       '@lgn/vite-plugin-api-codegen': workspace:^0.1.0
       '@lgn/vite-plugin-ts-proto': workspace:^0.1.0
       '@lgn/vite-plugin-wasm': workspace:^0.1.0
@@ -358,6 +334,7 @@ importers:
       '@types/color-convert': ^2.0.0
       '@types/jest': ^28.1.0
       '@types/node': ^17.0.39
+      '@types/qs': ^6.9.7
       '@types/testing-library__jest-dom': ^5.14.3
       '@types/uuid': ^8.3.4
       '@typescript-eslint/eslint-plugin': ^5.27.0
@@ -385,6 +362,7 @@ importers:
       prettier: ^2.6.2
       prettier-plugin-svelte: ^2.7.0
       protobufjs: ^6.11.3
+      qs: ^6.10.5
       rimraf: ^3.0.2
       rxjs: 7.5.5
       svelte: ^3.48.0
@@ -409,7 +387,6 @@ importers:
       '@lgn/proto-editor': link:../../crates/lgn-editor-proto
       '@lgn/proto-log-stream': link:../../crates/lgn-log-stream-proto
       '@lgn/proto-runtime': link:../../crates/lgn-runtime-proto
-      '@lgn/proto-streaming': link:../../crates/lgn-streaming-proto
       '@lgn/web-client': link:../lgn-web-client
       browser-headers: 0.4.1
       color-convert: 2.0.1
@@ -440,6 +417,7 @@ importers:
       '@types/color-convert': 2.0.0
       '@types/jest': 28.1.0
       '@types/node': 17.0.39
+      '@types/qs': 6.9.7
       '@types/testing-library__jest-dom': 5.14.3
       '@types/uuid': 8.3.4
       '@typescript-eslint/eslint-plugin': 5.27.0_dszb5tb7atwkjjijmmov4qhi7i
@@ -448,7 +426,7 @@ importers:
       c8: 7.11.3
       concurrently: 7.2.1
       cross-env: 7.0.3
-      electron: 19.0.3
+      electron: 19.0.4
       electron-serve: 1.1.0
       eslint: 8.16.0
       eslint-config-prettier: 8.5.0_eslint@8.16.0
@@ -458,12 +436,13 @@ importers:
       postcss-load-config: 4.0.1_postcss@8.4.14
       prettier: 2.6.2
       prettier-plugin-svelte: 2.7.0_kkjbqzpydplecjtkxrgomroeru
+      qs: 6.10.5
       rimraf: 3.0.2
       svelte: 3.48.0
       svelte-check: 2.7.2_x4nqt44wnukty73um2kz4qdzya
       svelte-preprocess: 4.10.6_mzsheb5iucdxpz63weqo4c6ruu
       tailwindcss: 3.0.24
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
       vite: 2.9.9
       vite-tsconfig-paths: 3.5.0_vite@2.9.9
@@ -474,7 +453,6 @@ importers:
       '@improbable-eng/grpc-web': ^0.15.0
       '@lgn/proto-log-stream': ^0.1.0
       '@lgn/proto-runtime': ^0.1.0
-      '@lgn/proto-streaming': ^0.1.0
       '@lgn/vite-plugin-api-codegen': workspace:^0.1.0
       '@lgn/vite-plugin-ts-proto': workspace:^0.1.0
       '@lgn/web-client': ^0.1.0
@@ -524,11 +502,10 @@ importers:
       '@improbable-eng/grpc-web': 0.15.0_google-protobuf@3.20.1
       '@lgn/proto-log-stream': link:../../crates/lgn-log-stream-proto
       '@lgn/proto-runtime': link:../../crates/lgn-runtime-proto
-      '@lgn/proto-streaming': link:../../crates/lgn-streaming-proto
       '@lgn/web-client': link:../lgn-web-client
       browser-headers: 0.4.1
       color-convert: 2.0.1
-      electron: 19.0.3
+      electron: 19.0.4
       electron-serve: 1.1.0
       google-protobuf: 3.20.1
       grpc-web: 1.3.1
@@ -542,7 +519,7 @@ importers:
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.47_svelte@3.48.0+vite@2.9.9
       '@swc/core': 1.2.196
       '@testing-library/jest-dom': 5.16.4
-      '@testing-library/svelte': 3.1.2_svelte@3.48.0
+      '@testing-library/svelte': 3.1.3_svelte@3.48.0
       '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.2
       '@types/color-convert': 2.0.0
       '@types/jest': 28.1.0
@@ -566,7 +543,7 @@ importers:
       svelte-check: 2.7.2_x4nqt44wnukty73um2kz4qdzya
       svelte-preprocess: 4.10.6_mzsheb5iucdxpz63weqo4c6ruu
       tailwindcss: 3.0.24
-      ts-proto: 1.115.1
+      ts-proto: 1.115.4
       typescript: 4.7.2
       vite: 2.9.9
       vite-tsconfig-paths: 3.5.0_vite@2.9.9
@@ -582,7 +559,7 @@ importers:
       '@lgn/proto-editor': ^0.1.0
       '@lgn/proto-log-stream': ^0.1.0
       '@lgn/proto-runtime': ^0.1.0
-      '@lgn/proto-streaming': ^0.1.0
+      '@lgn/vite-plugin-api-codegen': workspace:^0.1.0
       '@sveltejs/kit': 1.0.0-next.347
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.47
       '@swc/core': ^1.2.196
@@ -592,6 +569,7 @@ importers:
       '@types/color-convert': ^2.0.0
       '@types/estree': ^0.0.51
       '@types/jest': ^28.1.0
+      '@types/qs': ^6.9.7
       '@types/testing-library__jest-dom': ^5.14.3
       '@typescript-eslint/eslint-plugin': ^5.27.0
       '@typescript-eslint/parser': ^5.27.0
@@ -614,6 +592,7 @@ importers:
       prettier: ^2.6.2
       prettier-plugin-svelte: ^2.7.0
       protobufjs: ^6.11.3
+      qs: ^6.10.5
       rimraf: ^3.0.2
       rxjs: 7.5.5
       svelte: ^3.48.0
@@ -634,7 +613,6 @@ importers:
       '@lgn/proto-editor': link:../../crates/lgn-editor-proto
       '@lgn/proto-log-stream': link:../../crates/lgn-log-stream-proto
       '@lgn/proto-runtime': link:../../crates/lgn-runtime-proto
-      '@lgn/proto-streaming': link:../../crates/lgn-streaming-proto
       browser-headers: 0.4.1
       golden-layout: 2.5.0
       google-protobuf: 3.20.1
@@ -647,6 +625,7 @@ importers:
       rxjs: 7.5.5
       svelte-window: 1.2.3
     devDependencies:
+      '@lgn/vite-plugin-api-codegen': link:../vite-plugin-api-codegen
       '@sveltejs/kit': 1.0.0-next.347_svelte@3.48.0
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.47_svelte@3.48.0+vite@2.9.9
       '@swc/core': 1.2.196
@@ -656,6 +635,7 @@ importers:
       '@types/color-convert': 2.0.0
       '@types/estree': 0.0.51
       '@types/jest': 28.1.0
+      '@types/qs': 6.9.7
       '@types/testing-library__jest-dom': 5.14.3
       '@typescript-eslint/eslint-plugin': 5.27.0_dszb5tb7atwkjjijmmov4qhi7i
       '@typescript-eslint/parser': 5.27.0_xztl6dhthcahlo6akmb2bmjmle
@@ -669,6 +649,7 @@ importers:
       postcss-load-config: 4.0.1_postcss@8.4.14
       prettier: 2.6.2
       prettier-plugin-svelte: 2.7.0_kkjbqzpydplecjtkxrgomroeru
+      qs: 6.10.5
       rimraf: 3.0.2
       svelte: 3.48.0
       svelte-check: 2.7.2_x4nqt44wnukty73um2kz4qdzya
@@ -1075,8 +1056,8 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.13
     dev: true
 
-  /@napi-rs/cli/2.9.0:
-    resolution: {integrity: sha512-qZ49ORZJ8rsHlvnnLsJCg9Ik+KfhiIgSea1HDMf6A9KBVxwWCijNhSO8zFvvBr7m1m44cx9WWhnQDnwPqSDeLA==}
+  /@napi-rs/cli/2.10.0:
+    resolution: {integrity: sha512-pK/VLOdo690FEItPJ9T5PLEfzmDTHgXjzuVChnsKvqI9vPg+rH12iyoxOrux6PAqg/pImJTd4CCabRqEfLt/sA==}
     engines: {node: '>= 10'}
     hasBin: true
     dev: true
@@ -1378,8 +1359,8 @@ packages:
       svelte: 3.48.0
     dev: true
 
-  /@testing-library/svelte/3.1.2_svelte@3.48.0:
-    resolution: {integrity: sha512-S66yOJFB8bgnFFk7lslhudZXHD+AWFmhWAlt7Np5j2N9O+HUiIJiD3/LeLm28YGcPcIkom5RskhPYAM+N3WLlw==}
+  /@testing-library/svelte/3.1.3_svelte@3.48.0:
+    resolution: {integrity: sha512-pyed3yMnTu7wG9Z4XKoIxdrx52hSEFDC8qUaiSsiSh8tBVj3ZjqEKnV2Nfc0IF2llEkT0B7QOXnOVTLJ3O5RCw==}
     engines: {node: '>= 10'}
     peerDependencies:
       svelte: 3.x
@@ -1690,8 +1671,8 @@ packages:
       '@types/node': 17.0.39
     dev: true
 
-  /@types/node/16.11.38:
-    resolution: {integrity: sha512-hjO/0K140An3GWDw2HJfq7gko3wWeznbjXgg+rzPdVzhe198hp4x2i1dgveAOEiFKd8sOilAxzoSJiVv5P/CUg==}
+  /@types/node/16.11.39:
+    resolution: {integrity: sha512-K0MsdV42vPwm9L6UwhIxMAOmcvH/1OoVkZyCgEtVu4Wx7sElGloy/W7kMBNe/oJ7V/jW9BVt1F6RahH6e7tPXw==}
 
   /@types/node/17.0.39:
     resolution: {integrity: sha512-JDU3YLlnPK3WDao6/DlXLOgSNpG13ct+CwIO17V8q0/9fWJyeMJJ/VyZ1lv8kDprihvZMydzVwf0tQOqGiY2Nw==}
@@ -1706,6 +1687,10 @@ packages:
 
   /@types/pug/2.0.6:
     resolution: {integrity: sha512-SnHmG9wN1UVmagJOnyo/qkk0Z7gejYxOYYmaAwr5u2yFYfsupN3sg10kyzN8Hep/2zbHxCnsumxOoRIRMBwKCg==}
+    dev: true
+
+  /@types/qs/6.9.7:
+    resolution: {integrity: sha512-FGa1F62FT09qcrueBA6qYTrJPVDzah9a+493+o2PCXsesWHIn27G98TsSMs3WPNbZIEj4+VJf6saSFpvD+3Zsw==}
     dev: true
 
   /@types/responselike/1.0.0:
@@ -2144,6 +2129,13 @@ packages:
       lowercase-keys: 2.0.0
       normalize-url: 4.5.1
       responselike: 1.0.2
+
+  /call-bind/1.0.2:
+    resolution: {integrity: sha512-7O+FbCihrB5WGbFYesctwmTKae6rOiIzmz1icreWJ+0aA7LJfuqhEso2T9ncpcFtzMQtzXf2QGGueWJGTYsqrA==}
+    dependencies:
+      function-bind: 1.1.1
+      get-intrinsic: 1.1.2
+    dev: true
 
   /callsites/3.1.0:
     resolution: {integrity: sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ==}
@@ -2799,14 +2791,14 @@ packages:
     resolution: {integrity: sha512-0Rcpald12O11BUogJagX3HsCN3FE83DSqWjgXoHo5a72KUKMSfI39XBgJpgNNxS9fuGzytaFjE06kZkiVFy2qA==}
     dev: true
 
-  /electron/19.0.3:
-    resolution: {integrity: sha512-V/8pFkXUOsoHcBzuTYVSbIQKLIwI/FAxfpvbkMazdaO/weZoIf9AN3Qc4Wuo9+489mhelDYc8lSX5N7c6A5n6A==}
+  /electron/19.0.4:
+    resolution: {integrity: sha512-roRYr1VNAWIhjD9n8qZdmhROtrzsFpuZEXrjWAw+GqPbZlrUInmvFCviRDC2Lt+VBsTNRpTfPpfzXSlLL4reEw==}
     engines: {node: '>= 8.6'}
     hasBin: true
     requiresBuild: true
     dependencies:
       '@electron/get': 1.14.1
-      '@types/node': 16.11.38
+      '@types/node': 16.11.39
       extract-zip: 1.7.0
     transitivePeerDependencies:
       - supports-color
@@ -3402,13 +3394,12 @@ packages:
     resolution: {integrity: sha512-Hm0ixYtaSZ/V7C8FJrtZIuBBI+iSgL+1Aq82zSu8VQNB4S3Gk8e7Qs3VwBDJAhmRZcFqkl3tQu36g/Foh5I5ig==}
     dev: true
 
-  /get-intrinsic/1.1.1:
-    resolution: {integrity: sha512-kWZrnVM42QCiEA2Ig1bG8zjoIMOgxWwYCEeNdwY6Tv/cOSeGpcoX4pXHfKUxNKVoArnrEr2e9srnAxxGIraS9Q==}
+  /get-intrinsic/1.1.2:
+    resolution: {integrity: sha512-Jfm3OyCxHh9DJyc28qGk+JmfkpO41A4XkneDSujN9MDXrm4oDKdHvndhZ2dN94+ERNfkYJWDclW6k2L/ZGHjXA==}
     dependencies:
       function-bind: 1.1.1
       has: 1.0.3
       has-symbols: 1.0.3
-    optional: true
 
   /get-stream/4.1.0:
     resolution: {integrity: sha512-GMat4EJ5161kIy2HevLlr4luNjBgvmj413KaQA7jt4V8B4RDsfpHk7WQ9GVqfYyyx8OS/L66Kox+rJRNklLK7w==}
@@ -3571,13 +3562,12 @@ packages:
   /has-property-descriptors/1.0.0:
     resolution: {integrity: sha512-62DVLZGoiEBDHQyqG4w9xCuZ7eJEwNmJRWw2VY84Oedb7WFcA27fiEVe8oUQx9hAUJ4ekurquucTGwsyO1XGdQ==}
     dependencies:
-      get-intrinsic: 1.1.1
+      get-intrinsic: 1.1.2
     optional: true
 
   /has-symbols/1.0.3:
     resolution: {integrity: sha512-l3LCuF6MgDNwTDKkdYGEihYjt5pRPbEg46rtlmnSPlUbgmB8LOIrKJbYYFBSbnPaJexMKtiPO8hmeRjRz2Td+A==}
     engines: {node: '>= 0.4'}
-    optional: true
 
   /has/1.0.3:
     resolution: {integrity: sha512-f2dvO0VU6Oej7RkWJGrehjbzMAjFp5/VKPp5tTpWIV4JHHZK1/BxbFRtf/siA2SWTe09caDmVtYYzWEIbBS4zw==}
@@ -3716,7 +3706,7 @@ packages:
     dev: false
 
   /isarray/0.0.1:
-    resolution: {integrity: sha1-ihis/Kmo9Bd+Cav8YDiTmwXR7t8=}
+    resolution: {integrity: sha512-D2S+3GLxWH+uhrNEcoh/fnmYeP8E8/zHl644d/jdA0g2uyXvy3sb0qxotE+ne0LtccHknQzWwZEzhak7oJ0COQ==}
     dev: true
 
   /isarray/1.0.0:
@@ -4147,6 +4137,10 @@ packages:
     engines: {node: '>= 6'}
     dev: true
 
+  /object-inspect/1.12.2:
+    resolution: {integrity: sha512-z+cPxW0QGUp0mcqcsgQyLVRDoXFQbXOwBaqyF7VIgI4TWNQsDHrBpUQslRmIfAoYWdYzs6UlKJtB2XJpTaNSpQ==}
+    dev: true
+
   /object-keys/1.1.1:
     resolution: {integrity: sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==}
     engines: {node: '>= 0.4'}
@@ -4455,8 +4449,8 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /puppeteer/14.2.1:
-    resolution: {integrity: sha512-cIEsAbEbNYqHbkvdZY4+YSdxVwh4YFqOHSezuLpu46XAYlKkQeAMdJQ+mDAxg9v77gIn8PHJ6PlftIVsWKRACA==}
+  /puppeteer/14.3.0:
+    resolution: {integrity: sha512-pDtg1+vyw1UPIhUjh2/VW1HUdQnaZJHfMacrJciR3AVm+PBiqdCEcFeFb3UJ/CDEQlHOClm3/WFa7IjY25zIGg==}
     engines: {node: '>=14.1.0'}
     requiresBuild: true
     dependencies:
@@ -4479,6 +4473,13 @@ packages:
       - utf-8-validate
     dev: true
 
+  /qs/6.10.5:
+    resolution: {integrity: sha512-O5RlPh0VFtR78y79rgcgKK4wbAI0C5zGVLztOIdpWX6ep368q5Hv6XRxDvXuZ9q3C6v+e3n8UfZZJw7IIG27eQ==}
+    engines: {node: '>=0.6'}
+    dependencies:
+      side-channel: 1.0.4
+    dev: true
+
   /queue-microtask/1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
     dev: true
@@ -4493,7 +4494,7 @@ packages:
     dev: true
 
   /readable-stream/1.0.34:
-    resolution: {integrity: sha1-Elgg40vIQtLyqq+v5MKRbuMsFXw=}
+    resolution: {integrity: sha512-ok1qVCJuRkNmvebYikljxJA/UEsKwLl2nI1OmaqAu4/UE+h0wKCHok4XkL/gvi39OacXvw59RJUOFUkDib2rHg==}
     dependencies:
       core-util-is: 1.0.3
       inherits: 2.0.4
@@ -4565,7 +4566,7 @@ packages:
     dev: true
 
   /require-directory/2.1.1:
-    resolution: {integrity: sha1-jGStX9MNqxyXbiNE/+f3kqam30I=}
+    resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
     engines: {node: '>=0.10.0'}
     dev: true
 
@@ -4584,7 +4585,7 @@ packages:
     dev: true
 
   /responselike/1.0.2:
-    resolution: {integrity: sha1-kYcg7ztjHFZCvgaPFa3lpG9Loec=}
+    resolution: {integrity: sha512-/Fpe5guzJk1gPqdJLJR5u7eG/gNY4nImjbRDaVWVMRhne55TCmj2i9Q+54PBRfatRC8v/rIiv9BN0pMd9OV5EQ==}
     dependencies:
       lowercase-keys: 1.0.1
 
@@ -4638,7 +4639,7 @@ packages:
     dev: true
 
   /rw/1.3.3:
-    resolution: {integrity: sha1-P4Yt+pGrdmsUiF700BEkv9oHT7Q=}
+    resolution: {integrity: sha512-PdhdWy89SiZogBLaw42zdeqtRJ//zFd2PgQavcICDUgJT5oW10QCRKbJ6bg4r0/UY2M6BWd5tkxuGFRvCkgfHQ==}
     dev: false
 
   /rxjs/6.6.7:
@@ -4688,12 +4689,12 @@ packages:
     dev: true
 
   /semaphore-async-await/1.5.1:
-    resolution: {integrity: sha1-hXvvXjZEYBykuVcLh+nfXKEpdPo=}
+    resolution: {integrity: sha512-b/ptP11hETwYWpeilHXXQiV5UJNJl7ZWWooKRE5eBIYWoom6dZ0SluCIdCtKycsMtZgKWE01/qAw6jblw1YVhg==}
     engines: {node: '>=4.1'}
     dev: false
 
   /semver-compare/1.0.0:
-    resolution: {integrity: sha1-De4hahyUGrN+nvsXiPavxf9VN/w=}
+    resolution: {integrity: sha512-YM3/ITh2MJ5MtzaM429anh+x2jiLVjqILF4m4oyQB18W7Ggea7BfqdH/wGMK7dDiMghv/6WG7znWMwUDzJiXow==}
     optional: true
 
   /semver/6.3.0:
@@ -4735,6 +4736,14 @@ packages:
     optionalDependencies:
       fsevents: 2.3.2
     dev: false
+
+  /side-channel/1.0.4:
+    resolution: {integrity: sha512-q5XPytqFEIKHkGdiMIrY10mvLRvnQh42/+GoBlFW3b2LXLE2xxJpZFdm94we0BaoV3RwJyGqg5wS7epxTv0Zvw==}
+    dependencies:
+      call-bind: 1.0.2
+      get-intrinsic: 1.1.2
+      object-inspect: 1.12.2
+    dev: true
 
   /signal-exit/3.0.7:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
@@ -4783,7 +4792,7 @@ packages:
     dev: true
 
   /spawn-command/0.0.2-1:
-    resolution: {integrity: sha1-YvXpRmmBwbeW3Fkpk34RycaSG9A=}
+    resolution: {integrity: sha512-n98l9E2RMSJ9ON1AKisHzz7V42VDiBQGY6PB1BwRglz99wpVsSuGzQ+jOi6lFXBGVTCrRpltvjm+/XA+tpeJrg==}
     dev: true
 
   /sprintf-js/1.1.2:
@@ -4800,7 +4809,7 @@ packages:
     dev: true
 
   /string_decoder/0.10.31:
-    resolution: {integrity: sha1-YuIDvEF2bGwoyfyEMB2rHFMQ+pQ=}
+    resolution: {integrity: sha512-ev2QzSzWPYmy9GuqfIVildA4OdcGLeFZQrq5ys6RtiuF+RQQiZWr8TZNyAcuVXyQRYfEO+MsoB/1BuQVhOJuoQ==}
     dev: true
 
   /string_decoder/1.1.1:
@@ -4822,7 +4831,7 @@ packages:
     dev: true
 
   /strip-bom/3.0.0:
-    resolution: {integrity: sha1-IzTBjpx1n3vdVv3vfprj1YjmjtM=}
+    resolution: {integrity: sha512-vavAMRXOgBVNF6nyEEmL3DBK19iRpDcoIwW+swQ+CbGiu7lju6t+JklA1MHweoWtadgt4ISVUsXLyDq34ddcwA==}
     engines: {node: '>=4'}
     dev: true
 
@@ -5061,7 +5070,7 @@ packages:
     dev: true
 
   /through/2.3.8:
-    resolution: {integrity: sha1-DdTJ/6q8NXlgsbckEV1+Doai4fU=}
+    resolution: {integrity: sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==}
     dev: true
 
   /through2/2.0.5:
@@ -5114,7 +5123,7 @@ packages:
     dev: true
 
   /tr46/0.0.3:
-    resolution: {integrity: sha1-gYT9NH2snNwYWZLzpmIuFLnZq2o=}
+    resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
     dev: true
 
   /tr46/3.0.0:
@@ -5143,8 +5152,8 @@ packages:
       protobufjs: 6.11.3
     dev: true
 
-  /ts-proto/1.115.1:
-    resolution: {integrity: sha512-Zq1TvLQdnD6eNhbfdccnk1X9tVN5bwwPX4n2/gR9rVEHApZwHInV5Ntqd9lzl22lJ2LjlCNNYQdMlWak8d3EGA==}
+  /ts-proto/1.115.4:
+    resolution: {integrity: sha512-q2FfWVpTNJRBMXglZH0wHMEbLOEuxkDuRtyk0j5POGm7oA1Btd9sHw6GzGs6DkfYfre/BCtLmMi4uOueJpBvCQ==}
     hasBin: true
     dependencies:
       '@types/object-hash': 1.3.4

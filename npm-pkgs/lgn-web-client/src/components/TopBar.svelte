@@ -74,7 +74,7 @@
   }
 
   $: if (devSettings) {
-    devSettingsTitle = `Editor server url: ${devSettings.editorServerUrl}\nRuntime server url: ${devSettings.runtimeServerUrl}`;
+    devSettingsTitle = `Rest editor server url: ${devSettings.restEditorServerUrl}\nRest runtime server url: ${devSettings.restRuntimeServerUrl}\ngRpc editor server url: ${devSettings.grpcEditorServerUrl}\ngRpc runtime server url: ${devSettings.grpcRuntimeServerUrl}`;
   }
 </script>
 

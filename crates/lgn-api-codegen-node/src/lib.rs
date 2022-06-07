@@ -1,12 +1,8 @@
 //! Api Codegen crate used in Node applications
 
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
-<<<<<<< HEAD
 use lgn_api_codegen::{Language, TypeScriptOptions};
-=======
-use lgn_api_codegen::{GenerationOptions, Language};
->>>>>>> f25890514 (Codegen: Optionally generate node modules when targetting TS)
 use napi::bindgen_prelude::{Error, Result};
 use napi_derive::napi;
 
@@ -25,6 +21,8 @@ pub struct GenerateOption {
     pub with_package_json: Option<bool>,
     /// Skips code formatting
     pub skip_format: Option<bool>,
+    /// Aliases for external API references
+    pub alias_mappings: Option<HashMap<String, String>>,
 }
 
 /// Generate api clients.
@@ -37,6 +35,13 @@ pub struct GenerateOption {
 pub fn generate(options: GenerateOption) -> Result<()> {
     if let Err(error) = lgn_api_codegen::generate(
         Language::TypeScript(TypeScriptOptions {
+            alias_mappings: options
+                .alias_mappings
+                .unwrap_or_default()
+                .try_into()
+                .map_err(|err: lgn_api_codegen::errors::Error| {
+                    Error::from_reason(err.to_string())
+                })?,
             prettier_config_path: options.prettier_config_path.map(PathBuf::from),
             with_package_json: options.with_package_json.unwrap_or_default(),
             skip_format: options.skip_format.unwrap_or_default(),

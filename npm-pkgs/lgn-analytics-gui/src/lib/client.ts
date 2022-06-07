@@ -2,7 +2,7 @@ import {
   GrpcWebImpl,
   PerformanceAnalyticsClientImpl,
 } from "@lgn/proto-telemetry/dist/analytics";
-import { enhanceGrpcClient } from "@lgn/web-client/src/lib/grpcClient";
+import { enhanceGrpcClient } from "@lgn/web-client/src/lib/client";
 
 import { accessTokenCookieName } from "@/constants";
 
