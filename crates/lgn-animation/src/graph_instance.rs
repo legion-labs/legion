@@ -10,11 +10,11 @@ use crate::{
 pub struct GraphInstance {
     //graph_variation: GraphVariation,
     nodes: Vec<Box<dyn GraphNode>>,
-    //root_node: PoseNode,
+    // root_node: PoseNode,
 }
 
 impl GraphInstance {
-    pub(crate) fn new(raw_nodes: &Vec<Vec3>) -> Self {
+    pub(crate) fn new(graph_variation: GraphVariation) -> Self {
         // TODO create the nodes from the raw_nodes
         let nodes = Vec::new();
         Self { nodes }

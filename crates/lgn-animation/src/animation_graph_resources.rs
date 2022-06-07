@@ -16,10 +16,10 @@ impl GraphDataSet {
 
 pub struct GraphDefinition {
     persistent_node_indices: Vec<i16>,
-    instance_node_start_offsets: Vec<u32>,
-    instance_required_memory: u32,
-    instance_required_alignment: u32,
-    num_control_parameters: i32,
+    // instance_node_start_offsets: Vec<u32>,
+    // instance_required_memory: u32,
+    // instance_required_alignment: u32,
+    // num_control_parameters: i32,
     root_node_idx: i16,
     // control_parameter_ids: Vec<str>,
     // node_paths: Vec<str>,

@@ -235,20 +235,6 @@ impl Transform {
         value
     }
 
-    /// Adds `self` to `transform` component by component, returning the
-    /// resulting [`Transform`]
-    #[inline]
-    #[must_use]
-    pub fn add_transform(&self, transform: Self) -> Self {
-        let translation: Vec3 = self.translation + transform.translation;
-        let rotation: Quat = self.rotation + transform.rotation;
-        Self {
-            translation,
-            rotation,
-            scale: self.scale,
-        }
-    }
-
     /// Changes the `scale` of this [`Transform`], multiplying the current
     /// `scale` by `scale_factor`.
     #[inline]
@@ -296,14 +282,5 @@ impl Mul<Vec3> for Transform {
 
     fn mul(self, value: Vec3) -> Self::Output {
         self.mul_vec3(value)
-    }
-}
-
-impl Add<Self> for Transform {
-    type Output = Self;
-
-    #[inline]
-    fn add(self, transform: Self) -> Self::Output {
-        self.add_transform(transform)
     }
 }
