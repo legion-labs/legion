@@ -34,17 +34,19 @@ use analytics_service::AnalyticsService;
 use anyhow::{Context, Result};
 use auth::AuthLayer;
 use clap::{Parser, Subcommand};
-use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url, LocalBlobStorage, Lz4BlobStorageAdapter};
+use health_check_service::HealthCheckService;
+use lakehouse::jit_lakehouse::JitLakehouse;
+use lakehouse::local_jit_lakehouse::LocalJitLakehouse;
+use lakehouse::remote_jit_lakehouse::RemoteJitLakehouse;
+use lgn_blob_storage::{
+    AwsS3BlobStorage, AwsS3Url, BlobStorage, LocalBlobStorage, Lz4BlobStorageAdapter,
+};
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalyticsServer;
 use lgn_telemetry_proto::health::health_server::HealthServer;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::prelude::*;
 use std::net::SocketAddr;
 use tonic::transport::Server;
-
-use crate::health_check_service::HealthCheckService;
-use crate::lakehouse::local_jit_lakehouse::LocalJitLakehouse;
-use crate::lakehouse::remote_jit_lakehouse::RemoteJitLakehouse;
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Performance Analytics Server")]
@@ -56,6 +58,9 @@ struct Cli {
 
     #[clap(subcommand)]
     spec: DataLakeSpec,
+
+    #[clap(help = "optional local path or s3://bucket/root")]
+    lakehouse_uri: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -71,6 +76,24 @@ enum DataLakeSpec {
     },
 }
 
+async fn new_jit_lakehouse(
+    uri: String,
+    pool: sqlx::AnyPool,
+    data_lake_blobs: Arc<dyn BlobStorage>,
+) -> Result<Arc<dyn JitLakehouse>> {
+    if uri.starts_with("s3://") {
+        Ok(Arc::new(
+            RemoteJitLakehouse::new(pool, data_lake_blobs, AwsS3Url::from_str(&uri)?).await,
+        ))
+    } else {
+        Ok(Arc::new(LocalJitLakehouse::new(
+            pool,
+            data_lake_blobs,
+            PathBuf::from(uri),
+        )))
+    }
+}
+
 /// ``connect_to_local_data_lake`` serves a locally hosted data lake
 ///
 /// # Errors
@@ -79,6 +102,7 @@ enum DataLakeSpec {
 pub async fn connect_to_local_data_lake(
     data_lake_path: PathBuf,
     cache_path: PathBuf,
+    lakehouse_uri: Option<String>,
 ) -> Result<AnalyticsService> {
     let blocks_folder = data_lake_path.join("blobs");
     let data_lake_blobs = Arc::new(LocalBlobStorage::new(blocks_folder).await?);
@@ -91,11 +115,12 @@ pub async fn connect_to_local_data_lake(
         .connect(&db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
-    let lakehouse = Arc::new(LocalJitLakehouse::new(
+    let lakehouse = new_jit_lakehouse(
+        lakehouse_uri.unwrap_or_else(|| cache_path.join("tables").to_string_lossy().to_string()),
         pool.clone(),
         data_lake_blobs.clone(),
-        cache_path.join("tables"),
-    ));
+    )
+    .await?;
     Ok(AnalyticsService::new(
         pool,
         data_lake_blobs,
@@ -113,6 +138,7 @@ pub async fn connect_to_remote_data_lake(
     db_uri: &str,
     s3_url_data_lake: &str,
     s3_url_cache: &str,
+    lakehouse_uri: Option<String>,
 ) -> Result<AnalyticsService> {
     info!("connecting to blob storage");
     let data_lake_blobs =
@@ -125,11 +151,19 @@ pub async fn connect_to_remote_data_lake(
         .connect(db_uri)
         .await
         .with_context(|| String::from("Connecting to telemetry database"))?;
+
+    let lakehouse = new_jit_lakehouse(
+        lakehouse_uri.unwrap_or_else(|| format!("{}/tables", s3_url_data_lake)),
+        pool.clone(),
+        data_lake_blobs.clone(),
+    )
+    .await?;
+
     Ok(AnalyticsService::new(
         pool,
         data_lake_blobs,
         cache_blobs,
-        Arc::new(RemoteJitLakehouse {}),
+        lakehouse,
     ))
 }
 
@@ -146,12 +180,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         DataLakeSpec::Local {
             data_lake_path,
             cache_path,
-        } => connect_to_local_data_lake(data_lake_path, cache_path).await?,
+        } => connect_to_local_data_lake(data_lake_path, cache_path, args.lakehouse_uri).await?,
         DataLakeSpec::Remote {
             db_uri,
             s3_lake_url,
             s3_cache_url,
-        } => connect_to_remote_data_lake(&db_uri, &s3_lake_url, &s3_cache_url).await?,
+        } => {
+            connect_to_remote_data_lake(&db_uri, &s3_lake_url, &s3_cache_url, args.lakehouse_uri)
+                .await?
+        }
     };
 
     // cors fails: Access to fetch at 'https://analytics-api.playground.legionlabs.com:9090/analytics.PerformanceAnalytics/list_recent_processes' from origin 'https://analytics.legionengine.com' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
