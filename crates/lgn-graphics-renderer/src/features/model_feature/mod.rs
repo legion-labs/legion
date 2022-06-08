@@ -3,22 +3,23 @@ use crate::core::{
     RenderListSliceTyped, TmpDrawContext, VisibleView,
 };
 
-struct KickLayer {
-    mat_idx: u32,
+#[allow(dead_code)]
+struct TmpKickLayer {
+    render_layer_id: RenderLayerId,
 }
 
 #[cfg(debug_assertions)]
-impl Drop for KickLayer {
+impl Drop for TmpKickLayer {
     fn drop(&mut self) {
-        // println!("KickLayer dropped");
+        // println!("TmpKickLayer dropped");
     }
 }
 
-impl RenderListCallable for KickLayer {
+impl RenderListCallable for TmpKickLayer {
     fn call(&self, _draw_context: &mut TmpDrawContext) {
         #[cfg(debug_assertions)]
         {
-            // println!("KickLayer called: {}", self.mat_idx);
+            // println!("TmpKickLayer called: {}", self.render_layer_id);
         }
     }
 }
@@ -37,19 +38,19 @@ impl RenderFeature for ModelFeature {
         _view_id: &VisibleView,
         _layer_id: RenderLayerId,
     ) -> Option<RenderListSliceRequirement> {
-        Some(RenderListSliceRequirement::new::<KickLayer>(1))
+        Some(RenderListSliceRequirement::new::<TmpKickLayer>(1))
     }
 
     fn prepare_render_list(
         &self,
         _view_id: &VisibleView,
-        _layer_id: RenderLayerId,
+        render_layer_id: RenderLayerId,
         render_list_slice: RenderListSlice,
     ) {
-        let render_list_slice = RenderListSliceTyped::<KickLayer>::new(render_list_slice);
+        let render_list_slice = RenderListSliceTyped::<TmpKickLayer>::new(render_list_slice);
 
         for writer in render_list_slice.iter() {
-            writer.write(0, KickLayer { mat_idx: 0xff });
+            writer.write(0, TmpKickLayer { render_layer_id });
         }
     }
 }
