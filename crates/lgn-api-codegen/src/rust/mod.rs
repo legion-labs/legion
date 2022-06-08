@@ -2,7 +2,7 @@ mod filters;
 
 use crate::{
     api_types::{GenerationContext, MediaType, Type},
-    Generator, Result,
+    Language, Result, RustOptions,
 };
 use askama::Template;
 use rust_format::{Formatter, RustFmt};
@@ -10,19 +10,22 @@ use std::path::Path;
 
 #[derive(askama::Template)]
 #[template(path = "lib.rs.jinja", escape = "none")]
-struct RustTemplate<'a> {
-    pub ctx: &'a GenerationContext,
+struct RustTemplate {
+    pub ctx: RustGenerationContext,
 }
 
-#[derive(Default)]
-pub(crate) struct RustGenerator {}
+pub type RustGenerationContext = GenerationContext<RustOptions>;
 
-impl Generator for RustGenerator {
-    fn generate(&self, ctx: &GenerationContext, output_dir: &Path) -> Result<()> {
+impl Language {
+    pub(crate) fn generate_rust(
+        ctx: GenerationContext,
+        options: RustOptions,
+        output_dir: &Path,
+    ) -> Result<()> {
         std::fs::create_dir_all(output_dir)?;
 
         let output_file = output_dir.join("api.rs");
-        let content = generate_content(ctx)?;
+        let content = generate_content(ctx.with_options(options))?;
 
         std::fs::write(output_file, content)?;
 
@@ -30,7 +33,7 @@ impl Generator for RustGenerator {
     }
 }
 
-fn generate_content(ctx: &GenerationContext) -> Result<String> {
+fn generate_content(ctx: RustGenerationContext) -> Result<String> {
     let content = RustTemplate { ctx }.render()?;
     let content = RustFmt::default().format_str(&content)?;
 
@@ -41,10 +44,7 @@ fn generate_content(ctx: &GenerationContext) -> Result<String> {
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{
-        api_types::Language, openapi_loader::OpenApiRefLocation, visitor::Visitor, OpenApiLoader,
-        RustOptions,
-    };
+    use crate::{openapi_loader::OpenApiRefLocation, visitor::Visitor, OpenApiLoader, RustOptions};
 
     use super::*;
 
@@ -58,9 +58,11 @@ mod tests {
         let openapi = loader
             .load_openapi(OpenApiRefLocation::new(&root, "cars.yaml".into()))
             .unwrap();
-        let ctx = GenerationContext::new(root, Language::Rust(RustOptions::default()));
-        let ctx = Visitor::new(ctx).visit(&[openapi.clone()]).unwrap();
-        let content = generate_content(&ctx).unwrap();
+        let ctx = Visitor::new(root)
+            .visit(&[openapi.clone()])
+            .unwrap()
+            .with_options(RustOptions::default());
+        let content = generate_content(ctx).unwrap();
 
         insta::assert_snapshot!(content);
     }

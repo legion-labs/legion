@@ -1,11 +1,13 @@
 pub use crate::filters::*;
 use crate::{
-    api_types::{GenerationContext, Model, ModelOrigin, ModulePath, Parameter, Path, Type},
+    api_types::{Model, ModelOrigin, ModulePath, Parameter, Path, Type},
     errors::Error,
 };
 use convert_case::{Case, Casing};
 use lazy_static::lazy_static;
 use regex::Regex;
+
+use super::RustGenerationContext;
 
 const KEYWORDS: &[&str] = &[
     "abstract", "as", "async", "await", "become", "box", "break", "const", "continue", "crate",
@@ -16,7 +18,7 @@ const KEYWORDS: &[&str] = &[
 ];
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn fmt_model_name(model: &Model, ctx: &GenerationContext) -> ::askama::Result<String> {
+pub fn fmt_model_name(model: &Model, ctx: &RustGenerationContext) -> ::askama::Result<String> {
     Ok(match &model.origin {
         ModelOrigin::Schemas => model.ref_.json_pointer().type_name().to_string(),
         ModelOrigin::ObjectProperty { object_pointer } => {
@@ -43,7 +45,7 @@ pub fn fmt_model_name(model: &Model, ctx: &GenerationContext) -> ::askama::Resul
 #[allow(clippy::unnecessary_wraps)]
 pub fn fmt_type(
     type_: &Type,
-    ctx: &GenerationContext,
+    ctx: &RustGenerationContext,
     module_path: &ModulePath,
 ) -> ::askama::Result<String> {
     Ok(match type_ {
@@ -130,7 +132,7 @@ pub fn join_names(params: &[Parameter]) -> ::askama::Result<String> {
 #[allow(clippy::unnecessary_wraps)]
 pub fn join_types(
     params: &[Parameter],
-    ctx: &GenerationContext,
+    ctx: &RustGenerationContext,
     module_path: &ModulePath,
 ) -> ::askama::Result<String> {
     let joined = params
@@ -161,7 +163,7 @@ fn is_keyword(name: &str) -> bool {
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{api_types::Language, RustOptions};
+    use crate::{api_types::GenerationContext, RustOptions};
 
     use super::*;
 
@@ -185,8 +187,7 @@ mod tests {
 
     #[test]
     fn test_join_types() {
-        let ctx =
-            GenerationContext::new(PathBuf::from("/"), Language::Rust(RustOptions::default()));
+        let ctx = GenerationContext::new(PathBuf::from("/")).with_options(RustOptions::default());
         let module_path = "foo/bar".parse().unwrap();
 
         let p1 = Parameter {
