@@ -1,5 +1,7 @@
 use std::{
     alloc::Layout,
+    any::TypeId,
+    cell::Cell,
     intrinsics::transmute,
     ptr::NonNull,
     slice::{Iter, IterMut},
@@ -9,12 +11,7 @@ use bumpalo::{collections::Vec as BumpVec, Bump};
 use bumpalo_herd::Herd;
 use lgn_tracing::span_scope;
 
-use crate::{
-    features::{RenderFeature, RenderFeatures},
-    RenderContext,
-};
-
-use super::{LayerId, ViewId, VisibilitySet};
+use super::{BoxedRenderFeature, RenderFeatures, RenderLayerId, VisibilitySet};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
@@ -24,32 +21,34 @@ struct FatPointer {
 }
 
 #[allow(unsafe_code)]
-fn get_vtable<T: Callable>() -> *const () {
+fn get_vtable<T: RenderListCallable>() -> *const () {
     let p = std::ptr::NonNull::<T>::dangling();
-    let p_dyn: &dyn Callable = unsafe { p.as_ref() };
+    let p_dyn: &dyn RenderListCallable = unsafe { p.as_ref() };
     let fat_ptr = unsafe { transmute::<_, FatPointer>(p_dyn) };
     fat_ptr.vtable
 }
 
-trait Callable {
-    fn call(&self, render_context: &mut RenderContext<'_>);
+pub struct TmpDrawContext {}
+
+pub trait RenderListCallable: 'static {
+    fn call(&self, _draw_context: &mut TmpDrawContext);
 }
 
-impl Callable for () {
-    fn call(&self, _render_context: &mut RenderContext<'_>) {}
+impl RenderListCallable for () {
+    fn call(&self, _draw_context: &mut TmpDrawContext) {}
 }
 
 type DropCallableFn = fn(*mut ());
 type OptionalDropCallableFn = Option<DropCallableFn>;
 
 #[allow(unsafe_code)]
-fn drop_callable<T: Callable>(data: *mut ()) {
+fn drop_callable<T: RenderListCallable>(data: *mut ()) {
     if std::mem::needs_drop::<T>() {
         unsafe { data.cast::<T>().drop_in_place() }
     }
 }
 
-fn get_drop_callable_func<T: Callable>() -> OptionalDropCallableFn {
+fn get_drop_callable_func<T: RenderListCallable>() -> OptionalDropCallableFn {
     if std::mem::needs_drop::<T>() {
         Some(drop_callable::<T> as DropCallableFn)
     } else {
@@ -58,21 +57,23 @@ fn get_drop_callable_func<T: Callable>() -> OptionalDropCallableFn {
 }
 
 #[repr(C)]
-struct CallableInfo<T: Callable> {
+struct CallableInfo<T: RenderListCallable> {
     vtable: *const (),
     drop_fn: OptionalDropCallableFn,
     data: T,
 }
 
-pub struct Requirement {
+pub struct RenderListSliceRequirement {
+    callable_type: TypeId,
     render_item_count: usize,
     callable_layout: Layout,
 }
 
 #[allow(dead_code)]
-impl Requirement {
-    fn new<T: Callable>(render_item_count: usize) -> Self {
+impl RenderListSliceRequirement {
+    pub fn new<T: RenderListCallable>(render_item_count: usize) -> Self {
         Self {
+            callable_type: TypeId::of::<T>(),
             render_item_count,
             callable_layout: Layout::new::<CallableInfo<T>>(),
         }
@@ -93,10 +94,11 @@ impl Requirement {
 
 struct FeatureRequirement {
     feature_index: usize,
-    requirement: Requirement,
+    requirement: RenderListSliceRequirement,
 }
 
 struct FeatureLayout {
+    callable_type: TypeId,
     feature_index: usize,
     size: usize,
     items_offset: usize,
@@ -105,28 +107,32 @@ struct FeatureLayout {
 }
 
 struct RenderListInfo<'a> {
-    view_id: ViewId,
-    layer_id: LayerId,
-    requirements: BumpVec<'a, FeatureRequirement>,
+    visible_view_index: usize,
+    render_layer_id: RenderLayerId,
+    requirements: &'a [FeatureRequirement],
 }
 
 impl<'a> RenderListInfo<'a> {
-    fn new(bump: &'a Bump, view_id: ViewId, layer_id: LayerId) -> Self {
+    fn new(
+        visible_view_index: usize,
+        layer_id: RenderLayerId,
+        requirements: &'a [FeatureRequirement],
+    ) -> Self {
         Self {
-            view_id,
-            layer_id,
-            requirements: BumpVec::new_in(bump),
+            visible_view_index,
+            render_layer_id: layer_id,
+            requirements,
         }
     }
 
-    fn finalize(self, bump: &Bump) -> Option<RenderList<'_>> {
+    fn create_render_list(&self, bump: &'a Bump) -> Option<RenderList<'a>> {
         if self.requirements.is_empty() {
             None
         } else {
             Some(RenderList::new(
-                self.view_id,
-                self.layer_id,
-                RenderListLayout::from_requirements(bump, &self.requirements),
+                self.visible_view_index,
+                self.render_layer_id,
+                RenderListLayout::from_requirements(bump, self.requirements),
                 bump,
             ))
         }
@@ -138,7 +144,7 @@ const RENDER_LIST_ALIGNMENT: usize = 64;
 struct RenderListLayout<'a> {
     item_count: usize,
     total_size: usize,
-    feature_layouts: BumpVec<'a, FeatureLayout>,
+    feature_layouts: &'a [FeatureLayout],
 }
 
 fn align(value: usize, align: usize) -> usize {
@@ -146,9 +152,9 @@ fn align(value: usize, align: usize) -> usize {
 }
 
 impl<'a> RenderListLayout<'a> {
-    fn from_requirements(bump: &'a Bump, requirements: &[FeatureRequirement]) -> Self {
+    fn from_requirements(bump: &'a Bump, feature_requirements: &[FeatureRequirement]) -> Self {
         let mut render_item_count = 0;
-        for requirement in requirements {
+        for requirement in feature_requirements {
             render_item_count += requirement.requirement.render_item_count;
         }
         let mut feature_layouts = BumpVec::new_in(bump);
@@ -157,19 +163,22 @@ impl<'a> RenderListLayout<'a> {
             .unwrap()
             .size();
 
-        for requirement in requirements {
-            assert!(requirement.requirement.callable_layout.align() <= RENDER_LIST_ALIGNMENT);
+        for feature_requirement in feature_requirements {
+            assert!(
+                feature_requirement.requirement.callable_layout.align() <= RENDER_LIST_ALIGNMENT
+            );
 
-            let callables_layout = requirement.requirement.callable_array_layout();
+            let callables_layout = feature_requirement.requirement.callable_array_layout();
 
             cur_callable_infos_offset = align(cur_callable_infos_offset, callables_layout.align());
 
             let feature_layout = FeatureLayout {
-                feature_index: requirement.feature_index,
-                size: requirement.requirement.render_item_count,
+                callable_type: feature_requirement.requirement.callable_type,
+                feature_index: feature_requirement.feature_index,
+                size: feature_requirement.requirement.render_item_count,
                 items_offset: cur_items_offset,
                 callable_infos_offset: cur_callable_infos_offset,
-                callable_aligned_size: requirement.requirement.callable_aligned_size(),
+                callable_aligned_size: feature_requirement.requirement.callable_aligned_size(),
             };
 
             cur_items_offset += Layout::array::<RenderListItem>(feature_layout.size)
@@ -184,7 +193,7 @@ impl<'a> RenderListLayout<'a> {
         Self {
             item_count: render_item_count,
             total_size: align(cur_callable_infos_offset, RENDER_LIST_ALIGNMENT),
-            feature_layouts,
+            feature_layouts: feature_layouts.into_bump_slice(),
         }
     }
 
@@ -193,7 +202,7 @@ impl<'a> RenderListLayout<'a> {
     }
 
     fn feature_layouts(&self) -> &[FeatureLayout] {
-        &self.feature_layouts
+        self.feature_layouts
     }
 }
 
@@ -223,8 +232,9 @@ impl Ord for RenderListItem {
 }
 
 pub struct RenderList<'a> {
-    view_id: ViewId,
-    layer_id: LayerId,
+    consumed: Cell<bool>,
+    visible_view_index: usize,
+    render_layer_id: RenderLayerId,
     render_list_layout: RenderListLayout<'a>,
     data_block: NonNull<u8>,
 }
@@ -234,23 +244,38 @@ unsafe impl<'a> Send for RenderList<'a> {}
 
 impl<'a> RenderList<'a> {
     fn new(
-        view_id: ViewId,
-        layer_id: LayerId,
+        visible_view_index: usize,
+        layer_id: RenderLayerId,
         render_list_layout: RenderListLayout<'a>,
         bump: &Bump,
     ) -> Self {
         let mem_layout = render_list_layout.layout();
         Self {
-            view_id,
-            layer_id,
+            consumed: Cell::new(false),
+            visible_view_index,
+            render_layer_id: layer_id,
             render_list_layout,
             data_block: bump.alloc_layout(mem_layout),
         }
     }
 
     #[allow(unsafe_code)]
-    fn build(&mut self, features: &[Box<dyn RenderFeature>]) {
+    fn consume(&self) {
+        if !self.consumed.replace(true) {
+            for render_item in self.items() {
+                let callable_info = unsafe { &*render_item.info.cast::<CallableInfo<()>>() };
+                let data_ptr = std::ptr::addr_of!(callable_info.data);
+                if let Some(drop_fn) = callable_info.drop_fn {
+                    (drop_fn)(data_ptr as *mut ());
+                }
+            }
+        }
+    }
+
+    #[allow(unsafe_code)]
+    fn build(&mut self, features: &[BoxedRenderFeature], visibility_set: &VisibilitySet<'_>) {
         for feature_layout in self.render_list_layout.feature_layouts() {
+            #[allow(clippy::cast_ptr_alignment)]
             let render_items = unsafe {
                 self.data_block
                     .as_ptr()
@@ -262,21 +287,20 @@ impl<'a> RenderList<'a> {
                     .as_ptr()
                     .add(feature_layout.callable_infos_offset)
             };
-
             let render_list_builder = RenderListSlice {
+                callable_type: feature_layout.callable_type,
                 size: feature_layout.size,
                 render_items,
                 callable_infos,
                 callable_aligned_size: feature_layout.callable_aligned_size,
             };
 
-            {
-                features[feature_layout.feature_index].prepare_render_list(
-                    self.view_id,
-                    self.layer_id,
-                    render_list_builder,
-                );
-            }
+            let visible_view = &visibility_set.views()[self.visible_view_index];
+            features[feature_layout.feature_index].prepare_render_list(
+                visible_view,
+                self.render_layer_id,
+                render_list_builder,
+            );
         }
     }
 
@@ -292,22 +316,24 @@ impl<'a> RenderList<'a> {
     }
 
     #[allow(unsafe_code)]
-    fn execute(&self, render_context: &mut RenderContext<'_>) {
+    pub fn execute(&self, draw_context: &mut TmpDrawContext) {
+        assert!(!self.consumed.get());
         for render_item in self.items() {
             let callable_info = unsafe { &*render_item.info.cast::<CallableInfo<()>>() };
-            let data_ptr = &callable_info.data as *const ();
+            let data_ptr = std::ptr::addr_of!(callable_info.data);
 
             let fat_ptr = FatPointer {
                 data: data_ptr,
                 vtable: callable_info.vtable,
             };
-            let callable: &dyn Callable = unsafe { transmute(fat_ptr) };
-            callable.call(render_context);
+            let callable: &dyn RenderListCallable = unsafe { transmute(fat_ptr) };
+            callable.call(draw_context);
 
             if let Some(drop_fn) = callable_info.drop_fn {
                 (drop_fn)(data_ptr as *mut ());
             }
         }
+        self.consumed.replace(true);
     }
 
     #[allow(unsafe_code)]
@@ -323,6 +349,7 @@ impl<'a> RenderList<'a> {
 
 #[allow(dead_code)]
 pub struct RenderListSlice {
+    callable_type: TypeId,
     size: usize,
     render_items: *mut RenderListItem,
     callable_infos: *mut u8,
@@ -336,8 +363,9 @@ impl RenderListSlice {
     }
 
     #[allow(unsafe_code)]
-    fn write<T: Callable>(&self, index: usize, key: u64, data: T) {
+    fn write<T: RenderListCallable>(&self, index: usize, key: u64, data: T) {
         assert!(index < self.size);
+        assert_eq!(TypeId::of::<T>(), self.callable_type);
 
         unsafe {
             let callable = self.callable_infos.cast::<CallableInfo<T>>().add(index);
@@ -360,10 +388,9 @@ impl RenderListSlice {
 }
 
 #[allow(dead_code)]
-struct RenderListSliceTyped<T: Callable> {
-    size: usize,
-    render_items: *mut RenderListItem,
-    callable_infos: *mut CallableInfo<T>,
+pub struct RenderListSliceTyped<T: RenderListCallable> {
+    slice: RenderListSlice,
+    typed_callable_infos: *mut CallableInfo<T>,
     vtable: *const (),
     drop_fn: OptionalDropCallableFn,
 }
@@ -371,31 +398,31 @@ struct RenderListSliceTyped<T: Callable> {
 #[allow(dead_code)]
 impl<T> RenderListSliceTyped<T>
 where
-    T: Callable,
+    T: RenderListCallable,
 {
-    fn new(render_list_slice: RenderListSlice) -> Self {
+    pub fn new(slice: RenderListSlice) -> Self {
+        assert_eq!(TypeId::of::<T>(), slice.callable_type);
         let vtable = get_vtable::<T>();
         let drop_fn = get_drop_callable_func::<T>();
-
+        let typed_callable_infos = slice.callable_infos.cast::<CallableInfo<T>>();
         Self {
-            size: render_list_slice.size,
-            render_items: render_list_slice.render_items,
-            callable_infos: render_list_slice.callable_infos.cast::<CallableInfo<T>>(),
+            slice,
+            typed_callable_infos,
             vtable,
             drop_fn,
         }
     }
 
-    fn size(&self) -> usize {
-        self.size
+    pub fn size(&self) -> usize {
+        self.slice.size
     }
 
     #[allow(unsafe_code)]
-    fn write(&self, index: usize, key: u64, data: T) {
-        assert!(index < self.size);
+    pub fn write(&self, index: usize, key: u64, data: T) {
+        assert!(index < self.size());
 
         unsafe {
-            let callable_info_ptr = self.callable_infos.add(index);
+            let callable_info_ptr = self.typed_callable_infos.add(index);
 
             callable_info_ptr.write(CallableInfo::<T> {
                 vtable: self.vtable,
@@ -403,7 +430,7 @@ where
                 data,
             });
 
-            let render_item = self.render_items.add(index);
+            let render_item = self.slice.render_items.add(index);
             render_item.write(RenderListItem {
                 key,
                 info: callable_info_ptr.cast::<()>(),
@@ -411,38 +438,34 @@ where
         }
     }
 
-    fn iter(self) -> RenderListItemWriterIter<T> {
+    pub fn iter(self) -> RenderListItemWriterIter<T> {
         RenderListItemWriterIter::<T>::new(self)
     }
 }
 
-struct RenderListItemWriterIter<T: Callable> {
+pub struct RenderListItemWriterIter<T: RenderListCallable> {
     index: usize,
-    size: usize,
-    render_items: *mut RenderListItem,
-    callable_infos: *mut CallableInfo<T>,
-    vtable: *const (),
-    drop_fn: OptionalDropCallableFn,
+    typed_slice: RenderListSliceTyped<T>,
 }
 
 impl<T> Iterator for RenderListItemWriterIter<T>
 where
-    T: Callable,
+    T: RenderListCallable,
 {
     type Item = RenderListItemWriter<T>;
 
     #[allow(unsafe_code)]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.index < self.size {
-            let render_item = unsafe { self.render_items.add(self.index) };
-            let callable_info = unsafe { self.callable_infos.add(self.index) };
+        if self.index < self.typed_slice.size() {
+            let render_item = unsafe { self.typed_slice.slice.render_items.add(self.index) };
+            let callable_info = unsafe { self.typed_slice.typed_callable_infos.add(self.index) };
             self.index += 1;
 
             Some(RenderListItemWriter::<T> {
                 render_item,
                 callable_info,
-                vtable: self.vtable,
-                drop_fn: self.drop_fn,
+                vtable: self.typed_slice.vtable,
+                drop_fn: self.typed_slice.drop_fn,
             })
         } else {
             None
@@ -452,30 +475,26 @@ where
 
 impl<T> RenderListItemWriterIter<T>
 where
-    T: Callable,
+    T: RenderListCallable,
 {
-    fn new(writer: RenderListSliceTyped<T>) -> Self {
+    fn new(typed_slice: RenderListSliceTyped<T>) -> Self {
         Self {
             index: 0,
-            size: writer.size,
-            render_items: writer.render_items,
-            callable_infos: writer.callable_infos,
-            vtable: writer.vtable,
-            drop_fn: writer.drop_fn,
+            typed_slice,
         }
     }
 }
 
-struct RenderListItemWriter<T: Callable> {
+pub struct RenderListItemWriter<T: RenderListCallable> {
     render_item: *mut RenderListItem,
     callable_info: *mut CallableInfo<T>,
     vtable: *const (),
     drop_fn: OptionalDropCallableFn,
 }
 
-impl<T: Callable> RenderListItemWriter<T> {
+impl<T: RenderListCallable> RenderListItemWriter<T> {
     #[allow(unsafe_code)]
-    fn write(&self, key: u64, data: T) {
+    pub fn write(&self, key: u64, data: T) {
         unsafe {
             let callable_info = self.callable_info;
 
@@ -495,14 +514,13 @@ impl<T: Callable> RenderListItemWriter<T> {
 
 pub struct RenderListSet<'a> {
     render_lists: &'a mut [RenderList<'a>],
-    // render_lists: BumpVec<'a, RenderList<'a>>,
 }
 
 impl<'a> RenderListSet<'a> {
-    fn new(bump: &'a Bump, mut render_list_infos: BumpVec<'_, RenderListInfo<'_>>) -> Self {
+    fn new(bump: &'a Bump, render_list_infos: &'a [RenderListInfo<'_>]) -> Self {
         let mut render_lists = BumpVec::new_in(bump);
-        for render_list_info in render_list_infos.drain(..) {
-            if let Some(render_list) = render_list_info.finalize(bump) {
+        for render_list_info in render_list_infos {
+            if let Some(render_list) = render_list_info.create_render_list(bump) {
                 render_lists.push(render_list);
             }
         }
@@ -511,13 +529,35 @@ impl<'a> RenderListSet<'a> {
         Self { render_lists }
     }
 
+    pub fn consume(&self) {
+        for render_list in self.render_lists.iter() {
+            render_list.consume();
+        }
+    }
+
+    pub fn get(
+        &self,
+        visible_view_index: usize,
+        render_layer_id: RenderLayerId,
+    ) -> &RenderList<'_> {
+        self.try_get(visible_view_index, render_layer_id).unwrap()
+    }
+
+    pub fn try_get(
+        &self,
+        visible_view_index: usize,
+        render_layer_id: RenderLayerId,
+    ) -> Option<&RenderList<'_>> {
+        self.render_lists.iter().find(|x| {
+            x.visible_view_index == visible_view_index && x.render_layer_id == render_layer_id
+        })
+    }
+
     pub fn as_slice(&self) -> &[RenderList<'a>] {
-        // self.render_lists.as_slice()
         self.render_lists
     }
 
     pub fn as_mut_slice(&mut self) -> &mut [RenderList<'a>] {
-        // self.render_lists.as_mut_slice()
         self.render_lists
     }
 
@@ -573,28 +613,35 @@ impl<'rt> PrepareRenderContext<'rt> {
         let render_list_infos = {
             span_scope!("get_render_list_requirements");
             let mut render_list_infos = BumpVec::new_in(bump);
-            for viz_view in self.visibility_set.views() {
-                for layer_id in &viz_view.layers {
-                    let view_id = viz_view.id;
-                    let layer_id = *layer_id;
-                    let mut builder = RenderListInfo::new(bump, view_id, layer_id);
+            for (visible_view_index, viz_view) in self.visibility_set.views().iter().enumerate() {
+                for render_layer_id in &viz_view.render_layer_mask {
+                    let mut requirements = BumpVec::new_in(bump);
                     for (feature_index, feature) in self.features.iter().enumerate() {
                         if let Some(requirement) =
-                            feature.get_render_list_requirement(view_id, layer_id)
+                            feature.get_render_list_requirement(viz_view, render_layer_id)
                         {
-                            builder.requirements.push(FeatureRequirement {
+                            requirements.push(FeatureRequirement {
                                 feature_index,
                                 requirement,
                             });
                         }
                     }
-                    render_list_infos.push(builder);
+                    if !requirements.is_empty() {
+                        render_list_infos.push(RenderListInfo::new(
+                            visible_view_index,
+                            render_layer_id,
+                            requirements.into_bump_slice(),
+                        ));
+                    }
                 }
             }
             render_list_infos
         };
 
-        let render_list_set = bump.alloc(RenderListSet::new(bump, render_list_infos));
+        let render_list_set = bump.alloc(RenderListSet::new(
+            bump,
+            render_list_infos.into_bump_slice(),
+        ));
 
         {
             span_scope!("build and sort renderlist");
@@ -604,7 +651,7 @@ impl<'rt> PrepareRenderContext<'rt> {
             for render_list in render_list_set.as_mut_slice() {
                 {
                     span_scope!("build renderlist");
-                    render_list.build(features);
+                    render_list.build(features, self.visibility_set);
                 }
                 {
                     span_scope!("sort renderlist");

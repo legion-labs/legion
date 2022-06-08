@@ -18,6 +18,7 @@ use crate::{
         cgen_type::{CullingEfficiencyStats, GpuInstanceData},
         shader,
     },
+    core::{RenderLayers, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING},
     egui::egui_plugin::Egui,
     labels::RenderStage,
     resources::{
@@ -28,7 +29,7 @@ use crate::{
 };
 
 use super::{
-    GpuInstanceId, GpuInstanceManager, GpuInstanceManagerLabel, RenderElement, RenderLayer,
+    GpuInstanceId, GpuInstanceManager, GpuInstanceManagerLabel, RenderElement, RenderLayerBatches,
     RenderStateSet,
 };
 
@@ -41,48 +42,6 @@ embedded_watched_file!(
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
 embedded_watched_file!(INCLUDE_TRANSFORM, "gpu/include/transform.hsh");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
-
-pub(crate) type RenderLayerId = u32;
-
-#[derive(Clone, Copy)]
-pub(crate) struct RenderLayerMask(pub u64);
-
-impl RenderLayerMask {
-    #[allow(dead_code)]
-    pub fn iter(self) -> RenderLayerIterator {
-        RenderLayerIterator::new(self)
-    }
-}
-
-pub(crate) struct RenderLayerIterator {
-    mask: RenderLayerMask,
-}
-
-impl RenderLayerIterator {
-    pub fn new(mask: RenderLayerMask) -> Self {
-        Self { mask }
-    }
-}
-
-impl Iterator for RenderLayerIterator {
-    type Item = RenderLayerId;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.mask.0 == 0 {
-            None
-        } else {
-            let leading_zero = self.mask.0.trailing_zeros();
-            self.mask.0 &= !(1 << leading_zero);
-            Some(leading_zero)
-        }
-    }
-}
-
-pub(crate) enum DefaultLayers {
-    Depth = 0,
-    Opaque,
-    Picking,
-}
 
 #[derive(Debug, SystemLabel, PartialEq, Eq, Clone, Copy, Hash)]
 enum MeshRendererLabel {
@@ -161,7 +120,7 @@ pub(crate) struct CullingArgBuffers {
 
 // TODO(jsg): Move this somewhere else to be able to remove this struct entirely.
 pub struct MeshRenderer {
-    pub(crate) default_layers: Vec<RenderLayer>,
+    pub(crate) render_layer_batches: Vec<RenderLayerBatches>,
 
     pub(crate) instance_data_indices: Vec<u32>,
     pub(crate) gpu_instance_data: Vec<GpuInstanceData>,
@@ -177,13 +136,15 @@ impl MeshRenderer {
     pub(crate) fn new(
         device_context: &DeviceContext,
         allocator: &UnifiedStaticBufferAllocator,
+        render_layers: &RenderLayers,
     ) -> Self {
+        let render_layer_batches = render_layers
+            .iter()
+            .map(|_| RenderLayerBatches::new(allocator, false))
+            .collect::<Vec<RenderLayerBatches>>();
+
         Self {
-            default_layers: vec![
-                RenderLayer::new(allocator, false),
-                RenderLayer::new(allocator, false),
-                RenderLayer::new(allocator, false),
-            ],
+            render_layer_batches,
             culling_buffers: CullingArgBuffers {
                 stats_buffer: GpuBufferWithReadback::new(
                     device_context,
@@ -203,23 +164,23 @@ impl MeshRenderer {
         if self.tmp_pipeline_handles.is_empty() {
             let pipeline_handle = build_depth_pso(pipeline_manager);
             self.tmp_batch_ids.push(
-                self.default_layers[DefaultLayers::Depth as usize]
+                self.render_layer_batches[RENDER_LAYER_DEPTH.index()]
                     .register_state_set(&RenderStateSet { pipeline_handle }),
             );
             self.tmp_pipeline_handles.push(pipeline_handle);
 
             let need_depth_write =
-                !self.default_layers[DefaultLayers::Opaque as usize].gpu_culling_enabled();
+                !self.render_layer_batches[RENDER_LAYER_OPAQUE.index()].gpu_culling_enabled();
             let pipeline_handle = build_temp_pso(pipeline_manager, need_depth_write);
             self.tmp_batch_ids.push(
-                self.default_layers[DefaultLayers::Opaque as usize]
+                self.render_layer_batches[RENDER_LAYER_OPAQUE.index()]
                     .register_state_set(&RenderStateSet { pipeline_handle }),
             );
             self.tmp_pipeline_handles.push(pipeline_handle);
 
             let pipeline_handle = build_picking_pso(pipeline_manager);
             self.tmp_batch_ids.push(
-                self.default_layers[DefaultLayers::Picking as usize]
+                self.render_layer_batches[RENDER_LAYER_PICKING.index()]
                     .register_state_set(&RenderStateSet { pipeline_handle }),
             );
             self.tmp_pipeline_handles.push(pipeline_handle);
@@ -231,7 +192,7 @@ impl MeshRenderer {
     }
 
     fn register_material(&mut self, _material_id: MaterialId) {
-        for (index, layer) in &mut self.default_layers.iter_mut().enumerate() {
+        for (index, layer) in &mut self.render_layer_batches.iter_mut().enumerate() {
             layer.register_state(0, self.tmp_batch_ids[index]);
         }
     }
@@ -250,7 +211,7 @@ impl MeshRenderer {
         instance_data.set_gpu_instance_id(gpu_instance_index.into());
         instance_data.set_state_id(0.into());
 
-        for layer in &mut self.default_layers {
+        for layer in &mut self.render_layer_batches {
             layer.register_element(0, element);
         }
 
@@ -276,7 +237,7 @@ impl MeshRenderer {
             self.instance_data_indices[moved_instance_id as usize] = removed_index as u32;
         }
 
-        for layer in &mut self.default_layers {
+        for layer in &mut self.render_layer_batches {
             layer.unregister_element(removed_instance.state_id().into(), gpu_instance_id);
         }
 

@@ -10,10 +10,7 @@ use crate::{
     GraphicsQueue,
 };
 
-// pub(crate) type TransientBufferAllocatorHandle = Handle<TransientBufferAllocator>;
-
 pub struct RenderContext<'frame> {
-    // renderer: &'frame Renderer,
     pub device_context: &'frame DeviceContext,
     pub graphics_queue: &'frame GraphicsQueue,
     pub descriptor_pool: &'frame DescriptorPoolHandle,

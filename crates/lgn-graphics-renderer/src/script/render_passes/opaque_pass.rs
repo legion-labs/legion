@@ -4,9 +4,9 @@ use lgn_graphics_data::Color;
 use crate::{
     core::{
         RenderGraphBuilder, RenderGraphContext, RenderGraphExecuteContext, RenderGraphLoadState,
-        RenderGraphResourceId, RenderGraphViewId,
+        RenderGraphResourceId, RenderGraphViewId, TmpDrawContext, RENDER_LAYER_OPAQUE,
     },
-    gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
+    gpu_renderer::{GpuInstanceManager, MeshRenderer},
     resources::UnifiedStaticBuffer,
 };
 
@@ -48,6 +48,13 @@ impl OpaqueLayerPass {
                 //                )
                 .depth_stencil(depth_view_id, RenderGraphLoadState::Load)
                 .execute(move |context, execute_context, cmd_buffer| {
+                    //< TMP
+                    let tmp_render_list =
+                        execute_context.render_list_set.get(0, RENDER_LAYER_OPAQUE);
+                    let mut tmp_draw_context = TmpDrawContext {};
+                    tmp_render_list.execute(&mut tmp_draw_context);
+                    //> TMP
+
                     Self::execute_opaque_layer_pass(
                         context,
                         execute_context,
@@ -82,8 +89,7 @@ impl OpaqueLayerPass {
                 .vertex_buffer_binding()],
         );
 
-        let layer_id_index = DefaultLayers::Opaque as usize;
-        mesh_renderer.default_layers[layer_id_index].draw(
+        mesh_renderer.render_layer_batches[RENDER_LAYER_OPAQUE.index()].draw(
             render_context,
             cmd_buffer,
             Some(context.get_buffer(draw_args_buffer_id)),

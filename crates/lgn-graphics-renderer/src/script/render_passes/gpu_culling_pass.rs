@@ -14,8 +14,9 @@ use crate::{
     core::{
         RenderGraphBuilder, RenderGraphContext, RenderGraphExecuteContext, RenderGraphLoadState,
         RenderGraphResourceDef, RenderGraphResourceId, RenderGraphTextureDef, RenderGraphViewId,
+        RENDER_LAYER_DEPTH,
     },
-    gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
+    gpu_renderer::{GpuInstanceManager, MeshRenderer},
     resources::{PipelineDef, PipelineHandle, PipelineManager, UnifiedStaticBuffer},
     RenderContext,
 };
@@ -555,8 +556,7 @@ impl GpuCullingPass {
                 .vertex_buffer_binding()],
         );
 
-        let layer_id_index = DefaultLayers::Depth as usize;
-        mesh_renderer.default_layers[layer_id_index].draw(
+        mesh_renderer.render_layer_batches[RENDER_LAYER_DEPTH.index()].draw(
             render_context,
             cmd_buffer,
             Some(context.get_buffer(user_data.draw_args_buffer_id)),
@@ -600,7 +600,7 @@ impl GpuCullingPass {
                     .set_culling_debug(context.get_buffer_view(user_data.culling_debug_uav_id));
 
                 let mut render_pass_data: Vec<RenderPassData> = vec![];
-                for layer in &mesh_renderer.default_layers {
+                for layer in &mesh_renderer.render_layer_batches {
                     let offset_base_va = u32::try_from(layer.offsets_va()).unwrap();
 
                     let mut pass_data = RenderPassData::default();

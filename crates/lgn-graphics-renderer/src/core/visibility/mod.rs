@@ -4,13 +4,12 @@ use bumpalo_herd::Herd;
 use lgn_tracing::span_scope;
 
 use crate::components::CameraComponent;
+use crate::core::RenderLayerMask;
 
-pub type ViewId = u32;
-pub type LayerId = u32;
+use super::RenderLayers;
 
 pub struct VisibleView {
-    pub id: ViewId,
-    pub layers: Vec<LayerId>,
+    pub render_layer_mask: RenderLayerMask,
 }
 
 pub struct VisibilitySet<'a> {
@@ -31,6 +30,7 @@ pub struct VisibilityContext<'rt> {
     pub herd: &'rt Herd,
     pub bump: &'rt Bump,
     pub camera: &'rt CameraComponent,
+    pub render_layers: &'rt RenderLayers,
 }
 
 impl<'rt> VisibilityContext<'rt> {
@@ -41,10 +41,14 @@ impl<'rt> VisibilityContext<'rt> {
         let bump = self.bump;
 
         let mut visible_views = BumpVec::new_in(bump);
-        visible_views.push(VisibleView {
-            id: 0,
-            layers: Vec::new(),
-        });
+
+        // Push the root view.
+
+        let mut render_layer_mask = RenderLayerMask::default();
+        render_layer_mask.add(self.render_layers.get_from_name("DEPTH"));
+        render_layer_mask.add(self.render_layers.get_from_name("OPAQUE"));
+
+        visible_views.push(VisibleView { render_layer_mask });
 
         bump.alloc(VisibilitySet::new(visible_views.into_bump_slice()))
     }

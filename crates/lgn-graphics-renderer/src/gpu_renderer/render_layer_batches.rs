@@ -7,7 +7,7 @@ use crate::{
 
 use super::{GpuInstanceId, RenderBatch, RenderElement, RenderStateSet};
 
-pub struct RenderLayer {
+pub struct RenderLayerBatches {
     pub(crate) state_page: StaticBufferAllocation,
     state_to_batch: Vec<u32>,
     batches: Vec<RenderBatch>,
@@ -15,7 +15,7 @@ pub struct RenderLayer {
     element_count: u32,
 }
 
-impl RenderLayer {
+impl RenderLayerBatches {
     pub fn new(allocator: &UnifiedStaticBufferAllocator, cpu_render_set: bool) -> Self {
         const TEMP_MAX_MATERIAL_COUNT: usize = 8192;
         let page_size = TEMP_MAX_MATERIAL_COUNT * std::mem::size_of::<u64>();

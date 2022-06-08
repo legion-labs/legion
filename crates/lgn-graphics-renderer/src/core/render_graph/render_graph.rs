@@ -17,7 +17,7 @@ use lgn_transform::prelude::GlobalTransform;
 
 use crate::components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent};
 use crate::core::render_graph::RenderGraphBuilder;
-use crate::core::RenderResources;
+use crate::core::{RenderListSet, RenderResources};
 use crate::debug_display::DebugDisplay;
 use crate::egui::Egui;
 use crate::picking::PickingManager;
@@ -386,6 +386,7 @@ pub enum RenderGraphLoadState {
     ClearValue(u32),
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub enum RenderGraphStoreState {
     DontCare,
@@ -649,6 +650,7 @@ pub(crate) struct DebugStuff<'a> {
 
 pub(crate) struct RenderGraphExecuteContext<'a, 'frame> {
     // Managers and data used when rendering.
+    pub render_list_set: &'a RenderListSet<'frame>,
     pub(crate) render_resources: &'a RenderResources,
     pub(crate) render_context: &'a mut RenderContext<'frame>,
 
@@ -1621,17 +1623,19 @@ impl RenderGraph {
         context
     }
 
-    pub(crate) fn execute(
+    pub(crate) fn execute<'rt>(
         &self,
         context: &mut RenderGraphContext,
+        render_list_set: &RenderListSet<'rt>,
         render_resources: &RenderResources,
-        render_context: &mut RenderContext<'_>,
+        render_context: &mut RenderContext<'rt>,
         debug_stuff: &DebugStuff<'_>,
         cmd_buffer: &mut CommandBuffer,
     ) {
         span_scope!("execute_render_graph");
 
         let mut execute_context = RenderGraphExecuteContext {
+            render_list_set,
             render_resources,
             render_context,
             debug_stuff,

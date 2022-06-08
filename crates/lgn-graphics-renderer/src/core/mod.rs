@@ -10,6 +10,12 @@ pub(crate) use render_commands::*;
 mod render_resources;
 pub(crate) use render_resources::*;
 
+mod render_layer;
+pub(crate) use render_layer::*;
+
+mod render_feature;
+pub(crate) use render_feature::*;
+
 mod gpu_upload;
 pub(crate) use gpu_upload::*;
 
