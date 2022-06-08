@@ -1,8 +1,4 @@
-use std::{
-    io,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{io, path::PathBuf, sync::Arc};
 
 use async_trait::async_trait;
 use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};

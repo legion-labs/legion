@@ -1,8 +1,6 @@
-use std::path::Path;
-
 use lgn_content_store::{
-    indexing::{ResourceExists, ResourceReader},
-    Config,
+    indexing::{ResourceExists, ResourceReader, TreeIdentifier},
+    Config, Provider,
 };
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_runtime::{

@@ -86,7 +86,7 @@ use std::{
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use lgn_content_store::{
-    indexing::{ResourceWriter, SharedTreeIdentifier},
+    indexing::{ResourceWriter, SharedTreeIdentifier, TreeIdentifier},
     Config, Provider,
 };
 use lgn_data_model::ReflectionError;

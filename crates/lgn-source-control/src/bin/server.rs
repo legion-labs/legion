@@ -50,7 +50,7 @@ impl Service {
         repository_name: &RepositoryName,
     ) -> Result<Box<dyn Index>, tonic::Status> {
         self.repository_index
-            .load_repository(&repository_name)
+            .load_repository(repository_name)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))
     }
