@@ -57,7 +57,7 @@ macro_rules! declare_built_in_permissions {
             };
             )*
 
-            pub(crate) const BUILT_INS: &'static [&'static crate::types::Permission] = &[
+            pub const BUILT_INS: &'static [&'static crate::types::Permission] = &[
                 $(
                     &Self::$name,
                 )*
@@ -87,7 +87,7 @@ impl FromStr for PermissionId {
             return Err(Error::InvalidPermissionId(s.to_string()));
         }
 
-        if s.contains(|c: char| !c.is_ascii()) {
+        if s.contains(|c: char| !matches!(c, 'a'..='z' | '0'..='9' | '_')) {
             return Err(Error::InvalidPermissionId(s.to_string()));
         }
 
@@ -99,16 +99,16 @@ impl FromStr for PermissionId {
     }
 }
 
-impl<'a> From<PermissionId> for crate::api::common::PermissionId {
+impl<'a> From<PermissionId> for crate::api::permission::PermissionId {
     fn from(permission_id: PermissionId) -> Self {
         Self(permission_id.0.to_string())
     }
 }
 
-impl<'a> TryFrom<crate::api::common::PermissionId> for PermissionId {
+impl<'a> TryFrom<crate::api::permission::PermissionId> for PermissionId {
     type Error = Error;
 
-    fn try_from(permission_id: crate::api::common::PermissionId) -> Result<Self> {
+    fn try_from(permission_id: crate::api::permission::PermissionId) -> Result<Self> {
         permission_id.0.parse()
     }
 }
@@ -128,7 +128,7 @@ impl Display for Permission {
     }
 }
 
-impl From<Permission> for crate::api::common::Permission {
+impl From<Permission> for crate::api::permission::Permission {
     fn from(permission: Permission) -> Self {
         Self {
             id: permission.id.into(),
@@ -139,10 +139,10 @@ impl From<Permission> for crate::api::common::Permission {
     }
 }
 
-impl TryFrom<crate::api::common::Permission> for Permission {
+impl TryFrom<crate::api::permission::Permission> for Permission {
     type Error = Error;
 
-    fn try_from(permission: crate::api::common::Permission) -> Result<Self> {
+    fn try_from(permission: crate::api::permission::Permission) -> Result<Self> {
         Ok(Self {
             id: permission.id.try_into()?,
             description: permission.description.into(),
@@ -167,7 +167,7 @@ impl PermissionList {
     }
 }
 
-impl From<PermissionList> for crate::api::common::PermissionList {
+impl From<PermissionList> for crate::api::permission::PermissionList {
     fn from(permission_list: PermissionList) -> Self {
         Self(permission_list.0.into_iter().map(Into::into).collect())
     }
@@ -197,10 +197,10 @@ impl<S: std::hash::BuildHasher + Default> From<PermissionList>
     }
 }
 
-impl TryFrom<crate::api::common::PermissionList> for PermissionList {
+impl TryFrom<crate::api::permission::PermissionList> for PermissionList {
     type Error = Error;
 
-    fn try_from(permission_list: crate::api::common::PermissionList) -> Result<Self> {
+    fn try_from(permission_list: crate::api::permission::PermissionList) -> Result<Self> {
         permission_list
             .0
             .into_iter()

@@ -1,0 +1,124 @@
+openapi: 3.1.0
+info:
+  title: "Role API"
+  description: "The OpenAPI specification for the Legion Labs Role API."
+  version: 1.0.0
+paths:
+  /v1/roles/:
+    get:
+      description: List all the roles that exist in the system.
+      operationId: listRoles
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleList"
+    post:
+      description: Create a new role.
+      operationId: createRole
+      body:
+        description: The role to create.
+        schema:
+          $ref: "#/components/schemas/NewRole"
+      responses:
+        "201":
+          description: The role was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "409":
+          description: A role with the same ID already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+  /v1/roles/{role-id}/:
+    parameters:
+      - $ref: "#/components/parameters/role_id"
+    put:
+      description: Update the specified role.
+      operationId: updateRole
+      body:
+        description: The role to update.
+        schema:
+          $ref: "#/components/schemas/UpdateRole"
+      responses:
+        "200":
+          description: The role was updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "404":
+          description: The role was not found.
+    delete:
+      description: Delete the specified role.
+      operationId: deleteRole
+      responses:
+        "204":
+          description: The role was deleted.
+        "404":
+          description: The role was not found.
+        "409":
+          description: The role is being used and cannot be deleted at this time.
+components:
+  parameters:
+    role_id:
+      name: role-id
+      in: path
+      description: The role identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/RoleId"
+  schemas:
+    RoleId:
+      description: An identifier to an unique role.
+      type: string
+    Role:
+      type: object
+      description: A role.
+      properties:
+        id:
+          $ref: "#/components/schemas/RoleId"
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        permissions:
+          description: The permissions that this role has.
+          type: array
+          items:
+            $ref: "permission.yaml#/components/schemas/PermissionId"
+      required:
+        - id
+        - description
+        - created_at
+        - permissions
+    RoleList:
+      description: A list of roles.
+      type: array
+      items:
+        $ref: "#/components/schemas/Role"
+    NewRole:
+      type: object
+      description: A new role to create.
+      properties:
+        id:
+          $ref: "permission.yaml#/components/schemas/PermissionId"
+        description:
+          type: string
+      required:
+        - id
+        - description
+    UpdateRole:
+      type: object
+      description: The new role values.
+      properties:
+        description:
+          type: string
+      required:
+        - description

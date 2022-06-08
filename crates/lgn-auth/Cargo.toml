@@ -6,12 +6,11 @@ license = "MIT OR Apache-2.0"
 
 [features]
 default = ["aws", "ttl"]
-aws = ["aws-config", "aws-sdk-s3", "aws-sdk-dynamodb"]
+aws = ["aws-config", "aws-sdk-dynamodb"]
 ttl = ["ttl_cache"]
 
 [dependencies]
 aws-config = { version = "0.12", optional = true }
-aws-sdk-s3 = { version = "0.12", optional = true }
 aws-sdk-dynamodb = { version = "0.12", optional = true }
 async-trait = "0.1.53"
 base64 = "0.13.0"

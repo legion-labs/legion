@@ -9,9 +9,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::PermissionSet;
-
-use super::{Error, Result};
+use super::{Error, PermissionSet, Result};
 
 #[macro_export]
 macro_rules! declare_built_in_roles {
@@ -57,7 +55,7 @@ macro_rules! declare_built_in_roles {
         }
 
         impl crate::types::Role {
-            pub(crate) fn get_built_ins() -> [&'static Self; crate::types::RoleId::BUILT_INS.len()] {
+            pub fn get_built_ins() -> [&'static Self; crate::types::RoleId::BUILT_INS.len()] {
                 [
                     $(
                         STATIC_ROLES.get(&crate::types::RoleId::$name).unwrap()
@@ -89,7 +87,7 @@ impl FromStr for RoleId {
             return Err(Error::InvalidRoleId(s.to_string()));
         }
 
-        if s.contains(|c: char| !c.is_ascii()) {
+        if s.contains(|c: char| !matches!(c, 'a'..='z' | '0'..='9' | '_')) {
             return Err(Error::InvalidRoleId(s.to_string()));
         }
 
@@ -101,16 +99,16 @@ impl FromStr for RoleId {
     }
 }
 
-impl<'a> From<RoleId> for crate::api::common::RoleId {
+impl<'a> From<RoleId> for crate::api::role::RoleId {
     fn from(role_id: RoleId) -> Self {
         Self(role_id.0.to_string())
     }
 }
 
-impl<'a> TryFrom<crate::api::common::RoleId> for RoleId {
+impl<'a> TryFrom<crate::api::role::RoleId> for RoleId {
     type Error = Error;
 
-    fn try_from(role_id: crate::api::common::RoleId) -> Result<Self> {
+    fn try_from(role_id: crate::api::role::RoleId) -> Result<Self> {
         role_id.0.parse()
     }
 }
@@ -130,7 +128,7 @@ impl Display for Role {
     }
 }
 
-impl From<Role> for crate::api::common::Role {
+impl From<Role> for crate::api::role::Role {
     fn from(role: Role) -> Self {
         Self {
             id: role.id.into(),
@@ -141,10 +139,10 @@ impl From<Role> for crate::api::common::Role {
     }
 }
 
-impl TryFrom<crate::api::common::Role> for Role {
+impl TryFrom<crate::api::role::Role> for Role {
     type Error = Error;
 
-    fn try_from(role: crate::api::common::Role) -> Result<Self> {
+    fn try_from(role: crate::api::role::Role) -> Result<Self> {
         Ok(Self {
             id: role.id.try_into()?,
             description: role.description.into(),
@@ -173,7 +171,7 @@ impl RoleList {
     }
 }
 
-impl From<RoleList> for crate::api::common::RoleList {
+impl From<RoleList> for crate::api::role::RoleList {
     fn from(role_list: RoleList) -> Self {
         Self(role_list.0.into_iter().map(Into::into).collect())
     }
@@ -189,10 +187,10 @@ impl<S: std::hash::BuildHasher + Default> From<RoleList> for HashMap<RoleId, Rol
     }
 }
 
-impl TryFrom<crate::api::common::RoleList> for RoleList {
+impl TryFrom<crate::api::role::RoleList> for RoleList {
     type Error = Error;
 
-    fn try_from(role_list: crate::api::common::RoleList) -> Result<Self> {
+    fn try_from(role_list: crate::api::role::RoleList) -> Result<Self> {
         role_list
             .0
             .into_iter()

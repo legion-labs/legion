@@ -1,0 +1,45 @@
+openapi: 3.1.0
+info:
+  title: "Session API"
+  description: "The OpenAPI specification for Legion Labs sessions."
+  version: 1.0.0
+paths:
+  /v1/current-user/spaces/{space-id}/sessions/:
+    parameters:
+      - $ref: "space.yaml#/components/parameters/space_id"
+    get:
+      description: List all the sessions for the current user in the specified space.
+      operationId: listCurrentUserSessions
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionList"
+components:
+  schemas:
+    Session:
+      description: A session.
+      type: object
+      properties:
+        user_id:
+          $ref: "user.yaml#/components/schemas/UserId"
+        workspace_id:
+          $ref: "workspace.yaml#/components/schemas/WorkspaceId"
+        created_at:
+          type: string
+          format: date-time
+        last_updated_at:
+          type: string
+          format: date-time
+      required:
+        - user_id
+        - workspace_id
+        - created_at
+        - last_updated_at
+    SessionList:
+      description: A list of sessions.
+      type: array
+      items:
+        $ref: "#/components/schemas/Session"

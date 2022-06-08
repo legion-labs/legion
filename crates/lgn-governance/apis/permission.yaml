@@ -1,0 +1,121 @@
+openapi: 3.1.0
+info:
+  title: "Permission API"
+  description: "The OpenAPI specification for the Legion Labs Permission API."
+  version: 1.0.0
+paths:
+  /v1/permissions/:
+    get:
+      description: List all the permissions that exist in the system.
+      operationId: listPermissions
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PermissionList"
+    post:
+      description: Create a new permission.
+      operationId: createPermission
+      body:
+        description: The permission to create.
+        schema:
+          $ref: "#/components/schemas/NewPermission"
+      responses:
+        "201":
+          description: The permission was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Permission"
+        "409":
+          description: A permission with the same ID already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Permission"
+  /v1/permissions/{permission-id}/:
+    parameters:
+      - $ref: "#/components/parameters/permission_id"
+    put:
+      description: Update the specified permission.
+      operationId: updatePermission
+      body:
+        description: The permission to update.
+        schema:
+          $ref: "#/components/schemas/UpdatePermission"
+      responses:
+        "200":
+          description: The permission was updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Permission"
+        "404":
+          description: The permission was not found.
+    delete:
+      description: Delete the specified permission.
+      operationId: deletePermission
+      responses:
+        "204":
+          description: The permission was deleted.
+        "404":
+          description: The permission was not found.
+        "409":
+          description: The permission is being used and cannot be deleted at this time.
+components:
+  parameters:
+    permission_id:
+      name: permission-id
+      in: path
+      description: The permission identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/PermissionId"
+  schemas:
+    PermissionId:
+      description: An identifier to an unique permission.
+      type: string
+    Permission:
+      type: object
+      description: A permission.
+      properties:
+        id:
+          $ref: "#/components/schemas/PermissionId"
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        parent_id:
+          description: The parent permission.
+          $ref: "#/components/schemas/PermissionId"
+      required:
+        - id
+        - description
+        - created_at
+    PermissionList:
+      description: A list of permissions.
+      type: array
+      items:
+        $ref: "#/components/schemas/Permission"
+    NewPermission:
+      type: object
+      description: A new permission to create.
+      properties:
+        id:
+          $ref: "#/components/schemas/PermissionId"
+        description:
+          type: string
+      required:
+        - id
+        - description
+    UpdatePermission:
+      type: object
+      description: The new permission values.
+      properties:
+        description:
+          type: string
+      required:
+        - description

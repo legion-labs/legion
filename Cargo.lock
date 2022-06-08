@@ -3848,9 +3848,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "askama",
- "base64 0.13.0",
  "bytes",
- "chrono",
  "clap 3.1.18",
  "convert_case",
  "http",
@@ -3937,7 +3935,6 @@ dependencies = [
  "async-trait",
  "aws-config",
  "aws-sdk-dynamodb",
- "aws-sdk-s3",
  "base64 0.13.0",
  "directories",
  "form_urlencoded",

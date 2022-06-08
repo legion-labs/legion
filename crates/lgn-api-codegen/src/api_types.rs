@@ -76,6 +76,16 @@ impl GenerationContext<RustOptions> {
             )
             .collect()
     }
+
+    pub fn as_local_rust_modules_with_apis(
+        &self,
+    ) -> Result<BTreeMap<ModulePath, &LocationContext>> {
+        Ok(self
+            .as_local_rust_modules()?
+            .into_iter()
+            .filter(|(_, location_ctx)| location_ctx.api.is_some())
+            .collect())
+    }
 }
 
 impl<Options: Default> GenerationContext<Options> {
