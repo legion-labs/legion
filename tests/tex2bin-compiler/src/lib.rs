@@ -55,82 +55,83 @@ impl Compiler for Tex2BinCompiler {
                     context.source.resource_id(),
                 )
                 .await;
-            let image = resource.get(&resources).unwrap();
 
-            let mut compiled_resources = vec![];
+            let target_unnamed = context.target_unnamed.clone();
+            let image = resource.get(&resources).unwrap().clone();
 
-            let pixel_size = image.rgba.len() as u32 / image.width / image.height;
-            if pixel_size == 1 {
-                let mut compiled_asset = vec![];
-                runtime_texture::Texture::compile_from_offline(
-                    image.width,
-                    image.height,
-                    TextureFormat::BC4,
-                    false,
-                    false,
-                    &image.rgba,
-                    &mut compiled_asset,
-                );
+            CompilerContext::execute_workload(move || {
+                let mut compiled_resources = vec![];
 
-                compiled_resources.push((
-                    context.target_unnamed.new_named("Roughness"),
-                    compiled_asset.clone(),
-                ));
-                compiled_resources.push((
-                    context.target_unnamed.new_named("Metalness"),
-                    compiled_asset.clone(),
-                ));
-            } else {
-                let mut compiled_asset_srgb = vec![];
-                runtime_texture::Texture::compile_from_offline(
-                    image.width,
-                    image.height,
-                    TextureFormat::BC7,
-                    true,
-                    false,
-                    &image.rgba,
-                    &mut compiled_asset_srgb,
-                );
+                let pixel_size = image.rgba.len() as u32 / image.width / image.height;
+                if pixel_size == 1 {
+                    let mut compiled_asset = vec![];
+                    runtime_texture::Texture::compile_from_offline(
+                        image.width,
+                        image.height,
+                        TextureFormat::BC4,
+                        false,
+                        false,
+                        &image.rgba,
+                        &mut compiled_asset,
+                    );
 
-                compiled_resources.push((
-                    context.target_unnamed.new_named("Albedo"),
-                    compiled_asset_srgb,
-                ));
+                    compiled_resources.push((
+                        target_unnamed.new_named("Roughness"),
+                        compiled_asset.clone(),
+                    ));
+                    compiled_resources.push((
+                        target_unnamed.new_named("Metalness"),
+                        compiled_asset.clone(),
+                    ));
+                } else {
+                    let mut compiled_asset_srgb = vec![];
+                    runtime_texture::Texture::compile_from_offline(
+                        image.width,
+                        image.height,
+                        TextureFormat::BC7,
+                        true,
+                        false,
+                        &image.rgba,
+                        &mut compiled_asset_srgb,
+                    );
 
-                // todo: normal compression doest require bc7 (verify and modify)
-                let mut compiled_asset_linear = vec![];
-                runtime_texture::Texture::compile_from_offline(
-                    image.width,
-                    image.height,
-                    TextureFormat::BC7,
-                    false,
-                    false,
-                    &image.rgba,
-                    &mut compiled_asset_linear,
-                );
+                    compiled_resources
+                        .push((target_unnamed.new_named("Albedo"), compiled_asset_srgb));
 
-                compiled_resources.push((
-                    context.target_unnamed.new_named("Normal"),
-                    compiled_asset_linear,
-                ));
+                    // todo: normal compression doest require bc7 (verify and modify)
+                    let mut compiled_asset_linear = vec![];
+                    runtime_texture::Texture::compile_from_offline(
+                        image.width,
+                        image.height,
+                        TextureFormat::BC7,
+                        false,
+                        false,
+                        &image.rgba,
+                        &mut compiled_asset_linear,
+                    );
 
-                let mut compiled_asset_blended = vec![];
-                runtime_texture::Texture::compile_from_offline(
-                    image.width,
-                    image.height,
-                    TextureFormat::BC7,
-                    true,
-                    true,
-                    &image.rgba,
-                    &mut compiled_asset_blended,
-                );
+                    compiled_resources
+                        .push((target_unnamed.new_named("Normal"), compiled_asset_linear));
 
-                compiled_resources.push((
-                    context.target_unnamed.new_named("AlbedoBlend"),
-                    compiled_asset_blended,
-                ));
-            }
-            compiled_resources
+                    let mut compiled_asset_blended = vec![];
+                    runtime_texture::Texture::compile_from_offline(
+                        image.width,
+                        image.height,
+                        TextureFormat::BC7,
+                        true,
+                        true,
+                        &image.rgba,
+                        &mut compiled_asset_blended,
+                    );
+
+                    compiled_resources.push((
+                        target_unnamed.new_named("AlbedoBlend"),
+                        compiled_asset_blended,
+                    ));
+                }
+                Ok(compiled_resources)
+            })
+            .await?
         };
 
         let mut compiled_resources = vec![];

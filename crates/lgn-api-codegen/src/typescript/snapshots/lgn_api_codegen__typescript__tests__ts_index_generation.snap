@@ -26,33 +26,16 @@ export class InternalError extends Error {
   }
 }
 
+type Fetch = typeof globalThis.fetch;
+
+const defaultFetch = globalThis.fetch;
+
 // Models and API from: cars
 
 export namespace Cars {
-  export type CarModel = {
-    color: CarModelColorModel;
-
-    extra?: Blob;
-
-    id: bigint;
-
-    is_new: boolean;
-
-    name: string;
-  };
-
-  /** The car color. */
-  export type CarModelColorModel = "red" | "blue" | "yellow";
-
-  export type CarsModel = CarModel[];
-
-  export type PetModel = {
-    name?: string;
-  };
-
   export type TestOneOf200ResponseModel =
-    | { type: "option1"; value: PetModel }
-    | { type: "option2"; value: CarModel };
+    | { type: "option1"; value: Components.PetModel }
+    | { type: "option2"; value: Components.CarModel };
 
   // ---------- Api ----------
 
@@ -87,7 +70,7 @@ export namespace Cars {
         "span-id"?: string;
       };
 
-      body: CarModel;
+      body: Components.CarModel;
     }): Promise<CreateCarResponse>;
 
     getCar(input: {
@@ -114,10 +97,6 @@ export namespace Cars {
   }
 
   // ---------- Client ----------
-
-  type Fetch = typeof globalThis.fetch;
-
-  const defaultFetch = globalThis.fetch;
 
   export class Client implements Api {
     #baseUri: string | URL;
@@ -232,7 +211,7 @@ export namespace Cars {
         "span-id"?: string;
       };
 
-      body: CarModel;
+      body: Components.CarModel;
     }): Promise<CreateCarResponse> {
       const url = new URL(
         `${this.#baseUri}/v1/spaces/${
@@ -343,7 +322,10 @@ export namespace Cars {
 
   // ---------- Responses ----------
 
-  export type TestHeadersResponse = { /** Ok. */ type: "200"; value: PetModel };
+  export type TestHeadersResponse = {
+    /** Ok. */ type: "200";
+    value: Components.PetModel;
+  };
 
   export const TestHeadersResponse = {
     async fromResponse(response: Response): Promise<TestHeadersResponse> {
@@ -384,7 +366,7 @@ export namespace Cars {
 
   export type GetCarsResponse = {
     /** List of cars. */ type: "200";
-    value: CarsModel;
+    value: Components.CarsModel;
   };
 
   export const GetCarsResponse = {
@@ -421,7 +403,7 @@ export namespace Cars {
   };
 
   export type GetCarResponse =
-    | { /** A car. */ type: "200"; value: CarModel }
+    | { /** A car. */ type: "200"; value: Components.CarModel }
     | { /** Car not found. */ type: "404" };
 
   export const GetCarResponse = {
@@ -485,6 +467,31 @@ export namespace Cars {
         }
       }
     },
+  };
+}
+
+// Models and API from: components
+
+export namespace Components {
+  export type CarModel = {
+    color: CarModelColorModel;
+
+    extra?: Blob;
+
+    id: bigint;
+
+    is_new: boolean;
+
+    name: string;
+  };
+
+  /** The car color. */
+  export type CarModelColorModel = "red" | "blue" | "yellow";
+
+  export type CarsModel = CarModel[];
+
+  export type PetModel = {
+    name?: string;
   };
 }
 

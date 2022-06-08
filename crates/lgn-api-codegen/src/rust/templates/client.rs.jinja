@@ -63,11 +63,11 @@ where
                 .body(Body::empty()).unwrap();
             {% endif -%}
 
-            if let Some(extensions) = context.request_extensions() {
+            if let Some(extensions) = api_codegen_context.request_extensions() {
                 req.extensions_mut().extend(extensions);
             }
 
-            if let Some(headers) = context.request_headers() {
+            if let Some(headers) = api_codegen_context.request_headers() {
                 req.headers_mut().extend(headers);
             }
 
@@ -107,7 +107,7 @@ where
 
             let (parts, body) = resp.into_parts();
             let resp = responses::{{ enum_name }}::from_response(&parts, body).await;
-            context.set_response(parts);
+            api_codegen_context.set_response(parts);
             resp
         }
     {% endfor %}

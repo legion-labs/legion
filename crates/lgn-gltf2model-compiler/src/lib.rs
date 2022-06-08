@@ -46,44 +46,51 @@ impl Compiler for Gltf2ModelCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let mut resource_references = Vec::new();
-
-        let outputs = {
-            let resource = resources
-                .load_async::<lgn_graphics_data::offline_gltf::GltfFile>(
-                    context.source.resource_id(),
-                )
-                .await;
-            let resource = resource.get(&resources).ok_or_else(|| {
+        let resource = resources
+            .load_async::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id())
+            .await;
+        let resource = resource
+            .get(&resources)
+            .ok_or_else(|| {
                 CompilerError::CompilationError(format!(
                     "Failed to retrieve resource '{}'",
                     context.source.resource_id()
                 ))
-            })?;
-            let mut compiled_resources = vec![];
-            let model_proc = ModelProcessor {};
+            })?
+            .clone();
 
-            let models = resource.gather_models(context.source.resource_id());
-            for (model, name) in models {
-                let mut compiled_asset = vec![];
-                model_proc
-                    .write_resource(&model, &mut compiled_asset)
-                    .map_err(|err| {
-                        CompilerError::CompilationError(format!(
-                            "Writing to file '{}' failed: {}",
-                            context.source.resource_id(),
-                            err
-                        ))
-                    })?;
-                let model_rpid = context.target_unnamed.new_named(&name);
-                compiled_resources.push((model_rpid.clone(), compiled_asset));
-                for mesh in model.meshes {
-                    if let Some(material_rpid) = mesh.material {
-                        resource_references.push((model_rpid.clone(), material_rpid));
+        let (outputs, resource_references) = {
+            let source = context.source.clone();
+            let target_unnamed = context.target_unnamed.clone();
+
+            CompilerContext::execute_workload(move || {
+                let mut compiled_resources = vec![];
+                let mut resource_references = Vec::new();
+                let model_proc = ModelProcessor {};
+
+                let models = resource.gather_models(source.resource_id());
+                for (model, name) in models {
+                    let mut compiled_asset = vec![];
+                    model_proc
+                        .write_resource(&model, &mut compiled_asset)
+                        .map_err(|err| {
+                            CompilerError::CompilationError(format!(
+                                "Writing to file '{}' failed: {}",
+                                source.resource_id(),
+                                err
+                            ))
+                        })?;
+                    let model_rpid = target_unnamed.new_named(&name);
+                    compiled_resources.push((model_rpid.clone(), compiled_asset));
+                    for mesh in model.meshes {
+                        if let Some(material_rpid) = mesh.material {
+                            resource_references.push((model_rpid.clone(), material_rpid));
+                        }
                     }
                 }
-            }
-            compiled_resources
+                Ok((compiled_resources, resource_references))
+            })
+            .await?
         };
 
         let mut compiled_resources = vec![];

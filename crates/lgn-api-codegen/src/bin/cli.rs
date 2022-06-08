@@ -5,10 +5,17 @@
 
 use std::path::PathBuf;
 
-use clap::Parser;
-use lgn_api_codegen::{generate, Language};
+use clap::{ArgEnum, Parser};
+use lgn_api_codegen::{generate, Language as InternalLanguage, RustOptions, TypeScriptOptions};
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::LevelFilter;
+
+#[derive(Debug, Copy, Clone, ArgEnum)]
+pub enum Language {
+    Rust,
+    #[clap(name = "typescript")]
+    TypeScript,
+}
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion API Code Generator")]
@@ -40,6 +47,22 @@ struct Args {
         help = "The directory to output generated code to."
     )]
     out_dir: PathBuf,
+
+    // Languages specific options
+    #[clap(
+        long,
+        env,
+        help = "A custom Prettier config path (only works when targeting TypeScript)"
+    )]
+    prettier_config_path: Option<PathBuf>,
+    #[clap(
+        long,
+        env,
+        help = "Generates a package.json alongside the source files (only works when targeting TypeScript)"
+    )]
+    with_package_json: bool,
+    #[clap(long, help = "Skip code format (only works when targeting TypeScript)")]
+    skip_format: bool,
 }
 
 #[allow(clippy::let_unit_value)]
@@ -51,7 +74,16 @@ fn main() -> anyhow::Result<()> {
         .with_local_sink_max_level(LevelFilter::Debug)
         .build();
 
-    generate(args.language, args.root, &args.openapis, &args.out_dir)?;
+    let internal_language = match args.language {
+        Language::Rust => InternalLanguage::Rust(RustOptions::default()),
+        Language::TypeScript => InternalLanguage::TypeScript(TypeScriptOptions {
+            prettier_config_path: args.prettier_config_path.map(PathBuf::from),
+            skip_format: args.skip_format,
+            with_package_json: args.with_package_json,
+        }),
+    };
+
+    generate(internal_language, args.root, &args.openapis, &args.out_dir)?;
 
     Ok(())
 }

@@ -1,0 +1,58 @@
+parameters:
+  SpaceId:
+    name: space-id
+    in: path
+    description: The space identifier.
+    required: true
+    schema:
+      type: string
+  CarId:
+    name: car-id
+    in: path
+    description: The car identifier.
+    required: true
+    schema:
+      type: integer
+      format: int64
+schemas:
+  Cars:
+    type: array
+    items:
+      $ref: "#/schemas/Car"
+  Car:
+    type: object
+    properties:
+      id:
+        type: integer
+        format: int64
+      name:
+        type: string
+      color:
+        type: string
+        description: The car color.
+        enum:
+          - red
+          - blue
+          - yellow
+      is_new:
+        type: boolean
+      extra:
+        type: string
+        format: byte
+    required:
+      - id
+      - name
+      - color
+      - is_new
+  Pet:
+    type: object
+    properties:
+      name:
+        type: string
+requestBodies:
+  Car:
+    description: The content of the car.
+    content:
+      application/json:
+        schema:
+          $ref: "#/schemas/Car"

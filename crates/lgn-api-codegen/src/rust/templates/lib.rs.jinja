@@ -1,5 +1,7 @@
 // Auto-generated file.
 
 {% for (module_path, location_ctx) in ctx.as_modules()? %}
+{% if module_path.is_relative() %}
 {% include "location_context.rs.jinja" %}
+{% endif %}
 {% endfor %}
