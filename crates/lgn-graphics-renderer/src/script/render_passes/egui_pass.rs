@@ -279,12 +279,12 @@ impl EguiPass {
                                                     .set_translation(Vec2::new(0.0, 0.0).into());
                                                 push_constant_data.set_width(
                                                     (view_target_extents.width as f32
-                                                        / egui.ctx().pixels_per_point())
+                                                        / egui.context().pixels_per_point())
                                                     .into(),
                                                 );
                                                 push_constant_data.set_height(
                                                     (view_target_extents.height as f32
-                                                        / egui.ctx().pixels_per_point())
+                                                        / egui.context().pixels_per_point())
                                                     .into(),
                                                 );
 
