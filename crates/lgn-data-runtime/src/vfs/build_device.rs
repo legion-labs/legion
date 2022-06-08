@@ -130,6 +130,7 @@ impl BuildDevice {
             .map_err(|_e| {
                 std::io::Error::new(io::ErrorKind::InvalidData, "Failed to read manifest")
             })?
+            .trim_end()
             .parse()
             .map_err(|_e| {
                 std::io::Error::new(io::ErrorKind::InvalidData, "Failed to read manifest")
