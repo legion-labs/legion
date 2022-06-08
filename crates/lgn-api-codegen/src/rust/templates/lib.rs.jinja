@@ -1,7 +1,5 @@
 // Auto-generated file.
 
-{% for (module_path, location_ctx) in ctx.as_modules()? %}
-{% if module_path.is_relative() %}
+{% for (module_path, location_ctx) in ctx.as_local_rust_modules()? %}
 {% include "location_context.rs.jinja" %}
-{% endif %}
 {% endfor %}
