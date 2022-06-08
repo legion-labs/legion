@@ -29,7 +29,6 @@ struct ResourceInfo {
 }
 
 impl ResourceInfo {
-    #[allow(dead_code)]
     // sort contents so serialization is deterministic
     fn pre_serialize(&mut self) {
         self.dependencies.sort();
@@ -46,7 +45,6 @@ pub(crate) struct SourceContent {
 }
 
 impl SourceContent {
-    #[allow(dead_code)]
     fn new(version: &str) -> Self {
         Self {
             version: version.to_owned(),
@@ -63,7 +61,6 @@ impl SourceContent {
         }
     }
 
-    #[allow(dead_code)]
     fn write(&mut self) -> Result<Vec<u8>, Error> {
         self.pre_serialize();
         let mut buffer = vec![];
@@ -71,12 +68,10 @@ impl SourceContent {
         Ok(buffer)
     }
 
-    #[allow(dead_code)]
     fn read(buffer: &[u8]) -> Result<Self, Error> {
         serde_json::from_reader(buffer).map_err(|e| Error::Io(e.into()))
     }
 
-    #[allow(dead_code)]
     pub fn record_pathid(&mut self, id: &ResourcePathId) {
         self.pathid_mapping.insert(id.resource_id(), id.clone());
     }
@@ -133,7 +128,6 @@ impl SourceContent {
         AssetHash::from(hasher.finish())
     }
 
-    #[allow(dead_code)]
     pub(crate) fn update_resource(
         &mut self,
         id: ResourcePathId,
