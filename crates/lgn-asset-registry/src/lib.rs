@@ -19,8 +19,8 @@ use lgn_content_store::{
     Config,
 };
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryEvent, AssetRegistryOptions, AssetRegistryScheduling,
-    ResourceLoadEvent,
+    new_resource_type_and_id_indexer, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
+    AssetRegistryScheduling, ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
 use lgn_tracing::{error, info};
@@ -87,19 +87,29 @@ impl AssetRegistryPlugin {
                 }
             }
         };
+        let load_all_assets_from_manifest = config.assets_to_load.is_empty();
 
         world.insert_resource(manifest_id.clone());
 
-        let registry_options =
-            AssetRegistryOptions::new().add_device_cas(data_provider, manifest_id);
+        let registry_options = AssetRegistryOptions::new()
+            .add_device_cas(Arc::clone(&data_provider), manifest_id.clone());
 
-        // TODO: read resource list from cas device?
-        // let mut config = world.resource_mut::<AssetRegistrySettings>();
-        // if config.assets_to_load.is_empty() {
-        //     if let Some(manifest) = &manifest_id {
-        //         config.assets_to_load = manifest.resources();
-        //     }
-        // }
+        if load_all_assets_from_manifest {
+            if let Ok(resources) = world.resource::<TokioAsyncRuntime>().block_on(async {
+                lgn_content_store::indexing::enumerate_resources(
+                    &data_provider,
+                    &new_resource_type_and_id_indexer(),
+                    &manifest_id.read(),
+                )
+                .await
+            }) {
+                let mut config = world.resource_mut::<AssetRegistrySettings>();
+
+                for (index_key, _resource_id) in resources {
+                    config.assets_to_load.push(index_key.into());
+                }
+            }
+        }
 
         world.insert_non_send_resource(registry_options);
     }

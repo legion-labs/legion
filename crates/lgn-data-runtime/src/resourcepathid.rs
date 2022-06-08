@@ -78,7 +78,7 @@ impl FromStr for Transform {
 /// let mut resources = resources.lock().unwrap();
 /// let content_provider: Arc<Box<dyn ContentProvider + Send +
 ///  Sync>> = Arc::new(Box::new(MemoryProvider::new()));
-/// let mut project = Project::new_with_remote_mock(&PathBuf::new(), content_provider).await.unwrap();
+/// let mut project = Project::create_with_remote_mock(&PathBuf::new(), content_provider).await.unwrap();
 /// pub const SOURCE_GEOMETRY: &'static str = "src_geom";
 /// pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
 /// pub const BINARY_GEOMETRY: ResourceType = ResourceType::new(b"bin_geom");

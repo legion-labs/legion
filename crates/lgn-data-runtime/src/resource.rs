@@ -190,16 +190,11 @@ impl ResourceId {
     pub fn resource_path(&self) -> PathBuf {
         PathBuf::from(self)
     }
-
-    /// Returns identifier inner representation, as it would be serialized
-    pub fn as_raw(&self) -> u128 {
-        self.0.get()
-    }
 }
 
 impl fmt::Display for ResourceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", Uuid::from_u128(self.as_raw())))
+        f.write_fmt(format_args!("{}", Uuid::from_u128(self.0.get())))
     }
 }
 
@@ -236,7 +231,7 @@ impl From<&ResourceId> for PathBuf {
     fn from(id: &ResourceId) -> Self {
         let mut path = Self::new();
         let mut byte_text = String::with_capacity(2);
-        for byte in id.as_raw().to_be_bytes().into_iter().take(3) {
+        for byte in id.0.get().to_be_bytes().into_iter().take(3) {
             write!(byte_text, "{:02x}", byte).unwrap();
             path.push(&byte_text);
             byte_text.clear();
@@ -252,10 +247,10 @@ impl Serialize for ResourceId {
         S: Serializer,
     {
         if serializer.is_human_readable() {
-            let id = Uuid::from_u128(self.as_raw()).to_string();
+            let id = Uuid::from_u128(self.0.get()).to_string();
             serializer.serialize_str(&id)
         } else {
-            serializer.serialize_u128(self.as_raw())
+            serializer.serialize_u128(self.0.get())
         }
     }
 }

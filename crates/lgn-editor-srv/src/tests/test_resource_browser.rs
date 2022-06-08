@@ -120,6 +120,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
 #[tokio::test]
 async fn test_resource_browser() -> anyhow::Result<()> {
     //let project_dir = std::path::PathBuf::from("d:/local_db/");
+    //std::fs::remove_dir_all(&project_dir.join("offline")).ok();
     //std::fs::remove_dir_all(&project_dir.join("remote")).ok();
     let project_dir = tempfile::tempdir().unwrap();
 
@@ -292,7 +293,6 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             }))
             .await?;
 
-        /*
         // Reparent under folder entity
         resource_browser
             .reparent_resource(Request::new(ReparentResourceRequest {
@@ -300,7 +300,6 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 new_path: "/root_entity/test_folder".into(),
             }))
             .await?;
-        */
 
         // Reparent under root
         resource_browser
