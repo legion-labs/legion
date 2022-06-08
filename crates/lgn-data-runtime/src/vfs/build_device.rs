@@ -1,22 +1,26 @@
-use async_trait::async_trait;
-use std::sync::Arc;
-use std::time::Instant;
 use std::{
     io,
     path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
 };
 
-use lgn_content_store::Provider;
+use async_trait::async_trait;
+use lgn_content_store::{
+    indexing::{empty_tree_id, BasicIndexer, ResourceReader, TreeIdentifier, TreeLeafNode},
+    Provider,
+};
 use lgn_tracing::info;
 
 use super::Device;
-use crate::{manifest::Manifest, ResourceTypeAndId};
+use crate::{new_resource_type_and_id_indexer, ResourceTypeAndId, ResourceTypeAndIdIndexer};
 
 /// Storage device that builds resources on demand. Resources are accessed
 /// through a manifest access table.
 pub(crate) struct BuildDevice {
-    manifest: Manifest,
+    manifest_id: TreeIdentifier,
     provider: Arc<Provider>,
+    indexer: ResourceTypeAndIdIndexer,
     databuild_bin: PathBuf,
     output_db_addr: String,
     project: PathBuf,
@@ -24,49 +28,61 @@ pub(crate) struct BuildDevice {
 }
 
 impl BuildDevice {
-    pub(crate) fn new(
-        manifest: Manifest,
+    pub(crate) async fn new(
+        manifest_id: Option<TreeIdentifier>,
         provider: Arc<Provider>,
         build_bin: impl AsRef<Path>,
         output_db_addr: String,
         project: impl AsRef<Path>,
         force_recompile: bool,
     ) -> Self {
+        let empty_manifest_id = empty_tree_id(&provider).await.unwrap();
         Self {
-            manifest,
+            manifest_id: manifest_id.unwrap_or(empty_manifest_id),
             provider,
+            indexer: new_resource_type_and_id_indexer(),
             databuild_bin: build_bin.as_ref().to_owned(),
             output_db_addr,
             project: project.as_ref().to_owned(),
             force_recompile,
         }
     }
+
+    async fn load_internal(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+        if let Ok(Some(TreeLeafNode::Resource(leaf_id))) = self
+            .indexer
+            .get_leaf(&self.provider, &self.manifest_id, &type_id.into())
+            .await
+        {
+            if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&leaf_id).await {
+                return Some(resource_bytes);
+            }
+        }
+
+        None
+    }
 }
 
 #[async_trait]
 impl Device for BuildDevice {
-    async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+    async fn load(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         if self.force_recompile {
             self.reload(type_id).await
         } else {
-            let checksum = self.manifest.find(type_id)?;
-            let content = self.provider.read(&checksum).await.ok()?;
-            Some(content)
+            self.load_internal(type_id).await
         }
     }
 
-    async fn reload(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        let output = self.build_resource(type_id).ok()?;
-        self.manifest.extend(output);
+    async fn reload(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
+        let manifest_id = self.build_resource(type_id).ok()?;
+        self.manifest_id = manifest_id;
 
-        let checksum = self.manifest.find(type_id)?;
-        let content = self.provider.read(&checksum).await.ok()?;
-        Some(content)
+        self.load_internal(type_id).await
     }
 }
 
 impl BuildDevice {
-    fn build_resource(&self, resource_id: ResourceTypeAndId) -> io::Result<Manifest> {
+    fn build_resource(&self, resource_id: ResourceTypeAndId) -> io::Result<TreeIdentifier> {
         let mut command = build_command(
             &self.databuild_bin,
             resource_id,
@@ -110,11 +126,16 @@ impl BuildDevice {
             ));
         }
 
-        let manifest: Manifest = serde_json::from_slice(&output.stdout).map_err(|_e| {
-            std::io::Error::new(io::ErrorKind::InvalidData, "Failed to read manifest")
-        })?;
+        let manifest_id = std::str::from_utf8(&output.stdout)
+            .map_err(|_e| {
+                std::io::Error::new(io::ErrorKind::InvalidData, "Failed to read manifest")
+            })?
+            .parse()
+            .map_err(|_e| {
+                std::io::Error::new(io::ErrorKind::InvalidData, "Failed to read manifest")
+            })?;
 
-        Ok(manifest)
+        Ok(manifest_id)
     }
 }
 

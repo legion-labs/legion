@@ -1,7 +1,7 @@
-use async_trait::async_trait;
-use lgn_content_store::Provider;
 use std::{io, path::Path, sync::Arc};
 
+use async_trait::async_trait;
+use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourcePathId, Transform};
 
 use super::CompilerStub;
@@ -10,7 +10,7 @@ use crate::{
         CompilationEnv, CompilationOutput, Compiler, CompilerDescriptor, CompilerError,
         CompilerHash, CompilerInfo,
     },
-    CompiledResource,
+    CompiledResource, CompiledResources,
 };
 
 pub(super) struct InProcessCompilerStub {
@@ -55,9 +55,19 @@ impl CompilerStub for InProcessCompilerStub {
         registry: Arc<AssetRegistry>,
         provider: &Provider,
         _project_dir: &Path,
+        runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
-        self.descriptor
+        // build temporary runtime manifest
+        let previous_manifest_id = runtime_manifest_id.read();
+        let manifest = CompiledResources {
+            compiled_resources: derived_deps.to_vec(),
+        };
+        let manifest_id = manifest.into_rt_manifest(provider, |_rpid| true).await;
+        runtime_manifest_id.write(manifest_id);
+
+        let result = self
+            .descriptor
             .compile(
                 self.compiler.as_ref(),
                 compile_path,
@@ -67,7 +77,11 @@ impl CompilerStub for InProcessCompilerStub {
                 provider,
                 env,
             )
-            .await
+            .await;
+
+        runtime_manifest_id.write(previous_manifest_id);
+
+        result
     }
 
     async fn info(&self) -> io::Result<Vec<CompilerInfo>> {

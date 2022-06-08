@@ -51,7 +51,7 @@ impl Service {
         repository_name: RepositoryName,
     ) -> Result<Box<dyn Index>, tonic::Status> {
         self.repository_index
-            .load_repository(repository_name)
+            .load_repository(&repository_name)
             .await
             .map_err(|e| tonic::Status::unknown(e.to_string()))
     }
@@ -80,7 +80,7 @@ impl SourceControl for Service {
 
         match self
             .repository_index
-            .create_repository(repository_name)
+            .create_repository(&repository_name)
             .await
         {
             Ok(blob_storage_url) => blob_storage_url,
@@ -117,7 +117,7 @@ impl SourceControl for Service {
 
         match self
             .repository_index
-            .destroy_repository(repository_name.clone())
+            .destroy_repository(&repository_name)
             .await
         {
             Ok(()) => {
@@ -150,7 +150,11 @@ impl SourceControl for Service {
             .parse()
             .map_err(|e| tonic::Status::invalid_argument(format!("{}", e)))?;
 
-        match self.repository_index.load_repository(repository_name).await {
+        match self
+            .repository_index
+            .load_repository(&repository_name)
+            .await
+        {
             Ok(_) => Ok(tonic::Response::new(RepositoryExistsResponse {
                 exists: true,
             })),

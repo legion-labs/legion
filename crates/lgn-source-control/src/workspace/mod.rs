@@ -102,7 +102,7 @@ impl Workspace {
         let backend = Box::new(LocalWorkspaceBackend::create(lsc_directory).await?);
 
         let index = repository_index
-            .load_repository(config.repository_name.clone())
+            .load_repository(&config.repository_name)
             .await?;
 
         let workspace = Self::new(root, index, config, backend, provider).await?;
@@ -150,7 +150,7 @@ impl Workspace {
         let backend = Box::new(LocalWorkspaceBackend::connect(lsc_directory).await?);
 
         let index = repository_index
-            .load_repository(config.repository_name.clone())
+            .load_repository(&config.repository_name.clone())
             .await?;
 
         Self::new(root, index, config, backend, provider).await

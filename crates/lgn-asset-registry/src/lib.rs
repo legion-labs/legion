@@ -10,14 +10,17 @@ mod errors;
 mod events;
 mod loading_states;
 
-use std::{path::Path, str::FromStr, sync::Arc};
+use std::{path::Path, sync::Arc};
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
-use lgn_content_store::{Config, Identifier, Provider};
+use lgn_content_store::{
+    indexing::{empty_tree_id, SharedTreeIdentifier, TreeIdentifier},
+    Config,
+};
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
-    AssetRegistryScheduling, ResourceLoadEvent,
+    AssetRegistry, AssetRegistryEvent, AssetRegistryOptions, AssetRegistryScheduling,
+    ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
 use lgn_tracing::{error, info};
@@ -71,40 +74,32 @@ impl AssetRegistryPlugin {
         );
 
         let config = world.resource::<AssetRegistrySettings>();
-        let manifest: Option<Manifest> = if let Some(game_manifest) = &config.game_manifest {
-            let manifest = {
-                let async_rt = world.resource::<TokioAsyncRuntime>();
-                let manifest = async_rt.block_on(async {
-                    Self::load_manifest_from_path(&game_manifest, &data_provider).await
-                });
-                match manifest {
-                    Ok(manifest) => manifest,
-                    Err(error) => {
-                        error!("error reading manifest: {}", error);
-                        Manifest::default()
-                    }
+        let mut manifest_id = world.resource::<TokioAsyncRuntime>().block_on(async {
+            SharedTreeIdentifier::new(empty_tree_id(&data_provider).await.unwrap())
+        });
+        if let Some(game_manifest) = &config.game_manifest {
+            match Self::load_manifest_id_from_path(&game_manifest) {
+                Ok(game_manifest_id) => {
+                    manifest_id = SharedTreeIdentifier::new(game_manifest_id);
                 }
-            };
-
-            world.insert_resource(manifest.clone());
-            Some(manifest)
-        } else {
-            None
+                Err(error) => {
+                    error!("error reading manifest: {}", error);
+                }
+            }
         };
 
-        let mut config = world.resource_mut::<AssetRegistrySettings>();
-        if config.assets_to_load.is_empty() {
-            if let Some(manifest) = &manifest {
-                config.assets_to_load = manifest.resources();
-            }
-        }
+        world.insert_resource(manifest_id.clone());
 
-        let mut registry_options = AssetRegistryOptions::new();
-        if let Some(manifest) = manifest {
-            registry_options = registry_options.add_device_cas(data_provider, manifest);
-        } else {
-            registry_options = registry_options.add_device_cas_with_delayed_manifest(data_provider);
-        }
+        let registry_options =
+            AssetRegistryOptions::new().add_device_cas(data_provider, manifest_id);
+
+        // TODO: read resource list from cas device?
+        // let mut config = world.resource_mut::<AssetRegistrySettings>();
+        // if config.assets_to_load.is_empty() {
+        //     if let Some(manifest) = &manifest_id {
+        //         config.assets_to_load = manifest.resources();
+        //     }
+        // }
 
         world.insert_non_send_resource(registry_options);
     }
@@ -219,12 +214,13 @@ impl AssetRegistryPlugin {
         registry: Res<'_, Arc<AssetRegistry>>,
         mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
         mut asset_handles: ResMut<'_, AssetHandles>,
+        manifest_id: Res<'_, SharedTreeIdentifier>,
     ) {
         for event in events.iter() {
             match event {
-                AssetRegistryRequest::LoadManifest(manifest_id) => {
-                    info!("received request to load manifest \"{}\"", manifest_id);
-                    registry.load_manifest(manifest_id);
+                AssetRegistryRequest::LoadManifest(new_manifest_id) => {
+                    info!("received request to load manifest \"{}\"", new_manifest_id);
+                    manifest_id.write(new_manifest_id.clone());
                 }
                 AssetRegistryRequest::LoadAsset(asset_id) => {
                     info!("received request to load asset \"{}\"", asset_id);
@@ -235,23 +231,13 @@ impl AssetRegistryPlugin {
         }
 
         drop(registry);
+        drop(manifest_id);
     }
 
-    async fn load_manifest_from_path(
-        manifest_path: impl AsRef<Path>,
-        provider: &Provider,
-    ) -> Result<Manifest> {
+    fn load_manifest_id_from_path(manifest_path: impl AsRef<Path>) -> Result<TreeIdentifier> {
         let manifest_id = std::fs::read_to_string(manifest_path).map_err(Error::IO)?;
-        let manifest_id = Identifier::from_str(&manifest_id)?;
-        Self::load_manifest_by_id(manifest_id, provider).await
-    }
-
-    async fn load_manifest_by_id(manifest_id: Identifier, provider: &Provider) -> Result<Manifest> {
-        let content = provider
-            .read(&manifest_id)
-            .await
-            .map_err(Error::ContentStore)?;
-
-        serde_json::from_reader(content.as_slice()).map_err(Error::SerdeJSON)
+        manifest_id
+            .parse::<TreeIdentifier>()
+            .map_err(Error::ContentStoreIndexing)
     }
 }

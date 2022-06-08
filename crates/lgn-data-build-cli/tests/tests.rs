@@ -31,7 +31,7 @@ async fn build_device() {
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
     repository_index
-        .create_repository(repository_name.clone())
+        .create_repository(&repository_name)
         .await
         .unwrap();
     let source_control_content_provider = Arc::new(
@@ -140,18 +140,18 @@ async fn build_device() {
 
     // create resource registry that uses the 'build device'
 
-    let manifest = lgn_data_runtime::manifest::Manifest::default();
     let registry = AssetRegistryOptions::new()
         .add_loader::<refs_resource::TestResource>()
         .add_loader::<refs_asset::RefsAsset>()
         .add_device_build(
             Arc::clone(&data_content_provider),
-            manifest,
+            None,
             DATABUILD_EXE,
             DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
             project_dir,
             true,
         )
+        .await
         .create()
         .await;
 
@@ -233,7 +233,7 @@ async fn no_intermediate_resource() {
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
     repository_index
-        .create_repository(repository_name.clone())
+        .create_repository(&repository_name)
         .await
         .unwrap();
     let source_control_content_provider = Arc::new(
@@ -349,7 +349,7 @@ async fn with_intermediate_resource() {
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
     repository_index
-        .create_repository(repository_name.clone())
+        .create_repository(&repository_name)
         .await
         .unwrap();
 

@@ -1,16 +1,20 @@
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::path::PathBuf;
-use std::sync::RwLock;
-use std::{fmt, hash::Hash, str::FromStr};
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+    convert::TryFrom,
+    fmt::{self, Write},
+    hash::Hash,
+    path::PathBuf,
+    str::FromStr,
+    sync::RwLock,
+};
 
+use lgn_content_store::indexing::{CompositeIndexer, IndexKey, StaticIndexer};
 use lgn_data_model::TypeReflection;
 use lgn_utils::DefaultHash;
 use once_cell::sync::OnceCell;
 use serde::ser::SerializeTuple;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::Write;
 use uuid::Uuid;
 use xxhash_rust::const_xxh3::xxh3_64 as const_xxh3;
 
@@ -29,7 +33,7 @@ impl fmt::Display for ResourceType {
 impl fmt::Debug for ResourceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("ResourceType")
-            .field(&format_args!("{:#016x}", self.0))
+            .field(&format_args!("{}={:#016x}", self.as_pretty(), self.0,))
             .finish()
     }
 }
@@ -120,6 +124,18 @@ impl FromStr for ResourceType {
     }
 }
 
+impl From<ResourceType> for IndexKey {
+    fn from(kind: ResourceType) -> Self {
+        kind.0.get().into()
+    }
+}
+
+impl From<IndexKey> for ResourceType {
+    fn from(key: IndexKey) -> Self {
+        Self::from_raw(key.into())
+    }
+}
+
 /// Id of a runtime asset or source or derived resource.
 ///
 /// We currently use fully random 128-bit UUIDs, to ensure uniqueness without
@@ -135,6 +151,7 @@ impl ResourceId {
     pub fn new() -> Self {
         Self(std::num::NonZeroU128::new(Uuid::new_v4().as_u128()).unwrap())
     }
+
     /// Creates an explicit id, assuming that it is a runtime counter, not for
     /// serialization. The UUID 'version' is a non-standard value of 15.
     pub fn new_explicit(id: u64) -> Self {
@@ -173,11 +190,16 @@ impl ResourceId {
     pub fn resource_path(&self) -> PathBuf {
         PathBuf::from(self)
     }
+
+    /// Returns identifier inner representation, as it would be serialized
+    pub fn as_raw(&self) -> u128 {
+        self.0.get()
+    }
 }
 
 impl fmt::Display for ResourceId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("{}", Uuid::from_u128(self.0.get())))
+        f.write_fmt(format_args!("{}", Uuid::from_u128(self.as_raw())))
     }
 }
 
@@ -187,6 +209,18 @@ impl FromStr for ResourceId {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let id = Uuid::from_str(s)?;
         Ok(Self::from_raw(id.as_u128()))
+    }
+}
+
+impl From<ResourceId> for IndexKey {
+    fn from(id: ResourceId) -> Self {
+        id.0.get().into()
+    }
+}
+
+impl From<IndexKey> for ResourceId {
+    fn from(key: IndexKey) -> Self {
+        Self::from_raw(key.into())
     }
 }
 
@@ -202,7 +236,7 @@ impl From<&ResourceId> for PathBuf {
     fn from(id: &ResourceId) -> Self {
         let mut path = Self::new();
         let mut byte_text = String::with_capacity(2);
-        for byte in id.0.get().to_be_bytes().into_iter().take(3) {
+        for byte in id.as_raw().to_be_bytes().into_iter().take(3) {
             write!(byte_text, "{:02x}", byte).unwrap();
             path.push(&byte_text);
             byte_text.clear();
@@ -218,10 +252,10 @@ impl Serialize for ResourceId {
         S: Serializer,
     {
         if serializer.is_human_readable() {
-            let id = Uuid::from_u128(self.0.get()).to_string();
+            let id = Uuid::from_u128(self.as_raw()).to_string();
             serializer.serialize_str(&id)
         } else {
-            serializer.serialize_u128(self.0.get())
+            serializer.serialize_u128(self.as_raw())
         }
     }
 }
@@ -273,6 +307,34 @@ impl FromStr for ResourceTypeAndId {
     }
 }
 
+impl From<ResourceTypeAndId> for IndexKey {
+    fn from(type_id: ResourceTypeAndId) -> Self {
+        Self::compose(type_id.kind, type_id.id)
+    }
+}
+
+#[allow(clippy::fallible_impl_from)]
+impl From<IndexKey> for ResourceTypeAndId {
+    fn from(index_key: IndexKey) -> Self {
+        let (kind, id) = index_key.decompose().unwrap();
+        Self {
+            kind: kind.into(),
+            id: id.into(),
+        }
+    }
+}
+
+#[allow(clippy::fallible_impl_from)]
+impl From<&IndexKey> for ResourceTypeAndId {
+    fn from(index_key: &IndexKey) -> Self {
+        let (kind, id) = index_key.decompose().unwrap();
+        Self {
+            kind: kind.into(),
+            id: id.into(),
+        }
+    }
+}
+
 impl fmt::Display for ResourceTypeAndId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("({},{})", self.kind, self.id))
@@ -314,6 +376,17 @@ impl<'de> Deserialize<'de> for ResourceTypeAndId {
             Ok(Self { kind, id })
         }
     }
+}
+
+/// Content store indexer that can be used to index by `ResourceTypeAndId`
+pub type ResourceTypeAndIdIndexer = CompositeIndexer<StaticIndexer, StaticIndexer>;
+
+/// Create a `new ResourceTypeAndIdIndexer`
+pub fn new_resource_type_and_id_indexer() -> ResourceTypeAndIdIndexer {
+    CompositeIndexer::new(
+        StaticIndexer::new(std::mem::size_of::<ResourceType>()),
+        StaticIndexer::new(std::mem::size_of::<ResourceId>()),
+    )
 }
 
 /// Trait describing resource type name.

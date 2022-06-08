@@ -1,11 +1,11 @@
-use async_trait::async_trait;
-use lgn_content_store::Provider;
 use std::{
     io,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
+use async_trait::async_trait;
+use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourcePathId, Transform};
 
 use super::CompilerStub;
@@ -55,6 +55,7 @@ impl CompilerStub for BinCompilerStub {
         _registry: Arc<AssetRegistry>,
         _provider: &Provider,
         resource_dir: &Path,
+        _runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         CompilerCompileCmd::new(

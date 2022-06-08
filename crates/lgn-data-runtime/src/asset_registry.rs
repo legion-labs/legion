@@ -6,12 +6,14 @@ use std::{
     time::Duration,
 };
 
-use lgn_content_store::{Identifier, Provider};
+use lgn_content_store::{
+    indexing::{SharedTreeIdentifier, TreeIdentifier},
+    Provider,
+};
 use lgn_ecs::schedule::SystemLabel;
 
 use crate::{
     asset_loader::{create_loader, AssetLoaderStub, LoaderResult},
-    manifest::Manifest,
     vfs, Asset, AssetLoader, AssetLoaderError, Handle, HandleUntyped, OfflineResource, Resource,
     ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor, ResourceProcessorError,
     ResourceType, ResourceTypeAndId,
@@ -110,7 +112,7 @@ impl<'a, T: ?Sized + 'a> std::ops::DerefMut for AssetRegistryWriteGuard<'a, T> {
 pub struct AssetRegistryOptions {
     loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
     processors: HashMap<ResourceType, Box<dyn ResourceProcessor + Send + Sync>>,
-    devices: Vec<Box<(dyn vfs::Device + Send)>>,
+    devices: Vec<Box<dyn vfs::Device + Send>>,
 }
 
 impl AssetRegistryOptions {
@@ -124,12 +126,18 @@ impl AssetRegistryOptions {
         }
     }
 
+    /// Adds a device that can read resources.
+    #[must_use]
+    pub fn add_device(mut self, device: Box<dyn vfs::Device + Send>) -> Self {
+        self.devices.push(device);
+        self
+    }
+
     /// Specifying `directory device` will mount a device that allows to read
     /// resources from a specified directory.
     #[must_use]
-    pub fn add_device_dir(mut self, path: impl AsRef<Path>) -> Self {
-        self.devices.push(Box::new(vfs::DirDevice::new(path)));
-        self
+    pub fn add_device_dir(self, path: impl AsRef<Path>) -> Self {
+        self.add_device(Box::new(vfs::DirDevice::new(path)))
     }
 
     /// Specifying `directory device` will mount a device that allows to read
@@ -143,20 +151,12 @@ impl AssetRegistryOptions {
     /// allows to read resources from a specified content store through
     /// provided manifest.
     #[must_use]
-    pub fn add_device_cas(mut self, provider: Arc<Provider>, manifest: Manifest) -> Self {
-        self.devices
-            .push(Box::new(vfs::CasDevice::new(Some(manifest), provider)));
-        self
-    }
-
-    /// Specifying `content-addressable storage device` will mount a device that
-    /// allows to read resources from a specified content store.
-    /// It must subsequently be provided with a manifest to be able to fetch resources.
-    #[must_use]
-    pub fn add_device_cas_with_delayed_manifest(mut self, provider: Arc<Provider>) -> Self {
-        self.devices
-            .push(Box::new(vfs::CasDevice::new(None, provider)));
-        self
+    pub fn add_device_cas(
+        self,
+        provider: Arc<Provider>,
+        manifest_id: SharedTreeIdentifier,
+    ) -> Self {
+        self.add_device(Box::new(vfs::CasDevice::new(provider, manifest_id)))
     }
 
     /// Specifying `build device` will mount a device that allows to build
@@ -165,25 +165,26 @@ impl AssetRegistryOptions {
     /// `force_recompile` if set will cause each load request to go through data
     /// compilation.
     #[allow(clippy::too_many_arguments)]
-    #[must_use]
-    pub fn add_device_build(
-        mut self,
+    pub async fn add_device_build(
+        self,
         provider: Arc<Provider>,
-        manifest: Manifest,
+        manifest: Option<TreeIdentifier>,
         build_bin: impl AsRef<Path>,
         output_db_addr: String,
         project: impl AsRef<Path>,
         force_recompile: bool,
     ) -> Self {
-        self.devices.push(Box::new(vfs::BuildDevice::new(
-            manifest,
-            provider,
-            build_bin,
-            output_db_addr,
-            project,
-            force_recompile,
-        )));
-        self
+        self.add_device(Box::new(
+            vfs::BuildDevice::new(
+                manifest,
+                provider,
+                build_bin,
+                output_db_addr,
+                project,
+                force_recompile,
+            )
+            .await,
+        ))
     }
 
     /// Enables support of a given [`Resource`] by adding corresponding
@@ -205,6 +206,7 @@ impl AssetRegistryOptions {
 
     /// doc
     pub fn add_processor_mut<R: OfflineResource + ResourceDescriptor>(&mut self) -> &mut Self {
+        ResourceType::register_name(R::TYPE, R::TYPENAME);
         self.processors
             .insert(R::TYPE, Box::new(R::Processor::default()));
         self
@@ -225,6 +227,7 @@ impl AssetRegistryOptions {
     /// doc
     #[must_use]
     pub fn add_processor<R: OfflineResource + ResourceDescriptor>(self) -> Self {
+        ResourceType::register_name(R::TYPE, R::TYPENAME);
         self.add_processor_ext(R::TYPE, Box::new(R::Processor::default()))
     }
 
@@ -612,6 +615,57 @@ impl AssetRegistry {
         }
     }
 
+    /// Interface to serialize a `Resource` into a stream
+    /// # Errors
+    /// Will return `AssetRegistryError` if the resource was not serialize properly
+    pub fn serialize_resource_without_dependencies(
+        &self,
+        kind: ResourceType,
+        handle: impl AsRef<HandleUntyped>,
+        writer: &mut dyn std::io::Write,
+    ) -> Result<usize, AssetRegistryError> {
+        let mut guard = self.write_inner();
+        let inner: &mut Inner = &mut guard;
+
+        if let Some(processor) = self.processors.write().unwrap().get_mut(&kind) {
+            let resource = inner
+                .assets
+                .get(&handle.as_ref().id())
+                .ok_or_else(|| AssetRegistryError::ResourceNotFound(handle.as_ref().id()))?
+                .as_ref();
+
+            let written = processor.write_resource(&*resource, writer)?;
+            Ok(written)
+        } else {
+            Err(AssetRegistryError::ProcessorNotFound(kind))
+        }
+    }
+
+    /// Interface to serialize a `Resource` into a stream
+    /// # Errors
+    /// Will return `AssetRegistryError` if the resource was not serialize properly
+    pub fn get_build_dependencies(
+        &self,
+        kind: ResourceType,
+        handle: impl AsRef<HandleUntyped>,
+    ) -> Result<Vec<ResourcePathId>, AssetRegistryError> {
+        let mut guard = self.write_inner();
+        let inner: &mut Inner = &mut guard;
+
+        if let Some(processor) = self.processors.write().unwrap().get_mut(&kind) {
+            let resource = inner
+                .assets
+                .get(&handle.as_ref().id())
+                .ok_or_else(|| AssetRegistryError::ResourceNotFound(handle.as_ref().id()))?
+                .as_ref();
+
+            let build_deps = processor.extract_build_dependencies(&*resource);
+            Ok(build_deps)
+        } else {
+            Err(AssetRegistryError::ProcessorNotFound(kind))
+        }
+    }
+
     pub(crate) fn is_err(&self, type_id: ResourceTypeAndId) -> bool {
         self.read_inner().load_errors.contains_key(&type_id)
     }
@@ -631,16 +685,16 @@ impl AssetRegistry {
         self.write_inner().load_event_senders.push(sender);
         receiver
     }
-
-    /// Delayed manifest load, will look up in all devices
-    pub fn load_manifest(&self, manifest_id: &Identifier) {
-        self.write_inner().loader.load_manifest(manifest_id);
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::ResourceId;
+    use std::panic;
+
+    use lgn_content_store::indexing::{empty_tree_id, BasicIndexer, ResourceWriter, TreeLeafNode};
+
+    use super::*;
+    use crate::{new_resource_type_and_id_indexer, test_asset, ResourceId};
 
     mod refs_asset {
         //! This module defines a test asset.
@@ -731,27 +785,35 @@ mod tests {
         }
     }
 
-    use std::panic;
-
-    use super::*;
-    use crate::test_asset;
-
     async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let manifest = Manifest::default();
+        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let checksum = data_provider.write(content).await.unwrap();
-            manifest.insert(type_id, checksum);
+            let indexer = new_resource_type_and_id_indexer();
+            let provider_id = data_provider
+                .write_resource_from_bytes(content)
+                .await
+                .unwrap();
+            manifest_id = indexer
+                .add_leaf(
+                    &data_provider,
+                    &manifest_id,
+                    &type_id.into(),
+                    TreeLeafNode::Resource(provider_id),
+                )
+                .await
+                .unwrap();
+
             type_id
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(data_provider, manifest)
+            .add_device_cas(data_provider, SharedTreeIdentifier::new(manifest_id))
             .add_loader::<test_asset::TestAsset>()
             .create()
             .await;
@@ -761,7 +823,7 @@ mod tests {
 
     async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let manifest = Manifest::default();
+        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [
             97, 115, 102, 116, // header (asft)
@@ -794,21 +856,43 @@ mod tests {
         };
 
         let parent_id = {
-            manifest.insert(
-                child_id,
-                data_provider.write(&BINARY_CHILD_ASSETFILE).await.unwrap(),
-            );
-            let checksum = data_provider.write(&BINARY_PARENT_ASSETFILE).await.unwrap();
-            let id = ResourceTypeAndId {
+            let indexer = new_resource_type_and_id_indexer();
+            manifest_id = indexer
+                .add_leaf(
+                    &data_provider,
+                    &manifest_id,
+                    &child_id.into(),
+                    TreeLeafNode::Resource(
+                        data_provider
+                            .write_resource_from_bytes(&BINARY_CHILD_ASSETFILE)
+                            .await
+                            .unwrap(),
+                    ),
+                )
+                .await
+                .unwrap();
+            let provider_id = data_provider
+                .write_resource_from_bytes(&BINARY_PARENT_ASSETFILE)
+                .await
+                .unwrap();
+            let type_id = ResourceTypeAndId {
                 kind: refs_asset::RefsAsset::TYPE,
                 id: ResourceId::new_explicit(2),
             };
-            manifest.insert(id, checksum);
-            id
+            manifest_id = indexer
+                .add_leaf(
+                    &data_provider,
+                    &manifest_id,
+                    &type_id.into(),
+                    TreeLeafNode::Resource(provider_id),
+                )
+                .await
+                .unwrap();
+            type_id
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(data_provider, manifest)
+            .add_device_cas(data_provider, SharedTreeIdentifier::new(manifest_id))
             .add_loader::<refs_asset::RefsAsset>()
             .create()
             .await;

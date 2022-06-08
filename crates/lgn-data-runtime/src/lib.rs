@@ -63,6 +63,7 @@
 
 mod asset_loader;
 mod vfs;
+pub use vfs::Device;
 
 mod asset_registry;
 pub use asset_registry::*;
@@ -78,7 +79,6 @@ pub use reference::Reference;
 
 mod asset;
 pub use asset::*;
-pub mod manifest;
 
 mod component;
 pub use component::*;

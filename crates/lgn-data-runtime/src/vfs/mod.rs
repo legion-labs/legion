@@ -1,14 +1,15 @@
 use async_trait::async_trait;
-use lgn_content_store::Identifier;
 
 use crate::ResourceTypeAndId;
 
 // FIXME: this should return `Box<dyn io::Read>` instead of `Vec<u8>`.
+/// Device that can load/reload resources
 #[async_trait]
-pub(crate) trait Device: Send + Sync {
-    async fn load(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;
-    async fn reload(&self, _: ResourceTypeAndId) -> Option<Vec<u8>>;
-    async fn reload_manifest(&mut self, _manifest_id: &Identifier) {}
+pub trait Device: Send + Sync {
+    /// Load a resource
+    async fn load(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;
+    /// Reload a resource
+    async fn reload(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;
 }
 
 mod build_device;

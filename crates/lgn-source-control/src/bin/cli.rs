@@ -284,19 +284,21 @@ async fn main() -> anyhow::Result<()> {
         Commands::CreateRepository { repository_name } => {
             println!("Creating repository: {}", &repository_name);
 
-            repository_index.create_repository(repository_name).await?;
+            repository_index.create_repository(&repository_name).await?;
 
             Ok(())
         }
         Commands::DestroyRepository { repository_name } => {
             println!("Destroying index at: {}", &repository_name);
 
-            repository_index.destroy_repository(repository_name).await?;
+            repository_index
+                .destroy_repository(&repository_name)
+                .await?;
 
             Ok(())
         }
         Commands::RepositoryExists { repository_name } => {
-            match repository_index.load_repository(repository_name).await {
+            match repository_index.load_repository(&repository_name).await {
                 Ok(_) => {
                     println!("The repository exists");
                 }

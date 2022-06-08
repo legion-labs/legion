@@ -4,10 +4,10 @@ use std::{
     sync::Arc,
 };
 
-use lgn_content_store::Identifier;
+use lgn_content_store::indexing::SharedTreeIdentifier;
 use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName};
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, ResourcePathId, ResourceType, ResourceTypeAndId,
+    AssetRegistry, AssetRegistryError, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
 use lgn_tracing::{info, warn};
 use thiserror::Error;
@@ -64,10 +64,6 @@ pub enum Error {
     #[error("Failed to open Project '{0}'")]
     ProjectFailedOpen(String),
 
-    /// Project failed to flush itself
-    #[error("Project flush failed: {0}")]
-    ProjectFlushFailed(lgn_data_offline::resource::Error),
-
     /// Project error fallback
     #[error("Project error resource '{0}': {1}")]
     Project(ResourceTypeAndId, lgn_data_offline::resource::Error),
@@ -77,12 +73,16 @@ pub enum Error {
     Reflection(ResourceTypeAndId, lgn_data_model::ReflectionError),
 
     /// Reflection Error fallack
-    #[error("DataBuild failed fro Resource '{0:?}': {1}")]
+    #[error("DataBuild failed for Resource '{0:?}': {1}")]
     Databuild(ResourceTypeAndId, lgn_data_build::Error),
 
     /// External file loading Error
     #[error("Provided file path '{0}' couldn't be opened")]
     InvalidFilePath(PathBuf),
+
+    /// Project-related error.
+    #[error("Resource kind lookup error for resource '{0}': '{1}")]
+    ResourceTypeLookup(ResourceId, lgn_data_offline::resource::Error),
 }
 
 /// System that manage the current state of the Loaded Offline Data
@@ -251,7 +251,7 @@ impl TransactionManager {
     }
 
     /// Retrieve the identifier for the current runtime manifest
-    pub async fn get_runtime_manifest_id(&self) -> Identifier {
-        self.build_manager.lock().await.get_manifest_id().clone()
+    pub async fn get_runtime_manifest_id(&self) -> SharedTreeIdentifier {
+        self.build_manager.lock().await.get_runtime_manifest_id()
     }
 }

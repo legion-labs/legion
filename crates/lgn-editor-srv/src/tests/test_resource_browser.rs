@@ -1,17 +1,13 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use lgn_content_store::Provider;
-use lgn_scene_plugin::SceneMessage;
-use serde_json::json;
-use tokio::sync::Mutex;
-use tonic::Request;
-
+use lgn_content_store::{
+    indexing::{empty_tree_id, SharedTreeIdentifier},
+    Provider,
+};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
-use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId,
-};
+use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
@@ -21,6 +17,10 @@ use lgn_editor_proto::resource_browser::{
     ReparentResourceRequest,
 };
 use lgn_math::Vec3;
+use lgn_scene_plugin::SceneMessage;
+use serde_json::json;
+use tokio::sync::Mutex;
+use tonic::Request;
 
 /*fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
     let script_id = ResourceTypeAndId {
@@ -81,9 +81,14 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
 
     let data_content_provider = Arc::new(Provider::new_in_memory());
 
+    let runtime_manifest_id =
+        SharedTreeIdentifier::new(empty_tree_id(&data_content_provider).await.unwrap());
     let mut asset_registry = AssetRegistryOptions::new()
-        .add_device_dir(project.resource_dir())
-        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
+        .add_device_cas(
+            Arc::clone(&data_content_provider),
+            runtime_manifest_id.clone(),
+        )
+        .add_device_dir(project.resource_dir());
     sample_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
@@ -99,10 +104,9 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     )
     .asset_registry(asset_registry.clone());
 
-    let build_manager =
-        BuildManager::new(options, &project, Manifest::default(), Manifest::default())
-            .await
-            .unwrap();
+    let build_manager = BuildManager::new(options, &project, runtime_manifest_id.clone())
+        .await
+        .unwrap();
     let project = Arc::new(Mutex::new(project));
 
     Arc::new(Mutex::new(TransactionManager::new(
@@ -116,7 +120,6 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
 #[tokio::test]
 async fn test_resource_browser() -> anyhow::Result<()> {
     //let project_dir = std::path::PathBuf::from("d:/local_db/");
-    //std::fs::remove_dir_all(&project_dir.join("offline")).ok();
     //std::fs::remove_dir_all(&project_dir.join("remote")).ok();
     let project_dir = tempfile::tempdir().unwrap();
 
@@ -289,6 +292,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             }))
             .await?;
 
+        /*
         // Reparent under folder entity
         resource_browser
             .reparent_resource(Request::new(ReparentResourceRequest {
@@ -296,6 +300,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 new_path: "/root_entity/test_folder".into(),
             }))
             .await?;
+        */
 
         // Reparent under root
         resource_browser

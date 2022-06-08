@@ -50,10 +50,13 @@ impl fmt::Debug for CompilerNode {
 
 #[cfg(test)]
 mod tests {
-    use async_trait::async_trait;
-    use lgn_content_store::Provider;
     use std::{path::PathBuf, sync::Arc};
 
+    use async_trait::async_trait;
+    use lgn_content_store::{
+        indexing::{empty_tree_id, SharedTreeIdentifier},
+        Provider,
+    };
     use lgn_data_runtime::{
         AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType,
         ResourceTypeAndId, Transform,
@@ -176,6 +179,11 @@ mod tests {
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
         let data_content_provider = Arc::new(Provider::new_in_memory());
+        let runtime_manifest_id = SharedTreeIdentifier::new(
+            empty_tree_id(&data_content_provider)
+                .await
+                .expect("initialize content-store manifest"),
+        );
 
         // testing successful compilation
         {
@@ -188,6 +196,7 @@ mod tests {
                     registry,
                     &data_content_provider,
                     &proj_dir,
+                    &runtime_manifest_id,
                     &env,
                 )
                 .await

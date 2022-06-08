@@ -86,9 +86,7 @@ async fn main() {
     let repository_name: RepositoryName = "sample-data".parse().unwrap();
 
     // Ensure the repository exists.
-    let _index = repository_index
-        .ensure_repository(repository_name.clone())
-        .await;
+    let _index = repository_index.ensure_repository(&repository_name).await;
 
     let source_control_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_persistent_provider()

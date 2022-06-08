@@ -1,14 +1,14 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use clap::{Parser, Subcommand};
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
-    compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
+    compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale,
 };
-use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{ResourcePathId, ResourceType, ResourceTypeAndId};
 
 #[derive(Parser, Debug)]
@@ -109,9 +109,11 @@ async fn main() -> Result<(), String> {
             platform,
             locale,
         } => {
-            let target =
-                Target::from_str(&target).map_err(|_e| format!("Invalid Target '{}'", target))?;
-            let platform = Platform::from_str(&platform)
+            let target = target
+                .parse()
+                .map_err(|_e| format!("Invalid Target '{}'", target))?;
+            let platform = platform
+                .parse()
                 .map_err(|_e| format!("Invalid Platform '{}'", platform))?;
             let locale = Locale::new(&locale);
 
@@ -154,6 +156,7 @@ async fn main() -> Result<(), String> {
                 .map_err(|e| format!("Source Pull Failed: '{}'", e))?;
 
             let derived = {
+                #[allow(clippy::same_functions_in_if_condition)]
                 if let Ok(id) = resource.parse::<ResourceTypeAndId>() {
                     build
                         .lookup_pathid(id)
@@ -163,9 +166,9 @@ async fn main() -> Result<(), String> {
                             "Cannot resolve ResourceId to ResourcePathId: '{}'",
                             resource
                         ))?
-                } else if let Ok(id) = ResourcePathId::from_str(&resource) {
+                } else if let Ok(id) = resource.parse() {
                     id
-                } else if let Ok(name) = ResourcePathName::from_str(&resource) {
+                } else if let Ok(name) = resource.parse() {
                     let id = project
                         .find_resource(&name)
                         .await
@@ -189,9 +192,10 @@ async fn main() -> Result<(), String> {
                 .map_err(|e| format!("Compilation Failed: '{}'", e))?;
 
             if runtime_flag {
-                let output = output.into_rt_manifest(|_| true);
-                let output = serde_json::to_string(&output).unwrap();
-                println!("{}", output);
+                let manifest_id = output
+                    .into_rt_manifest(&data_content_provider, |_| true)
+                    .await;
+                println!("{}", manifest_id);
             } else {
                 let output = serde_json::to_string(&output).unwrap();
                 println!("{}", output);

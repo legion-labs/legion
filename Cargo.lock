@@ -4397,6 +4397,10 @@ dependencies = [
  "futures",
  "hex",
  "integer-asset",
+ "lgn-compiler-test-atoi",
+ "lgn-compiler-test-refs",
+ "lgn-compiler-test-reverse",
+ "lgn-compiler-test-split",
  "lgn-content-store",
  "lgn-data-compiler",
  "lgn-data-offline",
@@ -4469,6 +4473,7 @@ dependencies = [
  "integer-asset",
  "lgn-content-store",
  "lgn-data-model",
+ "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-tracing",
  "lgn-utils",
@@ -4534,6 +4539,9 @@ name = "lgn-data-offline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-recursion",
+ "async-trait",
+ "bincode",
  "crossbeam-channel",
  "erased-serde",
  "hex",

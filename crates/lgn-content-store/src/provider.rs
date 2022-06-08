@@ -654,6 +654,11 @@ impl Provider {
         Ok(())
     }
 
+    /// Queries if the list of referenced identifiers is non-empty.
+    pub async fn has_references(&self) -> bool {
+        !self.refs.lock().await.referenced().is_empty()
+    }
+
     /// Get the list of referenced identifiers.
     pub async fn referenced(&self) -> Vec<Identifier> {
         self.refs

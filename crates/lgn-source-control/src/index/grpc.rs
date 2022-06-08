@@ -48,7 +48,7 @@ where
     C::Future: Send + 'static,
     <C::ResponseBody as Body>::Error: Into<StdError> + Send,
 {
-    async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn create_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         async_span_scope!("GrpcRepositoryIndex::create_repository");
 
         let resp = self
@@ -66,16 +66,16 @@ where
             .into_inner();
 
         if resp.already_exists {
-            return Err(Error::repository_already_exists(repository_name));
+            return Err(Error::repository_already_exists(repository_name.clone()));
         }
 
         Ok(Box::new(GrpcIndex::new(
-            repository_name,
+            repository_name.clone(),
             self.client.clone(),
         )))
     }
 
-    async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
+    async fn destroy_repository(&self, repository_name: &RepositoryName) -> Result<()> {
         async_span_scope!("GrpcRepositoryIndex::destroy_repository");
 
         let resp = self
@@ -93,13 +93,13 @@ where
             .into_inner();
 
         if resp.does_not_exist {
-            return Err(Error::repository_does_not_exist(repository_name));
+            return Err(Error::repository_does_not_exist(repository_name.clone()));
         }
 
         Ok(())
     }
 
-    async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn load_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         async_span_scope!("GrpcRepositoryIndex::load_repository");
 
         let resp = self

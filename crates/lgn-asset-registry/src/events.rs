@@ -1,7 +1,7 @@
-use lgn_content_store::Identifier;
+use lgn_content_store::indexing::TreeIdentifier;
 use lgn_data_runtime::ResourceTypeAndId;
 
 pub enum AssetRegistryRequest {
-    LoadManifest(Identifier),
+    LoadManifest(TreeIdentifier),
     LoadAsset(ResourceTypeAndId),
 }

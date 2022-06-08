@@ -1,14 +1,21 @@
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
-    use std::sync::Arc;
-    use std::{env, vec};
+    use std::{
+        env,
+        path::{Path, PathBuf},
+        sync::Arc,
+        vec,
+    };
 
     use integer_asset::{IntegerAsset, IntegerAssetLoader};
-    use lgn_content_store::Provider;
-    use lgn_data_compiler::compiler_api::CompilationEnv;
-    use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-    use lgn_data_compiler::{Locale, Platform, Target};
+    use lgn_content_store::{
+        indexing::{ResourceExists, ResourceReader},
+        Provider,
+    };
+    use lgn_data_compiler::{
+        compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform,
+        Target,
+    };
     use lgn_data_offline::resource::{Project, ResourcePathName};
     use lgn_data_runtime::{
         AssetLoader, AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
@@ -200,7 +207,7 @@ mod tests {
                 .expect("failed to pull from project");
 
             let compile_output = build
-                .compile_path(target.clone(), &test_env(), None)
+                .compile_path(target.clone(), &test_env())
                 .await
                 .unwrap();
 
@@ -215,7 +222,7 @@ mod tests {
             let original_checksum = &compile_output.resources[0].compiled_content_id;
 
             assert!(data_content_provider
-                .exists(original_checksum)
+                .resource_exists(original_checksum)
                 .await
                 .unwrap());
 
@@ -264,7 +271,7 @@ mod tests {
                 .await
                 .expect("failed to pull from project");
             let compile_output = build
-                .compile_path(target.clone(), &test_env(), None)
+                .compile_path(target.clone(), &test_env())
                 .await
                 .unwrap();
 
@@ -278,11 +285,11 @@ mod tests {
             let modified_checksum = &compile_output.resources[0].compiled_content_id;
 
             assert!(data_content_provider
-                .exists(&original_checksum)
+                .resource_exists(&original_checksum)
                 .await
                 .unwrap());
             assert!(data_content_provider
-                .exists(modified_checksum)
+                .resource_exists(modified_checksum)
                 .await
                 .unwrap());
 
@@ -410,7 +417,7 @@ mod tests {
         let integer_path = reversed_path.push(integer_asset::IntegerAsset::TYPE);
 
         let compile_output = build
-            .compile_path(integer_path.clone(), &test_env(), None)
+            .compile_path(integer_path.clone(), &test_env())
             .await
             .unwrap();
 
@@ -425,9 +432,12 @@ mod tests {
         // validate reversed
         {
             let checksum = compile_output.resources[0].compiled_content_id.clone();
-            assert!(data_content_provider.exists(&checksum).await.unwrap());
+            assert!(data_content_provider
+                .resource_exists(&checksum)
+                .await
+                .unwrap());
             let resource_content = data_content_provider
-                .read(&checksum)
+                .read_resource_as_bytes(&checksum)
                 .await
                 .expect("resource content");
 
@@ -446,9 +456,12 @@ mod tests {
         // validate integer
         {
             let checksum = compile_output.resources[1].compiled_content_id.clone();
-            assert!(data_content_provider.exists(&checksum).await.unwrap());
+            assert!(data_content_provider
+                .resource_exists(&checksum)
+                .await
+                .unwrap());
             let resource_content = data_content_provider
-                .read(&checksum)
+                .read_resource_as_bytes(&checksum)
                 .await
                 .expect("asset content");
 
@@ -514,7 +527,7 @@ mod tests {
                 references,
                 statistics,
             } = build
-                .compile_path(target.clone(), &test_env(), None)
+                .compile_path(target.clone(), &test_env())
                 .await
                 .expect("successful compilation");
 
@@ -530,7 +543,7 @@ mod tests {
                 references,
                 statistics,
             } = build
-                .compile_path(target.clone(), &test_env(), None)
+                .compile_path(target.clone(), &test_env())
                 .await
                 .expect("successful compilation");
 
@@ -555,7 +568,7 @@ mod tests {
                 references,
                 statistics,
             } = build
-                .compile_path(target.clone(), &test_env(), None)
+                .compile_path(target.clone(), &test_env())
                 .await
                 .expect("successful compilation");
 
@@ -581,7 +594,7 @@ mod tests {
                 references,
                 statistics,
             } = build
-                .compile_path(target, &test_env(), None)
+                .compile_path(target, &test_env())
                 .await
                 .expect("successful compilation");
 
@@ -662,7 +675,7 @@ mod tests {
 
         // compile "integer path 0"
         let compile_output = build
-            .compile_path(integer_path_0.clone(), &test_env(), None)
+            .compile_path(integer_path_0.clone(), &test_env())
             .await
             .unwrap();
 
@@ -693,9 +706,12 @@ mod tests {
         // validate integer
         {
             let checksum = compiled_integer.compiled_content_id.clone();
-            assert!(data_content_provider.exists(&checksum).await.unwrap());
+            assert!(data_content_provider
+                .resource_exists(&checksum)
+                .await
+                .unwrap());
             let resource_content = data_content_provider
-                .read(&checksum)
+                .read_resource_as_bytes(&checksum)
                 .await
                 .expect("asset content");
 
@@ -711,7 +727,7 @@ mod tests {
 
         // compile "integer path 1"
         let compile_output = build
-            .compile_path(integer_path_1.clone(), &test_env(), None)
+            .compile_path(integer_path_1.clone(), &test_env())
             .await
             .unwrap();
 
@@ -731,7 +747,7 @@ mod tests {
 
         // recompile "integer path 0" - all from cache
         let compile_output = build
-            .compile_path(integer_path_0.clone(), &test_env(), None)
+            .compile_path(integer_path_0.clone(), &test_env())
             .await
             .unwrap();
 
@@ -770,7 +786,7 @@ mod tests {
         }
 
         let compile_output = build
-            .compile_path(integer_path_0.clone(), &test_env(), None)
+            .compile_path(integer_path_0.clone(), &test_env())
             .await
             .unwrap();
 
@@ -821,7 +837,7 @@ mod tests {
 
         // compile from "text_0"
         let compile_output = build
-            .compile_path(integer_path_0.clone(), &test_env(), None)
+            .compile_path(integer_path_0.clone(), &test_env())
             .await
             .unwrap();
 
@@ -843,7 +859,7 @@ mod tests {
 
         // compile from "text_1"
         let compile_output = build
-            .compile_path(integer_path_1, &test_env(), None)
+            .compile_path(integer_path_1, &test_env())
             .await
             .unwrap();
 
@@ -947,7 +963,7 @@ mod tests {
 
         let target = ResourcePathId::from(parent_id).push(refs_asset::RefsAsset::TYPE);
         let compile_output = build
-            .compile_path(target, &test_env(), None)
+            .compile_path(target, &test_env())
             .await
             .expect("successful compilation");
 
@@ -1058,7 +1074,10 @@ mod tests {
         assert_eq!(manifest.compiled_resources.len(), 2);
 
         for checksum in manifest.compiled_resources.iter().map(|a| &a.content_id) {
-            assert!(data_content_provider.exists(checksum).await.unwrap());
+            assert!(data_content_provider
+                .resource_exists(checksum)
+                .await
+                .unwrap());
         }
     }
 }

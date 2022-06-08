@@ -21,6 +21,7 @@ pub struct CompileMessage {
     pub files_to_package: Vec<(String, Identifier)>,
 }
 
+#[allow(dead_code)]
 async fn deploy_remotely(
     provider: &Provider,
     full_file_path: &Path,
@@ -37,6 +38,7 @@ async fn deploy_remotely(
     Ok(())
 }
 
+#[allow(dead_code)]
 async fn write_res(
     provider: &Provider,
     res: &ResourcePathId,
@@ -55,6 +57,7 @@ async fn write_res(
     .await
 }
 
+#[allow(dead_code)]
 /// Upload the data compiler & its associated input dependencies to the CAS and create a message.
 pub(crate) async fn collect_local_resources(
     executable: &Path,

@@ -17,9 +17,9 @@ use futures::Future;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, CompositeIndexer, IndexKey, IndexKeyDisplayFormat, IndexableResource,
-        ResourceReader, ResourceWriter, StaticIndexer, Tree, TreeIdentifier, TreeLeafNode,
-        TreeNode, TreeReader, TreeWriter,
+        empty_tree_id, BasicIndexer, CompositeIndexer, IndexKey, IndexKeyDisplayFormat,
+        IndexableResource, ResourceReader, ResourceWriter, StaticIndexer, TreeIdentifier,
+        TreeLeafNode, TreeNode, TreeReader,
     },
     Config, Error, HashRef, Identifier, MonitorAsyncAdapter, Provider, TransferCallbacks,
 };
@@ -542,7 +542,7 @@ async fn main() -> anyhow::Result<()> {
                     let index: Pin<Box<dyn Future<Output = anyhow::Result<_>>>> =
                         Box::pin(async move {
                             let provider = provider.begin_transaction_in_memory();
-                            let mut tree_id = provider.write_tree(&Tree::default()).await?;
+                            let mut tree_id = empty_tree_id(&provider).await?;
 
                             let seq_len = sequence_length.try_into().unwrap();
                             let indexer = StaticIndexer::new(seq_len);
@@ -630,7 +630,7 @@ async fn main() -> anyhow::Result<()> {
                             .into_iter()
                             .collect::<anyhow::Result<Vec<_>>>()?;
 
-                        let mut root_tree_id = provider.write_tree(&Tree::default()).await?;
+                        let mut root_tree_id = empty_tree_id(&provider).await?;
                         let indexer = StaticIndexer::new(size_of::<u32>());
 
                         for (sequence_length, bar_id, tree_id) in res {
