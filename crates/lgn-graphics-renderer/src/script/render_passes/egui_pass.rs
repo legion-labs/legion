@@ -106,79 +106,94 @@ impl EguiPass {
                                 execute_context.debug_stuff.render_surface.egui_renderpass();
                             let mut egui_pass = egui_pass.write();
 
-                            let egui_ctx = egui.ctx();
+                            let textures_delta = egui.textures_delta();
+                            let mut textures_delta = textures_delta.lock().unwrap();
+                            for (_texture_id, image_delta) in textures_delta.set.drain() {
+                                match &image_delta.image {
+                                    egui::epaint::ImageData::Color(_) => {
+                                        // TODO(jsg): implement uploading arbitrary textures for use by egui.
+                                    }
+                                    egui::epaint::ImageData::Font(font_texture) => {
+                                        if image_delta.is_whole() {
+                                            let texture = execute_context
+                                            .render_context
+                                            .device_context
+                                            .create_texture(
+                                                TextureDef {
+                                                    extents: Extents3D {
+                                                        width: font_texture.size[0] as u32,
+                                                        height: font_texture.size[1] as u32,
+                                                        depth: 1,
+                                                    },
+                                                    array_length: 1,
+                                                    mip_count: 1,
+                                                    format: Format::R8_SRGB,
+                                                    usage_flags: ResourceUsage::AS_SHADER_RESOURCE
+                                                        | ResourceUsage::AS_TRANSFERABLE,
+                                                    resource_flags: ResourceFlags::empty(),
+                                                    memory_usage: MemoryUsage::GpuOnly,
+                                                    tiling: TextureTiling::Optimal,
+                                                },
+                                                "egui font",
+                                            );
 
-                            if let Some((version, ..)) = egui_pass.texture_data {
-                                if version == egui_ctx.font_image().version {
-                                    return;
+                                        let texture_view = texture.create_view(
+                                            TextureViewDef::as_shader_resource_view(texture.definition()),
+                                        );
+
+                                        fn fast_round(r: f32) -> u8 {
+                                            (r + 0.5).floor() as _ // rust does a saturating cast since 1.45
+                                        }
+
+                                        let gamma = 1.0 / 2.2;
+                                        // See egui::epaint::FontImage::srgba_pixels() -- it returns R8G8B8A8 but that's a waste, R8 is enough.
+                                        let data: Vec<u8> = font_texture.pixels.iter().map(move |coverage| {
+                                            fast_round(coverage.powf(gamma / 2.2) * 255.0) as u8
+                                        }).collect();
+
+                                        let staging_buffer =
+                                            execute_context.render_context.device_context.create_buffer(
+                                                BufferDef::for_staging_buffer_data(
+                                                    &data,
+                                                    ResourceUsage::empty(),
+                                                ),
+                                                "staging_buffer",
+                                            );
+
+                                        staging_buffer.copy_to_host_visible_buffer(&data);
+
+                                        cmd_buffer.cmd_resource_barrier(
+                                            &[],
+                                            &[TextureBarrier::state_transition(
+                                                &texture,
+                                                ResourceState::UNDEFINED,
+                                                ResourceState::COPY_DST,
+                                            )],
+                                        );
+
+                                        cmd_buffer.cmd_copy_buffer_to_texture(
+                                            &staging_buffer,
+                                            &texture,
+                                            &CmdCopyBufferToTextureParams::default(),
+                                        );
+
+                                        cmd_buffer.cmd_resource_barrier(
+                                            &[],
+                                            &[TextureBarrier::state_transition(
+                                                &texture,
+                                                ResourceState::COPY_DST,
+                                                ResourceState::SHADER_RESOURCE,
+                                            )],
+                                        );
+
+                                        egui_pass.font_texture =
+                                            Some((texture, texture_view));
+                                        } else {
+                                            // TODO(jsg): Implement partial texture updates.
+                                        }
+                                    }
                                 }
                             }
-
-                            let egui_font_image = &egui_ctx.font_image();
-
-                            let texture = execute_context
-                                .render_context
-                                .device_context
-                                .create_texture(
-                                    TextureDef {
-                                        extents: Extents3D {
-                                            width: egui_font_image.width as u32,
-                                            height: egui_font_image.height as u32,
-                                            depth: 1,
-                                        },
-                                        array_length: 1,
-                                        mip_count: 1,
-                                        format: Format::R8_SRGB,
-                                        usage_flags: ResourceUsage::AS_SHADER_RESOURCE
-                                            | ResourceUsage::AS_TRANSFERABLE,
-                                        resource_flags: ResourceFlags::empty(),
-                                        memory_usage: MemoryUsage::GpuOnly,
-                                        tiling: TextureTiling::Optimal,
-                                    },
-                                    "egui font",
-                                );
-
-                            let texture_view = texture.create_view(
-                                TextureViewDef::as_shader_resource_view(texture.definition()),
-                            );
-
-                            let staging_buffer =
-                                execute_context.render_context.device_context.create_buffer(
-                                    BufferDef::for_staging_buffer_data(
-                                        &egui_font_image.pixels,
-                                        ResourceUsage::empty(),
-                                    ),
-                                    "staging_buffer",
-                                );
-
-                            staging_buffer.copy_to_host_visible_buffer(&egui_font_image.pixels);
-
-                            cmd_buffer.cmd_resource_barrier(
-                                &[],
-                                &[TextureBarrier::state_transition(
-                                    &texture,
-                                    ResourceState::UNDEFINED,
-                                    ResourceState::COPY_DST,
-                                )],
-                            );
-
-                            cmd_buffer.cmd_copy_buffer_to_texture(
-                                &staging_buffer,
-                                &texture,
-                                &CmdCopyBufferToTextureParams::default(),
-                            );
-
-                            cmd_buffer.cmd_resource_barrier(
-                                &[],
-                                &[TextureBarrier::state_transition(
-                                    &texture,
-                                    ResourceState::COPY_DST,
-                                    ResourceState::SHADER_RESOURCE,
-                                )],
-                            );
-
-                            egui_pass.texture_data =
-                                Some((egui_font_image.version, texture, texture_view));
                         }
                     })
                 })
@@ -188,10 +203,11 @@ impl EguiPass {
                         .execute(move |_, execute_context, cmd_buffer| {
                             let egui = execute_context.debug_stuff.egui;
 
-                            if egui.is_enabled() {
-                                let egui_pass =
-                                    execute_context.debug_stuff.render_surface.egui_renderpass();
-                                let egui_pass = egui_pass.write();
+                            let egui_pass =
+                                execute_context.debug_stuff.render_surface.egui_renderpass();
+                            let egui_pass = egui_pass.write();
+
+                            if egui.is_enabled() && egui_pass.font_texture.is_some() {
 
                                 if let Some(pipeline) = execute_context
                                     .render_context
@@ -205,7 +221,7 @@ impl EguiPass {
                                     let mut descriptor_set =
                                         cgen::descriptor_set::EguiDescriptorSet::default();
                                     descriptor_set
-                                        .set_font_texture(&egui_pass.texture_data.as_ref().unwrap().2);
+                                        .set_font_texture(&egui_pass.font_texture.as_ref().unwrap().1);
                                     descriptor_set.set_font_sampler(&sampler);
 
                                     let descriptor_set_handle = execute_context
@@ -221,61 +237,68 @@ impl EguiPass {
                                         descriptor_set_handle,
                                     );
 
-                                    for egui::ClippedMesh(_clip_rect, mesh) in clipped_meshes {
-                                        if mesh.is_empty() {
-                                            continue;
+                                    for egui::ClippedPrimitive {clip_rect: _clip_rect, primitive } in clipped_meshes {
+                                        match &primitive {
+                                            egui::epaint::Primitive::Mesh(mesh) => {
+                                                if mesh.is_empty() {
+                                                    continue;
+                                                }
+
+                                                let transient_buffer = execute_context
+                                                    .render_context
+                                                    .transient_buffer_allocator
+                                                    .copy_data_slice(
+                                                        &mesh.vertices,
+                                                        ResourceUsage::AS_VERTEX_BUFFER,
+                                                    );
+
+                                                cmd_buffer.cmd_bind_vertex_buffer(
+                                                    0,
+                                                    transient_buffer.vertex_buffer_binding(),
+                                                );
+
+                                                let transient_buffer = execute_context
+                                                    .render_context
+                                                    .transient_buffer_allocator
+                                                    .copy_data_slice(
+                                                        &mesh.indices,
+                                                        ResourceUsage::AS_INDEX_BUFFER,
+                                                    );
+
+                                                cmd_buffer.cmd_bind_index_buffer(
+                                                    transient_buffer
+                                                        .index_buffer_binding(IndexType::Uint32),
+                                                );
+
+                                                let scale = 1.0;
+                                                let mut push_constant_data =
+                                                    cgen::cgen_type::EguiPushConstantData::default();
+                                                push_constant_data
+                                                    .set_scale(Vec2::new(scale, scale).into());
+                                                push_constant_data
+                                                    .set_translation(Vec2::new(0.0, 0.0).into());
+                                                push_constant_data.set_width(
+                                                    (view_target_extents.width as f32
+                                                        / egui.ctx().pixels_per_point())
+                                                    .into(),
+                                                );
+                                                push_constant_data.set_height(
+                                                    (view_target_extents.height as f32
+                                                        / egui.ctx().pixels_per_point())
+                                                    .into(),
+                                                );
+
+                                                cmd_buffer.cmd_push_constant_typed(&push_constant_data);
+                                                cmd_buffer.cmd_draw_indexed(
+                                                    mesh.indices.len() as u32,
+                                                    0,
+                                                    0,
+                                                );
+                                            }
+                                            egui::epaint::Primitive::Callback(_) => {
+                                                // TODO(jsg): Implement callback primitive type.
+                                            }
                                         }
-
-                                        let transient_buffer = execute_context
-                                            .render_context
-                                            .transient_buffer_allocator
-                                            .copy_data_slice(
-                                                &mesh.vertices,
-                                                ResourceUsage::AS_VERTEX_BUFFER,
-                                            );
-
-                                        cmd_buffer.cmd_bind_vertex_buffer(
-                                            0,
-                                            transient_buffer.vertex_buffer_binding(),
-                                        );
-
-                                        let transient_buffer = execute_context
-                                            .render_context
-                                            .transient_buffer_allocator
-                                            .copy_data_slice(
-                                                &mesh.indices,
-                                                ResourceUsage::AS_INDEX_BUFFER,
-                                            );
-
-                                        cmd_buffer.cmd_bind_index_buffer(
-                                            transient_buffer
-                                                .index_buffer_binding(IndexType::Uint32),
-                                        );
-
-                                        let scale = 1.0;
-                                        let mut push_constant_data =
-                                            cgen::cgen_type::EguiPushConstantData::default();
-                                        push_constant_data
-                                            .set_scale(Vec2::new(scale, scale).into());
-                                        push_constant_data
-                                            .set_translation(Vec2::new(0.0, 0.0).into());
-                                        push_constant_data.set_width(
-                                            (view_target_extents.width as f32
-                                                / egui.ctx().pixels_per_point())
-                                            .into(),
-                                        );
-                                        push_constant_data.set_height(
-                                            (view_target_extents.height as f32
-                                                / egui.ctx().pixels_per_point())
-                                            .into(),
-                                        );
-
-                                        cmd_buffer.cmd_push_constant_typed(&push_constant_data);
-                                        cmd_buffer.cmd_draw_indexed(
-                                            mesh.indices.len() as u32,
-                                            0,
-                                            0,
-                                        );
                                     }
                                 }
                             }
