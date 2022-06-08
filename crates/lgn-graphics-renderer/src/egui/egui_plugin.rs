@@ -18,9 +18,11 @@ use crate::labels::RenderStage;
 #[derive(Default)]
 pub struct Egui {
     enabled: bool,
-    ctx: egui::CtxRef,
-    output: egui::Output,
-    shapes: Vec<epaint::ClippedShape>,
+    ctx: egui::Context,
+    output: egui::PlatformOutput,
+    needs_repaint: bool,
+    textures_delta: Mutex<egui::TexturesDelta>,
+    shapes: Vec<egui::epaint::ClippedShape>,
     windows: Mutex<HashMap<String, bool>>,
 }
 
@@ -29,11 +31,11 @@ impl Egui {
         self.enabled
     }
 
-    pub fn ctx(&self) -> &egui::CtxRef {
+    pub fn ctx(&self) -> &egui::Context {
         &self.ctx
     }
 
-    pub fn tessellate(&self) -> Vec<egui::ClippedMesh> {
+    pub fn tessellate(&self) -> Vec<egui::ClippedPrimitive> {
         self.ctx.tessellate(self.shapes.clone())
     }
 
@@ -48,6 +50,10 @@ impl Egui {
                 f(ui);
             });
         }
+    }
+
+    pub fn textures_delta(&self) -> &Mutex<egui::TexturesDelta> {
+        &self.textures_delta
     }
 }
 
@@ -87,11 +93,20 @@ fn on_window_created(
     egui.ctx.begin_frame(RawInput {
         screen_rect: Some(egui::Rect::from_min_size(egui::pos2(0.0, 0.0), size)),
         pixels_per_point: Some(pixels_per_point as f32),
+        max_texture_side: Some(16384),
         ..RawInput::default()
     });
     #[allow(unused_must_use)]
     {
-        egui.ctx.end_frame();
+        let output = egui.ctx.end_frame();
+        (*egui).output = output.platform_output;
+        (*egui).needs_repaint = output.needs_repaint;
+        (*egui)
+            .textures_delta
+            .lock()
+            .unwrap()
+            .append(output.textures_delta);
+        (*egui).shapes = output.shapes;
     }
 }
 
@@ -199,7 +214,7 @@ fn gather_input(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
+fn begin_frame(egui: Res<'_, Egui>, raw_input: Res<'_, RawInput>) {
     if !egui.enabled {
         egui.ctx.begin_frame(RawInput::default());
         return;
@@ -209,9 +224,15 @@ fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
 
 #[span_fn]
 pub fn end_frame(egui: &mut ResMut<'_, Egui>) {
-    let (output, shapes) = egui.ctx.end_frame();
-    (*egui).output = output;
-    (*egui).shapes = shapes;
+    let output = egui.ctx.end_frame();
+    (*egui).output = output.platform_output;
+    (*egui).needs_repaint = output.needs_repaint;
+    (*egui)
+        .textures_delta
+        .lock()
+        .unwrap()
+        .append(output.textures_delta);
+    (*egui).shapes = output.shapes;
 }
 
 fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerButton {
