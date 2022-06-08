@@ -4,22 +4,16 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use clap::{ArgEnum, Parser};
-use lgn_source_control::RepositoryName;
-use std::{
-    env,
-    fs::OpenOptions,
-    io::Write,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
 
+use clap::{ArgEnum, Parser};
+use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor,
-    ResourceId, ResourcePathId, ResourceTypeAndId,
+    AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
+    ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
@@ -29,6 +23,7 @@ use lgn_physics::{
     offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere, PhysicsSceneSettings},
     RigidActorType,
 };
+use lgn_source_control::RepositoryName;
 use lgn_tracing::{info, LevelFilter};
 use sample_data::{
     offline::{Light, Transform, Visual},
@@ -59,11 +54,11 @@ async fn main() -> anyhow::Result<()> {
         .build();
 
     let project_dir = PathBuf::from("examples/physics/data");
-
-    clean_folders(&project_dir);
-
-    let build_dir = project_dir.join("temp");
-    std::fs::create_dir_all(&build_dir).unwrap();
+    if project_dir.exists() {
+        std::fs::remove_dir_all(&project_dir)
+            .unwrap_or_else(|_| panic!("Cannot delete {}", project_dir.display()));
+    }
+    std::fs::create_dir_all(&project_dir).unwrap();
 
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
         .await
@@ -71,9 +66,7 @@ async fn main() -> anyhow::Result<()> {
     let repository_name: RepositoryName = "examples-physics".parse().unwrap();
 
     // Ensure the repository exists.
-    let _index = repository_index
-        .ensure_repository(repository_name.clone())
-        .await;
+    let _index = repository_index.ensure_repository(&repository_name).await;
 
     let source_control_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
@@ -102,9 +95,7 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to create a project");
 
-    let mut asset_registry = AssetRegistryOptions::new()
-        .add_device_dir(project.resource_dir())
-        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
+    let mut asset_registry = AssetRegistryOptions::new().add_device_dir(project.resource_dir());
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
@@ -130,6 +121,8 @@ async fn main() -> anyhow::Result<()> {
         ),
     };
 
+    let build_dir = project_dir.join("temp");
+    std::fs::create_dir(&build_dir).unwrap();
     let absolute_build_dir = {
         if !build_dir.is_absolute() {
             std::env::current_dir().unwrap().join(&build_dir)
@@ -144,14 +137,11 @@ async fn main() -> anyhow::Result<()> {
     )
     .asset_registry(asset_registry.clone());
 
-    let mut build_manager = BuildManager::new(
-        data_build,
-        &project,
-        Manifest::default(),
-        Manifest::default(),
-    )
-    .await
-    .unwrap();
+    let runtime_manifest_id =
+        SharedTreeIdentifier::new(empty_tree_id(&data_content_provider).await.unwrap());
+    let mut build_manager = BuildManager::new(data_build, &project, runtime_manifest_id.clone())
+        .await
+        .unwrap();
 
     for id in resource_ids {
         let derived_result = build_manager.build_all_derived(id, &project).await.unwrap();
@@ -159,7 +149,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let runtime_dir = project_dir.join("runtime");
-    std::fs::create_dir_all(&runtime_dir).unwrap();
+    std::fs::create_dir(&runtime_dir).unwrap();
     let runtime_manifest_path = runtime_dir.join("game.manifest");
 
     let mut file = OpenOptions::new()
@@ -168,32 +158,8 @@ async fn main() -> anyhow::Result<()> {
         .truncate(true)
         .open(runtime_manifest_path)
         .expect("open file");
-    write!(file, "{}", build_manager.get_manifest_id())
-        .expect("failed to write manifest id to file");
+    write!(file, "{}", runtime_manifest_id.read()).expect("failed to write manifest id to file");
     Ok(())
-}
-
-fn clean_folders(project_dir: impl AsRef<Path>) {
-    let mut path = project_dir.as_ref().to_owned();
-
-    let mut clean = |sub_path| {
-        path.push(sub_path);
-        if path.exists() {
-            let remove = if path.is_dir() {
-                std::fs::remove_dir_all
-            } else {
-                std::fs::remove_file
-            };
-            remove(path.as_path()).unwrap_or_else(|_| panic!("Cannot delete {:?}", path));
-        }
-        path.pop();
-    };
-
-    clean("remote");
-    clean("offline");
-    clean("runtime");
-    clean("temp");
-    clean("project.index");
 }
 
 async fn create_offline_data(

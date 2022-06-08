@@ -73,8 +73,6 @@
 // This disables the lint crate-wide as a workaround to allow the doc above.
 #![allow(clippy::needless_doctest_main)]
 
-use async_trait::async_trait;
-use lgn_content_store::{Config, Provider};
 use std::{
     convert::Infallible,
     env,
@@ -85,7 +83,12 @@ use std::{
     sync::Arc,
 };
 
+use async_trait::async_trait;
 use clap::{Parser, Subcommand};
+use lgn_content_store::{
+    indexing::{ResourceWriter, SharedTreeIdentifier},
+    Config, Provider,
+};
 use lgn_data_model::ReflectionError;
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
@@ -194,7 +197,10 @@ impl CompilerContext<'_> {
         compiled_content: &[u8],
         path: ResourcePathId,
     ) -> Result<CompiledResource, CompilerError> {
-        let content_id = self.provider.write(compiled_content).await?;
+        let content_id = self
+            .provider
+            .write_resource_from_bytes(compiled_content)
+            .await?;
         Ok(CompiledResource { path, content_id })
     }
 
@@ -325,6 +331,10 @@ pub enum CompilerError {
     /// lgn-content-store errors.
     #[error(transparent)]
     CASError(#[from] lgn_content_store::Error),
+
+    /// lgn-content-store indexing errors.
+    #[error(transparent)]
+    CASIndexingError(#[from] lgn_content_store::indexing::Error),
 
     /// Execute workload error.
     #[error("Execute workload failed")]
@@ -480,19 +490,25 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
 
             let data_provider = Arc::new(Config::load_and_instantiate_volatile_provider().await?);
 
+            let runtime_manifest_id = {
+                let manifest = CompiledResources {
+                    compiled_resources: derived_deps.clone(),
+                };
+
+                let manifest = manifest
+                    .into_rt_manifest(&data_provider, |_rpid| true)
+                    .await;
+
+                SharedTreeIdentifier::new(manifest)
+            };
+
             let registry = {
                 let (compiler, _) = compilers
                     .find_compiler(transform)
                     .ok_or(CompilerError::CompilerNotFound(transform))?;
 
-                let manifest = CompiledResources {
-                    compiled_resources: derived_deps.clone(),
-                };
-
-                let manifest = manifest.into_rt_manifest(|_rpid| true);
-
                 let registry = AssetRegistryOptions::new()
-                    .add_device_cas(Arc::clone(&data_provider), manifest)
+                    .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone())
                     .add_device_dir(&resource_dir); // todo: filter dependencies only
 
                 compiler.init(registry).await.create().await
@@ -513,6 +529,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     shell.registry(),
                     &data_provider,
                     &resource_dir,
+                    &runtime_manifest_id,
                     &env,
                 )
                 .await?;

@@ -138,9 +138,7 @@ impl Project {
         let repository_index = LocalRepositoryIndex::new(remote_dir).await?;
         let repository_name: RepositoryName = "default".parse().unwrap();
 
-        repository_index
-            .create_repository(repository_name.clone())
-            .await?;
+        repository_index.create_repository(&repository_name).await?;
 
         Self::create(
             project_dir,

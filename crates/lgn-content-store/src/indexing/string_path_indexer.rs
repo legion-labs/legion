@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{indexing::TreeWriter, Provider};
 
 use super::{
+    empty_tree_id,
     tree::{TreeIdentifier, TreeLeafNode},
     BasicIndexer, Error, IndexKey, IndexPath, IndexPathItem, RecursiveIndexer, Result,
     SearchResult, Tree, TreeNode, TreeReader,
@@ -334,10 +335,7 @@ impl BasicIndexer for StringPathIndexer {
                         // This should always return an empty tree.
                         provider.unwrite(root_id.as_identifier()).await?;
 
-                        return Ok((
-                            provider.write_tree(&Tree::default()).await?,
-                            existing_leaf_node,
-                        ));
+                        return Ok((empty_tree_id(provider).await?, existing_leaf_node));
                     }
                 }
 
@@ -530,7 +528,7 @@ mod tests {
         //
         // In all likelyhood, the generated identifier will benefit from
         // small-content optimization and not actually be written anywhere.
-        let tree_id = provider.write_tree(&Tree::default()).await.unwrap();
+        let tree_id = empty_tree_id(&provider).await.unwrap();
 
         assert_node_does_not_exist!(idx, provider, tree_id, "/fruits/pear.txt");
 

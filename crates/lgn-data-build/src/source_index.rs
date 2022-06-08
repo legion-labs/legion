@@ -53,6 +53,7 @@ impl SourceContent {
             pathid_mapping: BTreeMap::<_, _>::new(),
         }
     }
+
     // sort contents so serialization is deterministic
     fn pre_serialize(&mut self) {
         self.resources.sort_by(|a, b| a.id.cmp(&b.id));
@@ -282,9 +283,9 @@ impl SourceIndex {
     ) -> Result<(SourceContent, Vec<(Vec<u8>, Vec<u8>)>), Error> {
         let dir_checksum = {
             let mut hasher = DefaultHasher256::new();
-            hasher.write(LGN_DATA_BUILD.as_bytes());
-            hasher.write(directory.id().as_bytes());
-            hasher.write(version.as_bytes());
+            LGN_DATA_BUILD.hash(&mut hasher);
+            directory.id().hash(&mut hasher);
+            version.hash(&mut hasher);
             hasher.finish_256()[..].to_vec()
         };
 
@@ -317,7 +318,7 @@ impl SourceIndex {
                                     .unwrap(),
                                 {
                                     let mut hasher = DefaultHasher256::new();
-                                    id.write_to(&mut hasher).unwrap();
+                                    id.hash(&mut hasher);
                                     hasher.finish_256().encode_hex::<String>()
                                 },
                             )

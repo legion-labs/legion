@@ -4,8 +4,17 @@ use crate::Provider;
 
 use super::{
     errors::{Error, Result},
-    BasicIndexer, IndexKey, ResourceIdentifier, TreeIdentifier, TreeLeafNode,
+    BasicIndexer, IndexKey, ResourceIdentifier, Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
 };
+
+/// Identifier for an empty tree
+///
+/// # Errors
+///
+/// If the tree cannot be written, an error will be returned.
+pub async fn empty_tree_id(provider: &Provider) -> Result<TreeIdentifier> {
+    provider.write_tree(&Tree::default()).await
+}
 
 /// Enumerates all leaves, and collect the resources in the tree-nodes
 ///

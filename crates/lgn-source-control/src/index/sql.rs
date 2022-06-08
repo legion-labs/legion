@@ -277,7 +277,7 @@ impl SqlRepositoryIndex {
 
 #[async_trait]
 impl RepositoryIndex for SqlRepositoryIndex {
-    async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn create_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         async_span_scope!("SqlRepositoryIndex::create_repository");
 
         info!("Creating repository `{}` in SQL index", repository_name);
@@ -287,7 +287,7 @@ impl RepositoryIndex for SqlRepositoryIndex {
         Ok(Box::new(index))
     }
 
-    async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
+    async fn destroy_repository(&self, repository_name: &RepositoryName) -> Result<()> {
         async_span_scope!("SqlRepositoryIndex::destroy_repository");
 
         info!("Destroying repository `{}` in SQL index", repository_name);
@@ -297,7 +297,7 @@ impl RepositoryIndex for SqlRepositoryIndex {
         index.cleanup_repository_data().await
     }
 
-    async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn load_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         async_span_scope!("SqlRepositoryIndex::load_repository");
 
         info!("Loading repository `{}` in SQL index", repository_name);
@@ -339,7 +339,7 @@ impl SqlIndex {
     async fn init(
         driver: SqlDatabaseDriver,
         pool: Pool<sqlx::Any>,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
     ) -> Result<Self> {
         let conn = pool
             .acquire()
@@ -347,12 +347,12 @@ impl SqlIndex {
             .map_other_err("failed to acquire SQL connection")?;
 
         let repository_id =
-            Self::initialize_repository_data(conn, &repository_name, &driver).await?;
+            Self::initialize_repository_data(conn, repository_name, &driver).await?;
 
         Ok(Self {
             driver,
             pool,
-            repository_name,
+            repository_name: repository_name.clone(),
             repository_id,
         })
     }
@@ -360,7 +360,7 @@ impl SqlIndex {
     async fn load(
         driver: SqlDatabaseDriver,
         pool: Pool<sqlx::Any>,
-        repository_name: RepositoryName,
+        repository_name: &RepositoryName,
     ) -> Result<Self> {
         let mut conn = pool
             .acquire()
@@ -372,7 +372,7 @@ impl SqlIndex {
         Ok(Self {
             driver,
             pool,
-            repository_name,
+            repository_name: repository_name.clone(),
             repository_id,
         })
     }

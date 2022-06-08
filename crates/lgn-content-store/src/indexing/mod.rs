@@ -37,7 +37,7 @@ pub use tree::{
     tree_diff, SharedTreeIdentifier, Tree, TreeBranchInfo, TreeDiffSide, TreeIdentifier,
     TreeLeafInfo, TreeLeafNode, TreeNode, TreeReader, TreeVisitor, TreeVisitorAction, TreeWriter,
 };
-pub use utils::enumerate_resources;
+pub use utils::{empty_tree_id, enumerate_resources};
 
 use crate::Provider;
 

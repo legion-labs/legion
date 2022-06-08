@@ -7,9 +7,7 @@ use tokio_stream::StreamExt;
 
 use crate::Provider;
 
-use super::{
-    BasicIndexer, Error, IndexKey, Result, Tree, TreeIdentifier, TreeLeafNode, TreeWriter,
-};
+use super::{empty_tree_id, BasicIndexer, Error, IndexKey, Result, TreeIdentifier, TreeLeafNode};
 
 /// A composite indexer that combines multiple indexers to create composite
 /// indexes.
@@ -94,7 +92,7 @@ where
                     }
                 },
                 None => {
-                    let tree_id = provider.write_tree(&Tree::default()).await?;
+                    let tree_id = empty_tree_id(provider).await?;
                     let tree_id = self
                         .second
                         .add_leaf(provider, &tree_id, &second, leaf_node)
@@ -235,13 +233,11 @@ mod tests {
 
     use crate::{
         indexing::{
-            BasicIndexer, IndexKey, ResourceIdentifier, StaticIndexer, StringPathIndexer, Tree,
-            TreeLeafNode, TreeWriter,
+            empty_tree_id, BasicIndexer, CompositeIndexer, IndexKey, ResourceIdentifier,
+            StaticIndexer, StringPathIndexer, TreeLeafNode,
         },
         Identifier, Provider,
     };
-
-    use super::CompositeIndexer;
 
     #[tokio::test]
     async fn test_composite_indexer() {
@@ -252,7 +248,7 @@ mod tests {
         //
         // In all likelyhood, the generated identifier will benefit from
         // small-content optimization and not actually be written anywhere.
-        let tree_id = provider.write_tree(&Tree::default()).await.unwrap();
+        let tree_id = empty_tree_id(&provider).await.unwrap();
 
         assert!(idx
             .get_leaf(&provider, &tree_id, &IndexKey::compose(4_u32, "/foo/bar"))

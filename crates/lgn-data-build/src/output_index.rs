@@ -1,10 +1,9 @@
 use std::str::FromStr;
 use std::time::Duration;
 
-use lgn_content_store::Identifier;
+use lgn_content_store::indexing::ResourceIdentifier;
 use lgn_data_compiler::CompiledResource;
-use lgn_data_runtime::ResourcePathId;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{ResourcePathId, ResourceTypeAndId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use sqlx::{migrate::MigrateDatabase, Executor, Row};
 
@@ -20,7 +19,7 @@ pub(crate) struct CompiledResourceInfo {
     /// The path the resource was compiled into, i.e.:
     /// "ResourcePathId("anim.fbx").push("anim.offline")["idle"]
     pub(crate) compiled_path: ResourcePathId,
-    pub(crate) compiled_content_id: Identifier,
+    pub(crate) compiled_content_id: ResourceIdentifier,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -52,7 +51,7 @@ struct LinkedResource {
     id: ResourcePathId,
     context_hash: AssetHash,
     source_hash: AssetHash,
-    content_id: Identifier,
+    content_id: ResourceIdentifier,
 }
 
 #[derive(Debug)]
@@ -210,7 +209,7 @@ impl OutputIndex {
                 context_hash,
                 source_hash,
                 compiled_path: ResourcePathId::from_str(&id).unwrap(),
-                compiled_content_id: Identifier::from_str(&checksum).unwrap(),
+                compiled_content_id: ResourceIdentifier::from_str(&checksum).unwrap(),
             })
             .collect::<Vec<_>>();
 
@@ -251,7 +250,7 @@ impl OutputIndex {
         id: ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,
-    ) -> Result<Option<Identifier>, Error> {
+    ) -> Result<Option<ResourceIdentifier>, Error> {
         let output = {
             let statement = sqlx::query_as(
                 "SELECT checksum
@@ -267,7 +266,7 @@ impl OutputIndex {
                 .await
                 .map_err(Error::Database)?;
 
-            result.map(|(checksum,)| Identifier::from_str(&checksum).unwrap())
+            result.map(|(checksum,)| ResourceIdentifier::from_str(&checksum).unwrap())
         };
 
         Ok(output)
@@ -278,7 +277,7 @@ impl OutputIndex {
         id: ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,
-        content_id: Identifier,
+        content_id: ResourceIdentifier,
     ) -> Result<(), Error> {
         let query = sqlx::query("INSERT into linked_output VALUES(?, ?, ?, ?);")
             .bind(id.to_string())
@@ -339,9 +338,8 @@ impl OutputIndex {
 #[cfg(test)]
 mod tests {
 
-    use std::{path::Path, str::FromStr};
+    use std::path::Path;
 
-    use lgn_content_store::Identifier;
     use lgn_data_compiler::CompiledResource;
     use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
     use text_resource::TextResource;
@@ -447,7 +445,7 @@ mod tests {
         let source_hash = AssetHash::from(4);
         let in_resources = vec![CompiledResource {
             path: compile_path.clone(),
-            content_id: Identifier::from_str("AAAA").unwrap(),
+            content_id: "AAAA".parse().unwrap(),
         }];
         let references = vec![(compile_path.clone(), reference)];
         index

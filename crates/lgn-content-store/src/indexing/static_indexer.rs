@@ -9,12 +9,13 @@ use async_trait::async_trait;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 
-use crate::{indexing::TreeWriter, Provider};
+use crate::Provider;
 
 use super::{
+    empty_tree_id,
     tree::{TreeIdentifier, TreeLeafNode},
     BasicIndexer, Error, IndexKey, IndexKeyBound, IndexPath, IndexPathItem, OrderedIndexer, Result,
-    SearchResult, Tree, TreeNode, TreeReader,
+    SearchResult, Tree, TreeNode, TreeReader, TreeWriter,
 };
 
 /// A `StaticIndexer` is an indexer that adds resources according to the prefix
@@ -556,10 +557,7 @@ impl BasicIndexer for StaticIndexer {
                         // This should always return an empty tree.
                         provider.unwrite(root_id.as_identifier()).await?;
 
-                        return Ok((
-                            provider.write_tree(&Tree::default()).await?,
-                            existing_leaf_node,
-                        ));
+                        return Ok((empty_tree_id(provider).await?, existing_leaf_node));
                     }
                 }
 
@@ -913,7 +911,7 @@ mod tests {
         //
         // In all likelyhood, the generated identifier will benefit from
         // small-content optimization and not actually be written anywhere.
-        let tree_id = provider.write_tree(&Tree::default()).await.unwrap();
+        let tree_id = empty_tree_id(&provider).await.unwrap();
 
         // Let's perform a search in the empty tree. It should yield no result.
         assert_leaf_does_not_exist!(idx, provider, tree_id, "00000000");
@@ -1053,7 +1051,7 @@ mod tests {
             max_children_per_layer: 4,
         };
 
-        let tree_id = provider.write_tree(&Tree::default()).await.unwrap();
+        let tree_id = empty_tree_id(&provider).await.unwrap();
         let (tree_id, _) = add_leaf!(idx, provider, tree_id, 1_u32, "one");
         let (tree_id, _) = add_leaf!(idx, provider, tree_id, 2_u32, "two");
         let (tree_id, _) = add_leaf!(idx, provider, tree_id, 8_u32, "eight");

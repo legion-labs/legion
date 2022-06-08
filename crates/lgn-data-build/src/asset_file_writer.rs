@@ -1,4 +1,7 @@
-use lgn_content_store::{Identifier, Provider};
+use lgn_content_store::{
+    indexing::{ResourceIdentifier, ResourceReader},
+    Provider,
+};
 use lgn_data_runtime::{ResourceType, ResourceTypeAndId};
 use lgn_tracing::{async_span_scope, span_fn};
 use serde::{Deserialize, Serialize};
@@ -20,7 +23,7 @@ const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
 // todo: no asset ids are written because we assume 1 asset in asset_file now.
 #[span_fn]
 pub async fn write_assetfile(
-    asset_list: impl Iterator<Item = (ResourceTypeAndId, Identifier)> + Clone,
+    asset_list: impl Iterator<Item = (ResourceTypeAndId, ResourceIdentifier)> + Clone,
     reference_list: impl Iterator<Item = (ResourceTypeAndId, (ResourceTypeAndId, ResourceTypeAndId))>
         + Clone,
     content_store: &Provider,
@@ -38,7 +41,12 @@ pub async fn write_assetfile(
             if asset_contents.is_empty() {
                 kind = Some(content.0.kind);
             }
-            asset_contents.push(content_store.read(&content.1).await.unwrap());
+            asset_contents.push(
+                content_store
+                    .read_resource_as_bytes(&content.1)
+                    .await
+                    .unwrap(),
+            );
         }
     }
 
@@ -65,6 +73,7 @@ mod tests {
     use std::sync::Arc;
 
     use bincode::Options;
+    use lgn_content_store::indexing::ResourceWriter;
     use lgn_data_runtime::{ResourceDescriptor, ResourceId};
     use serde::Serialize;
 
@@ -101,11 +110,14 @@ mod tests {
         };
         let asset_content = create_ref_asset("test_content", ResourceId::new_explicit(9));
         let asset_checksum = content_store
-            .write(&asset_content)
+            .write_resource_from_bytes(&asset_content)
             .await
             .expect("to store asset");
         assert_eq!(
-            content_store.read(&asset_checksum).await.unwrap(),
+            content_store
+                .read_resource_as_bytes(&asset_checksum)
+                .await
+                .unwrap(),
             asset_content
         );
 
@@ -138,11 +150,14 @@ mod tests {
         };
         let child_content = create_ref_asset("child", ResourceId::new_explicit(9));
         let child_checksum = content_store
-            .write(&child_content)
+            .write_resource_from_bytes(&child_content)
             .await
             .expect("to store asset");
         assert_eq!(
-            content_store.read(&child_checksum).await.unwrap(),
+            content_store
+                .read_resource_as_bytes(&child_checksum)
+                .await
+                .unwrap(),
             child_content
         );
 
@@ -152,11 +167,14 @@ mod tests {
         };
         let parent_content = create_ref_asset("parent", ResourceId::new_explicit(1));
         let parent_checksum = content_store
-            .write(&parent_content)
+            .write_resource_from_bytes(&parent_content)
             .await
             .expect("to store asset");
         assert_eq!(
-            content_store.read(&parent_checksum).await.unwrap(),
+            content_store
+                .read_resource_as_bytes(&parent_checksum)
+                .await
+                .unwrap(),
             parent_content
         );
 

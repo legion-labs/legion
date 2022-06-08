@@ -1,35 +1,41 @@
-use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, Hasher};
-use std::path::{Path, PathBuf};
-use std::pin::Pin;
-use std::sync::Arc;
-use std::time::SystemTime;
-use std::{env, io};
-
-use futures::future::{select_all, try_join_all};
-use futures::{Future, FutureExt};
-use lgn_content_store::{Identifier, Provider};
-use lgn_data_compiler::compiler_api::{
-    CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION,
+use std::{
+    collections::{HashMap, HashSet},
+    env,
+    hash::{Hash, Hasher},
+    io,
+    path::{Path, PathBuf},
+    pin::Pin,
+    sync::Arc,
+    time::SystemTime,
 };
-use lgn_data_compiler::compiler_node::{CompilerNode, CompilerRegistry, CompilerStub};
-use lgn_data_compiler::{CompiledResource, CompiledResources};
+
+use futures::{
+    future::{select_all, try_join_all},
+    Future, FutureExt,
+};
+use lgn_content_store::{
+    indexing::{empty_tree_id, ResourceWriter, SharedTreeIdentifier},
+    Provider,
+};
+use lgn_data_compiler::{
+    compiler_api::{CompilationEnv, CompilationOutput, CompilerHash, DATA_BUILD_VERSION},
+    compiler_node::{CompilerNode, CompilerStub},
+    CompiledResource, CompiledResources,
+};
 use lgn_data_offline::resource::Project;
-use lgn_data_runtime::manifest::Manifest;
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
 use lgn_tracing::{async_span_scope, debug, error, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
-use petgraph::graph::NodeIndex;
-use petgraph::{algo, Graph};
+use petgraph::{algo, graph::NodeIndex, Graph};
 
-use crate::asset_file_writer::write_assetfile;
-use crate::output_index::{
-    AssetHash, CompiledResourceInfo, CompiledResourceReference, OutputIndex,
+use crate::{
+    asset_file_writer::write_assetfile,
+    output_index::{AssetHash, CompiledResourceInfo, CompiledResourceReference, OutputIndex},
+    source_index::SourceIndex,
+    DataBuildOptions, Error,
 };
-use crate::source_index::SourceIndex;
-use crate::{DataBuildOptions, Error};
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)] // used by tests
@@ -110,113 +116,69 @@ pub struct DataBuild {
     source_index: SourceIndex,
     output_index: OutputIndex,
     resource_dir: PathBuf,
+    runtime_manifest_id: SharedTreeIdentifier,
     data_content_provider: Arc<Provider>,
     compilers: CompilerNode,
 }
 
 impl DataBuild {
-    async fn default_asset_registry(
-        resource_dir: &Path,
-        data_provider: Arc<Provider>,
-        compilers: &CompilerRegistry,
-        manifest: Option<Manifest>,
-    ) -> Result<Arc<AssetRegistry>, Error> {
-        let manifest = manifest.unwrap_or_default();
-
-        let mut options = AssetRegistryOptions::new()
-            .add_device_cas(data_provider, manifest)
-            .add_device_dir(resource_dir);
-
-        options = compilers.init_all(options).await;
-
-        Ok(options.create().await)
-    }
-
     pub(crate) async fn new(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
+        let output_index = OutputIndex::create_new(config.output_db_addr.clone()).await?;
 
-        let output_index = OutputIndex::create_new(config.output_db_addr).await?;
-
-        let compilers = config.compiler_options.create().await;
-        let registry = match config.registry {
-            Some(r) => Ok(r),
-            None => {
-                Self::default_asset_registry(
-                    &project.resource_dir(),
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                    config.manifest,
-                )
-                .await
-            }
-        }?;
-
-        Ok(Self {
-            source_index,
-            output_index,
-            resource_dir: project.resource_dir(),
-            data_content_provider: Arc::clone(&config.data_content_provider),
-            compilers: CompilerNode::new(compilers, registry),
-        })
+        Self::new_with_output_index(config, output_index, project).await
     }
 
     pub(crate) async fn open(config: DataBuildOptions, project: &Project) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
-        let output_index = OutputIndex::open(config.output_db_addr).await?;
+        let output_index = OutputIndex::open(config.output_db_addr.clone()).await?;
 
-        let compilers = config.compiler_options.create().await;
-        let registry = match config.registry {
-            Some(t) => Ok(t),
-            None => {
-                Self::default_asset_registry(
-                    &project.resource_dir(),
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                    config.manifest,
-                )
-                .await
-            }
-        }?;
-
-        Ok(Self {
-            source_index,
-            output_index,
-            resource_dir: project.resource_dir(),
-            data_content_provider: Arc::clone(&config.data_content_provider),
-            compilers: CompilerNode::new(compilers, registry),
-        })
+        Self::new_with_output_index(config, output_index, project).await
     }
 
     pub(crate) async fn open_or_create(
         config: DataBuildOptions,
         project: &Project,
     ) -> Result<Self, Error> {
-        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
-
         let output_index = match OutputIndex::open(config.output_db_addr.clone()).await {
             Ok(output_index) => Ok(output_index),
             Err(Error::NotFound(_)) => OutputIndex::create_new(config.output_db_addr.clone()).await,
             Err(e) => Err(e),
         }?;
 
+        Self::new_with_output_index(config, output_index, project).await
+    }
+
+    async fn new_with_output_index(
+        config: DataBuildOptions,
+        output_index: OutputIndex,
+        project: &Project,
+    ) -> Result<Self, Error> {
+        let source_index = SourceIndex::new(Arc::clone(&config.data_content_provider));
         let compilers = config.compiler_options.create().await;
+        let runtime_manifest_id =
+            SharedTreeIdentifier::new(empty_tree_id(&config.data_content_provider).await.unwrap());
+
         let registry = match config.registry {
-            Some(r) => Ok(r),
+            Some(r) => r,
             None => {
-                Self::default_asset_registry(
-                    &project.resource_dir(),
-                    Arc::clone(&config.data_content_provider),
-                    &compilers,
-                    config.manifest,
-                )
-                .await
+                // setup default asset registry
+                let mut options = AssetRegistryOptions::new()
+                    .add_device_cas(
+                        Arc::clone(&config.data_content_provider),
+                        runtime_manifest_id.clone(),
+                    )
+                    .add_device_dir(&project.resource_dir());
+
+                options = compilers.init_all(options).await;
+
+                options.create().await
             }
-        }?;
+        };
 
         Ok(Self {
             source_index,
             output_index,
             resource_dir: project.resource_dir(),
+            runtime_manifest_id,
             data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
         })
@@ -262,16 +224,6 @@ impl DataBuild {
         compile_path: ResourcePathId,
         env: &CompilationEnv,
     ) -> Result<CompiledResources, Error> {
-        self.compile_with_manifest(compile_path, env, None).await
-    }
-
-    /// Same as `compile` but it updates the `manifest` provided as an argument.
-    pub async fn compile_with_manifest(
-        &mut self,
-        compile_path: ResourcePathId,
-        env: &CompilationEnv,
-        intermediate_output: Option<&Manifest>,
-    ) -> Result<CompiledResources, Error> {
         self.output_index.record_pathid(&compile_path).await?;
         let mut result = CompiledResources::default();
 
@@ -282,9 +234,7 @@ impl DataBuild {
             resources,
             references,
             statistics: _stats,
-        } = self
-            .compile_path(compile_path, env, intermediate_output)
-            .await?;
+        } = self.compile_path(compile_path, env).await?;
 
         let assets = self.link(&resources, &references).await?;
 
@@ -312,6 +262,7 @@ impl DataBuild {
         output_index: &OutputIndex,
         data_provider: &Provider,
         project_dir: &Path,
+        runtime_manifest_id: &SharedTreeIdentifier,
         compile_node: &ResourcePathId,
         context_hash: AssetHash,
         source_hash: AssetHash,
@@ -361,6 +312,7 @@ impl DataBuild {
                         resources,
                         data_provider,
                         project_dir,
+                        runtime_manifest_id,
                         env,
                     )
                     .await
@@ -459,7 +411,6 @@ impl DataBuild {
         &mut self,
         compile_path: ResourcePathId,
         env: &CompilationEnv,
-        intermediate_output: Option<&Manifest>,
     ) -> Result<CompileOutput, Error> {
         if self.source_index.current().is_none() {
             return Err(Error::SourceIndex);
@@ -733,6 +684,7 @@ impl DataBuild {
                     let output_index = &self.output_index;
                     let data_content_provider = &self.data_content_provider;
                     let project_dir = &self.resource_dir;
+                    let runtime_manifest_id = &self.runtime_manifest_id;
                     let resources = self.compilers.registry();
                     let acc_deps = accumulated_dependencies.clone();
 
@@ -750,6 +702,7 @@ impl DataBuild {
                             output_index,
                             data_content_provider,
                             project_dir,
+                            runtime_manifest_id,
                             &compile_node,
                             context_hash,
                             source_hash,
@@ -768,18 +721,6 @@ impl DataBuild {
                             compile_node,
                             start.elapsed()
                         );
-
-                        // update the CAS manifest with new content in order to make new resources
-                        // visible to the next compilation node
-                        // NOTE: right now all the resources are visible to all compilation nodes.
-                        if let Some(manifest) = &intermediate_output {
-                            for r in &resource_infos {
-                                manifest.insert(
-                                    r.compiled_path.resource_id(),
-                                    r.compiled_content_id.clone(),
-                                );
-                            }
-                        }
 
                         // registry must be updated to release any resources that are no longer referenced.
                         resources.update();
@@ -919,7 +860,10 @@ impl DataBuild {
 
             let checksum = {
                 async_span_scope!("content_store");
-                self.source_index.content_store.write(&output).await?
+                self.source_index
+                    .content_store
+                    .write_resource_from_bytes(&output)
+                    .await?
             };
             self.output_index
                 .insert_linked(
@@ -996,16 +940,9 @@ impl DataBuild {
             .with_extension("manifest"))
     }
 
-    /// Writes a manifest to the data content provider, and returns its identifier
-    pub async fn write_manifest(&self, manifest: &Manifest) -> Result<Identifier, Error> {
-        let mut buffer = vec![];
-        serde_json::to_writer_pretty(&mut buffer, manifest)
-            .expect("failed to convert manifest to JSON");
-
-        self.data_content_provider
-            .write(&buffer)
-            .await
-            .map_err(Error::InvalidContentStore)
+    /// Returns data content provider
+    pub fn get_provider(&self) -> &Provider {
+        &self.data_content_provider
     }
 }
 

@@ -1,5 +1,5 @@
 use crossbeam_channel::Sender;
-use lgn_content_store::Identifier;
+use lgn_content_store::indexing::TreeIdentifier;
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_runtime_proto::runtime::{
     runtime_server::{Runtime, RuntimeServer},
@@ -11,7 +11,7 @@ use tonic::{Request, Response, Status};
 
 #[derive(Debug, Clone)]
 pub(crate) enum RuntimeServerCommand {
-    LoadManifest(Identifier),
+    LoadManifest(TreeIdentifier),
     LoadRootAsset(ResourceTypeAndId),
     Pause,
 }
@@ -38,12 +38,15 @@ impl Runtime for GRPCServer {
     ) -> Result<Response<LoadManifestResponse>, Status> {
         let request = request.into_inner();
 
-        let manifest_id = request.manifest_id.parse::<Identifier>().map_err(|error| {
-            Status::internal(format!(
-                "Invalid manifest id format \"{}\": {}",
-                request.manifest_id, error
-            ))
-        })?;
+        let manifest_id = request
+            .manifest_id
+            .parse::<TreeIdentifier>()
+            .map_err(|error| {
+                Status::internal(format!(
+                    "Invalid manifest id format \"{}\": {}",
+                    request.manifest_id, error
+                ))
+            })?;
 
         if let Err(error) = self
             .command_sender

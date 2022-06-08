@@ -51,7 +51,7 @@ impl LocalRepositoryIndex {
 
 #[async_trait]
 impl RepositoryIndex for LocalRepositoryIndex {
-    async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn create_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         async_span_scope!("LocalRepositoryIndex::create_repository");
 
         let inner_index = self
@@ -64,7 +64,7 @@ impl RepositoryIndex for LocalRepositoryIndex {
         Ok(Box::new(index))
     }
 
-    async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
+    async fn destroy_repository(&self, repository_name: &RepositoryName) -> Result<()> {
         async_span_scope!("LocalRepositoryIndex::destroy_repository");
 
         self.inner_repository_index
@@ -72,7 +72,7 @@ impl RepositoryIndex for LocalRepositoryIndex {
             .await
     }
 
-    async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn load_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         async_span_scope!("LocalRepositoryIndex::load_repository");
 
         let inner_index = self

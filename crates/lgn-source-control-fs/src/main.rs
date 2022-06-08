@@ -60,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
         lgn_source_control::Config::load_and_instantiate_repository_index().await?;
 
     let index = repository_index
-        .load_repository(args.repository_name)
+        .load_repository(&args.repository_name)
         .await?;
 
     tokio::select! {

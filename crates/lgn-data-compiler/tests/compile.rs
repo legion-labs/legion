@@ -1,8 +1,9 @@
-use std::sync::Arc;
-
 use binary_resource::BinaryResource;
 use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use lgn_content_store::Config;
+use lgn_content_store::{
+    indexing::{ResourceExists, ResourceReader},
+    Config,
+};
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
 use lgn_data_runtime::{
     AssetLoader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
@@ -74,16 +75,17 @@ async fn compile_atoi() {
 
     let content_id = &asset_info.content_id;
 
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
-            .await
-            .expect("failed to read config"),
-    );
+    let volatile_content_provider = Config::load_and_instantiate_volatile_provider()
+        .await
+        .expect("failed to read config");
 
-    assert!(volatile_content_provider.exists(content_id).await.unwrap());
+    assert!(volatile_content_provider
+        .resource_exists(content_id)
+        .await
+        .unwrap());
 
     let resource_content = volatile_content_provider
-        .read(content_id)
+        .read_resource_as_bytes(content_id)
         .await
         .expect("asset content");
 
@@ -166,16 +168,17 @@ async fn compile_intermediate() {
 
     let content_id = &derived_info.content_id;
 
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
-            .await
-            .expect("failed to read config"),
-    );
+    let volatile_content_provider = Config::load_and_instantiate_volatile_provider()
+        .await
+        .expect("failed to read config");
 
-    assert!(volatile_content_provider.exists(content_id).await.unwrap());
+    assert!(volatile_content_provider
+        .resource_exists(content_id)
+        .await
+        .unwrap());
 
     let resource_content = volatile_content_provider
-        .read(content_id)
+        .read_resource_as_bytes(content_id)
         .await
         .expect("asset content");
 
@@ -255,19 +258,17 @@ async fn compile_multi_resource() {
 
     assert_eq!(compiled_resources.len(), source_text_list.len());
 
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
-            .await
-            .expect("failed to read config"),
-    );
+    let volatile_content_provider = Config::load_and_instantiate_volatile_provider()
+        .await
+        .expect("failed to read config");
 
     for (resource, source_text) in compiled_resources.iter().zip(source_text_list.iter()) {
         assert!(volatile_content_provider
-            .exists(&resource.content_id)
+            .resource_exists(&resource.content_id)
             .await
             .unwrap());
         let resource_content = volatile_content_provider
-            .read(&resource.content_id)
+            .read_resource_as_bytes(&resource.content_id)
             .await
             .expect("asset content");
         let mut proc = text_resource::TextResourceProc {};
@@ -332,16 +333,17 @@ async fn compile_base64() {
 
     let content_id = &asset_info.content_id;
 
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
-            .await
-            .expect("failed to read config"),
-    );
+    let volatile_content_provider = Config::load_and_instantiate_volatile_provider()
+        .await
+        .expect("failed to read config");
 
-    assert!(volatile_content_provider.exists(content_id).await.unwrap());
+    assert!(volatile_content_provider
+        .resource_exists(content_id)
+        .await
+        .unwrap());
 
     let resource_content = volatile_content_provider
-        .read(content_id)
+        .read_resource_as_bytes(content_id)
         .await
         .expect("asset content");
 

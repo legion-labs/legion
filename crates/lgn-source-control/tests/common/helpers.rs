@@ -8,7 +8,7 @@ macro_rules! init_test_workspace_and_index {
         let repository_name: RepositoryName = "default".parse().unwrap();
         let repository_index = LocalRepositoryIndex::new(index_root.path()).await.unwrap();
         let _repository = repository_index
-            .create_repository(repository_name.clone())
+            .create_repository(&repository_name)
             .await
             .unwrap();
         let workspace_root = tempfile::tempdir().expect("failed to create temp dir");
@@ -47,7 +47,7 @@ macro_rules! cleanup_test_workspace_and_index {
         // Destroy the index.
         if cfg!(not(target_os = "windows")) {
             $repository_index
-                .destroy_repository($workspace.repository_name().clone())
+                .destroy_repository($workspace.repository_name())
                 .await
                 .unwrap();
         }
