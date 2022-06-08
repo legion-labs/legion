@@ -1,5 +1,10 @@
 use std::{
-    collections::BTreeMap, fmt::Display, iter::Chain, path::PathBuf, slice::Iter, str::FromStr,
+    collections::{BTreeMap, HashMap},
+    fmt::Display,
+    iter::Chain,
+    path::PathBuf,
+    slice::Iter,
+    str::FromStr,
 };
 
 use crate::{
@@ -12,36 +17,112 @@ use crate::{
 pub struct GenerationContext {
     pub root: PathBuf,
     pub location_contexts: BTreeMap<OpenApiRefLocation, LocationContext>,
+    pub language: Language,
 }
 
-impl GenerationContext {
-    pub fn new(root: PathBuf) -> Self {
-        Self {
-            root,
-            location_contexts: BTreeMap::new(),
+#[derive(Debug, Default, PartialEq)]
+pub struct RustOptions {
+    /// A mapping of files to Rust modules.
+    pub module_mappings: HashMap<PathBuf, ModulePath>,
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub struct TypeScriptOptions {
+    pub prettier_config_path: Option<PathBuf>,
+    pub with_package_json: bool,
+    pub skip_format: bool,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Language {
+    Rust(RustOptions),
+    TypeScript(TypeScriptOptions),
+    Python,
+}
+
+impl Language {
+    pub fn rust_options(&self) -> Option<&RustOptions> {
+        match self {
+            Self::Rust(rust_options) => Some(rust_options),
+            Self::TypeScript(_) | Self::Python => None,
         }
     }
 
-    pub fn ref_loc_to_module_path(&self, ref_loc: &OpenApiRefLocation) -> Result<ModulePath> {
+    pub fn into_rust_options(self) -> Option<RustOptions> {
+        match self {
+            Self::Rust(rust_options) => Some(rust_options),
+            Self::TypeScript(_) | Self::Python => None,
+        }
+    }
+
+    pub fn rust_options_mut(&mut self) -> Option<&mut RustOptions> {
+        match self {
+            Self::Rust(rust_options) => Some(rust_options),
+            Self::TypeScript(_) | Self::Python => None,
+        }
+    }
+
+    pub fn type_script_options(&self) -> Option<&TypeScriptOptions> {
+        match self {
+            Self::TypeScript(type_script_options) => Some(type_script_options),
+            Self::Rust(_) | Self::Python => None,
+        }
+    }
+
+    pub fn into_type_script_options(self) -> Option<TypeScriptOptions> {
+        match self {
+            Self::TypeScript(type_script_options) => Some(type_script_options),
+            Self::Rust(_) | Self::Python => None,
+        }
+    }
+
+    pub fn type_script_options_mut(&mut self) -> Option<&mut TypeScriptOptions> {
+        match self {
+            Self::TypeScript(type_script_options) => Some(type_script_options),
+            Self::Rust(_) | Self::Python => None,
+        }
+    }
+}
+
+impl GenerationContext {
+    pub fn new(root: PathBuf, language: Language) -> Self {
+        Self {
+            root,
+            location_contexts: BTreeMap::new(),
+            language,
+        }
+    }
+
+    pub fn ref_loc_to_rust_module_path(&self, ref_loc: &OpenApiRefLocation) -> Result<ModulePath> {
         let file_path = ref_loc.path();
 
-        let file_path =
-            file_path
-                .strip_prefix(&self.root)
-                .map_err(|_err| Error::DocumentOutOfRoot {
-                    document_path: file_path.clone(),
-                    root: self.root.clone(),
+        Ok(
+            if let Some(module_path) = self
+                .language
+                .rust_options()
+                .and_then(|options| options.module_mappings.get(file_path))
+            {
+                module_path.clone()
+            } else {
+                let file_path = file_path.strip_prefix(&self.root).map_err(|_err| {
+                    Error::DocumentOutOfRoot {
+                        document_path: file_path.clone(),
+                        root: self.root.clone(),
+                    }
                 })?;
 
-        Ok(ModulePath(
-            file_path
-                .with_extension("")
-                .display()
-                .to_string()
-                .split('/')
-                .map(ToString::to_string)
-                .collect::<Vec<_>>(),
-        ))
+                ModulePath {
+                    absolute: false,
+                    parts: file_path
+                        .with_extension("")
+                        .display()
+                        .to_string()
+                        .split('/')
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>(),
+                }
+            },
+        )
     }
 
     /// Returns the location context as modules relative to the root.
@@ -49,7 +130,7 @@ impl GenerationContext {
         self.location_contexts
             .iter()
             .map(|(ref_loc, api_ctx)| {
-                let module_path = self.ref_loc_to_module_path(ref_loc)?;
+                let module_path = self.ref_loc_to_rust_module_path(ref_loc)?;
 
                 Ok((module_path, api_ctx))
             })
@@ -69,13 +150,20 @@ impl GenerationContext {
     }
 }
 
-/// Represents a module path.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ModulePath(pub Vec<String>);
+/// Represents a module path, agnostic of the language.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ModulePath {
+    absolute: bool,
+    parts: Vec<String>,
+}
 
 impl Display for ModulePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.join("/"))
+        if self.absolute {
+            write!(f, "/{}", self.parts.join("/"))
+        } else {
+            write!(f, "{}", self.parts.join("/"))
+        }
     }
 }
 
@@ -83,47 +171,156 @@ impl FromStr for ModulePath {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self(s.split('/').map(ToString::to_string).collect()))
+        let absolute = s.starts_with('/');
+
+        let parts = if absolute { &s[1..] } else { s }
+            .split('/')
+            .filter_map(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s.to_string())
+                }
+            })
+            .collect();
+
+        Ok(Self { absolute, parts })
+    }
+}
+
+#[allow(clippy::fallible_impl_from)]
+impl<'a> From<&'a str> for ModulePath {
+    fn from(s: &'a str) -> Self {
+        Self::from_str(s).unwrap()
+    }
+}
+
+#[allow(clippy::fallible_impl_from)]
+impl From<String> for ModulePath {
+    fn from(s: String) -> Self {
+        Self::from_str(&s).unwrap()
     }
 }
 
 impl ModulePath {
-    pub fn join(&self, module: impl Into<String>) -> ModulePath {
-        let mut parts = self.0.clone();
-        parts.push(module.into());
-
-        Self(parts)
+    pub fn from_absolute_rust_module_path(s: &str) -> Self {
+        Self {
+            absolute: true,
+            parts: s
+                .split("::")
+                .filter_map(|s| {
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(s.to_string())
+                    }
+                })
+                .collect(),
+        }
     }
 
-    pub fn parent(&self) -> ModulePath {
-        Self(self.0[..self.0.len() - 1].to_vec())
+    pub fn to_rust_module_path(&self) -> String {
+        self.parts()
+            .iter()
+            .map(|s| (if s == ".." { "super" } else { s }).to_string())
+            .collect::<Vec<String>>()
+            .join("::")
     }
 
-    pub fn relative_to(&self, other: &ModulePath) -> ModulePath {
-        for (i, part) in self.0.iter().enumerate() {
-            if i >= other.0.len() {
+    #[inline]
+    pub fn is_absolute(&self) -> bool {
+        self.absolute
+    }
+
+    #[inline]
+    pub fn is_relative(&self) -> bool {
+        !self.absolute
+    }
+
+    #[inline]
+    pub fn parts(&self) -> &[String] {
+        &self.parts
+    }
+
+    /// Join this module path with another.
+    ///
+    /// If the other module path is absolute, this path is ignored.
+    #[must_use]
+    pub fn join(&self, module_path: impl Into<ModulePath>) -> Self {
+        let module_path = module_path.into();
+
+        if module_path.is_absolute() {
+            return module_path;
+        }
+
+        let mut parts = self.parts.clone();
+        parts.extend(module_path.parts);
+
+        Self {
+            absolute: self.absolute,
+            parts,
+        }
+    }
+
+    /// Return the parent of this module path.
+    pub fn parent(&self) -> Option<ModulePath> {
+        if self.parts.is_empty() {
+            None
+        } else {
+            Some(Self {
+                absolute: self.absolute,
+                parts: self.parts[..self.parts.len() - 1].to_vec(),
+            })
+        }
+    }
+
+    /// Return a module path such `self.join(module_path) == other`.
+    ///
+    /// As a special case, if only one of the paths is absolute, it will be
+    /// returned as is.
+    #[must_use]
+    pub fn relative_to(&self, other: &ModulePath) -> Self {
+        // We can only ever compare absolute paths and non-absolute paths with
+        // one another.
+        if self.absolute != other.absolute {
+            return if self.absolute {
+                self.clone()
+            } else {
+                other.clone()
+            };
+        }
+
+        for (i, part) in self.parts.iter().enumerate() {
+            if i >= other.parts.len() {
                 // The other is a prefix of us: just strip the beginnning.
-                return Self(self.0[i..].to_vec());
+                return Self {
+                    absolute: false,
+                    parts: self.parts[i..].to_vec(),
+                };
             }
 
-            if part != &other.0[i] {
-                let mut parts = other.0[i..]
+            if part != &other.parts[i] {
+                let mut parts = other.parts[i..]
                     .iter()
                     .map(|_| "..".to_string())
                     .collect::<Vec<_>>();
 
-                parts.extend(self.0[i..].iter().cloned());
+                parts.extend(self.parts[i..].iter().cloned());
 
-                return Self(parts);
+                return Self {
+                    absolute: false,
+                    parts,
+                };
             }
         }
 
-        Self(
-            other.0[self.0.len()..]
+        Self {
+            absolute: false,
+            parts: other.parts[self.parts.len()..]
                 .iter()
                 .map(|_| "..".to_string())
                 .collect(),
-        )
+        }
     }
 }
 
@@ -411,8 +608,18 @@ mod tests {
     #[test]
     fn test_module_path() {
         assert_eq!(
-            ModulePath(vec!["foo".to_string(), "bar".to_string()]),
+            ModulePath {
+                absolute: false,
+                parts: vec!["foo".to_string(), "bar".to_string()]
+            },
             "foo/bar".parse().unwrap()
+        );
+        assert_eq!(
+            ModulePath {
+                absolute: true,
+                parts: vec!["foo".to_string(), "bar".to_string()]
+            },
+            "/foo/bar".parse().unwrap()
         );
     }
 
@@ -420,8 +627,13 @@ mod tests {
     fn test_module_path_relative_to() {
         let current: ModulePath = "foo/bar/baz".parse().unwrap();
         let other: ModulePath = "foo/bar".parse().unwrap();
+        let abs: ModulePath = "/i/am/absolute".parse().unwrap();
 
         assert_eq!(other.relative_to(&current), "..".parse().unwrap());
         assert_eq!(current.relative_to(&other), "baz".parse().unwrap());
+        assert_eq!(other.relative_to(&abs), "/i/am/absolute".parse().unwrap());
+        assert_eq!(abs.relative_to(&other), "/i/am/absolute".parse().unwrap());
+        assert_eq!(other.relative_to(&other), "".parse().unwrap());
+        assert_eq!(abs.relative_to(&abs), "".parse().unwrap());
     }
 }

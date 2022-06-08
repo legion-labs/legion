@@ -10,3 +10,38 @@ pub trait Api {
     {% endfor %}
 {% endfor %}
 }
+
+// Blanket implementation of the Api trait for common wrapper types.
+
+#[async_trait::async_trait]
+impl<T: Api + Send + Sync> Api for std::sync::Arc<T> {
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% include "signature.rs.jinja" %} {
+            self.as_ref().{{ route.name|snake_case }}(api_codegen_context, {% if !route.has_empty_request() %}request{% endif %}).await
+        }
+    {% endfor %}
+{% endfor %}
+}
+
+#[async_trait::async_trait]
+impl<T: Api + Send + Sync + ?Sized> Api for Box<T> {
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% include "signature.rs.jinja" %} {
+            self.as_ref().{{ route.name|snake_case }}(api_codegen_context, {% if !route.has_empty_request() %}request{% endif %}).await
+        }
+    {% endfor %}
+{% endfor %}
+}
+
+#[async_trait::async_trait]
+impl<T: Api + Send + Sync + ?Sized> Api for &T {
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% include "signature.rs.jinja" %} {
+            (**self).{{ route.name|snake_case }}(api_codegen_context, {% if !route.has_empty_request() %}request{% endif %}).await
+        }
+    {% endfor %}
+{% endfor %}
+}

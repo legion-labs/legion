@@ -11,57 +11,11 @@ pub mod cars {
     use lgn_online::codegen::Bytes;
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub struct Car {
-        #[serde(rename = "color")]
-        pub color: CarColor,
-
-        #[serde(rename = "extra")]
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub extra: Option<Bytes>,
-
-        #[serde(rename = "id")]
-        pub id: i64,
-
-        #[serde(rename = "is_new")]
-        pub is_new: bool,
-
-        #[serde(rename = "name")]
-        pub name: String,
-    }
-
-    /// The car color.
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub enum CarColor {
-        #[serde(rename = "red")]
-        Red,
-        #[serde(rename = "blue")]
-        Blue,
-        #[serde(rename = "yellow")]
-        Yellow,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub struct Cars(pub Vec<Car>);
-
-    impl From<Vec<Car>> for Cars {
-        fn from(t: Vec<Car>) -> Self {
-            Self(t)
-        }
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-    pub struct Pet {
-        #[serde(rename = "name")]
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub name: Option<String>,
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub enum TestOneOf200Response {
         #[serde(rename = "option1")]
-        Option1(Pet),
+        Option1(super::components::Pet),
         #[serde(rename = "option2")]
-        Option2(Car),
+        Option2(super::components::Car),
     }
 
     // API Test API v1.0.0
@@ -77,41 +31,228 @@ pub mod cars {
     pub trait Api {
         async fn test_headers(
             &self,
-            context: &mut Context,
+            api_codegen_context: &mut Context,
             request: requests::TestHeadersRequest,
         ) -> Result<responses::TestHeadersResponse>;
 
-        async fn test_one_of(&self, context: &mut Context) -> Result<responses::TestOneOfResponse>;
+        async fn test_one_of(
+            &self,
+            api_codegen_context: &mut Context,
+        ) -> Result<responses::TestOneOfResponse>;
 
         async fn get_cars(
             &self,
-            context: &mut Context,
+            api_codegen_context: &mut Context,
             request: requests::GetCarsRequest,
         ) -> Result<responses::GetCarsResponse>;
 
         async fn create_car(
             &self,
-            context: &mut Context,
+            api_codegen_context: &mut Context,
             request: requests::CreateCarRequest,
         ) -> Result<responses::CreateCarResponse>;
 
         async fn get_car(
             &self,
-            context: &mut Context,
+            api_codegen_context: &mut Context,
             request: requests::GetCarRequest,
         ) -> Result<responses::GetCarResponse>;
 
         async fn delete_car(
             &self,
-            context: &mut Context,
+            api_codegen_context: &mut Context,
             request: requests::DeleteCarRequest,
         ) -> Result<responses::DeleteCarResponse>;
 
         async fn test_binary(
             &self,
-            context: &mut Context,
+            api_codegen_context: &mut Context,
             request: requests::TestBinaryRequest,
         ) -> Result<responses::TestBinaryResponse>;
+    }
+
+    // Blanket implementation of the Api trait for common wrapper types.
+
+    #[async_trait::async_trait]
+    impl<T: Api + Send + Sync> Api for std::sync::Arc<T> {
+        async fn test_headers(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::TestHeadersRequest,
+        ) -> Result<responses::TestHeadersResponse> {
+            self.as_ref()
+                .test_headers(api_codegen_context, request)
+                .await
+        }
+
+        async fn test_one_of(
+            &self,
+            api_codegen_context: &mut Context,
+        ) -> Result<responses::TestOneOfResponse> {
+            self.as_ref().test_one_of(api_codegen_context).await
+        }
+
+        async fn get_cars(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::GetCarsRequest,
+        ) -> Result<responses::GetCarsResponse> {
+            self.as_ref().get_cars(api_codegen_context, request).await
+        }
+
+        async fn create_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::CreateCarRequest,
+        ) -> Result<responses::CreateCarResponse> {
+            self.as_ref().create_car(api_codegen_context, request).await
+        }
+
+        async fn get_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::GetCarRequest,
+        ) -> Result<responses::GetCarResponse> {
+            self.as_ref().get_car(api_codegen_context, request).await
+        }
+
+        async fn delete_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::DeleteCarRequest,
+        ) -> Result<responses::DeleteCarResponse> {
+            self.as_ref().delete_car(api_codegen_context, request).await
+        }
+
+        async fn test_binary(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::TestBinaryRequest,
+        ) -> Result<responses::TestBinaryResponse> {
+            self.as_ref()
+                .test_binary(api_codegen_context, request)
+                .await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T: Api + Send + Sync + ?Sized> Api for Box<T> {
+        async fn test_headers(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::TestHeadersRequest,
+        ) -> Result<responses::TestHeadersResponse> {
+            self.as_ref()
+                .test_headers(api_codegen_context, request)
+                .await
+        }
+
+        async fn test_one_of(
+            &self,
+            api_codegen_context: &mut Context,
+        ) -> Result<responses::TestOneOfResponse> {
+            self.as_ref().test_one_of(api_codegen_context).await
+        }
+
+        async fn get_cars(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::GetCarsRequest,
+        ) -> Result<responses::GetCarsResponse> {
+            self.as_ref().get_cars(api_codegen_context, request).await
+        }
+
+        async fn create_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::CreateCarRequest,
+        ) -> Result<responses::CreateCarResponse> {
+            self.as_ref().create_car(api_codegen_context, request).await
+        }
+
+        async fn get_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::GetCarRequest,
+        ) -> Result<responses::GetCarResponse> {
+            self.as_ref().get_car(api_codegen_context, request).await
+        }
+
+        async fn delete_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::DeleteCarRequest,
+        ) -> Result<responses::DeleteCarResponse> {
+            self.as_ref().delete_car(api_codegen_context, request).await
+        }
+
+        async fn test_binary(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::TestBinaryRequest,
+        ) -> Result<responses::TestBinaryResponse> {
+            self.as_ref()
+                .test_binary(api_codegen_context, request)
+                .await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl<T: Api + Send + Sync + ?Sized> Api for &T {
+        async fn test_headers(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::TestHeadersRequest,
+        ) -> Result<responses::TestHeadersResponse> {
+            (**self).test_headers(api_codegen_context, request).await
+        }
+
+        async fn test_one_of(
+            &self,
+            api_codegen_context: &mut Context,
+        ) -> Result<responses::TestOneOfResponse> {
+            (**self).test_one_of(api_codegen_context).await
+        }
+
+        async fn get_cars(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::GetCarsRequest,
+        ) -> Result<responses::GetCarsResponse> {
+            (**self).get_cars(api_codegen_context, request).await
+        }
+
+        async fn create_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::CreateCarRequest,
+        ) -> Result<responses::CreateCarResponse> {
+            (**self).create_car(api_codegen_context, request).await
+        }
+
+        async fn get_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::GetCarRequest,
+        ) -> Result<responses::GetCarResponse> {
+            (**self).get_car(api_codegen_context, request).await
+        }
+
+        async fn delete_car(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::DeleteCarRequest,
+        ) -> Result<responses::DeleteCarResponse> {
+            (**self).delete_car(api_codegen_context, request).await
+        }
+
+        async fn test_binary(
+            &self,
+            api_codegen_context: &mut Context,
+            request: requests::TestBinaryRequest,
+        ) -> Result<responses::TestBinaryResponse> {
+            (**self).test_binary(api_codegen_context, request).await
+        }
     }
 
     // ---------- Errors ----------
@@ -204,7 +345,7 @@ pub mod cars {
         {
             async fn test_headers(
                 &self,
-                context: &mut Context,
+                api_codegen_context: &mut Context,
                 request: requests::TestHeadersRequest,
             ) -> Result<responses::TestHeadersResponse> {
                 let mut uri = format!("{}/test-headers", self.base_uri);
@@ -214,11 +355,11 @@ pub mod cars {
                     .uri(uri)
                     .body(Body::empty())
                     .unwrap();
-                if let Some(extensions) = context.request_extensions() {
+                if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
                 }
 
-                if let Some(headers) = context.request_headers() {
+                if let Some(headers) = api_codegen_context.request_headers() {
                     req.headers_mut().extend(headers);
                 }
 
@@ -258,13 +399,13 @@ pub mod cars {
 
                 let (parts, body) = resp.into_parts();
                 let resp = responses::TestHeadersResponse::from_response(&parts, body).await;
-                context.set_response(parts);
+                api_codegen_context.set_response(parts);
                 resp
             }
 
             async fn test_one_of(
                 &self,
-                context: &mut Context,
+                api_codegen_context: &mut Context,
             ) -> Result<responses::TestOneOfResponse> {
                 let mut uri = format!("{}/test-one-of", self.base_uri);
 
@@ -273,11 +414,11 @@ pub mod cars {
                     .uri(uri)
                     .body(Body::empty())
                     .unwrap();
-                if let Some(extensions) = context.request_extensions() {
+                if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
                 }
 
-                if let Some(headers) = context.request_headers() {
+                if let Some(headers) = api_codegen_context.request_headers() {
                     req.headers_mut().extend(headers);
                 }
 
@@ -285,13 +426,13 @@ pub mod cars {
 
                 let (parts, body) = resp.into_parts();
                 let resp = responses::TestOneOfResponse::from_response(&parts, body).await;
-                context.set_response(parts);
+                api_codegen_context.set_response(parts);
                 resp
             }
 
             async fn get_cars(
                 &self,
-                context: &mut Context,
+                api_codegen_context: &mut Context,
                 request: requests::GetCarsRequest,
             ) -> Result<responses::GetCarsResponse> {
                 let mut uri = format!(
@@ -313,11 +454,11 @@ pub mod cars {
                     .uri(uri)
                     .body(Body::empty())
                     .unwrap();
-                if let Some(extensions) = context.request_extensions() {
+                if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
                 }
 
-                if let Some(headers) = context.request_headers() {
+                if let Some(headers) = api_codegen_context.request_headers() {
                     req.headers_mut().extend(headers);
                 }
 
@@ -325,13 +466,13 @@ pub mod cars {
 
                 let (parts, body) = resp.into_parts();
                 let resp = responses::GetCarsResponse::from_response(&parts, body).await;
-                context.set_response(parts);
+                api_codegen_context.set_response(parts);
                 resp
             }
 
             async fn create_car(
                 &self,
-                context: &mut Context,
+                api_codegen_context: &mut Context,
                 request: requests::CreateCarRequest,
             ) -> Result<responses::CreateCarResponse> {
                 let mut uri = format!(
@@ -346,11 +487,11 @@ pub mod cars {
                     .body(Body::from(serde_json::to_string(&request.body)?))
                     .map_err(|err| Error::InvalidBody(err.to_string()))?;
 
-                if let Some(extensions) = context.request_extensions() {
+                if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
                 }
 
-                if let Some(headers) = context.request_headers() {
+                if let Some(headers) = api_codegen_context.request_headers() {
                     req.headers_mut().extend(headers);
                 }
 
@@ -370,13 +511,13 @@ pub mod cars {
 
                 let (parts, body) = resp.into_parts();
                 let resp = responses::CreateCarResponse::from_response(&parts, body).await;
-                context.set_response(parts);
+                api_codegen_context.set_response(parts);
                 resp
             }
 
             async fn get_car(
                 &self,
-                context: &mut Context,
+                api_codegen_context: &mut Context,
                 request: requests::GetCarRequest,
             ) -> Result<responses::GetCarResponse> {
                 let mut uri = format!(
@@ -391,11 +532,11 @@ pub mod cars {
                     .uri(uri)
                     .body(Body::empty())
                     .unwrap();
-                if let Some(extensions) = context.request_extensions() {
+                if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
                 }
 
-                if let Some(headers) = context.request_headers() {
+                if let Some(headers) = api_codegen_context.request_headers() {
                     req.headers_mut().extend(headers);
                 }
 
@@ -403,13 +544,13 @@ pub mod cars {
 
                 let (parts, body) = resp.into_parts();
                 let resp = responses::GetCarResponse::from_response(&parts, body).await;
-                context.set_response(parts);
+                api_codegen_context.set_response(parts);
                 resp
             }
 
             async fn delete_car(
                 &self,
-                context: &mut Context,
+                api_codegen_context: &mut Context,
                 request: requests::DeleteCarRequest,
             ) -> Result<responses::DeleteCarResponse> {
                 let mut uri = format!(
@@ -424,11 +565,11 @@ pub mod cars {
                     .uri(uri)
                     .body(Body::empty())
                     .unwrap();
-                if let Some(extensions) = context.request_extensions() {
+                if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
                 }
 
-                if let Some(headers) = context.request_headers() {
+                if let Some(headers) = api_codegen_context.request_headers() {
                     req.headers_mut().extend(headers);
                 }
 
@@ -436,13 +577,13 @@ pub mod cars {
 
                 let (parts, body) = resp.into_parts();
                 let resp = responses::DeleteCarResponse::from_response(&parts, body).await;
-                context.set_response(parts);
+                api_codegen_context.set_response(parts);
                 resp
             }
 
             async fn test_binary(
                 &self,
-                context: &mut Context,
+                api_codegen_context: &mut Context,
                 request: requests::TestBinaryRequest,
             ) -> Result<responses::TestBinaryResponse> {
                 let mut uri = format!(
@@ -457,11 +598,11 @@ pub mod cars {
                     .body(Body::from(request.body))
                     .map_err(|err| Error::InvalidBody(err.to_string()))?;
 
-                if let Some(extensions) = context.request_extensions() {
+                if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
                 }
 
-                if let Some(headers) = context.request_headers() {
+                if let Some(headers) = api_codegen_context.request_headers() {
                     req.headers_mut().extend(headers);
                 }
 
@@ -473,7 +614,7 @@ pub mod cars {
 
                 let (parts, body) = resp.into_parts();
                 let resp = responses::TestBinaryResponse::from_response(&parts, body).await;
-                context.set_response(parts);
+                api_codegen_context.set_response(parts);
                 resp
             }
         }
@@ -682,7 +823,7 @@ pub mod cars {
         async fn create_car<T>(
             Extension(api): Extension<T>,
             Path(space_id): Path<String>,
-            Json(body): Json<super::Car>,
+            Json(body): Json<super::super::components::Car>,
             ConnectInfo(addr): ConnectInfo<SocketAddr>,
             parts: Parts,
         ) -> Response
@@ -870,7 +1011,7 @@ pub mod cars {
         pub struct CreateCarRequest {
             pub space_id: String,
             pub span_id: Option<String>,
-            pub body: super::Car,
+            pub body: super::super::components::Car,
         }
 
         #[derive(Debug, Clone, PartialEq, Eq)]
@@ -912,7 +1053,7 @@ pub mod cars {
                 x_bytes_header: Bytes,
                 x_int_header: i32,
                 x_string_header: String,
-                body: super::Pet,
+                body: super::super::components::Pet,
             },
         }
 
@@ -1076,7 +1217,7 @@ pub mod cars {
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum GetCarsResponse {
             /// List of cars.
-            Status200(super::Cars),
+            Status200(super::super::components::Cars),
         }
 
         impl GetCarsResponse {
@@ -1137,7 +1278,7 @@ pub mod cars {
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum GetCarResponse {
             /// A car.
-            Status200(super::Car),
+            Status200(super::super::components::Car),
             /// Car not found.
             Status404,
         }
@@ -1238,6 +1379,59 @@ pub mod cars {
                 }
             }
         }
+    }
+}
+
+// Models and API from: components
+
+pub mod components {
+
+    use lgn_online::codegen::Bytes;
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Car {
+        #[serde(rename = "color")]
+        pub color: CarColor,
+
+        #[serde(rename = "extra")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub extra: Option<Bytes>,
+
+        #[serde(rename = "id")]
+        pub id: i64,
+
+        #[serde(rename = "is_new")]
+        pub is_new: bool,
+
+        #[serde(rename = "name")]
+        pub name: String,
+    }
+
+    /// The car color.
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub enum CarColor {
+        #[serde(rename = "red")]
+        Red,
+        #[serde(rename = "blue")]
+        Blue,
+        #[serde(rename = "yellow")]
+        Yellow,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Cars(pub Vec<Car>);
+
+    impl From<Vec<Car>> for Cars {
+        fn from(t: Vec<Car>) -> Self {
+            Self(t)
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Pet {
+        #[serde(rename = "name")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub name: Option<String>,
     }
 }
 

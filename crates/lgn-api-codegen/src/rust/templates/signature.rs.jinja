@@ -1,5 +1,5 @@
 async fn {{ route.name|snake_case }}(
     &self,
-    context: &mut Context,
+    api_codegen_context: &mut Context,
     {% if !route.has_empty_request() %}request: requests::{{ route.name|pascal_case }}Request{% endif %}
 ) -> Result<responses::{{ route.name|pascal_case }}Response>

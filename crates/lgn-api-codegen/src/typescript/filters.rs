@@ -24,7 +24,7 @@ pub fn fmt_type(
         Type::Array(inner) => format!("{}[]", fmt_type(inner, ctx, module_path).unwrap()),
         Type::HashSet(inner) => format!("Set<{}>", fmt_type(inner, ctx, module_path).unwrap()),
         Type::Named(ref_) => {
-            let ref_module_path = ctx.ref_loc_to_module_path(ref_.ref_location())?;
+            let ref_module_path = ctx.ref_loc_to_rust_module_path(ref_.ref_location())?;
 
             fmt_module_path(
                 &ref_module_path
@@ -43,7 +43,7 @@ pub fn fmt_type(
 #[allow(clippy::unnecessary_wraps)]
 pub fn fmt_module_path(module_path: &ModulePath) -> ::askama::Result<String> {
     Ok(module_path
-        .0
+        .parts()
         .iter()
         .filter_map(|name| {
             if name == ".." {

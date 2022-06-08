@@ -106,7 +106,7 @@ pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, renderer: ResMut<'_, Rendere
             u32::from(mesh_renderer.culling_stats.frustum_visible())
         ));
         ui.label(format!(
-            "Occlusiion Visible '{}'",
+            "Occlusion Visible '{}'",
             u32::from(mesh_renderer.culling_stats.occlusion_visible())
         ));
     });

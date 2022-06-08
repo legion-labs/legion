@@ -1,6 +1,6 @@
 // Models and API from: {{ module_path }}
 
-{% for module in module_path.0.iter() %}
+{% for module in module_path.parts().iter() %}
 export namespace {{ module|pascal_case }} {
 {% endfor %}
 
@@ -10,6 +10,6 @@ export namespace {{ module|pascal_case }} {
 {% include "api.ts.jinja" %}
 {% endif %}
 
-{% for module in module_path.0.iter() %}
+{% for module in module_path.parts().iter() %}
 }
 {% endfor %}

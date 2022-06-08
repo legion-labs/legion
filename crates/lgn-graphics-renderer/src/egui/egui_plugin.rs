@@ -18,9 +18,11 @@ use crate::labels::RenderStage;
 #[derive(Default)]
 pub struct Egui {
     enabled: bool,
-    ctx: egui::CtxRef,
-    output: egui::Output,
-    shapes: Vec<epaint::ClippedShape>,
+    context: egui::Context,
+    output: egui::PlatformOutput,
+    needs_repaint: bool,
+    textures_delta: Mutex<egui::TexturesDelta>,
+    shapes: Vec<egui::epaint::ClippedShape>,
     windows: Mutex<HashMap<String, bool>>,
 }
 
@@ -29,12 +31,12 @@ impl Egui {
         self.enabled
     }
 
-    pub fn ctx(&self) -> &egui::CtxRef {
-        &self.ctx
+    pub fn context(&self) -> &egui::Context {
+        &self.context
     }
 
-    pub fn tessellate(&self) -> Vec<egui::ClippedMesh> {
-        self.ctx.tessellate(self.shapes.clone())
+    pub fn tessellate(&self) -> Vec<egui::ClippedPrimitive> {
+        self.context.tessellate(self.shapes.clone())
     }
 
     pub fn window<F: FnOnce(&mut egui::Ui)>(&self, label: &str, f: F) {
@@ -44,10 +46,14 @@ impl Egui {
             windows.insert(label.clone(), false);
         }
         if *windows.get(&label).unwrap() {
-            egui::Window::new(label).show(&self.ctx, |ui| {
+            egui::Window::new(label).show(&self.context, |ui| {
                 f(ui);
             });
         }
+    }
+
+    pub fn textures_delta(&self) -> &Mutex<egui::TexturesDelta> {
+        &self.textures_delta
     }
 }
 
@@ -84,14 +90,23 @@ fn on_window_created(
         pixels_per_point = wnd.scale_factor();
     }
     // We need to run begin_frame at least once so we have the font texture content
-    egui.ctx.begin_frame(RawInput {
+    egui.context.begin_frame(RawInput {
         screen_rect: Some(egui::Rect::from_min_size(egui::pos2(0.0, 0.0), size)),
         pixels_per_point: Some(pixels_per_point as f32),
+        max_texture_side: Some(16384),
         ..RawInput::default()
     });
     #[allow(unused_must_use)]
     {
-        egui.ctx.end_frame();
+        let output = egui.context.end_frame();
+        (*egui).output = output.platform_output;
+        (*egui).needs_repaint = output.needs_repaint;
+        (*egui)
+            .textures_delta
+            .lock()
+            .unwrap()
+            .append(output.textures_delta);
+        (*egui).shapes = output.shapes;
     }
 }
 
@@ -199,19 +214,25 @@ fn gather_input(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn begin_frame(mut egui: ResMut<'_, Egui>, raw_input: Res<'_, RawInput>) {
+fn begin_frame(egui: Res<'_, Egui>, raw_input: Res<'_, RawInput>) {
     if !egui.enabled {
-        egui.ctx.begin_frame(RawInput::default());
+        egui.context.begin_frame(RawInput::default());
         return;
     }
-    egui.ctx.begin_frame(raw_input.to_owned());
+    egui.context.begin_frame(raw_input.to_owned());
 }
 
 #[span_fn]
 pub fn end_frame(egui: &mut ResMut<'_, Egui>) {
-    let (output, shapes) = egui.ctx.end_frame();
-    (*egui).output = output;
-    (*egui).shapes = shapes;
+    let output = egui.context.end_frame();
+    (*egui).output = output.platform_output;
+    (*egui).needs_repaint = output.needs_repaint;
+    (*egui)
+        .textures_delta
+        .lock()
+        .unwrap()
+        .append(output.textures_delta);
+    (*egui).shapes = output.shapes;
 }
 
 fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerButton {
@@ -225,10 +246,10 @@ fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerB
 #[allow(clippy::needless_pass_by_value)]
 fn ui_egui(egui: Res<'_, Egui>) {
     egui.window("Egui", |ui| {
-        egui.ctx.settings_ui(ui);
+        egui.context.settings_ui(ui);
     });
 
-    egui::TopBottomPanel::top("egui_top_panel").show(&egui.ctx, |ui| {
+    egui::TopBottomPanel::top("egui_top_panel").show(&egui.context, |ui| {
         ui.horizontal(|ui| {
             for (label, show) in egui.windows.lock().unwrap().iter_mut() {
                 if ui.button(label).clicked() {

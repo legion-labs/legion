@@ -4,7 +4,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     lgn_api_codegen::generate!(
         Rust,
         "../../apis",
-        ["space", "session", "user", "permission"]
+        ["space", "session", "user", "permission"],
+        //module_mappings => [("../../apis/common.yaml", "lgn_common::foo"),],
     )?;
 
     println!("cargo:rerun-if-changed=migrations");

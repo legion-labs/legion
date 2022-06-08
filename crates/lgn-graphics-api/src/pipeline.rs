@@ -183,6 +183,18 @@ impl BlendStateRenderTarget {
             masks: ColorFlags::ALL,
         }
     }
+
+    pub fn default_premultiplied_alpha() -> Self {
+        Self {
+            src_factor: BlendFactor::One,
+            dst_factor: BlendFactor::OneMinusSrcAlpha,
+            src_factor_alpha: BlendFactor::One,
+            dst_factor_alpha: BlendFactor::Zero,
+            blend_op: BlendOp::Add,
+            blend_op_alpha: BlendOp::Add,
+            masks: ColorFlags::ALL,
+        }
+    }
 }
 
 impl BlendStateRenderTarget {
@@ -223,6 +235,14 @@ impl BlendState {
     pub fn default_alpha_enabled() -> Self {
         Self {
             render_target_blend_states: vec![BlendStateRenderTarget::default_alpha_enabled()],
+            render_target_mask: BlendStateTargets::BLEND_STATE_TARGET_ALL,
+            independent_blend: false,
+        }
+    }
+
+    pub fn default_premultiplied_alpha() -> Self {
+        Self {
+            render_target_blend_states: vec![BlendStateRenderTarget::default_premultiplied_alpha()],
             render_target_mask: BlendStateTargets::BLEND_STATE_TARGET_ALL,
             independent_blend: false,
         }
