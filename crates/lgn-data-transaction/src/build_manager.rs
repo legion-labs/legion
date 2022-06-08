@@ -1,4 +1,6 @@
-use lgn_content_store::indexing::{self, BasicIndexer, SharedTreeIdentifier, TreeLeafNode};
+use lgn_content_store::indexing::{
+    self, BasicIndexer, ResourceWriter, SharedTreeIdentifier, TreeLeafNode,
+};
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::resource::Project;
@@ -92,15 +94,21 @@ impl BuildManager {
                         .await
                         .map_err(Error::InvalidContentStoreIndexing)?;
 
-                let mut changed_resources: Vec<ResourceTypeAndId> = Vec::new();
-                for (index_key, resource_id) in &runtime_manifest {
+                let mut added_resources = Vec::new();
+                let mut changed_resources = Vec::new();
+                for (index_key, resource_id) in runtime_manifest {
                     if let Some((_index_key, old_resource_id)) =
-                        start_manifest.iter().find(|(key, _id)| key == index_key)
+                        start_manifest.iter().find(|(key, _id)| key == &index_key)
                     {
-                        if resource_id != old_resource_id {
-                            let resource_type_id: ResourceTypeAndId = index_key.into();
-                            changed_resources.push(resource_type_id);
+                        if &resource_id != old_resource_id {
+                            changed_resources.push((
+                                index_key,
+                                resource_id,
+                                old_resource_id.clone(),
+                            ));
                         }
+                    } else {
+                        added_resources.push((index_key, resource_id));
                     }
                 }
 
@@ -112,17 +120,39 @@ impl BuildManager {
                 );
 
                 let mut runtime_manifest_id = self.runtime_manifest_id.read();
-                for (index_key, resource_id) in runtime_manifest {
+                for (index_key, resource_id) in added_resources {
                     runtime_manifest_id = indexer
                         .add_leaf(
-                            self.build.get_provider(),
+                            data_provider,
                             &runtime_manifest_id,
                             &index_key,
                             TreeLeafNode::Resource(resource_id),
                         )
                         .await?;
                 }
+                for (index_key, resource_id, old_resource_id) in &changed_resources {
+                    let (manifest_id, old_node) = indexer
+                        .replace_leaf(
+                            data_provider,
+                            &runtime_manifest_id,
+                            index_key,
+                            TreeLeafNode::Resource(resource_id.clone()),
+                        )
+                        .await?;
+                    runtime_manifest_id = manifest_id;
+
+                    if let TreeLeafNode::Resource(id) = old_node {
+                        assert_eq!(&id, old_resource_id);
+                    }
+
+                    data_provider.unwrite_resource(old_resource_id).await?;
+                }
                 self.runtime_manifest_id.write(runtime_manifest_id);
+
+                let changed_resources = changed_resources
+                    .into_iter()
+                    .map(|(index_key, _new_id, _old_id)| index_key.into())
+                    .collect();
 
                 Ok((derived_id, changed_resources))
             }
