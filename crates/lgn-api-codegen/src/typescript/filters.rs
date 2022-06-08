@@ -4,14 +4,16 @@ use regex::{Captures, Regex};
 
 pub use crate::filters::*;
 use crate::{
-    api_types::{GenerationContext, Model, ModelOrigin, ModulePath, Parameter, Path, Type},
+    api_types::{Model, ModelOrigin, ModulePath, Parameter, Path, Type},
     errors::Error,
 };
+
+use super::TypeScriptGenerationContext;
 
 #[allow(clippy::unnecessary_wraps)]
 pub fn fmt_type(
     type_: &Type,
-    ctx: &GenerationContext,
+    ctx: &TypeScriptGenerationContext,
     module_path: &ModulePath,
 ) -> ::askama::Result<String> {
     Ok(match type_ {
@@ -24,7 +26,7 @@ pub fn fmt_type(
         Type::Array(inner) => format!("{}[]", fmt_type(inner, ctx, module_path).unwrap()),
         Type::HashSet(inner) => format!("Set<{}>", fmt_type(inner, ctx, module_path).unwrap()),
         Type::Named(ref_) => {
-            let ref_module_path = ctx.ref_loc_to_rust_module_path(ref_.ref_location())?;
+            let ref_module_path = ctx.ref_loc_to_module_path(ref_.ref_location())?;
 
             fmt_module_path(
                 &ref_module_path
@@ -81,7 +83,10 @@ pub fn fmt_ts_path(path: &Path, parameters: &[Parameter]) -> ::askama::Result<St
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn fmt_model_name(model: &Model, ctx: &GenerationContext) -> ::askama::Result<String> {
+pub fn fmt_model_name(
+    model: &Model,
+    ctx: &TypeScriptGenerationContext,
+) -> ::askama::Result<String> {
     let name = match &model.origin {
         ModelOrigin::Schemas => model.ref_.json_pointer().type_name().to_string(),
         ModelOrigin::ObjectProperty { object_pointer } => {
