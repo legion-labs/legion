@@ -42,8 +42,8 @@ mod tests {
     use std::path::PathBuf;
 
     use crate::{
-        api_types::GenerationOptions, openapi_loader::OpenApiRefLocation, visitor::Visitor,
-        OpenApiLoader,
+        api_types::Language, openapi_loader::OpenApiRefLocation, visitor::Visitor, OpenApiLoader,
+        RustOptions,
     };
 
     use super::*;
@@ -58,7 +58,7 @@ mod tests {
         let openapi = loader
             .load_openapi(OpenApiRefLocation::new(&root, "cars.yaml".into()))
             .unwrap();
-        let ctx = GenerationContext::new(root, GenerationOptions::default());
+        let ctx = GenerationContext::new(root, Language::Rust(RustOptions::default()));
         let ctx = Visitor::new(ctx).visit(&[openapi.clone()]).unwrap();
         let content = generate_content(&ctx).unwrap();
 

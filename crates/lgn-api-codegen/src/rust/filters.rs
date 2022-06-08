@@ -161,7 +161,7 @@ fn is_keyword(name: &str) -> bool {
 mod tests {
     use std::path::PathBuf;
 
-    use crate::api_types::GenerationOptions;
+    use crate::{api_types::Language, RustOptions};
 
     use super::*;
 
@@ -185,7 +185,8 @@ mod tests {
 
     #[test]
     fn test_join_types() {
-        let ctx = GenerationContext::new(PathBuf::from("/"), GenerationOptions::default());
+        let ctx =
+            GenerationContext::new(PathBuf::from("/"), Language::Rust(RustOptions::default()));
         let module_path = "foo/bar".parse().unwrap();
 
         let p1 = Parameter {

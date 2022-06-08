@@ -41,9 +41,7 @@ fn generate_content(ctx: &GenerationContext) -> Result<String> {
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{
-        openapi_loader::OpenApiRefLocation, visitor::Visitor, GenerationOptions, OpenApiLoader,
-    };
+    use crate::{openapi_loader::OpenApiRefLocation, visitor::Visitor, Language, OpenApiLoader};
 
     use super::*;
 
@@ -57,7 +55,7 @@ mod tests {
         let openapi = loader
             .load_openapi(OpenApiRefLocation::new(&root, "cars.yaml".into()))
             .unwrap();
-        let ctx = GenerationContext::new(root, GenerationOptions::default());
+        let ctx = GenerationContext::new(root, Language::Python);
         let ctx = Visitor::new(ctx).visit(&[openapi.clone()]).unwrap();
         let content = generate_content(&ctx).unwrap();
 

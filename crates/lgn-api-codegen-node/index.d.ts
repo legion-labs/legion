@@ -10,6 +10,12 @@ export interface GenerateOption {
   apiNames: Array<string>
   /** Output directory, prefer absolute paths */
   outDir: string
+  /** Path to a Prettier config file */
+  prettierConfigPath?: string
+  /** Generates a full-fledged node module including a `package.json` file */
+  withPackageJson?: boolean
+  /** Skips code formatting */
+  skipFormat?: boolean
 }
 /**
  * Generate api clients.
