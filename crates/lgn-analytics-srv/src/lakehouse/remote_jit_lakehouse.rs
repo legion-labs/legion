@@ -1,5 +1,5 @@
 use crate::{
-    call_tree::process_thread_block,
+    call_tree::{compute_block_spans, process_thread_block},
     lakehouse::{
         jit_lakehouse::JitLakehouse,
         parquet_buffer::ParquetBufferWriter,
@@ -11,9 +11,11 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::{AwsS3Url, BlobStorage};
-use lgn_telemetry_proto::analytics::{BlockSpansReply, SpanBlockLod};
+use lgn_telemetry_proto::analytics::{BlockSpansReply, CallTree, SpanBlockLod};
 use lgn_tracing::prelude::*;
 use std::sync::Arc;
+
+use super::scope_table::ScopeRowGroup;
 
 pub struct RemoteJitLakehouse {
     pool: sqlx::any::AnyPool,
@@ -39,6 +41,34 @@ impl RemoteJitLakehouse {
         }
     }
 
+    async fn write_scopes(&self, scopes: &ScopeHashMap, key: String) -> Result<()> {
+        let mut rows = ScopeRowGroup::new();
+        for (_k, v) in scopes.iter() {
+            rows.append(v);
+        }
+        let schema = "message schema {
+    REQUIRED INT32 hash;
+    REQUIRED BYTE_ARRAY name;
+    REQUIRED BYTE_ARRAY filename;
+    REQUIRED INT32 line;
+  }
+";
+        let mut writer = ParquetBufferWriter::create(schema)?;
+        writer.write_row_group(&rows.get_columns())?;
+        let buffer = Arc::get_mut(&mut writer.close()?)
+            .with_context(|| "getting exclusive access to parquet buffer")?
+            .clone();
+        let body = aws_sdk_s3::types::ByteStream::from(buffer.into_inner());
+        self.s3client
+            .put_object()
+            .bucket(&self.tables_uri.bucket_name)
+            .key(key)
+            .body(body)
+            .send()
+            .await?;
+        Ok(())
+    }
+
     async fn write_spans(&self, rows: &SpanRowGroup, key: String) -> Result<()> {
         let schema = "message schema {
     REQUIRED INT32 hash;
@@ -55,7 +85,6 @@ impl RemoteJitLakehouse {
             .with_context(|| "getting exclusive access to parquet buffer")?
             .clone();
         let body = aws_sdk_s3::types::ByteStream::from(buffer.into_inner());
-
         self.s3client
             .put_object()
             .bucket(&self.tables_uri.bucket_name)
@@ -72,7 +101,7 @@ impl RemoteJitLakehouse {
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
         spans_key: String,
-        _scopes_key: String,
+        scopes_key: String,
     ) -> Result<BlockSpansReply> {
         info!("writing thread block {}", block_id);
         let convert_ticks = ConvertTicks::new(process);
@@ -103,8 +132,14 @@ impl RemoteJitLakehouse {
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, &mut next_id, &mut rows);
         self.write_spans(&rows, spans_key).await?;
+        self.write_scopes(&processed.scopes, scopes_key).await?;
 
-        anyhow::bail!("pas fini");
+        //todo: do not iterate twice
+        let tree = CallTree {
+            scopes: processed.scopes,
+            root: Some(root),
+        };
+        Ok(compute_block_spans(tree, block_id))
     }
 
     async fn object_exists(&self, key: &str) -> Result<bool> {
