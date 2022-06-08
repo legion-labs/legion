@@ -2,8 +2,8 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        self, BasicIndexer, IndexKey, ResourceIdentifier, ResourceReader, ResourceWriter,
-        SharedTreeIdentifier, StringPathIndexer, TreeIdentifier, TreeLeafNode,
+        self, BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceReader,
+        ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
@@ -253,7 +253,7 @@ where
         self.content_id.main_index_tree_id.clone()
     }
 
-    pub async fn get_resources_from_main_by_id(
+    async fn get_resources_from_main_by_id(
         &self,
         tree_id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
@@ -716,8 +716,28 @@ where
     */
 
     /// Does the current transaction hold any changes that have not yet been committed?
-    pub async fn has_uncommited_changes(&self) -> bool {
+    pub async fn has_pending_changes(&self) -> bool {
         self.transaction.has_references().await
+    }
+
+    pub async fn get_pending_changes(&self) -> Result<Vec<IndexKey>> {
+        let pending_resources = self.transaction.referenced_resources().await;
+        let indexed_resources = self.get_resources().await?;
+        Ok(pending_resources
+            .into_iter()
+            .filter_map(|resource_id| {
+                indexed_resources
+                    .iter()
+                    .find_map(|(index_key, matched_id)| {
+                        if matched_id == &resource_id {
+                            Some(index_key)
+                        } else {
+                            None
+                        }
+                    })
+            })
+            .cloned()
+            .collect())
     }
 
     /// Commit the changes in the workspace.

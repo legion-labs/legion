@@ -326,7 +326,7 @@ impl SourceIndex {
     }
 
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<(), Error> {
-        if project.has_uncommited_changes().await {
+        if project.has_pending_changes().await {
             return Err(Error::ProjectNotCommitted);
         }
 

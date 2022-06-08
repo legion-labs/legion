@@ -8,7 +8,7 @@ use std::{
 
 use async_recursion::async_recursion;
 use lgn_content_store::{
-    indexing::{IndexKey, ResourceIdentifier, SharedTreeIdentifier, TreeIdentifier},
+    indexing::{IndexKey, ResourceIdentifier, SharedTreeIdentifier},
     Provider,
 };
 use lgn_data_runtime::{
@@ -196,23 +196,6 @@ impl Project {
         Ok(changes)
     }
     */
-
-    /// Return the list of local resources
-    pub async fn local_resource_list(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
-        /*
-        let local_changes = self.workspace.get_staged_changes().await?;
-
-        let changes = local_changes
-            .iter()
-            .map(|(path, _)| PathBuf::from(path.to_string()))
-            .filter(|path| path.extension().is_none())
-            .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
-            .collect::<Vec<_>>();
-
-        Ok(changes)
-        */
-        Err(Error::FileNotFound("todo".to_owned()))
-    }
 
     /// Returns an iterator on the list of resources.
     ///
@@ -658,25 +641,25 @@ impl Project {
             .map_err(Error::SourceControl)
     }
 
-    /// Returns list of resources stored in the content store, for a specified content-store index identifier
-    pub async fn get_resources_for_index_id(
-        &self,
-        id: &TreeIdentifier,
-    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
-        self.workspace
-            .get_resources_from_main_by_id(id)
-            .await
-            .map_err(Error::SourceControl)
-    }
-
     /// Returns the checksum of the root project directory at the current state.
     pub fn root_checksum(&self) -> &ContentId {
         self.workspace.id()
     }
 
     /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.
-    pub async fn has_uncommited_changes(&self) -> bool {
-        self.workspace.has_uncommited_changes().await
+    pub async fn has_pending_changes(&self) -> bool {
+        self.workspace.has_pending_changes().await
+    }
+
+    /// Return the count of local resources
+    pub async fn get_pending_changes(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
+        Ok(self
+            .workspace
+            .get_pending_changes()
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect())
     }
 }
 
@@ -959,7 +942,7 @@ mod tests {
             .expect("new project");
         let _resources = create_actor(&mut project).await;
 
-        assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
     }
 
     #[tokio::test]
@@ -976,7 +959,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
         //assert_eq!(project.remote_resource_list().await.unwrap().len(), 0);
 
         // modify before commit
@@ -994,7 +977,7 @@ mod tests {
 
         project.commit("add resources").await.unwrap();
 
-        assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
         //assert_eq!(project.remote_resource_list().await.unwrap().len(), 5);
 
         // modify resource
@@ -1009,12 +992,12 @@ mod tests {
                 .await
                 .unwrap();
 
-            assert_eq!(project.local_resource_list().await.unwrap().len(), 1);
+            assert_eq!(project.get_pending_changes().await.unwrap().len(), 1);
         }
 
         project.commit("update actor").await.unwrap();
 
-        assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
     }
 
     #[tokio::test]
