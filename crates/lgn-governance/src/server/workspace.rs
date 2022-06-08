@@ -1,14 +1,13 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use lgn_online::codegen::Context;
+use lgn_online::{
+    codegen::Context,
+    server::{ErrorExt, Result},
+};
 
 use crate::api::{
     session,
-    workspace::{
-        self,
-        errors::{self, ErrorExt},
-        requests, responses, Api,
-    },
+    workspace::{self, requests, responses, Api},
 };
 
 use super::Server;
@@ -19,7 +18,7 @@ impl Api for Server {
         &self,
         _context: &mut Context,
         _request: requests::ListCurrentUserWorkspacesRequest,
-    ) -> errors::Result<responses::ListCurrentUserWorkspacesResponse> {
+    ) -> Result<responses::ListCurrentUserWorkspacesResponse> {
         Ok(responses::ListCurrentUserWorkspacesResponse::Status200(
             vec![].into(),
         ))
@@ -29,7 +28,7 @@ impl Api for Server {
         &self,
         _context: &mut Context,
         _request: requests::GetCurrentUserWorkspaceRequest,
-    ) -> errors::Result<responses::GetCurrentUserWorkspaceResponse> {
+    ) -> Result<responses::GetCurrentUserWorkspaceResponse> {
         Ok(responses::GetCurrentUserWorkspaceResponse::Status200(
             workspace::Workspace {
                 id: "lol".to_string().into(),
@@ -47,7 +46,7 @@ impl Api for Server {
         &self,
         _context: &mut Context,
         _request: requests::GetCurrentUserWorkspaceSessionRequest,
-    ) -> errors::Result<responses::GetCurrentUserWorkspaceSessionResponse> {
+    ) -> Result<responses::GetCurrentUserWorkspaceSessionResponse> {
         Ok(
             responses::GetCurrentUserWorkspaceSessionResponse::Status200(session::Session {
                 user_id: "lol".to_string().into(),
@@ -66,7 +65,7 @@ impl Api for Server {
         &self,
         _context: &mut Context,
         _request: requests::CreateCurrentUserWorkspaceSessionRequest,
-    ) -> errors::Result<responses::CreateCurrentUserWorkspaceSessionResponse> {
+    ) -> Result<responses::CreateCurrentUserWorkspaceSessionResponse> {
         Ok(
             responses::CreateCurrentUserWorkspaceSessionResponse::Status201(session::Session {
                 user_id: "lol".to_string().into(),
@@ -85,7 +84,7 @@ impl Api for Server {
         &self,
         _context: &mut Context,
         _request: requests::DeleteCurrentUserWorkspaceSessionRequest,
-    ) -> errors::Result<responses::DeleteCurrentUserWorkspaceSessionResponse> {
+    ) -> Result<responses::DeleteCurrentUserWorkspaceSessionResponse> {
         Ok(
             responses::DeleteCurrentUserWorkspaceSessionResponse::Status200(session::Session {
                 user_id: "lol".to_string().into(),

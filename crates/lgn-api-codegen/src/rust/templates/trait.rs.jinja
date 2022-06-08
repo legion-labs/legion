@@ -1,5 +1,7 @@
-use errors::Result;
-use lgn_online::codegen::Context;
+use lgn_online::{
+    codegen::Context,
+    server::{Result},
+};
 
 #[async_trait::async_trait]
 pub trait Api {

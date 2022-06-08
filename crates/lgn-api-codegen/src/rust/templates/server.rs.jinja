@@ -1,6 +1,4 @@
-use super::params;
-use super::requests;
-use super::errors::{Error, Result};
+use super::{params, requests};
 use axum::{
     extract::ConnectInfo,
     extract::Json,
@@ -15,7 +13,10 @@ use std::net::SocketAddr;
 use serde_qs::axum::QsQuery;
 use http::request::Parts;
 use http::header::HeaderName;
-use lgn_online::codegen::{Bytes, Context};
+use lgn_online::{
+    codegen::{Bytes, Context},
+    server::{Error, Result},
+};
 use lgn_tracing::error;
 
 /// Register all the routes for that API to the specified Router.
@@ -71,20 +72,20 @@ where
                     .map(|h| {
                         let s = h.to_str()
                         .map_err(|err| {
-                            Error::InvalidHeader("{{ parameter.name }}".to_owned()).into_response()
+                            Error::Internal("invalid header: {{ parameter.name }}".to_owned()).into_response()
                         })
                         .unwrap();
 
                         lgn_online::codegen::encoding::from_percent_encoded_string(s)
                         .map_err(|err| {
-                            Error::InvalidHeader("{{ parameter.name }}".to_owned()).into_response()
+                            Error::Internal("invalid header: {{ parameter.name }}".to_owned()).into_response()
                         })
                         .unwrap()
                 });
 
                 {% if parameter.required %}
                     if {{ param_name }}.is_none() {
-                        return Error::MissingHeader("{{ parameter.name }}".to_owned()).into_response();
+                        return Error::Internal("missing header: {{ parameter.name }}".to_owned()).into_response();
                     }
                     let {{ param_name }} = {{ param_name }}.unwrap();
                 {% endif %}

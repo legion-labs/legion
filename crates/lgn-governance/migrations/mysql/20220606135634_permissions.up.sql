@@ -36,3 +36,12 @@ CREATE TABLE `roles_to_permissions` (
     FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`),
     FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`)
 );
+
+CREATE TABLE `users_to_roles` (
+	`user_id` VARCHAR(64) NOT NULL COMMENT 'The user identifier.',
+    `space_id` VARCHAR(64) DEFAULT NULL COMMENT 'The space identifier where this role is bound.',
+	`role_id` VARCHAR(64) NOT NULL COMMENT 'The role identifier.',
+	CONSTRAINT UC_UsersToRoles UNIQUE (`user_id`, `space_id`, `role_id`),
+    FOREIGN KEY (`space_id`) REFERENCES `spaces`(`id`),
+    FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`)
+);

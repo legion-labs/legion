@@ -10,6 +10,8 @@ pub enum Error {
     InvalidPermissionId(String),
     #[error("invalid role id: {0}")]
     InvalidRoleId(String),
+    #[error("invalid user id: {0}")]
+    InvalidUserId(String),
 }
 
 /// A result type.

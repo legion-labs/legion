@@ -1,7 +1,10 @@
-use super::{errors::{Error, Result}, params, responses, requests};
+use super::{params, responses, requests};
 use http::{header::CONTENT_TYPE, HeaderValue};
 use hyper::{Body, Method, Request};
-use lgn_online::codegen::{Bytes, Context};
+use lgn_online::{
+    codegen::{Bytes, Context},
+    server::{Error, Result},
+};
 
 pub struct Client<C> {
     inner: hyper::Client<C>,
@@ -53,10 +56,10 @@ where
                 {% match request_body.content.media_type %}
                     {% when MediaType::Json %}
                         .body(Body::from(serde_json::to_string(&request.body)?))
-                            .map_err(|err| Error::InvalidBody(err.to_string()))?;
+                            .map_err(|err| Error::Internal(format!("invalid body: {}", err)))?;
                     {% when MediaType::Bytes %}
                         .body(Body::from(request.body)).map_err(|err| {
-                            Error::InvalidBody(err.to_string())
+                            Error::Internal(format!("invalid body: {}", err))
                         })?;
                 {% endmatch %}
             {% else %}
@@ -86,7 +89,7 @@ where
                         req.headers_mut().insert(
                             "{{ parameter.name }}",
                             HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
-                                Error::InvalidHeader(format!("{{ parameter.name }}: {}", err))
+                                Error::BadRequest(format!("invalid header: {{ parameter.name }}: {}", err))
                             })?,
                         );
                     {% else -%}
@@ -95,7 +98,7 @@ where
                             req.headers_mut().insert(
                                 "{{ parameter.name }}",
                                 HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
-                                    Error::InvalidHeader(format!("{{ parameter.name }}: {}", err))
+                                    Error::BadRequest(format!("invalid header: {{ parameter.name }}: {}", err))
                                 })?,
                             );
                         }

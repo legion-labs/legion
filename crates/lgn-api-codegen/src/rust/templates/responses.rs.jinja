@@ -1,5 +1,7 @@
-use super::errors::{Error, Result};
-use lgn_online::codegen::{Bytes};
+use lgn_online::{
+    server::{Error, Result},
+    codegen::{Bytes},
+};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -61,13 +63,13 @@ use http::HeaderValue;
                                         let {{ header_name|snake_case }}_value = match lgn_online::codegen::encoding::to_percent_encoded_string(&{{ header_name|snake_case }}){
                                             Ok(value) => value,
                                             Err(err) => {
-                                                return Error::InvalidHeader(format!("{{ header_name }}: {}", err)).into_response();
+                                                return Error::Internal(format!("failed to serialize header: {{ header_name }}: {}", err)).into_response();
                                             },
                                         };
                                         match HeaderValue::from_str(&{{ header_name|snake_case }}_value){
                                             Ok(value) => resp.headers_mut().insert("{{ header_name }}", value),
                                             Err(err) => {
-                                                return Error::InvalidHeader(format!("{{ header_name }}: {}", err)).into_response();
+                                                return Error::Internal(format!("failed to serialize header: {{ header_name }}: {}", err)).into_response();
                                             },
                                         };
                                     {% endfor -%}
@@ -108,9 +110,9 @@ use http::HeaderValue;
                                         {% for (header_name, header) in response.headers -%}
                                             let {{ header_name|snake_case }} = parts.headers
                                                 .get("{{ header_name }}")
-                                                .ok_or_else(|| Error::MissingHeader("{{ header_name }}".to_owned()))?
+                                                .ok_or_else(|| Error::Internal("missing header: {{ header_name }}".to_owned()))?
                                                 .to_str()
-                                                .map_err(|e| Error::InvalidHeader(format!("{{ header_name }}: {}", e)))?;
+                                                .map_err(|e| Error::Internal(format!("invalid header: {{ header_name }}: {}", e)))?;
                                         {% endfor -%}
 
                                         {% if let Some(content) = response.content -%}
