@@ -8,7 +8,7 @@ struct VertexInUi {
     uint color : COLOR;
 };
 
-struct VertexOut {  
+struct VertexOut {
     float4 hpos : SV_POSITION;
     float2 uv : TEXCOORD;
     float4 color : COLOR;
