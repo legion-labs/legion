@@ -6,13 +6,6 @@
 // ---------- Api ----------
 {% include "trait.rs.jinja" %}
 
-// ---------- Errors ----------
-pub mod errors {
-    {% let module_path = module_path.join("errors") %}
-    {% include "errors.rs.jinja" %}
-    {% let module_path = module_path.parent().unwrap() %}
-}
-
 // ---------- Client ----------
 pub mod client {
     {% let module_path = module_path.join("client") %}

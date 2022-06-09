@@ -1,3 +1,7 @@
+mod errors;
+
+pub use errors::{Error, ErrorExt, Result};
+
 use std::{sync::Arc, time::Duration};
 
 use axum::{error_handling::HandleErrorLayer, BoxError, Router};

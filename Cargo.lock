@@ -524,6 +524,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-cognitoidentityprovider"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d9a867f1d11215e1a674c1a2d2157d968b964ac318d3abc7acce80b375b3fb9"
+dependencies = [
+ "aws-endpoint",
+ "aws-http",
+ "aws-sig-auth",
+ "aws-smithy-async",
+ "aws-smithy-client",
+ "aws-smithy-http",
+ "aws-smithy-http-tower",
+ "aws-smithy-json",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "http",
+ "tokio-stream",
+ "tower",
+]
+
+[[package]]
 name = "aws-sdk-dynamodb"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4725,6 +4747,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "aws-config",
+ "aws-sdk-cognitoidentityprovider",
  "axum",
  "base64 0.13.0",
  "casey",
@@ -4734,6 +4758,7 @@ dependencies = [
  "hyper",
  "lazy_static",
  "lgn-api-codegen",
+ "lgn-auth",
  "lgn-cli-utils",
  "lgn-online",
  "lgn-telemetry-sink",
@@ -5021,6 +5046,7 @@ dependencies = [
  "rustls 0.20.2",
  "serde",
  "serde_json",
+ "serde_qs",
  "serial_test",
  "simple_asn1",
  "thiserror",

@@ -24,8 +24,7 @@ pub mod cars {
     //
 
     // ---------- Api ----------
-    use errors::Result;
-    use lgn_online::codegen::Context;
+    use lgn_online::{codegen::Context, server::Result};
 
     #[async_trait::async_trait]
     pub trait Api {
@@ -255,77 +254,16 @@ pub mod cars {
         }
     }
 
-    // ---------- Errors ----------
-    pub mod errors {
-
-        use axum::{
-            http::StatusCode,
-            response::{IntoResponse, Response},
-        };
-        use lgn_tracing::warn;
-
-        #[derive(thiserror::Error, Debug)]
-        pub enum Error {
-            #[error("internal: {0}")]
-            Internal(String),
-            #[error("hyper: {0}")]
-            Hyper(#[from] hyper::Error),
-            #[error("serde json: {0}")]
-            SerdeJson(#[from] serde_json::Error),
-            #[error("serde qs: {0}")]
-            SerdeQs(#[from] serde_qs::Error),
-            #[error("codegen encoding: {0}")]
-            CodegenEncoding(#[from] lgn_online::codegen::encoding::Error),
-            #[error("invalid body: {0}")]
-            InvalidBody(String),
-            #[error("invalid header: {0}")]
-            InvalidHeader(String),
-            #[error("missing header: {0}")]
-            MissingHeader(String),
-        }
-
-        pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-        impl IntoResponse for Error {
-            fn into_response(self) -> Response {
-                warn!("converted error into HTTP response: {}", self);
-
-                match self {
-                    Self::Internal(_) | Self::Hyper(_) | Self::SerdeJson(_) | Self::SerdeQs(_) => {
-                        StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                    }
-                    Self::CodegenEncoding(_)
-                    | Self::InvalidBody(_)
-                    | Self::InvalidHeader(_)
-                    | Self::MissingHeader(_) => StatusCode::BAD_REQUEST.into_response(),
-                }
-            }
-        }
-
-        pub trait ErrorExt<T> {
-            /// Converts to an internal server error.
-            /// # Errors
-            /// If we fail to return a response.
-            fn into_internal_server_error(self) -> Result<T, Error>;
-        }
-
-        impl<T, E: std::error::Error> ErrorExt<T> for Result<T, E> {
-            fn into_internal_server_error(self) -> Result<T, Error> {
-                self.map_err(|err| Error::Internal(err.to_string()))
-            }
-        }
-    }
-
     // ---------- Client ----------
     pub mod client {
 
-        use super::{
-            errors::{Error, Result},
-            params, requests, responses,
-        };
+        use super::{params, requests, responses};
         use http::{header::CONTENT_TYPE, HeaderValue};
         use hyper::{Body, Method, Request};
-        use lgn_online::codegen::{Bytes, Context};
+        use lgn_online::{
+            codegen::{Bytes, Context},
+            server::{Error, Result},
+        };
 
         pub struct Client<C> {
             inner: hyper::Client<C>,
@@ -369,7 +307,7 @@ pub mod cars {
                     req.headers_mut().insert(
                         "x-string-header",
                         HeaderValue::from_str(&x_string_header).map_err(|err| {
-                            Error::InvalidHeader(format!("x-string-header: {}", err))
+                            Error::BadRequest(format!("invalid header: x-string-header: {}", err))
                         })?,
                     );
                 }
@@ -380,7 +318,7 @@ pub mod cars {
                     req.headers_mut().insert(
                         "x-bytes-header",
                         HeaderValue::from_str(&x_bytes_header).map_err(|err| {
-                            Error::InvalidHeader(format!("x-bytes-header: {}", err))
+                            Error::BadRequest(format!("invalid header: x-bytes-header: {}", err))
                         })?,
                     );
                 }
@@ -391,7 +329,7 @@ pub mod cars {
                     req.headers_mut().insert(
                         "x-int-header",
                         HeaderValue::from_str(&x_int_header).map_err(|err| {
-                            Error::InvalidHeader(format!("x-int-header: {}", err))
+                            Error::BadRequest(format!("invalid header: x-int-header: {}", err))
                         })?,
                     );
                 }
@@ -485,7 +423,7 @@ pub mod cars {
                     .method(Method::POST)
                     .uri(uri)
                     .body(Body::from(serde_json::to_string(&request.body)?))
-                    .map_err(|err| Error::InvalidBody(err.to_string()))?;
+                    .map_err(|err| Error::Internal(format!("invalid body: {}", err)))?;
 
                 if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
@@ -503,8 +441,9 @@ pub mod cars {
                         lgn_online::codegen::encoding::to_percent_encoded_string(&span_id)?;
                     req.headers_mut().insert(
                         "span-id",
-                        HeaderValue::from_str(&span_id)
-                            .map_err(|err| Error::InvalidHeader(format!("span-id: {}", err)))?,
+                        HeaderValue::from_str(&span_id).map_err(|err| {
+                            Error::BadRequest(format!("invalid header: span-id: {}", err))
+                        })?,
                     );
                 }
                 let resp = self.inner.request(req).await?;
@@ -596,7 +535,7 @@ pub mod cars {
                     .method(Method::POST)
                     .uri(uri)
                     .body(Body::from(request.body))
-                    .map_err(|err| Error::InvalidBody(err.to_string()))?;
+                    .map_err(|err| Error::Internal(format!("invalid body: {}", err)))?;
 
                 if let Some(extensions) = api_codegen_context.request_extensions() {
                     req.extensions_mut().extend(extensions);
@@ -623,9 +562,7 @@ pub mod cars {
     // ---------- Server ----------
     pub mod server {
 
-        use super::errors::{Error, Result};
-        use super::params;
-        use super::requests;
+        use super::{params, requests};
         use axum::{
             extract::ConnectInfo,
             extract::Json,
@@ -636,7 +573,10 @@ pub mod cars {
         };
         use http::header::HeaderName;
         use http::request::Parts;
-        use lgn_online::codegen::{Bytes, Context};
+        use lgn_online::{
+            codegen::{Bytes, Context},
+            server::{Error, Result},
+        };
         use lgn_tracing::error;
         use serde_qs::axum::QsQuery;
         use std::net::SocketAddr;
@@ -680,13 +620,15 @@ pub mod cars {
                     let s = h
                         .to_str()
                         .map_err(|err| {
-                            Error::InvalidHeader("x-string-header".to_owned()).into_response()
+                            Error::Internal("invalid header: x-string-header".to_owned())
+                                .into_response()
                         })
                         .unwrap();
 
                     lgn_online::codegen::encoding::from_percent_encoded_string(s)
                         .map_err(|err| {
-                            Error::InvalidHeader("x-string-header".to_owned()).into_response()
+                            Error::Internal("invalid header: x-string-header".to_owned())
+                                .into_response()
                         })
                         .unwrap()
                 });
@@ -698,13 +640,15 @@ pub mod cars {
                     let s = h
                         .to_str()
                         .map_err(|err| {
-                            Error::InvalidHeader("x-bytes-header".to_owned()).into_response()
+                            Error::Internal("invalid header: x-bytes-header".to_owned())
+                                .into_response()
                         })
                         .unwrap();
 
                     lgn_online::codegen::encoding::from_percent_encoded_string(s)
                         .map_err(|err| {
-                            Error::InvalidHeader("x-bytes-header".to_owned()).into_response()
+                            Error::Internal("invalid header: x-bytes-header".to_owned())
+                                .into_response()
                         })
                         .unwrap()
                 });
@@ -716,13 +660,15 @@ pub mod cars {
                     let s = h
                         .to_str()
                         .map_err(|err| {
-                            Error::InvalidHeader("x-int-header".to_owned()).into_response()
+                            Error::Internal("invalid header: x-int-header".to_owned())
+                                .into_response()
                         })
                         .unwrap();
 
                     lgn_online::codegen::encoding::from_percent_encoded_string(s)
                         .map_err(|err| {
-                            Error::InvalidHeader("x-int-header".to_owned()).into_response()
+                            Error::Internal("invalid header: x-int-header".to_owned())
+                                .into_response()
                         })
                         .unwrap()
                 });
@@ -836,11 +782,15 @@ pub mod cars {
                 .map(|h| {
                     let s = h
                         .to_str()
-                        .map_err(|err| Error::InvalidHeader("span-id".to_owned()).into_response())
+                        .map_err(|err| {
+                            Error::Internal("invalid header: span-id".to_owned()).into_response()
+                        })
                         .unwrap();
 
                     lgn_online::codegen::encoding::from_percent_encoded_string(s)
-                        .map_err(|err| Error::InvalidHeader("span-id".to_owned()).into_response())
+                        .map_err(|err| {
+                            Error::Internal("invalid header: span-id".to_owned()).into_response()
+                        })
                         .unwrap()
                 });
 
@@ -1036,7 +986,6 @@ pub mod cars {
     // ---------- Responses ----------
     pub mod responses {
 
-        use super::errors::{Error, Result};
         use axum::{
             http::StatusCode,
             response::{IntoResponse, Response},
@@ -1044,7 +993,10 @@ pub mod cars {
         };
         use http::HeaderMap;
         use http::HeaderValue;
-        use lgn_online::codegen::Bytes;
+        use lgn_online::{
+            codegen::Bytes,
+            server::{Error, Result},
+        };
 
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub enum TestHeadersResponse {
@@ -1074,8 +1026,8 @@ pub mod cars {
                             ) {
                                 Ok(value) => value,
                                 Err(err) => {
-                                    return Error::InvalidHeader(format!(
-                                        "x-bytes-header: {}",
+                                    return Error::Internal(format!(
+                                        "failed to serialize header: x-bytes-header: {}",
                                         err
                                     ))
                                     .into_response();
@@ -1084,8 +1036,11 @@ pub mod cars {
                         match HeaderValue::from_str(&x_bytes_header_value) {
                             Ok(value) => resp.headers_mut().insert("x-bytes-header", value),
                             Err(err) => {
-                                return Error::InvalidHeader(format!("x-bytes-header: {}", err))
-                                    .into_response();
+                                return Error::Internal(format!(
+                                    "failed to serialize header: x-bytes-header: {}",
+                                    err
+                                ))
+                                .into_response();
                             }
                         };
                         let x_int_header_value =
@@ -1094,15 +1049,21 @@ pub mod cars {
                             ) {
                                 Ok(value) => value,
                                 Err(err) => {
-                                    return Error::InvalidHeader(format!("x-int-header: {}", err))
-                                        .into_response();
+                                    return Error::Internal(format!(
+                                        "failed to serialize header: x-int-header: {}",
+                                        err
+                                    ))
+                                    .into_response();
                                 }
                             };
                         match HeaderValue::from_str(&x_int_header_value) {
                             Ok(value) => resp.headers_mut().insert("x-int-header", value),
                             Err(err) => {
-                                return Error::InvalidHeader(format!("x-int-header: {}", err))
-                                    .into_response();
+                                return Error::Internal(format!(
+                                    "failed to serialize header: x-int-header: {}",
+                                    err
+                                ))
+                                .into_response();
                             }
                         };
                         let x_string_header_value =
@@ -1111,8 +1072,8 @@ pub mod cars {
                             ) {
                                 Ok(value) => value,
                                 Err(err) => {
-                                    return Error::InvalidHeader(format!(
-                                        "x-string-header: {}",
+                                    return Error::Internal(format!(
+                                        "failed to serialize header: x-string-header: {}",
                                         err
                                     ))
                                     .into_response();
@@ -1121,8 +1082,11 @@ pub mod cars {
                         match HeaderValue::from_str(&x_string_header_value) {
                             Ok(value) => resp.headers_mut().insert("x-string-header", value),
                             Err(err) => {
-                                return Error::InvalidHeader(format!("x-string-header: {}", err))
-                                    .into_response();
+                                return Error::Internal(format!(
+                                    "failed to serialize header: x-string-header: {}",
+                                    err
+                                ))
+                                .into_response();
                             }
                         };
                         resp
@@ -1139,21 +1103,33 @@ pub mod cars {
                         let x_bytes_header = parts
                             .headers
                             .get("x-bytes-header")
-                            .ok_or_else(|| Error::MissingHeader("x-bytes-header".to_owned()))?
+                            .ok_or_else(|| {
+                                Error::Internal("missing header: x-bytes-header".to_owned())
+                            })?
                             .to_str()
-                            .map_err(|e| Error::InvalidHeader(format!("x-bytes-header: {}", e)))?;
+                            .map_err(|e| {
+                                Error::Internal(format!("invalid header: x-bytes-header: {}", e))
+                            })?;
                         let x_int_header = parts
                             .headers
                             .get("x-int-header")
-                            .ok_or_else(|| Error::MissingHeader("x-int-header".to_owned()))?
+                            .ok_or_else(|| {
+                                Error::Internal("missing header: x-int-header".to_owned())
+                            })?
                             .to_str()
-                            .map_err(|e| Error::InvalidHeader(format!("x-int-header: {}", e)))?;
+                            .map_err(|e| {
+                                Error::Internal(format!("invalid header: x-int-header: {}", e))
+                            })?;
                         let x_string_header = parts
                             .headers
                             .get("x-string-header")
-                            .ok_or_else(|| Error::MissingHeader("x-string-header".to_owned()))?
+                            .ok_or_else(|| {
+                                Error::Internal("missing header: x-string-header".to_owned())
+                            })?
                             .to_str()
-                            .map_err(|e| Error::InvalidHeader(format!("x-string-header: {}", e)))?;
+                            .map_err(|e| {
+                                Error::Internal(format!("invalid header: x-string-header: {}", e))
+                            })?;
                         let bytes = hyper::body::to_bytes(body).await?;
                         let body = serde_json::from_slice(&bytes)?;
                         Ok(Self::Status200 {
