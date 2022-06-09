@@ -14,6 +14,8 @@ use sqlx::ConnectOptions;
 
 pub use errors::{Error, Result};
 
+use crate::types::UserInfo;
+
 /// A Server implementation.
 pub struct Server {
     dal: dal::MySqlDal,
@@ -43,5 +45,17 @@ impl Server {
         let dal = dal::MySqlDal::new(sqlx_pool).await?;
 
         Ok(Self { dal })
+    }
+
+    fn get_caller_user_info_from_context(
+        ctx: &mut lgn_online::codegen::Context,
+    ) -> Result<UserInfo> {
+        ctx.request()
+            .unwrap()
+            .extensions
+            .get::<lgn_auth::UserInfo>()
+            .cloned()
+            .ok_or(Error::MissingAuthenticationInfo)
+            .and_then(|user_info| user_info.try_into().map_err(Into::into))
     }
 }

@@ -2,7 +2,6 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::api::cars::{
     self,
-    errors::Result,
     requests::{
         CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
         TestHeadersRequest,
@@ -14,7 +13,7 @@ use crate::api::cars::{
     Api,
 };
 use crate::api::components;
-use lgn_online::codegen::Context;
+use lgn_online::{codegen::Context, server::Result};
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Default)]

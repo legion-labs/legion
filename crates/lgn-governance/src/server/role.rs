@@ -1,12 +1,11 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use lgn_online::codegen::Context;
-
-use crate::api::role::{
-    self,
-    errors::{ErrorExt, Result},
-    requests, responses, Api,
+use lgn_online::{
+    codegen::Context,
+    server::{ErrorExt, Result},
 };
+
+use crate::api::role::{self, requests, responses, Api};
 
 use super::Server;
 

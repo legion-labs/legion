@@ -1,10 +1,7 @@
 use async_trait::async_trait;
-use lgn_online::codegen::Context;
+use lgn_online::{codegen::Context, server::Result};
 
-use crate::api::session::{
-    errors::{self},
-    requests, responses, Api,
-};
+use crate::api::session::{requests, responses, Api};
 
 use super::Server;
 
@@ -14,7 +11,7 @@ impl Api for Server {
         &self,
         _context: &mut Context,
         _request: requests::ListCurrentUserSessionsRequest,
-    ) -> errors::Result<responses::ListCurrentUserSessionsResponse> {
+    ) -> Result<responses::ListCurrentUserSessionsResponse> {
         Ok(responses::ListCurrentUserSessionsResponse::Status200(
             vec![].into(),
         ))
