@@ -7,7 +7,6 @@ pub struct Skeleton {
 }
 
 impl Skeleton {
-    /* Bone info */
     #[inline]
     pub fn get_num_bones(&self) -> usize {
         self.bone_ids.len()
