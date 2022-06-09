@@ -30,7 +30,7 @@ impl Api for ApiImpl {
         _request: GetCarsRequest,
     ) -> Result<GetCarsResponse> {
         let connect_info = parts.extensions.get::<ConnectInfo<SocketAddr>>().unwrap();
-        println!("Request addr: {}", connect_info.remote_addr().unwrap());
+        println!("Request addr: {}", connect_info.0);
 
         Ok(GetCarsResponse::Status200(components::Cars(
             self.cars.read().await.values().cloned().collect(),
@@ -88,7 +88,7 @@ impl Api for ApiImpl {
 
     async fn test_headers(
         &self,
-        parts: http::request::Parts,
+        mut parts: http::request::Parts,
         request: TestHeadersRequest,
     ) -> Result<TestHeadersResponse> {
         let resp = TestHeadersResponse::Status200 {

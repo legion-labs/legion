@@ -10,11 +10,11 @@ use api_codegen::api::cars::{
         CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
         TestHeadersResponse, TestOneOfResponse,
     },
-    server, Api, TestOneOf200Response,
+    server, TestOneOf200Response,
 };
 use api_codegen::api::components::{Car, CarColor, Cars, Pet};
 use axum::Router;
-use lgn_online::{client::HyperClient, codegen::Context};
+use lgn_online::client::HyperClient;
 use tokio::task::JoinHandle;
 
 #[tokio::test]
@@ -33,37 +33,41 @@ async fn test_crud() {
         extra: None,
     };
 
-    let mut ctx = Context::default();
     let req = CreateCarRequest {
         space_id: space_id.clone(),
         span_id: Some(span_id),
         body: car.clone(),
     };
-    let resp = client.create_car(&mut ctx, req).await.unwrap();
-    assert_eq!(resp, CreateCarResponse::Status201);
+    let resp = client.create_car(req).await.unwrap();
+    assert!(matches!(resp, CreateCarResponse::Status201));
 
-    let mut ctx = Context::default();
     let req = GetCarsRequest {
         space_id: space_id.clone(),
         names: Some(vec!["car1".to_string()]),
         q: None,
     };
-    let resp = client.get_cars(&mut ctx, req).await.unwrap();
-    assert_eq!(resp, GetCarsResponse::Status200(Cars(vec![car.clone()])));
+    let resp = client.get_cars(req).await.unwrap();
+
+    match resp {
+        GetCarsResponse::Status200(cars) => {
+            assert_eq!(cars, Cars(vec![car.clone()]));
+        }
+        _ => panic!("Unexpected response"),
+    };
 
     let req = GetCarRequest {
         space_id: space_id.clone(),
         car_id: 2,
     };
-    let resp = client.get_car(&mut ctx, req).await.unwrap();
-    assert_eq!(resp, GetCarResponse::Status404);
+    let resp = client.get_car(req).await.unwrap();
+    assert!(matches!(resp, GetCarResponse::Status404));
 
     let req = DeleteCarRequest {
         space_id: space_id.clone(),
         car_id: 1,
     };
-    let resp = client.delete_car(&mut ctx, req).await.unwrap();
-    assert_eq!(resp, DeleteCarResponse::Status200);
+    let resp = client.delete_car(req).await.unwrap();
+    assert!(matches!(resp, DeleteCarResponse::Status200));
 
     handle.abort();
 }
@@ -74,16 +78,16 @@ async fn test_binary() {
     let handle = start_server(addr).await;
     let client = new_client(addr);
 
-    let mut ctx = Context::default();
     let req = TestBinaryRequest {
         space_id: "ABCDEF".to_string(),
         body: b"123456".to_vec().into(),
     };
-    let resp = client.test_binary(&mut ctx, req).await.unwrap();
-    assert_eq!(
-        resp,
-        TestBinaryResponse::Status200(b"123456".to_vec().into())
-    );
+    let resp = client.test_binary(req).await.unwrap();
+
+    match resp {
+        TestBinaryResponse::Status200(r) => assert_eq!(r, b"123456".to_vec().into()),
+        _ => panic!("Unexpected response"),
+    };
 
     handle.abort();
 }
@@ -94,14 +98,16 @@ async fn test_one_of() {
     let handle = start_server(addr).await;
     let client = new_client(addr);
 
-    let mut ctx = Context::default();
-    let resp = client.test_one_of(&mut ctx).await.unwrap();
-    assert_eq!(
-        resp,
-        TestOneOfResponse::Status200(TestOneOf200Response::Option1(Pet {
-            name: Some("Cat".to_string()),
-        }),)
-    );
+    let resp = client.test_one_of().await.unwrap();
+    match resp {
+        TestOneOfResponse::Status200(r) => assert_eq!(
+            r,
+            TestOneOf200Response::Option1(Pet {
+                name: Some("Cat".to_string()),
+            })
+        ),
+        _ => panic!("Unexpected response"),
+    };
 
     handle.abort();
 }
@@ -118,7 +124,6 @@ async fn test_headers() {
     let mut headers = http::HeaderMap::new();
     headers.insert("X-Dyn-Header", http::HeaderValue::from_static("dyn"));
 
-    let mut ctx = Context::default();
     ctx.set_request_extensions(extensions);
     ctx.set_request_headers(headers);
     let req = TestHeadersRequest {
@@ -126,20 +131,27 @@ async fn test_headers() {
         x_int_header: Some(5),
         x_bytes_header: Some(b"bytes".to_vec().into()),
     };
-    let resp = client.test_headers(&mut ctx, req).await.unwrap();
+    let resp = client.test_headers(req).await.unwrap();
 
-    println!("{:#?}", resp);
-    assert_eq!(
-        resp,
+    match resp {
         TestHeadersResponse::Status200 {
-            x_string_header: "string".to_string(),
-            x_int_header: 5,
-            x_bytes_header: b"bytes".to_vec().into(),
-            body: Pet {
-                name: Some("Cat".to_string()),
-            }
+            x_string_header,
+            x_int_header,
+            x_bytes_header,
+            body,
+        } => {
+            assert_eq!(x_string_header, "string".to_string());
+            assert_eq!(x_int_header, 5);
+            assert_eq!(x_bytes_header, b"bytes".to_vec().into());
+            assert_eq!(
+                body,
+                Pet {
+                    name: Some("Cat".to_string()),
+                }
+            );
         }
-    );
+        _ => panic!("Unexpected response"),
+    };
 
     assert_eq!(
         ctx.response().unwrap().headers.get("X-Dyn-Header"),

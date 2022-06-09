@@ -288,7 +288,7 @@ pub mod cars {
             ResBody::Data: Send,
             ResBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         {
-            async fn test_headers(
+            pub async fn test_headers(
                 &self,
                 api_codegen_context: &mut Context,
                 request: requests::TestHeadersRequest,
@@ -349,17 +349,6 @@ pub mod cars {
                 resp
             }
 
-            async fn test_one_of(
-                &self,
-                api_codegen_context: &mut Context,
-            ) -> Result<responses::TestOneOfResponse> {
-                let mut uri = format!(
-                    "{}://{}/test-one-of",
-                    self.base_uri.scheme_str().unwrap(),
-                    self.base_uri.authority().unwrap()
-                );
-
-                debug!("test_one_of: {}", uri);
 
                 let body = hyper::Body::empty();
                 let mut req = Request::builder()
@@ -377,7 +366,7 @@ pub mod cars {
                 resp
             }
 
-            async fn get_cars(
+            pub async fn get_cars(
                 &self,
                 api_codegen_context: &mut Context,
                 request: requests::GetCarsRequest,
@@ -415,7 +404,7 @@ pub mod cars {
                 resp
             }
 
-            async fn create_car(
+            pub async fn create_car(
                 &self,
                 api_codegen_context: &mut Context,
                 request: requests::CreateCarRequest,
@@ -459,7 +448,7 @@ pub mod cars {
                 resp
             }
 
-            async fn get_car(
+            pub async fn get_car(
                 &self,
                 api_codegen_context: &mut Context,
                 request: requests::GetCarRequest,
@@ -490,7 +479,7 @@ pub mod cars {
                 resp
             }
 
-            async fn delete_car(
+            pub async fn delete_car(
                 &self,
                 api_codegen_context: &mut Context,
                 request: requests::DeleteCarRequest,
@@ -521,7 +510,7 @@ pub mod cars {
                 resp
             }
 
-            async fn test_binary(
+            pub async fn test_binary(
                 &self,
                 api_codegen_context: &mut Context,
                 request: requests::TestBinaryRequest,

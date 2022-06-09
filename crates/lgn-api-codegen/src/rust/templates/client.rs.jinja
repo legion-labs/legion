@@ -21,7 +21,7 @@ impl<C> Client<C>{
     }
 }
 
-impl<C, ResBody> for Client<C>
+impl<C, ResBody> Client<C>
 where
     C: Service<Request<hyper::Body>, Response = Response<ResBody>> + Clone + Send + Sync,
     C::Error: Into<lgn_online::server::StdError>,
