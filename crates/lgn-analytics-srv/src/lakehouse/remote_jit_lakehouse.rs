@@ -9,13 +9,42 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use bytes::Buf;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::{AwsS3Url, BlobStorage};
-use lgn_telemetry_proto::analytics::{BlockSpansReply, CallTree, SpanBlockLod};
+use lgn_telemetry_proto::analytics::{
+    BlockSpansReply, CallTree, ScopeDesc, Span, SpanBlockLod, SpanTrack,
+};
 use lgn_tracing::prelude::*;
+use parquet::file::serialized_reader::SerializedFileReader;
+use parquet::{file::reader::FileReader, record::RowAccessor};
 use std::sync::Arc;
 
 use super::scope_table::ScopeRowGroup;
+
+struct BytesChunkReader {
+    pub bytes: bytes::Bytes,
+}
+
+impl parquet::file::reader::Length for BytesChunkReader {
+    fn len(&self) -> u64 {
+        self.bytes.len() as u64
+    }
+}
+
+impl parquet::file::reader::ChunkReader for BytesChunkReader {
+    type T = bytes::buf::Reader<bytes::Bytes>;
+    fn get_read(
+        &self,
+        start: u64,
+        length: usize,
+    ) -> Result<Self::T, parquet::errors::ParquetError> {
+        Ok(self
+            .bytes
+            .slice(start as usize..start as usize + length)
+            .reader())
+    }
+}
 
 pub struct RemoteJitLakehouse {
     pool: sqlx::any::AnyPool,
@@ -39,6 +68,97 @@ impl RemoteJitLakehouse {
             tables_uri,
             s3client,
         }
+    }
+
+    async fn read_spans_lod0(&self, spans_key: String) -> Result<SpanBlockLod> {
+        let get_obj_output = self
+            .s3client
+            .get_object()
+            .bucket(&self.tables_uri.bucket_name)
+            .key(&spans_key)
+            .send()
+            .await?;
+        let bytes = BytesChunkReader {
+            bytes: get_obj_output.body.collect().await?.into_bytes(),
+        };
+        let file_reader = SerializedFileReader::new(bytes)?;
+        let mut lod = SpanBlockLod {
+            lod_id: 0,
+            tracks: vec![],
+        };
+        for row in file_reader.get_row_iter(None)? {
+            let hash = row.get_int(0)?;
+            let depth = row.get_int(1)?;
+            let begin = row.get_double(2)?;
+            let end = row.get_double(3)?;
+            if lod.tracks.len() <= depth as usize {
+                lod.tracks.push(SpanTrack { spans: vec![] });
+            }
+            let span = Span {
+                scope_hash: hash as u32,
+                begin_ms: begin,
+                end_ms: end,
+                alpha: 255,
+            };
+            lod.tracks[depth as usize].spans.push(span);
+        }
+        Ok(lod)
+    }
+
+    async fn read_scopes(&self, scopes_key: String) -> Result<ScopeHashMap> {
+        let get_obj_output = self
+            .s3client
+            .get_object()
+            .bucket(&self.tables_uri.bucket_name)
+            .key(&scopes_key)
+            .send()
+            .await?;
+        let bytes = BytesChunkReader {
+            bytes: get_obj_output.body.collect().await?.into_bytes(),
+        };
+        let file_reader = SerializedFileReader::new(bytes)?;
+        let mut scopes = ScopeHashMap::new();
+        for row in file_reader.get_row_iter(None)? {
+            let hash = row.get_int(0)? as u32;
+            let name = row.get_bytes(1)?;
+            let filename = row.get_bytes(2)?;
+            let line = row.get_int(3)? as u32;
+            scopes.insert(
+                hash,
+                ScopeDesc {
+                    name: String::from_utf8_lossy(name.data()).to_string(),
+                    filename: String::from_utf8_lossy(filename.data()).to_string(),
+                    line,
+                    hash,
+                },
+            );
+        }
+        Ok(scopes)
+    }
+
+    async fn read_thread_block(
+        &self,
+        block_id: &str,
+        spans_key: String,
+        scopes_key: String,
+    ) -> Result<BlockSpansReply> {
+        let lod = self.read_spans_lod0(spans_key).await?;
+        let scopes = self.read_scopes(scopes_key).await?;
+        let (min_begin, max_end) = if !lod.tracks.is_empty() && !lod.tracks[0].spans.is_empty() {
+            (
+                lod.tracks[0].spans[0].begin_ms,
+                lod.tracks[0].spans[lod.tracks[0].spans.len() - 1].end_ms,
+            )
+        } else {
+            (f64::MAX, f64::MIN)
+        };
+        Ok(BlockSpansReply {
+            scopes,
+            lod: Some(lod),
+            block_id: block_id.to_owned(),
+            begin_ms: min_begin,
+            end_ms: max_end,
+        })
     }
 
     async fn write_scopes(&self, scopes: &ScopeHashMap, key: String) -> Result<()> {
@@ -194,6 +314,7 @@ impl JitLakehouse for RemoteJitLakehouse {
                 .await;
         }
 
-        anyhow::bail!("not impl")
+        self.read_thread_block(block_id, spans_key, scopes_key)
+            .await
     }
 }
