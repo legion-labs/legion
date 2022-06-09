@@ -9,6 +9,7 @@ mod workspace;
 
 use std::time::Duration;
 
+use http::request;
 use log::LevelFilter;
 use sqlx::ConnectOptions;
 
@@ -47,11 +48,8 @@ impl Server {
         Ok(Self { dal })
     }
 
-    fn get_caller_user_info_from_context(
-        ctx: &mut lgn_online::codegen::Context,
-    ) -> Result<UserInfo> {
-        ctx.request()
-            .unwrap()
+    fn get_caller_user_info_from_parts(parts: &request::Parts) -> Result<UserInfo> {
+        parts
             .extensions
             .get::<lgn_auth::UserInfo>()
             .cloned()

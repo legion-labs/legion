@@ -14,7 +14,7 @@ use http::HeaderValue;
     {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug)]
         pub enum {{ enum_name }} {
             {% for (status_code, response) in route.responses -%}
                 /// {{ response.description }}
@@ -33,9 +33,97 @@ use http::HeaderValue;
                     Status{{ status_code }},
                 {% endif -%}
             {% endfor -%}
+            WithHeaders(http::HeaderMap, Box<{{ enum_name }}>),
+            WithExtensions(http::Extensions, Box<{{ enum_name }}>),
         }
 
         impl {{ enum_name }} {
+            pub fn with_headers(self, headers: http::HeaderMap) -> Self {
+                #[allow(clippy::match_wildcard_for_single_variants)]
+                match self {
+                    Self::WithHeaders(mut inner_headers, inner) => {
+                        inner_headers.extend(headers);
+                        Self::WithHeaders(inner_headers, inner)
+                    }
+                    Self::WithExtensions(extensions, inner) => {
+                        Self::WithExtensions(extensions, Box::new(inner.with_headers(headers)))
+                    }
+                    s => Self::WithHeaders(headers, Box::new(s))
+                }
+            }
+
+            pub fn with_extensions(self, extensions: http::Extensions) -> Self {
+                #[allow(clippy::match_wildcard_for_single_variants)]
+                match self {
+                    Self::WithExtensions(mut inner_extensions, inner) => {
+                        inner_extensions.extend(extensions);
+                        Self::WithExtensions(inner_extensions, inner)
+                    }
+                    Self::WithHeaders(headers, inner) => {
+                        Self::WithHeaders(headers, Box::new(inner.with_extensions(extensions)))
+                    }
+                    s => Self::WithExtensions(extensions, Box::new(s))
+                }
+            }
+
+            /// Extend this response with the specified header.
+            ///
+            /// If the header already existed, it will be overwritten
+            /// silently.
+            pub fn with_header(self, key: impl http::header::IntoHeaderName, val: http::header::HeaderValue) -> Self {
+                // Optimization: if the response chain already contains a
+                // `WithHeaders`, we just add the header to the headers
+                // map instead of re-boxing the whole thing.
+                #[allow(clippy::match_wildcard_for_single_variants)]
+                match self {
+                    Self::WithHeaders(mut headers, inner) => {
+                        headers.insert(key, val);
+                        Self::WithHeaders(headers, inner)
+                    }
+                    Self::WithExtensions(extensions, inner) => {
+                        Self::WithExtensions(extensions, Box::new(inner.with_header(key, val)))
+                    }
+                    s => {
+                        // If we get here, we traversed the entire response
+                        // chain without finding a `WithHeaders`, so we wrap
+                        // the response in a `WithHeaders` and add the
+                        // header that way.
+                        let mut headers = http::HeaderMap::new();
+                        headers.insert(key, val);
+                        s.with_headers(headers)
+                    }
+                }
+            }
+
+            /// Extend this response with the specified extension.
+            ///
+            /// If the extension already existed, it will be overwritten
+            /// silently.
+            pub fn with_extension<T: Send + Sync + 'static>(self, extension: T) -> Self {
+                // Optimization: if the response chain already contains a
+                // `WithExtensions`, we just add the extension to the extensions
+                // map instead of re-boxing the whole thing.
+                #[allow(clippy::match_wildcard_for_single_variants)]
+                match self {
+                    Self::WithExtensions(mut extensions, inner) => {
+                        extensions.insert(extension);
+                        Self::WithExtensions(extensions, inner)
+                    }
+                    Self::WithHeaders(headers, inner) => {
+                        Self::WithHeaders(headers, Box::new(inner.with_extension(extension)))
+                    }
+                    s => {
+                        // If we get here, we traversed the entire response
+                        // chain without finding a `WithExtensions`, so we wrap
+                        // the response in a `WithExtensions` and add the
+                        // extension that way.
+                        let mut extensions = http::Extensions::new();
+                        extensions.insert(extension);
+                        s.with_extensions(extensions)
+                    }
+                }
+            }
+
             pub(crate) fn into_response(self) -> Response {
                 match self {
                     {% for (status_code, response) in route.responses %}
@@ -91,10 +179,25 @@ use http::HeaderValue;
                             },
                         {%- endif -%}
                     {% endfor %}
+                    Self::WithHeaders(headers, inner) => {
+                        let (mut parts, body) = inner.into_response().into_parts();
+                        parts.headers.extend(headers);
+                        (parts, body).into_response()
+                    }
+                    Self::WithExtensions(extensions, inner) => {
+                        let (mut parts, body) = inner.into_response().into_parts();
+                        parts.extensions.extend(extensions);
+                        (parts, body).into_response()
+                    }
                 }
             }
 
-            pub(crate) async fn from_response(parts: &http::response::Parts, {% if route.has_no_responses_content() %}_{% endif %}bytes: bytes::Bytes) -> Result<Self> {
+            pub(crate) async fn from_response<ResBody>(resp: http::Response<ResBody>) -> Result<Self>
+            where
+                ResBody: hyper::body::HttpBody,
+                ResBody::Error: Into<lgn_online::server::StdError>,
+            {
+                let (parts, {% if route.has_no_responses_content() %}_{% endif %}body) = resp.into_parts();
                 {% if route.responses.is_empty() %}
                     Err(Error::Internal(format!(
                         "unexpected status code: {}",
@@ -116,6 +219,7 @@ use http::HeaderValue;
                                         {% endfor -%}
 
                                         {% if let Some(content) = response.content -%}
+                                            let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
                                             let body = {% match content.media_type -%}
                                                             {% when MediaType::Json -%}
                                                                 serde_json::from_slice(&bytes)?;
@@ -133,6 +237,7 @@ use http::HeaderValue;
                                             {% endif -%}
                                         })
                                     {%- else if let Some(content) = response.content -%}
+                                        let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
                                         let body = {% match content.media_type -%}
                                                         {% when MediaType::Json -%}
                                                             serde_json::from_slice(&bytes)?;

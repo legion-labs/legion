@@ -1,9 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use lgn_online::{
-    codegen::Context,
-    server::{ErrorExt, Result},
-};
+use lgn_online::server::{ErrorExt, Result};
 
 use crate::api::space::{self, requests, responses, Api};
 
@@ -11,7 +8,10 @@ use super::Server;
 
 #[async_trait]
 impl Api for Server {
-    async fn list_spaces(&self, _context: &mut Context) -> Result<responses::ListSpacesResponse> {
+    async fn list_spaces(
+        &self,
+        _parts: http::request::Parts,
+    ) -> Result<responses::ListSpacesResponse> {
         let spaces = self.dal.list_spaces().await.into_internal_server_error()?;
 
         Ok(responses::ListSpacesResponse::Status200(
@@ -23,7 +23,10 @@ impl Api for Server {
         ))
     }
 
-    async fn create_space(&self, _context: &mut Context) -> Result<responses::CreateSpaceResponse> {
+    async fn create_space(
+        &self,
+        _parts: http::request::Parts,
+    ) -> Result<responses::CreateSpaceResponse> {
         Ok(responses::CreateSpaceResponse::Status201(space::Space {
             id: "lol".to_string().into(),
             description: "Some space".to_string(),
@@ -36,7 +39,7 @@ impl Api for Server {
 
     async fn update_space(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::UpdateSpaceRequest,
     ) -> Result<responses::UpdateSpaceResponse> {
         Ok(responses::UpdateSpaceResponse::Status200(space::Space {
@@ -51,7 +54,7 @@ impl Api for Server {
 
     async fn delete_space(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::DeleteSpaceRequest,
     ) -> Result<responses::DeleteSpaceResponse> {
         Ok(responses::DeleteSpaceResponse::Status204)
@@ -59,7 +62,7 @@ impl Api for Server {
 
     async fn cordon_space(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::CordonSpaceRequest,
     ) -> Result<responses::CordonSpaceResponse> {
         Ok(responses::CordonSpaceResponse::Status200(space::Space {
@@ -74,7 +77,7 @@ impl Api for Server {
 
     async fn uncordon_space(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::UncordonSpaceRequest,
     ) -> Result<responses::UncordonSpaceResponse> {
         Ok(responses::UncordonSpaceResponse::Status200(space::Space {
