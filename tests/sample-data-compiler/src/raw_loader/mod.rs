@@ -70,11 +70,12 @@ pub async fn build_offline(
             hasher.finish()
         };
 
+        let version_file_path = root_folder.as_ref().join("VERSION");
         let generated_checksum = {
-            if !root_folder.as_ref().join("VERSION").exists() {
+            if !version_file_path.exists() {
                 None
             } else {
-                std::fs::read_to_string(root_folder.as_ref().join("VERSION"))
+                std::fs::read_to_string(version_file_path.as_path())
                     .map_or(None, |version| version.parse::<u64>().ok())
             }
         };
@@ -87,7 +88,7 @@ pub async fn build_offline(
         }
 
         if !incremental {
-            std::fs::remove_file(root_folder.as_ref().join("VERSION")).unwrap_or_default();
+            std::fs::remove_file(version_file_path.as_path()).unwrap_or_default();
         }
 
         // cleanup data from source control before we generate new data.
@@ -193,7 +194,7 @@ pub async fn build_offline(
 
         project.commit("sample data generation").await.unwrap();
 
-        let mut version_file = std::fs::File::create(root_folder.as_ref().join("VERSION")).unwrap();
+        let mut version_file = std::fs::File::create(version_file_path).unwrap();
         version_file
             .write_all(raw_checksum.to_string().as_bytes())
             .unwrap();
