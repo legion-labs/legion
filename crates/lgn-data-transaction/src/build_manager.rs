@@ -1,5 +1,5 @@
 use lgn_content_store::indexing::{
-    self, BasicIndexer, ResourceWriter, SharedTreeIdentifier, TreeLeafNode,
+    self, ResourceIndex, ResourceWriter, SharedTreeIdentifier, TreeLeafNode,
 };
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
@@ -119,27 +119,17 @@ impl BuildManager {
                     start.elapsed(),
                 );
 
-                let mut runtime_manifest_id = self.runtime_manifest_id.read();
+                let mut runtime_manifest =
+                    ResourceIndex::new_with_id(indexer, self.runtime_manifest_id.read());
                 for (index_key, resource_id) in added_resources {
-                    runtime_manifest_id = indexer
-                        .add_leaf(
-                            data_provider,
-                            &runtime_manifest_id,
-                            &index_key,
-                            TreeLeafNode::Resource(resource_id),
-                        )
+                    runtime_manifest
+                        .add_resource(data_provider, &index_key, resource_id)
                         .await?;
                 }
                 for (index_key, resource_id, old_resource_id) in &changed_resources {
-                    let (manifest_id, old_node) = indexer
-                        .replace_leaf(
-                            data_provider,
-                            &runtime_manifest_id,
-                            index_key,
-                            TreeLeafNode::Resource(resource_id.clone()),
-                        )
+                    let old_node = runtime_manifest
+                        .replace_resource(data_provider, index_key, resource_id.clone())
                         .await?;
-                    runtime_manifest_id = manifest_id;
 
                     if let TreeLeafNode::Resource(id) = old_node {
                         assert_eq!(&id, old_resource_id);
@@ -147,7 +137,7 @@ impl BuildManager {
 
                     data_provider.unwrite_resource(old_resource_id).await?;
                 }
-                self.runtime_manifest_id.write(runtime_manifest_id);
+                self.runtime_manifest_id.write(runtime_manifest.id());
 
                 let changed_resources = changed_resources
                     .into_iter()

@@ -7,6 +7,7 @@ mod index_key;
 mod index_path;
 mod indexable_resource;
 mod json_visitor;
+mod resource_index;
 mod search_result;
 mod static_indexer;
 mod string_path_indexer;
@@ -30,6 +31,7 @@ pub use indexable_resource::{
     ResourceWriter,
 };
 pub use json_visitor::JsonVisitor;
+pub use resource_index::ResourceIndex;
 pub(crate) use search_result::SearchResult;
 pub use static_indexer::StaticIndexer;
 pub use string_path_indexer::StringPathIndexer;
