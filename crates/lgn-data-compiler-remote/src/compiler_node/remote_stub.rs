@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourcePathId, Transform};
 
-// use super::remote_data_executor::collect_local_resources;
+use super::remote_data_executor::collect_local_resources;
 use lgn_data_compiler::{
     compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerHash, CompilerInfo},
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput},
@@ -53,12 +53,12 @@ impl CompilerStub for RemoteCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
-        _data_provider: &Provider,
+        data_provider: &Provider,
         source_manifest_id: &SharedTreeIdentifier,
         _runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
-        let _cmd = CompilerCompileCmd::new(
+        let cmd = CompilerCompileCmd::new(
             self.bin_path.file_name().unwrap(),
             &compile_path,
             dependencies,
@@ -67,17 +67,7 @@ impl CompilerStub for RemoteCompilerStub {
             env,
         );
 
-        // let msg = collect_local_resources(
-        //     &self.bin_path,
-        //     resource_dir,
-        //     &compile_path,
-        //     dependencies,
-        //     derived_deps,
-        //     &cmd,
-        //     data_provider,
-        // )
-        // .await?;
-        let msg = "".to_owned();
+        let msg = collect_local_resources(&self.bin_path, &cmd, data_provider).await?;
 
         let result = crate::remote_service::client::send_receive_workload(&self.server_addr, msg);
         Ok(serde_json::from_str::<CompilationOutput>(&result)?)
