@@ -641,17 +641,7 @@ impl Project {
             .map_err(Error::SourceControl)
     }
 
-    /// Returns the checksum of the root project directory at the current state.
-    pub fn root_checksum(&self) -> &ContentId {
-        self.workspace.id()
-    }
-
-    /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.
-    pub async fn has_pending_changes(&self) -> bool {
-        self.workspace.has_pending_changes().await
-    }
-
-    /// Return the count of local resources
+    /// Return the list of resources that have pending (uncommitted) changes
     pub async fn get_pending_changes(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
         Ok(self
             .workspace
@@ -660,6 +650,26 @@ impl Project {
             .into_iter()
             .map(Into::into)
             .collect())
+    }
+
+    /// Return the list of all resources that were previously committed
+    pub async fn get_committed_resources(
+        &self,
+    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
+        self.workspace
+            .get_committed_resources()
+            .await
+            .map_err(Error::SourceControl)
+    }
+
+    /// Returns the checksum of the root project directory at the current state.
+    pub fn root_checksum(&self) -> &ContentId {
+        self.workspace.id()
+    }
+
+    /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.
+    pub async fn has_pending_changes(&self) -> bool {
+        self.workspace.has_pending_changes().await
     }
 }
 
@@ -684,11 +694,11 @@ mod tests {
     use crate::resource::project::Project;
     use crate::resource::ResourcePathName;
 
-    const RESOURCE_TEXTURE: &str = "texture";
-    const RESOURCE_MATERIAL: &str = "material";
-    const RESOURCE_GEOMETRY: &str = "geometry";
-    const RESOURCE_SKELETON: &str = "skeleton";
-    const RESOURCE_ACTOR: &str = "actor";
+    const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
+    const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
+    const RESOURCE_GEOMETRY: ResourceType = ResourceType::new(b"geometry");
+    const RESOURCE_SKELETON: ResourceType = ResourceType::new(b"skeleton");
+    const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
 
     #[resource("null")]
     #[derive(Clone)]
@@ -773,43 +783,26 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     async fn create_actor(project: &mut Project) -> Arc<AssetRegistry> {
         let resources = AssetRegistryOptions::new()
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_MATERIAL.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_GEOMETRY.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_SKELETON.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_ACTOR.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
+            .add_processor_ext(RESOURCE_TEXTURE, Box::new(NullResourceProc {}))
+            .add_processor_ext(RESOURCE_MATERIAL, Box::new(NullResourceProc {}))
+            .add_processor_ext(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}))
+            .add_processor_ext(RESOURCE_SKELETON, Box::new(NullResourceProc {}))
+            .add_processor_ext(RESOURCE_ACTOR, Box::new(NullResourceProc {}))
             .create()
             .await;
 
-        let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("albedo.texture"),
-                texture_type,
-                resources.new_resource(texture_type).unwrap(),
+                RESOURCE_TEXTURE,
+                resources.new_resource(RESOURCE_TEXTURE).unwrap(),
                 &resources,
             )
             .await
             .unwrap();
 
-        let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
         let material = resources
-            .new_resource(material_type)
+            .new_resource(RESOURCE_MATERIAL)
             .unwrap()
             .typed::<NullResource>();
         let mut edit = material.instantiate(&resources).unwrap();
@@ -819,16 +812,15 @@ mod tests {
         let material = project
             .add_resource(
                 ResourcePathName::new("body.material"),
-                material_type,
+                RESOURCE_MATERIAL,
                 &material,
                 &resources,
             )
             .await
             .unwrap();
 
-        let geometry_type = ResourceType::new(RESOURCE_GEOMETRY.as_bytes());
         let geometry = resources
-            .new_resource(geometry_type)
+            .new_resource(RESOURCE_GEOMETRY)
             .unwrap()
             .typed::<NullResource>();
         let mut edit = geometry.instantiate(&resources).unwrap();
@@ -837,27 +829,25 @@ mod tests {
         let geometry = project
             .add_resource(
                 ResourcePathName::new("hero.geometry"),
-                geometry_type,
+                RESOURCE_GEOMETRY,
                 &geometry,
                 &resources,
             )
             .await
             .unwrap();
 
-        let skeleton_type = ResourceType::new(RESOURCE_SKELETON.as_bytes());
         let skeleton = project
             .add_resource(
                 ResourcePathName::new("hero.skeleton"),
-                skeleton_type,
-                &resources.new_resource(skeleton_type).unwrap(),
+                RESOURCE_SKELETON,
+                &resources.new_resource(RESOURCE_SKELETON).unwrap(),
                 &resources,
             )
             .await
             .unwrap();
 
-        let actor_type = ResourceType::new(RESOURCE_ACTOR.as_bytes());
         let actor = resources
-            .new_resource(actor_type)
+            .new_resource(RESOURCE_ACTOR)
             .unwrap()
             .typed::<NullResource>();
         let mut edit = actor.instantiate(&resources).unwrap();
@@ -869,7 +859,7 @@ mod tests {
         let _actor = project
             .add_resource(
                 ResourcePathName::new("hero.actor"),
-                actor_type,
+                RESOURCE_ACTOR,
                 &actor,
                 &resources,
             )
@@ -880,20 +870,18 @@ mod tests {
     }
 
     async fn create_sky_material(project: &mut Project, resources: &AssetRegistry) {
-        let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("sky.texture"),
-                texture_type,
-                &resources.new_resource(texture_type).unwrap(),
+                RESOURCE_TEXTURE,
+                &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
                 resources,
             )
             .await
             .unwrap();
 
-        let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
         let material = resources
-            .new_resource(material_type)
+            .new_resource(RESOURCE_MATERIAL)
             .unwrap()
             .typed::<NullResource>();
         let mut edit = material.instantiate(resources).unwrap();
@@ -903,7 +891,7 @@ mod tests {
         let _material = project
             .add_resource(
                 ResourcePathName::new("sky.material"),
-                material_type,
+                RESOURCE_MATERIAL,
                 &material,
                 resources,
             )
@@ -960,7 +948,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
-        //assert_eq!(project.remote_resource_list().await.unwrap().len(), 0);
+        assert_eq!(project.get_committed_resources().await.unwrap().len(), 0);
 
         // modify before commit
         {
@@ -978,7 +966,7 @@ mod tests {
         project.commit("add resources").await.unwrap();
 
         assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
-        //assert_eq!(project.remote_resource_list().await.unwrap().len(), 5);
+        assert_eq!(project.get_committed_resources().await.unwrap().len(), 5);
 
         // modify resource
         {
