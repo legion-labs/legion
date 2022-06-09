@@ -29,8 +29,10 @@ enum Commands {
         #[clap(long = "output")]
         build_output: String,
         /// Name of the source control repository.
+        #[clap(long)]
         repository_name: String,
         /// Name of the source control branch.
+        #[clap(long)]
         branch_name: String,
     },
     /// Compile input resource
@@ -39,8 +41,10 @@ enum Commands {
         /// Path in build graph to compile.
         resource: String,
         /// Name of the source control repository.
+        #[clap(long)]
         repository_name: String,
         /// Name of the source control branch.
+        #[clap(long)]
         branch_name: String,
         /// Build index file.
         #[clap(long = "output")]

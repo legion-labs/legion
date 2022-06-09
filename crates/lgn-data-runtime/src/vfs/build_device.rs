@@ -23,7 +23,8 @@ pub(crate) struct BuildDevice {
     indexer: ResourceTypeAndIdIndexer,
     databuild_bin: PathBuf,
     output_db_addr: String,
-    project: PathBuf,
+    repository_name: String,
+    branch_name: String,
     force_recompile: bool,
 }
 
@@ -32,8 +33,9 @@ impl BuildDevice {
         manifest_id: Option<TreeIdentifier>,
         provider: Arc<Provider>,
         build_bin: impl AsRef<Path>,
-        output_db_addr: String,
-        project: impl AsRef<Path>,
+        output_db_addr: &str,
+        repository_name: &str,
+        branch_name: &str,
         force_recompile: bool,
     ) -> Self {
         let empty_manifest_id = empty_tree_id(&provider).await.unwrap();
@@ -42,8 +44,9 @@ impl BuildDevice {
             provider,
             indexer: new_resource_type_and_id_indexer(),
             databuild_bin: build_bin.as_ref().to_owned(),
-            output_db_addr,
-            project: project.as_ref().to_owned(),
+            output_db_addr: output_db_addr.to_owned(),
+            repository_name: repository_name.to_owned(),
+            branch_name: branch_name.to_owned(),
             force_recompile,
         }
     }
@@ -87,7 +90,8 @@ impl BuildDevice {
             &self.databuild_bin,
             resource_id,
             &self.output_db_addr,
-            &self.project,
+            &self.repository_name,
+            &self.branch_name,
         );
 
         info!("Running DataBuild for ResourceId: {}", resource_id);
@@ -144,7 +148,8 @@ fn build_command(
     databuild_path: impl AsRef<Path>,
     resource_id: ResourceTypeAndId,
     output_db_addr: &str,
-    project: impl AsRef<Path>,
+    repository_name: &str,
+    branch_name: &str,
 ) -> std::process::Command {
     let target = "game";
     let platform = "windows";
@@ -157,6 +162,7 @@ fn build_command(
     command.arg(format!("--platform={}", platform));
     command.arg(format!("--locale={}", locale));
     command.arg(format!("--output={}", output_db_addr));
-    command.arg(format!("--project={}", project.as_ref().to_str().unwrap()));
+    command.arg(format!("--repository-name={}", repository_name));
+    command.arg(format!("--branch-name={}", branch_name));
     command
 }

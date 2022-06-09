@@ -30,6 +30,7 @@ async fn build_device() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
+    let branch_name = "main";
     repository_index
         .create_repository(&repository_name)
         .await
@@ -51,7 +52,7 @@ async fn build_device() {
     let mut project = Project::new(
         &repository_index,
         &repository_name,
-        "main",
+        branch_name,
         Arc::clone(&source_control_content_provider),
     )
     .await
@@ -72,7 +73,7 @@ async fn build_device() {
         edit.content = initial_content.to_string();
         resource.apply(edit, &resources);
 
-        project
+        let source_id = project
             .add_resource(
                 ResourcePathName::new("test_source"),
                 refs_resource::TestResource::TYPE,
@@ -80,7 +81,11 @@ async fn build_device() {
                 &resources,
             )
             .await
-            .expect("adding the resource")
+            .expect("adding the resource");
+
+        project.commit("add resource").await.expect("committing");
+
+        source_id
     };
 
     let target_dir = {
@@ -144,8 +149,9 @@ async fn build_device() {
             Arc::clone(&data_content_provider),
             None,
             DATABUILD_EXE,
-            DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
-            project_dir,
+            &DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
+            repository_name.as_str(),
+            branch_name,
             true,
         )
         .await
@@ -190,6 +196,8 @@ async fn build_device() {
             .save_resource(source_id, resource, &resources)
             .await
             .expect("successful save");
+
+        project.commit("save resource").await.expect("committing");
     }
 
     registry.update();
@@ -223,6 +231,7 @@ async fn no_intermediate_resource() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
+    let branch_name = "main";
     repository_index
         .create_repository(&repository_name)
         .await
@@ -243,7 +252,7 @@ async fn no_intermediate_resource() {
         let mut project = Project::new(
             &repository_index,
             &repository_name,
-            "main",
+            branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -259,7 +268,7 @@ async fn no_intermediate_resource() {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("new resource");
 
-            project
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     refs_resource::TestResource::TYPE,
@@ -267,7 +276,11 @@ async fn no_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource")
+                .expect("adding the resource");
+
+            project.commit("add resource").await.expect("committing");
+
+            resource_id
         };
 
         let mut build = DataBuildOptions::new(
@@ -297,7 +310,8 @@ async fn no_intermediate_resource() {
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
         command.arg(format!("--output={}", output_dir.to_str().unwrap()));
-        command.arg(format!("--project={}", project_dir.to_str().unwrap()));
+        command.arg(format!("--repository-name={}", repository_name));
+        command.arg(format!("--branch-name={}", branch_name));
         command
     };
 
@@ -331,12 +345,12 @@ async fn with_intermediate_resource() {
         work_dir.path().join("legion.toml").to_str().unwrap(),
     );
 
-    let project_dir = work_dir.path();
     let output_dir = work_dir.path();
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
+    let branch_name = "main";
     repository_index
         .create_repository(&repository_name)
         .await
@@ -358,7 +372,7 @@ async fn with_intermediate_resource() {
         let mut project = Project::new(
             &repository_index,
             &repository_name,
-            "main",
+            branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await
@@ -374,7 +388,7 @@ async fn with_intermediate_resource() {
                 .new_resource(text_resource::TextResource::TYPE)
                 .expect("new resource");
 
-            project
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     text_resource::TextResource::TYPE,
@@ -382,7 +396,11 @@ async fn with_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource")
+                .expect("adding the resource");
+
+            project.commit("add resource").await.expect("committing");
+
+            resource_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -415,7 +433,8 @@ async fn with_intermediate_resource() {
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
         command.arg(format!("--output={}", output_dir.to_str().unwrap()));
-        command.arg(format!("--project={}", project_dir.to_str().unwrap()));
+        command.arg(format!("--repository-name={}", repository_name));
+        command.arg(format!("--branch-name={}", branch_name));
         command
     };
 

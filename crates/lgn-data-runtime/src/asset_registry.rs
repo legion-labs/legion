@@ -156,8 +156,9 @@ impl AssetRegistryOptions {
         provider: Arc<Provider>,
         manifest: Option<TreeIdentifier>,
         build_bin: impl AsRef<Path>,
-        output_db_addr: String,
-        project: impl AsRef<Path>,
+        output_db_addr: &str,
+        repository_name: &str,
+        branch_name: &str,
         force_recompile: bool,
     ) -> Self {
         self.add_device(Box::new(
@@ -166,7 +167,8 @@ impl AssetRegistryOptions {
                 provider,
                 build_bin,
                 output_db_addr,
-                project,
+                repository_name,
+                branch_name,
                 force_recompile,
             )
             .await,
