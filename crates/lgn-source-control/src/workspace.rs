@@ -243,10 +243,6 @@ where
         self.content_id.main_index_tree_id.read()
     }
 
-    fn set_main_index_id(&self, tree_id: TreeIdentifier) {
-        self.content_id.main_index_tree_id.write(tree_id);
-    }
-
     pub fn clone_main_index_id(&self) -> SharedTreeIdentifier {
         self.content_id.main_index_tree_id.clone()
     }
@@ -333,28 +329,10 @@ where
             .await
             .map_err(Error::ContentStoreIndexing)?;
 
-        self.set_main_index_id(
-            self.main_indexer
-                .add_leaf(
-                    &self.transaction,
-                    &self.get_main_index_id(),
-                    id,
-                    TreeLeafNode::Resource(resource_identifier.clone()),
-                )
-                .await
-                .map_err(Error::ContentStoreIndexing)?,
-        );
-
-        self.content_id.path_index_tree_id = self
-            .path_indexer
-            .add_leaf(
-                &self.transaction,
-                &self.content_id.path_index_tree_id,
-                &path.into(),
-                TreeLeafNode::Resource(resource_identifier.clone()),
-            )
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
+        self.add_to_main_index(id, resource_identifier.clone())
+            .await?;
+        self.add_to_path_index(path, resource_identifier.clone())
+            .await?;
 
         #[cfg(feature = "verbose")]
         {
@@ -397,29 +375,12 @@ where
             }
 
             // update indices
-            let (main_index_tree_id, _leaf_node) = self
-                .main_indexer
-                .replace_leaf(
-                    &self.transaction,
-                    &self.get_main_index_id(),
-                    id,
-                    TreeLeafNode::Resource(resource_identifier.clone()),
-                )
-                .await
-                .map_err(Error::ContentStoreIndexing)?;
-            self.set_main_index_id(main_index_tree_id);
-
-            let (path_index_tree_id, _leaf_node) = self
-                .path_indexer
-                .replace_leaf(
-                    &self.transaction,
-                    &self.content_id.path_index_tree_id,
-                    &path.into(),
-                    TreeLeafNode::Resource(resource_identifier.clone()),
-                )
-                .await
-                .map_err(Error::ContentStoreIndexing)?;
-            self.content_id.path_index_tree_id = path_index_tree_id;
+            let _leaf_node = self
+                .replace_in_main_index(id, resource_identifier.clone())
+                .await?;
+            let _leaf_node = self
+                .replace_in_path_index(path, resource_identifier.clone())
+                .await?;
 
             // unwrite previous resource content from content-store
             self.transaction.unwrite_resource(old_identifier).await?;
@@ -467,50 +428,28 @@ where
             }
 
             // update indices
-            let main_index_id = &self.get_main_index_id();
-            let (new_main_index_id, main_leaf_node) = self
-                .main_indexer
-                .replace_leaf(
-                    &self.transaction,
-                    main_index_id,
-                    id,
-                    TreeLeafNode::Resource(resource_identifier.clone()),
-                )
-                .await
-                .map_err(Error::ContentStoreIndexing)?;
+            let main_leaf_node = self
+                .replace_in_main_index(id, resource_identifier.clone())
+                .await?;
             if let TreeLeafNode::Resource(resource_id) = main_leaf_node {
                 assert_eq!(&resource_id, old_identifier);
             } else {
                 return Err(Error::CorruptedIndex {
-                    tree_id: main_index_id.clone(),
+                    tree_id: self.get_main_index_id(),
                 });
             }
-            self.set_main_index_id(new_main_index_id);
 
-            let path_index_id = &self.content_id.path_index_tree_id;
-            let (new_path_index_id, path_leaf_node) = self
-                .path_indexer
-                .remove_leaf(&self.transaction, path_index_id, &old_path.into())
-                .await
-                .map_err(Error::ContentStoreIndexing)?;
+            let path_leaf_node = self.remove_from_path_index(old_path).await?;
             if let TreeLeafNode::Resource(resource_id) = path_leaf_node {
                 assert_eq!(&resource_id, old_identifier);
             } else {
                 return Err(Error::CorruptedIndex {
-                    tree_id: path_index_id.clone(),
+                    tree_id: self.content_id.path_index_tree_id.clone(),
                 });
             }
 
-            self.content_id.path_index_tree_id = self
-                .path_indexer
-                .add_leaf(
-                    &self.transaction,
-                    &new_path_index_id,
-                    &new_path.into(),
-                    TreeLeafNode::Resource(resource_identifier.clone()),
-                )
-                .await
-                .map_err(Error::ContentStoreIndexing)?;
+            self.add_to_path_index(new_path, resource_identifier.clone())
+                .await?;
 
             // unwrite previous resource content from content-store
             self.transaction.unwrite_resource(old_identifier).await?;
@@ -536,24 +475,10 @@ where
     /// edited, an empty list is returned and call still succeeds.
     pub async fn delete_resource(&mut self, id: &IndexKey, path: &str) -> Result<()> {
         // remove from main index
-        let (main_index_tree_id, leaf_node) = self
-            .main_indexer
-            .remove_leaf(&self.transaction, &self.get_main_index_id(), id)
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
-        self.set_main_index_id(main_index_tree_id);
+        let leaf_node = self.remove_from_main_index(id).await?;
 
         if let TreeLeafNode::Resource(resource_id) = leaf_node {
-            let (path_index_tree_id, _leaf_node) = self
-                .path_indexer
-                .remove_leaf(
-                    &self.transaction,
-                    &self.content_id.path_index_tree_id,
-                    &path.into(),
-                )
-                .await
-                .map_err(Error::ContentStoreIndexing)?;
-            self.content_id.path_index_tree_id = path_index_tree_id;
+            let _leaf_node = self.remove_from_path_index(path).await?;
 
             // unwrite resource from content-store
             self.transaction.unwrite_resource(&resource_id).await?;
@@ -1120,4 +1045,109 @@ where
         Ok(tempfile::TempPath::from_path(temp_file_path))
     }
     */
+
+    async fn add_to_main_index(
+        &mut self,
+        id: &IndexKey,
+        resource_id: ResourceIdentifier,
+    ) -> Result<()> {
+        self.content_id.main_index_tree_id.write(
+            self.main_indexer
+                .add_leaf(
+                    &self.transaction,
+                    &self.get_main_index_id(),
+                    id,
+                    TreeLeafNode::Resource(resource_id),
+                )
+                .await
+                .map_err(Error::ContentStoreIndexing)?,
+        );
+
+        Ok(())
+    }
+
+    async fn remove_from_main_index(&mut self, id: &IndexKey) -> Result<TreeLeafNode> {
+        let (main_index_tree_id, leaf_node) = self
+            .main_indexer
+            .remove_leaf(&self.transaction, &self.get_main_index_id(), id)
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+        self.content_id.main_index_tree_id.write(main_index_tree_id);
+
+        Ok(leaf_node)
+    }
+
+    async fn replace_in_main_index(
+        &mut self,
+        id: &IndexKey,
+        resource_id: ResourceIdentifier,
+    ) -> Result<TreeLeafNode> {
+        let (main_index_tree_id, leaf_node) = self
+            .main_indexer
+            .replace_leaf(
+                &self.transaction,
+                &self.get_main_index_id(),
+                id,
+                TreeLeafNode::Resource(resource_id),
+            )
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+        self.content_id.main_index_tree_id.write(main_index_tree_id);
+
+        Ok(leaf_node)
+    }
+
+    async fn add_to_path_index(
+        &mut self,
+        path: &str,
+        resource_id: ResourceIdentifier,
+    ) -> Result<()> {
+        self.content_id.path_index_tree_id = self
+            .path_indexer
+            .add_leaf(
+                &self.transaction,
+                &self.content_id.path_index_tree_id,
+                &path.into(),
+                TreeLeafNode::Resource(resource_id),
+            )
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+
+        Ok(())
+    }
+
+    async fn remove_from_path_index(&mut self, path: &str) -> Result<TreeLeafNode> {
+        let (path_index_tree_id, leaf_node) = self
+            .path_indexer
+            .remove_leaf(
+                &self.transaction,
+                &self.content_id.path_index_tree_id,
+                &path.into(),
+            )
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+        self.content_id.path_index_tree_id = path_index_tree_id;
+
+        Ok(leaf_node)
+    }
+
+    async fn replace_in_path_index(
+        &mut self,
+        path: &str,
+        resource_id: ResourceIdentifier,
+    ) -> Result<TreeLeafNode> {
+        let (path_index_tree_id, leaf_node) = self
+            .path_indexer
+            .replace_leaf(
+                &self.transaction,
+                &self.content_id.path_index_tree_id,
+                &path.into(),
+                TreeLeafNode::Resource(resource_id),
+            )
+            .await
+            .map_err(Error::ContentStoreIndexing)?;
+        self.content_id.path_index_tree_id = path_index_tree_id;
+
+        Ok(leaf_node)
+    }
 }
