@@ -354,13 +354,10 @@ impl SourceIndex {
 #[cfg(test)]
 mod tests {
 
-    // use std::sync::Arc;
+    use lgn_data_offline::resource::ResourcePathName;
+    use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceId};
 
-    // use lgn_content_store::Provider;
-    // use lgn_data_offline::resource::{Project, ResourcePathName};
-    use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId};
-
-    use crate::source_index::SourceContent;
+    use super::*;
 
     #[tokio::test]
     async fn pathid_records() {
@@ -459,13 +456,10 @@ mod tests {
         assert_eq!(source_index.resources[2].dependencies.len(), 1);
     }
 
-    /*
-    fn current_checksum(index: &SourceIndex) -> String {
+    fn current_checksum(index: &SourceIndex) -> ContentId {
         index.current.as_ref().map(|(id, _)| id.clone()).unwrap()
     }
-    */
 
-    /*
     #[tokio::test]
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
@@ -504,22 +498,31 @@ mod tests {
 
             let id = ResourceId::from_raw(0xaabbccddeeff00000000000000000000);
 
-            let resource_id = project
+            let resource_id = ResourceTypeAndId {
+                kind: refs_resource::TestResource::TYPE,
+                id,
+            };
+
+            project
                 .add_resource_with_id(
                     ResourcePathName::new("test_source"),
-                    refs_resource::TestResource::TYPENAME,
-                    refs_resource::TestResource::TYPE,
-                    id,
+                    resource_id,
                     &resource_handle,
                     &resources,
                 )
                 .await
                 .expect("adding the resource");
+
+            project
+                .commit("add resource")
+                .await
+                .expect("sucessful commit");
+
             (resource_id, resource_handle)
         };
 
         // initially we have 0 subfolders
-        //number of indeces: 1
+        // number of indices: 1
 
         // one resource creates 3-levels deep folder hierarchy.
         // including the root index refresh that creates 4 new cached entries.
@@ -554,6 +557,11 @@ mod tests {
                 .await
                 .expect("successful save");
 
+            project
+                .commit("save resource")
+                .await
+                .expect("sucessful commit");
+
             source_index.source_pull(&project, version).await.unwrap();
             current_checksum(&source_index)
         };
@@ -568,12 +576,15 @@ mod tests {
         // deleting the resource takes us back to the previous cache entry.
         {
             project
-                .delete_resource(resource_id.id)
+                .delete_resource(resource_id)
                 .await
                 .expect("removed resource");
+            project
+                .commit("delete resource")
+                .await
+                .expect("sucessful commit");
             source_index.source_pull(&project, version).await.unwrap();
             assert_eq!(current_checksum(&source_index), first_entry_checksum);
         }
     }
-    */
 }
