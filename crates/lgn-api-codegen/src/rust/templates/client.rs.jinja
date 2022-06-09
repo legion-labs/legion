@@ -34,10 +34,29 @@ where
     {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
 
+        /// Call to `{{ route.name|snake_case }}`.
+        ///
+        /// # Errors
+        ///
+        /// Returns an error in case of failure.
         pub async fn {{ route.name|snake_case }}(
             &self,
             {% if !route.has_empty_request() %}request: requests::{{ route.name|pascal_case }}Request{% endif %}
         ) -> Result<responses::{{ route.name|pascal_case }}Response> {
+            self.{{ route.name|snake_case }}_with_parts({% if !route.has_empty_request() %}request{% endif %})
+                .await
+                .map(|(_, resp)| resp)
+        }
+
+        /// Call to `{{ route.name|snake_case }}` including response parts.
+        ///
+        /// # Errors
+        ///
+        /// Returns an error in case of failure.
+        pub async fn {{ route.name|snake_case }}_with_parts(
+            &self,
+            {% if !route.has_empty_request() %}request: requests::{{ route.name|pascal_case }}Request{% endif %}
+        ) -> Result<(http::response::Parts, responses::{{ route.name|pascal_case }}Response)> {
             let mut uri = format!(
                 "{}://{}{{ path|fmt_rust_path }}",
                 self.base_uri.scheme_str().unwrap(),

@@ -100,8 +100,8 @@ impl Api for ApiImpl {
             },
         };
 
-        Ok(if let Some(value) = parts.headers.remove("X-Dyn-Header") {
-            resp.with_header("X-Dyn-Header", value)
+        Ok(if let Some(value) = parts.headers.remove("x-dyn-header") {
+            resp.with_header("x-dyn-header", value)
         } else {
             resp
         })

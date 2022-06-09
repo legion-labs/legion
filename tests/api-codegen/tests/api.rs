@@ -14,6 +14,7 @@ use api_codegen::api::cars::{
 };
 use api_codegen::api::components::{Car, CarColor, Cars, Pet};
 use axum::Router;
+use http::{header::HeaderName, HeaderValue};
 use lgn_online::client::HyperClient;
 use tokio::task::JoinHandle;
 
@@ -116,22 +117,21 @@ async fn test_one_of() {
 async fn test_headers() {
     let addr = "127.0.0.1:3004".parse().unwrap();
     let handle = start_server(addr).await;
-    let client = new_client(addr);
+    let client = HyperClient::default();
+    let client = tower_http::add_extension::AddExtension::new(client, 5i32);
+    let client = tower_http::set_header::SetRequestHeader::if_not_present(
+        client,
+        HeaderName::from_static("x-dyn-header"),
+        HeaderValue::from_str("dyn").unwrap(),
+    );
+    let client = client::Client::new(client, format!("http://{}", addr).parse().unwrap());
 
-    let mut extensions = http::Extensions::new();
-    extensions.insert(5i32);
-
-    let mut headers = http::HeaderMap::new();
-    headers.insert("X-Dyn-Header", http::HeaderValue::from_static("dyn"));
-
-    ctx.set_request_extensions(extensions);
-    ctx.set_request_headers(headers);
     let req = TestHeadersRequest {
         x_string_header: Some("string".to_string()),
         x_int_header: Some(5),
         x_bytes_header: Some(b"bytes".to_vec().into()),
     };
-    let resp = client.test_headers(req).await.unwrap();
+    let (mut parts, resp) = client.test_headers_with_parts(req).await.unwrap();
 
     match resp {
         TestHeadersResponse::Status200 {
@@ -154,8 +154,8 @@ async fn test_headers() {
     };
 
     assert_eq!(
-        ctx.response().unwrap().headers.get("X-Dyn-Header"),
-        Some(&http::HeaderValue::from_static("dyn"))
+        parts.headers.remove("X-Dyn-Header"),
+        Some(http::HeaderValue::from_static("dyn"))
     );
 
     handle.abort();
