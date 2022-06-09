@@ -28,11 +28,9 @@ indexmap = "1"
 http = "0.2"
 convert_case = "0.5"
 clap = { version = "3.0", features = ["derive", "env"] }
-chrono = { version = "0.4", features = ["serde"] }
 rust-format = "0.3"
 regex = "1"
 lazy_static = "1"
-base64 = "0.13"
 bytes = "1"
 tempfile = "3.2.0"
 which = "4.2.5"

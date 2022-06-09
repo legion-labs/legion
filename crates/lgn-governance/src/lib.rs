@@ -7,10 +7,9 @@ mod api;
 mod client;
 mod errors;
 mod server;
-mod types;
+pub mod types;
 
 pub use api::register_routes;
 pub use client::Client;
 pub use errors::{Error, Result};
 pub use server::Server;
-pub use types::*;

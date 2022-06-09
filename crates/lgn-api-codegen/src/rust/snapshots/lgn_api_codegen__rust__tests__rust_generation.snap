@@ -1435,3 +1435,10 @@ pub mod components {
     }
 }
 
+pub fn register_routes<S: cars::Api + Clone + Send + Sync + 'static>(
+    router: axum::Router,
+    server: S,
+) -> axum::Router {
+    cars::server::register_routes(router, server)
+}
+

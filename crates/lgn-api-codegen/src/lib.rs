@@ -67,15 +67,21 @@ pub fn generate(
 #[macro_export]
 macro_rules! generate {
     ($lang:expr, $root:expr, $openapis:expr$(,)?) => {{
-        match lgn_api_codegen::generate($lang, $root, $openapis, std::env::var("OUT_DIR")?) {
+        match lgn_api_codegen::generate(
+            $lang,
+            $root,
+            $openapis,
+            std::env::var("OUT_DIR").expect("OUT_DIR must be set"),
+        ) {
             Ok(files) => {
                 for file in files {
                     println!("cargo:rerun-if-changed={}", file.display());
                 }
-
-                Ok(())
             }
-            Err(err) => Err(err),
+            Err(err) => {
+                eprintln!("OpenAPI generation failed with: {}", err);
+                panic!("OpenAPI generation failed");
+            }
         }
     }};
 }

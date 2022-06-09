@@ -10,8 +10,8 @@ use clap::Parser;
 use http::StatusCode;
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, IndexKeyDisplayFormat, IndexableResource, JsonVisitor,
-        ResourceWriter, StaticIndexer, Tree, TreeIdentifier, TreeLeafNode, TreeVisitor, TreeWriter,
+        empty_tree_id, BasicIndexer, IndexKey, IndexKeyDisplayFormat, IndexableResource,
+        JsonVisitor, ResourceWriter, StaticIndexer, TreeIdentifier, TreeLeafNode, TreeVisitor,
     },
     Provider, Result,
 };
@@ -49,7 +49,7 @@ impl State {
         let provider = Provider::new_in_memory();
         let mut indexer = StaticIndexer::new(4);
         indexer.set_layer_constraints(2, 4);
-        let tree_id = Mutex::new(provider.write_tree(&Tree::default()).await?);
+        let tree_id = Mutex::new(empty_tree_id(&provider).await?);
 
         Ok(Self {
             provider,

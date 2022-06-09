@@ -124,12 +124,9 @@ pub async fn build(
             )
         };
 
-        let rt_manifest = manifest.into_rt_manifest(filter);
-
-        let manifest_id = build
-            .write_manifest(&rt_manifest)
-            .await
-            .expect("failed to write manifest to cas");
+        let manifest_id = manifest
+            .into_rt_manifest(&data_content_provider, filter)
+            .await;
 
         let mut file = OpenOptions::new()
             .write(true)

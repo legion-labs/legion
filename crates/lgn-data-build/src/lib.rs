@@ -166,6 +166,9 @@ pub enum Error {
     /// Content Store invalid.
     #[error("Content Store invalid. {0}")]
     InvalidContentStore(#[from] lgn_content_store::Error),
+    /// Content Store invalid.
+    #[error("Content Store indexing invalid. {0}")]
+    InvalidContentStoreIndexing(#[from] lgn_content_store::indexing::Error),
     /// Project invalid.
     #[error("Project invalid.")]
     InvalidProject(PathBuf),
@@ -187,6 +190,9 @@ pub enum Error {
     /// Output database error.
     #[error("Database Error: '{0}'")]
     Database(#[source] sqlx::Error),
+    /// Project has uncommited changes
+    #[error("Project has uncommited changes.")]
+    ProjectNotCommitted,
 }
 
 mod asset_file_writer;

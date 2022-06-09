@@ -11,8 +11,11 @@ use core::fmt;
 use std::str::FromStr;
 
 use compiler_api::CompilerError;
-use lgn_content_store::Identifier;
-use lgn_data_runtime::ResourcePathId;
+use lgn_content_store::{
+    indexing::{empty_tree_id, BasicIndexer, ResourceIdentifier, TreeIdentifier, TreeLeafNode},
+    Provider,
+};
+use lgn_data_runtime::{new_resource_type_and_id_indexer, ResourcePathId};
 use serde::{Deserialize, Serialize};
 
 /// Description of a compiled resource.
@@ -21,7 +24,7 @@ pub struct CompiledResource {
     /// The path of derived resource.
     pub path: ResourcePathId,
     /// The checksum of the resource.
-    pub content_id: Identifier,
+    pub content_id: ResourceIdentifier,
 }
 
 impl fmt::Display for CompiledResource {
@@ -30,9 +33,11 @@ impl fmt::Display for CompiledResource {
     }
 }
 
-fn from_str_internal(s: &str) -> Result<(Identifier, ResourcePathId), Box<dyn std::error::Error>> {
+fn from_str_internal(
+    s: &str,
+) -> Result<(ResourceIdentifier, ResourcePathId), Box<dyn std::error::Error>> {
     let mut iter = s.split('^');
-    let content_id = Identifier::from_str(iter.next().unwrap())?;
+    let content_id = ResourceIdentifier::from_str(iter.next().unwrap())?;
     let path = ResourcePathId::from_str(iter.next().unwrap())?;
     Ok((content_id, path))
 }
@@ -62,8 +67,8 @@ impl CompiledResources {
         self.compiled_resources.sort_by(|a, b| a.path.cmp(&b.path));
     }
 
-    /// Creates a runtime [`lgn_data_runtime::manifest::Manifest`] from an
-    /// offline [`CompiledResources`].
+    /// Creates a runtime manifest, in the form of an identifier for an index in the
+    /// volatile content-store, from an offline [`CompiledResources`].
     ///
     /// Provided filter functor will be used to determine if a given asset
     /// should be included in the manifest.
@@ -72,22 +77,31 @@ impl CompiledResources {
     /// process. For now, we simply create a runtime manifest by filtering
     /// out non-asset resources and by identifying content by `ResourceId` -
     /// which runtime operates on.
-    pub fn into_rt_manifest(
+    pub async fn into_rt_manifest(
         self,
+        provider: &Provider,
         filter: fn(&ResourcePathId) -> bool,
-    ) -> lgn_data_runtime::manifest::Manifest {
-        let output = lgn_data_runtime::manifest::Manifest::default();
-
+    ) -> TreeIdentifier {
         let runtime_resources = self
             .compiled_resources
             .into_iter()
             .filter(|resource| filter(&resource.path))
             .collect::<Vec<_>>();
 
+        let indexer = new_resource_type_and_id_indexer();
+        let mut manifest_id = empty_tree_id(provider).await.unwrap();
         for resource in runtime_resources {
-            output.insert(resource.path.resource_id(), resource.content_id);
+            manifest_id = indexer
+                .add_leaf(
+                    provider,
+                    &manifest_id,
+                    &resource.path.resource_id().into(),
+                    TreeLeafNode::Resource(resource.content_id),
+                )
+                .await
+                .unwrap();
         }
-        output
+        manifest_id
     }
 }
 

@@ -1,25 +1,12 @@
 openapi: 3.1.0
 info:
-  title: "Session API"
-  description: "The OpenAPI specification for the Legion Labs session service."
+  title: "Workspace API"
+  description: "The OpenAPI specification for Legion Labs workspaces."
   version: 1.0.0
 paths:
-  /v1/current-user/spaces/{space-id}/sessions/:
-    parameters:
-      - $ref: "./common.yaml#/parameters/space_id"
-    get:
-      description: List all the sessions for the current user in the specified space.
-      operationId: listCurrentUserSessions
-      responses:
-        "200":
-          description: Ok.
-          content:
-            application/json:
-              schema:
-                $ref: "./common.yaml#/schemas/SessionList"
   /v1/current-user/spaces/{space-id}/workspaces/:
     parameters:
-      - $ref: "./common.yaml#/parameters/space_id"
+      - $ref: "space.yaml#/components/parameters/space_id"
     get:
       description: List all the workspaces for the current user in the specified space.
       operationId: listCurrentUserWorkspaces
@@ -29,11 +16,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/WorkspaceList"
+                $ref: "#/components/schemas/WorkspaceList"
   /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}/:
     parameters:
-      - $ref: "./common.yaml#/parameters/space_id"
-      - $ref: "./common.yaml#/parameters/workspace_id"
+      - $ref: "space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/workspace_id"
     get:
       description: Get the workspace for the current user in the specified space, with the specified workspace ID.
       operationId: getCurrentUserWorkspace
@@ -43,13 +30,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Workspace"
+                $ref: "#/components/schemas/Workspace"
         "404":
           description: The workspace was not found.
   /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}/session/:
     parameters:
-      - $ref: "./common.yaml#/parameters/space_id"
-      - $ref: "./common.yaml#/parameters/workspace_id"
+      - $ref: "space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/workspace_id"
     get:
       description: Get the session in the specified workspace for the current user.
       operationId: getCurrentUserWorkspaceSession
@@ -59,7 +46,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Session"
+                $ref: "session.yaml#/components/schemas/Session"
         "404":
           description: The session does not exist.
     put:
@@ -71,13 +58,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Session"
+                $ref: "session.yaml#/components/schemas/Session"
         "409":
           description: The session already exists.
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Session"
+                $ref: "session.yaml#/components/schemas/Session"
     delete:
       description: Delete the session in the specified workspace for the current user.
       operationId: deleteCurrentUserWorkspaceSession
@@ -87,7 +74,40 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/Session"
+                $ref: "session.yaml#/components/schemas/Session"
         "404":
           description: The session does not exist.
-components: {}
+components:
+  parameters:
+    workspace_id:
+      name: workspace-id
+      in: path
+      description: The workspace identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/WorkspaceId"
+  schemas:
+    WorkspaceId:
+      description: An identifier to a unique workspace.
+      type: string
+    Workspace:
+      description: A workspace.
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/WorkspaceId"
+        created_at:
+          type: string
+          format: date-time
+        last_updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - created_at
+        - last_updated_at
+    WorkspaceList:
+      description: A list of workspace ids.
+      type: array
+      items:
+        $ref: "#/components/schemas/Workspace"

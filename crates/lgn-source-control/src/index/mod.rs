@@ -45,15 +45,15 @@ pub struct ListLocksQuery<'q> {
 
 #[async_trait]
 pub trait RepositoryIndex: Send + Sync {
-    async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>>;
-    async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()>;
-    async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>>;
+    async fn create_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>>;
+    async fn destroy_repository(&self, repository_name: &RepositoryName) -> Result<()>;
+    async fn load_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>>;
     async fn list_repositories(&self) -> Result<Vec<RepositoryName>>;
 
-    async fn ensure_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn ensure_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         info!("Ensuring that repository `{}` exists...", repository_name);
 
-        match self.load_repository(repository_name.clone()).await {
+        match self.load_repository(repository_name).await {
             Ok(index) => {
                 info!(
                     "Repository `{}` exists already: loading it...",
@@ -115,15 +115,15 @@ pub trait Index: Send + Sync {
 
 #[async_trait]
 impl<T: RepositoryIndex + ?Sized> RepositoryIndex for Box<T> {
-    async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn create_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         self.as_ref().create_repository(repository_name).await
     }
 
-    async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
+    async fn destroy_repository(&self, repository_name: &RepositoryName) -> Result<()> {
         self.as_ref().destroy_repository(repository_name).await
     }
 
-    async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn load_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         self.as_ref().load_repository(repository_name).await
     }
 
@@ -134,15 +134,15 @@ impl<T: RepositoryIndex + ?Sized> RepositoryIndex for Box<T> {
 
 #[async_trait]
 impl<T: RepositoryIndex> RepositoryIndex for &T {
-    async fn create_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn create_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         (**self).create_repository(repository_name).await
     }
 
-    async fn destroy_repository(&self, repository_name: RepositoryName) -> Result<()> {
+    async fn destroy_repository(&self, repository_name: &RepositoryName) -> Result<()> {
         (**self).destroy_repository(repository_name).await
     }
 
-    async fn load_repository(&self, repository_name: RepositoryName) -> Result<Box<dyn Index>> {
+    async fn load_repository(&self, repository_name: &RepositoryName) -> Result<Box<dyn Index>> {
         (**self).load_repository(repository_name).await
     }
 

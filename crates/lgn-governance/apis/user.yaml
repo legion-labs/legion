@@ -14,5 +14,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "./common.yaml#/schemas/SpaceList"
-components: {}
+                $ref: "space.yaml#/components/schemas/SpaceList"
+components:
+  schemas:
+    UserId:
+      description: An identifier to an unique user.
+      type: string

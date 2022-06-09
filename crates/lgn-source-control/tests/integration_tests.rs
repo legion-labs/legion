@@ -937,7 +937,7 @@ async fn test_multiple_repositories() {
     let repository_name: RepositoryName = "second-repository".parse().unwrap();
 
     repository_index
-        .create_repository(repository_name.clone())
+        .create_repository(&repository_name)
         .await
         .unwrap();
 

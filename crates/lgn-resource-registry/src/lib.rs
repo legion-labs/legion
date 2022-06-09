@@ -9,10 +9,11 @@ use std::sync::Arc;
 
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
+use lgn_content_store::indexing::SharedTreeIdentifier;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
-use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryScheduling};
 use lgn_data_transaction::{BuildManager, SelectionManager, TransactionManager};
 use lgn_ecs::prelude::*;
 pub use settings::ResourceRegistrySettings;
@@ -51,8 +52,7 @@ impl ResourceRegistryPlugin {
 
         let async_rt = world.resource::<TokioAsyncRuntime>();
         let asset_registry = world.resource::<Arc<AssetRegistry>>();
-        let intermediate_manifest = Manifest::default();
-        let runtime_manifest = world.resource::<Manifest>();
+        let runtime_manifest_id = world.resource::<SharedTreeIdentifier>();
         let selection_manager = world.resource::<Arc<SelectionManager>>();
 
         let transaction_manager = async_rt.block_on(async move {
@@ -110,17 +110,12 @@ impl ResourceRegistryPlugin {
                 ),
                 Arc::clone(&data_content_provider),
                 compilers,
-            )
-            .manifest(intermediate_manifest.clone());
+            );
 
-            let build_manager = BuildManager::new(
-                build_options,
-                &project,
-                runtime_manifest.clone(),
-                intermediate_manifest.clone(),
-            )
-            .await
-            .expect("the editor requires valid build manager");
+            let build_manager =
+                BuildManager::new(build_options, &project, runtime_manifest_id.clone())
+                    .await
+                    .expect("the editor requires valid build manager");
 
             Arc::new(Mutex::new(TransactionManager::new(
                 Arc::new(Mutex::new(project)),

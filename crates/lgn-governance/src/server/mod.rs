@@ -1,8 +1,11 @@
 mod dal;
 mod errors;
 mod permission;
+mod role;
 mod session;
 mod space;
+mod user;
+mod workspace;
 
 use std::time::Duration;
 
