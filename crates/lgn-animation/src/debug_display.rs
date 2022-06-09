@@ -56,17 +56,6 @@ pub(crate) fn display_animation(
                     );
                 }
             }
-            // for animation in animations.iter() {
-            //     for n_bone in 0..animation.skeleton.bone_ids.len() {
-            //         builder.add_default_mesh(
-            //             &animation.skeleton.poses[animation.current_key_frame_index as usize]
-            //                 [n_bone]
-            //                 .global,
-            //             DefaultMeshType::Sphere,
-            //             debug_color,
-            //         );
-            //     }
-            // }
         });
     });
     drop(debug_display);

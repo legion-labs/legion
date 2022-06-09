@@ -18,7 +18,7 @@ pub struct AnimationClip {
     pub(crate) poses: Vec<Pose>,
 }
 
-impl AnimationClip {
+impl RuntimeAnimationClip {
     #[must_use]
     pub fn new(raw_animation_track: &AnimationTrack) -> Self {
         let mut bone_ids: Vec<Option<usize>> = Vec::new();

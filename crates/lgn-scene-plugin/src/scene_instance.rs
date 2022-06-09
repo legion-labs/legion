@@ -1,4 +1,4 @@
-use lgn_animation::components::{AnimationClip, GraphDefinition};
+use lgn_animation::components::RuntimeAnimationClip;
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, ResourceDescriptor, ResourceTypeAndId};
