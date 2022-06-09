@@ -4,7 +4,14 @@ use bit_set::BitSet;
 use lgn_transform::prelude::GlobalTransform;
 use lgn_utils::HashMap;
 
-use std::{alloc::Layout, any::TypeId, marker::PhantomData, ptr::NonNull, sync::atomic::AtomicI32};
+use std::{
+    alloc::Layout,
+    any::TypeId,
+    cell::{Cell, RefCell},
+    marker::PhantomData,
+    ptr::NonNull,
+    sync::{atomic::AtomicI32, Arc},
+};
 
 use super::RenderCommand;
 
@@ -163,38 +170,50 @@ impl RenderObjectStorage {
 }
 
 //
-// RenderObjectSetAllocator
+// RenderObjectIdPool
 //
-struct RenderObjectSetAllocator {
+
+struct RenderObjectIdPoolInner {
     render_object_key: RenderObjectKey,
-    free_slot_index: AtomicI32,      // updated during sync window
-    free_slots: Vec<RenderObjectId>, // updated during sync window
-    slots_len: usize,
+    free_slot_index: AtomicI32,
+    free_slots: RefCell<Vec<RenderObjectId>>,
+    slots_len: Cell<usize>,
 }
 
-impl RenderObjectSetAllocator {
+#[allow(unsafe_code)]
+unsafe impl Sync for RenderObjectIdPoolInner {}
+
+#[derive(Clone)]
+pub struct RenderObjectIdPool {
+    inner: Arc<RenderObjectIdPoolInner>,
+}
+
+impl RenderObjectIdPool {
     fn new(render_object_key: RenderObjectKey) -> Self {
         Self {
-            render_object_key,
-            free_slot_index: AtomicI32::new(0),
-            free_slots: Vec::new(),
-            slots_len: 0,
+            inner: Arc::new(RenderObjectIdPoolInner {
+                render_object_key,
+                free_slot_index: AtomicI32::new(0),
+                free_slots: RefCell::new(Vec::new()),
+                slots_len: Cell::new(0),
+            }),
         }
     }
 
-    fn alloc(&self) -> RenderObjectId {
+    pub fn alloc(&self) -> RenderObjectId {
         let prev_free_slot_index = self
+            .inner
             .free_slot_index
             .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         let free_slot_index = prev_free_slot_index - 1;
         if free_slot_index >= 0 {
             let free_slot_index = usize::try_from(free_slot_index).unwrap();
-            self.free_slots[free_slot_index]
+            self.inner.free_slots.borrow()[free_slot_index]
         } else {
             let over_len = usize::try_from(-free_slot_index - 1).unwrap();
-            let free_slot = self.slots_len + over_len;
+            let free_slot = self.inner.slots_len.get() + over_len;
             RenderObjectId {
-                render_object_key: self.render_object_key,
+                render_object_key: self.inner.render_object_key,
                 index: free_slot as u32,
                 generation: 0,
             }
@@ -282,24 +301,6 @@ impl RenderObjectSet {
 }
 
 //
-// RenderObjectAllocator
-//
-
-pub struct RenderObjectAllocator<'s, R> {
-    allocator: AtomicRef<'s, RenderObjectSetAllocator>,
-    phantom: PhantomData<R>,
-}
-
-impl<'s, R> RenderObjectAllocator<'s, R>
-where
-    R: RenderObject,
-{
-    pub fn alloc(&mut self) -> RenderObjectId {
-        self.allocator.alloc()
-    }
-}
-
-//
 // RenderObjectsBuilder
 //
 
@@ -330,7 +331,7 @@ impl RenderObjectsBuilder {
                     256,
                     drop_func::<P>,
                 )),
-                allocator: AtomicRefCell::new(RenderObjectSetAllocator::new(key)),
+                render_object_id_pool: RenderObjectIdPool::new(key),
             },
         );
         self
@@ -383,45 +384,45 @@ impl RenderObjectsBuilder {
 struct PrimaryTable {
     key: RenderObjectKey,
     set: AtomicRefCell<RenderObjectSet>,
-    allocator: AtomicRefCell<RenderObjectSetAllocator>,
+    render_object_id_pool: RenderObjectIdPool,
 }
 
 impl PrimaryTable {
     #[allow(unsafe_code)]
     fn sync_update(&mut self) {
-        let mut allocator = self.allocator.borrow_mut();
         let mut set = self.set.borrow_mut();
 
-        let free_slot_index = allocator
+        let free_slot_index = self
+            .render_object_id_pool
+            .inner
             .free_slot_index
             .load(std::sync::atomic::Ordering::SeqCst);
 
+        let mut free_slots = self.render_object_id_pool.inner.free_slots.borrow_mut();
         if free_slot_index < 0 {
             let additionnal_slots = usize::try_from(-free_slot_index).unwrap();
             let new_len = set.len + additionnal_slots;
             set.resize(new_len);
-            allocator.free_slots.clear();
+            free_slots.clear();
         } else {
-            allocator
-                .free_slots
-                .truncate(usize::try_from(free_slot_index).unwrap());
+            free_slots.truncate(usize::try_from(free_slot_index).unwrap());
         }
 
         set.removed.iter().for_each(|slot_index| {
             let index = u32::try_from(slot_index).unwrap();
-            allocator.free_slots.push(RenderObjectId {
+            free_slots.push(RenderObjectId {
                 render_object_key: self.key,
                 index,
                 generation: set.generations[slot_index],
             });
         });
 
-        allocator.free_slot_index.store(
-            i32::try_from(allocator.free_slots.len()).unwrap(),
+        self.render_object_id_pool.inner.free_slot_index.store(
+            i32::try_from(free_slots.len()).unwrap(),
             std::sync::atomic::Ordering::SeqCst,
         );
 
-        allocator.slots_len = set.len;
+        self.render_object_id_pool.inner.slots_len.replace(set.len);
     }
 
     fn begin_frame(&self) {
@@ -535,25 +536,6 @@ pub struct RenderObjects {
 }
 
 impl RenderObjects {
-    pub fn create_allocator<R>(&self) -> RenderObjectAllocator<'_, R>
-    where
-        R: RenderObject,
-    {
-        let render_object_key = RenderObjectKey::new::<R>();
-
-        let allocator = self
-            .primary_tables
-            .get(&render_object_key)
-            .unwrap()
-            .allocator
-            .borrow();
-
-        RenderObjectAllocator {
-            allocator,
-            phantom: PhantomData,
-        }
-    }
-
     pub fn begin_frame(&self) {
         for (_, primary_table) in self.primary_tables.iter() {
             primary_table.begin_frame();
@@ -564,6 +546,13 @@ impl RenderObjects {
         for (_, primary_table) in self.primary_tables.iter_mut() {
             primary_table.sync_update();
         }
+    }
+
+    pub fn render_object_id_pool<R>(&self) -> &RenderObjectIdPool
+    where
+        R: RenderObject,
+    {
+        &self.primary_table::<R>().render_object_id_pool
     }
 
     fn primary_table<R>(&self) -> &PrimaryTable

@@ -278,8 +278,10 @@ impl Plugin for RendererPlugin {
         //
         // RenderObjects
         //
-        app.insert_resource(EcsToRender::<LightComponent, RenderLight>::new())
-            .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+        app.insert_resource(EcsToRender::<LightComponent, RenderLight>::new(
+            render_objects.render_object_id_pool::<RenderLight>(),
+        ))
+        .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
 
         //
         // Resources
