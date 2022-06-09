@@ -114,7 +114,7 @@ where
     }
 
     /// Get the current commit.
-    pub async fn get_current_commit(&self) -> Result<Commit> {
+    async fn get_current_commit(&self) -> Result<Commit> {
         let current_branch = self.get_current_branch().await?;
 
         self.index.get_commit(current_branch.head).await
@@ -228,10 +228,8 @@ where
         }
     }
 
-    pub async fn get_resources_for_commit(
-        &self,
-        commit: &Commit,
-    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
+    pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
+        let commit = self.get_current_commit().await?;
         self.get_resources_from_main_by_id(&commit.main_index_tree_id)
             .await
     }
