@@ -1,6 +1,7 @@
+pub mod encoding;
+
 mod bytes;
 mod context;
-pub mod encoding;
 
 pub use self::bytes::Bytes;
 pub use context::Context;

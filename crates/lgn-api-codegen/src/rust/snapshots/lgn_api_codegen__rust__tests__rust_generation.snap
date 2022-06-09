@@ -258,48 +258,54 @@ pub mod cars {
     pub mod client {
 
         use super::{params, requests, responses};
-        use http::{header::CONTENT_TYPE, HeaderValue};
-        use hyper::{Body, Method, Request};
+        use http::{header::CONTENT_TYPE, HeaderValue, Request, Response};
+        use http_body::Body;
+        use hyper::service::Service;
         use lgn_online::{
             codegen::{Bytes, Context},
             server::{Error, Result},
         };
+        use lgn_tracing::debug;
 
         pub struct Client<C> {
-            inner: hyper::Client<C>,
-            base_uri: String,
+            inner: C,
+            base_uri: http::Uri,
         }
 
         impl<C> Client<C> {
-            pub fn new(inner: hyper::Client<C>, base_uri: String) -> Self {
+            pub fn new(inner: C, base_uri: http::Uri) -> Self {
                 Self { inner, base_uri }
             }
         }
 
         #[async_trait::async_trait]
-        impl<C> super::Api for Client<C>
+        impl<C, ResBody> super::Api for Client<C>
         where
-            C: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
+            C: Service<Request<hyper::Body>, Response = Response<ResBody>> + Clone + Send + Sync,
+            C::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+            C::Future: Send,
+            ResBody: http_body::Body + Send,
+            ResBody::Data: Send,
+            ResBody::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         {
             async fn test_headers(
                 &self,
                 api_codegen_context: &mut Context,
                 request: requests::TestHeadersRequest,
             ) -> Result<responses::TestHeadersResponse> {
-                let mut uri = format!("{}/test-headers", self.base_uri);
+                let mut uri = format!(
+                    "{}://{}/test-headers",
+                    self.base_uri.scheme_str().unwrap(),
+                    self.base_uri.authority().unwrap()
+                );
 
+                debug!("test_headers: {}", uri);
+
+                let body = hyper::Body::empty();
                 let mut req = Request::builder()
-                    .method(Method::GET)
+                    .method(hyper::Method::GET)
                     .uri(uri)
-                    .body(Body::empty())
-                    .unwrap();
-                if let Some(extensions) = api_codegen_context.request_extensions() {
-                    req.extensions_mut().extend(extensions);
-                }
-
-                if let Some(headers) = api_codegen_context.request_headers() {
-                    req.headers_mut().extend(headers);
-                }
+                    .body(body)?;
 
                 if let Some(x_string_header) = request.x_string_header {
                     let x_string_header =
@@ -333,11 +339,13 @@ pub mod cars {
                         })?,
                     );
                 }
-                let resp = self.inner.request(req).await?;
+                let mut client = self.inner.clone();
+                let resp = client.call(req).await.map_err(Into::into)?;
 
                 let (parts, body) = resp.into_parts();
-                let resp = responses::TestHeadersResponse::from_response(&parts, body).await;
-                api_codegen_context.set_response(parts);
+                let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
+                let resp = responses::TestHeadersResponse::from_response(&parts, bytes).await;
+
                 resp
             }
 
@@ -345,26 +353,27 @@ pub mod cars {
                 &self,
                 api_codegen_context: &mut Context,
             ) -> Result<responses::TestOneOfResponse> {
-                let mut uri = format!("{}/test-one-of", self.base_uri);
+                let mut uri = format!(
+                    "{}://{}/test-one-of",
+                    self.base_uri.scheme_str().unwrap(),
+                    self.base_uri.authority().unwrap()
+                );
 
+                debug!("test_one_of: {}", uri);
+
+                let body = hyper::Body::empty();
                 let mut req = Request::builder()
-                    .method(Method::GET)
+                    .method(hyper::Method::GET)
                     .uri(uri)
-                    .body(Body::empty())
-                    .unwrap();
-                if let Some(extensions) = api_codegen_context.request_extensions() {
-                    req.extensions_mut().extend(extensions);
-                }
+                    .body(body)?;
 
-                if let Some(headers) = api_codegen_context.request_headers() {
-                    req.headers_mut().extend(headers);
-                }
-
-                let resp = self.inner.request(req).await?;
+                let mut client = self.inner.clone();
+                let resp = client.call(req).await.map_err(Into::into)?;
 
                 let (parts, body) = resp.into_parts();
-                let resp = responses::TestOneOfResponse::from_response(&parts, body).await;
-                api_codegen_context.set_response(parts);
+                let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
+                let resp = responses::TestOneOfResponse::from_response(&parts, bytes).await;
+
                 resp
             }
 
@@ -374,8 +383,9 @@ pub mod cars {
                 request: requests::GetCarsRequest,
             ) -> Result<responses::GetCarsResponse> {
                 let mut uri = format!(
-                    "{}/v1/spaces/{}/car-service/cars",
-                    self.base_uri,
+                    "{}://{}/v1/spaces/{}/car-service/cars",
+                    self.base_uri.scheme_str().unwrap(),
+                    self.base_uri.authority().unwrap(),
                     lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
                 );
 
@@ -387,24 +397,21 @@ pub mod cars {
                 if !query_string.is_empty() {
                     uri += &format!("?{}", query_string);
                 }
+                debug!("get_cars: {}", uri);
+
+                let body = hyper::Body::empty();
                 let mut req = Request::builder()
-                    .method(Method::GET)
+                    .method(hyper::Method::GET)
                     .uri(uri)
-                    .body(Body::empty())
-                    .unwrap();
-                if let Some(extensions) = api_codegen_context.request_extensions() {
-                    req.extensions_mut().extend(extensions);
-                }
+                    .body(body)?;
 
-                if let Some(headers) = api_codegen_context.request_headers() {
-                    req.headers_mut().extend(headers);
-                }
-
-                let resp = self.inner.request(req).await?;
+                let mut client = self.inner.clone();
+                let resp = client.call(req).await.map_err(Into::into)?;
 
                 let (parts, body) = resp.into_parts();
-                let resp = responses::GetCarsResponse::from_response(&parts, body).await;
-                api_codegen_context.set_response(parts);
+                let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
+                let resp = responses::GetCarsResponse::from_response(&parts, bytes).await;
+
                 resp
             }
 
@@ -414,24 +421,20 @@ pub mod cars {
                 request: requests::CreateCarRequest,
             ) -> Result<responses::CreateCarResponse> {
                 let mut uri = format!(
-                    "{}/v1/spaces/{}/car-service/cars",
-                    self.base_uri,
+                    "{}://{}/v1/spaces/{}/car-service/cars",
+                    self.base_uri.scheme_str().unwrap(),
+                    self.base_uri.authority().unwrap(),
                     lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
                 );
 
+                debug!("create_car: {}", uri);
+
+                let body = hyper::Body::from(serde_json::to_string(&request.body)?);
+
                 let mut req = Request::builder()
-                    .method(Method::POST)
+                    .method(hyper::Method::POST)
                     .uri(uri)
-                    .body(Body::from(serde_json::to_string(&request.body)?))
-                    .map_err(|err| Error::Internal(format!("invalid body: {}", err)))?;
-
-                if let Some(extensions) = api_codegen_context.request_extensions() {
-                    req.extensions_mut().extend(extensions);
-                }
-
-                if let Some(headers) = api_codegen_context.request_headers() {
-                    req.headers_mut().extend(headers);
-                }
+                    .body(body)?;
 
                 req.headers_mut()
                     .insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
@@ -446,11 +449,13 @@ pub mod cars {
                         })?,
                     );
                 }
-                let resp = self.inner.request(req).await?;
+                let mut client = self.inner.clone();
+                let resp = client.call(req).await.map_err(Into::into)?;
 
                 let (parts, body) = resp.into_parts();
-                let resp = responses::CreateCarResponse::from_response(&parts, body).await;
-                api_codegen_context.set_response(parts);
+                let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
+                let resp = responses::CreateCarResponse::from_response(&parts, bytes).await;
+
                 resp
             }
 
@@ -460,30 +465,28 @@ pub mod cars {
                 request: requests::GetCarRequest,
             ) -> Result<responses::GetCarResponse> {
                 let mut uri = format!(
-                    "{}/v1/spaces/{}/car-service/cars/{}",
-                    self.base_uri,
+                    "{}://{}/v1/spaces/{}/car-service/cars/{}",
+                    self.base_uri.scheme_str().unwrap(),
+                    self.base_uri.authority().unwrap(),
                     lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?,
                     lgn_online::codegen::encoding::to_percent_encoded_string(&request.car_id)?
                 );
 
+                debug!("get_car: {}", uri);
+
+                let body = hyper::Body::empty();
                 let mut req = Request::builder()
-                    .method(Method::GET)
+                    .method(hyper::Method::GET)
                     .uri(uri)
-                    .body(Body::empty())
-                    .unwrap();
-                if let Some(extensions) = api_codegen_context.request_extensions() {
-                    req.extensions_mut().extend(extensions);
-                }
+                    .body(body)?;
 
-                if let Some(headers) = api_codegen_context.request_headers() {
-                    req.headers_mut().extend(headers);
-                }
-
-                let resp = self.inner.request(req).await?;
+                let mut client = self.inner.clone();
+                let resp = client.call(req).await.map_err(Into::into)?;
 
                 let (parts, body) = resp.into_parts();
-                let resp = responses::GetCarResponse::from_response(&parts, body).await;
-                api_codegen_context.set_response(parts);
+                let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
+                let resp = responses::GetCarResponse::from_response(&parts, bytes).await;
+
                 resp
             }
 
@@ -493,30 +496,28 @@ pub mod cars {
                 request: requests::DeleteCarRequest,
             ) -> Result<responses::DeleteCarResponse> {
                 let mut uri = format!(
-                    "{}/v1/spaces/{}/car-service/cars/{}",
-                    self.base_uri,
+                    "{}://{}/v1/spaces/{}/car-service/cars/{}",
+                    self.base_uri.scheme_str().unwrap(),
+                    self.base_uri.authority().unwrap(),
                     lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?,
                     lgn_online::codegen::encoding::to_percent_encoded_string(&request.car_id)?
                 );
 
+                debug!("delete_car: {}", uri);
+
+                let body = hyper::Body::empty();
                 let mut req = Request::builder()
-                    .method(Method::DELETE)
+                    .method(hyper::Method::DELETE)
                     .uri(uri)
-                    .body(Body::empty())
-                    .unwrap();
-                if let Some(extensions) = api_codegen_context.request_extensions() {
-                    req.extensions_mut().extend(extensions);
-                }
+                    .body(body)?;
 
-                if let Some(headers) = api_codegen_context.request_headers() {
-                    req.headers_mut().extend(headers);
-                }
-
-                let resp = self.inner.request(req).await?;
+                let mut client = self.inner.clone();
+                let resp = client.call(req).await.map_err(Into::into)?;
 
                 let (parts, body) = resp.into_parts();
-                let resp = responses::DeleteCarResponse::from_response(&parts, body).await;
-                api_codegen_context.set_response(parts);
+                let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
+                let resp = responses::DeleteCarResponse::from_response(&parts, bytes).await;
+
                 resp
             }
 
@@ -526,34 +527,32 @@ pub mod cars {
                 request: requests::TestBinaryRequest,
             ) -> Result<responses::TestBinaryResponse> {
                 let mut uri = format!(
-                    "{}/v1/spaces/{}/car-service/test-binary",
-                    self.base_uri,
+                    "{}://{}/v1/spaces/{}/car-service/test-binary",
+                    self.base_uri.scheme_str().unwrap(),
+                    self.base_uri.authority().unwrap(),
                     lgn_online::codegen::encoding::to_percent_encoded_string(&request.space_id)?
                 );
 
+                debug!("test_binary: {}", uri);
+
+                let body = hyper::Body::from(request.body);
+
                 let mut req = Request::builder()
-                    .method(Method::POST)
+                    .method(hyper::Method::POST)
                     .uri(uri)
-                    .body(Body::from(request.body))
-                    .map_err(|err| Error::Internal(format!("invalid body: {}", err)))?;
-
-                if let Some(extensions) = api_codegen_context.request_extensions() {
-                    req.extensions_mut().extend(extensions);
-                }
-
-                if let Some(headers) = api_codegen_context.request_headers() {
-                    req.headers_mut().extend(headers);
-                }
+                    .body(body)?;
 
                 req.headers_mut().insert(
                     CONTENT_TYPE,
                     HeaderValue::from_static("application/octet-stream"),
                 );
-                let resp = self.inner.request(req).await?;
+                let mut client = self.inner.clone();
+                let resp = client.call(req).await.map_err(Into::into)?;
 
                 let (parts, body) = resp.into_parts();
-                let resp = responses::TestBinaryResponse::from_response(&parts, body).await;
-                api_codegen_context.set_response(parts);
+                let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
+                let resp = responses::TestBinaryResponse::from_response(&parts, bytes).await;
+
                 resp
             }
         }
@@ -1096,7 +1095,7 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                body: hyper::Body,
+                bytes: bytes::Bytes,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     200 => {
@@ -1130,7 +1129,6 @@ pub mod cars {
                             .map_err(|e| {
                                 Error::Internal(format!("invalid header: x-string-header: {}", e))
                             })?;
-                        let bytes = hyper::body::to_bytes(body).await?;
                         let body = serde_json::from_slice(&bytes)?;
                         Ok(Self::Status200 {
                             x_bytes_header:
@@ -1174,11 +1172,10 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                body: hyper::Body,
+                bytes: bytes::Bytes,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     200 => {
-                        let bytes = hyper::body::to_bytes(body).await?;
                         let body = serde_json::from_slice(&bytes)?;
                         Ok(Self::Status200(body))
                     }
@@ -1208,11 +1205,10 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                body: hyper::Body,
+                bytes: bytes::Bytes,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     200 => {
-                        let bytes = hyper::body::to_bytes(body).await?;
                         let body = serde_json::from_slice(&bytes)?;
                         Ok(Self::Status200(body))
                     }
@@ -1239,7 +1235,7 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                _body: hyper::Body,
+                _bytes: bytes::Bytes,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     201 => Ok(Self::Status201),
@@ -1272,11 +1268,10 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                body: hyper::Body,
+                bytes: bytes::Bytes,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     200 => {
-                        let bytes = hyper::body::to_bytes(body).await?;
                         let body = serde_json::from_slice(&bytes)?;
                         Ok(Self::Status200(body))
                     }
@@ -1308,7 +1303,7 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                _body: hyper::Body,
+                _bytes: bytes::Bytes,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     200 => Ok(Self::Status200),
@@ -1340,11 +1335,10 @@ pub mod cars {
 
             pub(crate) async fn from_response(
                 parts: &http::response::Parts,
-                body: hyper::Body,
+                bytes: bytes::Bytes,
             ) -> Result<Self> {
                 match parts.status.as_u16() {
                     200 => {
-                        let bytes = hyper::body::to_bytes(body).await?;
                         let body = bytes.into();
                         Ok(Self::Status200(body))
                     }

@@ -6,6 +6,8 @@ use axum::{
 };
 use lgn_tracing::error;
 
+pub type StdError = Box<dyn std::error::Error + Send + Sync>;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("internal: {0}")]
@@ -37,6 +39,18 @@ impl From<serde_qs::Error> for Error {
 impl From<crate::codegen::encoding::Error> for Error {
     fn from(err: crate::codegen::encoding::Error) -> Self {
         Self::Internal(format!("encoding: {}", err))
+    }
+}
+
+impl From<StdError> for Error {
+    fn from(err: StdError) -> Self {
+        Self::Internal(format!("generic: {}", err))
+    }
+}
+
+impl From<http::Error> for Error {
+    fn from(err: http::Error) -> Self {
+        Self::Internal(format!("http: {}", err))
     }
 }
 

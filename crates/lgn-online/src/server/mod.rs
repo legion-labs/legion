@@ -1,6 +1,6 @@
 mod errors;
 
-pub use errors::{Error, ErrorExt, Result};
+pub use errors::{Error, ErrorExt, Result, StdError};
 
 use std::{sync::Arc, time::Duration};
 

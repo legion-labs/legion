@@ -14,14 +14,14 @@ use api_codegen::api::cars::{
 };
 use api_codegen::api::components::{Car, CarColor, Cars, Pet};
 use axum::Router;
-use lgn_online::codegen::Context;
+use lgn_online::{client::HyperClient, codegen::Context};
 use tokio::task::JoinHandle;
 
 #[tokio::test]
 async fn test_crud() {
-    let addr = "127.0.0.1:3000".parse().unwrap();
-    let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
+    let addr = "127.0.0.1:3001".parse().unwrap();
     let handle = start_server(addr).await;
+    let client = new_client(addr);
 
     let space_id = "ABCDEF".to_string();
     let span_id = "123456".to_string();
@@ -70,9 +70,9 @@ async fn test_crud() {
 
 #[tokio::test]
 async fn test_binary() {
-    let addr = "127.0.0.1:3001".parse().unwrap();
-    let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
+    let addr = "127.0.0.1:3002".parse().unwrap();
     let handle = start_server(addr).await;
+    let client = new_client(addr);
 
     let mut ctx = Context::default();
     let req = TestBinaryRequest {
@@ -90,9 +90,9 @@ async fn test_binary() {
 
 #[tokio::test]
 async fn test_one_of() {
-    let addr = "127.0.0.1:3002".parse().unwrap();
-    let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
+    let addr = "127.0.0.1:3003".parse().unwrap();
     let handle = start_server(addr).await;
+    let client = new_client(addr);
 
     let mut ctx = Context::default();
     let resp = client.test_one_of(&mut ctx).await.unwrap();
@@ -108,9 +108,9 @@ async fn test_one_of() {
 
 #[tokio::test]
 async fn test_headers() {
-    let addr = "127.0.0.1:3003".parse().unwrap();
-    let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
+    let addr = "127.0.0.1:3004".parse().unwrap();
     let handle = start_server(addr).await;
+    let client = new_client(addr);
 
     let mut extensions = http::Extensions::new();
     extensions.insert(5i32);
@@ -150,11 +150,17 @@ async fn test_headers() {
 }
 
 async fn start_server(addr: SocketAddr) -> JoinHandle<Result<(), hyper::Error>> {
-    let router = Router::new();
     let api = api_codegen::api_impl::ApiImpl::default();
-    let router = server::register_routes(router, api);
+    let router = server::register_routes(Router::new(), api);
     let server =
         axum::Server::bind(&addr).serve(router.into_make_service_with_connect_info::<SocketAddr>());
 
     tokio::spawn(async move { server.await })
+}
+
+fn new_client(addr: SocketAddr) -> client::Client<HyperClient> {
+    client::Client::new(
+        HyperClient::default(),
+        format!("http://{}", addr).parse().unwrap(),
+    )
 }

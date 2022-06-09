@@ -1,18 +1,19 @@
 use super::{params, responses, requests};
-use http::{header::CONTENT_TYPE, HeaderValue};
-use hyper::{Body, Method, Request};
+use http::{header::CONTENT_TYPE, HeaderValue, Request, Response};
+use hyper::service::Service;
 use lgn_online::{
     codegen::{Bytes, Context},
     server::{Error, Result},
 };
+use lgn_tracing::debug;
 
 pub struct Client<C> {
-    inner: hyper::Client<C>,
-    base_uri: String,
+    inner: C,
+    base_uri: http::Uri,
 }
 
-impl<C> Client<C> {
-    pub fn new(inner: hyper::Client<C>, base_uri: String) -> Self {
+impl<C> Client<C>{
+    pub fn new(inner: C, base_uri: http::Uri) -> Self {
         Self {
             inner,
             base_uri,
@@ -21,17 +22,24 @@ impl<C> Client<C> {
 }
 
 #[async_trait::async_trait]
-impl<C> super::Api for Client<C>
+impl<C, ResBody> super::Api for Client<C>
 where
-    C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
+    C: Service<Request<hyper::Body>, Response = Response<ResBody>> + Clone + Send + Sync,
+    C::Error: Into<lgn_online::server::StdError>,
+    C::Future: Send,
+    ResBody: hyper::body::HttpBody + Send,
+    ResBody::Data: Send,
+    ResBody::Error: Into<lgn_online::server::StdError>,
+{
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
 
         {% include "signature.rs.jinja" %}{
             let mut uri = format!(
-                "{}{{ path|fmt_rust_path }}",
-                self.base_uri
+                "{}://{}{{ path|fmt_rust_path }}",
+                self.base_uri.scheme_str().unwrap(),
+                self.base_uri.authority().unwrap()
                 {% for parameter in route.parameters.path -%}
                     , lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ parameter.name|snake_case }})?
                 {% endfor -%}
@@ -49,22 +57,23 @@ where
                 }
             {% endif -%}
 
-            let mut req = Request::builder()
-                .method(Method::{{ route.method|uppercase }})
-                .uri(uri)
+            debug!("{{ route.name|snake_case }}: {}", uri);
+
             {% if let Some(request_body) = route.request_body %}
                 {% match request_body.content.media_type %}
                     {% when MediaType::Json %}
-                        .body(Body::from(serde_json::to_string(&request.body)?))
-                            .map_err(|err| Error::Internal(format!("invalid body: {}", err)))?;
+                        let body = hyper::Body::from(serde_json::to_string(&request.body)?);
                     {% when MediaType::Bytes %}
-                        .body(Body::from(request.body)).map_err(|err| {
-                            Error::Internal(format!("invalid body: {}", err))
-                        })?;
+                        let body = hyper::Body::from(request.body);
                 {% endmatch %}
             {% else %}
-                .body(Body::empty()).unwrap();
+                let body = hyper::Body::empty();
             {% endif -%}
+
+            let mut req = Request::builder()
+                .method(hyper::Method::{{ route.method|uppercase }})
+                .uri(uri)
+                .body(body)?;
 
             if let Some(extensions) = api_codegen_context.request_extensions() {
                 req.extensions_mut().extend(extensions);
@@ -106,11 +115,14 @@ where
                 {% endfor -%}
             {% endif -%}
 
-            let resp = self.inner.request(req).await?;
+            let mut client = self.inner.clone();
+            let resp = client.call(req).await.map_err(Into::into)?;
 
             let (parts, body) = resp.into_parts();
-            let resp = responses::{{ enum_name }}::from_response(&parts, body).await;
+            let bytes = hyper::body::to_bytes(body).await.map_err(Into::into)?;
+            let resp = responses::{{ enum_name }}::from_response(&parts, bytes).await;
             api_codegen_context.set_response(parts);
+
             resp
         }
     {% endfor %}

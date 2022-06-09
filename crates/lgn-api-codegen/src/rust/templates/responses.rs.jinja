@@ -94,7 +94,7 @@ use http::HeaderValue;
                 }
             }
 
-            pub(crate) async fn from_response(parts: &http::response::Parts, {% if route.has_no_responses_content() %}_{% endif %}body: hyper::Body) -> Result<Self> {
+            pub(crate) async fn from_response(parts: &http::response::Parts, {% if route.has_no_responses_content() %}_{% endif %}bytes: bytes::Bytes) -> Result<Self> {
                 {% if route.responses.is_empty() %}
                     Err(Error::Internal(format!(
                         "unexpected status code: {}",
@@ -116,7 +116,6 @@ use http::HeaderValue;
                                         {% endfor -%}
 
                                         {% if let Some(content) = response.content -%}
-                                            let bytes = hyper::body::to_bytes(body).await?;
                                             let body = {% match content.media_type -%}
                                                             {% when MediaType::Json -%}
                                                                 serde_json::from_slice(&bytes)?;
@@ -134,7 +133,6 @@ use http::HeaderValue;
                                             {% endif -%}
                                         })
                                     {%- else if let Some(content) = response.content -%}
-                                        let bytes = hyper::body::to_bytes(body).await?;
                                         let body = {% match content.media_type -%}
                                                         {% when MediaType::Json -%}
                                                             serde_json::from_slice(&bytes)?;

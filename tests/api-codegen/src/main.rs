@@ -7,14 +7,11 @@ use std::net::SocketAddr;
 
 use api_codegen::{api::cars::server, api_impl::ApiImpl};
 use axum::Router;
-use lgn_online::server::RouterExt;
 
 #[tokio::main]
-async fn main() -> Result<(), anyhow::Error> {
+async fn main() -> anyhow::Result<()> {
     let api = ApiImpl::default();
-
-    let router = Router::new().apply_development_router_options();
-    let router = server::register_routes(router, api);
+    let router = server::register_routes(Router::new(), api);
 
     let addr = "127.0.0.1:3000".parse().unwrap();
     println!("Server listening on http://{}", addr);

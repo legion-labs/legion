@@ -26,7 +26,7 @@ where
     T: super::Api + Clone + Send + Sync + 'static,
 {
     router
-    {% for (path, routes) in api.paths %}
+    {%- for (path, routes) in api.paths -%}
         .route("{{ path|fmt_axum_path }}",
             {% for route in routes -%}
                 {% if loop.first %}routing::{% else %}.{% endif -%}
