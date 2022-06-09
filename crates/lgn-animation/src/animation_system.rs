@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::components::RuntimeAnimationClip;
 use lgn_core::Time;
 use lgn_ecs::prelude::{Query, Res};

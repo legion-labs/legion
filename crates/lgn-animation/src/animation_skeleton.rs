@@ -1,5 +1,3 @@
-use lgn_transform::{prelude::GlobalTransform, TransformBundle};
-
 #[derive(Clone)]
 pub struct Skeleton {
     pub bone_ids: Vec<i32>,
@@ -7,7 +5,6 @@ pub struct Skeleton {
 }
 
 impl Skeleton {
-    /* Bone info */
     #[inline]
     pub fn get_num_bones(&self) -> usize {
         self.bone_ids.len()
