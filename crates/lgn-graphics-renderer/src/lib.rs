@@ -13,8 +13,12 @@ mod cgen {
 }
 
 use crate::components::{tmp_debug_display_lights, EcsToRender};
-use crate::core::{DebugStuff, RenderGraphPersistentState, RenderObjects};
-use crate::features::{ModelFeature, RenderFeaturesBuilder};
+use crate::core::{
+    DebugStuff, PrepareRenderContext, RenderFeatures, RenderFeaturesBuilder,
+    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, VisibilityContext,
+    RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
+};
+use crate::features::ModelFeature;
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::script::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
@@ -24,6 +28,7 @@ use crate::script::{Config, RenderScript, RenderView};
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
+
 use bumpalo_herd::Herd;
 #[allow(unused_imports, clippy::wildcard_imports)]
 use cgen::*;
@@ -207,7 +212,27 @@ impl Plugin for RendererPlugin {
             &mut persistent_descriptor_set_manager,
         );
 
-        let mesh_renderer = MeshRenderer::new(device_context, static_buffer.allocator());
+        let render_layers_builder = RenderLayerBuilder::default();
+        let render_layers = render_layers_builder
+            .add_render_layer("DEPTH")
+            .add_render_layer("OPAQUE")
+            .add_render_layer("PICKING")
+            .finalize();
+        assert_eq!(
+            render_layers.get_from_name("DEPTH").id(),
+            RENDER_LAYER_DEPTH
+        );
+        assert_eq!(
+            render_layers.get_from_name("OPAQUE").id(),
+            RENDER_LAYER_OPAQUE
+        );
+        assert_eq!(
+            render_layers.get_from_name("PICKING").id(),
+            RENDER_LAYER_PICKING
+        );
+
+        let mesh_renderer =
+            MeshRenderer::new(device_context, static_buffer.allocator(), &render_layers);
         let instance_manager = GpuInstanceManager::new(static_buffer.allocator());
         let manipulation_manager = ManipulatorManager::new();
         let picking_manager = PickingManager::new(4096);
@@ -367,6 +392,7 @@ impl Plugin for RendererPlugin {
             .insert(material_manager)
             .insert(sampler_manager)
             .insert(missing_visuals_tracker)
+            .insert(render_layers)
             .insert(render_features)
             .insert(render_graph_persistent_state)
             .insert(Herd::new())
@@ -595,17 +621,45 @@ fn render_update(
                 &graphics_queue,
             );
 
+            let herd_member = herd.get();
+            let bump = herd_member.as_bump();
+
+            // TODO: #1997 From this point, we should be per RenderViewport, each viewport owning its own top level camera and properties (grid, gizmos etc...).
+
             //
             // Visibility
             //
 
-            //WIP let bump = herd.get();
+            let render_layers = render_resources.get::<RenderLayers>();
+            let visibility_context = VisibilityContext {
+                herd: &herd,
+                bump,
+                camera: camera_component,
+                render_layers: &render_layers,
+            };
+
+            let visibility_set = visibility_context.execute();
 
             //
             // Update
             //
 
-            //WIP let render_features = render_resources.get::<RenderFeatures>();
+            // ==== TODO ====
+
+            //
+            // PrepareRender
+            //
+
+            let features = render_resources.get::<RenderFeatures>();
+
+            let prepare_render_context = PrepareRenderContext {
+                herd: &herd,
+                bump,
+                visibility_set,
+                features: &features,
+            };
+
+            let render_list_set = prepare_render_context.execute();
 
             //
             // Egui (not thread safe as is)
@@ -791,6 +845,7 @@ fn render_update(
 
                             render_graph.execute(
                                 &mut render_graph_context,
+                                render_list_set,
                                 &render_resources,
                                 &mut render_context,
                                 &debug_stuff,
@@ -821,6 +876,8 @@ fn render_update(
                         .transient_commandbuffer_allocator
                         .release(cmd_buffer_handle);
                 }
+
+                render_list_set.consume();
 
                 descriptor_heap_manager.release_descriptor_pool(descriptor_pool);
                 drop(transient_buffer_allocator);

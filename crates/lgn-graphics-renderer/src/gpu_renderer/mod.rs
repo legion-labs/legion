@@ -10,5 +10,5 @@ pub(crate) use render_element::*;
 mod mesh_renderer;
 pub(crate) use mesh_renderer::*;
 
-mod render_layer;
-pub(crate) use render_layer::*;
+mod render_layer_batches;
+pub(crate) use render_layer_batches::*;

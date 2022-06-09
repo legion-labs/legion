@@ -1,1 +1,1 @@
-This folder contains all the renderers.
+This folder contains all the core features.

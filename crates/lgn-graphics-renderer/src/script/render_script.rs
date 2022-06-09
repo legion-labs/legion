@@ -1,12 +1,12 @@
 use crate::{
     cgen,
-    core::render_graph::RenderGraphBuilder,
-    core::RenderGraphLoadState,
+    core::RenderGraphBuilder,
     core::{
-        render_graph::{RenderGraph, RenderGraphResourceId, RenderGraphViewId},
-        BinaryWriter, GpuUploadManager, RenderResources, UploadGPUBuffer, UploadGPUResource,
+        BinaryWriter, GpuUploadManager, RenderGraph, RenderGraphResourceId, RenderGraphViewId,
+        RenderResources, UploadGPUBuffer, UploadGPUResource,
     },
-    gpu_renderer::{DefaultLayers, MeshRenderer},
+    core::{RenderGraphLoadState, RENDER_LAYER_DEPTH},
+    gpu_renderer::MeshRenderer,
     resources::{PipelineDef, PipelineHandle, PipelineManager, UnifiedStaticBuffer},
     RenderContext,
 };
@@ -226,10 +226,10 @@ impl RenderScript<'_> {
         {
             let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
 
-            for (index, layer) in mesh_renderer.default_layers.iter_mut().enumerate() {
+            for (index, layer) in mesh_renderer.render_layer_batches.iter_mut().enumerate() {
                 let per_state_offsets =
                     layer.aggregate_offsets(&mut count_buffer_size, &mut indirect_arg_buffer_size);
-                if index == DefaultLayers::Depth as usize {
+                if index == RENDER_LAYER_DEPTH.index() {
                     depth_count_buffer_size = count_buffer_size;
                 }
 

@@ -10,9 +10,9 @@ use crate::{
     components::RenderSurfaceExtents,
     core::{
         RenderGraphBuilder, RenderGraphLoadState, RenderGraphResourceId, RenderGraphViewId,
-        RenderObjectQuery, RenderObjects,
+        RenderObjectQuery, RenderObjects, RENDER_LAYER_PICKING,
     },
-    gpu_renderer::{DefaultLayers, GpuInstanceManager, MeshRenderer},
+    gpu_renderer::{GpuInstanceManager, MeshRenderer},
     lighting::RenderLight,
     picking::{ManipulatorManager, PickingState},
     resources::{DefaultMeshType, MeshManager, MeshMetaData},
@@ -107,7 +107,7 @@ impl PickingPass {
                                     .pipeline_manager
                                     .get_pipeline(
                                         mesh_renderer
-                                            .get_tmp_pso_handle(DefaultLayers::Picking as usize),
+                                            .get_tmp_pso_handle(RENDER_LAYER_PICKING.index()),
                                     )
                                     .unwrap();
 
@@ -150,8 +150,7 @@ impl PickingPass {
                                 let mesh_renderer =
                                     execute_context.render_resources.get::<MeshRenderer>();
 
-                                let layer_id_index = DefaultLayers::Picking as usize;
-                                mesh_renderer.default_layers[layer_id_index].draw(
+                                mesh_renderer.render_layer_batches[RENDER_LAYER_PICKING.index()].draw(
                                     render_context,
                                     cmd_buffer,
                                     Some(context.get_buffer(draw_args_buffer_id)),
