@@ -445,8 +445,8 @@ impl Project {
     /// Returns the name of the resource from its `.meta` file.
     pub async fn deleted_resource_info(
         &mut self,
-        _id: ResourceId,
-    ) -> Result<(ResourcePathName, ResourceType), Error> {
+        _type_id: ResourceTypeAndId,
+    ) -> Result<ResourcePathName, Error> {
         // let metadata_path = self.metadata_path(id);
 
         // match self.deleted_pending.entry(id) {

@@ -3,14 +3,15 @@
 use std::sync::Arc;
 
 use generic_data::offline::TestEntity;
-use lgn_content_store::{ContentProvider, MemoryContentProvider};
+use lgn_content_store::{
+    indexing::{empty_tree_id, SharedTreeIdentifier},
+    Provider,
+};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::ResourcePathId;
-use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourceTypeAndId,
-};
+use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourceTypeAndId};
 use tokio::sync::Mutex;
 
 use crate::SelectionManager;
@@ -140,19 +141,21 @@ async fn test_transaction_system() -> Result<(), Error> {
     let build_dir = project_dir.path().join("temp");
     std::fs::create_dir_all(&build_dir).unwrap();
 
-    let source_control_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryContentProvider::new()));
-    let data_content_provider: Arc<Box<dyn ContentProvider + Send + Sync>> =
-        Arc::new(Box::new(MemoryContentProvider::new()));
+    let source_control_content_provider = Arc::new(Provider::new_in_memory());
+    let data_content_provider = Arc::new(Provider::new_in_memory());
 
-    let project = Project::new_with_remote_mock(&project_dir, source_control_content_provider)
-        .await
-        .unwrap();
-    let resource_dir = project.resource_dir();
+    let project =
+        Project::new_with_remote_mock(&project_dir, Arc::clone(&source_control_content_provider))
+            .await
+            .unwrap();
 
+    let runtime_manifest_id =
+        SharedTreeIdentifier::new(empty_tree_id(&data_content_provider).await.unwrap());
     let mut asset_registry = AssetRegistryOptions::new()
-        .add_device_cas_with_empty_manifest(Arc::clone(&data_content_provider))
-        .await
+        .add_device_cas(
+            Arc::clone(&data_content_provider),
+            runtime_manifest_id.clone(),
+        )
         .add_loader::<TestEntity>();
     generic_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
@@ -163,14 +166,14 @@ async fn test_transaction_system() -> Result<(), Error> {
     let options = DataBuildOptions::new_with_sqlite_output(
         &build_dir,
         compilers,
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .asset_registry(asset_registry.clone());
 
-    let build_manager =
-        BuildManager::new(options, &project, Manifest::default(), Manifest::default())
-            .await
-            .unwrap();
+    let build_manager = BuildManager::new(options, &project, runtime_manifest_id.clone())
+        .await
+        .unwrap();
 
     let project = Arc::new(Mutex::new(project));
 
@@ -269,7 +272,7 @@ async fn test_transaction_system() -> Result<(), Error> {
         transaction_manager.commit_transaction(transaction).await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&clone_name).await);
-        assert!(project.lock().await.exists(clone_id.id).await);
+        assert!(project.lock().await.exists(clone_id).await);
 
         // Rename the clone
         let rename_new_name: ResourcePathName = "/entity/test_clone_rename".into();
@@ -292,38 +295,38 @@ async fn test_transaction_system() -> Result<(), Error> {
         transaction_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&clone_name).await);
-        assert!(!project.lock().await.exists(clone_id.id).await);
+        assert!(!project.lock().await.exists(clone_id).await);
 
         // Delete the created Resource
         let transaction = Transaction::new().add_operation(DeleteResourceOperation::new(new_id));
         transaction_manager.commit_transaction(transaction).await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path).await);
-        assert!(!project.lock().await.exists(new_id.id).await);
+        assert!(!project.lock().await.exists(new_id).await);
 
         // Undo delete
         transaction_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&resource_path).await);
-        assert!(project.lock().await.exists(new_id.id).await);
+        assert!(project.lock().await.exists(new_id).await);
 
         // Undo Create
         transaction_manager.undo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path).await);
-        assert!(!project.lock().await.exists(new_id.id).await);
+        assert!(!project.lock().await.exists(new_id).await);
 
         // Redo Create
         transaction_manager.redo_transaction().await?;
         asset_registry.update();
         assert!(project.lock().await.exists_named(&resource_path).await);
-        assert!(project.lock().await.exists(new_id.id).await);
+        assert!(project.lock().await.exists(new_id).await);
 
         // Redo Delete
         transaction_manager.redo_transaction().await?;
         asset_registry.update();
         assert!(!project.lock().await.exists_named(&resource_path).await);
-        assert!(!project.lock().await.exists(new_id.id).await);
+        assert!(!project.lock().await.exists(new_id).await);
 
         // Create Transaction with invalid edit
         let invalid_resource: ResourcePathName = "/entity/create_invalid.dc".into();

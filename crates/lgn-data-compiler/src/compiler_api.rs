@@ -592,7 +592,7 @@ enum Commands {
         /// Derived dependencies.
         #[clap(long = COMMAND_ARG_DER_DEPS, multiple_values=true)]
         der_deps: Vec<String>,
-        /// Offline manifest id
+        /// Source manifest id
         #[clap(long = COMMAND_ARG_SOURCE_MANIFEST_ID)]
         source_manifest_id: TreeIdentifier,
         /// Build target (Game, Server, etc).

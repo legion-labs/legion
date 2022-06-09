@@ -71,13 +71,12 @@ impl FromStr for Transform {
 /// use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
 /// use lgn_data_runtime::ResourceType;
 /// use lgn_data_runtime::ResourcePathId;
-/// use lgn_content_store::{ContentProvider, MemoryProvider};
+/// use lgn_content_store::Provider;
 /// use std::path::PathBuf;
 /// # tokio_test::block_on(async {
 /// let resources = ResourceRegistryOptions::new().create_registry();
 /// let mut resources = resources.lock().unwrap();
-/// let content_provider: Arc<Box<dyn ContentProvider + Send +
-///  Sync>> = Arc::new(Box::new(MemoryProvider::new()));
+/// let content_provider = Arc::new(Provider::new_in_memory());
 /// let mut project = Project::new_with_remote_mock(&PathBuf::new(), content_provider).await.unwrap();
 /// pub const SOURCE_GEOMETRY: &'static str = "src_geom";
 /// pub const LOD_GEOMETRY: ResourceType = ResourceType::new(b"lod_geom");
@@ -88,7 +87,6 @@ impl FromStr for Transform {
 /// let resource_id = project
 ///     .add_resource(
 ///         ResourcePathName::new("new resource"),
-///         SOURCE_GEOMETRY,
 ///         source_geometry_type,
 ///         &resource_handle,
 ///         &mut resources,
