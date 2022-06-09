@@ -18,7 +18,7 @@ pub struct AnimationTransformBundleVec {
 #[component]
 struct AnimationTrack {
     key_frames: Vec<AnimationTransformBundleVec>,
-    current_key_frame_index: i32,
+    current_key_frame_index: u32,
     duration_key_frames: Vec<f32>,
     time_since_last_tick: f32,
     looping: bool,

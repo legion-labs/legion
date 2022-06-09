@@ -1,3 +1,7 @@
+// crate-specific lint exceptions:
+#![allow(dead_code)]
+#![allow(clippy::cast_possible_wrap)]
+
 // generated from def\animation.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 

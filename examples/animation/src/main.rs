@@ -5,6 +5,7 @@
 //#![allow()]
 
 use clap::{ArgEnum, Parser};
+use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_source_control::RepositoryName;
 use std::{
     env,
@@ -21,8 +22,8 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{
-    manifest::Manifest, AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor,
-    ResourceId, ResourcePathId, ResourceTypeAndId,
+    AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
+    ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
@@ -72,9 +73,7 @@ async fn main() -> anyhow::Result<()> {
     let repository_name: RepositoryName = "examples-animation".parse().unwrap();
 
     // Ensure the repository exists.
-    let _index = repository_index
-        .ensure_repository(repository_name.clone())
-        .await;
+    let _index = repository_index.ensure_repository(&repository_name).await;
 
     let source_control_content_provider = Arc::new(
         lgn_content_store::Config::load_and_instantiate_persistent_provider()
@@ -103,9 +102,7 @@ async fn main() -> anyhow::Result<()> {
     .await
     .expect("failed to create a project");
 
-    let mut asset_registry = AssetRegistryOptions::new()
-        .add_device_dir(project.resource_dir())
-        .add_device_cas(Arc::clone(&data_content_provider), Manifest::default());
+    let mut asset_registry = AssetRegistryOptions::new().add_device_dir(project.resource_dir());
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
@@ -145,14 +142,11 @@ async fn main() -> anyhow::Result<()> {
     )
     .asset_registry(asset_registry.clone());
 
-    let mut build_manager = BuildManager::new(
-        data_build,
-        &project,
-        Manifest::default(),
-        Manifest::default(),
-    )
-    .await
-    .unwrap();
+    let runtime_manifest_id =
+        SharedTreeIdentifier::new(empty_tree_id(&data_content_provider).await.unwrap());
+    let mut build_manager = BuildManager::new(data_build, &project, runtime_manifest_id.clone())
+        .await
+        .unwrap();
 
     for id in resource_ids {
         let derived = build_manager.build_all_derived(id, &project).await.unwrap();
@@ -169,8 +163,7 @@ async fn main() -> anyhow::Result<()> {
         .truncate(true)
         .open(runtime_manifest_path)
         .expect("open file");
-    write!(file, "{}", build_manager.get_manifest_id())
-        .expect("failed to write manifest id to file");
+    write!(file, "{}", runtime_manifest_id.read()).expect("failed to write manifest id to file");
     Ok(())
 }
 

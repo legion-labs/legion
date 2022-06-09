@@ -19,7 +19,7 @@ pub(crate) fn update(
         ) {
             animation.time_since_last_tick = 0.0;
 
-            if animation.looping && current_key_frame_idx == (animation.poses.len() - 1) as i32 {
+            if animation.looping && current_key_frame_idx == animation.poses.len() as u32 - 1 {
                 animation.current_key_frame_index = 0;
             } else {
                 animation.current_key_frame_index += 1;
@@ -27,6 +27,7 @@ pub(crate) fn update(
         }
     }
     drop(animations);
+    drop(time);
 }
 
 fn is_exact_key_frame(time_since_last_tick: f32, duration_current_key_frame: f32) -> bool {
