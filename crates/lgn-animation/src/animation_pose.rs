@@ -1,64 +1,62 @@
-#![allow(dead_code)]
-
-use lgn_transform::components::Transform;
+use lgn_math::{Quat, Vec3};
+use lgn_transform::{
+    prelude::{GlobalTransform, Transform},
+    TransformBundle,
+};
 
 use crate::animation_skeleton::Skeleton;
 
-pub enum InitialState {
-    None,
-    ReferencePose,
-    ZeroPose,
-}
-
-pub enum State {
-    Unset,
-    Pose,
-    ReferencePose,
-    ZeroPose,
-    AdditivePose,
-}
-
+#[derive(Clone)]
 pub struct Pose {
-    skeleton: Skeleton,
-    local_transforms: Vec<Transform>,
-    global_transforms: Vec<Transform>,
-    state: State,
+    pub(crate) skeleton: Skeleton,
+    pub(crate) transforms: Vec<TransformBundle>,
 }
 
 impl Pose {
     #[inline]
-    fn get_num_bones() {}
-
-    fn reset() {}
-
-    #[inline]
-    fn is_pose_set() {}
+    pub(crate) fn get_num_bones(&self) -> usize {
+        self.skeleton.bone_ids.len()
+    }
 
     #[inline]
-    fn is_reference_pose() {}
+    pub(crate) fn get_bone_transform(&self, bone_idx: usize) -> GlobalTransform {
+        self.transforms[bone_idx].global
+    }
 
     #[inline]
-    fn is_zero_pose() {}
+    pub(crate) fn set_local_transform(&mut self, bone_idx: usize, bone_transform: Transform) {
+        self.transforms[bone_idx].local = bone_transform;
+    }
 
     #[inline]
-    fn is_additive_pose() {}
+    fn set_rotation(&mut self, bone_idx: usize, rotation: Quat) {
+        self.transforms[bone_idx].local.rotation = rotation;
+    }
 
     #[inline]
-    fn get_transform() {}
+    fn set_translation(&mut self, bone_idx: usize, translation: Vec3) {
+        self.transforms[bone_idx].local.translation = translation;
+    }
 
     #[inline]
-    pub(crate) fn set_transform(&self, bone_idx: usize, bone_transform: Transform) {}
+    fn set_scale(&mut self, bone_idx: usize, scale: Vec3) {
+        self.transforms[bone_idx].local.scale = scale;
+    }
 
-    #[inline]
-    fn set_rotation() {}
+    pub(crate) fn calculate_global_transforms(&mut self) {
+        for n_bone in 0..self.skeleton.bone_ids.len() {
+            if !self.is_root_bone(n_bone) {
+                self.transforms[n_bone].global = self.transforms
+                    [self.skeleton.parent_indices[n_bone] as usize]
+                    .global
+                    .mul_transform(self.transforms[n_bone].local);
+            } else {
+                self.transforms[n_bone].global = self.transforms[n_bone].local.into();
+            }
+        }
+    }
 
-    #[inline]
-    fn set_translation() {}
-
-    #[inline]
-    fn set_scale() {}
-
-    fn calculate_global_transforms() {}
-
-    fn get_global_transform() {}
+    fn is_root_bone(&self, bone_index: usize) -> bool {
+        self.skeleton.parent_indices[bone_index] == -1
+    }
 }

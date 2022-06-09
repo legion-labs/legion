@@ -4,7 +4,7 @@ use lgn_graphics_renderer::egui::Egui;
 
 #[derive(Default)]
 pub(crate) struct AnimationOptions {
-    pub(crate) show_collision_geometry: bool,
+    pub(crate) show_animation_skeleton_bones: bool,
 }
 
 pub(crate) fn ui_animation_options(
@@ -13,8 +13,8 @@ pub(crate) fn ui_animation_options(
 ) {
     egui.window("Animation options", |ui| {
         ui.checkbox(
-            &mut animation_options.show_collision_geometry,
-            "Show animation bones",
+            &mut animation_options.show_animation_skeleton_bones,
+            "Show animation skeleton bones",
         );
     });
 

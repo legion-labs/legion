@@ -3,25 +3,21 @@ use lgn_math::{Quat, Vec3};
 use lgn_transform::components::Transform;
 
 #[component]
-pub struct AnimationTransform {
-    translation: Vec3,
-    rotation: Quat,
-    scale: Vec3,
-}
-
-#[component]
 pub struct AnimationTransformBundle {
-    pub local: AnimationTransform,
+    pub translation: Vec3,
+    pub rotation: Quat,
+    pub scale: Vec3,
 }
 
+/* Necessary intermediate component because a Vec<Vec<>> is not serializable */
 #[component]
-pub struct VecAnimationTransform {
+pub struct AnimationTransformBundleVec {
     pub anim_transform_vec: Vec<AnimationTransformBundle>,
 }
 
 #[component]
 struct AnimationTrack {
-    key_frames: Vec<VecAnimationTransform>,
+    key_frames: Vec<AnimationTransformBundleVec>,
     current_key_frame_index: i32,
     duration_key_frames: Vec<f32>,
     time_since_last_tick: f32,
@@ -30,22 +26,4 @@ struct AnimationTrack {
     /* Skeleton */
     bone_ids: Vec<i32>,
     parent_indices: Vec<i32>,
-}
-
-#[component]
-pub struct EditorGraphDefinition {
-    nodes: Vec<AnimationClipNode>,
-    connections: Vec<Connection>,
-}
-
-#[component]
-pub struct Connection {
-    parent_node_id: i32,
-    child_node_id: i32,
-}
-
-#[component]
-pub struct AnimationClipNode {
-    id: i32,
-    track: AnimationTrack,
 }

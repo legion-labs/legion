@@ -1,28 +1,12 @@
 // generated from def\animation.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
-mod animation_bone_mask;
-mod animation_clip;
-mod animation_editor_flow_graph;
-mod animation_editor_graph_definition;
-mod animation_event;
-mod animation_frame_time;
-mod animation_graph_component;
-mod animation_graph_context;
-mod animation_graph_events;
-mod animation_graph_resources;
 mod animation_options;
 mod animation_pose;
 mod animation_skeleton;
-mod animation_sync_track;
 mod animation_system;
-mod animation_task;
-mod animation_task_pose_pool;
-mod animation_task_system;
 pub mod components;
 mod debug_display;
-mod graph_instance;
-mod graph_nodes;
 mod labels;
 
 use crate::{animation_system::update, labels::AnimationStage};
@@ -43,9 +27,10 @@ impl Plugin for AnimationPlugin {
             SystemStage::parallel(),
         );
 
+        // Run animation clip
         app.add_system_to_stage(AnimationStage::Update, update);
 
-        // debug display
+        // Debug display
         app.init_resource::<AnimationOptions>()
             .add_system_to_stage(
                 RenderStage::Prepare,
