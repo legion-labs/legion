@@ -9,7 +9,7 @@ pub struct AnimationTransformBundle {
     pub scale: Vec3,
 }
 
-// Necessary intermediate component because a Vec<Vec<>> is supported by the data code-generation
+// Necessary intermediate component because a Vec<Vec<>> is not supported by the data code-generation
 #[component]
 pub struct AnimationTransformBundleVec {
     pub anim_transform_vec: Vec<AnimationTransformBundle>,
