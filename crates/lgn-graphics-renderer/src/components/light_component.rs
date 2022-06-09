@@ -11,7 +11,7 @@ use lgn_utils::HashMap;
 use crate::{
     core::{
         AsSpatialRenderObject, InsertRenderObjectCommand, RemoveRenderObjectCommand, RenderObject,
-        RenderObjectAllocator, RenderObjectId, UpdateRenderObjectCommand,
+        RenderObjectId, RenderObjectIdPool, UpdateRenderObjectCommand,
     },
     debug_display::DebugDisplay,
     lighting::RenderLight,
@@ -74,6 +74,7 @@ struct LightDynamicData {
 
 pub(crate) struct EcsToRender<C, R> {
     map: HashMap<Entity, LightDynamicData>,
+    render_object_id_pool: RenderObjectIdPool,
     phantom: PhantomData<C>,
     phantom2: PhantomData<R>,
 }
@@ -82,12 +83,17 @@ impl<C, R> EcsToRender<C, R>
 where
     R: RenderObject,
 {
-    pub fn new() -> Self {
+    pub fn new(render_object_id_pool: &RenderObjectIdPool) -> Self {
         Self {
             map: HashMap::new(),
+            render_object_id_pool: render_object_id_pool.clone(),
             phantom: PhantomData,
             phantom2: PhantomData,
         }
+    }
+
+    pub fn alloc(&self) -> RenderObjectId {
+        self.render_object_id_pool.alloc()
     }
 }
 
@@ -114,62 +120,60 @@ pub(crate) fn reflect_light_components(
         }
     }
 
-    renderer.allocate_render_object(|allocator: &mut RenderObjectAllocator<'_, RenderLight>| {
-        for (e, transform, mut light) in q_changes.iter_mut() {
-            if let Some(render_object_id) = light.render_object_id {
-                // Update picking_id in hash map.
+    for (e, transform, mut light) in q_changes.iter_mut() {
+        if let Some(render_object_id) = light.render_object_id {
+            // Update picking_id in hash map.
+            ecs_to_render.map.insert(
+                e,
+                LightDynamicData {
+                    render_object_id,
+                    picking_id: light.picking_id,
+                },
+            );
+
+            render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
+                render_object_id,
+                data: light.as_spatial_render_object(*transform),
+            });
+        } else {
+            let is_already_inserted = ecs_to_render.map.contains_key(&e);
+            let light_dynamic_data = if is_already_inserted {
+                // This happens when the manipulator is released. The component gets recreated but we do not
+                // go into the removals code above for some reason. So we need to handle it ourselves.
+                ecs_to_render.map.get(&e).unwrap()
+            } else {
+                let render_object_id = ecs_to_render.alloc();
+
                 ecs_to_render.map.insert(
                     e,
                     LightDynamicData {
                         render_object_id,
-                        picking_id: light.picking_id,
+                        picking_id: 0,
                     },
                 );
+
+                ecs_to_render.map.get(&e).unwrap()
+            };
+
+            let render_object_id = light_dynamic_data.render_object_id;
+            light.render_object_id = Some(render_object_id);
+
+            if is_already_inserted {
+                // Component was recreated; assign the old picking_id back to it.
+                light.picking_id = light_dynamic_data.picking_id;
 
                 render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                     render_object_id,
                     data: light.as_spatial_render_object(*transform),
                 });
             } else {
-                let is_already_inserted = ecs_to_render.map.contains_key(&e);
-                let light_dynamic_data = if is_already_inserted {
-                    // This happens when the manipulator is released. The component gets recreated but we do not
-                    // go into the removals code above for some reason. So we need to handle it ourselves.
-                    ecs_to_render.map.get(&e).unwrap()
-                } else {
-                    let render_object_id = allocator.alloc();
-
-                    ecs_to_render.map.insert(
-                        e,
-                        LightDynamicData {
-                            render_object_id,
-                            picking_id: 0,
-                        },
-                    );
-
-                    ecs_to_render.map.get(&e).unwrap()
-                };
-
-                let render_object_id = light_dynamic_data.render_object_id;
-                light.render_object_id = Some(render_object_id);
-
-                if is_already_inserted {
-                    // Component was recreated; assign the old picking_id back to it.
-                    light.picking_id = light_dynamic_data.picking_id;
-
-                    render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
-                        render_object_id,
-                        data: light.as_spatial_render_object(*transform),
-                    });
-                } else {
-                    render_commands.push(InsertRenderObjectCommand::<RenderLight> {
-                        render_object_id,
-                        data: light.as_spatial_render_object(*transform),
-                    });
-                }
-            };
-        }
-    });
+                render_commands.push(InsertRenderObjectCommand::<RenderLight> {
+                    render_object_id,
+                    data: light.as_spatial_render_object(*transform),
+                });
+            }
+        };
+    }
 }
 
 #[allow(clippy::needless_pass_by_value)]
