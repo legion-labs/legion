@@ -28,14 +28,15 @@ impl RenameResourceOperation {
 #[async_trait]
 impl TransactionOperation for RenameResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        if !ctx.project.exists(self.resource_id.id).await {
+        if !ctx.project.exists(self.resource_id).await {
             return Err(Error::InvalidResource(self.resource_id));
         }
 
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
         let mut raw_name = ctx
             .project
-            .raw_resource_name(self.resource_id.id)
+            .raw_resource_name(self.resource_id)
+            .await
             .map_err(|err| Error::Project(self.resource_id, err))?;
         raw_name.replace_parent_info(None, Some(self.new_path.clone()));
 

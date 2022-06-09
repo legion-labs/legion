@@ -13,7 +13,6 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{ResourceDescriptor, ResourcePathId};
-use lgn_source_control::RepositoryIndex;
 use lgn_tracing::info;
 use sample_data::offline as offline_data;
 use sample_data::runtime as runtime_data;
@@ -41,9 +40,9 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
 }
 
 pub async fn build(
+    project: &Project,
     root_folder: impl AsRef<Path>,
     resource_name: &ResourcePathName,
-    repository_index: impl RepositoryIndex,
     source_control_content_provider: Arc<Provider>,
     data_content_provider: Arc<Provider>,
 ) {
@@ -59,24 +58,17 @@ pub async fn build(
     let mut exe_path = env::current_exe().expect("cannot access current_exe");
     exe_path.pop();
 
-    let project = Project::open(
-        root_folder,
-        repository_index,
-        Arc::clone(&source_control_content_provider),
-    )
-    .await
-    .unwrap();
-
     let mut build = DataBuildOptions::new_with_sqlite_output(
         build_index_dir,
         CompilerRegistryOptions::local_compilers(exe_path),
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
-    .open_or_create(&project)
+    .open_or_create(project)
     .await
     .expect("new build index");
 
-    build.source_pull(&project).await.expect("successful pull");
+    build.source_pull(project).await.expect("successful pull");
 
     let runtime_dir = root_folder.join("runtime");
     if !runtime_dir.exists() {
@@ -89,7 +81,8 @@ pub async fn build(
     if let Ok(resource_id) = project.find_resource(resource_name).await {
         let asset_path = find_derived_path(&ResourcePathId::from(resource_id));
         let source_name = project
-            .resource_name(asset_path.source_resource().id)
+            .resource_name(asset_path.source_resource())
+            .await
             .ok()
             .unwrap();
 

@@ -8,7 +8,8 @@ mod project;
 
 pub use self::project::*;
 
-mod metadata;
+pub(crate) mod metadata;
+pub use metadata::{deserialize_and_skip_metadata, serialize_metadata};
 
 mod path_name;
 pub use self::path_name::*;

@@ -45,6 +45,22 @@ impl ResourceExists for Provider {
     }
 }
 
+#[async_trait]
+pub trait ReferencedResources {
+    async fn referenced_resources(&self) -> Vec<ResourceIdentifier>;
+}
+
+#[async_trait]
+impl ReferencedResources for Provider {
+    async fn referenced_resources(&self) -> Vec<ResourceIdentifier> {
+        self.referenced()
+            .await
+            .into_iter()
+            .map(ResourceIdentifier)
+            .collect()
+    }
+}
+
 /// A trait for resources that can be indexed.
 pub trait IndexableResource {}
 

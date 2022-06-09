@@ -66,6 +66,9 @@ struct Args {
     /// The name of the repository to load.
     #[clap(long, default_value = "sample-data")]
     repository_name: RepositoryName,
+    /// The name of the source control branch to load within the repository.
+    #[clap(long, default_value = "main")]
+    branch_name: String,
     /// Path to default scene (root asset) to load
     #[clap(long)]
     scene: Option<String>,
@@ -193,6 +196,7 @@ fn main() {
     });
 
     let repository_name = args.repository_name;
+    let branch_name = args.branch_name;
 
     info!("Repository name: {}", repository_name);
 
@@ -276,6 +280,7 @@ fn main() {
             project_root,
             source_control_repository_index,
             repository_name,
+            branch_name,
             build_output_database_address,
             compilation_mode,
         ))

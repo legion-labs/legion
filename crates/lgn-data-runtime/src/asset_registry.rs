@@ -133,20 +133,6 @@ impl AssetRegistryOptions {
         self
     }
 
-    /// Specifying `directory device` will mount a device that allows to read
-    /// resources from a specified directory.
-    #[must_use]
-    pub fn add_device_dir(self, path: impl AsRef<Path>) -> Self {
-        self.add_device(Box::new(vfs::DirDevice::new(path)))
-    }
-
-    /// Specifying `directory device` will mount a device that allows to read
-    /// resources from a specified directory.
-    pub fn add_device_dir_mut(&mut self, path: impl AsRef<Path>) -> &Self {
-        self.devices.push(Box::new(vfs::DirDevice::new(path)));
-        self
-    }
-
     /// Specifying `content-addressable storage device` will mount a device that
     /// allows to read resources from a specified content store through
     /// provided manifest.
@@ -170,8 +156,9 @@ impl AssetRegistryOptions {
         provider: Arc<Provider>,
         manifest: Option<TreeIdentifier>,
         build_bin: impl AsRef<Path>,
-        output_db_addr: String,
-        project: impl AsRef<Path>,
+        output_db_addr: &str,
+        repository_name: &str,
+        branch_name: &str,
         force_recompile: bool,
     ) -> Self {
         self.add_device(Box::new(
@@ -180,7 +167,8 @@ impl AssetRegistryOptions {
                 provider,
                 build_bin,
                 output_db_addr,
-                project,
+                repository_name,
+                branch_name,
                 force_recompile,
             )
             .await,

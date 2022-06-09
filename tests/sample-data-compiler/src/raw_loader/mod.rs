@@ -31,10 +31,11 @@ use self::raw_to_offline::FromRaw;
 pub async fn build_offline(
     root_folder: impl AsRef<Path>,
     repository_index: impl RepositoryIndex,
-    repository_name: RepositoryName,
+    repository_name: &RepositoryName,
+    branch_name: &str,
     source_control_content_provider: Arc<Provider>,
     incremental: bool,
-) {
+) -> Project {
     let raw_dir = {
         if let Ok(entries) = root_folder.as_ref().read_dir() {
             let mut raw_dir = entries
@@ -45,6 +46,14 @@ pub async fn build_offline(
             None
         }
     };
+
+    let (mut project, resources) = setup_project(
+        repository_index,
+        repository_name,
+        branch_name,
+        source_control_content_provider,
+    )
+    .await;
 
     if let Some(raw_dir) = raw_dir {
         let file_paths = find_files(
@@ -61,11 +70,12 @@ pub async fn build_offline(
             hasher.finish()
         };
 
+        let version_file_path = root_folder.as_ref().join("VERSION");
         let generated_checksum = {
-            if !root_folder.as_ref().join("offline").exists() {
+            if !version_file_path.exists() {
                 None
             } else {
-                std::fs::read_to_string(root_folder.as_ref().join("VERSION"))
+                std::fs::read_to_string(version_file_path.as_path())
                     .map_or(None, |version| version.parse::<u64>().ok())
             }
         };
@@ -73,30 +83,20 @@ pub async fn build_offline(
         if let Some(generated_checksum) = generated_checksum {
             if generated_checksum == raw_checksum {
                 info!("Skipping Project Generation");
-                return;
+                return project;
             }
         }
 
         if !incremental {
-            std::fs::remove_dir_all(root_folder.as_ref().join("offline")).unwrap_or_default();
-
-            std::fs::remove_file(root_folder.as_ref().join("VERSION")).unwrap_or_default();
+            std::fs::remove_file(version_file_path.as_path()).unwrap_or_default();
         }
-
-        let (mut project, resources) = setup_project(
-            root_folder.as_ref(),
-            repository_index,
-            repository_name,
-            source_control_content_provider,
-        )
-        .await;
 
         // cleanup data from source control before we generate new data.
         if !incremental {
             let all_resources = project.resource_list().await;
             if !all_resources.is_empty() {
-                for id in all_resources {
-                    project.delete_resource(id).await.unwrap();
+                for type_id in all_resources {
+                    project.delete_resource(type_id).await.unwrap();
                 }
 
                 project.commit("cleanup resources").await.unwrap();
@@ -139,12 +139,14 @@ pub async fn build_offline(
 
                     let handle = project
                         .load_resource(resource_id, &resources)
+                        .await
                         .unwrap()
                         .typed::<offline_data::Entity>();
 
                     if let Some(entity) = handle.instantiate(&resources) {
                         if let Some(parent_id) = &entity.parent {
-                            let mut raw_name = project.raw_resource_name(resource_id.id).unwrap();
+                            let mut raw_name =
+                                project.raw_resource_name(resource_id).await.unwrap();
                             raw_name.replace_parent_info(Some(parent_id.source_resource()), None);
                             project
                                 .rename_resource(resource_id, &raw_name)
@@ -192,7 +194,7 @@ pub async fn build_offline(
 
         project.commit("sample data generation").await.unwrap();
 
-        let mut version_file = std::fs::File::create(root_folder.as_ref().join("VERSION")).unwrap();
+        let mut version_file = std::fs::File::create(version_file_path).unwrap();
         version_file
             .write_all(raw_checksum.to_string().as_bytes())
             .unwrap();
@@ -202,32 +204,24 @@ pub async fn build_offline(
             root_folder.as_ref().display()
         );
     }
+
+    project
 }
 
 async fn setup_project(
-    root_folder: &Path,
     repository_index: impl RepositoryIndex,
-    repository_name: RepositoryName,
+    repository_name: &RepositoryName,
+    branch_name: &str,
     source_control_content_provider: Arc<Provider>,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
-    let project = if let Ok(project) = Project::open(
-        root_folder,
+    let project = Project::new(
         &repository_index,
-        Arc::clone(&source_control_content_provider),
+        repository_name,
+        branch_name,
+        source_control_content_provider,
     )
     .await
-    {
-        Ok(project)
-    } else {
-        Project::create(
-            root_folder,
-            repository_index,
-            repository_name,
-            source_control_content_provider,
-        )
-        .await
-    }
     .unwrap();
 
     let mut registry = AssetRegistryOptions::new()
@@ -299,32 +293,32 @@ async fn build_resource_from_raw(
 ) {
     for (i, path) in file_paths.iter().enumerate() {
         let name = &in_resources[i].0;
-        let kind = ext_to_resource_kind(path.extension().unwrap().to_str().unwrap());
+        let (_kind_name, kind) = ext_to_resource_kind(path.extension().unwrap().to_str().unwrap());
 
         let id = {
             if let Ok(id) = project.find_resource(name).await {
                 id
             } else {
                 let id = ResourceTypeAndId {
-                    kind: kind.1,
+                    kind,
                     id: in_resources[i].1,
                 };
 
-                if project.exists(id.id).await {
-                    project.delete_resource(id.id).await.unwrap();
+                if project.exists(id).await {
+                    project.delete_resource(id).await.unwrap();
                 }
 
                 project
                     .add_resource_with_id(
                         name.clone(),
-                        kind.0,
-                        kind.1,
-                        id.id,
+                        id,
                         resources.new_resource_with_id(id).unwrap(),
                         resources,
                     )
                     .await
-                    .unwrap()
+                    .unwrap();
+
+                id
             }
         };
         ids.insert(name.clone(), id);
@@ -342,7 +336,6 @@ async fn build_test_entity(
         if let Ok(id) = project.find_resource(&name).await {
             id
         } else {
-            let kind_name = TestEntity::TYPENAME;
             let kind = TestEntity::TYPE;
             let id = ResourceTypeAndId {
                 kind,
@@ -370,16 +363,11 @@ async fn build_test_entity(
             test_entity_handle.apply(test_entity, resources);
 
             project
-                .add_resource_with_id(
-                    name.clone(),
-                    kind_name,
-                    kind,
-                    id.id,
-                    test_entity_handle,
-                    resources,
-                )
+                .add_resource_with_id(name.clone(), id, test_entity_handle, resources)
                 .await
-                .unwrap()
+                .unwrap();
+
+            id
         }
     };
     ids.insert(name, id);
@@ -472,6 +460,7 @@ async fn load_psd_resource(
 
     let resource = project
         .load_resource(resource_id, resources)
+        .await
         .unwrap()
         .typed::<PsdFile>();
 

@@ -1,15 +1,14 @@
 use std::{
     collections::{BTreeMap, HashMap, VecDeque},
     hash::{Hash, Hasher},
-    path::PathBuf,
-    str::FromStr,
     sync::Arc,
 };
 
 use hex::ToHex;
 use lgn_content_store::Provider;
-use lgn_data_offline::resource::{Project, Tree};
-use lgn_data_runtime::{ResourceId, ResourcePathId, ResourceTypeAndId};
+use lgn_data_offline::resource::Project;
+use lgn_data_runtime::{ResourcePathId, ResourceTypeAndId};
+use lgn_source_control::ContentId;
 use lgn_tracing::span_scope;
 use lgn_utils::{DefaultHasher, DefaultHasher256};
 use petgraph::{Directed, Graph};
@@ -250,7 +249,7 @@ impl Extend<Self> for SourceContent {
 }
 
 pub(crate) struct SourceIndex {
-    current: Option<(String, SourceContent)>,
+    current: Option<(ContentId, SourceContent)>,
     pub(super) content_store: Arc<Provider>,
 }
 
@@ -273,10 +272,8 @@ impl SourceIndex {
         self.current.as_ref().map(|(_, index)| index)
     }
 
-    #[async_recursion::async_recursion]
     async fn source_pull_tree(
         &self,
-        directory: Tree,
         project: &Project,
         version: &str,
         mut uploads: Vec<(Vec<u8>, Vec<u8>)>,
@@ -284,7 +281,7 @@ impl SourceIndex {
         let dir_checksum = {
             let mut hasher = DefaultHasher256::new();
             LGN_DATA_BUILD.hash(&mut hasher);
-            directory.id().hash(&mut hasher);
+            project.root_checksum().hash(&mut hasher);
             version.hash(&mut hasher);
             hasher.finish_256()[..].to_vec()
         };
@@ -295,109 +292,61 @@ impl SourceIndex {
             let source_index = SourceContent::read(&cached_data)?;
             Ok((source_index, uploads))
         } else {
-            let (content, uploads) = match directory {
-                Tree::Directory { name: _, children } => {
-                    let is_leaf = !children
-                        .iter()
-                        .any(|(_, tree)| matches!(tree, Tree::Directory { .. }));
+            let resources = project.get_resources().await?;
 
-                    if is_leaf {
-                        let mut content = SourceContent::new(version);
+            let mut content = SourceContent::new(version);
 
-                        let resource_infos = children
-                            .into_iter()
-                            .filter_map(|(_, tree)| match tree {
-                                Tree::Directory { .. } => None,
-                                Tree::File { name, id } => Some((PathBuf::from(&name), id)),
-                            })
-                            .filter(|(path, _)| path.extension().is_none());
+            for (index_key, content_store_resource_id) in resources {
+                let resource_type_id: ResourceTypeAndId = index_key.into();
+                let resource_hash = {
+                    let mut hasher = DefaultHasher256::new();
+                    content_store_resource_id.hash(&mut hasher);
+                    hasher.finish_256().encode_hex::<String>()
+                };
 
-                        let resource_list = resource_infos.map(|(path, id)| {
-                            (
-                                ResourceId::from_str(path.file_stem().unwrap().to_str().unwrap())
-                                    .unwrap(),
-                                {
-                                    let mut hasher = DefaultHasher256::new();
-                                    id.hash(&mut hasher);
-                                    hasher.finish_256().encode_hex::<String>()
-                                },
-                            )
-                        });
+                let resource_deps = project.resource_dependencies(resource_type_id).await?;
 
-                        for (resource_id, resource_hash) in resource_list {
-                            let (kind, resource_deps) = project.resource_info(resource_id)?;
+                content.update_resource(
+                    ResourcePathId::from(resource_type_id),
+                    Some(resource_hash),
+                    resource_deps.clone(),
+                );
 
-                            content.update_resource(
-                                ResourcePathId::from(ResourceTypeAndId {
-                                    id: resource_id,
-                                    kind,
-                                }),
-                                Some(resource_hash),
-                                resource_deps.clone(),
-                            );
-
-                            // add each derived dependency with it's direct dependency listed in deps.
-                            for dependency in resource_deps {
-                                if let Some(direct_dependency) = dependency.direct_dependency() {
-                                    content.update_resource(
-                                        dependency,
-                                        None,
-                                        vec![direct_dependency],
-                                    );
-                                }
-                            }
-                        }
-
-                        uploads.push((dir_checksum, content.write()?));
-                        (content, uploads)
-                    } else {
-                        let mut content = SourceContent::new(version);
-                        for (_, subtree) in children {
-                            if matches!(subtree, Tree::Directory { .. }) {
-                                let (sub_content, upl) = self
-                                    .source_pull_tree(subtree, project, version, uploads)
-                                    .await?;
-                                uploads = upl;
-                                content.extend(Some(sub_content));
-                            }
-                        }
-
-                        uploads.push((dir_checksum, content.write()?));
-                        (content, uploads)
+                // add each derived dependency with it's direct dependency listed in deps.
+                for dependency in resource_deps {
+                    if let Some(direct_dependency) = dependency.direct_dependency() {
+                        content.update_resource(dependency, None, vec![direct_dependency]);
                     }
                 }
-                Tree::File { .. } => panic!(),
-            };
+            }
 
+            uploads.push((dir_checksum, content.write()?));
             Ok((content, uploads))
         }
     }
 
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<(), Error> {
-        let tree = project.tree().await?;
-
-        let root_checksum = tree.id();
-
-        let (current_checksum, mut source_index) = self
-            .current
-            .take()
-            .unwrap_or(("".to_string(), SourceContent::new(version)));
-
-        if current_checksum != root_checksum {
-            let (final_content, uploads) = self
-                .source_pull_tree(tree, project, version, vec![])
-                .await?;
-
-            for (dir_checksum, buffer) in uploads {
-                self.content_store
-                    .write_alias(dir_checksum, &buffer)
-                    .await?;
-            }
-
-            source_index = final_content;
+        if project.has_pending_changes().await {
+            return Err(Error::ProjectNotCommitted);
         }
 
-        self.current = Some((root_checksum, source_index));
+        let root_checksum = project.root_checksum();
+
+        if let Some((current_checksum, _source_index)) = &self.current {
+            if current_checksum == root_checksum {
+                return Ok(());
+            }
+        }
+
+        let (content, uploads) = self.source_pull_tree(project, version, vec![]).await?;
+
+        for (dir_checksum, buffer) in uploads {
+            self.content_store
+                .write_alias(dir_checksum, &buffer)
+                .await?;
+        }
+
+        self.current = Some((root_checksum.clone(), content));
         Ok(())
     }
 }
@@ -405,15 +354,10 @@ impl SourceIndex {
 #[cfg(test)]
 mod tests {
 
-    use std::sync::Arc;
+    use lgn_data_offline::resource::ResourcePathName;
+    use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceId};
 
-    use lgn_content_store::Provider;
-    use lgn_data_offline::resource::{Project, ResourcePathName};
-    use lgn_data_runtime::{
-        AssetRegistryOptions, ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId,
-    };
-
-    use crate::source_index::{SourceContent, SourceIndex};
+    use super::*;
 
     #[tokio::test]
     async fn pathid_records() {
@@ -512,7 +456,7 @@ mod tests {
         assert_eq!(source_index.resources[2].dependencies.len(), 1);
     }
 
-    fn current_checksum(index: &SourceIndex) -> String {
+    fn current_checksum(index: &SourceIndex) -> ContentId {
         index.current.as_ref().map(|(id, _)| id.clone()).unwrap()
     }
 
@@ -522,7 +466,7 @@ mod tests {
         let source_control_content_provider = Arc::new(Provider::new_in_memory());
 
         let mut project =
-            Project::create_with_remote_mock(&work_dir.path(), source_control_content_provider)
+            Project::new_with_remote_mock(&work_dir.path(), source_control_content_provider)
                 .await
                 .expect("failed to create a project");
 
@@ -554,22 +498,31 @@ mod tests {
 
             let id = ResourceId::from_raw(0xaabbccddeeff00000000000000000000);
 
-            let resource_id = project
+            let resource_id = ResourceTypeAndId {
+                kind: refs_resource::TestResource::TYPE,
+                id,
+            };
+
+            project
                 .add_resource_with_id(
                     ResourcePathName::new("test_source"),
-                    refs_resource::TestResource::TYPENAME,
-                    refs_resource::TestResource::TYPE,
-                    id,
+                    resource_id,
                     &resource_handle,
                     &resources,
                 )
                 .await
                 .expect("adding the resource");
+
+            project
+                .commit("add resource")
+                .await
+                .expect("sucessful commit");
+
             (resource_id, resource_handle)
         };
 
         // initially we have 0 subfolders
-        //number of indeces: 1
+        // number of indices: 1
 
         // one resource creates 3-levels deep folder hierarchy.
         // including the root index refresh that creates 4 new cached entries.
@@ -604,6 +557,11 @@ mod tests {
                 .await
                 .expect("successful save");
 
+            project
+                .commit("save resource")
+                .await
+                .expect("sucessful commit");
+
             source_index.source_pull(&project, version).await.unwrap();
             current_checksum(&source_index)
         };
@@ -618,9 +576,13 @@ mod tests {
         // deleting the resource takes us back to the previous cache entry.
         {
             project
-                .delete_resource(resource_id.id)
+                .delete_resource(resource_id)
                 .await
                 .expect("removed resource");
+            project
+                .commit("delete resource")
+                .await
+                .expect("sucessful commit");
             source_index.source_pull(&project, version).await.unwrap();
             assert_eq!(current_checksum(&source_index), first_entry_checksum);
         }

@@ -78,7 +78,7 @@ use std::{
     env,
     ffi::OsString,
     io::{stdout, Write},
-    path::{PathBuf, StripPrefixError},
+    path::StripPrefixError,
     str::FromStr,
     sync::Arc,
 };
@@ -86,10 +86,11 @@ use std::{
 use async_trait::async_trait;
 use clap::{Parser, Subcommand};
 use lgn_content_store::{
-    indexing::{ResourceWriter, SharedTreeIdentifier},
+    indexing::{ResourceWriter, SharedTreeIdentifier, TreeIdentifier},
     Config, Provider,
 };
 use lgn_data_model::ReflectionError;
+use lgn_data_offline::vfs::AddDeviceSourceCas;
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
     ResourceProcessorError, Transform,
@@ -99,8 +100,9 @@ use serde::{Deserialize, Serialize};
 use crate::{
     compiler_cmd::{
         CompilerHashCmdOutput, CompilerInfoCmdOutput, COMMAND_ARG_DER_DEPS, COMMAND_ARG_LOCALE,
-        COMMAND_ARG_PLATFORM, COMMAND_ARG_RESOURCE_DIR, COMMAND_ARG_SRC_DEPS, COMMAND_ARG_TARGET,
-        COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE, COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
+        COMMAND_ARG_PLATFORM, COMMAND_ARG_SOURCE_MANIFEST_ID, COMMAND_ARG_SRC_DEPS,
+        COMMAND_ARG_TARGET, COMMAND_ARG_TRANSFORM, COMMAND_NAME_COMPILE,
+        COMMAND_NAME_COMPILER_HASH, COMMAND_NAME_INFO,
     },
     compiler_node::{CompilerNode, CompilerRegistry, CompilerRegistryOptions},
     CompiledResource, CompiledResources, Locale, Platform, Target,
@@ -458,7 +460,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
             resource: resource_path,
             src_deps,
             der_deps,
-            resource_dir,
+            source_manifest_id,
             target,
             platform,
             locale,
@@ -487,9 +489,11 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
             let transform = derived
                 .last_transform()
                 .ok_or_else(|| CompilerError::InvalidResource(derived.clone()))?;
-
+            let source_provider =
+                Arc::new(Config::load_and_instantiate_persistent_provider().await?);
             let data_provider = Arc::new(Config::load_and_instantiate_volatile_provider().await?);
 
+            let source_manifest_id = SharedTreeIdentifier::new(source_manifest_id);
             let runtime_manifest_id = {
                 let manifest = CompiledResources {
                     compiled_resources: derived_deps.clone(),
@@ -509,7 +513,10 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
 
                 let registry = AssetRegistryOptions::new()
                     .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone())
-                    .add_device_dir(&resource_dir); // todo: filter dependencies only
+                    .add_device_source_cas(
+                        Arc::clone(&source_provider),
+                        source_manifest_id.clone(),
+                    ); // todo: filter dependencies only
 
                 compiler.init(registry).await.create().await
             };
@@ -528,7 +535,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &derived_deps,
                     shell.registry(),
                     &data_provider,
-                    &resource_dir,
+                    &source_manifest_id,
                     &runtime_manifest_id,
                     &env,
                 )
@@ -585,9 +592,9 @@ enum Commands {
         /// Derived dependencies.
         #[clap(long = COMMAND_ARG_DER_DEPS, multiple_values=true)]
         der_deps: Vec<String>,
-        /// Resource directory.
-        #[clap(long = COMMAND_ARG_RESOURCE_DIR)]
-        resource_dir: PathBuf,
+        /// Source manifest id
+        #[clap(long = COMMAND_ARG_SOURCE_MANIFEST_ID)]
+        source_manifest_id: TreeIdentifier,
         /// Build target (Game, Server, etc).
         #[clap(long = COMMAND_ARG_TARGET)]
         target: String,

@@ -5,10 +5,7 @@ mod sql;
 use async_trait::async_trait;
 use lgn_tracing::info;
 
-use crate::{
-    Branch, CanonicalPath, Commit, CommitId, Error, Lock, RepositoryName, Result, Tree,
-    WorkspaceRegistration,
-};
+use crate::{Branch, CanonicalPath, Commit, CommitId, Error, Lock, RepositoryName, Result};
 
 pub use grpc::*;
 pub use local::*;
@@ -78,11 +75,6 @@ pub trait RepositoryIndex: Send + Sync {
 pub trait Index: Send + Sync {
     fn repository_name(&self) -> &RepositoryName;
 
-    async fn register_workspace(
-        &self,
-        workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()>;
-
     async fn insert_branch(&self, branch: &Branch) -> Result<()>;
     async fn update_branch(&self, branch: &Branch) -> Result<()>;
     async fn get_branch(&self, branch_name: &str) -> Result<Branch>;
@@ -100,9 +92,6 @@ pub trait Index: Send + Sync {
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>>;
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId>;
-
-    async fn get_tree(&self, id: &str) -> Result<Tree>;
-    async fn save_tree(&self, tree: &Tree) -> Result<String>;
 
     async fn lock(&self, lock: &Lock) -> Result<()>;
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()>;
@@ -157,15 +146,6 @@ impl<T: Index + ?Sized> Index for Box<T> {
         self.as_ref().repository_name()
     }
 
-    async fn register_workspace(
-        &self,
-        workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()> {
-        self.as_ref()
-            .register_workspace(workspace_registration)
-            .await
-    }
-
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
         self.as_ref().insert_branch(branch).await
     }
@@ -192,14 +172,6 @@ impl<T: Index + ?Sized> Index for Box<T> {
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
         self.as_ref().commit_to_branch(commit, branch).await
-    }
-
-    async fn get_tree(&self, id: &str) -> Result<Tree> {
-        self.as_ref().get_tree(id).await
-    }
-
-    async fn save_tree(&self, tree: &Tree) -> Result<String> {
-        self.as_ref().save_tree(tree).await
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {
@@ -229,13 +201,6 @@ impl<T: Index> Index for &T {
         (**self).repository_name()
     }
 
-    async fn register_workspace(
-        &self,
-        workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()> {
-        (**self).register_workspace(workspace_registration).await
-    }
-
     async fn insert_branch(&self, branch: &Branch) -> Result<()> {
         (**self).insert_branch(branch).await
     }
@@ -262,14 +227,6 @@ impl<T: Index> Index for &T {
 
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
         (**self).commit_to_branch(commit, branch).await
-    }
-
-    async fn get_tree(&self, id: &str) -> Result<Tree> {
-        (**self).get_tree(id).await
-    }
-
-    async fn save_tree(&self, tree: &Tree) -> Result<String> {
-        (**self).save_tree(tree).await
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {

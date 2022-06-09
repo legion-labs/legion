@@ -19,13 +19,12 @@ use lgn_ecs::{
 };
 use lgn_editor_proto::source_control::{
     source_control_server::{SourceControl, SourceControlServer},
-    staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
-    CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
-    GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
-    InitUploadRawFileResponse, PullAssetRequest, PullAssetResponse, ResourceDescription,
-    RevertResourcesRequest, RevertResourcesResponse, StagedResource, SyncLatestResponse,
-    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
-    UploadStatus,
+    upload_raw_file_response, CancelUploadRawFileRequest, CancelUploadRawFileResponse,
+    CommitStagedResourcesRequest, CommitStagedResourcesResponse, GetStagedResourcesRequest,
+    GetStagedResourcesResponse, InitUploadRawFileRequest, InitUploadRawFileResponse,
+    PullAssetRequest, PullAssetResponse, RevertResourcesRequest, RevertResourcesResponse,
+    SyncLatestResponse, SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest,
+    UploadRawFileResponse, UploadStatus,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
@@ -587,19 +586,14 @@ impl SourceControl for SourceControlRPC {
                 Status::internal(err.to_string())
             })?;
 
-            for (id, change_type) in changes {
-                if let Ok(kind) = ctx.project.resource_type(id) {
-                    let resource_id = ResourceTypeAndId { kind, id };
-                    match change_type {
-                        ChangeType::Add | ChangeType::Edit => {
-                            resource_to_build.push(resource_id);
-                        }
-                        ChangeType::Delete => {
-                            resource_to_unload.push(resource_id);
-                        }
+            for (resource_id, change_type) in changes {
+                match change_type {
+                    ChangeType::Add | ChangeType::Edit => {
+                        resource_to_build.push(resource_id);
                     }
-                } else {
-                    error!("Failed to retrieve resource type for {}", id);
+                    ChangeType::Delete => {
+                        resource_to_unload.push(resource_id);
+                    }
                 }
             }
             (resource_to_build, resource_to_unload)
@@ -632,6 +626,7 @@ impl SourceControl for SourceControlRPC {
         &self,
         _request: Request<GetStagedResourcesRequest>,
     ) -> Result<Response<GetStagedResourcesResponse>, Status> {
+        /*
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
         let changes = ctx
@@ -679,6 +674,8 @@ impl SourceControl for SourceControlRPC {
         }
 
         Ok(Response::new(GetStagedResourcesResponse { entries }))
+        */
+        Err(Status::internal("todo".to_string()))
     }
 
     async fn revert_resources(
@@ -692,7 +689,7 @@ impl SourceControl for SourceControlRPC {
         let mut need_rebuild = Vec::new();
         for id in &request.ids {
             if let Ok(id) = ResourceTypeAndId::from_str(id) {
-                match ctx.project.revert_resource(id.id).await {
+                match ctx.project.revert_resource(id).await {
                     Ok(()) => need_rebuild.push(id),
                     Err(err) => lgn_tracing::error!("Failed to revert {}: {}", id, err),
                 }

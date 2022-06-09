@@ -1,14 +1,10 @@
-use std::{
-    io,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{io, path::PathBuf, sync::Arc};
 
 use async_trait::async_trait;
 use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};
 use lgn_data_runtime::{AssetRegistry, AssetRegistryOptions, ResourcePathId, Transform};
 
-use super::remote_data_executor::collect_local_resources;
+// use super::remote_data_executor::collect_local_resources;
 use lgn_data_compiler::{
     compiler_api::{CompilationEnv, CompilationOutput, CompilerError, CompilerHash, CompilerInfo},
     compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd, CompilerInfoCmdOutput},
@@ -57,30 +53,31 @@ impl CompilerStub for RemoteCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
-        data_provider: &Provider,
-        resource_dir: &Path,
+        _data_provider: &Provider,
+        source_manifest_id: &SharedTreeIdentifier,
         _runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
-        let cmd = CompilerCompileCmd::new(
+        let _cmd = CompilerCompileCmd::new(
             self.bin_path.file_name().unwrap(),
             &compile_path,
             dependencies,
             derived_deps,
-            resource_dir.strip_prefix(resource_dir.parent().unwrap())?, // only 'offline'
+            &source_manifest_id.read(),
             env,
         );
 
-        let msg = collect_local_resources(
-            &self.bin_path,
-            resource_dir,
-            &compile_path,
-            dependencies,
-            derived_deps,
-            &cmd,
-            data_provider,
-        )
-        .await?;
+        // let msg = collect_local_resources(
+        //     &self.bin_path,
+        //     resource_dir,
+        //     &compile_path,
+        //     dependencies,
+        //     derived_deps,
+        //     &cmd,
+        //     data_provider,
+        // )
+        // .await?;
+        let msg = "".to_owned();
 
         let result = crate::remote_service::client::send_receive_workload(&self.server_addr, msg);
         Ok(serde_json::from_str::<CompilationOutput>(&result)?)
