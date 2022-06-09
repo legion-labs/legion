@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul};
+use std::ops::Mul;
 
 use lgn_ecs::component::Component;
 use lgn_math::{const_vec3, Mat3, Mat4, Quat, Vec3};
