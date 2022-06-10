@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
@@ -11,8 +9,7 @@ use lgn_utils::HashMap;
 use crate::{
     core::{
         AsSpatialRenderObject, InsertRenderObjectCommand, PrimaryTableCommandBuilder,
-        PrimaryTableCommandQueuePool, RemoveRenderObjectCommand, RenderObject, RenderObjectId,
-        RenderObjectIdPool, UpdateRenderObjectCommand,
+        PrimaryTableView, RemoveRenderObjectCommand, RenderObjectId, UpdateRenderObjectCommand,
     },
     debug_display::DebugDisplay,
     lighting::RenderLight,
@@ -72,35 +69,25 @@ struct LightDynamicData {
     picking_id: u32,
 }
 
-pub(crate) struct EcsToRender<R> {
+pub(crate) struct EcsToRenderLight {
+    view: PrimaryTableView<RenderLight>,
     map: HashMap<Entity, LightDynamicData>,
-    render_object_id_pool: RenderObjectIdPool,
-    command_queue_pool: PrimaryTableCommandQueuePool,
-    phantom: PhantomData<R>,
 }
 
-impl<R> EcsToRender<R>
-where
-    R: RenderObject,
-{
-    pub fn new(
-        render_object_id_pool: &RenderObjectIdPool,
-        command_queue_pool: &PrimaryTableCommandQueuePool,
-    ) -> Self {
+impl EcsToRenderLight {
+    pub fn new(view: PrimaryTableView<RenderLight>) -> Self {
         Self {
             map: HashMap::new(),
-            render_object_id_pool: render_object_id_pool.clone(),
-            command_queue_pool: command_queue_pool.clone(),
-            phantom: PhantomData,
+            view,
         }
     }
 
     pub fn alloc_id(&self) -> RenderObjectId {
-        self.render_object_id_pool.alloc()
+        self.view.allocate()
     }
 
     pub fn command_builder(&self) -> PrimaryTableCommandBuilder {
-        self.command_queue_pool.builder()
+        self.view.command_builder()
     }
 }
 
@@ -113,7 +100,7 @@ pub(crate) fn reflect_light_components(
         Or<(Changed<GlobalTransform>, Changed<LightComponent>)>,
     >,
     q_removals: RemovedComponents<'_, LightComponent>,
-    mut ecs_to_render: ResMut<'_, EcsToRender<RenderLight>>,
+    mut ecs_to_render: ResMut<'_, EcsToRenderLight>,
 ) {
     let mut render_commands = ecs_to_render.command_builder();
 

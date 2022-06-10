@@ -445,6 +445,74 @@ impl PrimaryTable {
 }
 
 //
+// PrimaryTableView
+//
+
+pub struct PrimaryTableView<R: RenderObject> {
+    allocator: RenderObjectIdPool,
+    command_queue: PrimaryTableCommandQueuePool,
+    _phantom: PhantomData<R>,
+}
+
+impl<R: RenderObject> PrimaryTableView<R> {
+    pub fn allocate(&self) -> RenderObjectId {
+        self.allocator.alloc()
+    }
+
+    pub fn command_builder(&self) -> PrimaryTableCommandBuilder {
+        self.command_queue.builder()
+    }
+
+    #[allow(dead_code)]
+    pub fn writer(&self) -> PrimaryTableWriter<'_, R> {
+        PrimaryTableWriter {
+            view: self,
+            command_builder: self.command_builder(),
+        }
+    }
+}
+
+#[allow(unsafe_code)]
+unsafe impl<R: RenderObject> Send for PrimaryTableView<R> {}
+
+#[allow(unsafe_code)]
+unsafe impl<R: RenderObject> Sync for PrimaryTableView<R> {}
+
+//
+// PrimaryTableWriter
+//
+
+#[allow(dead_code)]
+pub struct PrimaryTableWriter<'a, R: RenderObject> {
+    view: &'a PrimaryTableView<R>,
+    command_builder: PrimaryTableCommandBuilder,
+}
+
+#[allow(dead_code)]
+impl<'a, R: RenderObject> PrimaryTableWriter<'a, R> {
+    pub fn insert(&mut self, data: R) -> RenderObjectId {
+        let render_object_id = self.view.allocate();
+        self.command_builder.push(InsertRenderObjectCommand::<R> {
+            render_object_id,
+            data,
+        });
+        render_object_id
+    }
+
+    pub fn update(&mut self, render_object_id: RenderObjectId, data: R) {
+        self.command_builder.push(UpdateRenderObjectCommand::<R> {
+            render_object_id,
+            data,
+        });
+    }
+
+    pub fn remove(&mut self, render_object_id: RenderObjectId) {
+        self.command_builder
+            .push(RemoveRenderObjectCommand { render_object_id });
+    }
+}
+
+//
 // SecondaryTable
 //
 
@@ -555,18 +623,17 @@ impl RenderObjects {
         }
     }
 
-    pub fn render_object_id_pool<R>(&self) -> &RenderObjectIdPool
+    pub fn primary_table_view<R>(&self) -> PrimaryTableView<R>
     where
         R: RenderObject,
     {
-        &self.primary_table::<R>().render_object_id_pool
-    }
+        let primary_table = self.primary_table::<R>();
 
-    pub fn command_queue_pool<R>(&self) -> &PrimaryTableCommandQueuePool
-    where
-        R: RenderObject,
-    {
-        &self.primary_table::<R>().command_pool
+        PrimaryTableView {
+            allocator: primary_table.render_object_id_pool.clone(),
+            command_queue: primary_table.command_pool.clone(),
+            _phantom: PhantomData,
+        }
     }
 
     fn primary_table<R>(&self) -> &PrimaryTable

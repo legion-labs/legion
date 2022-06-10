@@ -12,7 +12,7 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
-use crate::components::{tmp_debug_display_lights, EcsToRender};
+use crate::components::{tmp_debug_display_lights, EcsToRenderLight};
 use crate::core::{
     DebugStuff, PrepareRenderContext, RenderCamera, RenderCommandQueuePool, RenderFeatures,
     RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder, RenderLayers,
@@ -275,9 +275,8 @@ impl Plugin for RendererPlugin {
         //
         // RenderObjects
         //
-        app.insert_resource(EcsToRender::<RenderLight>::new(
-            render_objects.render_object_id_pool::<RenderLight>(),
-            render_objects.command_queue_pool::<RenderLight>(),
+        app.insert_resource(EcsToRenderLight::new(
+            render_objects.primary_table_view::<RenderLight>(),
         ))
         .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
 
