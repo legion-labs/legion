@@ -329,7 +329,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            -0.5, -0.1, 0.0,
+            0.0, 0.0, -0.1,
         )))
         .insert(VisualComponent::new(
             Some(*model_manager.default_model_id(DefaultMeshType::Plane)),
@@ -363,7 +363,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            1.0, 1.0, 0.0,
+            1.0, 0.0, 1.0,
         )))
         .insert(LightComponent {
             light_type: LightType::OmniDirectional,
