@@ -576,40 +576,6 @@ impl RenderObjects {
         let render_object_key = RenderObjectKey::new::<R>();
         self.primary_tables.get(&render_object_key).unwrap()
     }
-
-    // fn insert<R>(&self, render_object_id: RenderObjectId, data: R)
-    // where
-    //     R: RenderObject,
-    // {
-    //     let render_object_key = RenderObjectKey::new::<R>();
-    //     assert_eq!(render_object_id.render_object_key, render_object_key);
-    //     let primary_table = self.primary_table::<R>();
-    //     primary_table
-    //         .set
-    //         .borrow_mut()
-    //         .insert(render_object_id, std::ptr::addr_of!(data).cast::<u8>());
-    //     std::mem::forget(data);
-    // }
-
-    // fn update<R>(&self, render_object_id: RenderObjectId, data: R)
-    // where
-    //     R: RenderObject,
-    // {
-    //     let render_object_key = RenderObjectKey::new::<R>();
-    //     assert_eq!(render_object_id.render_object_key, render_object_key);
-    //     let primary_table = self.primary_table::<R>();
-    //     primary_table
-    //         .set
-    //         .borrow_mut()
-    //         .update(render_object_id, std::ptr::addr_of!(data).cast::<u8>());
-    //     std::mem::forget(data);
-    // }
-
-    // fn remove(&self, render_object_id: RenderObjectId) {
-    //     let render_object_key = render_object_id.render_object_key;
-    //     let primary_table = self.primary_tables.get(&render_object_key).unwrap();
-    //     primary_table.set.borrow_mut().remove(render_object_id);
-    // }
 }
 
 #[allow(unsafe_code)]

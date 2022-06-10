@@ -71,7 +71,6 @@ impl Renderer {
 
     pub fn render_command_builder(&self) -> RenderCommandBuilder {
         self.command_queue_pool.builder()
-        // RenderCommandBuilder::new(&self.command_queue_pool)
     }
 
     pub fn graphics_queue(&self) -> &GraphicsQueue {

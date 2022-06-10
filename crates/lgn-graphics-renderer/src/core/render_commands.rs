@@ -59,13 +59,6 @@ impl<CTX> CommandQueuePool<CTX> {
             pool: self.clone(),
             handle,
         }
-        // CommandBuilder::new(self)
-        // fn new(pool: &CommandQueuePool<CTX>) -> Self {
-        //     Self {
-        //         pool: pool.clone(),
-        //         handle: pool.acquire(),
-        //     }
-        // }
     }
 
     pub fn acquire(&self) -> Handle<RenderCommandQueue<CTX>> {
