@@ -1,9 +1,8 @@
-mod bytes;
-mod context;
 pub mod encoding;
 
+mod bytes;
+
 pub use self::bytes::Bytes;
-pub use context::Context;
 
 #[macro_export]
 macro_rules! include_api {

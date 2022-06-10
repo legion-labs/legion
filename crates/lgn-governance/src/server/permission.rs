@@ -1,9 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use lgn_online::{
-    codegen::Context,
-    server::{ErrorExt, Result},
-};
+use lgn_online::server::{ErrorExt, Result};
 
 use crate::api::permission::{self, requests, responses, Api};
 
@@ -13,7 +10,7 @@ use super::Server;
 impl Api for Server {
     async fn list_permissions(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
     ) -> Result<responses::ListPermissionsResponse> {
         let permissions = self
             .dal
@@ -28,7 +25,7 @@ impl Api for Server {
 
     async fn create_permission(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
     ) -> Result<responses::CreatePermissionResponse> {
         Ok(responses::CreatePermissionResponse::Status201(
             permission::Permission {
@@ -44,7 +41,7 @@ impl Api for Server {
 
     async fn update_permission(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::UpdatePermissionRequest,
     ) -> Result<responses::UpdatePermissionResponse> {
         Ok(responses::UpdatePermissionResponse::Status200(
@@ -61,7 +58,7 @@ impl Api for Server {
 
     async fn delete_permission(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::DeletePermissionRequest,
     ) -> Result<responses::DeletePermissionResponse> {
         Ok(responses::DeletePermissionResponse::Status204)

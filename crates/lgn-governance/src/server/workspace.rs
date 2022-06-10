@@ -1,9 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use lgn_online::{
-    codegen::Context,
-    server::{ErrorExt, Result},
-};
+use lgn_online::server::{ErrorExt, Result};
 
 use crate::api::{
     session,
@@ -16,7 +13,7 @@ use super::Server;
 impl Api for Server {
     async fn list_current_user_workspaces(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::ListCurrentUserWorkspacesRequest,
     ) -> Result<responses::ListCurrentUserWorkspacesResponse> {
         Ok(responses::ListCurrentUserWorkspacesResponse::Status200(
@@ -26,7 +23,7 @@ impl Api for Server {
 
     async fn get_current_user_workspace(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::GetCurrentUserWorkspaceRequest,
     ) -> Result<responses::GetCurrentUserWorkspaceResponse> {
         Ok(responses::GetCurrentUserWorkspaceResponse::Status200(
@@ -44,7 +41,7 @@ impl Api for Server {
 
     async fn get_current_user_workspace_session(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::GetCurrentUserWorkspaceSessionRequest,
     ) -> Result<responses::GetCurrentUserWorkspaceSessionResponse> {
         Ok(
@@ -63,7 +60,7 @@ impl Api for Server {
 
     async fn create_current_user_workspace_session(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::CreateCurrentUserWorkspaceSessionRequest,
     ) -> Result<responses::CreateCurrentUserWorkspaceSessionResponse> {
         Ok(
@@ -82,7 +79,7 @@ impl Api for Server {
 
     async fn delete_current_user_workspace_session(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         _request: requests::DeleteCurrentUserWorkspaceSessionRequest,
     ) -> Result<responses::DeleteCurrentUserWorkspaceSessionResponse> {
         Ok(
