@@ -100,7 +100,7 @@ where
     }
 
     pub fn command_builder(&self) -> PrimaryTableCommandBuilder {
-        PrimaryTableCommandBuilder::new(&self.command_queue_pool)
+        self.command_queue_pool.builder()
     }
 }
 

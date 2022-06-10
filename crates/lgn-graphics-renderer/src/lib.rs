@@ -85,8 +85,7 @@ pub mod shared;
 mod renderdoc;
 
 use crate::core::{
-    GpuUploadManager, RenderCommandBuilder, RenderCommandManager, RenderObjectsBuilder,
-    RenderResourcesBuilder,
+    GpuUploadManager, RenderCommandManager, RenderObjectsBuilder, RenderResourcesBuilder,
 };
 
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
@@ -180,7 +179,7 @@ impl Plugin for RendererPlugin {
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
         let render_command_queue_pool = RenderCommandQueuePool::new();
         let render_command_manager = RenderCommandManager::new(&render_command_queue_pool);
-        let mut render_commands = RenderCommandBuilder::new(&render_command_queue_pool);
+        let mut render_commands = render_command_queue_pool.builder();
         let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
         let transient_commandbuffer_manager =
             TransientCommandBufferManager::new(NUM_RENDER_FRAMES, &graphics_queue);
