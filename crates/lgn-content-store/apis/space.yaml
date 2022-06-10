@@ -1,0 +1,19 @@
+openapi: 3.1.0
+info:
+  title: "Space API"
+  description: "The OpenAPI specification for the Legion Labs Space API."
+  version: 1.0.0
+paths:
+components:
+  parameters:
+    space_id:
+      name: space-id
+      in: path
+      description: The space identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/SpaceId"
+  schemas:
+    SpaceId:
+      description: An identifier to an unique data space.
+      type: string

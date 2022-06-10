@@ -44,7 +44,7 @@ async fn test_crud() {
 
     let req = GetCarsRequest {
         space_id: space_id.clone(),
-        names: Some(vec!["car1".to_string()]),
+        names: Some(vec!["car1".to_string(), "car2".to_string()]),
         q: None,
     };
     let resp = client.get_cars(req).await.unwrap();

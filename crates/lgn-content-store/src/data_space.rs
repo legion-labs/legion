@@ -25,6 +25,20 @@ impl FromStr for DataSpace {
     }
 }
 
+impl From<DataSpace> for crate::api::content_store::DataSpace {
+    fn from(s: DataSpace) -> Self {
+        Self(s.0)
+    }
+}
+
+impl TryFrom<crate::api::content_store::DataSpace> for DataSpace {
+    type Error = Error;
+
+    fn try_from(s: crate::api::content_store::DataSpace) -> Result<Self, Self::Error> {
+        Self::from_str(&s.0)
+    }
+}
+
 impl<'de> Deserialize<'de> for DataSpace {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

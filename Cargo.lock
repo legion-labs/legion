@@ -4348,10 +4348,11 @@ dependencies = [
  "hyper",
  "indicatif",
  "itertools",
+ "lgn-api-codegen",
  "lgn-auth",
  "lgn-cli-utils",
  "lgn-config",
- "lgn-content-store-proto",
+ "lgn-governance",
  "lgn-online",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -4364,6 +4365,7 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
+ "serde_qs",
  "smallvec",
  "tempfile",
  "termtree",
@@ -4373,23 +4375,9 @@ dependencies = [
  "tokio-stream",
  "tokio-util 0.6.10",
  "toml",
- "tonic",
- "tonic-web",
  "tower",
  "tower-http",
  "uuid 1.1.0",
-]
-
-[[package]]
-name = "lgn-content-store-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "prost-types",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]

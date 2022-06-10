@@ -7,6 +7,7 @@ use lgn_online::{
 };
 use lgn_tracing::debug;
 
+#[derive(Debug)]
 pub struct Client<C> {
     inner: C,
     base_uri: http::Uri,

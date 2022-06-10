@@ -2,25 +2,26 @@ use std::{
     fmt::{Debug, Display},
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
+    task::Context,
+    task::Poll,
 };
 
+use crate::api::content_store::{
+    client::Client,
+    requests::{GetContentWriterRequest, ReadContentRequest, WriteContentRequest},
+    responses::{GetContentWriterResponse, ReadContentResponse, WriteContentResponse},
+};
 use async_trait::async_trait;
 use futures::{stream::TryStreamExt, Future, FutureExt};
-use http::header;
-use http_body::Body;
-use lgn_content_store_proto::{
-    content_store_client::ContentStoreClient, read_content_response::Content,
-};
+use http::{header, Uri};
+use lgn_governance::types::SpaceId;
 use lgn_tracing::{async_span_scope, debug, error, warn};
 use pin_project::pin_project;
 use tokio::{
     io::AsyncRead,
     io::{AsyncWrite, ReadBuf},
-    sync::Mutex,
 };
 use tokio_util::{compat::FuturesAsyncReadCompatExt, io::ReaderStream};
-use tonic::codegen::StdError;
 
 use super::{
     ContentAsyncReadWithOriginAndSize, ContentAsyncWrite, ContentReader, ContentWriter, Error,
@@ -29,102 +30,100 @@ use super::{
 
 use crate::DataSpace;
 
-/// A `GrpcContentProvider` is a provider that delegates to a `gRPC` service.
+/// A `ApiContentProvider` is a provider that delegates to an `OpenApi` service.
 #[derive(Debug, Clone)]
-pub struct GrpcContentProvider<C> {
-    client: Arc<Mutex<ContentStoreClient<C>>>,
+pub struct ApiContentProvider<C> {
+    client: Arc<Client<C>>,
+    space_id: SpaceId,
     data_space: DataSpace,
     buf_size: usize,
 }
 
-impl<C> GrpcContentProvider<C>
-where
-    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send,
-    C::ResponseBody: Body + Send + 'static,
-    C::Error: Into<StdError>,
-    C::Future: Send + 'static,
-    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
-{
-    pub async fn new(grpc_client: C, data_space: DataSpace) -> Self {
-        let client = Arc::new(Mutex::new(ContentStoreClient::new(grpc_client)));
+impl<C> ApiContentProvider<C> {
+    pub async fn new(client: C, base_url: Uri, space_id: SpaceId, data_space: DataSpace) -> Self {
+        let client = Arc::new(Client::new(client, base_url));
         // The buffer for HTTP uploaders is set to 2MB.
         let buf_size = 2 * 1024 * 1024;
 
         Self {
             client,
+            space_id,
             data_space,
             buf_size,
         }
     }
 }
 
-impl<C> Display for GrpcContentProvider<C> {
+impl<C> Display for ApiContentProvider<C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "gRPC client (data space: {})", self.data_space)
+        write!(f, "open api client (data space: {})", self.data_space)
     }
 }
 
 #[async_trait]
-impl<C> ContentReader for GrpcContentProvider<C>
+impl<C, ResBody> ContentReader for ApiContentProvider<C>
 where
-    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + Debug,
-    C::ResponseBody: Body + Send + 'static,
-    C::Error: Into<StdError>,
-    C::Future: Send + 'static,
-    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+    C: tower::Service<http::Request<hyper::Body>, Response = http::Response<ResBody>>
+        + Clone
+        + Send
+        + Sync
+        + Debug
+        + 'static,
+    C::Error: Into<lgn_online::server::StdError>,
+    C::Future: Send,
+    ResBody: hyper::body::HttpBody + Send,
+    ResBody::Data: Send,
+    ResBody::Error: Into<lgn_online::server::StdError>,
 {
     async fn get_content_reader(&self, id: &HashRef) -> Result<ContentAsyncReadWithOriginAndSize> {
-        async_span_scope!("GrpcContentProvider::get_content_reader");
+        async_span_scope!("ApiContentProvider::get_content_reader");
 
-        debug!("GrpcContentProvider::get_content_reader({})", id);
+        debug!("ApiContentProvider::get_content_reader({})", id);
 
-        let req = lgn_content_store_proto::ReadContentRequest {
-            data_space: self.data_space.to_string(),
-            id: id.to_string(),
+        let req = ReadContentRequest {
+            space_id: self.space_id.clone().into(),
+            data_space: self.data_space.clone().into(),
+            content_id: id.into(),
         };
 
         let resp = self
             .client
-            .lock()
-            .await
             .read_content(req)
             .await
-            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
-            .into_inner();
+            .map_err(|err| anyhow::anyhow!("request failed: {}", err))?;
 
-        match resp.content {
-            Some(content) => Ok(match content {
-                Content::Data(content) => {
-                    debug!(
-                        "GrpcContentProvider::get_content_reader({}) -> content data is available",
-                        id
-                    );
+        match resp {
+            ReadContentResponse::Status200 { body, x_origin } => {
+                debug!(
+                    "ApiContentProvider::get_content_reader({}) -> content data is available",
+                    id
+                );
 
-                    let origin = rmp_serde::from_slice(&content.origin)
-                        .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
+                let origin = rmp_serde::from_slice(&x_origin.0.to_vec())
+                    .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
 
-                    std::io::Cursor::new(content.data).with_origin_and_size(origin, id.data_size())
-                }
-                Content::Url(content) => {
-                    debug!(
-                        "GrpcContentProvider::get_content_reader({}) -> content URL is available",
-                        id
-                    );
+                Ok(std::io::Cursor::new(body.0).with_origin_and_size(origin, id.data_size()))
+            }
+            ReadContentResponse::Status204 { x_origin, x_url } => {
+                debug!(
+                    "ApiContentProvider::get_content_reader({}) -> content URL is available",
+                    id
+                );
 
-                    let origin = rmp_serde::from_slice(&content.origin)
-                        .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
+                let origin = rmp_serde::from_slice(&x_origin.0.to_vec())
+                    .map_err(|err| anyhow::anyhow!("failed to parse origin: {}", err))?;
 
-                    HttpDownloader::new(content.url).with_origin_and_size(origin, id.data_size())
-                }
-            }),
-            None => {
+                Ok(HttpDownloader::new(x_url.0).with_origin_and_size(origin, id.data_size()))
+            }
+            ReadContentResponse::Status404 => {
                 warn!(
-                    "GrpcContentProvider::get_content_reader({}) -> content does not exist",
+                    "ApiContentProvider::get_content_reader({}) -> content does not exist",
                     id
                 );
 
                 Err(Error::HashRefNotFound(id.clone()))
             }
+            _ => Err(anyhow::anyhow!("unexpected response: {:?}", resp).into()),
         }
     }
 }
@@ -231,94 +230,109 @@ impl AsyncRead for HttpDownloader {
 }
 
 #[async_trait]
-impl<C> ContentWriter for GrpcContentProvider<C>
+impl<C, ResBody> ContentWriter for ApiContentProvider<C>
 where
-    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + Debug + 'static,
-    C::ResponseBody: Body + Send + 'static,
-    C::Error: Into<StdError>,
-    C::Future: Send + 'static,
-    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+    C: tower::Service<http::Request<hyper::Body>, Response = http::Response<ResBody>>
+        + Clone
+        + Send
+        + Sync
+        + Debug
+        + 'static,
+    C::Error: Into<lgn_online::server::StdError>,
+    C::Future: Send,
+    ResBody: hyper::body::HttpBody + Send,
+    ResBody::Data: Send,
+    ResBody::Error: Into<lgn_online::server::StdError>,
 {
     async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
-        async_span_scope!("GrpcContentProvider::get_content_writer");
+        async_span_scope!("ApiContentProvider::get_content_writer");
 
-        let req = lgn_content_store_proto::GetContentWriterRequest {
-            data_space: self.data_space.to_string(),
-            id: id.to_string(),
+        let req = GetContentWriterRequest {
+            space_id: self.space_id.clone().into(),
+            data_space: self.data_space.clone().into(),
+            content_id: id.into(),
         };
 
         let resp = self
             .client
-            .lock()
-            .await
             .get_content_writer(req)
             .await
-            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
-            .into_inner();
+            .map_err(|err| anyhow::anyhow!("request failed: {}", err))?;
 
-        match resp.content_writer {
-            Some(lgn_content_store_proto::get_content_writer_response::ContentWriter::Url(url)) => {
-                if url.is_empty() {
-                    Ok(Box::pin(GrpcUploader::new(GrpcUploaderImpl {
+        match resp {
+            GetContentWriterResponse::Status200(resp) => {
+                if resp.url.0.is_empty() {
+                    Ok(Box::pin(OpenApiUploader::new(OpenApiUploaderImpl {
                         client: Arc::clone(&self.client),
+                        space_id: self.space_id.clone(),
                         data_space: self.data_space.clone(),
                     })))
                 } else {
-                    let uploader = HttpUploader::new(id.clone(), url, self.buf_size);
+                    let uploader = HttpUploader::new(id.clone(), resp.url.0, self.buf_size);
 
                     Ok(Box::pin(uploader))
                 }
             }
-            None => Err(Error::HashRefAlreadyExists(id.clone())),
+            GetContentWriterResponse::Status409 => Err(Error::HashRefAlreadyExists(id.clone())),
+            _ => Err(anyhow::anyhow!("unexpected response: {:?}", resp).into()),
         }
     }
 }
 
-type GrpcUploader<C> = Uploader<GrpcUploaderImpl<C>>;
+type OpenApiUploader<C> = Uploader<OpenApiUploaderImpl<C>>;
 
 #[derive(Debug)]
-struct GrpcUploaderImpl<C> {
-    client: Arc<Mutex<ContentStoreClient<C>>>,
+struct OpenApiUploaderImpl<C> {
+    client: Arc<Client<C>>,
+    space_id: SpaceId,
     data_space: DataSpace,
 }
 
 #[async_trait]
-impl<C> UploaderImpl for GrpcUploaderImpl<C>
+impl<C, ResBody> UploaderImpl for OpenApiUploaderImpl<C>
 where
-    C: tonic::client::GrpcService<tonic::body::BoxBody> + Send + Debug + 'static,
-    C::ResponseBody: Body + Send + 'static,
-    C::Error: Into<StdError>,
-    C::Future: Send + 'static,
-    <C::ResponseBody as Body>::Error: Into<StdError> + Send,
+    C: tower::Service<http::Request<hyper::Body>, Response = http::Response<ResBody>>
+        + Clone
+        + Send
+        + Sync
+        + Debug
+        + 'static,
+    C::Error: Into<lgn_online::server::StdError>,
+    C::Future: Send,
+    ResBody: hyper::body::HttpBody + Send,
+    ResBody::Data: Send,
+    ResBody::Error: Into<lgn_online::server::StdError>,
 {
     async fn upload(self, data: Vec<u8>) -> Result<()> {
-        async_span_scope!("GrpcContentProvider::upload");
+        async_span_scope!("ApiContentProvider::upload");
 
         let id = HashRef::new_from_data(&data);
-        let req = lgn_content_store_proto::WriteContentRequest {
-            data_space: self.data_space.to_string(),
-            data,
+        let req = WriteContentRequest {
+            space_id: self.space_id.into(),
+            data_space: self.data_space.into(),
+            body: data.into(),
         };
 
-        let res_id: HashRef = self
+        let resp = self
             .client
-            .lock()
-            .await
             .write_content(req)
             .await
-            .map_err(|err| anyhow::anyhow!("gRPC request failed: {}", err))?
-            .into_inner()
-            .id
-            .parse()
-            .map_err(|err| anyhow::anyhow!("failed to parse response id: {}", err))?;
+            .map_err(|err| anyhow::anyhow!("request failed: {}", err))?;
 
-        if res_id != id {
-            Err(Error::UnexpectedHashRef {
-                expected: id,
-                actual: res_id,
-            })
-        } else {
-            Ok(())
+        match resp {
+            WriteContentResponse::Status200(resp) => {
+                let res_id: HashRef = resp.id.try_into()?;
+
+                if res_id != id {
+                    Err(Error::UnexpectedHashRef {
+                        expected: id,
+                        actual: res_id,
+                    })
+                } else {
+                    Ok(())
+                }
+            }
+            _ => Err(anyhow::anyhow!("unexpected response: {:?}", resp).into()),
         }
     }
 }
@@ -473,18 +487,18 @@ impl AsyncWrite for HttpUploader {
 
 #[cfg(test)]
 mod test {
-    use futures::Stream;
-    use hyper::server::{
-        accept::Accept,
-        conn::{AddrIncoming, AddrStream},
-    };
-    use lgn_online::grpc::GrpcClient;
+    use axum::Router;
+    use lgn_online::client::HyperClient;
+    use lgn_online::server::RouterExt;
     use std::{collections::HashMap, net::SocketAddr};
+    use tokio::sync::Mutex;
 
     use crate::{
-        ContentAddressReader, ContentAddressWriter, ContentReaderExt, ContentWriterExt,
-        GrpcProviderSet, GrpcService, MemoryAliasProvider, MemoryContentProvider, Origin,
+        ApiProviderSet, ContentAddressReader, ContentAddressWriter, ContentReaderExt,
+        ContentWriterExt, MemoryAliasProvider, MemoryContentProvider, Origin, Server,
     };
+
+    use crate::api::content_store::server;
 
     use super::*;
 
@@ -554,34 +568,14 @@ mod test {
         }
     }
 
-    pub struct TcpIncoming {
-        inner: AddrIncoming,
-    }
-
-    impl TcpIncoming {
-        pub(crate) fn new() -> Result<Self, anyhow::Error> {
-            let mut inner = AddrIncoming::bind(&"127.0.0.1:0".parse()?)?;
-            inner.set_nodelay(true);
-            Ok(Self { inner })
-        }
-
-        pub(crate) fn addr(&self) -> SocketAddr {
-            self.inner.local_addr()
-        }
-    }
-
-    impl Stream for TcpIncoming {
-        type Item = Result<AddrStream, std::io::Error>;
-
-        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-            Pin::new(&mut self.inner).poll_accept(cx)
-        }
-    }
-
     #[tokio::test]
-    async fn test_grpc_content_provider() {
+    async fn test_api_content_provider() {
         // To debug this test more easily, you may want to specify: RUST_LOG=httptest=debug
         let _ = pretty_env_logger::try_init();
+
+        let _telemetry_guard = lgn_telemetry_sink::TelemetryGuardBuilder::default()
+            .with_local_sink_max_level(lgn_tracing::LevelFilter::Debug)
+            .build();
 
         let content_provider = MemoryContentProvider::new();
         let alias_provider = MemoryAliasProvider::new();
@@ -594,10 +588,11 @@ mod test {
         let address_provider = Arc::new(FakeContentAddressProvider::new(
             http_server.url("/").to_string(),
         ));
+        let space_id = "space_id".parse().unwrap();
         let data_space = DataSpace::persistent();
         let providers = vec![(
             data_space.clone(),
-            GrpcProviderSet {
+            ApiProviderSet {
                 content_provider: Box::new(content_provider),
                 alias_provider: Box::new(alias_provider),
                 content_address_provider: Box::new(Arc::clone(&address_provider)),
@@ -607,22 +602,26 @@ mod test {
         .into_iter()
         .collect();
 
-        let service = GrpcService::new(providers);
-        let service =
-            lgn_content_store_proto::content_store_server::ContentStoreServer::new(service);
-        let server = tonic::transport::Server::builder().add_service(service);
+        let service = Arc::new(Server::new(providers));
+        let router = Router::new().apply_development_router_options();
+        let router = server::register_routes(router, service);
 
-        let incoming = TcpIncoming::new().unwrap();
-        let addr = incoming.addr();
+        let addr = "127.0.0.1:0".parse().unwrap();
+        let server = axum::Server::bind(&addr)
+            .serve(router.into_make_service_with_connect_info::<SocketAddr>());
+        let addr = server.local_addr();
 
         async fn f(
             socket_addr: &SocketAddr,
             http_server: &httptest::Server,
             address_provider: Arc<FakeContentAddressProvider>,
+            space_id: SpaceId,
             data_space: DataSpace,
         ) {
-            let client = GrpcClient::new(format!("http://{}", socket_addr).parse().unwrap());
-            let content_provider = GrpcContentProvider::new(client, data_space).await;
+            let client = HyperClient::default();
+            let base_url: http::Uri = format!("http://{}", socket_addr).parse().unwrap();
+            let content_provider =
+                ApiContentProvider::new(client, base_url.clone(), space_id, data_space).await;
 
             let origin = Origin::Memory {};
             crate::content_providers::test_content_provider(&content_provider, &SMALL_DATA, origin)
@@ -694,9 +693,11 @@ mod test {
         loop {
             tokio::select! {
                 res = async {
-                    server.serve_with_incoming(incoming).await
+                    server
+                    .with_graceful_shutdown(async move { lgn_cli_utils::wait_for_termination().await.unwrap() })
+                    .await
                 } => panic!("server is no longer bound: {}", res.unwrap_err()),
-                _ = f(&addr, &http_server, address_provider, data_space) => break
+                _ = f(&addr, &http_server, address_provider, space_id, data_space) => break
             };
         }
     }
