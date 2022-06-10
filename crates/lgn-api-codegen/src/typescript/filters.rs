@@ -26,7 +26,7 @@ pub fn fmt_type(
         Type::Array(inner) => format!("{}[]", fmt_type(inner, ctx, module_path).unwrap()),
         Type::HashSet(inner) => format!("Set<{}>", fmt_type(inner, ctx, module_path).unwrap()),
         Type::Named(ref_) => {
-            let ref_module_path = ctx.ref_loc_to_module_path(ref_.ref_location())?;
+            let ref_module_path = ctx.ref_loc_to_typescript_module_path(ref_.ref_location())?;
 
             fmt_module_path(
                 &ref_module_path
@@ -108,7 +108,7 @@ pub fn fmt_model_name(
         } => format!("{}_{}_response", operation_name, status_code),
     };
 
-    Ok(format!("{}_model", name).to_case(Case::Pascal))
+    Ok(name.to_case(Case::Pascal))
 }
 
 #[cfg(test)]

@@ -17,7 +17,6 @@
             export type {{ model|fmt_model_name(ctx) }} = {
                 {% for field in fields.values() %}
                     {% if let Some(description) = field.description -%}/** {{ description }} */{%- endif %}
-                    {# #[serde(rename = "{{ field.name }}")] #}
                     {%- if field.required -%}
                     "{{ field.name }}": {{ field.type_|fmt_type(ctx, module_path) }};
                     {%- else -%}

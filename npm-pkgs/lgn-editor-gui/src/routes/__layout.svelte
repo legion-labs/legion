@@ -51,21 +51,38 @@
   const redirectUri = `${document.location.origin}/`;
 
   export const load: Load = async ({ fetch, url }) => {
-    const editorServerUrlKey = "editor-server-url";
-    const runtimeServerUrlKey = "runtime-server-url";
+    const restRuntimeServerUrlKey = "rest-runtime-server-url";
+    const restEditorServerUrlKey = "rest-editor-server-url";
+    const grpcEditorServerUrlKey = "grpc-editor-server-url";
+    const grpcRuntimeServerUrlKey = "grpc-runtime-server-url";
 
     devSettings.update((devSettings) => ({
       ...devSettings,
-      editorServerUrl:
-        url.searchParams.get(editorServerUrlKey) || devSettings.editorServerUrl,
-      runtimeServerUrl:
-        url.searchParams.get(runtimeServerUrlKey) ||
-        devSettings.runtimeServerUrl,
+      grpcEditorServerUrl:
+        url.searchParams.get(grpcEditorServerUrlKey) ||
+        devSettings.grpcEditorServerUrl,
+      grpcRuntimeServerUrl:
+        url.searchParams.get(grpcRuntimeServerUrlKey) ||
+        devSettings.grpcRuntimeServerUrl,
+      restEditorServerUrl:
+        url.searchParams.get(restEditorServerUrlKey) ||
+        devSettings.restEditorServerUrl,
+      restRuntimeServerUrl:
+        url.searchParams.get(restRuntimeServerUrlKey) ||
+        devSettings.restRuntimeServerUrl,
     }));
 
-    const { editorServerUrl, runtimeServerUrl } = get(devSettings);
+    const {
+      grpcEditorServerUrl,
+      grpcRuntimeServerUrl,
+      restEditorServerUrl,
+      restRuntimeServerUrl,
+    } = get(devSettings);
 
-    initApiClient({ editorServerUrl, runtimeServerUrl });
+    initApiClient({
+      editorServerUrl: grpcEditorServerUrl,
+      runtimeServerUrl: grpcRuntimeServerUrl,
+    });
 
     try {
       const { dispose, initAuthStatus } = await headlessRun({
@@ -90,8 +107,8 @@
             scopes,
           },
         },
-        editorServerUrl,
-        runtimeServerUrl,
+        restEditorServerUrl,
+        restRuntimeServerUrl,
         log: {
           transports: [
             new ConsoleTransport({

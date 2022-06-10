@@ -88,6 +88,49 @@ impl GenerationContext<RustOptions> {
     }
 }
 
+impl GenerationContext<TypeScriptOptions> {
+    pub fn ref_loc_to_typescript_module_path(
+        &self,
+        ref_loc: &OpenApiRefLocation,
+    ) -> Result<ModulePath> {
+        let file_path = ref_loc.path();
+
+        if let Some(module_path) = self.options.alias_mappings.0.get(file_path) {
+            return Ok(module_path.clone());
+        }
+
+        let file_path =
+            file_path
+                .strip_prefix(&self.root)
+                .map_err(|_err| Error::DocumentOutOfRoot {
+                    document_path: file_path.clone(),
+                    root: self.root.clone(),
+                })?;
+
+        Ok(ModulePath {
+            absolute: false,
+            parts: file_path
+                .with_extension("")
+                .to_string_lossy()
+                .split('/')
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+        })
+    }
+
+    pub fn as_typescript_modules(&self) -> Result<BTreeMap<ModulePath, &LocationContext>> {
+        self.location_contexts
+            .iter()
+            .map(
+                |(ref_loc, api_ctx)| match self.ref_loc_to_typescript_module_path(ref_loc) {
+                    Ok(module_path) => Ok((module_path, api_ctx)),
+                    Err(err) => Err(err),
+                },
+            )
+            .collect()
+    }
+}
+
 impl<Options: Default> GenerationContext<Options> {
     pub fn new(root: PathBuf) -> Self {
         Self {
@@ -177,10 +220,57 @@ impl RustOptions {
 }
 
 #[derive(Debug, Default, PartialEq)]
+pub struct TypeScriptAliasMappings(HashMap<PathBuf, ModulePath>);
+
+impl TypeScriptAliasMappings {
+    /// Adds a mapping of a file to a TypeScript namespace.
+    ///
+    /// # Errors
+    ///
+    /// If the paths are invalid, an error is returned.
+    pub fn add_module_mapping(
+        &mut self,
+        file_path: impl AsRef<std::path::Path>,
+        module_path: &str,
+    ) -> Result<Option<ModulePath>> {
+        let file_path = file_path.as_ref();
+
+        Ok(self.0.insert(
+            if file_path.is_relative() {
+                file_path.to_path_buf()
+            } else {
+                std::env::current_dir()?.join(file_path)
+            }
+            .canonicalize()?,
+            ModulePath::from_absolute_typescript_namespace(module_path),
+        ))
+    }
+}
+
+impl<K, V> TryFrom<HashMap<K, V>> for TypeScriptAliasMappings
+where
+    K: AsRef<std::path::Path>,
+    V: AsRef<str>,
+{
+    type Error = Error;
+
+    fn try_from(map: HashMap<K, V>) -> Result<Self> {
+        let mut alias_mappings = Self::default();
+
+        for (k, v) in map {
+            alias_mappings.add_module_mapping(k, v.as_ref())?;
+        }
+
+        Ok(alias_mappings)
+    }
+}
+
+#[derive(Debug, Default, PartialEq)]
 pub struct TypeScriptOptions {
     pub prettier_config_path: Option<PathBuf>,
     pub with_package_json: bool,
     pub skip_format: bool,
+    pub alias_mappings: TypeScriptAliasMappings,
 }
 
 #[derive(Debug)]
@@ -262,6 +352,22 @@ impl ModulePath {
             absolute: true,
             parts: s
                 .split("::")
+                .filter_map(|s| {
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(s.to_string())
+                    }
+                })
+                .collect(),
+        }
+    }
+
+    pub fn from_absolute_typescript_namespace(s: &str) -> Self {
+        Self {
+            absolute: true,
+            parts: s
+                .split('.')
                 .filter_map(|s| {
                     if s.is_empty() {
                         None

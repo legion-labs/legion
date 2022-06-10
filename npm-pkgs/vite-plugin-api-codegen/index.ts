@@ -7,6 +7,14 @@ export type Config = {
   path: string;
   /** An array containing the api to generate the client(s) for */
   apiNames: string[];
+  /** Path to a Prettier config file */
+  prettierConfigPath?: string;
+  /** Generates a package.json file alongside the source */
+  withPackageJson?: boolean;
+  /** Skips code formatting */
+  skipFormat?: boolean;
+  /** Maps external references to TS namespaces */
+  aliasMappings?: Record<string, string>;
 };
 
 /**
@@ -15,6 +23,10 @@ export type Config = {
 export default function vitePluginApiCodegen({
   path: apisPath,
   apiNames,
+  prettierConfigPath,
+  skipFormat,
+  withPackageJson,
+  aliasMappings,
 }: Config) {
   return {
     name: "@lgn/vite-plugin-api-codegen",
@@ -23,7 +35,15 @@ export default function vitePluginApiCodegen({
 
       await mkdirp(outDir);
 
-      generate({ apiNames, path: apisPath, outDir });
+      generate({
+        apiNames,
+        path: apisPath,
+        outDir,
+        prettierConfigPath,
+        skipFormat,
+        withPackageJson,
+        aliasMappings,
+      });
     },
   };
 }

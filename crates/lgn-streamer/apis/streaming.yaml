@@ -1,0 +1,30 @@
+openapi: 3.1.0
+info:
+  title: "Streaming API"
+  description: "The OpenAPI specification for the Legion Labs streaming service."
+  version: 1.0.0
+paths:
+  /v1/spaces/{space-id}/workspace/{workspace-id}/session/graphic-session/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Initializes the video stream.
+      operationId: initializeStream
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              description: The RTC session description
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/octet-stream:
+              schema:
+                description: The RTC session description
+                type: string
+                format: binary

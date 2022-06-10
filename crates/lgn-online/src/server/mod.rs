@@ -125,7 +125,7 @@ impl RouterExt for Router {
         // Note: only routes that were added BEFORE the layer will benefit from
         // it.
         // Make sure to register all API routes before calling this function or
-        // the routes won't have neither CORS nor authenciation!
+        // the routes won't have neither CORS nor authentication!
 
         let auth = RequireAuthorizationLayer::custom(RequestAuthorizer::<UserInfo, _, _>::new(
             options.signature_validation,
