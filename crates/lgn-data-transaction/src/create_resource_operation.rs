@@ -47,13 +47,14 @@ impl TransactionOperation for CreateResourceOperation {
                 .await
                 .map_err(|_err| Error::InvalidFilePath(path.clone()))?;
 
-            let reader = Box::pin(reader) as AssetRegistryReader;
-            self.resource_id
-                .kind
-                .create_from_json_reader(reader)
-                .await?
+            let mut reader = Box::pin(reader) as AssetRegistryReader;
+            // TODO: Implement proper Import
+            lgn_data_offline::from_json_reader_untyped(&mut reader).await?
         } else {
-            self.resource_id.kind.new_instance()
+            let mut new_instance = self.resource_id.kind.new_instance();
+            let mut meta = lgn_data_offline::get_meta_mut(new_instance.as_mut());
+            meta.type_id = self.resource_id;
+            new_instance
         };
 
         let mut requested_resource_path = self.resource_path.clone();
@@ -71,11 +72,11 @@ impl TransactionOperation for CreateResourceOperation {
 
         Ok(ctx
             .project
-            .add_resource_with_id(self.resource_id.id, new_instance.as_mut())
+            .add_resource_with_id(self.resource_id, new_instance.as_mut())
             .await?)
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        Ok(ctx.project.delete_resource(self.resource_id.id).await?)
+        Ok(ctx.project.delete_resource(self.resource_id).await?)
     }
 }

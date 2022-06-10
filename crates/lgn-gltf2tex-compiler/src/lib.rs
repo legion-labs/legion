@@ -61,13 +61,13 @@ impl Compiler for Gltf2TexCompiler {
 
         // TODO: aganea - should we read from a Device directly?
         let bytes = context.persistent_provider.read(&identifier).await?;
-        let gltf_file = GltfFile::from_bytes(&bytes)?;
 
         let outputs = {
             let source = context.source.clone();
             let target_unnamed = context.target_unnamed.clone();
 
             CompilerContext::execute_workload(move || {
+                let gltf_file = GltfFile::from_bytes(&bytes)?;
                 let mut compiled_resources = vec![];
                 let textures = gltf_file.gather_textures();
                 for texture in textures {
@@ -76,7 +76,7 @@ impl Compiler for Gltf2TexCompiler {
                         |err| {
                             CompilerError::CompilationError(format!(
                                 "Writing to file '{}' failed: {}",
-                                context.source.resource_id(),
+                                source.resource_id(),
                                 err
                             ))
                         },

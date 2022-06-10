@@ -13,8 +13,8 @@ use lgn_content_store::{
     Provider,
 };
 use lgn_data_runtime::{
-    new_resource_type_and_id_indexer, AssetRegistryError, Resource, ResourceId, ResourcePathId,
-    ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
+    new_resource_type_and_id_indexer, AssetRegistryError, AssetRegistryReader, Resource,
+    ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
     CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
@@ -281,10 +281,7 @@ impl Project {
         &mut self,
         resource: &dyn Resource,
     ) -> Result<ResourceTypeAndId, Error> {
-        let type_id = ResourceTypeAndId {
-            kind: resource.get_resource_type(),
-            id: ResourceId::new(),
-        };
+        let type_id = crate::get_meta(resource).type_id;
         self.add_resource_with_id(type_id, resource).await?;
         Ok(type_id)
     }
@@ -303,12 +300,14 @@ impl Project {
         type_id: ResourceTypeAndId,
         resource: &dyn Resource,
     ) -> Result<(), Error> {
-        let contents = Vec::new();
+        let mut contents = Vec::new();
         crate::to_json_writer(resource, &mut contents)
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
+        let meta = crate::get_meta(resource);
+        assert_eq!(meta.type_id, type_id);
         self.workspace
-            .add_resource(&type_id.into(), name.as_str(), &contents)
+            .add_resource(&type_id.into(), meta.name.as_str(), &contents)
             .await?;
 
         Ok(())
@@ -375,9 +374,23 @@ impl Project {
         let mut contents = Vec::new();
         crate::to_json_writer(resource, &mut contents)
             .map_err(|e| Error::ResourceRegistry(type_id, e))?;
-        self.workspace
-            .update_resource(&type_id.into(), meta.name.as_str(), &contents, &type_id)
-            .await?;
+
+        if let Some(old_resource_id) = self
+            .workspace
+            .get_resource_identifier(&type_id.into())
+            .await?
+        {
+            let meta = crate::get_meta(resource);
+            assert_eq!(meta.type_id, type_id);
+            self.workspace
+                .update_resource(
+                    &type_id.into(),
+                    meta.name.as_str(),
+                    &contents,
+                    &old_resource_id,
+                )
+                .await?;
+        }
 
         Ok(())
     }
@@ -387,12 +400,15 @@ impl Project {
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<Box<dyn Resource>, Error> {
-        let reader = self.workspace.get_reader(&type_id.into()).await?;
-        type_id
-            .kind
-            .create_from_json_reader(reader)
+        let (reader, _resource_ident) = self.workspace.get_reader(&type_id.into()).await?;
+        let mut reader = Box::pin(reader) as AssetRegistryReader;
+
+        let resource = crate::from_json_reader_untyped(&mut reader)
             .await
-            .map_err(|e| Error::ResourceRegistry(type_id, e))
+            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
+        let meta = crate::get_meta(resource.as_ref());
+        assert_eq!(meta.type_id, type_id);
+        Ok(resource)
     }
 
     /// Loads a resource of a given type and id.
@@ -400,11 +416,17 @@ impl Project {
         &self,
         type_id: ResourceTypeAndId,
     ) -> Result<Box<T>, Error> {
-        let reader = self.workspace.get_reader(&type_id.into()).await?;
-        let resource = T::from_reader(&mut reader)
-            .await
-            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
-        Ok(resource)
+        let resource = self.load_resource_untyped(type_id).await?;
+        if resource.is::<T>() {
+            let raw: *mut dyn lgn_data_runtime::Resource = Box::into_raw(resource);
+            #[allow(unsafe_code, clippy::cast_ptr_alignment)]
+            let boxed_asset = unsafe { Box::from_raw(raw.cast::<T>()) };
+            return Ok(boxed_asset);
+        }
+        Err(Error::ResourceRegistry(
+            type_id,
+            lgn_data_runtime::AssetRegistryError::Generic("invalid type".into()),
+        ))
     }
 
     /// Returns information about a given resource from its `.meta` file.
@@ -507,6 +529,7 @@ impl Project {
             .await?
         {
             let metadata = self.read_meta_by_resource_id(&resource_id).await?;
+            assert_eq!(metadata.type_id, type_id);
             Ok((metadata, resource_id))
         } else {
             Err(Error::SourceControl(
@@ -540,12 +563,20 @@ impl Project {
         resource_id: &ResourceIdentifier,
     ) -> Result<Metadata, Error> {
         let resource_bytes = self.workspace.load_resource_by_id(resource_id).await?;
+        let mut stream = serde_json::Deserializer::from_slice(resource_bytes.as_slice())
+            .into_iter::<serde_json::Value>();
+        let meta_json = stream
+            .next()
+            .ok_or_else(|| {
+                Error::ContentStore(lgn_content_store::Error::IdentifierNotFound(
+                    resource_id.as_identifier().clone(),
+                ))
+            })?
+            .map_err(Error::from)?;
 
-        let mut reader = std::io::Cursor::new(resource_bytes);
-
-        // just read the pre-pended metadata
-        let metadata = Metadata::deserialize(&mut reader);
-
+        let metadata = serde_json::from_value(meta_json)?;
+        //let mut metadata = Metadata::default();
+        //reflection_apply_json_edit(&mut metadata, &meta_json);
         Ok(metadata)
     }
 
@@ -558,35 +589,26 @@ impl Project {
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        let (mut resource_bytes, resource_id) =
-            self.workspace.load_resource(&type_id.into()).await?;
+        let (reader, resource_ident) = self.workspace.get_reader(&type_id.into()).await?;
+        let mut reader = Box::pin(reader) as AssetRegistryReader;
 
-        let mut reader = std::io::BufReader::new(resource_bytes);
-        // read existing pre-pended metadata
-        let mut metadata: Metadata = {
-            let mut stream =
-                serde_json::Deserializer::from_reader(reader).into_iter::<serde_json::Value>();
-            let meta_json = stream.next().unwrap().map_err(Error::from)?;
-            serde_json::from_value(meta_json)?
+        let mut resource = crate::from_json_reader_untyped(&mut reader)
+            .await
+            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
+
+        let old_name = {
+            let metadata = crate::get_meta_mut(resource.as_mut());
+            metadata.rename(new_name)
         };
-        let old_name = metadata.rename(new_name);
-        let mut rest = Vec::new();
-        reader.read_to_end(&mut rest)?;
-
         if new_name != &old_name {
             // already used?
             if let Ok(existing_type_id) = self.find_resource(new_name).await {
                 return Err(Error::NameAlreadyUsed(new_name.clone(), existing_type_id));
             }
-            let mut contents = std::io::Cursor::new(Vec::new());
 
-            let meta_json = serde_json::to_value(metadata)?;
-            serde_json::to_writer_pretty(&mut contents, &meta_json)?;
-            // update resource contents since embedded metadata has changed
-            contents
-                .write_all_buf(&mut reader)
-                .expect("failed to transfert buffer contents");
-            let contents = contents.into_inner();
+            let mut contents = Vec::new();
+            crate::to_json_writer(resource.as_ref(), &mut contents)
+                .map_err(|e| Error::ResourceRegistry(type_id, e))?;
 
             self.workspace
                 .update_resource_and_path(
@@ -594,7 +616,7 @@ impl Project {
                     old_name.as_str(),
                     new_name.as_str(),
                     &contents,
-                    &resource_id,
+                    &resource_ident,
                 )
                 .await?;
         }

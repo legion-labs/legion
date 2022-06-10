@@ -36,7 +36,6 @@ fn compile_from_offline(
     writer: &mut dyn std::io::Write,
 ) {
     let texture = lgn_graphics_data::runtime::BinTexture {
-        //meta: Metadata::new_default::<lgn_graphics_data::runtime::BinTexture>(),
         width,
         height,
         format,
@@ -76,20 +75,26 @@ impl Compiler for Tex2BinCompiler {
         let resources = context.registry();
 
         let output = {
-            let image = resources
-                .load_async::<lgn_graphics_data::runtime::RawTexture>(context.source.resource_id())
-                .await?;
-            let image = image.get().ok_or_else(|| {
-                AssetRegistryError::ResourceNotFound(context.source.resource_id())
-            })?;
+            let image = {
+                let image = resources
+                    .load_async::<lgn_graphics_data::runtime::RawTexture>(
+                        context.source.resource_id(),
+                    )
+                    .await?;
+                let image = image.get().ok_or_else(|| {
+                    AssetRegistryError::ResourceNotFound(context.source.resource_id())
+                })?;
 
+                image.clone()
+            };
+            let target_unnamed = context.target_unnamed.clone();
             CompilerContext::execute_workload(move || {
-                let mut compiled_resources = vec![];
+                let mut compiled_resources = Vec::<(ResourcePathId, Vec<u8>)>::new();
 
                 let pixel_size = image.rgba.len() as u32 / image.width / image.height;
                 if pixel_size == 1 {
                     let mut compiled_asset = vec![];
-                compile_from_offline(
+                    compile_from_offline(
                         image.width,
                         image.height,
                         TextureFormat::BC4,
@@ -109,7 +114,7 @@ impl Compiler for Tex2BinCompiler {
                     ));
                 } else {
                     let mut compiled_asset_srgb = vec![];
-                compile_from_offline(
+                    compile_from_offline(
                         image.width,
                         image.height,
                         TextureFormat::BC7,
@@ -124,7 +129,7 @@ impl Compiler for Tex2BinCompiler {
 
                     // todo: normal compression doest require bc7 (verify and modify)
                     let mut compiled_asset_linear = vec![];
-                compile_from_offline(
+                    compile_from_offline(
                         image.width,
                         image.height,
                         TextureFormat::BC7,
@@ -138,7 +143,7 @@ impl Compiler for Tex2BinCompiler {
                         .push((target_unnamed.new_named("Normal"), compiled_asset_linear));
 
                     let mut compiled_asset_blended = vec![];
-                compile_from_offline(
+                    compile_from_offline(
                         image.width,
                         image.height,
                         TextureFormat::BC7,

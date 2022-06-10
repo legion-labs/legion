@@ -40,7 +40,7 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
             setup_dir(&work_dir);
-        let resources = setup_registry().await;
+        let _resources = setup_registry().await;
 
         let mut project = Project::new_with_remote_mock(
             &project_dir,
@@ -81,7 +81,7 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
             setup_dir(&work_dir);
-        let resources = setup_registry().await;
+        let _resources = setup_registry().await;
 
         let mut project = Project::new_with_remote_mock(
             &project_dir,
@@ -96,21 +96,10 @@ mod tests {
                 .await
                 .unwrap();
 
-            let parent_handle = {
-                let res = resources
-                    .new_resource(refs_resource::TestResource::TYPE)
-                    .unwrap();
-                let mut edit = res
-                    .instantiate::<refs_resource::TestResource>(&resources)
-                    .unwrap();
-                edit.build_deps.push(ResourcePathId::from(child_id));
-                res.apply(edit, &resources);
-                res
-            };
-            let parent_id = project
-                .add_resource(&TestResource::new_named("parent"))
-                .await
-                .unwrap();
+            let mut parent = TestResource::new_named("parent");
+            parent.build_deps.push(ResourcePathId::from(child_id));
+
+            let parent_id = project.add_resource(&parent).await.unwrap();
 
             project.commit("added parent and child").await.unwrap();
 

@@ -1,4 +1,5 @@
 use lgn_content_store::indexing::{CompositeIndexer, IndexKey, StaticIndexer};
+use lgn_data_model::ReflectionError;
 use lgn_utils::DefaultHash;
 use serde::ser::SerializeTuple;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -155,6 +156,13 @@ pub struct ResourceTypeAndId {
     /// The associated `ResourceId`.
     pub id: ResourceId,
 }
+
+lgn_data_model::implement_primitive_type_def!(
+    ResourceTypeAndId,
+    Result::<ResourceTypeAndId, ReflectionError>::Err(ReflectionError::InvalidFieldType(
+        "Invalid default ResourceTypeAndId".into()
+    ))
+);
 
 impl FromStr for ResourceTypeAndId {
     type Err = &'static str;

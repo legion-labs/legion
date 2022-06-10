@@ -6,8 +6,8 @@ use lgn_data_model::{utils::find_property_mut, TypeDefinition, TypeReflection};
 use tokio::task::JoinHandle;
 
 use crate::{
-    from_binary_reader, from_json_reader, AssetRegistry, AssetRegistryError, AssetRegistryReader,
-    HandleUntyped, LoadRequest, ReferenceUntyped, Resource, ResourceTypeAndId,
+    from_binary_reader, AssetRegistry, AssetRegistryError, AssetRegistryReader, HandleUntyped,
+    LoadRequest, ReferenceUntyped, Resource, ResourceTypeAndId,
 };
 
 /// Implement a default `ResourceInstaller` using `from_binary_reader` interface
@@ -35,38 +35,6 @@ impl<'de, T: Resource + Default + serde::Deserialize<'de>> ResourceInstaller
         reader: &mut AssetRegistryReader,
     ) -> Result<HandleUntyped, AssetRegistryError> {
         let mut new_resource: Box<dyn crate::Resource> = from_binary_reader::<T>(reader).await?;
-        let resource = new_resource.as_mut();
-        activate_reference(resource_id, resource, request.asset_registry.clone()).await;
-        let handle = request
-            .asset_registry
-            .set_resource(resource_id, new_resource)?;
-        Ok(handle)
-    }
-}
-
-/// Implement a default `ResourceInstaller` using `from_json_reader` interface
-pub struct JsonInstaller<T: Resource> {
-    _phantom: std::marker::PhantomData<T>,
-}
-
-impl<T: Resource + Default> JsonInstaller<T> {
-    /// Create a new Json installer for a specific Resource type
-    pub fn create() -> Arc<dyn ResourceInstaller> {
-        Arc::new(Self {
-            _phantom: std::marker::PhantomData::<T>,
-        })
-    }
-}
-
-#[async_trait]
-impl<T: Resource + Default> ResourceInstaller for JsonInstaller<T> {
-    async fn install_from_stream(
-        &self,
-        resource_id: ResourceTypeAndId,
-        request: &mut LoadRequest,
-        reader: &mut AssetRegistryReader,
-    ) -> Result<HandleUntyped, AssetRegistryError> {
-        let mut new_resource: Box<dyn crate::Resource> = from_json_reader::<T>(reader).await?;
         let resource = new_resource.as_mut();
         activate_reference(resource_id, resource, request.asset_registry.clone()).await;
         let handle = request

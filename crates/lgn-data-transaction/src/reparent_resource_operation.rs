@@ -29,7 +29,7 @@ impl ReparentResourceOperation {
 impl TransactionOperation for ReparentResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
-        let raw_name = ctx.project.raw_resource_name(self.resource_id.id).await?;
+        let raw_name = ctx.project.raw_resource_name(self.resource_id).await?;
 
         // Check if the parent is a resource or just a path
         let parent_id = ctx.project.find_resource(&self.new_path).await.ok();

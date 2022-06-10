@@ -9,12 +9,9 @@ use std::{
     time::SystemTime,
 };
 
-use futures::{
-    future::{select_all, try_join_all},
-    Future, FutureExt,
-};
+use futures::{future::select_all, Future, FutureExt};
 use lgn_content_store::{
-    indexing::{empty_tree_id, ResourceWriter, SharedTreeIdentifier},
+    indexing::{empty_tree_id, SharedTreeIdentifier},
     Provider,
 };
 use lgn_data_compiler::{
@@ -22,16 +19,15 @@ use lgn_data_compiler::{
     compiler_node::{CompilerNode, CompilerStub},
     CompiledResource, CompiledResources,
 };
-use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
+use lgn_data_offline::{vfs::AddDeviceSourceCas, Project};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
-use lgn_tracing::{async_span_scope, debug, error, info};
+use lgn_tracing::{debug, error, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, graph::NodeIndex, Graph};
 
 use crate::{
-    asset_file_writer::write_assetfile,
     output_index::{AssetHash, CompiledResourceInfo, CompiledResourceReference, OutputIndex},
     source_index::SourceIndex,
     DataBuildOptions, Error,
@@ -118,6 +114,7 @@ pub struct DataBuild {
     source_manifest_id: SharedTreeIdentifier,
     runtime_manifest_id: SharedTreeIdentifier,
     data_content_provider: Arc<Provider>,
+    source_control_provider: Arc<Provider>,
     compilers: CompilerNode,
 }
 
@@ -183,6 +180,7 @@ impl DataBuild {
             source_manifest_id: project.source_manifest_id(),
             runtime_manifest_id,
             data_content_provider: Arc::clone(&config.data_content_provider),
+            source_control_provider: Arc::clone(&config.source_control_content_provider),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
@@ -240,7 +238,6 @@ impl DataBuild {
             statistics: _stats,
         } = self.compile_path(compile_path, env).await?;
 
-
         for asset in resources {
             if let Some(existing) = result
                 .compiled_resources
@@ -267,6 +264,7 @@ impl DataBuild {
     async fn compile_node(
         output_index: &OutputIndex,
         data_provider: &Provider,
+        source_control_provider: &Provider,
         source_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         compile_node: &ResourcePathId,
@@ -826,11 +824,6 @@ impl DataBuild {
             statistics: compile_stats,
         })
     }
-
-                self.source_index
-                    .content_store
-                self.source_index.content_store.write(&output).await?
-                    .await?
     /// Returns the global version of the databuild module.
     pub fn version() -> &'static str {
         DATA_BUILD_VERSION

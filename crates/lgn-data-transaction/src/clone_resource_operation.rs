@@ -39,9 +39,9 @@ impl TransactionOperation for CloneResourceOperation {
             .project
             .load_resource_untyped(self.source_resource_id)
             .await?;
-        let mut source_raw_name = ctx.project.raw_resource_name(self.source_resource_id)?;
-        source_raw_name.replace_parent_info(self.target_parent_id, None);
 
+        let mut source_raw_name = lgn_data_offline::get_meta(resource.as_ref()).name.clone();
+        source_raw_name.replace_parent_info(self.target_parent_id, None);
         source_raw_name = ctx.project.get_incremental_name(&source_raw_name).await;
 
         if let Some(entity_name) = source_raw_name.to_string().rsplit('/').next() {
@@ -59,19 +59,19 @@ impl TransactionOperation for CloneResourceOperation {
             }
         }
 
-        lgn_data_offline::get_meta_mut(resource.as_mut()).name = source_raw_name;
+        let meta = lgn_data_offline::get_meta_mut(resource.as_mut());
+        meta.type_id = self.clone_resource_id;
+        meta.name = source_raw_name;
 
         ctx.project
-            .add_resource_with_id(self.clone_resource_id.id, resource.as_ref())
+            .add_resource_with_id(self.clone_resource_id, resource.as_ref())
             .await?;
 
         Ok(())
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        ctx.project
-            .delete_resource(self.clone_resource_id)
-            .await?;
+        ctx.project.delete_resource(self.clone_resource_id).await?;
         Ok(())
     }
 }

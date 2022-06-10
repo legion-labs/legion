@@ -46,12 +46,12 @@ impl Device for SourceCasDevice {
     }
 
     async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader> {
-        if let Ok(Some(TreeLeafNode::Resource(leaf_id))) = self
-            .indexer
-            .get_leaf(&self.provider, &self.manifest_id.read(), &type_id.into())
+        if let Ok(Some(resource_id)) = self
+            .manifest
+            .get_identifier(&self.provider, &type_id.into())
             .await
         {
-            if let Ok(reader) = self.provider.get_reader(&leaf_id.as_identifier()).await {
+            if let Ok(reader) = self.provider.get_reader(resource_id.as_identifier()).await {
                 return Some(Box::pin(reader) as AssetRegistryReader);
             }
         }

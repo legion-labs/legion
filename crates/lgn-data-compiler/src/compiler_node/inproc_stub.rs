@@ -64,7 +64,9 @@ impl CompilerStub for InProcessCompilerStub {
         let manifest = CompiledResources {
             compiled_resources: derived_deps.to_vec(),
         };
-        let manifest_id = manifest.into_rt_manifest(provider, |_rpid| true).await;
+        let manifest_id = manifest
+            .into_rt_manifest(volatile_provider, |_rpid| true)
+            .await;
         runtime_manifest_id.write(manifest_id);
 
         let result = self

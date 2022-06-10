@@ -1,3 +1,4 @@
+/*
 #[cfg(test)]
 mod tests {
     use std::{
@@ -6,7 +7,7 @@ mod tests {
         vec,
     };
 
-    use integer_asset::{IntegerAsset, IntegerAssetLoader};
+    use generic_data::{IntegerAsset, IntegerAssetLoader};
     use lgn_content_store::{
         indexing::{ResourceExists, ResourceReader},
         Provider,
@@ -15,7 +16,7 @@ mod tests {
         compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform,
         Target,
     };
-    use lgn_data_offline::resource::{Project, ResourcePathName};
+    use lgn_data_offline::{Project, ResourcePathName};
     use lgn_data_runtime::{
         AssetLoader, AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
         ResourceProcessor, ResourceTypeAndId,
@@ -121,8 +122,7 @@ mod tests {
 
         let resource_id = {
             let resource_id = project
-                .add_resource(TestResource::new_named("resource")
-                )
+                .add_resource(TestResource::new_named("resource"))
                 .await
                 .unwrap();
             project
@@ -130,7 +130,7 @@ mod tests {
                 .await
                 .expect("failed to commit");
 
-           resource_id
+            resource_id
         };
 
         let config = DataBuildOptions::new_with_sqlite_output(
@@ -959,4 +959,4 @@ mod tests {
         }
     }
 }
-
+*/

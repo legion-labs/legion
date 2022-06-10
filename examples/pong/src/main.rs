@@ -11,24 +11,25 @@ use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
-    resource::{Project, ResourcePathName},
     vfs::AddDeviceSourceCas,
+    SourceResource, {Project, ResourcePathName},
 };
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
+    AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
     ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
+use lgn_graphics_data::{
+    offline::{Light, Visual},
+    LightType,
+};
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::Vec3;
 use lgn_scripting_data::ScriptType;
 use lgn_source_control::RepositoryName;
 use lgn_tracing::{info, LevelFilter};
-use sample_data::{
-    offline::{Light, Transform, Visual},
-    LightType,
-};
+use sample_data::offline::Transform;
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
 enum CompilersSource {
@@ -499,11 +500,14 @@ async fn create_offline_entity(
     let exists = project.exists(type_id).await;
     let mut entity = if exists {
         project
-            .load_resource::<sample_data::offline::Entity>(type_id.id)
+            .load_resource::<sample_data::offline::Entity>(type_id)
             .await
             .expect("failed to load resource")
     } else {
-        Box::new(sample_data::offline::Entity::new_named(name.as_str()))
+        Box::new(sample_data::offline::Entity::new_with_id(
+            name.as_str(),
+            type_id,
+        ))
     };
 
     entity.components.clear();
@@ -513,12 +517,12 @@ async fn create_offline_entity(
 
     if exists {
         project
-            .save_resource(id, entity.as_ref())
+            .save_resource(type_id, entity.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(id, entity.as_ref())
+            .add_resource_with_id(type_id, entity.as_ref())
             .await
             .expect("failed to add new resource");
     }
@@ -543,11 +547,14 @@ async fn create_offline_model(
     let exists = project.exists(type_id).await;
     let mut model = if exists {
         project
-            .load_resource::<lgn_graphics_data::offline::Model>(type_id.id)
+            .load_resource::<lgn_graphics_data::offline::Model>(type_id)
             .await
             .expect("failed to load resource")
     } else {
-        Box::new(lgn_graphics_data::offline::Model::new_named(name.as_str()))
+        Box::new(lgn_graphics_data::offline::Model::new_with_id(
+            name.as_str(),
+            type_id,
+        ))
     };
 
     model.meshes.clear();
@@ -567,12 +574,12 @@ async fn create_offline_model(
 
     if exists {
         project
-            .save_resource(id, model.as_ref())
+            .save_resource(type_id, model.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(id, model.as_ref())
+            .add_resource_with_id(type_id, model.as_ref())
             .await
             .expect("failed to add new resource");
     }
@@ -598,12 +605,13 @@ async fn create_offline_script(
     let exists = project.exists(type_id).await;
     let mut script = if exists {
         project
-            .load_resource::<lgn_scripting_data::offline::Script>(id)
+            .load_resource::<lgn_scripting_data::offline::Script>(type_id)
             .await
             .expect("failed to load resource")
     } else {
-        Box::new(lgn_scripting_data::offline::Script::new_named(
+        Box::new(lgn_scripting_data::offline::Script::new_with_id(
             name.as_str(),
+            type_id,
         ))
     };
 
@@ -612,12 +620,12 @@ async fn create_offline_script(
 
     if exists {
         project
-            .save_resource(id, script.as_ref())
+            .save_resource(type_id, script.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(id, script.as_ref())
+            .add_resource_with_id(type_id, script.as_ref())
             .await
             .expect("failed to add new resource");
     }

@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use async_trait::async_trait;
 use lgn_app::App;
 use lgn_data_runtime::{
-    AssetRegistryError, AssetRegistryReader, ComponentInstaller, LoadRequest, Resource,
+    from_binary_reader, AssetRegistryError, AssetRegistryReader, ComponentInstaller, LoadRequest,
     ResourceInstaller, ResourceTypeAndId,
 };
 use lgn_ecs::{prelude::*, schedule::SystemLabel, system::EntityCommands};
@@ -135,9 +135,9 @@ impl ResourceInstaller for TextureInstaller {
         request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
     ) -> Result<lgn_data_runtime::HandleUntyped, AssetRegistryError> {
-        let texture = lgn_graphics_data::runtime::BinTexture::from_reader(reader).await?;
+        let texture = from_binary_reader::<lgn_graphics_data::runtime::BinTexture>(reader).await?;
         lgn_tracing::info!(
-            "Texture {:?} | width: {}, height: {}, format: {:?}",
+            "Texture {} | width: {}, height: {}, format: {:?}",
             resource_id.id,
             texture.width,
             texture.height,

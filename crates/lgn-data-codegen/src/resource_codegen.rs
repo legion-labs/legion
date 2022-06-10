@@ -21,7 +21,7 @@ pub(crate) fn generate_registration_code(
             quote! {
             .add_resource_installer(
                 <#type_name as lgn_data_runtime::ResourceDescriptor>::TYPE,
-                lgn_data_runtime::JsonInstaller::<#type_name>::create())
+                lgn_data_offline::JsonInstaller::<#type_name>::create())
             }
         });
 
@@ -80,10 +80,6 @@ pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
 
             fn get_resource_type(&self) -> lgn_data_runtime::ResourceType {
                 <#offline_identifier as lgn_data_runtime::ResourceDescriptor>::TYPE
-            }
-
-            async fn from_reader(reader: &mut lgn_data_runtime::AssetRegistryReader) -> Result<Box<Self>, lgn_data_runtime::AssetRegistryError> {
-                lgn_data_runtime::from_json_reader::<Self>(reader).await
             }
         }
 

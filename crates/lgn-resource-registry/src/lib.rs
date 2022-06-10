@@ -13,7 +13,7 @@ use lgn_content_store::indexing::SharedTreeIdentifier;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::Project;
-use lgn_data_runtime::{manifest::Manifest, AssetRegistry, AssetRegistryScheduling};
+use lgn_data_runtime::AssetRegistryScheduling;
 use lgn_data_transaction::{BuildManager, SelectionManager, TransactionManager};
 use lgn_ecs::prelude::*;
 pub use settings::ResourceRegistrySettings;
@@ -50,7 +50,6 @@ impl ResourceRegistryPlugin {
         let project_dir = settings.root_folder.clone();
 
         let async_rt = world.resource::<TokioAsyncRuntime>();
-        let asset_registry = world.resource::<Arc<AssetRegistry>>();
         let runtime_manifest_id = world.resource::<SharedTreeIdentifier>();
         let selection_manager = world.resource::<Arc<SelectionManager>>();
 

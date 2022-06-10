@@ -1,6 +1,6 @@
 use generic_data::{offline::RefsAsset, offline::TestResource};
 use lgn_content_store::{
-    indexing::{ResourceExists, ResourceReader, TreeIdentifier},
+    indexing::{ResourceExists, TreeIdentifier},
     Config, Provider,
 };
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
@@ -105,12 +105,13 @@ async fn command_compile() {
 
     let resource_content = {
         let reader = volatile_content_provider
-            .get_reader(content_id)
+            .get_reader(content_id.as_identifier())
             .await
             .expect("asset content");
 
+        RefsAsset::register_resource_type();
         let mut reader = Box::pin(reader) as AssetRegistryReader;
-        let loaded_resource = RefsAsset::from_reader(&mut reader)
+        let loaded_resource = lgn_data_offline::from_json_reader::<RefsAsset>(&mut reader)
             .await
             .expect("valid data");
         loaded_resource.content.as_bytes().to_owned()

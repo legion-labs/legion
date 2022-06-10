@@ -64,7 +64,7 @@ impl<'a> LockContext<'a> {
     ) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
         let mut changed: Option<Vec<ResourceTypeAndId>> = None;
         for (id, resource) in self.edited_resources.drain() {
-            self.project.save_resource(id.id, resource.as_ref()).await?;
+            self.project.save_resource(id, resource.as_ref()).await?;
 
             changed.get_or_insert(Vec::new()).push(id);
         }

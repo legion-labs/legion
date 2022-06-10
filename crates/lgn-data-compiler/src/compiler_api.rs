@@ -535,8 +535,8 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &dependencies,
                     &derived_deps,
                     shell.registry(),
-                    &data_provider,           // volatile
-                    &source_control_provider, // persistent
+                    &data_provider,   // volatile
+                    &source_provider, // persistent
                     &source_manifest_id,
                     &runtime_manifest_id,
                     &env,

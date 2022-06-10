@@ -1,10 +1,7 @@
 use generic_data::offline::{BinaryResource, IntegerAsset, MultiTextResource, TextResource};
-use lgn_content_store::{
-    indexing::{ResourceExists, ResourceReader},
-    Config,
-};
+use lgn_content_store::{indexing::ResourceExists, Config};
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
-use lgn_data_offline::SourceResource;
+use lgn_data_offline::{from_json_reader, SourceResource};
 use lgn_data_runtime::prelude::*;
 
 mod common;
@@ -26,7 +23,6 @@ async fn compile_atoi() {
             .unwrap();
 
     let source_magic_value = String::from("47");
-
     let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
             kind: TextResource::TYPE,
@@ -74,12 +70,13 @@ async fn compile_atoi() {
         .unwrap());
 
     let reader = volatile_content_provider
-        .read(content_id)
+        .get_reader(content_id.as_identifier())
         .await
         .expect("asset content");
 
+    IntegerAsset::register_resource_type();
     let mut reader = Box::pin(reader) as AssetRegistryReader;
-    let asset = IntegerAsset::from_reader(&mut reader)
+    let asset = from_json_reader::<IntegerAsset>(&mut reader)
         .await
         .expect("loaded assets");
 
@@ -162,12 +159,13 @@ async fn compile_intermediate() {
         .unwrap());
 
     let reader = volatile_content_provider
-        .read(content_id)
+        .get_reader(content_id.as_identifier())
         .await
         .expect("asset content");
 
+    IntegerAsset::register_resource_type();
     let mut reader = Box::pin(reader) as AssetRegistryReader;
-    let asset = IntegerAsset::from_reader(&mut reader)
+    let asset = from_json_reader::<IntegerAsset>(&mut reader)
         .await
         .expect("loaded assets");
 
@@ -247,12 +245,13 @@ async fn compile_multi_resource() {
             .await
             .unwrap());
         let reader = volatile_content_provider
-            .get_reader(&resource.content_id)
+            .get_reader(resource.content_id.as_identifier())
             .await
             .expect("asset content");
 
+        TextResource::register_resource_type();
         let mut reader = Box::pin(reader) as AssetRegistryReader;
-        let resource = TextResource::from_reader(&mut reader)
+        let resource = from_json_reader::<TextResource>(&mut reader)
             .await
             .expect("loaded resource");
 
@@ -318,12 +317,13 @@ async fn compile_base64() {
         .unwrap());
 
     let reader = volatile_content_provider
-        .get_reader(content_id)
+        .get_reader(content_id.as_identifier())
         .await
         .expect("asset content");
 
+    TextResource::register_resource_type();
     let mut reader = Box::pin(reader) as AssetRegistryReader;
-    let text_resource = TextResource::from_reader(&mut reader).await.unwrap();
+    let text_resource = from_json_reader::<TextResource>(&mut reader).await.unwrap();
 
     let base64str = text_resource.content;
     assert_eq!(base64str, expected_base64_value);

@@ -1,3 +1,5 @@
+use lgn_data_runtime::ResourceTypeAndId;
+
 /// The source resource is a trait that exists only in offline mode, in the editor.
 #[async_trait::async_trait]
 pub trait SourceResource: lgn_data_runtime::Resource {
@@ -8,6 +10,18 @@ pub trait SourceResource: lgn_data_runtime::Resource {
     {
         let mut value = Self::default();
         get_meta_mut(&mut value).name = name.into();
+        value
+    }
+
+    /// Return a new named Resource
+    fn new_with_id(name: &str, type_id: ResourceTypeAndId) -> Self
+    where
+        Self: Sized + Default,
+    {
+        let mut value = Self::default();
+        let meta = get_meta_mut(&mut value);
+        meta.type_id = type_id;
+        meta.name = name.into();
         value
     }
 }

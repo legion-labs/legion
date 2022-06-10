@@ -63,7 +63,6 @@ async fn build_device() {
     .expect("new project");
 
     let source_id = {
-
         let mut resource = TestResource::new_named("test_source");
         resource.content = initial_content.to_string();
 
@@ -131,8 +130,8 @@ async fn build_device() {
 
     // create resource registry that uses the 'build device'
 
-    let manifest = lgn_data_runtime::manifest::Manifest::default();
-    let mut options = AssetRegistryOptions::new().add_device_build(
+    let mut options = AssetRegistryOptions::new()
+        .add_device_build(
             Arc::clone(&data_content_provider),
             None,
             DATABUILD_EXE,
@@ -165,16 +164,15 @@ async fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-
         let mut resource = project
-            .load_resource::<TestResource>(source_id.id)
+            .load_resource::<TestResource>(source_id)
             .await
             .expect("existing resource");
 
         resource.content = changed_content.to_string();
 
         project
-            .save_resource(source_id.id, resource.as_ref())
+            .save_resource(source_id, resource.as_ref())
             .await
             .expect("successful save");
 
@@ -237,7 +235,6 @@ async fn no_intermediate_resource() {
         .expect("new project");
 
         let resource_id = {
-
             let resource = TestResource::new_named("test_source");
             let resource_id = project
                 .add_resource(&resource)
@@ -345,7 +342,6 @@ async fn with_intermediate_resource() {
         .expect("new project");
 
         let resource_id = {
-
             let resource = TextResource::new_named("test_source");
 
             let resource_id = project

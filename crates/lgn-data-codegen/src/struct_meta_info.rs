@@ -28,8 +28,7 @@ fn integrate_meta(struct_name: &Ident, crate_name: &Ident) -> Vec<MemberMetaInfo
 
     let meta: ItemStruct = parse_quote!(
         struct MetaContainer {
-            #[legion(offline_only)]
-            #[legion(default=Metadata::new_default::<Self>())]
+            #[legion(offline_only, default=Metadata::new_default::<Self>())]
             meta: Metadata,
         }
     );

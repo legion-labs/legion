@@ -6,7 +6,7 @@ use std::{
 
 use hex::ToHex;
 use lgn_content_store::{indexing::TreeIdentifier, Provider};
-use lgn_data_offline::{Project};
+use lgn_data_offline::Project;
 use lgn_data_runtime::{ResourcePathId, ResourceTypeAndId};
 use lgn_tracing::span_scope;
 use lgn_utils::{DefaultHasher, DefaultHasher256};
@@ -357,7 +357,7 @@ impl SourceIndex {
 mod tests {
 
     use generic_data::offline::TestResource;
-    use lgn_data_offline::resource::{Project, ResourcePathName};
+    use lgn_data_offline::{Project, SourceResource};
     use lgn_data_runtime::prelude::*;
 
     use super::*;
@@ -501,11 +501,11 @@ mod tests {
                 .await
                 .expect("adding the resource");
 
-	  project
+            project
                 .commit("add resource")
                 .await
                 .expect("successful commit");
-		
+
             let resource_handle: Handle<TestResource> = resources
                 .set_resource(resource_id, resource)
                 .unwrap()
@@ -542,7 +542,7 @@ mod tests {
             edit.content = "hello world!".to_string();
 
             project
-                .save_resource(resource_id.id, edit.as_resource())
+                .save_resource(resource_id, edit.as_resource())
                 .await
                 .expect("successful save");
 

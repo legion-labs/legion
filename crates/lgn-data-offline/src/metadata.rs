@@ -1,4 +1,4 @@
-use lgn_data_runtime::{ResourceDescriptor, ResourceType};
+use lgn_data_runtime::{ResourceDescriptor, ResourceId, ResourceTypeAndId};
 
 use crate::ResourcePathName;
 
@@ -9,10 +9,9 @@ impl crate::offline::Metadata {
     }
 
     /// Create an new instance with parameters.
-    pub fn new(name: ResourcePathName, type_name: &str, type_id: ResourceType) -> Self {
+    pub fn new(name: ResourcePathName, type_id: ResourceTypeAndId) -> Self {
         Self {
             name,
-            type_name: type_name.to_string(),
             type_id,
             dependencies: vec![],
         }
@@ -22,8 +21,10 @@ impl crate::offline::Metadata {
     pub fn new_default<T: ResourceDescriptor>() -> Self {
         Self {
             name: ResourcePathName::default(),
-            type_name: T::TYPENAME.into(),
-            type_id: T::TYPE,
+            type_id: ResourceTypeAndId {
+                kind: T::TYPE,
+                id: ResourceId::new(),
+            },
             dependencies: vec![],
         }
     }

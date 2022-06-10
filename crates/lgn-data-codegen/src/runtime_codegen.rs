@@ -76,10 +76,6 @@ pub(crate) fn generate(struct_info: &StructMetaInfo) -> TokenStream {
             fn get_resource_type(&self) -> lgn_data_runtime::ResourceType {
                 <Self as lgn_data_runtime::ResourceDescriptor>::TYPE
             }
-
-            async fn from_reader(reader: &mut lgn_data_runtime::AssetRegistryReader) -> Result<Box<Self>, lgn_data_runtime::AssetRegistryError> {
-                lgn_data_runtime::from_binary_reader::<Self>(reader).await
-            }
         }
 
         lgn_data_model::implement_reference_type_def!(#runtime_reftype, #runtime_identifier);

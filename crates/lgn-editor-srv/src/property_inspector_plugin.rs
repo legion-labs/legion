@@ -39,7 +39,6 @@ use crate::grpc::EditorEvent;
 
 pub(crate) struct PropertyInspectorRPC {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
-    pub(crate) asset_registry: Arc<AssetRegistry>,
     pub(crate) event_sender: broadcast::Sender<EditorEvent>,
 }
 
@@ -74,13 +73,11 @@ impl PropertyInspectorPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
-        asset_registry: Res<'_, Arc<AssetRegistry>>,
         event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
         let property_inspector = PropertyInspectorServer::new(PropertyInspectorRPC {
             transaction_manager: transaction_manager.clone(),
-            asset_registry: asset_registry.clone(),
             event_sender: event_sender.clone(),
         });
         grpc_settings.register_service(property_inspector);
@@ -234,29 +231,18 @@ impl PropertyInspector for PropertyInspectorRPC {
         let request = request.into_inner();
         let resource_id = parse_resource_id(request.id.as_str())?;
 
-        let asset_registry = self.asset_registry.clone();
-
-        let handle = asset_registry
-            .load_async_untyped(resource_id)
-            .await
-            .map_err(|err| {
-                error!("{}", err);
-                Status::internal(err.to_string())
-            })?;
-
-        let mut property_bag = if let Some(resource) = handle.get_untyped() {
-            collect_properties::<ResourcePropertyCollector>(resource.as_reflect())
+        let resource = {
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            let ctx = LockContext::new(&transaction_manager).await;
+            ctx.project
+                .load_resource_untyped(resource_id)
+                .await
                 .map_err(|err| Status::internal(err.to_string()))?
-        } else {
-            // Return a default bag if there's no reflection
-            ResourceProperty {
-                name: "".into(),
-                ptype: resource_id.kind.as_pretty().into(),
-                json_value: None,
-                attributes: HashMap::new(),
-                sub_properties: Vec::new(),
-            }
         };
+
+        let mut property_bag =
+            collect_properties::<ResourcePropertyCollector>(resource.as_reflect())
+                .map_err(|err| Status::internal(err.to_string()))?;
 
         // Add Id property
         property_bag.sub_properties.insert(
@@ -278,7 +264,8 @@ impl PropertyInspector for PropertyInspectorRPC {
             let transaction_manager = self.transaction_manager.lock().await;
             let ctx = LockContext::new(&transaction_manager).await;
             ctx.project
-                .resource_name(resource_id.id).await
+                .resource_name(resource_id)
+                .await
                 .unwrap_or_else(|_err| "".into())
                 .to_string()
         };

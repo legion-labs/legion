@@ -8,7 +8,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, Transform};
+use lgn_data_runtime::prelude::*;
 
 use lgn_graphics_data::gltf_utils::GltfFile;
 
@@ -48,7 +48,6 @@ impl Compiler for Gltf2MatCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let mut resource_references = vec![];
         let gltf_resource = resources
             .load_async::<lgn_graphics_data::offline::Gltf>(context.source.resource_id())
             .await?;
@@ -62,20 +61,21 @@ impl Compiler for Gltf2MatCompiler {
 
         // TODO: aganea - should we read from a Device directly?
         let bytes = context.persistent_provider.read(&identifier).await?;
-        let gltf = GltfFile::from_bytes(&bytes)?;
 
         let (outputs, resource_references) = {
             let source = context.source.clone();
             let target_unnamed = context.target_unnamed.clone();
 
             CompilerContext::execute_workload(move || {
+                let gltf = GltfFile::from_bytes(&bytes)?;
+
                 let mut compiled_resources: Vec<(ResourcePathId, Vec<u8>)> = vec![];
                 let mut resource_references = vec![];
-                let materials = gltf.gather_materials(context.source.resource_id());
+                let materials = gltf.gather_materials(source.resource_id());
                 for (material, name) in materials {
                     let mut compiled_asset = vec![];
                     lgn_data_offline::to_json_writer(&material, &mut compiled_asset)?;
-                    let material_rpid = context.target_unnamed.new_named(&name);
+                    let material_rpid = target_unnamed.new_named(&name);
 
                     compiled_resources.push((material_rpid.clone(), compiled_asset));
                     if let Some(albedo) = material.albedo {

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use lgn_app::App;
-use lgn_data_runtime::prelude::*;
+use lgn_data_runtime::{from_binary_reader, prelude::*};
 use lgn_ecs::prelude::*;
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, SamplerDef};
 use lgn_graphics_data::{runtime::BinTextureReferenceType, runtime::SamplerData};
@@ -84,8 +84,8 @@ impl ResourceInstaller for MaterialInstaller {
         request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
     ) -> Result<HandleUntyped, AssetRegistryError> {
-        let material = lgn_graphics_data::runtime::Material::from_reader(reader).await?;
-        lgn_tracing::info!("Material {:?}", resource_id.id,);
+        let material = from_binary_reader::<lgn_graphics_data::runtime::Material>(reader).await?;
+        lgn_tracing::info!("Material {}", resource_id.id,);
 
         let handle = request.asset_registry.set_resource(resource_id, material)?;
         Ok(handle)

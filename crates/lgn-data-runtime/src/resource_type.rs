@@ -1,7 +1,6 @@
 use std::{collections::HashMap, fmt, sync::RwLock};
 
-use crate::{AssetRegistryError, AssetRegistryReader, Resource};
-use futures::Future;
+use crate::Resource;
 use lgn_content_store::indexing::IndexKey;
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -27,22 +26,14 @@ impl fmt::Debug for ResourceType {
     }
 }
 
-type FnJsonReader = fn(
-    reader: AssetRegistryReader,
-) -> std::pin::Pin<
-    Box<dyn Future<Output = Result<Box<dyn Resource>, AssetRegistryError>> + Send>,
->;
 #[derive(Clone)]
 pub(crate) struct ResourceTypeEntry {
     pub(crate) name: &'static str,
     pub(crate) new_instance: fn() -> Box<dyn Resource>,
-    pub(crate) create_from_json_reader: FnJsonReader,
 }
 
 static RESOURCE_TYPE_REGISTRY: OnceCell<RwLock<HashMap<ResourceType, ResourceTypeEntry>>> =
     OnceCell::new();
-
-lgn_data_model::implement_primitive_type_def!(ResourceType);
 
 impl ResourceType {
     /// Creates a new type id from series of bytes.
@@ -71,25 +62,6 @@ impl ResourceType {
             .iter()
             .map(|(k, entry)| (*k, entry.name))
             .collect()
-    }
-
-    /// Return the name of the `ResourceType`
-    /// # Errors
-    /// Return an `AssetRegistryError` on failure
-    pub async fn create_from_json_reader(
-        self,
-        reader: AssetRegistryReader,
-    ) -> Result<Box<dyn Resource>, AssetRegistryError> {
-        let entry = {
-            let name_mapping = RESOURCE_TYPE_REGISTRY.get_or_init(|| RwLock::new(HashMap::new()));
-            name_mapping
-                .read()
-                .unwrap()
-                .get(&self)
-                .cloned()
-                .ok_or(AssetRegistryError::ResourceTypeNotRegistered(self))?
-        };
-        (entry.create_from_json_reader)(reader).await
     }
 
     /// Return the name of the `ResourceType`

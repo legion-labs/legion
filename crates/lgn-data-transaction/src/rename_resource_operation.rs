@@ -33,7 +33,7 @@ impl TransactionOperation for RenameResourceOperation {
         }
 
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
-        let mut raw_name = ctx.project.raw_resource_name(self.resource_id.id)?;
+        let mut raw_name = ctx.project.raw_resource_name(self.resource_id).await?;
         raw_name.replace_parent_info(None, Some(self.new_path.clone()));
 
         if ctx.project.exists_named(&raw_name).await {

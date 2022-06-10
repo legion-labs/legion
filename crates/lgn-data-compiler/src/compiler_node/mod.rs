@@ -53,11 +53,11 @@ mod tests {
     use std::sync::Arc;
 
     use async_trait::async_trait;
+    use generic_data::offline::{IntegerAsset, TextResource};
     use lgn_content_store::{
         indexing::{empty_tree_id, SharedTreeIdentifier},
         Provider,
     };
-    use generic_data::offline::{IntegerAsset, TextResource};
     use lgn_data_runtime::prelude::*;
 
     use super::CompilerRegistryOptions;
@@ -199,7 +199,7 @@ mod tests {
                     &[],
                     registry,
                     &data_content_provider,
-                    &source_control_provider,
+                    &source_control_content_provider,
                     &source_manifest_id,
                     &runtime_manifest_id,
                     &env,

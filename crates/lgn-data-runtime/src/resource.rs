@@ -1,8 +1,7 @@
 use std::any::{Any, TypeId};
 
 use bincode::{DefaultOptions, Options};
-use futures::FutureExt;
-use lgn_data_model::{ReflectionError, TypeReflection};
+use lgn_data_model::TypeReflection;
 
 use crate::{AssetRegistryError, AssetRegistryReader, ResourceType, ResourceTypeEntry};
 
@@ -12,40 +11,6 @@ pub trait ResourceDescriptor {
     const TYPENAME: &'static str;
     /// Type of the asset.
     const TYPE: ResourceType = ResourceType::new(Self::TYPENAME.as_bytes());
-}
-
-/// Create a Resource from a json stream
-/// # Errors
-/// Return `AssetRegistryError` on failure
-pub async fn from_json_reader<T: Resource + Default>(
-    reader: &mut AssetRegistryReader,
-) -> Result<Box<T>, AssetRegistryError> {
-    use tokio::io::AsyncReadExt;
-    let mut buffer = Vec::<u8>::new();
-    reader.read_to_end(&mut buffer).await?;
-    let mut stream =
-        serde_json::Deserializer::from_reader(buffer.as_slice()).into_iter::<serde_json::Value>();
-
-    let meta = stream
-        .next()
-        .ok_or_else(|| ReflectionError::Generic("missing meta".into()))?
-        .map_err(|err| ReflectionError::ErrorSerde(std::sync::Arc::new(err)))?;
-
-    let mut values = stream
-        .next()
-        .ok_or_else(|| ReflectionError::Generic("missing values".into()))?
-        .map_err(|err| lgn_data_model::ReflectionError::ErrorSerde(std::sync::Arc::new(err)))?;
-
-    if let Some(object) = values.as_object_mut() {
-        object.insert("meta".into(), meta);
-    }
-
-    let mut instance = Box::new(T::default());
-    lgn_data_model::json_utils::reflection_apply_json_edit(
-        instance.as_mut() as &mut dyn TypeReflection,
-        &values,
-    )?;
-    Ok(instance)
 }
 
 /// Create a Resource from a binary stream
@@ -76,8 +41,8 @@ pub async fn from_binary_reader<'de, T: Resource + Default + serde::Deserialize<
 /// Write a Resource to a binary stream
 /// # Errors
 /// Return `AssetRegistryError` on failure
-pub fn to_binary_writer<T: Resource>(
-    resource: &T,
+pub fn to_binary_writer(
+    resource: &dyn Resource,
     writer: &mut dyn std::io::Write,
 ) -> Result<(), AssetRegistryError> {
     let mut bincode_ser = bincode::Serializer::new(
@@ -117,23 +82,9 @@ pub trait Resource: TypeReflection + Any + Send + Sync {
             ResourceTypeEntry {
                 name: Self::TYPENAME,
                 new_instance: || Box::new(Self::default()),
-                create_from_json_reader: |mut reader: AssetRegistryReader| {
-                    async move {
-                        let resource = from_json_reader::<Self>(&mut reader).await?;
-                        let boxed_asset =
-                            unsafe { Box::from_raw(Box::into_raw(resource) as *mut dyn Resource) };
-                        Result::<Box<dyn Resource>, AssetRegistryError>::Ok(boxed_asset)
-                    }
-                    .boxed()
-                },
             },
         );
     }
-
-    /// Return a Resource from a reader
-    async fn from_reader(reader: &mut AssetRegistryReader) -> Result<Box<Self>, AssetRegistryError>
-    where
-        Self: Sized;
 }
 
 /// Note: Based on impl of dyn Any

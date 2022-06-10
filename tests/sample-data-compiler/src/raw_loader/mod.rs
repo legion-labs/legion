@@ -44,11 +44,11 @@ pub async fn build_offline(
         }
     };
 
-    let (mut project, resources) = setup_project(
+    let (mut project, _resources) = setup_project(
         repository_index,
         repository_name,
         branch_name,
-        source_control_content_provider,
+        source_control_content_provider.clone(),
     )
     .await;
 
@@ -133,8 +133,8 @@ pub async fn build_offline(
                     )
                     .await;
 
-                    if let Ok(mut entity) = project
-                        .load_resource::<offline_data::Entity>(resource_id.id)
+                    if let Ok(entity) = project
+                        .load_resource::<offline_data::Entity>(resource_id)
                         .await
                     {
                         if let Some(parent_id) = entity
@@ -142,13 +142,13 @@ pub async fn build_offline(
                             .as_ref()
                             .map(lgn_data_runtime::ResourcePathId::source_resource)
                         {
-                            lgn_data_offline::get_meta_mut(entity.as_mut())
-                                .name
-                                .replace_parent_info(Some(parent_id), None);
-                            project
-                                .save_resource(resource_id.id, entity.as_ref())
-                                .await
-                                .unwrap();
+                            let mut new_name =
+                                lgn_data_offline::get_meta(entity.as_ref()).name.clone();
+                            new_name.replace_parent_info(Some(parent_id), None);
+                            if let Err(err) = project.rename_resource(resource_id, &new_name).await
+                            {
+                                panic!("Failed to rename {}: {}", resource_id, err);
+                            }
                         }
                     }
                 }
@@ -317,11 +317,13 @@ async fn build_resource_from_raw(
                     project.delete_resource(id).await.unwrap();
                 }
 
-                let mut new_resource = kind.1.new_instance();
-                lgn_data_offline::get_meta_mut(new_resource.as_mut()).name = name.clone();
+                let mut new_resource = kind.new_instance();
+                let meta = lgn_data_offline::get_meta_mut(new_resource.as_mut());
+                meta.name = name.clone();
+                meta.type_id = id;
 
                 project
-                    .add_resource_with_id(id.id, new_resource.as_ref())
+                    .add_resource_with_id(id, new_resource.as_ref())
                     .await
                     .unwrap();
                 id
@@ -345,7 +347,7 @@ async fn build_test_entity(
                 kind: TestEntity::TYPE,
                 id: ResourceId::from_str("D8FE06A0-1317-46F5-902B-266B0EAE6FA8").unwrap(),
             };
-            let mut test_entity = TestEntity::new_named(name.as_str());
+            let mut test_entity = TestEntity::new_with_id(name.as_str(), id);
             test_entity.test_string = "Editable String Value".into();
             test_entity.test_float32 = 1.0;
             test_entity.test_float64 = 2.0;
@@ -361,12 +363,12 @@ async fn build_test_entity(
             test_entity.test_option_set = Some(generic_data::offline::TestSubType2::default());
             test_entity.test_option_primitive_set = Some(lgn_math::Vec3::default());
 
-            if project.exists(id.id).await {
-                project.delete_resource(id.id).await.unwrap();
+            if project.exists(id).await {
+                project.delete_resource(id).await.unwrap();
             }
 
             project
-                .add_resource_with_id(id.id, &test_entity)
+                .add_resource_with_id(id, &test_entity)
                 .await
                 .unwrap();
             id
@@ -436,10 +438,12 @@ where
 
         // convert raw to offline
         let mut offline_data = OfflineType::from_raw(raw_data, references);
-        lgn_data_offline::get_meta_mut(&mut offline_data).name = name.clone();
+        let meta = lgn_data_offline::get_meta_mut(&mut offline_data);
+        meta.type_id = resource_id;
+        meta.name = name.into();
 
         project
-            .save_resource(resource_id.id, &offline_data)
+            .save_resource(resource_id, &offline_data)
             .await
             .unwrap();
         Some(resource_id)
@@ -461,13 +465,10 @@ async fn load_psd_resource(
         .await
         .unwrap();
 
-    let mut resource = Psd::new_named(name.as_str());
+    let mut resource = Psd::new_with_id(name.as_str(), resource_id);
     resource.content_id = content_id.to_string();
 
-    project
-        .save_resource(resource_id.id, &resource)
-        .await
-        .unwrap();
+    project.save_resource(resource_id, &resource).await.unwrap();
     Some(resource_id)
 }
 
@@ -484,13 +485,10 @@ async fn load_png_resource(
         .await
         .unwrap();
 
-    let mut resource = Png::new_named(name.as_str());
+    let mut resource = Png::new_with_id(name.as_str(), resource_id);
     resource.content_id = content_id.to_string();
 
-    project
-        .save_resource(resource_id.id, &resource)
-        .await
-        .unwrap();
+    project.save_resource(resource_id, &resource).await.unwrap();
     Some(resource_id)
 }
 
@@ -507,12 +505,9 @@ async fn load_gltf_resource(
         .await
         .unwrap();
 
-    let mut resource = Gltf::new_named(name.as_str());
+    let mut resource = Gltf::new_with_id(name.as_str(), resource_id);
     resource.content_id = content_id.to_string();
 
-    project
-        .save_resource(resource_id.id, &resource)
-        .await
-        .unwrap();
+    project.save_resource(resource_id, &resource).await.unwrap();
     Some(resource_id)
 }

@@ -31,7 +31,7 @@ use lgn_editor_proto::{
         ReparentResourceResponse, SearchResourcesRequest,
     },
 };
-use lgn_graphics_data::offline_gltf::GltfFile;
+//use lgn_graphics_data::offline::GltfFile;
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_scene_plugin::SceneMessage;
 use lgn_tracing::{error, info, span_scope, warn};
@@ -90,7 +90,7 @@ impl IndexSnapshot {
                 if parent_id.is_none() && res_id.kind == sample_data::offline::Entity::TYPE {
                     if let Ok(entity) = ctx
                         .project
-                        .load_resource::<sample_data::offline::Entity>(res_id.id)
+                        .load_resource::<sample_data::offline::Entity>(res_id)
                         .await
                     {
                         if let Some(parent) = &entity.parent {

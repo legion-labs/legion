@@ -61,20 +61,20 @@ impl Compiler for Gltf2ModelCompiler {
         // TODO: aganea - should we read from a Device directly?
         let bytes = context.persistent_provider.read(&identifier).await?;
 
-        let gltf = GltfFile::from_bytes(&bytes)?;
         let (outputs, resource_references) = {
             let source = context.source.clone();
             let target_unnamed = context.target_unnamed.clone();
 
             CompilerContext::execute_workload(move || {
+                let gltf = GltfFile::from_bytes(&bytes)?;
                 let mut compiled_resources = vec![];
                 let mut resource_references = Vec::new();
 
-                let models = gltf.gather_models(context.source.resource_id());
+                let models = gltf.gather_models(source.resource_id());
                 for (model, name) in models {
                     let mut compiled_asset = vec![];
                     lgn_data_offline::to_json_writer(&model, &mut compiled_asset)?;
-                    let model_rpid = context.target_unnamed.new_named(&name);
+                    let model_rpid = target_unnamed.new_named(&name);
                     compiled_resources.push((model_rpid.clone(), compiled_asset));
                     for mesh in model.meshes {
                         if let Some(material_rpid) = mesh.material {

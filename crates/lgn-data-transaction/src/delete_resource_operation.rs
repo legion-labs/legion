@@ -37,7 +37,7 @@ impl TransactionOperation for DeleteResourceOperation {
         if let Ok(old_resource_data) = ctx.project.load_resource_untyped(self.resource_id).await {
             self.old_resource_data = Some(old_resource_data);
         }
-        Ok(ctx.project.delete_resource(self.resource_id.id).await?)
+        Ok(ctx.project.delete_resource(self.resource_id).await?)
     }
 
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
@@ -49,7 +49,7 @@ impl TransactionOperation for DeleteResourceOperation {
 
         Ok(ctx
             .project
-            .add_resource_with_id(self.resource_id.id, old_resource_data.as_ref())
+            .add_resource_with_id(self.resource_id, old_resource_data.as_ref())
             .await?)
     }
 }

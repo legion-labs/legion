@@ -72,10 +72,6 @@ pub enum Error {
     /// External file loading Error
     #[error("Provided file path '{0}' couldn't be opened")]
     InvalidFilePath(PathBuf),
-
-    /// Project-related error.
-    #[error("Resource kind lookup error for resource '{0}': '{1}")]
-    ResourceTypeLookup(ResourceId, lgn_data_offline::resource::Error),
 }
 
 /// System that manage the current state of the Loaded Offline Data

@@ -6,8 +6,10 @@ use lgn_content_store::{
 };
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId};
+use lgn_data_offline::{vfs::AddDeviceSourceCas, Project};
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId,
+};
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
@@ -116,11 +118,14 @@ pub(crate) async fn setup_project(
         .unwrap();
     let project = Arc::new(Mutex::new(project));
 
-    Arc::new(Mutex::new(TransactionManager::new(
-        project,
-        build_manager,
-        SelectionManager::create(),
-    )))
+    (
+        Arc::new(Mutex::new(TransactionManager::new(
+            project,
+            build_manager,
+            SelectionManager::create(),
+        ))),
+        asset_registry,
+    )
 }
 
 #[tokio::test]

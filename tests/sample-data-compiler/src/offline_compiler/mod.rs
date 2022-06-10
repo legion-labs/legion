@@ -63,7 +63,6 @@ pub async fn build(
         CompilerRegistryOptions::local_compilers(exe_path),
         Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
-        Arc::clone(&source_control_content_provider),
     )
     .open_or_create(project)
     .await

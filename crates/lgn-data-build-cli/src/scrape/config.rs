@@ -62,7 +62,6 @@ impl Config {
             ),
             Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
-            Arc::clone(&source_control_content_provider),
             CompilerRegistryOptions::default(),
         )
         .open(&project)

@@ -27,6 +27,7 @@ fn test_default_implementation() {
 
 #[tokio::test]
 async fn test_json_serialization() {
+    TestEntity::register_resource_type();
     let json_data = r#"
         {
             "test_string" : "Value read from json",
@@ -45,7 +46,9 @@ async fn test_json_serialization() {
 
     let file = Cursor::new(meta);
     let mut reader = Box::pin(file) as AssetRegistryReader;
-    let entity = TestEntity::from_reader(&mut reader).await.unwrap();
+    let entity = lgn_data_offline::from_json_reader::<TestEntity>(&mut reader)
+        .await
+        .unwrap();
 
     assert_eq!(entity.test_string.as_str(), "Value read from json");
     assert_eq!(entity.test_position, Vec3::new(2.0, 2.0, 2.0));

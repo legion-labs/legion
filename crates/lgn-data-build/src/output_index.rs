@@ -60,7 +60,7 @@ pub(crate) struct OutputIndex {
     database: sqlx::AnyPool,
 }
 
-const MAX_CONNECTIONS: u32 = 10;
+const MAX_CONNECTIONS: u32 = 200;
 const CONNECTION_TIMEOUT: Duration = Duration::from_secs(30);
 
 impl OutputIndex {
