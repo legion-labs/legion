@@ -391,10 +391,11 @@ impl AnalyticsService {
     #[span_fn]
     async fn build_timeline_tables_impl(
         &self,
-        request: BuildTimelineTablesRequest,
+        _request: BuildTimelineTablesRequest,
     ) -> Result<BuildTimelineTablesReply> {
+        #[cfg(feature = "deltalake-proto")]
         self.jit_lakehouse
-            .build_timeline_tables(&request.process_id)
+            .build_timeline_tables(&_request.process_id)
             .await?;
         Ok(BuildTimelineTablesReply {})
     }

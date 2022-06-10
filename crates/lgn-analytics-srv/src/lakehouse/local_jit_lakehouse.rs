@@ -1,26 +1,26 @@
 use std::{path::PathBuf, sync::Arc};
 
+#[cfg(feature = "deltalake-proto")]
+use super::span_delta_table::update_spans_delta_table;
+
+use super::span_table::{make_rows_from_tree, write_spans_parquet, SpanRowGroup};
+use crate::scope::ScopeHashMap;
 use crate::{
     call_tree::{compute_block_spans, process_thread_block},
-    lakehouse::{
-        jit_lakehouse::JitLakehouse,
-        span_table_partition::{make_rows_from_tree, SpanRowGroup},
-    },
+    lakehouse::jit_lakehouse::JitLakehouse,
 };
-use crate::{lakehouse::span_table::update_spans_delta_table, scope::ScopeHashMap};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use datafusion::arrow::{self, array::PrimitiveArray};
 use datafusion::prelude::*;
-use lgn_analytics::{prelude::*, time::ConvertTicks};
+use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::{
     BlockSpansReply, CallTree, ScopeDesc, Span, SpanBlockLod, SpanTrack,
 };
 use lgn_tracing::prelude::*;
-use tokio::fs;
 
-use super::{scope_table::write_scopes_parquet, span_table_partition::write_spans_parquet};
+use super::scope_table::write_scopes_parquet;
 
 pub struct LocalJitLakehouse {
     pool: sqlx::any::AnyPool,
@@ -218,16 +218,17 @@ impl LocalJitLakehouse {
 
 #[async_trait]
 impl JitLakehouse for LocalJitLakehouse {
+    #[cfg(feature = "deltalake-proto")]
     async fn build_timeline_tables(&self, process_id: &str) -> Result<()> {
         async_span_scope!("build_timeline_tables");
         let mut connection = self.pool.acquire().await?;
-        let process = find_process(&mut connection, process_id).await?;
+        let process = lgn_analytics::find_process(&mut connection, process_id).await?;
         let convert_ticks = ConvertTicks::new(&process);
         let spans_table_path = self
             .tables_path
             .join("spans")
             .join(format!("process_id={}", process_id));
-        fs::create_dir_all(&spans_table_path)
+        tokio::fs::create_dir_all(&spans_table_path)
             .await
             .with_context(|| format!("creating folder {}", spans_table_path.display()))?;
 

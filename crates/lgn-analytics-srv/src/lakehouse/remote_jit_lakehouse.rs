@@ -1,15 +1,13 @@
 use crate::{
     call_tree::{compute_block_spans, process_thread_block},
     lakehouse::{
-        jit_lakehouse::JitLakehouse,
-        parquet_buffer::ParquetBufferWriter,
-        span_table_partition::{make_rows_from_tree, SpanRowGroup},
+        bytes_chunk_reader::BytesChunkReader, jit_lakehouse::JitLakehouse,
+        parquet_buffer::ParquetBufferWriter, span_table::make_rows_from_tree,
     },
     scope::ScopeHashMap,
 };
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use bytes::Buf;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::{AwsS3Url, BlobStorage};
 use lgn_telemetry_proto::analytics::{
@@ -20,31 +18,7 @@ use parquet::file::serialized_reader::SerializedFileReader;
 use parquet::{file::reader::FileReader, record::RowAccessor};
 use std::sync::Arc;
 
-use super::scope_table::ScopeRowGroup;
-
-struct BytesChunkReader {
-    pub bytes: bytes::Bytes,
-}
-
-impl parquet::file::reader::Length for BytesChunkReader {
-    fn len(&self) -> u64 {
-        self.bytes.len() as u64
-    }
-}
-
-impl parquet::file::reader::ChunkReader for BytesChunkReader {
-    type T = bytes::buf::Reader<bytes::Bytes>;
-    fn get_read(
-        &self,
-        start: u64,
-        length: usize,
-    ) -> Result<Self::T, parquet::errors::ParquetError> {
-        Ok(self
-            .bytes
-            .slice(start as usize..start as usize + length)
-            .reader())
-    }
-}
+use super::{scope_table::ScopeRowGroup, span_table::SpanRowGroup};
 
 pub struct RemoteJitLakehouse {
     pool: sqlx::any::AnyPool,
@@ -288,6 +262,7 @@ impl RemoteJitLakehouse {
 
 #[async_trait]
 impl JitLakehouse for RemoteJitLakehouse {
+    #[cfg(feature = "deltalake-proto")]
     async fn build_timeline_tables(&self, _process_id: &str) -> Result<()> {
         //not implemented
         Ok(())
