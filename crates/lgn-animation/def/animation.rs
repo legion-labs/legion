@@ -9,7 +9,7 @@ pub struct AnimationTransformBundle {
     pub scale: Vec3,
 }
 
-/* Necessary intermediate component because a Vec<Vec<>> is not serializable */
+// Necessary intermediate component because a Vec<Vec<>> is supported by the data code-generation
 #[component]
 pub struct AnimationTransformBundleVec {
     pub anim_transform_vec: Vec<AnimationTransformBundle>,
@@ -23,7 +23,7 @@ struct AnimationTrack {
     time_since_last_tick: f32,
     looping: bool,
 
-    /* Skeleton */
+    // Skeleton
     bone_ids: Vec<i32>,
     parent_indices: Vec<i32>,
 }

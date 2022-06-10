@@ -7,6 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Legion engine
+lgn-animation = { path = "../lgn-animation", version = "0.1.0" }
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-asset-registry = { path = "../lgn-asset-registry", version = "0.1.0" }
 lgn-async = { path = "../lgn-async", version = "0.1.0" }
@@ -41,7 +42,6 @@ lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }
 lgn-winit = { path = "../lgn-winit", version = "0.1.0", optional = true }
-lgn-animation = { path = "../lgn-animation", version = "0.1.0" }
 
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [
     "runtime",

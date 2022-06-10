@@ -51,7 +51,7 @@ fn convert_raw_pose_data(
 ) -> Vec<Vec<TransformBundle>> {
     let mut poses: Vec<Vec<TransformBundle>> = Vec::new();
     for pose in raw_poses {
-        let mut vec_transform_bundle: Vec<TransformBundle> = Vec::new();
+        let mut vec_transform_bundle = Vec::new();
         for anim_transform_bundle in &pose.anim_transform_vec {
             vec_transform_bundle.push(TransformBundle {
                 local: Transform {

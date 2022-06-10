@@ -23,10 +23,8 @@ impl Skeleton {
     }
 
     #[inline]
-    pub fn get_parent_bone_idx(&self, bone_idx: u32) -> i32 {
-        assert!(bone_idx < self.parent_indices.len() as u32);
-
-        self.parent_indices[bone_idx as usize]
+    pub fn get_parent_bone_idx(&self, bone_idx: usize) -> i32 {
+        self.parent_indices[bone_idx]
     }
 
     fn get_first_child_bone_index(&self, bone_idx: i32) -> i32 {

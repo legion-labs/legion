@@ -206,7 +206,7 @@ impl SceneInstance {
                     component.downcast_ref::<lgn_animation::runtime::AnimationTrack>()
                 {
                     let runtime_animation_data = RuntimeAnimationClip::new(animation_data);
-                    entity.insert(runtime_animation_data.clone());
+                    entity.insert(runtime_animation_data);
                 } else {
                     error!(
                         "Unhandle component type {} in entity {}",

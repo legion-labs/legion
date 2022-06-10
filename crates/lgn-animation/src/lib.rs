@@ -13,9 +13,10 @@ pub mod components;
 mod debug_display;
 mod labels;
 
-use crate::{animation_system::update, labels::AnimationStage};
-use animation_options::AnimationOptions;
-use debug_display::display_animation;
+use crate::{
+    animation_options::AnimationOptions, animation_system::update,
+    debug_display::display_animation, labels::AnimationStage,
+};
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::schedule::SystemStage;
 use lgn_graphics_renderer::labels::RenderStage;
