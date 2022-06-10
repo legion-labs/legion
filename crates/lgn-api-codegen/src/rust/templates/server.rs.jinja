@@ -71,20 +71,20 @@ where
                     .map(|h| {
                         let s = h.to_str()
                         .map_err(|err| {
-                            Error::Internal("invalid header: {{ parameter.name }}".to_owned()).into_response()
+                            Error::BadRequest(format!("invalid header: {{ parameter.name }}: {}", err)).into_response()
                         })
                         .unwrap();
 
                         lgn_online::codegen::encoding::from_percent_encoded_string(s)
                         .map_err(|err| {
-                            Error::Internal("invalid header: {{ parameter.name }}".to_owned()).into_response()
+                            Error::BadRequest(format!("invalid header: {{ parameter.name }}: {}", err)).into_response()
                         })
                         .unwrap()
                 });
 
                 {% if parameter.required %}
                     if {{ param_name }}.is_none() {
-                        return Error::Internal("missing header: {{ parameter.name }}".to_owned()).into_response();
+                        return Error::BadRequest("missing header: {{ parameter.name }}".to_owned()).into_response();
                     }
                     let {{ param_name }} = {{ param_name }}.unwrap();
                 {% endif %}
