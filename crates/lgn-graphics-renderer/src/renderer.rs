@@ -43,14 +43,14 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(
         num_render_frames: u64,
-        command_queue_pool: &RenderCommandQueuePool,
+        command_queue_pool: RenderCommandQueuePool,
         render_resources: RenderResources,
         graphics_queue: GraphicsQueue,
         gfx_api: GfxApiArc,
     ) -> Self {
         Self {
             num_render_frames,
-            command_queue_pool: command_queue_pool.clone(),
+            command_queue_pool,
             render_resources,
             graphics_queue,
             gfx_api,

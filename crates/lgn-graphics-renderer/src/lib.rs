@@ -405,7 +405,7 @@ impl Plugin for RendererPlugin {
 
         let renderer = Renderer::new(
             NUM_RENDER_FRAMES,
-            &command_queue_pool,
+            command_queue_pool,
             render_resources,
             graphics_queue,
             gfx_api,

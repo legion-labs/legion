@@ -436,8 +436,10 @@ impl PrimaryTable {
     }
 
     fn begin_frame(&self) {
-        let mut set = self.set.borrow_mut();
-        set.begin_frame();
+        {
+            let mut set = self.set.borrow_mut();
+            set.begin_frame();
+        }
         self.command_pool.apply(self);
     }
 }
