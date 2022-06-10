@@ -973,7 +973,8 @@ async fn create_offline_data(
         time_since_last_tick: 0.0,
         looping: true,
         bone_ids: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-        parent_indices: vec![-1, 0, 0, 2, 3, 4, 5, 0, 7, 8, 9, 0, 11, 12, 13], // Stores the bone idx of every bones parent, if -1: root bone
+        parent_indices: vec![-1, 0, 0, 2, 3, 4, 5, 0, 7, 8, 9, 0, 11, 12, 13],
+        // Stores the bone idx of every bones parent, if -1: root bone
     });
     let skeleton = create_offline_entity(
         project,
