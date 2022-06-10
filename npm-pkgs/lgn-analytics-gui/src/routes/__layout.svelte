@@ -3,6 +3,7 @@
   import type { Load } from "@sveltejs/kit";
 
   import { headlessRun } from "@lgn/web-client";
+  import { resolveIssuerUrl } from "@lgn/web-client/src/lib/auth/cognito";
   import type { Level } from "@lgn/web-client/src/lib/log";
   import {
     ConsoleTransport,
@@ -10,13 +11,18 @@
   } from "@lgn/web-client/src/lib/log/transports";
   import { createNotificationsStore } from "@lgn/web-client/src/stores/notifications";
 
+  import { getRuntimeConfig } from "../lib/runtimeConfig";
+
   const redirectUri = document.location.origin + "/";
 
   const notifications = createNotificationsStore<Fluent>();
 
-  const issuerUrl = import.meta.env.VITE_LEGION_ANALYTICS_ISSUER_URL as string;
+  const runtimeConfig = getRuntimeConfig();
 
-  const clientId = import.meta.env.VITE_LEGION_ANALYTICS_CLIENT_ID as string;
+  const issuerUrl = resolveIssuerUrl({
+    region: runtimeConfig?.cognitoRegion ?? "",
+    poolId: runtimeConfig?.cognitoPoolId ?? "",
+  });
 
   let loaded = false;
 
@@ -31,7 +37,7 @@
           fetch: fetch as typeof globalThis.fetch,
           issuerUrl,
           redirectUri,
-          clientId,
+          clientId: runtimeConfig?.clientId ?? "",
           login: {
             cookies: {
               accessToken: accessTokenCookieName,
@@ -61,7 +67,9 @@
 
       loaded = true;
 
-      return { props: { dispose, initAuthStatus, notifications } };
+      return {
+        props: { dispose, initAuthStatus, notifications, runtimeConfig },
+      };
     } catch (error) {
       log.error("Application couldn't start", error);
 
@@ -76,7 +84,7 @@
 
   import Notifications from "@lgn/web-client/src/components/Notifications.svelte";
   import { l10nOrchestratorContextKey } from "@lgn/web-client/src/constants";
-  import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
+  import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth/index";
   import { displayError } from "@lgn/web-client/src/lib/errors";
   import { replaceClassesWith } from "@lgn/web-client/src/lib/html";
   import log from "@lgn/web-client/src/lib/log";
@@ -97,12 +105,15 @@
     threadItemLengthFallback,
   } from "@/constants";
   import { createGrpcClient } from "@/lib/client";
+  import type { RuntimeConfig } from "@/lib/runtimeConfig";
 
   import "../assets/index.css";
 
   export let initAuthStatus: InitAuthStatus | null;
 
   export let notifications: NotificationsStore<Fluent>;
+
+  export let runtimeConfig: RuntimeConfig;
 
   export let dispose: () => void | undefined;
 
@@ -137,6 +148,8 @@
       },
     }
   );
+
+  setContext("runtime-config", runtimeConfig);
 
   setContext("theme", theme);
 
