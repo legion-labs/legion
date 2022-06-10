@@ -13,7 +13,7 @@ use std::{
     sync::{atomic::AtomicI32, Arc},
 };
 
-use super::RenderCommand;
+use super::{CommandBuilder, CommandQueuePool, RenderCommand};
 
 //
 // RenderObjectId
@@ -332,6 +332,7 @@ impl RenderObjectsBuilder {
                     drop_func::<P>,
                 )),
                 render_object_id_pool: RenderObjectIdPool::new(key),
+                command_pool: PrimaryTableCommandQueuePool::new(),
             },
         );
         self
@@ -378,13 +379,20 @@ impl RenderObjectsBuilder {
 }
 
 //
-// PrimaryTable
+// PrimaryTableCommandPool
 //
 
-struct PrimaryTable {
+pub type PrimaryTableCommandQueuePool = CommandQueuePool<PrimaryTable>;
+pub type PrimaryTableCommandBuilder = CommandBuilder<PrimaryTable>;
+
+//
+// PrimaryTable
+//
+pub struct PrimaryTable {
     key: RenderObjectKey,
     set: AtomicRefCell<RenderObjectSet>,
     render_object_id_pool: RenderObjectIdPool,
+    command_pool: PrimaryTableCommandQueuePool,
 }
 
 impl PrimaryTable {
@@ -423,11 +431,16 @@ impl PrimaryTable {
         );
 
         self.render_object_id_pool.inner.slots_len.replace(set.len);
+
+        self.command_pool.sync_update();
     }
 
     fn begin_frame(&self) {
-        let mut set = self.set.borrow_mut();
-        set.begin_frame();
+        {
+            let mut set = self.set.borrow_mut();
+            set.begin_frame();
+        }
+        self.command_pool.apply(self);
     }
 }
 
@@ -504,10 +517,6 @@ where
     }
 
     pub fn iter(&self) -> RenderObjectQueryIter<'_, R> {
-        // let primary_table = self.render_objects.primary_table::<R>();
-        // let storage = &primary_table.set.borrow().storage;
-        // let iter = primary_table.set.borrow().allocated.iter();
-        // RenderObjectQueryIter::new(storage.get_base_ptr().cast::<R>(), iter)
         RenderObjectQueryIter::new(self)
     }
 
@@ -516,8 +525,6 @@ where
     where
         F: FnMut(usize, &R),
     {
-        // let primary_table = self.render_objects.primary_table::<R>();
-        // let set = self.set.allocated
         unsafe {
             for index in &self.set.allocated {
                 f(index, &*(self.set.storage.get_value(index).cast::<R>()));
@@ -555,46 +562,19 @@ impl RenderObjects {
         &self.primary_table::<R>().render_object_id_pool
     }
 
+    pub fn command_queue_pool<R>(&self) -> &PrimaryTableCommandQueuePool
+    where
+        R: RenderObject,
+    {
+        &self.primary_table::<R>().command_pool
+    }
+
     fn primary_table<R>(&self) -> &PrimaryTable
     where
         R: RenderObject,
     {
         let render_object_key = RenderObjectKey::new::<R>();
         self.primary_tables.get(&render_object_key).unwrap()
-    }
-
-    fn insert<R>(&self, render_object_id: RenderObjectId, data: R)
-    where
-        R: RenderObject,
-    {
-        let render_object_key = RenderObjectKey::new::<R>();
-        assert_eq!(render_object_id.render_object_key, render_object_key);
-        let primary_table = self.primary_table::<R>();
-        primary_table
-            .set
-            .borrow_mut()
-            .insert(render_object_id, std::ptr::addr_of!(data).cast::<u8>());
-        std::mem::forget(data);
-    }
-
-    fn update<R>(&self, render_object_id: RenderObjectId, data: R)
-    where
-        R: RenderObject,
-    {
-        let render_object_key = RenderObjectKey::new::<R>();
-        assert_eq!(render_object_id.render_object_key, render_object_key);
-        let primary_table = self.primary_table::<R>();
-        primary_table
-            .set
-            .borrow_mut()
-            .update(render_object_id, std::ptr::addr_of!(data).cast::<u8>());
-        std::mem::forget(data);
-    }
-
-    fn remove(&self, render_object_id: RenderObjectId) {
-        let render_object_key = render_object_id.render_object_key;
-        let primary_table = self.primary_tables.get(&render_object_key).unwrap();
-        primary_table.set.borrow_mut().remove(render_object_id);
     }
 }
 
@@ -612,13 +592,16 @@ pub struct InsertRenderObjectCommand<R> {
     pub data: R,
 }
 
-impl<R> RenderCommand for InsertRenderObjectCommand<R>
+impl<R> RenderCommand<PrimaryTable> for InsertRenderObjectCommand<R>
 where
     R: RenderObject,
 {
-    fn execute(self, render_resources: &super::RenderResources) {
-        let set = render_resources.get::<RenderObjects>();
-        set.insert(self.render_object_id, self.data);
+    fn execute(self, primary_table: &PrimaryTable) {
+        primary_table.set.borrow_mut().insert(
+            self.render_object_id,
+            std::ptr::addr_of!(self.data).cast::<u8>(),
+        );
+        std::mem::forget(self.data);
     }
 }
 //
@@ -629,13 +612,16 @@ pub struct UpdateRenderObjectCommand<R> {
     pub data: R,
 }
 
-impl<R> RenderCommand for UpdateRenderObjectCommand<R>
+impl<R> RenderCommand<PrimaryTable> for UpdateRenderObjectCommand<R>
 where
     R: RenderObject,
 {
-    fn execute(self, render_resources: &super::RenderResources) {
-        let set = render_resources.get::<RenderObjects>();
-        set.update(self.render_object_id, self.data);
+    fn execute(self, primary_table: &PrimaryTable) {
+        primary_table.set.borrow_mut().update(
+            self.render_object_id,
+            std::ptr::addr_of!(self.data).cast::<u8>(),
+        );
+        std::mem::forget(self.data);
     }
 }
 
@@ -646,9 +632,8 @@ pub struct RemoveRenderObjectCommand {
     pub render_object_id: RenderObjectId,
 }
 
-impl RenderCommand for RemoveRenderObjectCommand {
-    fn execute(self, render_resources: &super::RenderResources) {
-        let set = render_resources.get::<RenderObjects>();
-        set.remove(self.render_object_id);
+impl RenderCommand<PrimaryTable> for RemoveRenderObjectCommand {
+    fn execute(self, primary_table: &PrimaryTable) {
+        primary_table.set.borrow_mut().remove(self.render_object_id);
     }
 }

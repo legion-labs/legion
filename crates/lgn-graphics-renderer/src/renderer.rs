@@ -69,12 +69,8 @@ impl Renderer {
         self.gfx_api.device_context()
     }
 
-    pub(crate) fn render_command_queue_pool(&mut self) -> &mut RenderCommandQueuePool {
-        &mut self.command_queue_pool
-    }
-
     pub fn render_command_builder(&self) -> RenderCommandBuilder {
-        RenderCommandBuilder::new(&self.command_queue_pool)
+        self.command_queue_pool.builder()
     }
 
     pub fn graphics_queue(&self) -> &GraphicsQueue {

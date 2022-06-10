@@ -10,13 +10,13 @@ use lgn_utils::HashMap;
 
 use crate::{
     core::{
-        AsSpatialRenderObject, InsertRenderObjectCommand, RemoveRenderObjectCommand, RenderObject,
-        RenderObjectId, RenderObjectIdPool, UpdateRenderObjectCommand,
+        AsSpatialRenderObject, InsertRenderObjectCommand, PrimaryTableCommandBuilder,
+        PrimaryTableCommandQueuePool, RemoveRenderObjectCommand, RenderObject, RenderObjectId,
+        RenderObjectIdPool, UpdateRenderObjectCommand,
     },
     debug_display::DebugDisplay,
     lighting::RenderLight,
     resources::DefaultMeshType,
-    Renderer,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -72,34 +72,40 @@ struct LightDynamicData {
     picking_id: u32,
 }
 
-pub(crate) struct EcsToRender<C, R> {
+pub(crate) struct EcsToRender<R> {
     map: HashMap<Entity, LightDynamicData>,
     render_object_id_pool: RenderObjectIdPool,
-    phantom: PhantomData<C>,
-    phantom2: PhantomData<R>,
+    command_queue_pool: PrimaryTableCommandQueuePool,
+    phantom: PhantomData<R>,
 }
 
-impl<C, R> EcsToRender<C, R>
+impl<R> EcsToRender<R>
 where
     R: RenderObject,
 {
-    pub fn new(render_object_id_pool: &RenderObjectIdPool) -> Self {
+    pub fn new(
+        render_object_id_pool: &RenderObjectIdPool,
+        command_queue_pool: &PrimaryTableCommandQueuePool,
+    ) -> Self {
         Self {
             map: HashMap::new(),
             render_object_id_pool: render_object_id_pool.clone(),
+            command_queue_pool: command_queue_pool.clone(),
             phantom: PhantomData,
-            phantom2: PhantomData,
         }
     }
 
-    pub fn alloc(&self) -> RenderObjectId {
+    pub fn alloc_id(&self) -> RenderObjectId {
         self.render_object_id_pool.alloc()
+    }
+
+    pub fn command_builder(&self) -> PrimaryTableCommandBuilder {
+        self.command_queue_pool.builder()
     }
 }
 
 #[allow(clippy::needless_pass_by_value, clippy::type_complexity)]
 pub(crate) fn reflect_light_components(
-    renderer: Res<'_, Renderer>,
     mut q_changes: Query<
         '_,
         '_,
@@ -107,9 +113,9 @@ pub(crate) fn reflect_light_components(
         Or<(Changed<GlobalTransform>, Changed<LightComponent>)>,
     >,
     q_removals: RemovedComponents<'_, LightComponent>,
-    mut ecs_to_render: ResMut<'_, EcsToRender<LightComponent, RenderLight>>,
+    mut ecs_to_render: ResMut<'_, EcsToRender<RenderLight>>,
 ) {
-    let mut render_commands = renderer.render_command_builder();
+    let mut render_commands = ecs_to_render.command_builder();
 
     for e in q_removals.iter() {
         let light_dynamic_data = ecs_to_render.map.remove(&e);
@@ -142,7 +148,7 @@ pub(crate) fn reflect_light_components(
                 // go into the removals code above for some reason. So we need to handle it ourselves.
                 ecs_to_render.map.get(&e).unwrap()
             } else {
-                let render_object_id = ecs_to_render.alloc();
+                let render_object_id = ecs_to_render.alloc_id();
 
                 ecs_to_render.map.insert(
                     e,
