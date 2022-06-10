@@ -4,7 +4,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::Router;
 use clap::Parser;
-use lgn_governance::Server;
+use lgn_governance::{Server, ServerAwsCognitoOptions, ServerMySqlOptions};
 use lgn_online::server::RouterExt;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, debug, info, LevelFilter};
@@ -18,12 +18,18 @@ struct Args {
     #[clap(short, long, default_value = "0.0.0.0:5000")]
     listen_endpoint: SocketAddr,
 
+    #[clap(long, env)]
+    init_key: String,
+
     #[clap(
         long,
         env,
         default_value = "mysql://root@localhost:3306/lgn_governance"
     )]
     database_url: String,
+
+    #[clap(long, env)]
+    aws_cognito_user_pool_id: String,
 
     #[clap(
         long,
@@ -60,7 +66,25 @@ async fn main() -> anyhow::Result<()> {
         info!("Connecting to MySQL");
     }
 
-    let server = Arc::new(Server::new(&args.database_url).await?);
+    info!(
+        "Using AWS Cognito user pool: {}",
+        args.aws_cognito_user_pool_id
+    );
+
+    info!("Init key set to: `{}`", args.init_key);
+
+    let options = lgn_governance::ServerOptions {
+        init_key: args.init_key,
+        mysql: ServerMySqlOptions {
+            database_url: args.database_url,
+        },
+        aws_cognito: ServerAwsCognitoOptions {
+            region: None,
+            user_pool_id: args.aws_cognito_user_pool_id,
+        },
+    };
+
+    let server = Arc::new(Server::new(options).await?);
     let router = lgn_governance::register_routes(Router::new(), server);
     let router = router.apply_development_router_options();
 

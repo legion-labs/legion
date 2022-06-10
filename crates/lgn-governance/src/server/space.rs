@@ -12,7 +12,11 @@ impl Api for Server {
         &self,
         _parts: http::request::Parts,
     ) -> Result<responses::ListSpacesResponse> {
-        let spaces = self.dal.list_spaces().await.into_internal_server_error()?;
+        let spaces = self
+            .mysql_dal
+            .list_spaces()
+            .await
+            .into_internal_server_error()?;
 
         Ok(responses::ListSpacesResponse::Status200(
             spaces

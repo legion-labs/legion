@@ -12,7 +12,11 @@ impl Api for Server {
         &self,
         _parts: http::request::Parts,
     ) -> Result<responses::ListRolesResponse> {
-        let roles = self.dal.list_roles().await.into_internal_server_error()?;
+        let roles = self
+            .mysql_dal
+            .list_roles()
+            .await
+            .into_internal_server_error()?;
 
         Ok(responses::ListRolesResponse::Status200(roles.into()))
     }
