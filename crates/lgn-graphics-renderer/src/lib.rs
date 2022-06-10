@@ -14,9 +14,10 @@ mod cgen {
 
 use crate::components::{tmp_debug_display_lights, EcsToRender};
 use crate::core::{
-    DebugStuff, PrepareRenderContext, RenderFeatures, RenderFeaturesBuilder,
-    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, VisibilityContext,
-    RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
+    DebugStuff, PrepareRenderContext, RenderCommandQueuePool, RenderFeatures,
+    RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder, RenderLayers,
+    RenderObjects, VisibilityContext, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE,
+    RENDER_LAYER_PICKING,
 };
 use crate::features::ModelFeature;
 use crate::lighting::{RenderLight, RenderLightTestData};
@@ -177,9 +178,9 @@ impl Plugin for RendererPlugin {
         let upload_manager = GpuUploadManager::new();
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
-        let render_command_manager = RenderCommandManager::new();
-        let mut render_commands =
-            RenderCommandBuilder::new(render_command_manager.command_queue_pool());
+        let render_command_queue_pool = RenderCommandQueuePool::new();
+        let render_command_manager = RenderCommandManager::new(&render_command_queue_pool);
+        let mut render_commands = RenderCommandBuilder::new(&render_command_queue_pool);
         let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
         let transient_commandbuffer_manager =
             TransientCommandBufferManager::new(NUM_RENDER_FRAMES, &graphics_queue);
@@ -372,8 +373,6 @@ impl Plugin for RendererPlugin {
 
         let render_graph_persistent_state = RenderGraphPersistentState::new();
 
-        let command_queue_pool = render_command_manager.command_queue_pool().clone();
-
         let render_resources_builder = RenderResourcesBuilder::new();
         let render_resources = render_resources_builder
             .insert(render_scope)
@@ -405,7 +404,7 @@ impl Plugin for RendererPlugin {
 
         let renderer = Renderer::new(
             NUM_RENDER_FRAMES,
-            command_queue_pool,
+            render_command_queue_pool,
             render_resources,
             graphics_queue,
             gfx_api,

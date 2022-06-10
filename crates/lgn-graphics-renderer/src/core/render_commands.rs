@@ -295,25 +295,19 @@ pub type RenderCommandQueuePool = CommandQueuePool<RenderResources>;
 pub type RenderCommandBuilder = CommandBuilder<RenderResources>;
 
 pub struct RenderCommandManager {
-    queue_pool: RenderCommandQueuePool,
+    pool: RenderCommandQueuePool,
 }
 
 impl RenderCommandManager {
-    pub fn new() -> Self {
-        Self {
-            queue_pool: RenderCommandQueuePool::new(),
-        }
-    }
-
-    pub fn command_queue_pool(&self) -> &RenderCommandQueuePool {
-        &self.queue_pool
+    pub fn new(pool: &RenderCommandQueuePool) -> Self {
+        Self { pool: pool.clone() }
     }
 
     pub fn sync_update(&mut self) {
-        self.queue_pool.sync_update();
+        self.pool.sync_update();
     }
 
     pub fn apply(&mut self, render_resources: &RenderResources) {
-        self.queue_pool.apply(render_resources);
+        self.pool.apply(render_resources);
     }
 }
