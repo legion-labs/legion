@@ -83,7 +83,7 @@ impl EcsToRenderLight {
     }
 
     pub fn alloc_id(&self) -> RenderObjectId {
-        self.view.insert()
+        self.view.allocate()
     }
 
     pub fn command_builder(&self) -> PrimaryTableCommandBuilder {
