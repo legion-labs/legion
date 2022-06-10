@@ -106,7 +106,6 @@ where
 
 #[allow(clippy::needless_pass_by_value, clippy::type_complexity)]
 pub(crate) fn reflect_light_components(
-    // renderer: Res<'_, Renderer>,
     mut q_changes: Query<
         '_,
         '_,
@@ -117,7 +116,6 @@ pub(crate) fn reflect_light_components(
     mut ecs_to_render: ResMut<'_, EcsToRender<RenderLight>>,
 ) {
     let mut render_commands = ecs_to_render.command_builder();
-    // let mut render_commands = renderer.render_command_builder();
 
     for e in q_removals.iter() {
         let light_dynamic_data = ecs_to_render.map.remove(&e);
