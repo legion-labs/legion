@@ -6,7 +6,7 @@ use crate::{
     GraphicsQueue,
 };
 
-use super::RenderCommand;
+use super::{RenderCommand, RenderResources};
 
 pub struct UploadGPUBuffer {
     pub src_data: Vec<u8>,
@@ -30,7 +30,7 @@ pub struct UploadBufferCommand {
     pub dst_offset: u64,
 }
 
-impl RenderCommand for UploadBufferCommand {
+impl RenderCommand<RenderResources> for UploadBufferCommand {
     fn execute(self, render_resources: &super::RenderResources) {
         let mut mng = render_resources.get_mut::<GpuUploadManager>();
         mng.push(UploadGPUResource::Buffer(UploadGPUBuffer {
@@ -46,7 +46,7 @@ pub struct UploadTextureCommand {
     pub dst_texture: Texture,
 }
 
-impl RenderCommand for UploadTextureCommand {
+impl RenderCommand<RenderResources> for UploadTextureCommand {
     fn execute(self, render_resources: &super::RenderResources) {
         let mut mng = render_resources.get_mut::<GpuUploadManager>();
         mng.push(UploadGPUResource::Texture(UploadGPUTexture {

@@ -1,115 +1,167 @@
-use std::{alloc::Layout, slice, sync::Arc};
+use std::{
+    alloc::Layout,
+    cell::RefCell,
+    marker::PhantomData,
+    slice,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
 
 use egui::mutex::RwLock;
-use lgn_core::{Handle, ObjectPool};
+use lgn_core::Handle;
 use lgn_utils::memory::round_size_up_to_alignment_usize;
 
 use super::RenderResources;
 
-pub struct RenderCommandManager {
-    queue_pool: RenderCommandQueuePool,
+struct CommandQueuePoolInner<CTX> {
+    gamesim_pool: RwLock<Vec<Handle<RenderCommandQueue<CTX>>>>,
+    acquired_count: AtomicUsize,
+    exec_pool: RefCell<Vec<Handle<RenderCommandQueue<CTX>>>>,
 }
 
-impl RenderCommandManager {
+impl<CTX> CommandQueuePoolInner<CTX> {
+    fn new() -> Self {
+        Self {
+            gamesim_pool: RwLock::new(Vec::new()),
+            acquired_count: AtomicUsize::new(0),
+            exec_pool: RefCell::new(Vec::new()),
+        }
+    }
+}
+
+pub struct CommandQueuePool<CTX> {
+    inner: Arc<CommandQueuePoolInner<CTX>>,
+}
+
+impl<CTX> CommandQueuePool<CTX> {
     pub fn new() -> Self {
         Self {
-            queue_pool: RenderCommandQueuePool::new(),
+            inner: Arc::new(CommandQueuePoolInner::new()),
         }
     }
 
-    pub fn sync_update(&mut self, new_pool: &mut RenderCommandQueuePool) {
-        {
-            let pool = new_pool.pool.read();
-            assert_eq!(pool.acquired_count(), 0);
-        }
-        std::mem::swap(&mut self.queue_pool, new_pool);
+    pub fn acquire(&self) -> Handle<RenderCommandQueue<CTX>> {
+        let mut gamesim_pool = self.inner.gamesim_pool.write();
+        let result = if gamesim_pool.is_empty() {
+            Handle::new(RenderCommandQueue::new())
+        } else {
+            gamesim_pool.pop().unwrap()
+        };
+        self.inner.acquired_count.fetch_add(1, Ordering::SeqCst);
+        result
     }
 
-    pub fn apply(&mut self, render_resources: &RenderResources) {
-        let mut pool = self.queue_pool.pool.write();
-        for queue in pool.iter_mut() {
-            queue.apply(render_resources);
+    pub fn release(&self, handle: Handle<RenderCommandQueue<CTX>>) {
+        assert!(self.inner.acquired_count.load(Ordering::SeqCst) > 0);
+        let mut gamesim_pool = self.inner.gamesim_pool.write();
+        gamesim_pool.push(handle);
+        self.inner.acquired_count.fetch_sub(1, Ordering::SeqCst);
+    }
+
+    pub fn sync_update(&self) {
+        assert_eq!(self.inner.acquired_count.load(Ordering::SeqCst), 0);
+
+        let mut gamesim_pool = self.inner.gamesim_pool.write();
+
+        let mut exec_pool_ref = self.inner.exec_pool.borrow_mut();
+        let exec_pool = &mut *exec_pool_ref;
+
+        let mut recycling_pool = std::mem::take(exec_pool);
+
+        let mut i = 0;
+        while i < gamesim_pool.len() {
+            if !gamesim_pool[i].is_empty() {
+                let queue = gamesim_pool.remove(i);
+                exec_pool.push(queue);
+            } else {
+                i += 1;
+            }
+        }
+        gamesim_pool.extend(recycling_pool.drain(..));
+    }
+
+    pub fn apply(&self, context: &CTX) {
+        let mut exec_pool = self.inner.exec_pool.borrow_mut();
+        for queue in exec_pool.iter_mut() {
+            queue.apply(context);
         }
     }
 }
 
-#[derive(Clone)]
-pub struct RenderCommandQueuePool {
-    pool: Arc<RwLock<ObjectPool<RenderCommandQueue>>>,
-}
-
-impl RenderCommandQueuePool {
-    pub fn new() -> Self {
+impl<CTX> Clone for CommandQueuePool<CTX> {
+    fn clone(&self) -> Self {
         Self {
-            pool: Arc::new(RwLock::new(ObjectPool::new())),
+            inner: self.inner.clone(),
         }
     }
-
-    pub fn acquire(&self) -> Handle<RenderCommandQueue> {
-        let mut render_commands_pool = self.pool.write();
-        render_commands_pool.acquire_or_create(RenderCommandQueue::new)
-    }
-
-    pub fn release(&self, handle: Handle<RenderCommandQueue>) {
-        let mut render_commands_pool = self.pool.write();
-        render_commands_pool.release(handle);
-    }
 }
 
-pub struct RenderCommandBuilder {
-    pool: RenderCommandQueuePool,
-    handle: Handle<RenderCommandQueue>,
+#[allow(unsafe_code)]
+unsafe impl<CTX> Send for CommandQueuePool<CTX> {}
+
+#[allow(unsafe_code)]
+unsafe impl<CTX> Sync for CommandQueuePool<CTX> {}
+
+pub struct CommandBuilder<CTX> {
+    pool: CommandQueuePool<CTX>,
+    handle: Handle<RenderCommandQueue<CTX>>,
 }
 
-impl RenderCommandBuilder {
-    pub fn new(pool: &RenderCommandQueuePool) -> Self {
+impl<CTX> CommandBuilder<CTX> {
+    pub fn new(pool: &CommandQueuePool<CTX>) -> Self {
         Self {
             pool: pool.clone(),
             handle: pool.acquire(),
         }
     }
 
-    pub fn push<C: RenderCommand>(&mut self, command: C) {
+    pub fn push<C: RenderCommand<CTX>>(&mut self, command: C) {
         self.handle.push(command);
     }
 }
 
-impl Drop for RenderCommandBuilder {
+impl<CTX> Drop for CommandBuilder<CTX> {
     fn drop(&mut self) {
         self.pool.release(self.handle.transfer());
     }
 }
 
-pub trait RenderCommand: Send + 'static {
-    fn execute(self, render_resources: &RenderResources);
+pub trait RenderCommand<CTX>: Send + 'static {
+    fn execute(self, render_resources: &CTX);
 }
 
-struct RenderCommandMeta {
+struct RenderCommandMeta<CTX> {
     offset: usize,
-    func: unsafe fn(value: *mut u8, world: &RenderResources),
+    func: unsafe fn(value: *mut u8, world: &CTX),
 }
 
-pub struct RenderCommandQueue {
-    metas: Vec<RenderCommandMeta>,
+#[derive(Default)]
+pub struct RenderCommandQueue<CTX> {
+    metas: Vec<RenderCommandMeta<CTX>>,
     bytes: Vec<u8>,
+    _phantom: PhantomData<CTX>,
 }
 
-impl RenderCommandQueue {
+impl<CTX> RenderCommandQueue<CTX> {
     pub fn new() -> Self {
         Self {
             metas: Vec::new(),
             bytes: Vec::new(),
+            _phantom: PhantomData,
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.metas.is_empty()
+    }
+
     #[allow(unsafe_code)]
-    pub fn push<C: RenderCommand>(&mut self, command: C) {
-        unsafe fn execute_command<T: RenderCommand>(
-            command: *mut u8,
-            render_resources: &RenderResources,
-        ) {
+    pub fn push<C: RenderCommand<CTX>>(&mut self, command: C) {
+        unsafe fn execute_command<T: RenderCommand<CTX>, CTX>(command: *mut u8, context: &CTX) {
             let command = command.cast::<T>().read_unaligned();
-            command.execute(render_resources);
+            command.execute(context);
         }
 
         let size = std::mem::size_of::<C>();
@@ -117,7 +169,7 @@ impl RenderCommandQueue {
 
         self.metas.push(RenderCommandMeta {
             offset: old_len,
-            func: execute_command::<C>,
+            func: execute_command::<C, CTX>,
         });
 
         if size > 0 {
@@ -137,7 +189,7 @@ impl RenderCommandQueue {
     }
 
     #[allow(unsafe_code)]
-    pub fn apply(&mut self, render_resources: &RenderResources) {
+    pub fn apply(&mut self, context: &CTX) {
         // SAFE: In the iteration below, `meta.func` will safely consume and drop each
         // pushed command. This operation is so that we can reuse the bytes
         // `Vec<u8>`'s internal storage and prevent unnecessary allocations.
@@ -167,7 +219,7 @@ impl RenderCommandQueue {
             // type. The bytes are safely cast to their original type, safely
             // read, and then dropped.
             unsafe {
-                (meta.func)(byte_ptr.add(meta.offset), render_resources);
+                (meta.func)(byte_ptr.add(meta.offset), context);
             }
         }
     }
@@ -221,5 +273,36 @@ impl BinaryWriter {
 
     pub fn take(self) -> Vec<u8> {
         self.buf
+    }
+}
+
+//
+// RenderCommandManager
+//
+
+pub type RenderCommandQueuePool = CommandQueuePool<RenderResources>;
+pub type RenderCommandBuilder = CommandBuilder<RenderResources>;
+
+pub struct RenderCommandManager {
+    queue_pool: RenderCommandQueuePool,
+}
+
+impl RenderCommandManager {
+    pub fn new() -> Self {
+        Self {
+            queue_pool: RenderCommandQueuePool::new(),
+        }
+    }
+
+    pub fn command_queue_pool(&self) -> &RenderCommandQueuePool {
+        &self.queue_pool
+    }
+
+    pub fn sync_update(&mut self) {
+        self.queue_pool.sync_update();
+    }
+
+    pub fn apply(&mut self, render_resources: &RenderResources) {
+        self.queue_pool.apply(render_resources);
     }
 }

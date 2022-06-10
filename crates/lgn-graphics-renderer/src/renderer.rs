@@ -43,14 +43,14 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(
         num_render_frames: u64,
-        command_queue_pool: RenderCommandQueuePool,
+        command_queue_pool: &RenderCommandQueuePool,
         render_resources: RenderResources,
         graphics_queue: GraphicsQueue,
         gfx_api: GfxApiArc,
     ) -> Self {
         Self {
             num_render_frames,
-            command_queue_pool,
+            command_queue_pool: command_queue_pool.clone(),
             render_resources,
             graphics_queue,
             gfx_api,
@@ -67,10 +67,6 @@ impl Renderer {
 
     pub fn device_context(&self) -> &DeviceContext {
         self.gfx_api.device_context()
-    }
-
-    pub(crate) fn render_command_queue_pool(&mut self) -> &mut RenderCommandQueuePool {
-        &mut self.command_queue_pool
     }
 
     pub fn render_command_builder(&self) -> RenderCommandBuilder {
