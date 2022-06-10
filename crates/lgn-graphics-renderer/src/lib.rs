@@ -14,9 +14,10 @@ mod cgen {
 
 use crate::components::{tmp_debug_display_lights, EcsToRender};
 use crate::core::{
-    DebugStuff, PrepareRenderContext, RenderFeatures, RenderFeaturesBuilder,
-    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, VisibilityContext,
-    RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
+    DebugStuff, PrepareRenderContext, RenderCommandQueuePool, RenderFeatures,
+    RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder, RenderLayers,
+    RenderObjects, VisibilityContext, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE,
+    RENDER_LAYER_PICKING,
 };
 use crate::features::ModelFeature;
 use crate::lighting::{RenderLight, RenderLightTestData};
@@ -84,8 +85,7 @@ pub mod shared;
 mod renderdoc;
 
 use crate::core::{
-    GpuUploadManager, RenderCommandBuilder, RenderCommandManager, RenderCommandQueuePool,
-    RenderObjectsBuilder, RenderResourcesBuilder,
+    GpuUploadManager, RenderCommandManager, RenderObjectsBuilder, RenderResourcesBuilder,
 };
 
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
@@ -117,8 +117,8 @@ use crate::resources::{
 
 use crate::{
     components::{
-        apply_camera_setups, camera_control, create_camera, CameraComponent, LightComponent,
-        RenderSurface, VisualComponent,
+        apply_camera_setups, camera_control, create_camera, CameraComponent, RenderSurface,
+        VisualComponent,
     },
     labels::CommandBufferLabel,
 };
@@ -177,9 +177,9 @@ impl Plugin for RendererPlugin {
         let upload_manager = GpuUploadManager::new();
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
-        let render_command_manager = RenderCommandManager::new();
         let render_command_queue_pool = RenderCommandQueuePool::new();
-        let mut render_commands = RenderCommandBuilder::new(&render_command_queue_pool);
+        let render_command_manager = RenderCommandManager::new(&render_command_queue_pool);
+        let mut render_commands = render_command_queue_pool.builder();
         let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
         let transient_commandbuffer_manager =
             TransientCommandBufferManager::new(NUM_RENDER_FRAMES, &graphics_queue);
@@ -278,8 +278,9 @@ impl Plugin for RendererPlugin {
         //
         // RenderObjects
         //
-        app.insert_resource(EcsToRender::<LightComponent, RenderLight>::new(
+        app.insert_resource(EcsToRender::<RenderLight>::new(
             render_objects.render_object_id_pool::<RenderLight>(),
+            render_objects.command_queue_pool::<RenderLight>(),
         ))
         .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
 
@@ -480,7 +481,7 @@ fn init_manipulation_manager(
 fn render_update(
     task_pool: Res<'_, ComputeTaskPool>,
     resources: (
-        ResMut<'_, Renderer>,
+        Res<'_, Renderer>,
         ResMut<'_, PipelineManager>,
         ResMut<'_, PickingManager>,
         ResMut<'_, Egui>,
@@ -496,7 +497,7 @@ fn render_update(
     ),
 ) {
     // resources
-    let mut renderer = resources.0;
+    let renderer = resources.0;
     let mut pipeline_manager = resources.1;
     let picking_manager = resources.2;
     let mut egui = resources.3;
@@ -545,11 +546,14 @@ fn render_update(
 
     let render_resources = renderer.render_resources().clone();
 
-    render_resources
-        .get_mut::<RenderCommandManager>()
-        .sync_update(renderer.render_command_queue_pool());
+    {
+        span_scope!("sync window");
+        render_resources
+            .get_mut::<RenderCommandManager>()
+            .sync_update();
 
-    render_resources.get_mut::<RenderObjects>().sync_update();
+        render_resources.get_mut::<RenderObjects>().sync_update();
+    }
 
     // objectives: drop all resources/queries
 

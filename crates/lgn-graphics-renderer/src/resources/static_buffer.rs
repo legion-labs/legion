@@ -293,7 +293,7 @@ pub struct UpdateUnifiedStaticBufferCommand {
     pub dst_offset: u64,
 }
 
-impl RenderCommand for UpdateUnifiedStaticBufferCommand {
+impl RenderCommand<RenderResources> for UpdateUnifiedStaticBufferCommand {
     fn execute(self, render_resources: &RenderResources) {
         let mut upload_manager = render_resources.get_mut::<GpuUploadManager>();
         let unified_static_buffer = render_resources.get::<UnifiedStaticBuffer>();
