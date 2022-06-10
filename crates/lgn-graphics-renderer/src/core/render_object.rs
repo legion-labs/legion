@@ -445,6 +445,32 @@ impl PrimaryTable {
 }
 
 //
+// PrimaryTableView
+//
+
+pub struct PrimaryTableView<R: RenderObject> {
+    allocator: RenderObjectIdPool,
+    command_queue: PrimaryTableCommandQueuePool,
+    _phantom: PhantomData<R>,
+}
+
+impl<R: RenderObject> PrimaryTableView<R> {
+    pub fn insert(&self) -> RenderObjectId {
+        self.allocator.alloc()
+    }
+
+    pub fn command_builder(&self) -> PrimaryTableCommandBuilder {
+        self.command_queue.builder()
+    }
+}
+
+#[allow(unsafe_code)]
+unsafe impl<R: RenderObject> Send for PrimaryTableView<R> {}
+
+#[allow(unsafe_code)]
+unsafe impl<R: RenderObject> Sync for PrimaryTableView<R> {}
+
+//
 // SecondaryTable
 //
 
@@ -555,18 +581,17 @@ impl RenderObjects {
         }
     }
 
-    pub fn render_object_id_pool<R>(&self) -> &RenderObjectIdPool
+    pub fn primary_table_view<R>(&self) -> PrimaryTableView<R>
     where
         R: RenderObject,
     {
-        &self.primary_table::<R>().render_object_id_pool
-    }
+        let primary_table = self.primary_table::<R>();
 
-    pub fn command_queue_pool<R>(&self) -> &PrimaryTableCommandQueuePool
-    where
-        R: RenderObject,
-    {
-        &self.primary_table::<R>().command_pool
+        PrimaryTableView {
+            allocator: primary_table.render_object_id_pool.clone(),
+            command_queue: primary_table.command_pool.clone(),
+            _phantom: PhantomData,
+        }
     }
 
     fn primary_table<R>(&self) -> &PrimaryTable
