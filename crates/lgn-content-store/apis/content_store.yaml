@@ -67,14 +67,14 @@ paths:
                 type: string
                 format: byte
           headers:
-            X-Origin:
+            x-origin:
               $ref: "#/components/headers/X-Origin"
         "204":
           description: Content located at another url.
           headers:
-            X-Origin:
+            x-origin:
               $ref: "#/components/headers/X-Origin"
-            X-Url:
+            x-url:
               $ref: "#/components/headers/X-Url"
         "404":
           description: Not found.

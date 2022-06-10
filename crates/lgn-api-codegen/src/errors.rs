@@ -41,6 +41,8 @@ pub enum Error {
     InvalidOpenApiRefLocation(String),
     #[error("invalid json pointer: {0}")]
     InvalidJsonPointer(String),
+    #[error("invalid header name: {0}")]
+    InvalidHeaderName(String),
     #[error("unsupported media-type: {0}")]
     UnsupportedMediaType(String),
     #[error("unsupported type: {0}")]
