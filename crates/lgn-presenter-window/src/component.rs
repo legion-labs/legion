@@ -57,8 +57,8 @@ impl PresenterWindow {
 
         cmd_buffer.begin();
 
-        // TODO(jsg): A single viewport for now, must have a "viewport compositor" eventually.
-        let final_target = render_surface.viewports()[0].view_target();
+        render_surface.composite_viewports(cmd_buffer);
+        let final_target = render_surface.final_target();
 
         assert_eq!(
             final_target.definition().extents,
@@ -75,7 +75,7 @@ impl PresenterWindow {
                 ),
                 TextureBarrier::state_transition(
                     final_target,
-                    ResourceState::RENDER_TARGET,
+                    ResourceState::SHADER_RESOURCE,
                     ResourceState::COPY_SRC,
                 ),
             ],
@@ -110,7 +110,7 @@ impl PresenterWindow {
                 TextureBarrier::state_transition(
                     final_target,
                     ResourceState::COPY_SRC,
-                    ResourceState::RENDER_TARGET,
+                    ResourceState::SHADER_RESOURCE,
                 ),
             ],
         );

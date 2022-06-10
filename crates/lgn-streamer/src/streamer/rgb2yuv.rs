@@ -167,9 +167,8 @@ impl RgbToYuvConverter {
 
         cmd_buffer.begin();
 
-        // TODO(jsg): A single viewport for now, must have a "viewport compositor" eventually.
-        let view_target = render_surface.viewports()[0].view_target();
-        let view_target_srv = render_surface.viewports()[0].view_target_srv();
+        render_surface.composite_viewports(cmd_buffer);
+        let final_target_srv = render_surface.final_target_srv();
 
         cmd_buffer.cmd_resource_barrier(&[], &[]);
 
@@ -178,11 +177,6 @@ impl RgbToYuvConverter {
             cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[
-                    TextureBarrier::state_transition(
-                        view_target,
-                        ResourceState::RENDER_TARGET,
-                        ResourceState::SHADER_RESOURCE,
-                    ),
                     TextureBarrier::state_transition(
                         &yuv_images.0,
                         ResourceState::COPY_SRC,
@@ -211,7 +205,7 @@ impl RgbToYuvConverter {
                 &self.resolution_dependent_resources.yuv_image_uavs[render_frame_idx];
 
             let mut descriptor_set = cgen::descriptor_set::RGB2YUVDescriptorSet::default();
-            descriptor_set.set_hdr_image(view_target_srv);
+            descriptor_set.set_hdr_image(final_target_srv);
             descriptor_set.set_y_image(&yuv_images_views.0);
             descriptor_set.set_u_image(&yuv_images_views.1);
             descriptor_set.set_v_image(&yuv_images_views.2);
@@ -239,11 +233,6 @@ impl RgbToYuvConverter {
             cmd_buffer.cmd_resource_barrier(
                 &[],
                 &[
-                    TextureBarrier::state_transition(
-                        view_target,
-                        ResourceState::SHADER_RESOURCE,
-                        ResourceState::RENDER_TARGET,
-                    ),
                     TextureBarrier::state_transition(
                         &yuv_images.0,
                         ResourceState::UNORDERED_ACCESS,

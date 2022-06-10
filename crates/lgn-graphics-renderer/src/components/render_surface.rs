@@ -2,10 +2,10 @@ use std::collections::hash_map::{Values, ValuesMut};
 use std::{cmp::max, sync::Arc};
 
 use lgn_graphics_api::{
-    ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DeviceContext, Extents2D, Extents3D,
-    Format, GPUViewType, LoadOp, MemoryUsage, PlaneSlice, ResourceFlags, ResourceState,
-    ResourceUsage, Semaphore, SemaphoreDef, StoreOp, Texture, TextureBarrier, TextureDef,
-    TextureTiling, TextureView, TextureViewDef, ViewDimension,
+    CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DeviceContext,
+    Extents2D, Extents3D, Format, GPUViewType, LoadOp, MemoryUsage, Offset2D, Offset3D, PlaneSlice,
+    ResourceFlags, ResourceState, ResourceUsage, Semaphore, SemaphoreDef, StoreOp, Texture,
+    TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef, ViewDimension,
 };
 use lgn_window::WindowId;
 use parking_lot::RwLock;
@@ -181,7 +181,8 @@ pub enum RenderSurfacePresentingStatus {
 }
 
 pub struct Viewport {
-    extents: Extents3D,
+    offset: Offset2D,
+    extents: Extents2D,
     camera: Option<RenderCamera>,
     view_target: Texture,
     view_target_srv: TextureView,
@@ -190,10 +191,11 @@ pub struct Viewport {
 }
 
 impl Viewport {
-    pub fn new(renderer: &Renderer, extents: Extents3D) -> Self {
+    pub fn new(renderer: &Renderer, offset: Offset2D, extents: Extents2D) -> Self {
+        let extents_3d = extents.to_3d(1);
         let device_context = renderer.device_context();
         let view_desc = TextureDef {
-            extents,
+            extents: extents_3d,
             array_length: 1,
             mip_count: 1,
             format: Format::B8G8R8A8_UNORM,
@@ -210,7 +212,7 @@ impl Viewport {
             view_target.definition(),
         ));
 
-        let hzb_desc = Self::make_hzb_desc(&extents);
+        let hzb_desc = Self::make_hzb_desc(&extents_3d);
 
         let hzb = [
             device_context.create_texture(hzb_desc, "HZB 0"),
@@ -218,6 +220,7 @@ impl Viewport {
         ];
 
         Self {
+            offset,
             extents,
             camera: None,
             view_target,
@@ -298,7 +301,11 @@ impl Viewport {
         }
     }
 
-    pub fn extents(&self) -> Extents3D {
+    pub fn offset(&self) -> Offset2D {
+        self.offset
+    }
+
+    pub fn extents(&self) -> Extents2D {
         self.extents
     }
 
@@ -382,6 +389,9 @@ pub struct RenderSurface {
     extents: RenderSurfaceExtents,
     presenters: Vec<Box<dyn Presenter>>,
     viewports: Vec<Viewport>,
+    final_target: Texture,
+    final_target_srv: TextureView,
+
     // tmp
     num_render_frames: u64,
     render_frame_idx: u64,
@@ -418,12 +428,34 @@ impl RenderSurface {
             .collect();
 
         // TODO(jsg): Only one viewport for now.
-        let viewport_extents = Extents3D {
+        let viewport_offset = Offset2D { x: 0, y: 0 };
+        let viewport_extents = Extents2D {
             width: render_surface_extents.width(),
             height: render_surface_extents.height(),
-            depth: 1,
         };
-        let viewports = vec![Viewport::new(renderer, viewport_extents)];
+        let viewports = vec![Viewport::new(renderer, viewport_offset, viewport_extents)];
+
+        let final_target_desc = TextureDef {
+            extents: Extents3D {
+                width: render_surface_extents.width(),
+                height: render_surface_extents.height(),
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count: 1,
+            format: Format::B8G8R8A8_UNORM,
+            usage_flags: ResourceUsage::AS_RENDER_TARGET
+                | ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_UNORDERED_ACCESS
+                | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
+        };
+        let final_target = device_context.create_texture(final_target_desc, "FinalTarget");
+        let final_target_srv = final_target.create_view(TextureViewDef::as_shader_resource_view(
+            final_target.definition(),
+        ));
 
         Self {
             id: RenderSurfaceId::new(),
@@ -432,6 +464,8 @@ impl RenderSurface {
             num_render_frames,
             render_frame_idx: 0,
             presenter_semaphores,
+            final_target,
+            final_target_srv,
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             presenters: Vec::new(),
             presenting_status: RenderSurfacePresentingStatus::Presenting,
@@ -463,6 +497,14 @@ impl RenderSurface {
         &mut self.viewports
     }
 
+    pub fn final_target(&self) -> &Texture {
+        &self.final_target
+    }
+
+    pub fn final_target_srv(&self) -> &TextureView {
+        &self.final_target_srv
+    }
+
     pub fn resize(
         &mut self,
         device_context: &DeviceContext,
@@ -475,12 +517,86 @@ impl RenderSurface {
                 depth: 1,
             };
 
-            self.viewports[0].resize(device_context, extents);
+            let final_target_desc = TextureDef {
+                extents,
+                array_length: 1,
+                mip_count: 1,
+                format: Format::B8G8R8A8_UNORM,
+                usage_flags: ResourceUsage::AS_RENDER_TARGET
+                    | ResourceUsage::AS_SHADER_RESOURCE
+                    | ResourceUsage::AS_UNORDERED_ACCESS
+                    | ResourceUsage::AS_TRANSFERABLE,
+                resource_flags: ResourceFlags::empty(),
+                memory_usage: MemoryUsage::GpuOnly,
+                tiling: TextureTiling::Optimal,
+            };
+            self.final_target = device_context.create_texture(final_target_desc, "FinalTarget");
+            self.final_target_srv =
+                self.final_target
+                    .create_view(TextureViewDef::as_shader_resource_view(
+                        self.final_target.definition(),
+                    ));
 
             for presenter in &mut self.presenters {
                 presenter.resize(device_context, render_surface_extents);
             }
             self.extents = render_surface_extents;
+        }
+    }
+
+    pub fn composite_viewports(&self, cmd_buffer: &mut CommandBuffer) {
+        for viewport in &self.viewports {
+            let view_target = viewport.view_target();
+
+            cmd_buffer.cmd_resource_barrier(
+                &[],
+                &[
+                    TextureBarrier::state_transition(
+                        &self.final_target,
+                        ResourceState::SHADER_RESOURCE,
+                        ResourceState::COPY_DST,
+                    ),
+                    TextureBarrier::state_transition(
+                        view_target,
+                        ResourceState::RENDER_TARGET,
+                        ResourceState::COPY_SRC,
+                    ),
+                ],
+            );
+
+            cmd_buffer.cmd_copy_image(
+                view_target,
+                &self.final_target,
+                &CmdCopyTextureParams {
+                    src_state: ResourceState::COPY_SRC,
+                    dst_state: ResourceState::COPY_DST,
+                    src_offset: Offset3D { x: 0, y: 0, z: 0 },
+                    dst_offset: viewport.offset().to_3d(0),
+                    src_mip_level: 0,
+                    dst_mip_level: 0,
+                    src_array_slice: 0,
+                    dst_array_slice: 0,
+                    src_plane_slice: PlaneSlice::Default,
+                    dst_plane_slice: PlaneSlice::Default,
+                    extent: view_target.definition().extents,
+                },
+            );
+
+            cmd_buffer.cmd_resource_barrier(
+                &[],
+                &[
+                    TextureBarrier::state_transition(
+                        &self.final_target,
+                        ResourceState::COPY_DST,
+                        ResourceState::SHADER_RESOURCE,
+                    ),
+                    TextureBarrier::state_transition(
+                        view_target,
+                        ResourceState::COPY_SRC,
+                        ResourceState::RENDER_TARGET,
+                    ),
+                ],
+            );
         }
     }
 

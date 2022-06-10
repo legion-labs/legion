@@ -69,6 +69,16 @@ pub struct Extents2D {
     pub height: u32,
 }
 
+impl Extents2D {
+    pub fn to_3d(self, depth: u32) -> Extents3D {
+        Extents3D {
+            width: self.width,
+            height: self.height,
+            depth,
+        }
+    }
+}
+
 /// A 3d size for windows, textures, etc.
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Extents3D {
@@ -86,12 +96,38 @@ impl Extents3D {
     }
 }
 
+/// A 2d offset, textures, etc.
+#[derive(Default, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Offset2D {
+    pub x: i32,
+    pub y: i32,
+}
+
+impl Offset2D {
+    pub fn to_3d(self, z: i32) -> Offset3D {
+        Offset3D {
+            x: self.x,
+            y: self.y,
+            z,
+        }
+    }
+}
+
 /// A 3d offset, textures, etc.
 #[derive(Default, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Offset3D {
     pub x: i32,
     pub y: i32,
     pub z: i32,
+}
+
+impl Offset3D {
+    pub fn to_2d(self) -> Offset2D {
+        Offset2D {
+            x: self.x,
+            y: self.y,
+        }
+    }
 }
 
 /// Number of MSAA samples to use. 1xMSAA and 4xMSAA are most broadly supported
