@@ -1,4 +1,4 @@
-import type { Writable } from "svelte/store";
+import type { Readable, Writable } from "svelte/store";
 import { writable } from "svelte/store";
 
 // TODO: Also create a map orchestrator, i.e. a map of store (as opposed to a "store of map")
@@ -13,6 +13,12 @@ export type MapStore<Key, Value> = Writable<MapValue<Key, Value>> & {
   updateAt(key: Key, f: (value: Value) => Value): void;
   empty(): void;
 };
+
+export type ReadonlyMapValue<Key, Value> = ReadonlyMap<Key, Value>;
+
+export type ReadonlyMapStore<Key, Value> = Readable<
+  ReadonlyMapValue<Key, Value>
+>;
 
 /**
  * Simple store that contains a map.

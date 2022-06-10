@@ -12,9 +12,14 @@ import type {
   RecentlyUsedMetricStore,
   SelectedMetricStore,
 } from "@/components/Metric/Lib/MetricStore";
+import type { RuntimeConfig } from "@/lib/runtimeConfig";
 
 declare module "svelte" {
   // Global
+  function setContext(
+    key: "runtime-config",
+    context: RuntimeConfig
+  ): RuntimeConfig;
   function setContext(key: "theme", context: ThemeStore): ThemeStore;
   function setContext(key: "thread-item-length", context: number): number;
   function setContext(
@@ -57,6 +62,7 @@ declare module "svelte" {
   function setContext<_>(key: string, context: unknown): never;
 
   // Global
+  function getContext(key: "runtime-config"): RuntimeConfig;
   function getContext(key: "theme"): ThemeStore;
   function getContext(key: "thread-item-length"): number;
   function getContext(
