@@ -9,15 +9,14 @@ use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen::{self, cgen_type::TransformData},
-    components::{CameraComponent, ManipulatorComponent, RenderSurfaceExtents, VisualComponent},
-    core::{RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId},
+    components::{ManipulatorComponent, VisualComponent},
+    core::{RenderCamera, RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId},
     debug_display::{DebugDisplay, DebugPrimitiveType},
     picking::ManipulatorManager,
     resources::{
         DefaultMeshType, MeshManager, MeshMetaData, ModelManager, PipelineDef, PipelineHandle,
         PipelineManager,
     },
-    script::RenderView,
     RenderContext,
 };
 
@@ -28,12 +27,9 @@ impl DebugPass {
     pub(crate) fn build_render_graph<'a>(
         &self,
         builder: RenderGraphBuilder<'a>,
-        view: &RenderView<'_>,
         depth_view_id: RenderGraphViewId,
         radiance_write_rt_view_id: RenderGraphViewId,
     ) -> RenderGraphBuilder<'a> {
-        let view_target_extents = *view.target.extents();
-
         let (
             solid_pso_depth_handle,
             wire_pso_depth_handle,
@@ -64,7 +60,7 @@ impl DebugPass {
                     Self::render_picked(
                         render_context,
                         cmd_buffer,
-                        execute_context.debug_stuff.picked_drawables,
+                        render_context.picked_drawables,
                         &mesh_manager,
                         &model_manager,
                         wire_pso_depth_handle,
@@ -74,7 +70,7 @@ impl DebugPass {
                     Self::render_debug_display(
                         render_context,
                         cmd_buffer,
-                        execute_context.debug_stuff.debug_display,
+                        render_context.debug_display,
                         &mesh_manager,
                         wire_pso_depth_handle,
                     );
@@ -82,13 +78,9 @@ impl DebugPass {
                     Self::render_manipulators(
                         render_context,
                         cmd_buffer,
-                        RenderSurfaceExtents::new(
-                            view_target_extents.width,
-                            view_target_extents.height,
-                        ),
-                        execute_context.debug_stuff.manipulator_drawables,
+                        render_context.manipulator_drawables,
                         &mesh_manager,
-                        execute_context.debug_stuff.camera_component,
+                        execute_context.debug_stuff.render_camera,
                         solid_pso_no_depth_handle,
                     );
                 })
@@ -339,10 +331,9 @@ impl DebugPass {
     pub fn render_manipulators(
         render_context: &RenderContext<'_>,
         cmd_buffer: &mut CommandBuffer,
-        render_surface_extents: RenderSurfaceExtents,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
-        camera: &CameraComponent,
+        render_camera: RenderCamera,
         solid_pso_no_depth_handle: PipelineHandle,
     ) {
         for (transform, manipulator) in manipulator_meshes.iter() {
@@ -351,8 +342,8 @@ impl DebugPass {
                     let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                         transform,
                         &manipulator.local_transform,
-                        render_surface_extents,
-                        camera,
+                        render_camera.projection,
+                        &render_camera.view_transform,
                     );
 
                     let mut color = if manipulator.selected {

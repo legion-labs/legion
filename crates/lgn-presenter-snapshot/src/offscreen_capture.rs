@@ -128,8 +128,9 @@ impl OffscreenHelper {
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;
 
-        let view_target = render_surface.view_target();
-        let view_target_srv = render_surface.view_target_srv();
+        // TODO(jsg): A single viewport for now, must have a "viewport compositor" eventually.
+        let view_target = render_surface.viewports()[0].view_target();
+        let view_target_srv = render_surface.viewports()[0].view_target_srv();
 
         cmd_buffer.cmd_resource_barrier(
             &[],

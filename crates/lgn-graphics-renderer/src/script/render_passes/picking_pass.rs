@@ -7,7 +7,6 @@ use crate::{
         self,
         cgen_type::{PickingData, TransformData},
     },
-    components::RenderSurfaceExtents,
     core::{
         RenderGraphBuilder, RenderGraphLoadState, RenderGraphResourceId, RenderGraphViewId,
         RenderObjectQuery, RenderObjects, RENDER_LAYER_PICKING,
@@ -16,7 +15,6 @@ use crate::{
     lighting::RenderLight,
     picking::{ManipulatorManager, PickingState},
     resources::{DefaultMeshType, MeshManager, MeshMetaData},
-    script::RenderView,
 };
 
 pub struct PickingPass;
@@ -26,24 +24,19 @@ impl PickingPass {
     pub(crate) fn build_render_graph<'a>(
         &self,
         builder: RenderGraphBuilder<'a>,
-        view: &RenderView<'_>,
         radiance_write_rt_view_id: RenderGraphViewId,
         draw_count_buffer_id: RenderGraphResourceId,
         draw_args_buffer_id: RenderGraphResourceId,
     ) -> RenderGraphBuilder<'a> {
-        let view_target_extents = *view.target.extents();
-
         builder.add_scope("Picking", |builder| {
             builder
                 .add_compute_pass("Picking begin readback", |compute_pass_builder| {
                     compute_pass_builder.execute(|_, execute_context, cmd_buffer| {
                         let render_context = &execute_context.render_context;
-                        let picking_renderpass = execute_context
+                        let mut picking_renderpass = execute_context
                             .debug_stuff
-                            .render_surface
-                            .picking_renderpass();
-                        let mut picking_renderpass = picking_renderpass.write();
-                        let picking_manager = execute_context.debug_stuff.picking_manager;
+                            .picking_renderpass.write();
+                        let picking_manager = render_context.picking_manager;
 
                         let mut count: usize = 0;
                         let mut count_readback = picking_renderpass
@@ -90,10 +83,8 @@ impl PickingPass {
                             let render_context = &execute_context.render_context;
                             let picking_renderpass = execute_context
                                 .debug_stuff
-                                .render_surface
-                                .picking_renderpass();
-                            let picking_renderpass = picking_renderpass.write();
-                            let picking_manager = execute_context.debug_stuff.picking_manager;
+                                .picking_renderpass.write();
+                            let picking_manager = render_context.picking_manager;
 
                             if picking_manager.picking_state() == PickingState::Rendering {
                                 let mesh_renderer =
@@ -158,8 +149,8 @@ impl PickingPass {
                                 );
 
                                 let manipulator_meshes =
-                                    execute_context.debug_stuff.manipulator_drawables;
-                                let camera = execute_context.debug_stuff.camera_component;
+                                render_context.manipulator_drawables;
+                                let render_camera = execute_context.debug_stuff.render_camera;
                                 for (transform, manipulator) in manipulator_meshes.iter() {
                                     if manipulator.active {
                                         let picking_distance = 50.0;
@@ -167,11 +158,8 @@ impl PickingPass {
                                             ManipulatorManager::scale_manipulator_for_viewport(
                                                 transform,
                                                 &manipulator.local_transform,
-                                                RenderSurfaceExtents::new(
-                                                    view_target_extents.width,
-                                                    view_target_extents.height,
-                                                ),
-                                                camera,
+                                                render_camera.projection,
+                                                &render_camera.view_transform,
                                             );
 
                                         Self::render_mesh(
@@ -208,12 +196,11 @@ impl PickingPass {
                 })
                 .add_compute_pass("Picking end readback", |compute_pass_builder| {
                     compute_pass_builder.execute(|_, execute_context, cmd_buffer| {
-                        let picking_renderpass = execute_context
+                        let render_context = &execute_context.render_context;
+                        let mut picking_renderpass = execute_context
                             .debug_stuff
-                            .render_surface
-                            .picking_renderpass();
-                        let mut picking_renderpass = picking_renderpass.write();
-                        let picking_manager = execute_context.debug_stuff.picking_manager;
+                            .picking_renderpass.write();
+                        let picking_manager = render_context.picking_manager;
 
                         let mut count_readback = execute_context.count_readback.transfer();
                         let mut picked_readback = execute_context.picked_readback.transfer();

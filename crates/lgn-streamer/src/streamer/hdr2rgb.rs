@@ -107,7 +107,8 @@ impl Hdr2Rgb {
 
         cmd_buffer.begin();
 
-        let final_target = render_surface.view_target();
+        // TODO(jsg): A single viewport for now, must have a "viewport compositor" eventually.
+        let final_target = render_surface.viewports()[0].view_target();
 
         assert_eq!(
             final_target.definition().extents,

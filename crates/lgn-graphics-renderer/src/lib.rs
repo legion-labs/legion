@@ -14,17 +14,14 @@ mod cgen {
 
 use crate::components::{tmp_debug_display_lights, EcsToRender};
 use crate::core::{
-    DebugStuff, PrepareRenderContext, RenderFeatures, RenderFeaturesBuilder,
-    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, VisibilityContext,
-    RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
+    RenderCamera, RenderFeatures, RenderFeaturesBuilder, RenderGraphPersistentState,
+    RenderLayerBuilder, RenderLayers, RenderObjects, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE,
+    RENDER_LAYER_PICKING,
 };
 use crate::features::ModelFeature;
 use crate::lighting::{RenderLight, RenderLightTestData};
-use crate::script::render_passes::{
-    AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
-    PickingPass, PostProcessPass, SSAOPass, UiPass,
-};
-use crate::script::{Config, RenderScript, RenderView};
+
+use crate::surface_renderer::SurfaceRenderer;
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
@@ -43,12 +40,10 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    ApiDef, BufferViewDef, DescriptorHeapDef, DeviceContext, Queue, QueueType, ResourceUsage,
-    BACKBUFFER_COUNT,
+    ApiDef, DescriptorHeapDef, DeviceContext, Queue, QueueType, BACKBUFFER_COUNT,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
-use lgn_math::Vec2;
 
 use lgn_tasks::ComputeTaskPool;
 use lgn_tracing::span_scope;
@@ -56,6 +51,8 @@ pub use renderer::*;
 
 mod render_context;
 pub use render_context::*;
+
+mod surface_renderer;
 
 pub mod resources;
 use resources::{
@@ -551,6 +548,15 @@ fn render_update(
 
     render_resources.get_mut::<RenderObjects>().sync_update();
 
+    //
+    // Egui (not thread safe as is)
+    // we need to call the end_frame in the sync window I guess and transfer the data to the render thread
+    //
+    render_resources
+        .get_mut::<LightingManager>()
+        .debug_ui(egui.as_mut());
+    crate::egui::egui_plugin::end_frame(&mut egui);
+
     // objectives: drop all resources/queries
 
     drop(renderer);
@@ -571,6 +577,18 @@ fn render_update(
             } else {
                 &default_camera
             };
+
+            // TODO(jsg): Reflect camera components.
+            // TODO(jsg): A single camera for all viewports for now (there's a single viewport anyways)
+            for render_surface in render_surfaces.iter_mut() {
+                for viewport in render_surface.viewports_mut() {
+                    viewport.set_camera(RenderCamera::new(
+                        camera_component,
+                        viewport.extents().width as f32,
+                        viewport.extents().height as f32,
+                    ));
+                }
+            }
 
             let mut herd = render_resources.get_mut::<Herd>();
             let mut render_scope = render_resources.get_mut::<RenderScope>();
@@ -604,8 +622,6 @@ fn render_update(
                 .get_mut::<RenderCommandManager>()
                 .apply(&render_resources);
 
-            let render_objects = render_resources.get::<RenderObjects>();
-
             persistent_descriptor_set_manager.frame_update();
             pipeline_manager.frame_update(&device_context);
 
@@ -623,55 +639,6 @@ fn render_update(
                 &graphics_queue,
             );
 
-            let herd_member = herd.get();
-            let bump = herd_member.as_bump();
-
-            // TODO: #1997 From this point, we should be per RenderViewport, each viewport owning its own top level camera and properties (grid, gizmos etc...).
-
-            //
-            // Visibility
-            //
-
-            let render_layers = render_resources.get::<RenderLayers>();
-            let visibility_context = VisibilityContext {
-                herd: &herd,
-                bump,
-                camera: camera_component,
-                render_layers: &render_layers,
-            };
-
-            let visibility_set = visibility_context.execute();
-
-            //
-            // Update
-            //
-
-            // ==== TODO ====
-
-            //
-            // PrepareRender
-            //
-
-            let features = render_resources.get::<RenderFeatures>();
-
-            let prepare_render_context = PrepareRenderContext {
-                herd: &herd,
-                bump,
-                visibility_set,
-                features: &features,
-            };
-
-            let render_list_set = prepare_render_context.execute();
-
-            //
-            // Egui (not thread safe as is)
-            // we need to call the end_frame in the sync window I guess and transfer the data to the render thread
-            //
-            render_resources
-                .get_mut::<LightingManager>()
-                .debug_ui(egui.as_mut());
-            crate::egui::egui_plugin::end_frame(&mut egui);
-
             //
             // Render
             //
@@ -683,203 +650,40 @@ fn render_update(
                 let descriptor_pool =
                     descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
 
-                let mut render_context = RenderContext::new(
-                    &device_context,
-                    &graphics_queue,
-                    &descriptor_pool,
-                    &mut pipeline_manager,
-                    &mut transient_commandbuffer_allocator,
-                    &mut transient_buffer_allocator,
-                    &static_buffer,
-                );
+                let herd_member = herd.get();
+                let bump = herd_member.as_bump();
 
-                // Persistent descriptor set
                 {
-                    render_resources
-                        .get_mut::<SamplerManager>()
-                        .upload(&mut persistent_descriptor_set_manager);
-                    let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
-                    render_context.set_persistent_descriptor_set(
-                        descriptor_set.layout(),
-                        *descriptor_set.handle(),
-                    );
-                }
+                    let render_layers = render_resources.get::<RenderLayers>();
+                    let features = render_resources.get::<RenderFeatures>();
 
-                // Frame descriptor set
-                {
-                    let mut frame_descriptor_set =
-                        cgen::descriptor_set::FrameDescriptorSet::default();
-
-                    render_resources.get::<LightingManager>().per_frame_render(
-                        &render_objects,
-                        render_context.transient_buffer_allocator,
-                        &mut frame_descriptor_set,
-                    );
-
-                    let static_buffer_ro_view = static_buffer.read_only_view();
-                    frame_descriptor_set.set_static_buffer(static_buffer_ro_view);
-
-                    let instance_manager = render_resources.get::<GpuInstanceManager>();
-                    let va_table_address_buffer = instance_manager.structured_buffer_view();
-                    frame_descriptor_set.set_va_table_address_buffer(va_table_address_buffer);
-
-                    let frame_descriptor_set_handle = render_context.write_descriptor_set(
-                        cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
-                        frame_descriptor_set.descriptor_refs(),
+                    let render_context = RenderContext::new(
+                        &device_context,
+                        &graphics_queue,
+                        &descriptor_pool,
+                        &mut pipeline_manager,
+                        &mut transient_commandbuffer_allocator,
+                        &mut transient_buffer_allocator,
+                        &static_buffer,
+                        &herd,
+                        bump,
+                        &picking_manager,
+                        &debug_display,
+                        picked_drawables.as_slice(),
+                        manipulator_drawables.as_slice(),
+                        &egui,
                     );
 
-                    render_context.set_frame_descriptor_set(
-                        cgen::descriptor_set::FrameDescriptorSet::descriptor_set_layout(),
-                        frame_descriptor_set_handle,
-                    );
-                }
-
-                // For each surface/view, we have to execute the render graph
-                for render_surface in render_surfaces.iter_mut() {
-                    // View descriptor set
-                    {
-                        let mut screen_rect = picking_manager.screen_rect();
-                        if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
-                            screen_rect = Vec2::new(
-                                render_surface.extents().width() as f32,
-                                render_surface.extents().height() as f32,
-                            );
-                        }
-
-                        let cursor_pos = picking_manager.current_cursor_pos();
-
-                        let view_data = camera_component.tmp_build_view_data(
-                            render_surface.extents().width() as f32,
-                            render_surface.extents().height() as f32,
-                            screen_rect.x,
-                            screen_rect.y,
-                            cursor_pos.x,
-                            cursor_pos.y,
-                        );
-
-                        let sub_allocation = render_context
-                            .transient_buffer_allocator
-                            .copy_data(&view_data, ResourceUsage::AS_CONST_BUFFER);
-
-                        let const_buffer_view =
-                            sub_allocation.to_buffer_view(BufferViewDef::as_const_buffer_typed::<
-                                cgen_type::ViewData,
-                            >());
-
-                        let mut view_descriptor_set =
-                            cgen::descriptor_set::ViewDescriptorSet::default();
-                        view_descriptor_set.set_view_data(const_buffer_view);
-
-                        let view_descriptor_set_handle = render_context.write_descriptor_set(
-                            cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
-                            view_descriptor_set.descriptor_refs(),
-                        );
-
-                        render_context.set_view_descriptor_set(
-                            cgen::descriptor_set::ViewDescriptorSet::descriptor_set_layout(),
-                            view_descriptor_set_handle,
-                        );
-                    }
-
-                    let frame_idx = render_scope.frame_idx();
-
-                    let mut cmd_buffer_handle =
-                        render_context.transient_commandbuffer_allocator.acquire();
-                    let cmd_buffer = cmd_buffer_handle.as_mut();
-
-                    cmd_buffer.begin();
-
-                    render_surface.clear_hzb_if_needed(cmd_buffer);
-
-                    let view = RenderView {
-                        target: render_surface.view_target(),
-                    };
-
-                    let gpu_culling_pass = GpuCullingPass;
-                    let picking_pass = PickingPass;
-                    let opaque_layer_pass = OpaqueLayerPass;
-                    let ssao_pass = SSAOPass;
-                    let alphablended_layer_pass = AlphaBlendedLayerPass;
-                    let debug_pass = DebugPass;
-                    let postprocess_pass = PostProcessPass;
-                    let lighting_pass = LightingPass;
-                    let ui_pass = UiPass;
-                    let egui_pass = EguiPass;
-
-                    let mut render_script = RenderScript {
-                        gpu_culling_pass,
-                        picking_pass,
-                        opaque_layer_pass,
-                        ssao_pass,
-                        alphablended_layer_pass,
-                        debug_pass,
-                        postprocess_pass,
-                        lighting_pass,
-                        ui_pass,
-                        egui_pass,
-                        hzb: [render_surface.hzb()[0], render_surface.hzb()[1]],
-                    };
-
-                    let config = Config {
-                        frame_idx,
-                        ..Config::default()
-                    };
-
-                    match render_script.build_render_graph(
-                        &view,
-                        &config,
+                    SurfaceRenderer::render_surfaces(
+                        render_scope.frame_idx(),
+                        &mut render_surfaces,
                         &render_resources,
-                        render_context.pipeline_manager,
-                        render_context.device_context,
-                    ) {
-                        Ok(render_graph) => {
-                            let mut render_graph_context = render_graph.compile();
-
-                            let debug_stuff = DebugStuff {
-                                render_surface,
-                                picking_manager: &picking_manager,
-                                debug_display: &debug_display,
-                                picked_drawables: picked_drawables.as_slice(),
-                                manipulator_drawables: manipulator_drawables.as_slice(),
-                                camera_component,
-                                egui: &egui,
-                            };
-
-                            render_graph.execute(
-                                &mut render_graph_context,
-                                render_list_set,
-                                &render_resources,
-                                &mut render_context,
-                                &debug_stuff,
-                                cmd_buffer,
-                            );
-                        }
-                        Err(error) => {
-                            println!("{}", error);
-                        }
-                    }
-
-                    cmd_buffer.end();
-
-                    // queue
-                    let present_semaphore = render_surface.acquire();
-                    {
-                        render_context.graphics_queue.queue_mut().submit(
-                            &[cmd_buffer],
-                            &[],
-                            &[present_semaphore],
-                            None,
-                        );
-
-                        render_surface.present(&mut render_context);
-                    }
-
-                    render_context
-                        .transient_commandbuffer_allocator
-                        .release(cmd_buffer_handle);
+                        render_context,
+                        &mut persistent_descriptor_set_manager,
+                        &render_layers,
+                        &features,
+                    );
                 }
-
-                render_list_set.consume();
 
                 descriptor_heap_manager.release_descriptor_pool(descriptor_pool);
                 drop(transient_buffer_allocator);

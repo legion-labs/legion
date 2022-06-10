@@ -12,7 +12,7 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::egui::egui_pass::EguiPass;
+use crate::core::RenderCamera;
 use crate::render_pass::PickingRenderPass;
 use crate::{RenderContext, Renderer};
 
@@ -180,58 +180,18 @@ pub enum RenderSurfacePresentingStatus {
     Paused,
 }
 
-pub struct RenderSurface {
-    id: RenderSurfaceId,
-    window_id: Option<WindowId>,
-    extents: RenderSurfaceExtents,
-    presenters: Vec<Box<dyn Presenter>>,
-    // tmp
-    num_render_frames: u64,
-    render_frame_idx: u64,
-    presenter_semaphores: Vec<Semaphore>,
-    picking_renderpass: Arc<RwLock<PickingRenderPass>>,
-    egui_renderpass: Arc<RwLock<EguiPass>>,
-    presenting_status: RenderSurfacePresentingStatus,
-
-    // For render graph
+pub struct Viewport {
+    extents: Extents3D,
+    camera: Option<RenderCamera>,
     view_target: Texture,
     view_target_srv: TextureView,
     hzb: [Texture; 2],
     hzb_cleared: bool,
 }
 
-impl RenderSurface {
-    pub fn new(
-        window_id: WindowId,
-        renderer: &Renderer,
-        render_surface_extents: RenderSurfaceExtents,
-    ) -> Self {
-        Self::new_internal(Some(window_id), renderer, render_surface_extents)
-    }
-
-    pub fn new_offscreen_window(
-        renderer: &Renderer,
-        render_surface_extents: RenderSurfaceExtents,
-    ) -> Self {
-        Self::new_internal(None, renderer, render_surface_extents)
-    }
-
-    fn new_internal(
-        window_id: Option<WindowId>,
-        renderer: &Renderer,
-        render_surface_extents: RenderSurfaceExtents,
-    ) -> Self {
-        let num_render_frames = renderer.num_render_frames();
+impl Viewport {
+    pub fn new(renderer: &Renderer, extents: Extents3D) -> Self {
         let device_context = renderer.device_context();
-        let presenter_semaphores = (0..num_render_frames)
-            .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
-            .collect();
-
-        let extents = Extents3D {
-            width: render_surface_extents.width(),
-            height: render_surface_extents.height(),
-            depth: 1,
-        };
         let view_desc = TextureDef {
             extents,
             array_length: 1,
@@ -258,16 +218,8 @@ impl RenderSurface {
         ];
 
         Self {
-            id: RenderSurfaceId::new(),
-            window_id,
-            extents: render_surface_extents,
-            num_render_frames,
-            render_frame_idx: 0,
-            presenter_semaphores,
-            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
-            egui_renderpass: Arc::new(RwLock::new(EguiPass::new())),
-            presenters: Vec::new(),
-            presenting_status: RenderSurfacePresentingStatus::Presenting,
+            extents,
+            camera: None,
             view_target,
             view_target_srv,
             hzb,
@@ -275,121 +227,34 @@ impl RenderSurface {
         }
     }
 
-    pub fn id(&self) -> RenderSurfaceId {
-        self.id
-    }
+    pub fn resize(&mut self, device_context: &DeviceContext, extents: Extents3D) {
+        let view_desc = TextureDef {
+            extents,
+            array_length: 1,
+            mip_count: 1,
+            format: Format::B8G8R8A8_UNORM,
+            usage_flags: ResourceUsage::AS_RENDER_TARGET
+                | ResourceUsage::AS_SHADER_RESOURCE
+                | ResourceUsage::AS_UNORDERED_ACCESS
+                | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Optimal,
+        };
+        self.view_target = device_context.create_texture(view_desc, "ViewBuffer");
+        self.view_target_srv =
+            self.view_target
+                .create_view(TextureViewDef::as_shader_resource_view(
+                    self.view_target.definition(),
+                ));
 
-    pub fn window_id(&self) -> Option<WindowId> {
-        self.window_id
-    }
+        let hzb_desc = Self::make_hzb_desc(&extents);
 
-    pub fn extents(&self) -> RenderSurfaceExtents {
-        self.extents
-    }
-
-    pub fn picking_renderpass(&self) -> Arc<RwLock<PickingRenderPass>> {
-        self.picking_renderpass.clone()
-    }
-
-    pub fn egui_renderpass(&self) -> Arc<RwLock<EguiPass>> {
-        self.egui_renderpass.clone()
-    }
-
-    pub fn resize(
-        &mut self,
-        device_context: &DeviceContext,
-        render_surface_extents: RenderSurfaceExtents,
-    ) {
-        if self.extents != render_surface_extents {
-            let extents = Extents3D {
-                width: render_surface_extents.width(),
-                height: render_surface_extents.height(),
-                depth: 1,
-            };
-            let view_desc = TextureDef {
-                extents,
-                array_length: 1,
-                mip_count: 1,
-                format: Format::B8G8R8A8_UNORM,
-                usage_flags: ResourceUsage::AS_RENDER_TARGET
-                    | ResourceUsage::AS_SHADER_RESOURCE
-                    | ResourceUsage::AS_UNORDERED_ACCESS
-                    | ResourceUsage::AS_TRANSFERABLE,
-                resource_flags: ResourceFlags::empty(),
-                memory_usage: MemoryUsage::GpuOnly,
-                tiling: TextureTiling::Optimal,
-            };
-            self.view_target = device_context.create_texture(view_desc, "ViewBuffer");
-            self.view_target_srv =
-                self.view_target
-                    .create_view(TextureViewDef::as_shader_resource_view(
-                        self.view_target.definition(),
-                    ));
-
-            let hzb_desc = Self::make_hzb_desc(&extents);
-
-            self.hzb = [
-                device_context.create_texture(hzb_desc, "HZB 0"),
-                device_context.create_texture(hzb_desc, "HZB 1"),
-            ];
-            self.hzb_cleared = false;
-
-            for presenter in &mut self.presenters {
-                presenter.resize(device_context, render_surface_extents);
-            }
-            self.extents = render_surface_extents;
-        }
-    }
-
-    pub fn register_presenter<T: 'static + Presenter>(&mut self, create_fn: impl FnOnce() -> T) {
-        let presenter = create_fn();
-        self.presenters.push(Box::new(presenter));
-    }
-
-    /// Call the `present` method of all the registered presenters.
-    /// No op if the render surface is "paused", i.e., it's `presenting`
-    /// attribute is `false`.
-    pub fn present(&mut self, render_context: &mut RenderContext<'_>) {
-        if matches!(
-            self.presenting_status,
-            RenderSurfacePresentingStatus::Paused
-        ) {
-            return;
-        }
-
-        let mut presenters = std::mem::take(&mut self.presenters);
-
-        for presenter in &mut presenters {
-            presenter.as_mut().present(render_context, self);
-        }
-
-        self.presenters = presenters;
-    }
-
-    //
-    // TODO: change that asap. Acquire can't be called more than once per frame.
-    // This would result in a crash.
-    //
-    pub fn acquire(&mut self) -> &Semaphore {
-        let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
-        let presenter_sem = &self.presenter_semaphores[render_frame_idx as usize];
-        self.render_frame_idx = render_frame_idx;
-
-        presenter_sem
-    }
-
-    pub fn presenter_sem(&self) -> &Semaphore {
-        &self.presenter_semaphores[self.render_frame_idx as usize]
-    }
-
-    pub fn pause(&mut self) -> &mut Self {
-        self.presenting_status = RenderSurfacePresentingStatus::Paused;
-        self
-    }
-
-    pub fn resume(&mut self) -> &mut Self {
-        self.presenting_status = RenderSurfacePresentingStatus::Presenting;
-        self
+        self.hzb = [
+            device_context.create_texture(hzb_desc, "HZB 0"),
+            device_context.create_texture(hzb_desc, "HZB 1"),
+        ];
+        self.hzb_cleared = false;
     }
 
     fn make_hzb_desc(extents: &Extents3D) -> TextureDef {
@@ -431,6 +296,18 @@ impl RenderSurface {
             memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         }
+    }
+
+    pub fn extents(&self) -> Extents3D {
+        self.extents
+    }
+
+    pub fn camera(&self) -> RenderCamera {
+        self.camera.unwrap()
+    }
+
+    pub fn set_camera(&mut self, camera: RenderCamera) {
+        self.camera = Some(camera);
     }
 
     pub fn view_target(&self) -> &Texture {
@@ -496,5 +373,165 @@ impl RenderSurface {
                 }
             });
         }
+    }
+}
+
+pub struct RenderSurface {
+    id: RenderSurfaceId,
+    window_id: Option<WindowId>,
+    extents: RenderSurfaceExtents,
+    presenters: Vec<Box<dyn Presenter>>,
+    viewports: Vec<Viewport>,
+    // tmp
+    num_render_frames: u64,
+    render_frame_idx: u64,
+    presenter_semaphores: Vec<Semaphore>,
+    picking_renderpass: Arc<RwLock<PickingRenderPass>>,
+    presenting_status: RenderSurfacePresentingStatus,
+}
+
+impl RenderSurface {
+    pub fn new(
+        window_id: WindowId,
+        renderer: &Renderer,
+        render_surface_extents: RenderSurfaceExtents,
+    ) -> Self {
+        Self::new_internal(Some(window_id), renderer, render_surface_extents)
+    }
+
+    pub fn new_offscreen_window(
+        renderer: &Renderer,
+        render_surface_extents: RenderSurfaceExtents,
+    ) -> Self {
+        Self::new_internal(None, renderer, render_surface_extents)
+    }
+
+    fn new_internal(
+        window_id: Option<WindowId>,
+        renderer: &Renderer,
+        render_surface_extents: RenderSurfaceExtents,
+    ) -> Self {
+        let num_render_frames = renderer.num_render_frames();
+        let device_context = renderer.device_context();
+        let presenter_semaphores = (0..num_render_frames)
+            .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
+            .collect();
+
+        // TODO(jsg): Only one viewport for now.
+        let viewport_extents = Extents3D {
+            width: render_surface_extents.width(),
+            height: render_surface_extents.height(),
+            depth: 1,
+        };
+        let viewports = vec![Viewport::new(renderer, viewport_extents)];
+
+        Self {
+            id: RenderSurfaceId::new(),
+            window_id,
+            extents: render_surface_extents,
+            num_render_frames,
+            render_frame_idx: 0,
+            presenter_semaphores,
+            picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
+            presenters: Vec::new(),
+            presenting_status: RenderSurfacePresentingStatus::Presenting,
+            viewports,
+        }
+    }
+
+    pub fn id(&self) -> RenderSurfaceId {
+        self.id
+    }
+
+    pub fn window_id(&self) -> Option<WindowId> {
+        self.window_id
+    }
+
+    pub fn extents(&self) -> RenderSurfaceExtents {
+        self.extents
+    }
+
+    pub fn picking_renderpass(&self) -> Arc<RwLock<PickingRenderPass>> {
+        self.picking_renderpass.clone()
+    }
+
+    pub fn viewports(&self) -> &Vec<Viewport> {
+        &self.viewports
+    }
+
+    pub fn viewports_mut(&mut self) -> &mut Vec<Viewport> {
+        &mut self.viewports
+    }
+
+    pub fn resize(
+        &mut self,
+        device_context: &DeviceContext,
+        render_surface_extents: RenderSurfaceExtents,
+    ) {
+        if self.extents != render_surface_extents {
+            let extents = Extents3D {
+                width: render_surface_extents.width(),
+                height: render_surface_extents.height(),
+                depth: 1,
+            };
+
+            self.viewports[0].resize(device_context, extents);
+
+            for presenter in &mut self.presenters {
+                presenter.resize(device_context, render_surface_extents);
+            }
+            self.extents = render_surface_extents;
+        }
+    }
+
+    pub fn register_presenter<T: 'static + Presenter>(&mut self, create_fn: impl FnOnce() -> T) {
+        let presenter = create_fn();
+        self.presenters.push(Box::new(presenter));
+    }
+
+    /// Call the `present` method of all the registered presenters.
+    /// No op if the render surface is "paused", i.e., it's `presenting`
+    /// attribute is `false`.
+    pub fn present(&mut self, render_context: &mut RenderContext<'_>) {
+        if matches!(
+            self.presenting_status,
+            RenderSurfacePresentingStatus::Paused
+        ) {
+            return;
+        }
+
+        let mut presenters = std::mem::take(&mut self.presenters);
+
+        for presenter in &mut presenters {
+            presenter.as_mut().present(render_context, self);
+        }
+
+        self.presenters = presenters;
+    }
+
+    //
+    // TODO: change that asap. Acquire can't be called more than once per frame.
+    // This would result in a crash.
+    //
+    pub fn acquire(&mut self) -> &Semaphore {
+        let render_frame_idx = (self.render_frame_idx + 1) % self.num_render_frames;
+        let presenter_sem = &self.presenter_semaphores[render_frame_idx as usize];
+        self.render_frame_idx = render_frame_idx;
+
+        presenter_sem
+    }
+
+    pub fn presenter_sem(&self) -> &Semaphore {
+        &self.presenter_semaphores[self.render_frame_idx as usize]
+    }
+
+    pub fn pause(&mut self) -> &mut Self {
+        self.presenting_status = RenderSurfacePresentingStatus::Paused;
+        self
+    }
+
+    pub fn resume(&mut self) -> &mut Self {
+        self.presenting_status = RenderSurfacePresentingStatus::Presenting;
+        self
     }
 }

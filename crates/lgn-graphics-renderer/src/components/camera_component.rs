@@ -12,10 +12,10 @@ use lgn_input::{
         Axis, GamepadAxis, GamepadAxisType, GamepadButton, Gamepads, Input, KeyCode, MouseButton,
     },
 };
-use lgn_math::{Angle, DMat4, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
+use lgn_math::{Angle, DMat4, Mat3, Mat4, Quat, Vec3, Vec4};
 use lgn_transform::components::GlobalTransform;
 
-use crate::{cgen, UP_VECTOR};
+use crate::UP_VECTOR;
 
 #[derive(Component)]
 pub struct CameraComponent {
@@ -92,44 +92,6 @@ impl CameraComponent {
             top_plane,
             bottom_plane,
         ]
-    }
-
-    pub fn tmp_build_view_data(
-        &self,
-        pixel_width: f32,
-        pixel_height: f32,
-        logical_width: f32,
-        logical_height: f32,
-        cursor_x: f32,
-        cursor_y: f32,
-    ) -> cgen::cgen_type::ViewData {
-        let mut camera_props = cgen::cgen_type::ViewData::default();
-
-        camera_props.set_camera_translation(self.view_transform().translation.into());
-        camera_props.set_camera_rotation(Vec4::from(self.view_transform().rotation).into());
-        camera_props.set_projection(self.build_projection(pixel_width, pixel_height).into());
-        camera_props.set_culling_planes(self.build_culling_planes(pixel_width / pixel_height));
-        camera_props.set_pixel_size(
-            Vec4::new(
-                pixel_width,
-                pixel_height,
-                1.0 / pixel_width,
-                1.0 / pixel_height,
-            )
-            .into(),
-        );
-        camera_props.set_logical_size(
-            Vec4::new(
-                logical_width,
-                logical_height,
-                1.0 / logical_width,
-                1.0 / logical_height,
-            )
-            .into(),
-        );
-        camera_props.set_cursor_pos(Vec2::new(cursor_x, cursor_y).into());
-
-        camera_props
     }
 
     pub fn position(&self) -> Vec3 {
