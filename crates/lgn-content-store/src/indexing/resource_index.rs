@@ -1,3 +1,5 @@
+use tokio_stream::StreamExt;
+
 use crate::Provider;
 
 use super::{
@@ -10,15 +12,17 @@ enum TreeIdentifierType {
     Shared(SharedTreeIdentifier),
 }
 
-pub struct ResourceIndex<Indexer> {
+pub struct ResourceIndex<Indexer>
+where
+    Indexer: BasicIndexer + Sync,
+{
     indexer: Indexer,
     tree_id: TreeIdentifierType, // to do: maybe generic, supporting TreeIdentifierAccessor trait (implemented for TreeIdentifier and SharedTreeIdentifier)
-                                 // use enum?
 }
 
 impl<Indexer> ResourceIndex<Indexer>
 where
-    Indexer: BasicIndexer,
+    Indexer: BasicIndexer + Sync,
 {
     pub async fn new_exclusive(indexer: Indexer, provider: &Provider) -> Self {
         let tree_id = empty_tree_id(provider).await.unwrap();
@@ -196,5 +200,34 @@ where
         self.set_id(tree_id);
 
         Ok(leaf_node)
+    }
+
+    /// Enumerate all the leaves.
+    ///
+    /// # Warning
+    ///
+    /// Calling this on a big tree can be very slow.
+    ///
+    /// # Errors
+    ///
+    /// If the tree cannot be read, an error will be returned.
+    pub async fn enumerate_resources(
+        &self,
+        provider: &Provider,
+    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
+        self.indexer
+            .enumerate_leaves(provider, &self.id())
+            .await?
+            .map(|(key, leaf_res)| match leaf_res {
+                Ok(leaf) => match leaf {
+                    TreeLeafNode::Resource(resource_id) => Ok((key, resource_id)),
+                    TreeLeafNode::TreeRoot(_) => Err(Error::CorruptedTree(
+                        "found unexpected tree-root node".to_owned(),
+                    )),
+                },
+                Err(err) => Err(err),
+            })
+            .collect::<Result<Vec<(IndexKey, ResourceIdentifier)>>>()
+            .await
     }
 }

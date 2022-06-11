@@ -1,5 +1,5 @@
 use lgn_content_store::indexing::{
-    self, ResourceIndex, ResourceWriter, SharedTreeIdentifier, TreeLeafNode,
+    ResourceIndex, ResourceWriter, SharedTreeIdentifier, TreeLeafNode,
 };
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
@@ -71,13 +71,11 @@ impl BuildManager {
         let derived_id = Self::get_derived_id(resource_id);
 
         let indexer = new_resource_type_and_id_indexer();
-        let start_manifest = indexing::enumerate_resources(
-            self.build.get_provider(),
-            &indexer,
-            &self.runtime_manifest_id.read(),
-        )
-        .await
-        .map_err(Error::InvalidContentStoreIndexing)?;
+        let start_manifest =
+            ResourceIndex::new_exclusive_with_id(indexer.clone(), self.runtime_manifest_id.read())
+                .enumerate_resources(self.build.get_provider())
+                .await
+                .map_err(Error::InvalidContentStoreIndexing)?;
 
         self.build.source_pull(project).await?;
         match self
@@ -90,7 +88,8 @@ impl BuildManager {
                 let runtime_manifest_id =
                     output.into_rt_manifest(data_provider, |_rpid| true).await;
                 let runtime_manifest =
-                    indexing::enumerate_resources(data_provider, &indexer, &runtime_manifest_id)
+                    ResourceIndex::new_exclusive_with_id(indexer.clone(), runtime_manifest_id)
+                        .enumerate_resources(data_provider)
                         .await
                         .map_err(Error::InvalidContentStoreIndexing)?;
 
@@ -119,8 +118,10 @@ impl BuildManager {
                     start.elapsed(),
                 );
 
-                let mut runtime_manifest =
-                    ResourceIndex::new_exclusive_with_id(indexer, self.runtime_manifest_id.read());
+                let mut runtime_manifest = ResourceIndex::new_exclusive_with_id(
+                    indexer.clone(),
+                    self.runtime_manifest_id.read(),
+                );
                 for (index_key, resource_id) in added_resources {
                     runtime_manifest
                         .add_resource(data_provider, &index_key, resource_id)

@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        self, BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
+        BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
         ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier,
         TreeLeafNode,
     },
@@ -16,7 +16,10 @@ use crate::{
 };
 
 /// Represents a workspace.
-pub struct Workspace<MainIndexer> {
+pub struct Workspace<MainIndexer>
+where
+    MainIndexer: BasicIndexer + Clone + Sync,
+{
     index: Box<dyn Index>,
     transaction: Provider,
     branch_name: String,
@@ -57,7 +60,7 @@ impl Staging {
 
 impl<MainIndexer> Workspace<MainIndexer>
 where
-    MainIndexer: BasicIndexer + Sync,
+    MainIndexer: BasicIndexer + Clone + Sync,
 {
     /// Load an existing workspace at the specified location.
     ///
@@ -150,7 +153,7 @@ where
         id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>>
     where
-        Indexer: BasicIndexer,
+        Indexer: BasicIndexer + Sync,
     {
         index
             .get_identifier(&self.transaction, id)
@@ -215,35 +218,25 @@ where
 
     pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         let commit = self.get_current_commit().await?;
-        self.get_resources_from_main_by_id(&commit.main_index_tree_id)
+        let commit_manifest = ResourceIndex::new_exclusive_with_id(
+            self.main_index.indexer().clone(),
+            commit.main_index_tree_id,
+        );
+        commit_manifest
+            .enumerate_resources(&self.transaction)
             .await
+            .map_err(Error::ContentStoreIndexing)
     }
 
     pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.get_resources_from_main_by_id(&self.main_index.id())
+        self.main_index
+            .enumerate_resources(&self.transaction)
             .await
+            .map_err(Error::ContentStoreIndexing)
     }
 
     pub fn clone_main_index_id(&self) -> SharedTreeIdentifier {
         self.main_index.shared_id()
-    }
-
-    async fn get_resources_from_main_by_id(
-        &self,
-        tree_id: &TreeIdentifier,
-    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.get_resources_by_index_and_id(self.main_index.indexer(), tree_id)
-            .await
-    }
-
-    async fn get_resources_by_index_and_id(
-        &self,
-        indexer: &(impl BasicIndexer + Sync),
-        tree_id: &TreeIdentifier,
-    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        indexing::enumerate_resources(&self.transaction, indexer, tree_id)
-            .await
-            .map_err(Error::ContentStoreIndexing)
     }
 
     #[cfg(feature = "verbose")]
@@ -256,22 +249,23 @@ where
         Indexer: BasicIndexer + Sync,
         F: Fn(&IndexKey) -> String,
     {
-        let tree_id = index.id();
-        if let Ok(contents) = self
-            .get_resources_by_index_and_id(index.indexer(), &tree_id)
-            .await
-        {
+        if let Ok(contents) = index.enumerate_resources(&self.transaction).await {
             match resource_id {
                 Some(resource_id) => {
                     if let Some((index_key, resource_id)) = contents
                         .iter()
                         .find(|(_index_key, match_resource_id)| resource_id == match_resource_id)
                     {
-                        println!("index: {}, [{}] -> {}", tree_id, f(index_key), resource_id);
+                        println!(
+                            "index: {}, [{}] -> {}",
+                            index.id(),
+                            f(index_key),
+                            resource_id
+                        );
                     }
                 }
                 None => {
-                    println!("contents of index '{}'", tree_id);
+                    println!("contents of index '{}'", index.id());
                     for (index_key, resource_id) in contents {
                         println!("[{}] -> {}", f(&index_key), resource_id);
                     }

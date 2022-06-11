@@ -42,7 +42,7 @@ pub use tree::{
     tree_diff, Tree, TreeBranchInfo, TreeDiffSide, TreeIdentifier, TreeLeafInfo, TreeLeafNode,
     TreeNode, TreeReader, TreeVisitor, TreeVisitorAction, TreeWriter,
 };
-pub use utils::{empty_tree_id, enumerate_resources};
+pub use utils::empty_tree_id;
 
 use crate::Provider;
 
