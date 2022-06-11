@@ -2,8 +2,9 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        self, BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceReader,
-        ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier, TreeLeafNode,
+        self, BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
+        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier,
+        TreeLeafNode,
     },
     Provider,
 };
@@ -19,15 +20,8 @@ pub struct Workspace<MainIndexer> {
     index: Box<dyn Index>,
     transaction: Provider,
     branch_name: String,
-    main_indexer: MainIndexer,
-    path_indexer: StringPathIndexer,
-    content_id: ContentId,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ContentId {
-    main_index_tree_id: SharedTreeIdentifier,
-    path_index_tree_id: TreeIdentifier,
+    main_index: ResourceIndex<MainIndexer>,
+    path_index: ResourceIndex<StringPathIndexer>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,12 +79,11 @@ where
             index,
             transaction: provider.begin_transaction_in_memory(),
             branch_name: branch_name.to_owned(),
-            main_indexer,
-            path_indexer: StringPathIndexer::default(),
-            content_id: ContentId {
-                main_index_tree_id: SharedTreeIdentifier::new(commit.main_index_tree_id),
-                path_index_tree_id: commit.path_index_tree_id,
-            },
+            main_index: ResourceIndex::new_with_shared_id(main_indexer, commit.main_index_tree_id), // todo: shared!
+            path_index: ResourceIndex::new_with_id(
+                StringPathIndexer::default(),
+                commit.path_index_tree_id,
+            ),
         })
     }
 
@@ -104,8 +97,8 @@ where
         self.branch_name.as_str()
     }
 
-    pub fn id(&self) -> &ContentId {
-        &self.content_id
+    pub fn indices(&self) -> (TreeIdentifier, TreeIdentifier) {
+        (self.main_index.id(), self.path_index.id())
     }
 
     /// Get the commits chain, starting from the specified commit.
@@ -129,7 +122,7 @@ where
         &self,
         id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>> {
-        self.get_resource_identifier_from_index(&self.main_indexer, &self.get_main_index_id(), id)
+        self.get_resource_identifier_from_index(&self.main_index, id)
             .await
     }
 
@@ -138,12 +131,8 @@ where
         path: &str,
     ) -> Result<Option<ResourceIdentifier>> {
         if path.len() > 1 {
-            self.get_resource_identifier_from_index(
-                &self.path_indexer,
-                &self.content_id.path_index_tree_id,
-                &path.into(),
-            )
-            .await
+            self.get_resource_identifier_from_index(&self.path_index, &path.into())
+                .await
         } else {
             // path is invalid, too short
             Err(Error::InvalidPath {
@@ -152,21 +141,18 @@ where
         }
     }
 
-    async fn get_resource_identifier_from_index(
+    async fn get_resource_identifier_from_index<Indexer>(
         &self,
-        indexer: &impl BasicIndexer,
-        tree_id: &TreeIdentifier,
+        index: &ResourceIndex<Indexer>,
         id: &IndexKey,
-    ) -> Result<Option<ResourceIdentifier>> {
-        let leaf_node = indexer.get_leaf(&self.transaction, tree_id, id).await?;
-
-        match leaf_node {
-            Some(leaf_node) => match leaf_node {
-                TreeLeafNode::Resource(resource_id) => Ok(Some(resource_id)),
-                TreeLeafNode::TreeRoot(tree_id) => Err(Error::CorruptedIndex { tree_id }),
-            },
-            None => Ok(None),
-        }
+    ) -> Result<Option<ResourceIdentifier>>
+    where
+        Indexer: BasicIndexer,
+    {
+        index
+            .get_identifier(&self.transaction, id)
+            .await
+            .map_err(Error::ContentStoreIndexing)
     }
 
     pub async fn resource_exists(&self, id: &IndexKey) -> Result<bool> {
@@ -181,7 +167,7 @@ where
 
     pub async fn load_resource(&self, id: &IndexKey) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.main_indexer, &self.get_main_index_id(), id)
+            .get_resource_identifier_from_index(&self.main_index, id)
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
@@ -195,11 +181,7 @@ where
 
     pub async fn load_resource_by_path(&self, path: &str) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(
-                &self.path_indexer,
-                &self.content_id.path_index_tree_id,
-                &path.into(),
-            )
+            .get_resource_identifier_from_index(&self.path_index, &path.into())
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
@@ -235,23 +217,19 @@ where
     }
 
     pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.get_resources_from_main_by_id(&self.get_main_index_id())
+        self.get_resources_from_main_by_id(&self.main_index.id())
             .await
     }
 
-    fn get_main_index_id(&self) -> TreeIdentifier {
-        self.content_id.main_index_tree_id.read()
-    }
-
     pub fn clone_main_index_id(&self) -> SharedTreeIdentifier {
-        self.content_id.main_index_tree_id.clone()
+        self.main_index.shared_id()
     }
 
     async fn get_resources_from_main_by_id(
         &self,
         tree_id: &TreeIdentifier,
     ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        self.get_resources_by_index_and_id(&self.main_indexer, tree_id)
+        self.get_resources_by_index_and_id(self.main_index.indexer(), tree_id)
             .await
     }
 
@@ -266,16 +244,20 @@ where
     }
 
     #[cfg(feature = "verbose")]
-    async fn dump_index<F>(
+    async fn dump_index<Indexer, F>(
         &self,
-        indexer: &(impl BasicIndexer + Sync),
-        tree_id: &TreeIdentifier,
+        index: &ResourceIndex<Indexer>,
         resource_id: Option<&ResourceIdentifier>,
         f: F,
     ) where
+        Indexer: BasicIndexer + Sync,
         F: Fn(&IndexKey) -> String,
     {
-        if let Ok(contents) = self.get_resources_by_index_and_id(indexer, tree_id).await {
+        let tree_id = index.id();
+        if let Ok(contents) = self
+            .get_resources_by_index_and_id(index.indexer(), &tree_id)
+            .await
+        {
             match resource_id {
                 Some(resource_id) => {
                     if let Some((index_key, resource_id)) = contents
@@ -297,19 +279,11 @@ where
 
     #[cfg(feature = "verbose")]
     async fn dump_all_indices(&self, resource_id: Option<&ResourceIdentifier>) {
-        self.dump_index(
-            &self.main_indexer,
-            &self.get_main_index_id(),
-            resource_id,
-            IndexKey::to_hex,
-        )
-        .await;
-        self.dump_index(
-            &self.path_indexer,
-            &self.content_id.path_index_tree_id,
-            resource_id,
-            |index_key| std::str::from_utf8(index_key.as_ref()).unwrap().to_owned(),
-        )
+        self.dump_index(&self.main_index, resource_id, IndexKey::to_hex)
+            .await;
+        self.dump_index(&self.path_index, resource_id, |index_key| {
+            std::str::from_utf8(index_key.as_ref()).unwrap().to_owned()
+        })
         .await;
     }
 
@@ -329,9 +303,11 @@ where
             .await
             .map_err(Error::ContentStoreIndexing)?;
 
-        self.add_to_main_index(id, resource_identifier.clone())
+        self.main_index
+            .add_resource(&self.transaction, id, resource_identifier.clone())
             .await?;
-        self.add_to_path_index(path, resource_identifier.clone())
+        self.path_index
+            .add_resource(&self.transaction, &path.into(), resource_identifier.clone())
             .await?;
 
         #[cfg(feature = "verbose")]
@@ -376,10 +352,12 @@ where
 
             // update indices
             let _leaf_node = self
-                .replace_in_main_index(id, resource_identifier.clone())
+                .main_index
+                .replace_resource(&self.transaction, id, resource_identifier.clone())
                 .await?;
             let _leaf_node = self
-                .replace_in_path_index(path, resource_identifier.clone())
+                .path_index
+                .replace_resource(&self.transaction, &path.into(), resource_identifier.clone())
                 .await?;
 
             // unwrite previous resource content from content-store
@@ -429,26 +407,35 @@ where
 
             // update indices
             let main_leaf_node = self
-                .replace_in_main_index(id, resource_identifier.clone())
+                .main_index
+                .replace_resource(&self.transaction, id, resource_identifier.clone())
                 .await?;
             if let TreeLeafNode::Resource(resource_id) = main_leaf_node {
                 assert_eq!(&resource_id, old_identifier);
             } else {
                 return Err(Error::CorruptedIndex {
-                    tree_id: self.get_main_index_id(),
+                    tree_id: self.main_index.id(),
                 });
             }
 
-            let path_leaf_node = self.remove_from_path_index(old_path).await?;
+            let path_leaf_node = self
+                .path_index
+                .remove_resource(&self.transaction, &old_path.into())
+                .await?;
             if let TreeLeafNode::Resource(resource_id) = path_leaf_node {
                 assert_eq!(&resource_id, old_identifier);
             } else {
                 return Err(Error::CorruptedIndex {
-                    tree_id: self.content_id.path_index_tree_id.clone(),
+                    tree_id: self.path_index.id(),
                 });
             }
 
-            self.add_to_path_index(new_path, resource_identifier.clone())
+            self.path_index
+                .add_resource(
+                    &self.transaction,
+                    &new_path.into(),
+                    resource_identifier.clone(),
+                )
                 .await?;
 
             // unwrite previous resource content from content-store
@@ -475,10 +462,16 @@ where
     /// edited, an empty list is returned and call still succeeds.
     pub async fn delete_resource(&mut self, id: &IndexKey, path: &str) -> Result<()> {
         // remove from main index
-        let leaf_node = self.remove_from_main_index(id).await?;
+        let leaf_node = self
+            .main_index
+            .remove_resource(&self.transaction, id)
+            .await?;
 
         if let TreeLeafNode::Resource(resource_id) = leaf_node {
-            let _leaf_node = self.remove_from_path_index(path).await?;
+            let _leaf_node = self
+                .path_index
+                .remove_resource(&self.transaction, &path.into())
+                .await?;
 
             // unwrite resource from content-store
             self.transaction.unwrite_resource(&resource_id).await?;
@@ -495,7 +488,7 @@ where
             }
         } else {
             return Err(Error::CorruptedIndex {
-                tree_id: self.get_main_index_id(),
+                tree_id: self.main_index.id(),
             });
         }
 
@@ -687,8 +680,8 @@ where
             return Err(Error::stale_branch(branch));
         }
 
-        let empty_commit = commit.main_index_tree_id == self.get_main_index_id()
-            && commit.path_index_tree_id == self.content_id.path_index_tree_id;
+        let empty_commit = commit.main_index_tree_id == self.main_index.id()
+            && commit.path_index_tree_id == self.path_index.id();
 
         if empty_commit && matches!(behavior, CommitMode::Strict) {
             return Err(Error::EmptyCommitNotAllowed);
@@ -699,8 +692,8 @@ where
                 whoami::username(),
                 message,
                 commit.changes.clone(),
-                self.get_main_index_id(),
-                self.content_id.path_index_tree_id.clone(),
+                self.main_index.id(),
+                self.path_index.id(),
                 BTreeSet::from([commit.id]),
             );
 
@@ -1045,109 +1038,4 @@ where
         Ok(tempfile::TempPath::from_path(temp_file_path))
     }
     */
-
-    async fn add_to_main_index(
-        &mut self,
-        id: &IndexKey,
-        resource_id: ResourceIdentifier,
-    ) -> Result<()> {
-        self.content_id.main_index_tree_id.write(
-            self.main_indexer
-                .add_leaf(
-                    &self.transaction,
-                    &self.get_main_index_id(),
-                    id,
-                    TreeLeafNode::Resource(resource_id),
-                )
-                .await
-                .map_err(Error::ContentStoreIndexing)?,
-        );
-
-        Ok(())
-    }
-
-    async fn remove_from_main_index(&mut self, id: &IndexKey) -> Result<TreeLeafNode> {
-        let (main_index_tree_id, leaf_node) = self
-            .main_indexer
-            .remove_leaf(&self.transaction, &self.get_main_index_id(), id)
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
-        self.content_id.main_index_tree_id.write(main_index_tree_id);
-
-        Ok(leaf_node)
-    }
-
-    async fn replace_in_main_index(
-        &mut self,
-        id: &IndexKey,
-        resource_id: ResourceIdentifier,
-    ) -> Result<TreeLeafNode> {
-        let (main_index_tree_id, leaf_node) = self
-            .main_indexer
-            .replace_leaf(
-                &self.transaction,
-                &self.get_main_index_id(),
-                id,
-                TreeLeafNode::Resource(resource_id),
-            )
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
-        self.content_id.main_index_tree_id.write(main_index_tree_id);
-
-        Ok(leaf_node)
-    }
-
-    async fn add_to_path_index(
-        &mut self,
-        path: &str,
-        resource_id: ResourceIdentifier,
-    ) -> Result<()> {
-        self.content_id.path_index_tree_id = self
-            .path_indexer
-            .add_leaf(
-                &self.transaction,
-                &self.content_id.path_index_tree_id,
-                &path.into(),
-                TreeLeafNode::Resource(resource_id),
-            )
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
-
-        Ok(())
-    }
-
-    async fn remove_from_path_index(&mut self, path: &str) -> Result<TreeLeafNode> {
-        let (path_index_tree_id, leaf_node) = self
-            .path_indexer
-            .remove_leaf(
-                &self.transaction,
-                &self.content_id.path_index_tree_id,
-                &path.into(),
-            )
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
-        self.content_id.path_index_tree_id = path_index_tree_id;
-
-        Ok(leaf_node)
-    }
-
-    async fn replace_in_path_index(
-        &mut self,
-        path: &str,
-        resource_id: ResourceIdentifier,
-    ) -> Result<TreeLeafNode> {
-        let (path_index_tree_id, leaf_node) = self
-            .path_indexer
-            .replace_leaf(
-                &self.transaction,
-                &self.content_id.path_index_tree_id,
-                &path.into(),
-                TreeLeafNode::Resource(resource_id),
-            )
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
-        self.content_id.path_index_tree_id = path_index_tree_id;
-
-        Ok(leaf_node)
-    }
 }

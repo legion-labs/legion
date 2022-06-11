@@ -1,12 +1,19 @@
 use crate::Provider;
 
 use super::{
-    empty_tree_id, BasicIndexer, IndexKey, ResourceIdentifier, Result, TreeIdentifier, TreeLeafNode,
+    empty_tree_id, BasicIndexer, Error, IndexKey, ResourceIdentifier, Result, SharedTreeIdentifier,
+    TreeIdentifier, TreeLeafNode,
 };
+
+enum TreeIdentifierType {
+    Exclusive(TreeIdentifier),
+    Shared(SharedTreeIdentifier),
+}
 
 pub struct ResourceIndex<Indexer> {
     indexer: Indexer,
-    tree_id: TreeIdentifier,
+    tree_id: TreeIdentifierType, // to do: maybe generic, supporting TreeIdentifierAccessor trait (implemented for TreeIdentifier and SharedTreeIdentifier)
+                                 // use enum?
 }
 
 impl<Indexer> ResourceIndex<Indexer>
@@ -19,11 +26,74 @@ where
     }
 
     pub fn new_with_id(indexer: Indexer, tree_id: TreeIdentifier) -> Self {
-        Self { indexer, tree_id }
+        Self {
+            indexer,
+            tree_id: TreeIdentifierType::Exclusive(tree_id),
+        }
+    }
+
+    pub fn new_with_shared_id(indexer: Indexer, tree_id: TreeIdentifier) -> Self {
+        Self {
+            indexer,
+            tree_id: TreeIdentifierType::Shared(SharedTreeIdentifier::new(tree_id)),
+        }
     }
 
     pub fn id(&self) -> TreeIdentifier {
-        self.tree_id.clone()
+        match &self.tree_id {
+            TreeIdentifierType::Exclusive(tree_id) => tree_id.clone(),
+            TreeIdentifierType::Shared(tree_id) => tree_id.read(),
+        }
+    }
+
+    pub fn indexer(&self) -> &Indexer {
+        &self.indexer
+    }
+
+    pub fn shared_id(&self) -> SharedTreeIdentifier {
+        match &self.tree_id {
+            TreeIdentifierType::Exclusive(tree_id) => SharedTreeIdentifier::new(tree_id.clone()),
+            TreeIdentifierType::Shared(tree_id) => tree_id.clone(),
+        }
+    }
+
+    fn set_id(&mut self, id: TreeIdentifier) {
+        match &mut self.tree_id {
+            TreeIdentifierType::Exclusive(tree_id) => {
+                *tree_id = id;
+            }
+            TreeIdentifierType::Shared(tree_id) => tree_id.write(id),
+        }
+    }
+
+    /// Get a leaf node from the tree.
+    ///
+    /// This function will return `None` if the tree does not contain a leaf
+    /// with the specified key.
+    ///
+    /// # Errors
+    ///
+    /// If the specified index key is invalid or the tree is corrupted, an error
+    /// will be returned.
+    pub async fn get_identifier(
+        &self,
+        provider: &Provider,
+        index_key: &IndexKey,
+    ) -> Result<Option<ResourceIdentifier>> {
+        let leaf_node = self
+            .indexer
+            .get_leaf(provider, &self.id(), index_key)
+            .await?;
+
+        match leaf_node {
+            Some(leaf_node) => match leaf_node {
+                TreeLeafNode::Resource(resource_id) => Ok(Some(resource_id)),
+                TreeLeafNode::TreeRoot(_tree_id) => {
+                    Err(Error::CorruptedTree("expected resource node".to_owned()))
+                }
+            },
+            None => Ok(None),
+        }
     }
 
     /// Add a non-existing leaf to the tree.
@@ -41,15 +111,16 @@ where
         index_key: &IndexKey,
         resource_id: ResourceIdentifier,
     ) -> Result<()> {
-        self.tree_id = self
+        let tree_id = self
             .indexer
             .add_leaf(
                 provider,
-                &self.tree_id,
+                &self.id(),
                 index_key,
                 TreeLeafNode::Resource(resource_id),
             )
             .await?;
+        self.set_id(tree_id);
 
         Ok(())
     }
@@ -81,12 +152,12 @@ where
             .indexer
             .replace_leaf(
                 provider,
-                &self.tree_id,
+                &self.id(),
                 index_key,
                 TreeLeafNode::Resource(resource_id),
             )
             .await?;
-        self.tree_id = tree_id;
+        self.set_id(tree_id);
 
         Ok(leaf_node)
     }
@@ -111,9 +182,9 @@ where
     ) -> Result<TreeLeafNode> {
         let (tree_id, leaf_node) = self
             .indexer
-            .remove_leaf(provider, &self.tree_id, index_key)
+            .remove_leaf(provider, &self.id(), index_key)
             .await?;
-        self.tree_id = tree_id;
+        self.set_id(tree_id);
 
         Ok(leaf_node)
     }

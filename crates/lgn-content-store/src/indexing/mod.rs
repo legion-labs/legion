@@ -9,6 +9,7 @@ mod indexable_resource;
 mod json_visitor;
 mod resource_index;
 mod search_result;
+mod shared_tree_identifier;
 mod static_indexer;
 mod string_path_indexer;
 mod tree;
@@ -33,12 +34,13 @@ pub use indexable_resource::{
 pub use json_visitor::JsonVisitor;
 pub use resource_index::ResourceIndex;
 pub(crate) use search_result::SearchResult;
+pub use shared_tree_identifier::SharedTreeIdentifier;
 pub use static_indexer::StaticIndexer;
 pub use string_path_indexer::StringPathIndexer;
 pub(crate) use tree::tree_leaves;
 pub use tree::{
-    tree_diff, SharedTreeIdentifier, Tree, TreeBranchInfo, TreeDiffSide, TreeIdentifier,
-    TreeLeafInfo, TreeLeafNode, TreeNode, TreeReader, TreeVisitor, TreeVisitorAction, TreeWriter,
+    tree_diff, Tree, TreeBranchInfo, TreeDiffSide, TreeIdentifier, TreeLeafInfo, TreeLeafNode,
+    TreeNode, TreeReader, TreeVisitor, TreeVisitorAction, TreeWriter,
 };
 pub use utils::{empty_tree_id, enumerate_resources};
 

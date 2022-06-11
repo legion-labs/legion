@@ -8,7 +8,7 @@ use std::{
 
 use async_recursion::async_recursion;
 use lgn_content_store::{
-    indexing::{IndexKey, ResourceIdentifier, SharedTreeIdentifier},
+    indexing::{IndexKey, ResourceIdentifier, SharedTreeIdentifier, TreeIdentifier},
     Provider,
 };
 use lgn_data_runtime::{
@@ -16,7 +16,7 @@ use lgn_data_runtime::{
     ResourcePathId, ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
-    CommitMode, ContentId, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
+    CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
 };
 use lgn_tracing::error;
 use thiserror::Error;
@@ -663,8 +663,8 @@ impl Project {
     }
 
     /// Returns the checksum of the root project directory at the current state.
-    pub fn root_checksum(&self) -> &ContentId {
-        self.workspace.id()
+    pub fn root_checksum(&self) -> (TreeIdentifier, TreeIdentifier) {
+        self.workspace.indices()
     }
 
     /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.

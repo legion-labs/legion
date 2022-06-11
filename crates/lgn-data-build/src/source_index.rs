@@ -5,10 +5,9 @@ use std::{
 };
 
 use hex::ToHex;
-use lgn_content_store::Provider;
+use lgn_content_store::{indexing::TreeIdentifier, Provider};
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::{ResourcePathId, ResourceTypeAndId};
-use lgn_source_control::ContentId;
 use lgn_tracing::span_scope;
 use lgn_utils::{DefaultHasher, DefaultHasher256};
 use petgraph::{Directed, Graph};
@@ -248,8 +247,11 @@ impl Extend<Self> for SourceContent {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SourceChecksum((TreeIdentifier, TreeIdentifier));
+
 pub(crate) struct SourceIndex {
-    current: Option<(ContentId, SourceContent)>,
+    current: Option<(SourceChecksum, SourceContent)>,
     pub(super) content_store: Arc<Provider>,
 }
 
@@ -330,10 +332,10 @@ impl SourceIndex {
             return Err(Error::ProjectNotCommitted);
         }
 
-        let root_checksum = project.root_checksum();
+        let root_checksum = SourceChecksum(project.root_checksum());
 
         if let Some((current_checksum, _source_index)) = &self.current {
-            if current_checksum == root_checksum {
+            if current_checksum == &root_checksum {
                 return Ok(());
             }
         }
@@ -456,7 +458,7 @@ mod tests {
         assert_eq!(source_index.resources[2].dependencies.len(), 1);
     }
 
-    fn current_checksum(index: &SourceIndex) -> ContentId {
+    fn current_checksum(index: &SourceIndex) -> SourceChecksum {
         index.current.as_ref().map(|(id, _)| id.clone()).unwrap()
     }
 
