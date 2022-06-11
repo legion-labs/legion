@@ -79,8 +79,11 @@ where
             index,
             transaction: provider.begin_transaction_in_memory(),
             branch_name: branch_name.to_owned(),
-            main_index: ResourceIndex::new_with_shared_id(main_indexer, commit.main_index_tree_id), // todo: shared!
-            path_index: ResourceIndex::new_with_id(
+            main_index: ResourceIndex::new_shared_with_raw_id(
+                main_indexer,
+                commit.main_index_tree_id,
+            ),
+            path_index: ResourceIndex::new_exclusive_with_id(
                 StringPathIndexer::default(),
                 commit.path_index_tree_id,
             ),

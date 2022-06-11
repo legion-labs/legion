@@ -20,22 +20,31 @@ impl<Indexer> ResourceIndex<Indexer>
 where
     Indexer: BasicIndexer,
 {
-    pub async fn new(indexer: Indexer, provider: &Provider) -> Self {
+    pub async fn new_exclusive(indexer: Indexer, provider: &Provider) -> Self {
         let tree_id = empty_tree_id(provider).await.unwrap();
-        Self::new_with_id(indexer, tree_id)
+        Self::new_exclusive_with_id(indexer, tree_id)
     }
 
-    pub fn new_with_id(indexer: Indexer, tree_id: TreeIdentifier) -> Self {
+    pub fn new_exclusive_with_id(indexer: Indexer, tree_id: TreeIdentifier) -> Self {
         Self {
             indexer,
             tree_id: TreeIdentifierType::Exclusive(tree_id),
         }
     }
 
-    pub fn new_with_shared_id(indexer: Indexer, tree_id: TreeIdentifier) -> Self {
+    pub async fn new_shared(indexer: Indexer, provider: &Provider) -> Self {
+        let tree_id = empty_tree_id(provider).await.unwrap();
+        Self::new_shared_with_raw_id(indexer, tree_id)
+    }
+
+    pub fn new_shared_with_raw_id(indexer: Indexer, tree_id: TreeIdentifier) -> Self {
+        Self::new_shared_with_id(indexer, SharedTreeIdentifier::new(tree_id))
+    }
+
+    pub fn new_shared_with_id(indexer: Indexer, shared_tree_id: SharedTreeIdentifier) -> Self {
         Self {
             indexer,
-            tree_id: TreeIdentifierType::Shared(SharedTreeIdentifier::new(tree_id)),
+            tree_id: TreeIdentifierType::Shared(shared_tree_id),
         }
     }
 
@@ -57,7 +66,7 @@ where
         }
     }
 
-    fn set_id(&mut self, id: TreeIdentifier) {
+    pub fn set_id(&mut self, id: TreeIdentifier) {
         match &mut self.tree_id {
             TreeIdentifierType::Exclusive(tree_id) => {
                 *tree_id = id;

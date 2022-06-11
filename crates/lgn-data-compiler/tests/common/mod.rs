@@ -57,7 +57,7 @@ pub async fn write_resource(
         .expect("write to content-store");
 
     let mut source_manifest =
-        ResourceIndex::new(new_resource_type_and_id_indexer(), provider).await;
+        ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), provider).await;
     source_manifest
         .add_resource(provider, &id.into(), resource_id)
         .await

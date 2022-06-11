@@ -88,7 +88,8 @@ impl CompiledResources {
             .filter(|resource| filter(&resource.path))
             .collect::<Vec<_>>();
 
-        let mut manifest = ResourceIndex::new(new_resource_type_and_id_indexer(), provider).await;
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), provider).await;
         for resource in runtime_resources {
             manifest
                 .add_resource(

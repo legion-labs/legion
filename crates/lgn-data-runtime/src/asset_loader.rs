@@ -697,7 +697,7 @@ mod tests {
     async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
         let data_provider = Arc::new(Provider::new_in_memory());
         let mut manifest =
-            ResourceIndex::new(new_resource_type_and_id_indexer(), &data_provider).await;
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -780,7 +780,7 @@ mod tests {
     async fn load_no_dependencies() {
         let data_provider = Arc::new(Provider::new_in_memory());
         let mut manifest =
-            ResourceIndex::new(new_resource_type_and_id_indexer(), &data_provider).await;
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -851,7 +851,7 @@ mod tests {
     async fn load_failed_dependency() {
         let data_provider = Arc::new(Provider::new_in_memory());
         let mut manifest =
-            ResourceIndex::new(new_resource_type_and_id_indexer(), &data_provider).await;
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let parent_id = ResourceTypeAndId {
             kind: test_asset::TestAsset::TYPE,
@@ -911,7 +911,7 @@ mod tests {
     async fn load_with_dependency() {
         let data_provider = Arc::new(Provider::new_in_memory());
         let mut manifest =
-            ResourceIndex::new(new_resource_type_and_id_indexer(), &data_provider).await;
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let parent_content = "parent";
 
@@ -1028,7 +1028,7 @@ mod tests {
     async fn reload_no_dependencies() {
         let data_provider = Arc::new(Provider::new_in_memory());
         let mut manifest =
-            ResourceIndex::new(new_resource_type_and_id_indexer(), &data_provider).await;
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {

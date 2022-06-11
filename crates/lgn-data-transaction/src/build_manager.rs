@@ -120,7 +120,7 @@ impl BuildManager {
                 );
 
                 let mut runtime_manifest =
-                    ResourceIndex::new_with_id(indexer, self.runtime_manifest_id.read());
+                    ResourceIndex::new_exclusive_with_id(indexer, self.runtime_manifest_id.read());
                 for (index_key, resource_id) in added_resources {
                     runtime_manifest
                         .add_resource(data_provider, &index_key, resource_id)
