@@ -293,11 +293,7 @@ where
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .transaction
-            .write_resource_from_bytes(contents)
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         self.main_index
             .add_resource(&self.transaction, id, resource_identifier.clone())
@@ -327,11 +323,7 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .transaction
-            .write_resource_from_bytes(contents)
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
@@ -382,11 +374,7 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .transaction
-            .write_resource_from_bytes(contents)
-            .await
-            .map_err(Error::ContentStoreIndexing)?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         if &resource_identifier != old_identifier {
             // content has changed

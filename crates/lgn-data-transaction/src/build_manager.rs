@@ -72,8 +72,7 @@ impl BuildManager {
         let start_manifest =
             ResourceIndex::new_exclusive_with_id(indexer.clone(), self.runtime_manifest_id.read())
                 .enumerate_resources(self.build.get_provider())
-                .await
-                .map_err(Error::InvalidContentStoreIndexing)?;
+                .await?;
 
         self.build.source_pull(project).await?;
         match self
@@ -88,8 +87,7 @@ impl BuildManager {
                 let runtime_manifest =
                     ResourceIndex::new_exclusive_with_id(indexer.clone(), runtime_manifest_id)
                         .enumerate_resources(data_provider)
-                        .await
-                        .map_err(Error::InvalidContentStoreIndexing)?;
+                        .await?;
 
                 let mut added_resources = Vec::new();
                 let mut changed_resources = Vec::new();
