@@ -160,7 +160,7 @@ where
         provider: &Provider,
         index_key: &IndexKey,
         resource_id: ResourceIdentifier,
-    ) -> Result<TreeLeafNode> {
+    ) -> Result<ResourceIdentifier> {
         let (tree_id, leaf_node) = self
             .indexer
             .replace_leaf(
@@ -172,7 +172,12 @@ where
             .await?;
         self.set_id(tree_id);
 
-        Ok(leaf_node)
+        match leaf_node {
+            TreeLeafNode::Resource(resource_id) => Ok(resource_id),
+            TreeLeafNode::TreeRoot(_) => Err(Error::CorruptedTree(
+                "found unexpected tree-root node".to_owned(),
+            )),
+        }
     }
 
     /// Remove an existing leaf from the tree.
@@ -192,14 +197,19 @@ where
         &mut self,
         provider: &Provider,
         index_key: &IndexKey,
-    ) -> Result<TreeLeafNode> {
+    ) -> Result<ResourceIdentifier> {
         let (tree_id, leaf_node) = self
             .indexer
             .remove_leaf(provider, &self.id(), index_key)
             .await?;
         self.set_id(tree_id);
 
-        Ok(leaf_node)
+        match leaf_node {
+            TreeLeafNode::Resource(resource_id) => Ok(resource_id),
+            TreeLeafNode::TreeRoot(_) => Err(Error::CorruptedTree(
+                "found unexpected tree-root node".to_owned(),
+            )),
+        }
     }
 
     /// Enumerate all the leaves.

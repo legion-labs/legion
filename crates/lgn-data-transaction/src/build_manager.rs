@@ -1,6 +1,4 @@
-use lgn_content_store::indexing::{
-    ResourceIndex, ResourceWriter, SharedTreeIdentifier, TreeLeafNode,
-};
+use lgn_content_store::indexing::{ResourceIndex, ResourceWriter, SharedTreeIdentifier};
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::resource::Project;
@@ -128,13 +126,10 @@ impl BuildManager {
                         .await?;
                 }
                 for (index_key, resource_id, old_resource_id) in &changed_resources {
-                    let old_node = runtime_manifest
+                    let replaced_id = runtime_manifest
                         .replace_resource(data_provider, index_key, resource_id.clone())
                         .await?;
-
-                    if let TreeLeafNode::Resource(id) = old_node {
-                        assert_eq!(&id, old_resource_id);
-                    }
+                    assert_eq!(&replaced_id, old_resource_id);
 
                     data_provider.unwrite_resource(old_resource_id).await?;
                 }

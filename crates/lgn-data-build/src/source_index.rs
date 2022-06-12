@@ -348,7 +348,7 @@ impl SourceIndex {
                 .await?;
         }
 
-        self.current = Some((root_checksum.clone(), content));
+        self.current = Some((root_checksum, content));
         Ok(())
     }
 }
@@ -518,7 +518,7 @@ mod tests {
             project
                 .commit("add resource")
                 .await
-                .expect("sucessful commit");
+                .expect("successful commit");
 
             (resource_id, resource_handle)
         };
@@ -538,7 +538,7 @@ mod tests {
 
         // committing changes does not create a new entry
         {
-            project.commit("test").await.expect("sucessful commit");
+            project.commit("test").await.expect("successful commit");
             source_index.source_pull(&project, version).await.unwrap();
             assert_eq!(current_checksum(&source_index), second_entry_checksum);
         }
@@ -562,7 +562,7 @@ mod tests {
             project
                 .commit("save resource")
                 .await
-                .expect("sucessful commit");
+                .expect("successful commit");
 
             source_index.source_pull(&project, version).await.unwrap();
             current_checksum(&source_index)
@@ -570,7 +570,7 @@ mod tests {
 
         // committing changes does not create a new entry
         {
-            project.commit("test").await.expect("sucessful commit");
+            project.commit("test").await.expect("successful commit");
             source_index.source_pull(&project, version).await.unwrap();
             assert_eq!(current_checksum(&source_index), third_checksum);
         }
@@ -584,7 +584,7 @@ mod tests {
             project
                 .commit("delete resource")
                 .await
-                .expect("sucessful commit");
+                .expect("successful commit");
             source_index.source_pull(&project, version).await.unwrap();
             assert_eq!(current_checksum(&source_index), first_entry_checksum);
         }

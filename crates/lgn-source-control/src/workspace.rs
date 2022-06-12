@@ -4,7 +4,6 @@ use lgn_content_store::{
     indexing::{
         BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
         ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier,
-        TreeLeafNode,
     },
     Provider,
 };
@@ -348,11 +347,11 @@ where
             }
 
             // update indices
-            let _leaf_node = self
+            let _replaced_id = self
                 .main_index
                 .replace_resource(&self.transaction, id, resource_identifier.clone())
                 .await?;
-            let _leaf_node = self
+            let _replaced_id = self
                 .path_index
                 .replace_resource(&self.transaction, &path.into(), resource_identifier.clone())
                 .await?;
@@ -403,29 +402,17 @@ where
             }
 
             // update indices
-            let main_leaf_node = self
+            let replaced_id = self
                 .main_index
                 .replace_resource(&self.transaction, id, resource_identifier.clone())
                 .await?;
-            if let TreeLeafNode::Resource(resource_id) = main_leaf_node {
-                assert_eq!(&resource_id, old_identifier);
-            } else {
-                return Err(Error::CorruptedIndex {
-                    tree_id: self.main_index.id(),
-                });
-            }
+            assert_eq!(&replaced_id, old_identifier);
 
-            let path_leaf_node = self
+            let removed_id = self
                 .path_index
                 .remove_resource(&self.transaction, &old_path.into())
                 .await?;
-            if let TreeLeafNode::Resource(resource_id) = path_leaf_node {
-                assert_eq!(&resource_id, old_identifier);
-            } else {
-                return Err(Error::CorruptedIndex {
-                    tree_id: self.path_index.id(),
-                });
-            }
+            assert_eq!(&removed_id, old_identifier);
 
             self.path_index
                 .add_resource(
@@ -457,39 +444,38 @@ where
     ///
     /// The list of new files edited is returned. If all the files were already
     /// edited, an empty list is returned and call still succeeds.
-    pub async fn delete_resource(&mut self, id: &IndexKey, path: &str) -> Result<()> {
+    pub async fn delete_resource(
+        &mut self,
+        id: &IndexKey,
+        path: &str,
+    ) -> Result<ResourceIdentifier> {
         // remove from main index
-        let leaf_node = self
+        let resource_id = self
             .main_index
             .remove_resource(&self.transaction, id)
             .await?;
 
-        if let TreeLeafNode::Resource(resource_id) = leaf_node {
-            let _leaf_node = self
-                .path_index
-                .remove_resource(&self.transaction, &path.into())
-                .await?;
+        let removed_id = self
+            .path_index
+            .remove_resource(&self.transaction, &path.into())
+            .await?;
+        assert_eq!(resource_id, removed_id);
 
-            // unwrite resource from content-store
-            self.transaction.unwrite_resource(&resource_id).await?;
+        // unwrite resource from content-store
+        self.transaction.unwrite_resource(&resource_id).await?;
 
-            #[cfg(feature = "verbose")]
-            {
-                println!(
-                    "deleting resource '{}', path: '{}' -> {}",
-                    id.to_hex(),
-                    std::str::from_utf8(path.as_ref()).unwrap(),
-                    resource_id,
-                );
-                self.dump_all_indices(Some(&resource_id)).await;
-            }
-        } else {
-            return Err(Error::CorruptedIndex {
-                tree_id: self.main_index.id(),
-            });
+        #[cfg(feature = "verbose")]
+        {
+            println!(
+                "deleting resource '{}', path: '{}' -> {}",
+                id.to_hex(),
+                std::str::from_utf8(path.as_ref()).unwrap(),
+                resource_id,
+            );
+            self.dump_all_indices(Some(&resource_id)).await;
         }
 
-        Ok(())
+        Ok(resource_id)
     }
 
     /*
