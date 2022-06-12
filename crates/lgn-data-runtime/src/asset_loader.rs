@@ -683,9 +683,7 @@ mod tests {
     use std::{sync::Arc, time::Duration};
 
     use lgn_content_store::{
-        indexing::{
-            empty_tree_id, BasicIndexer, ResourceWriter, SharedTreeIdentifier, TreeLeafNode,
-        },
+        indexing::{ResourceIndex, ResourceWriter, SharedTreeIdentifier},
         Provider,
     };
 
@@ -698,26 +696,21 @@ mod tests {
 
     async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let indexer = new_resource_type_and_id_indexer();
             let provider_id = data_provider
                 .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
 
-            manifest_id = indexer
-                .add_leaf(
-                    &data_provider,
-                    &manifest_id,
-                    &type_id.into(),
-                    TreeLeafNode::Resource(provider_id),
-                )
+            manifest
+                .add_resource(&data_provider, &type_id.into(), provider_id)
                 .await
                 .unwrap();
 
@@ -726,7 +719,7 @@ mod tests {
 
         let (loader, mut io) = create_loader(vec![Box::new(vfs::CasDevice::new(
             Arc::clone(&data_provider),
-            SharedTreeIdentifier::new(manifest_id),
+            SharedTreeIdentifier::new(manifest.id()),
         ))]);
         io.register_loader(
             test_asset::TestAsset::TYPE,
@@ -786,25 +779,20 @@ mod tests {
     #[tokio::test]
     async fn load_no_dependencies() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let indexer = new_resource_type_and_id_indexer();
             let provider_id = data_provider
                 .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
-            manifest_id = indexer
-                .add_leaf(
-                    &data_provider,
-                    &manifest_id,
-                    &type_id.into(),
-                    TreeLeafNode::Resource(provider_id),
-                )
+            manifest
+                .add_resource(&data_provider, &type_id.into(), provider_id)
                 .await
                 .unwrap();
             type_id
@@ -820,7 +808,7 @@ mod tests {
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
                 data_provider,
-                SharedTreeIdentifier::new(manifest_id),
+                SharedTreeIdentifier::new(manifest.id()),
             ))],
             request_tx.clone(),
             request_rx,
@@ -862,7 +850,8 @@ mod tests {
     #[tokio::test]
     async fn load_failed_dependency() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let parent_id = ResourceTypeAndId {
             kind: test_asset::TestAsset::TYPE,
@@ -870,18 +859,12 @@ mod tests {
         };
 
         let asset_id = {
-            let indexer = new_resource_type_and_id_indexer();
             let provider_id = data_provider
                 .write_resource_from_bytes(&test_asset::tests::BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
-            manifest_id = indexer
-                .add_leaf(
-                    &data_provider,
-                    &manifest_id,
-                    &parent_id.into(),
-                    TreeLeafNode::Resource(provider_id),
-                )
+            manifest
+                .add_resource(&data_provider, &parent_id.into(), provider_id)
                 .await
                 .unwrap();
             parent_id
@@ -895,7 +878,7 @@ mod tests {
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
                 data_provider,
-                SharedTreeIdentifier::new(manifest_id),
+                SharedTreeIdentifier::new(manifest.id()),
             ))],
             request_tx.clone(),
             request_rx,
@@ -927,7 +910,8 @@ mod tests {
     #[tokio::test]
     async fn load_with_dependency() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let parent_content = "parent";
 
@@ -941,18 +925,14 @@ mod tests {
         };
 
         let asset_id = {
-            let indexer = new_resource_type_and_id_indexer();
-            manifest_id = indexer
-                .add_leaf(
+            manifest
+                .add_resource(
                     &data_provider,
-                    &manifest_id,
                     &child_id.into(),
-                    TreeLeafNode::Resource(
-                        data_provider
-                            .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
-                            .await
-                            .unwrap(),
-                    ),
+                    data_provider
+                        .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
+                        .await
+                        .unwrap(),
                 )
                 .await
                 .unwrap();
@@ -960,13 +940,8 @@ mod tests {
                 .write_resource_from_bytes(&test_asset::tests::BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
-            manifest_id = indexer
-                .add_leaf(
-                    &data_provider,
-                    &manifest_id,
-                    &parent_id.into(),
-                    TreeLeafNode::Resource(provider_id),
-                )
+            manifest
+                .add_resource(&data_provider, &parent_id.into(), provider_id)
                 .await
                 .unwrap();
 
@@ -981,7 +956,7 @@ mod tests {
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
                 data_provider,
-                SharedTreeIdentifier::new(manifest_id),
+                SharedTreeIdentifier::new(manifest.id()),
             ))],
             request_tx.clone(),
             request_rx,
@@ -1052,25 +1027,20 @@ mod tests {
     #[tokio::test]
     async fn reload_no_dependencies() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let indexer = new_resource_type_and_id_indexer();
             let provider_id = data_provider
                 .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
-            manifest_id = indexer
-                .add_leaf(
-                    &data_provider,
-                    &manifest_id,
-                    &type_id.into(),
-                    TreeLeafNode::Resource(provider_id),
-                )
+            manifest
+                .add_resource(&data_provider, &type_id.into(), provider_id)
                 .await
                 .unwrap();
             type_id
@@ -1084,7 +1054,7 @@ mod tests {
         let mut loader = AssetLoaderIO::new(
             vec![Box::new(vfs::CasDevice::new(
                 Arc::clone(&data_provider),
-                SharedTreeIdentifier::new(manifest_id),
+                SharedTreeIdentifier::new(manifest.id()),
             ))],
             request_tx.clone(),
             request_rx,

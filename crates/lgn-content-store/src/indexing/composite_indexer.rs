@@ -14,6 +14,7 @@ use super::{empty_tree_id, BasicIndexer, Error, IndexKey, Result, TreeIdentifier
 ///
 /// Index keys for composite indexers can be built using the `IndexKey::compose`
 /// method.
+#[derive(Clone)]
 pub struct CompositeIndexer<First, Second> {
     first: First,
     second: Second,

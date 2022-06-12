@@ -1,7 +1,7 @@
 use std::{env, path::PathBuf};
 
 use lgn_content_store::{
-    indexing::{empty_tree_id, BasicIndexer, ResourceWriter, TreeIdentifier, TreeLeafNode},
+    indexing::{ResourceIndex, ResourceWriter, TreeIdentifier},
     Provider,
 };
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
@@ -56,17 +56,11 @@ pub async fn write_resource(
         .await
         .expect("write to content-store");
 
-    let indexer = new_resource_type_and_id_indexer();
-    let source_manifest_id = empty_tree_id(provider)
+    let mut source_manifest =
+        ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), provider).await;
+    source_manifest
+        .add_resource(provider, &id.into(), resource_id)
         .await
-        .expect("initialize content-store manifest");
-    indexer
-        .add_leaf(
-            provider,
-            &source_manifest_id,
-            &id.into(),
-            TreeLeafNode::Resource(resource_id),
-        )
-        .await
-        .expect("write manifest to content-store")
+        .expect("write manifest to content-store");
+    source_manifest.id()
 }

@@ -679,7 +679,7 @@ impl AssetRegistry {
 mod tests {
     use std::panic;
 
-    use lgn_content_store::indexing::{empty_tree_id, BasicIndexer, ResourceWriter, TreeLeafNode};
+    use lgn_content_store::indexing::{ResourceIndex, ResourceWriter};
 
     use super::*;
     use crate::{new_resource_type_and_id_indexer, test_asset, ResourceId};
@@ -775,25 +775,20 @@ mod tests {
 
     async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
                 kind: test_asset::TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
-            let indexer = new_resource_type_and_id_indexer();
             let provider_id = data_provider
                 .write_resource_from_bytes(content)
                 .await
                 .unwrap();
-            manifest_id = indexer
-                .add_leaf(
-                    &data_provider,
-                    &manifest_id,
-                    &type_id.into(),
-                    TreeLeafNode::Resource(provider_id),
-                )
+            manifest
+                .add_resource(&data_provider, &type_id.into(), provider_id)
                 .await
                 .unwrap();
 
@@ -801,7 +796,7 @@ mod tests {
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(data_provider, SharedTreeIdentifier::new(manifest_id))
+            .add_device_cas(data_provider, SharedTreeIdentifier::new(manifest.id()))
             .add_loader::<test_asset::TestAsset>()
             .create()
             .await;
@@ -811,7 +806,8 @@ mod tests {
 
     async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest_id = empty_tree_id(&data_provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [
             97, 115, 102, 116, // header (asft)
@@ -844,18 +840,14 @@ mod tests {
         };
 
         let parent_id = {
-            let indexer = new_resource_type_and_id_indexer();
-            manifest_id = indexer
-                .add_leaf(
+            manifest
+                .add_resource(
                     &data_provider,
-                    &manifest_id,
                     &child_id.into(),
-                    TreeLeafNode::Resource(
-                        data_provider
-                            .write_resource_from_bytes(&BINARY_CHILD_ASSETFILE)
-                            .await
-                            .unwrap(),
-                    ),
+                    data_provider
+                        .write_resource_from_bytes(&BINARY_CHILD_ASSETFILE)
+                        .await
+                        .unwrap(),
                 )
                 .await
                 .unwrap();
@@ -867,20 +859,15 @@ mod tests {
                 kind: refs_asset::RefsAsset::TYPE,
                 id: ResourceId::new_explicit(2),
             };
-            manifest_id = indexer
-                .add_leaf(
-                    &data_provider,
-                    &manifest_id,
-                    &type_id.into(),
-                    TreeLeafNode::Resource(provider_id),
-                )
+            manifest
+                .add_resource(&data_provider, &type_id.into(), provider_id)
                 .await
                 .unwrap();
             type_id
         };
 
         let reg = AssetRegistryOptions::new()
-            .add_device_cas(data_provider, SharedTreeIdentifier::new(manifest_id))
+            .add_device_cas(data_provider, SharedTreeIdentifier::new(manifest.id()))
             .add_loader::<refs_asset::RefsAsset>()
             .create()
             .await;

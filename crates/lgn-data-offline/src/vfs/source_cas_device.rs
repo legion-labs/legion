@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use lgn_content_store::{
-    indexing::{BasicIndexer, ResourceReader, SharedTreeIdentifier, TreeLeafNode},
+    indexing::{ResourceIndex, ResourceReader, SharedTreeIdentifier},
     Provider,
 };
 use lgn_data_runtime::{
@@ -15,16 +15,17 @@ use crate::resource::deserialize_and_skip_metadata;
 /// manifest access table.
 pub(crate) struct SourceCasDevice {
     provider: Arc<Provider>,
-    indexer: ResourceTypeAndIdIndexer,
-    manifest_id: SharedTreeIdentifier,
+    manifest: ResourceIndex<ResourceTypeAndIdIndexer>,
 }
 
 impl SourceCasDevice {
     pub(crate) fn new(provider: Arc<Provider>, manifest_id: SharedTreeIdentifier) -> Self {
         Self {
             provider,
-            indexer: new_resource_type_and_id_indexer(),
-            manifest_id,
+            manifest: ResourceIndex::new_shared_with_id(
+                new_resource_type_and_id_indexer(),
+                manifest_id,
+            ),
         }
     }
 }
@@ -32,12 +33,12 @@ impl SourceCasDevice {
 #[async_trait]
 impl Device for SourceCasDevice {
     async fn load(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        if let Ok(Some(TreeLeafNode::Resource(leaf_id))) = self
-            .indexer
-            .get_leaf(&self.provider, &self.manifest_id.read(), &type_id.into())
+        if let Ok(Some(resource_id)) = self
+            .manifest
+            .get_identifier(&self.provider, &type_id.into())
             .await
         {
-            if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&leaf_id).await {
+            if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&resource_id).await {
                 let mut reader = std::io::Cursor::new(resource_bytes);
 
                 // skip over the pre-pended metadata
