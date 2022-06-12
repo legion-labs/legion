@@ -10,8 +10,8 @@ use lgn_content_store::{
 use lgn_tracing::error;
 
 use crate::{
-    Branch, Change, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
-    RepositoryIndex, RepositoryName, Result,
+    Branch, Change, ChangeType, Commit, CommitId, Error, Index, ListBranchesQuery,
+    ListCommitsQuery, RepositoryIndex, RepositoryName, Result,
 };
 
 /// Represents a workspace.
@@ -487,127 +487,16 @@ where
     }
     */
 
-    /*
-    /// Revert local changes to files and unstage them.
-    ///
-    /// The list of reverted files is returned. If none of the files had changes
-    /// - staged or not - an empty list is returned and call still succeeds.
-    pub async fn revert_files(
-        &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
-        staging: Staging,
-    ) -> Result<BTreeSet<CanonicalPath>> {
-        debug!(
-            "revert_files: {}",
-            paths
-                .clone()
-                .into_iter()
-                .map(std::path::Path::display)
-                .join(", ")
-        );
-
-        let canonical_paths = self.to_canonical_paths(paths).await?;
-
-        let (staged_changes, mut unstaged_changes) = self.status(staging).await?;
-
-        let mut changes_to_clear = vec![];
-        let mut changes_to_ignore = vec![];
-        let mut changes_to_save = vec![];
-
-        let is_selected = |path| -> bool {
-            for p in &canonical_paths {
-                if p.contains(path) {
-                    return true;
-                }
-            }
-
-            false
-        };
-
-        for (canonical_path, staged_change) in
-            staged_changes.iter().filter(|(path, _)| is_selected(path))
-        {
-            match staged_change.change_type() {
-                ChangeType::Add { .. } => {
-                    changes_to_clear.push(staged_change.clone());
-                }
-                ChangeType::Edit { old_id, new_id } => {
-                    // Only remove local changes if we are not reverting staged changes only.
-                    match staging {
-                        Staging::UnstagedOnly => {
-                            // We should never end-up here.
-                            unreachable!();
-                        }
-                        Staging::StagedOnly => {
-                            if new_id != old_id {
-                                changes_to_save.push(Change::new(
-                                    canonical_path.clone(),
-                                    ChangeType::Edit {
-                                        old_id: old_id.clone(),
-                                        new_id: old_id.clone(),
-                                    },
-                                ));
-                                changes_to_clear.push(staged_change.clone());
-                            }
-                        }
-                        Staging::StagedAndUnstaged => {
-                            self.download_file(old_id, canonical_path, Some(true))
-                                .await?;
-                            changes_to_clear.push(staged_change.clone());
-
-                            // Let's avoid reverting things twice.
-                            unstaged_changes.remove(canonical_path);
-                        }
-                    }
-                }
-                ChangeType::Delete { old_id } => {
-                    self.download_file(old_id, canonical_path, Some(true))
-                        .await?;
-                    changes_to_clear.push(staged_change.clone());
-                }
-            }
-        }
-
-        for (canonical_path, unstaged_change) in unstaged_changes
-            .iter()
-            .filter(|(path, _)| is_selected(path))
-        {
-            match unstaged_change.change_type() {
-                ChangeType::Add { .. } => {}
-                ChangeType::Edit { old_id, .. } | ChangeType::Delete { old_id } => {
-                    let read_only = match staging {
-                        Staging::StagedAndUnstaged => Some(true),
-                        Staging::StagedOnly => unreachable!(),
-                        Staging::UnstagedOnly => None,
-                    };
-
-                    self.download_file(old_id, canonical_path, read_only)
-                        .await?;
-                }
-            }
-
-            changes_to_ignore.push(unstaged_change.clone());
-
-            //assert_not_locked(workspace, &abs_path).await?;
-        }
-
-        self.backend.clear_staged_changes(&changes_to_clear).await?;
-        self.backend.save_staged_changes(&changes_to_save).await?;
-
-        Ok(changes_to_clear
-            .into_iter()
-            .chain(changes_to_ignore.into_iter())
-            .map(Into::into)
-            .collect())
+    pub async fn revert_resource(&self, _id: &IndexKey, _path: &str) -> Result<ResourceIdentifier> {
+        Err(Error::Unspecified("todo: revert_resource".to_owned()))
     }
-    */
 
     /// Does the current transaction hold any changes that have not yet been committed?
-    pub async fn has_pending_changes(&self) -> bool {
+    pub async fn has_pending_resources(&self) -> bool {
         self.transaction.has_references().await
     }
 
-    pub async fn get_pending_changes(&self) -> Result<Vec<IndexKey>> {
+    pub async fn get_pending_resources(&self) -> Result<Vec<IndexKey>> {
         let pending_resources = self.transaction.referenced_resources().await;
         let indexed_resources = self.get_resources().await?;
         Ok(pending_resources
@@ -625,6 +514,10 @@ where
             })
             .cloned()
             .collect())
+    }
+
+    pub async fn get_pending_changes(&self) -> Result<Vec<(IndexKey, ChangeType)>> {
+        Err(Error::Unspecified("todo: get_pending_changes".to_owned()))
     }
 
     /// Commit the changes in the workspace.

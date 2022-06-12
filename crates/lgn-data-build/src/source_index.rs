@@ -298,8 +298,7 @@ impl SourceIndex {
 
             let mut content = SourceContent::new(version);
 
-            for (index_key, content_store_resource_id) in resources {
-                let resource_type_id: ResourceTypeAndId = index_key.into();
+            for (resource_type_id, content_store_resource_id) in resources {
                 let resource_hash = {
                     let mut hasher = DefaultHasher256::new();
                     content_store_resource_id.hash(&mut hasher);
@@ -328,7 +327,7 @@ impl SourceIndex {
     }
 
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<(), Error> {
-        if project.has_pending_changes().await {
+        if project.has_pending_resources().await {
             return Err(Error::ProjectNotCommitted);
         }
 

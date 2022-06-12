@@ -114,8 +114,8 @@ pub enum ChangeType {
     Edit,
 }
 
-impl<'a> From<&'a lgn_source_control::ChangeType> for ChangeType {
-    fn from(change_type: &lgn_source_control::ChangeType) -> Self {
+impl From<lgn_source_control::ChangeType> for ChangeType {
+    fn from(change_type: lgn_source_control::ChangeType) -> Self {
         match change_type {
             lgn_source_control::ChangeType::Add { new_id: _ } => Self::Add,
             lgn_source_control::ChangeType::Edit {
@@ -176,26 +176,17 @@ impl Project {
         .await
     }
 
-    /*
     /// Return the list of stages resources
-    pub async fn get_staged_changes(&self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
-        let local_changes = self.workspace.get_staged_changes().await?;
+    pub async fn get_pending_changes(&self) -> Result<Vec<(ResourceTypeAndId, ChangeType)>, Error> {
+        let pending_changes = self.workspace.get_pending_changes().await?;
 
-        let changes = local_changes
+        let changes = pending_changes
             .into_iter()
-            .map(|(path, change)| (PathBuf::from(path.to_string()), change))
-            .filter(|(path, _)| path.extension().is_none())
-            .map(|(path, change)| {
-                (
-                    ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap(),
-                    change.change_type().into(),
-                )
-            })
+            .map(|(index_key, change)| (index_key.into(), change.into()))
             .collect::<Vec<_>>();
 
         Ok(changes)
     }
-    */
 
     /// Returns an iterator on the list of resources.
     ///
@@ -204,8 +195,8 @@ impl Project {
         self.get_resources()
             .await
             .unwrap()
-            .iter()
-            .map(|(index_key, _resource_id)| index_key.into())
+            .into_iter()
+            .map(|(type_id, _resource_id)| type_id)
             .collect()
     }
 
@@ -361,16 +352,11 @@ impl Project {
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub async fn revert_resource(&mut self, _type_id: ResourceTypeAndId) -> Result<(), Error> {
-        // let resource_path = self.resource_path(id);
-        // let metadata_path = self.metadata_path(id);
-
-        // {
-        //     let files = [metadata_path.as_path(), resource_path.as_path()];
-        //     self.workspace
-        //         .revert_files(files, Staging::StagedAndUnstaged)
-        //         .await?;
-        // }
+    pub async fn revert_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
+        let name = self.raw_resource_name(type_id).await?;
+        self.workspace
+            .revert_resource(&type_id.into(), name.as_str())
+            .await?;
 
         Ok(())
     }
@@ -634,18 +620,28 @@ impl Project {
     }
 
     /// Returns list of resources stored in the content store
-    pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
-        self.workspace
+    pub async fn get_resources(
+        &self,
+    ) -> Result<Vec<(ResourceTypeAndId, ResourceIdentifier)>, Error> {
+        Ok(self
+            .workspace
             .get_resources()
-            .await
-            .map_err(Error::SourceControl)
+            .await?
+            .into_iter()
+            .map(|(index_key, resource_id)| (index_key.into(), resource_id))
+            .collect())
+    }
+
+    /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.
+    pub async fn has_pending_resources(&self) -> bool {
+        self.workspace.has_pending_resources().await
     }
 
     /// Return the list of resources that have pending (uncommitted) changes
-    pub async fn get_pending_changes(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
+    pub async fn get_pending_resources(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
         Ok(self
             .workspace
-            .get_pending_changes()
+            .get_pending_resources()
             .await?
             .into_iter()
             .map(Into::into)
@@ -665,11 +661,6 @@ impl Project {
     /// Returns the checksum of the root project directory at the current state.
     pub fn root_checksum(&self) -> (TreeIdentifier, TreeIdentifier) {
         self.workspace.indices()
-    }
-
-    /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.
-    pub async fn has_pending_changes(&self) -> bool {
-        self.workspace.has_pending_changes().await
     }
 }
 
@@ -930,7 +921,7 @@ mod tests {
             .expect("new project");
         let _resources = create_actor(&mut project).await;
 
-        assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
+        assert_eq!(project.get_pending_resources().await.unwrap().len(), 5);
     }
 
     #[tokio::test]
@@ -947,7 +938,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
+        assert_eq!(project.get_pending_resources().await.unwrap().len(), 5);
         assert_eq!(project.get_committed_resources().await.unwrap().len(), 0);
 
         // modify before commit
@@ -965,7 +956,7 @@ mod tests {
 
         project.commit("add resources").await.unwrap();
 
-        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_resources().await.unwrap().len(), 0);
         assert_eq!(project.get_committed_resources().await.unwrap().len(), 5);
 
         // modify resource
@@ -980,12 +971,12 @@ mod tests {
                 .await
                 .unwrap();
 
-            assert_eq!(project.get_pending_changes().await.unwrap().len(), 1);
+            assert_eq!(project.get_pending_resources().await.unwrap().len(), 1);
         }
 
         project.commit("update actor").await.unwrap();
 
-        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_resources().await.unwrap().len(), 0);
     }
 
     #[tokio::test]
