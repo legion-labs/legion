@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+pub type StdError = Box<dyn std::error::Error + Send + Sync>;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("authentication error: {0}")]

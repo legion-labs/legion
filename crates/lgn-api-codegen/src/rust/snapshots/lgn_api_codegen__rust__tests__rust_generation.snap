@@ -273,11 +273,11 @@ pub mod cars {
         impl<C, ResBody> Client<C>
         where
             C: Service<Request<hyper::Body>, Response = Response<ResBody>> + Clone + Send + Sync,
-            C::Error: Into<lgn_online::server::StdError>,
+            C::Error: Into<lgn_online::StdError>,
             C::Future: Send,
             ResBody: hyper::body::HttpBody + Send,
             ResBody::Data: Send,
-            ResBody::Error: Into<lgn_online::server::StdError>,
+            ResBody::Error: Into<lgn_online::StdError>,
         {
             /// Call to `test_headers`.
             ///
@@ -1171,7 +1171,7 @@ pub mod cars {
             ) -> Result<(http::response::Parts, Self)>
             where
                 ResBody: hyper::body::HttpBody,
-                ResBody::Error: Into<lgn_online::server::StdError>,
+                ResBody::Error: Into<lgn_online::StdError>,
             {
                 let (mut parts, body) = resp.into_parts();
 
@@ -1374,7 +1374,7 @@ pub mod cars {
             ) -> Result<(http::response::Parts, Self)>
             where
                 ResBody: hyper::body::HttpBody,
-                ResBody::Error: Into<lgn_online::server::StdError>,
+                ResBody::Error: Into<lgn_online::StdError>,
             {
                 let (mut parts, body) = resp.into_parts();
 
@@ -1519,7 +1519,7 @@ pub mod cars {
             ) -> Result<(http::response::Parts, Self)>
             where
                 ResBody: hyper::body::HttpBody,
-                ResBody::Error: Into<lgn_online::server::StdError>,
+                ResBody::Error: Into<lgn_online::StdError>,
             {
                 let (mut parts, body) = resp.into_parts();
 
@@ -1661,7 +1661,7 @@ pub mod cars {
             ) -> Result<(http::response::Parts, Self)>
             where
                 ResBody: hyper::body::HttpBody,
-                ResBody::Error: Into<lgn_online::server::StdError>,
+                ResBody::Error: Into<lgn_online::StdError>,
             {
                 let (mut parts, _body) = resp.into_parts();
 
@@ -1805,7 +1805,7 @@ pub mod cars {
             ) -> Result<(http::response::Parts, Self)>
             where
                 ResBody: hyper::body::HttpBody,
-                ResBody::Error: Into<lgn_online::server::StdError>,
+                ResBody::Error: Into<lgn_online::StdError>,
             {
                 let (mut parts, body) = resp.into_parts();
 
@@ -1952,7 +1952,7 @@ pub mod cars {
             ) -> Result<(http::response::Parts, Self)>
             where
                 ResBody: hyper::body::HttpBody,
-                ResBody::Error: Into<lgn_online::server::StdError>,
+                ResBody::Error: Into<lgn_online::StdError>,
             {
                 let (mut parts, _body) = resp.into_parts();
 
@@ -2095,7 +2095,7 @@ pub mod cars {
             ) -> Result<(http::response::Parts, Self)>
             where
                 ResBody: hyper::body::HttpBody,
-                ResBody::Error: Into<lgn_online::server::StdError>,
+                ResBody::Error: Into<lgn_online::StdError>,
             {
                 let (mut parts, body) = resp.into_parts();
 

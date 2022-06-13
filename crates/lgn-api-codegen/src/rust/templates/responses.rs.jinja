@@ -199,7 +199,7 @@ use http::HeaderValue;
             pub(crate) async fn from_response<ResBody>(resp: http::Response<ResBody>) -> Result<(http::response::Parts, Self)>
             where
                 ResBody: hyper::body::HttpBody,
-                ResBody::Error: Into<lgn_online::server::StdError>,
+                ResBody::Error: Into<lgn_online::StdError>,
             {
                 let (mut parts, {% if route.has_no_responses_content() %}_{% endif %}body) = resp.into_parts();
                 {% if route.responses.is_empty() %}

@@ -112,6 +112,7 @@ log_operation = false
 #webrtc = "WARN"
 
 [online]
+base_url = "https://api.live.playground.legionlabs.com"
 api_base_url = "https://api.live.playground.legionlabs.com"
 web_api_base_url = "https://web-api.live.playground.legionlabs.com"
 
