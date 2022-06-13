@@ -12,12 +12,8 @@ package analytics;
 
 service PerformanceAnalytics {
   rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
-  rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest)
-      returns (CumulativeCallGraphReply);
   rpc fetch_cumulative_call_graph_manifest(CumulativeCallGraphManifestRequest)
       returns (CumulativeCallGraphManifest);
-  rpc fetch_cumulative_call_graph_block(CumulativeCallGraphBlockRequest)
-      returns (CumulativeCallGraphBlock);
   rpc fetch_cumulative_call_graph_computed_block(CumulativeCallGraphBlockRequest)
       returns (CumulativeCallGraphComputedBlock);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);

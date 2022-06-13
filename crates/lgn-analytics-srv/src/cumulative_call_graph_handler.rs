@@ -8,8 +8,8 @@ use lgn_analytics::{
 };
 use lgn_telemetry_proto::{
     analytics::{
-        CallTreeNode, CumulativeCallGraphBlock, CumulativeCallGraphBlockDesc,
-        CumulativeCallGraphComputedBlock, CumulativeCallGraphManifest,
+        CallTreeNode, CumulativeCallGraphBlockDesc, CumulativeCallGraphComputedBlock,
+        CumulativeCallGraphManifest,
     },
     telemetry::Process,
 };
@@ -75,30 +75,6 @@ impl CumulativeCallGraphHandler {
             blocks: block_desc,
             start_ticks: process.start_ticks,
             tsc_frequency: process.tsc_frequency,
-        })
-    }
-
-    #[span_fn]
-    pub(crate) async fn get_call_graph_block(
-        &self,
-        block_id: String,
-        start_ticks: i64,
-        tsc_frequency: u64,
-    ) -> Result<CumulativeCallGraphBlock> {
-        let mut connection = self.pool.acquire().await?;
-        let stream = find_block_stream(&mut connection, &block_id).await?;
-        let convert_ticks = ConvertTicks::from_meta_data(start_ticks, tsc_frequency);
-        let call_tree = self
-            .call_tree_store
-            .get_call_tree(convert_ticks, &stream, &block_id)
-            .await?;
-        Ok(CumulativeCallGraphBlock {
-            call_tree: Some(call_tree),
-            stream_hash: compute_scope_hash(&stream.stream_id),
-            stream_name: match stream.properties.get("thread-name") {
-                Some(x) => x.to_string(),
-                None => String::from("Unknown"),
-            },
         })
     }
 
