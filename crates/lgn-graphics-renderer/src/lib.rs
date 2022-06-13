@@ -12,15 +12,17 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
-use crate::components::{tmp_debug_display_lights, EcsToRenderLight};
+use crate::components::{
+    reflect_visual_components, tmp_debug_display_lights, EcsToRenderLight, EcsToRenderVisual,
+};
 use crate::core::{
     DebugStuff, PrepareRenderContext, RenderCommandQueuePool, RenderFeatures,
     RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder, RenderLayers,
     RenderObjects, VisibilityContext, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE,
     RENDER_LAYER_PICKING,
 };
-use crate::features::ModelFeature;
-use crate::lighting::{RenderLight, RenderLightTestData};
+use crate::features::{ModelFeature, RenderVisual};
+use crate::lighting::RenderLight;
 use crate::script::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
     PickingPass, PostProcessPass, SSAOPass, UiPass,
@@ -244,8 +246,11 @@ impl Plugin for RendererPlugin {
         let renderdoc_manager = RenderDocManager::default();
 
         let render_objects = RenderObjectsBuilder::default()
+            // Lights
             .add_primary_table::<RenderLight>()
-            .add_secondary_table::<RenderLight, RenderLightTestData>()
+            // Visual
+            .add_primary_table::<RenderVisual>()
+            // Done!
             .finalize();
 
         //
@@ -278,10 +283,18 @@ impl Plugin for RendererPlugin {
         //
         // RenderObjects
         //
+
+        // Lights
         app.insert_resource(EcsToRenderLight::new(
             render_objects.primary_table_view::<RenderLight>(),
         ))
         .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+
+        // Model
+        app.insert_resource(EcsToRenderVisual::new(
+            render_objects.primary_table_view::<RenderVisual>(),
+        ))
+        .add_system_to_stage(RenderStage::Prepare, reflect_visual_components);
 
         //
         // Resources

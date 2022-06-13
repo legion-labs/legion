@@ -8,8 +8,8 @@ use lgn_utils::HashMap;
 
 use crate::{
     core::{
-        AsSpatialRenderObject, InsertRenderObjectCommand, PrimaryTableCommandBuilder,
-        PrimaryTableView, RemoveRenderObjectCommand, RenderObjectId, UpdateRenderObjectCommand,
+        InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
+        RemoveRenderObjectCommand, RenderObjectId, UpdateRenderObjectCommand,
     },
     debug_display::DebugDisplay,
     lighting::RenderLight,
@@ -46,20 +46,6 @@ impl Default for LightComponent {
             enabled: true,
             picking_id: 0,
             render_object_id: None,
-        }
-    }
-}
-
-impl AsSpatialRenderObject<RenderLight> for LightComponent {
-    fn as_spatial_render_object(&self, transform: GlobalTransform) -> RenderLight {
-        RenderLight {
-            transform,
-            light_type: self.light_type,
-            color: self.color,
-            radiance: self.radiance,
-            cone_angle: self.cone_angle,
-            enabled: self.enabled,
-            picking_id: self.picking_id,
         }
     }
 }
@@ -126,7 +112,7 @@ pub(crate) fn reflect_light_components(
 
             render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                 render_object_id,
-                data: light.as_spatial_render_object(*transform),
+                data: (transform, light.as_ref()).into(),
             });
         } else {
             let is_already_inserted = ecs_to_render.map.contains_key(&e);
@@ -157,12 +143,12 @@ pub(crate) fn reflect_light_components(
 
                 render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                     render_object_id,
-                    data: light.as_spatial_render_object(*transform),
+                    data: (transform, light.as_ref()).into(),
                 });
             } else {
                 render_commands.push(InsertRenderObjectCommand::<RenderLight> {
                     render_object_id,
-                    data: light.as_spatial_render_object(*transform),
+                    data: (transform, light.as_ref()).into(),
                 });
             }
         };

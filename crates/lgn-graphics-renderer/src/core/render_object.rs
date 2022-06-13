@@ -1,7 +1,6 @@
 use atomic_refcell::{AtomicRef, AtomicRefCell};
 use bit_set::BitSet;
 
-use lgn_transform::prelude::GlobalTransform;
 use lgn_utils::HashMap;
 
 use std::{
@@ -17,13 +16,6 @@ use super::{CommandBuilder, CommandQueuePool, RenderCommand};
 
 //
 // RenderObjectId
-//
-pub trait AsSpatialRenderObject<R>
-where
-    R: RenderObject,
-{
-    fn as_spatial_render_object(&self, transform: GlobalTransform) -> R;
-}
 
 pub trait RenderObject: 'static + Send {}
 
@@ -340,6 +332,7 @@ impl RenderObjectsBuilder {
 
     #[must_use]
     #[allow(unsafe_code)]
+    #[allow(unused)]
     pub fn add_secondary_table<P, S>(mut self) -> Self
     where
         P: RenderObject,
@@ -467,7 +460,7 @@ impl<R: RenderObject> PrimaryTableView<R> {
     pub fn writer(&self) -> PrimaryTableWriter<'_, R> {
         PrimaryTableWriter {
             view: self,
-            command_builder: self.command_builder(),
+            command_builder: self.command_queue.builder(),
         }
     }
 }
