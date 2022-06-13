@@ -302,49 +302,65 @@ impl Mesh {
         let base_point = Vec3::ZERO;
         let base_normal = DOWN_VECTOR;
 
-        let top_point = Vec3::new(0.0, length, 0.0);
+        let top_point = Vec3::new(0.0, 0.0, length);
         let top_normal = UP_VECTOR;
 
         let mut current_index = 0u16;
         let mut index_data: Vec<u16> = vec![];
         for _i in 0..steps {
-            let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
+            let last_base_point = Vec3::new(cur_angle.cos(), cur_angle.sin(), 0.0).mul(radius);
             let last_top_point =
-                Vec3::new(cur_angle.cos(), length / radius, cur_angle.sin()).mul(radius);
+                Vec3::new(cur_angle.cos(), cur_angle.sin(), length / radius).mul(radius);
 
             cur_angle += inc_angle;
 
-            let next_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
+            let next_base_point = Vec3::new(cur_angle.cos(), cur_angle.sin(), 0.0).mul(radius);
             let next_top_point =
-                Vec3::new(cur_angle.cos(), length / radius, cur_angle.sin()).mul(radius);
+                Vec3::new(cur_angle.cos(), cur_angle.sin(), length / radius).mul(radius);
 
             // base
-            add_vertex_data(&mut vertex_data, last_base_point, Some(base_normal));
-            add_vertex_data(&mut vertex_data, next_base_point, Some(base_normal));
-            add_vertex_data(&mut vertex_data, base_point, Some(base_normal));
-            index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
+            add_vertex_data(&mut vertex_data, last_base_point, base_normal);
+            add_vertex_data(&mut vertex_data, next_base_point, base_normal);
+            add_vertex_data(&mut vertex_data, base_point, base_normal);
+            index_data.extend_from_slice(&[current_index, current_index + 2, current_index + 1]);
             current_index += 3;
 
             // sides
-            add_vertex_data(&mut vertex_data, last_base_point, None);
-            add_vertex_data(&mut vertex_data, last_top_point, None);
-            add_vertex_data(&mut vertex_data, next_base_point, None);
-            add_vertex_data(&mut vertex_data, next_top_point, None);
+            add_vertex_data(
+                &mut vertex_data,
+                last_base_point,
+                last_base_point.normalize(),
+            );
+            add_vertex_data(
+                &mut vertex_data,
+                last_top_point,
+                last_top_point.truncate().normalize().extend(0.0),
+            );
+            add_vertex_data(
+                &mut vertex_data,
+                next_base_point,
+                next_base_point.normalize(),
+            );
+            add_vertex_data(
+                &mut vertex_data,
+                next_top_point,
+                next_top_point.truncate().normalize().extend(0.0),
+            );
             index_data.extend_from_slice(&[
                 current_index,
-                current_index + 1,
-                current_index + 2,
                 current_index + 2,
                 current_index + 1,
+                current_index + 2,
                 current_index + 3,
+                current_index + 1,
             ]);
             current_index += 4;
 
             // top
-            add_vertex_data(&mut vertex_data, last_top_point, Some(top_normal));
-            add_vertex_data(&mut vertex_data, top_point, Some(top_normal));
-            add_vertex_data(&mut vertex_data, next_top_point, Some(top_normal));
-            index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
+            add_vertex_data(&mut vertex_data, last_top_point, top_normal);
+            add_vertex_data(&mut vertex_data, top_point, top_normal);
+            add_vertex_data(&mut vertex_data, next_top_point, top_normal);
+            index_data.extend_from_slice(&[current_index, current_index + 2, current_index + 1]);
             current_index += 3;
         }
         (vertex_data, index_data)
@@ -362,31 +378,38 @@ impl Mesh {
         let mut cur_angle = 0.0f32;
 
         let base_point = Vec3::ZERO;
-        let top_point = Vec3::new(0.0, length, 0.0);
+        let top_point = Vec3::new(0.0, 0.0, length);
 
         let base_normal = DOWN_VECTOR;
 
         let mut current_index = 0;
         let mut index_data: Vec<u16> = vec![];
         for _i in 0..steps {
-            let last_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
+            let last_base_point = Vec3::new(cur_angle.cos(), cur_angle.sin(), 0.0).mul(radius);
 
             cur_angle += inc_angle;
 
-            let next_base_point = Vec3::new(cur_angle.cos(), 0.0, cur_angle.sin()).mul(radius);
+            let next_base_point = Vec3::new(cur_angle.cos(), cur_angle.sin(), 0.0).mul(radius);
 
             // base
-            add_vertex_data(&mut vertex_data, last_base_point, Some(base_normal));
-            add_vertex_data(&mut vertex_data, next_base_point, Some(base_normal));
-            add_vertex_data(&mut vertex_data, base_point, Some(base_normal));
-            index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
+            add_vertex_data(&mut vertex_data, last_base_point, base_normal);
+            add_vertex_data(&mut vertex_data, next_base_point, base_normal);
+            add_vertex_data(&mut vertex_data, base_point, base_normal);
+            index_data.extend_from_slice(&[current_index, current_index + 2, current_index + 1]);
             current_index += 3;
 
             // side
-            add_vertex_data(&mut vertex_data, last_base_point, None);
-            add_vertex_data(&mut vertex_data, top_point, None);
-            add_vertex_data(&mut vertex_data, next_base_point, None);
-            index_data.extend_from_slice(&[current_index, current_index + 1, current_index + 2]);
+            let last_base_normal = (top_point - last_base_point)
+                .cross(Vec3::new(last_base_point.y, -last_base_point.x, 0.0))
+                .normalize();
+            let next_base_normal = (top_point - next_base_point)
+                .cross(Vec3::new(next_base_point.y, -next_base_point.x, 0.0))
+                .normalize();
+            let top_normal = (last_base_normal + next_base_normal) / 2.0;
+            add_vertex_data(&mut vertex_data, last_base_point, last_base_normal);
+            add_vertex_data(&mut vertex_data, top_point, top_normal);
+            add_vertex_data(&mut vertex_data, next_base_point, next_base_normal);
+            index_data.extend_from_slice(&[current_index, current_index + 2, current_index + 1]);
             current_index += 3;
         }
         (vertex_data, index_data)
@@ -465,22 +488,22 @@ impl Mesh {
                 add_vertex_data(
                     &mut vertex_data,
                     back_left_point.truncate(),
-                    Some(back_left_normal.truncate()),
+                    back_left_normal.truncate(),
                 );
                 add_vertex_data(
                     &mut vertex_data,
                     front_left_point.truncate(),
-                    Some(front_left_normal.truncate()),
+                    front_left_normal.truncate(),
                 );
                 add_vertex_data(
                     &mut vertex_data,
                     back_right_point.truncate(),
-                    Some(back_right_normal.truncate()),
+                    back_right_normal.truncate(),
                 );
                 add_vertex_data(
                     &mut vertex_data,
                     front_right_point.truncate(),
-                    Some(front_right_normal.truncate()),
+                    front_right_normal.truncate(),
                 );
 
                 index_data.extend_from_slice(&[
@@ -630,9 +653,9 @@ impl Mesh {
         let (mut cone_vertex_data, cone_index_data) = Self::new_cone_inner(0.025, 0.1, 10);
         for vertex_idx in 0..cone_vertex_data.len() / DEFAULT_MESH_VERTEX_SIZE {
             let array_idx = vertex_idx * DEFAULT_MESH_VERTEX_SIZE;
-            // flip position and normals Y-coordinate
-            cone_vertex_data[array_idx + 1] = -cone_vertex_data[array_idx + 1];
-            cone_vertex_data[array_idx + 4] = -cone_vertex_data[array_idx + 4];
+            // flip position and normals Z-coordinate
+            cone_vertex_data[array_idx + 2] = -cone_vertex_data[array_idx + 2];
+            cone_vertex_data[array_idx + 5] = -cone_vertex_data[array_idx + 5];
         }
         let mut cone_index_data = cone_index_data
             .iter()
@@ -659,24 +682,24 @@ impl Mesh {
         let mut index_data: Vec<u16> = vec![];
 
         for slice in 0..slices {
-            let y0 = -radius + slice as f32 * slice_size;
-            let y1 = -radius + (slice + 1) as f32 * slice_size;
+            let z0 = -radius + slice as f32 * slice_size;
+            let z1 = -radius + (slice + 1) as f32 * slice_size;
             let v0 = slice as f32 * v_delta;
             let v1 = (slice + 1) as f32 * v_delta;
             for sail in 0..sails {
                 let u0 = sail as f32 * u_delta;
                 let u1 = (sail + 1) as f32 * u_delta;
                 if slice == 0 {
-                    let pole = Vec3::new(0.0, y0, 0.0);
-                    let lr = (radius * radius - y1 * y1).sqrt();
+                    let pole = Vec3::new(0.0, 0.0, z0);
+                    let lr = (radius * radius - z1 * z1).sqrt();
                     let langle = angle * (sail as f32);
-                    let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
+                    let p1 = Vec3::new(lr * langle.cos(), lr * langle.sin(), z1);
                     let n1 = p1.normalize();
                     let langle = angle * (sail + 1) as f32;
-                    let p2 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
+                    let p2 = Vec3::new(lr * langle.cos(), lr * langle.sin(), z1);
                     let n2 = p2.normalize();
                     vertex_data.append(&mut pole.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, -1.0, 0.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, -1.0]);
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v0]);
                     vertex_data.append(&mut p2.to_array().to_vec());
                     vertex_data.append(&mut n2.to_array().to_vec());
@@ -692,13 +715,13 @@ impl Mesh {
                     ]);
                     current_index += 3;
                 } else if slice == slices - 1 {
-                    let pole = Vec3::new(0.0, y1, 0.0);
-                    let lr = (radius * radius - y0 * y0).sqrt();
+                    let pole = Vec3::new(0.0, 0.0, z1);
+                    let lr = (radius * radius - z0 * z0).sqrt();
                     let langle = angle * (sail as f32);
-                    let p1 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
+                    let p1 = Vec3::new(lr * langle.cos(), lr * langle.sin(), z0);
                     let n1 = p1.normalize();
                     let langle = angle * (sail + 1) as f32;
-                    let p2 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
+                    let p2 = Vec3::new(lr * langle.cos(), lr * langle.sin(), z0);
                     let n2 = p2.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.append(&mut n1.to_array().to_vec());
@@ -707,7 +730,7 @@ impl Mesh {
                     vertex_data.append(&mut n2.to_array().to_vec());
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u1, v0]);
                     vertex_data.append(&mut pole.to_array().to_vec());
-                    vertex_data.append(&mut vec![0.0, 1.0, 0.0]);
+                    vertex_data.append(&mut vec![0.0, 0.0, 1.0]);
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v1]);
 
                     index_data.extend_from_slice(&[
@@ -717,12 +740,12 @@ impl Mesh {
                     ]);
                     current_index += 3;
                 } else {
-                    let lr = (radius * radius - y0 * y0).sqrt();
+                    let lr = (radius * radius - z0 * z0).sqrt();
                     let langle = angle * (sail as f32);
-                    let p1 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
+                    let p1 = Vec3::new(lr * langle.cos(), lr * langle.sin(), z0);
                     let n1 = p1.normalize();
                     let langle = angle * (sail + 1) as f32;
-                    let p2 = Vec3::new(lr * langle.cos(), y0, lr * langle.sin());
+                    let p2 = Vec3::new(lr * langle.cos(), lr * langle.sin(), z0);
                     let n2 = p2.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.append(&mut n1.to_array().to_vec());
@@ -730,16 +753,16 @@ impl Mesh {
                     vertex_data.append(&mut p2.to_array().to_vec());
                     vertex_data.append(&mut n2.to_array().to_vec());
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u1, v0]);
-                    let lr = (radius * radius - y1 * y1).sqrt();
+                    let lr = (radius * radius - z1 * z1).sqrt();
                     let langle = angle * (sail as f32);
-                    let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
+                    let p1 = Vec3::new(lr * langle.cos(), lr * langle.sin(), z1);
                     let n1 = p1.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.append(&mut n1.to_array().to_vec());
                     vertex_data.append(&mut vec![0.0, 0.0, 0.0, 1.0, u0, v1]);
-                    let lr = (radius * radius - y1 * y1).sqrt();
+                    let lr = (radius * radius - z1 * z1).sqrt();
                     let langle = angle * ((sail + 1) as f32);
-                    let p1 = Vec3::new(lr * langle.cos(), y1, lr * langle.sin());
+                    let p1 = Vec3::new(lr * langle.cos(), lr * langle.sin(), z1);
                     let n1 = p1.normalize();
                     vertex_data.append(&mut p1.to_array().to_vec());
                     vertex_data.append(&mut n1.to_array().to_vec());
@@ -844,11 +867,7 @@ impl Mesh {
     }
 }
 
-fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal_opt: Option<Vec3>) {
-    let mut normal = Vec3::new(pos.x, 0.0, pos.z).normalize();
-    if let Some(normal_opt) = normal_opt {
-        normal = normal_opt;
-    }
+fn add_vertex_data(vertex_data: &mut Vec<f32>, pos: Vec3, normal: Vec3) {
     vertex_data.append(&mut vec![
         pos.x, pos.y, pos.z, normal.x, normal.y, normal.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
     ]);

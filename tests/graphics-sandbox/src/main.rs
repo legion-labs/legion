@@ -269,7 +269,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            0.0, 1.0, 0.0,
+            0.0, 0.0, 1.0,
         )))
         .insert(LightComponent {
             light_type: LightType::Directional,
@@ -283,7 +283,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            1.0, 1.0, 0.0,
+            1.0, 0.0, 1.0,
         )))
         .insert(LightComponent {
             light_type: LightType::OmniDirectional,
@@ -297,7 +297,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            -1.0, 1.0, 0.0,
+            -1.0, 0.0, 1.0,
         )))
         .insert(LightComponent {
             light_type: LightType::OmniDirectional,
@@ -311,7 +311,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            0.0, 1.0, 0.0,
+            0.0, 0.0, 1.0,
         )))
         .insert(LightComponent {
             light_type: LightType::Spot,
@@ -329,7 +329,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            0.0, 0.0, -0.1,
+            0.0, 0.0, 0.1,
         )))
         .insert(VisualComponent::new(
             Some(*model_manager.default_model_id(DefaultMeshType::Plane)),
@@ -340,7 +340,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
-            0.0, 0.0, 0.0,
+            -0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
             Some(*model_manager.default_model_id(DefaultMeshType::Cube)),
@@ -359,6 +359,50 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             1.0,
         ));
 
+    commands
+        .spawn()
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            1.0, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
+            (255, 0, 255).into(),
+            1.0,
+        ));
+
+    commands
+        .spawn()
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            -1.0, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Cylinder)),
+            (0, 255, 255).into(),
+            1.0,
+        ));
+
+    commands
+        .spawn()
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            1.5, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Torus)),
+            (255, 255, 0).into(),
+            1.0,
+        ));
+
+    commands
+        .spawn()
+        .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
+            -1.5, 0.0, 0.0,
+        )))
+        .insert(VisualComponent::new(
+            Some(*model_manager.default_model_id(DefaultMeshType::Cone)),
+            (128, 128, 255).into(),
+            1.0,
+        ));
+
     // omnidirectional light
     commands
         .spawn()
@@ -366,7 +410,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             1.0, 0.0, 1.0,
         )))
         .insert(LightComponent {
-            light_type: LightType::OmniDirectional,
+            light_type: LightType::Directional,
             radiance: 10.0,
             color: Color::new(127, 127, 127, 255),
             enabled: true,

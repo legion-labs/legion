@@ -190,24 +190,13 @@ fn debug_bounding_spheres(
         return;
     }
 
-    let mut model_idx = 0;
-    let mut mesh_idx = 0;
-
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
             for (visual, transform) in visuals.iter() {
                 if let Some(model_resource_id) = visual.model_resource_id() {
-                    lgn_tracing::info!("model idx: {}, resource: {}", model_idx, model_resource_id);
-                    model_idx += 1;
                     if let Some(model) = model_manager.get_model_meta_data(model_resource_id) {
                         for mesh in &model.mesh_instances {
                             let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-                            lgn_tracing::info!(
-                                "idx: {}, sphere: {:?}",
-                                mesh_idx,
-                                mesh_data.bounding_sphere
-                            );
-                            mesh_idx += 1;
                             builder.add_default_mesh(
                                 &GlobalTransform::identity()
                                     .with_translation(
@@ -224,17 +213,9 @@ fn debug_bounding_spheres(
                         }
                     }
                 } else {
-                    lgn_tracing::info!("model idx: {}, resource: Cube", model_idx);
-                    model_idx += 1;
                     let model = model_manager.get_default_model(DefaultMeshType::Cube);
                     for mesh in &model.mesh_instances {
                         let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-                        lgn_tracing::info!(
-                            "idx: {}, sphere: {:?}",
-                            mesh_idx,
-                            mesh_data.bounding_sphere
-                        );
-                        mesh_idx += 1;
                         builder.add_default_mesh(
                             &GlobalTransform::identity()
                                 .with_translation(

@@ -199,7 +199,7 @@ pub(crate) fn tmp_debug_display_lights(
                             &GlobalTransform::identity()
                                 .with_translation(
                                     transform.translation
-                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
+                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.0, 0.3)), // assumes arrow length to be 0.3
                                 )
                                 .with_rotation(transform.rotation),
                             DefaultMeshType::Arrow,
@@ -211,9 +211,9 @@ pub(crate) fn tmp_debug_display_lights(
                         builder.add_default_mesh(
                             &GlobalTransform::identity()
                                 .with_translation(
-                                    transform.translation - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
+                                    transform.translation - transform.rotation.mul_vec3(Vec3::Z), // assumes cone height to be 1.0
                                 )
-                                .with_scale(Vec3::new(factor, 1.0, factor))
+                                .with_scale(Vec3::new(factor, factor, 1.0))
                                 .with_rotation(transform.rotation),
                             DefaultMeshType::Cone,
                             Color::WHITE,

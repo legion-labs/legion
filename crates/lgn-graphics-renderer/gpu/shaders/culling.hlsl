@@ -81,10 +81,6 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             culling_debug[debug_index].gpu_instance = instance_data.gpu_instance_id;
             culling_debug[debug_index].depth = depth;
             culling_debug[debug_index].min_z = min_z;
-            culling_debug[debug_index].sphere = float4(sphere_world_pos, bv_radius);
-            culling_debug[debug_index].closest_proj = closest_proj;
-            culling_debug[debug_index].center_pos_view = center_pos_view;
-            culling_debug[debug_index].sphere_world_pos = sphere_world_pos;
 
             if (enable_culling && depth > 0.0f && depth < min_z) {
                 culled = true;

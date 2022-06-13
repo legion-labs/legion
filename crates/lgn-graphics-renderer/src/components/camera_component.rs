@@ -66,8 +66,8 @@ impl EulerRotator {
     }
 
     fn set_rotation_angles(&mut self, alpha: Angle, beta: Angle, gamma: Angle) {
-        self.alpha = Angle::from_radians(alpha.radians() % (2.0 * std::f32::consts::TAU));
-        self.beta = Angle::from_radians(beta.radians() % (2.0 * std::f32::consts::TAU));
+        self.alpha = Angle::from_radians(alpha.radians() % (std::f32::consts::TAU));
+        self.beta = Angle::from_radians(beta.radians() % (std::f32::consts::TAU));
         self.gamma = Angle::from_radians(gamma.radians().clamp(-std::f32::consts::PI, 0.0));
     }
 }
