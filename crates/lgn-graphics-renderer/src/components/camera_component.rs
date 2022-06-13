@@ -194,7 +194,9 @@ impl Default for CameraComponent {
 }
 
 pub(crate) fn tmp_create_camera(mut commands: Commands<'_, '_>) {
-    commands.spawn().insert(CameraComponent::default());
+    commands
+        .spawn()
+        .insert_bundle((GlobalTransform::default(), CameraComponent::default()));
 }
 
 #[derive(Component, Default)]
