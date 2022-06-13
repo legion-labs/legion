@@ -301,8 +301,8 @@ pub fn build_runtime() -> App {
             rest_listen_endpoint,
         ))
         .insert_resource(trace_events_receiver)
-        .add_plugin(LogStreamPlugin::default())
         .add_plugin(GRPCPlugin::hybrid())
+        .add_plugin(LogStreamPlugin::default())
         .add_plugin(streamer_plugin);
 
         app.add_startup_system_to_stage(
