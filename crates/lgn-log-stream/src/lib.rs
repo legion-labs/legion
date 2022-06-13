@@ -5,10 +5,11 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
+mod api;
 mod broadcast_sink;
-mod grpc;
 mod plugin;
+mod server;
 
 pub use broadcast_sink::{BroadcastSink, TraceEvent};
-pub use grpc::TraceEventsReceiver;
 pub use plugin::LogStreamPlugin;
+pub use server::TraceEventsReceiver;

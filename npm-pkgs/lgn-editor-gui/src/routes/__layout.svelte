@@ -80,8 +80,10 @@
     } = get(devSettings);
 
     initApiClient({
-      editorServerUrl: grpcEditorServerUrl,
-      runtimeServerUrl: grpcRuntimeServerUrl,
+      grpcEditorServerUrl,
+      grpcRuntimeServerUrl,
+      restEditorServerUrl,
+      restRuntimeServerUrl,
     });
 
     try {
