@@ -6,7 +6,7 @@ Legion Engine is an interactive content creation pipeline and engine that focuss
 
 ## License
 
-Unless listed in the exceptions below, Legion Engine and all of its components is dual-licensed under Apache 2.0 and MIT terms.
+Unless listed in the exceptions below, or directly in files headers, Legion Engine and all of its components is dual-licensed under Apache 2.0 and MIT terms.
 
 Please refer to the following files for for the full licenses terms :
 

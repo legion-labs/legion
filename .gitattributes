@@ -20,6 +20,10 @@
 *.toml text eol=lf
 *.ts text eol=lf
 *.yaml text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf
+*.c text eol=lf
+*.cs text eol=lf
 tests/sample-data/**/* eol=lf
 
 # Declare files that will always have CRLF line endings on checkout.
