@@ -1,11 +1,11 @@
 import { derived, get, writable } from "svelte/store";
 
-import type { TraceEvent } from "@lgn/proto-log-stream/dist/log_stream";
+import type { Log } from "@lgn/apis/log";
 import { throttled } from "@lgn/web-client/src/lib/store";
 import type { LogEntry, Source } from "@lgn/web-client/src/types/log";
 import { severityFromLevel } from "@lgn/web-client/src/types/log";
 
-import { initEditorLogStream, initRuntimeLogStream } from "@/api";
+// import { getEditorLogEntries, getRuntimeLogEntries } from "@/api";
 
 export const buffer = 1_000;
 
@@ -23,9 +23,11 @@ export const logEntries = throttled(
 );
 
 export function initLogStreams() {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
   const processLogStreamResponse = (
     lagging: number | undefined,
-    traceEvent: TraceEvent | undefined,
+    traceEvent: Log.TraceEvent | undefined,
     source: Source
   ) => {
     if (get(streamedLogEntries).length > buffer - 1) {
@@ -55,19 +57,19 @@ export function initLogStreams() {
     }
   };
 
-  const editorSubscription = initEditorLogStream().subscribe(
-    ({ lagging, traceEvent }) => {
-      processLogStreamResponse(lagging, traceEvent, "editor");
-    }
-  );
-  const runtimeSubscription = initRuntimeLogStream().subscribe(
-    ({ lagging, traceEvent }) => {
-      processLogStreamResponse(lagging, traceEvent, "runtime");
-    }
-  );
+  // const editorSubscription = getEditorLogEntries().subscribe(
+  //   ({ lagging, traceEvent }) => {
+  //     processLogStreamResponse(lagging, traceEvent, "editor");
+  //   }
+  // );
+  // const runtimeSubscription = getRuntimeLogEntries().subscribe(
+  //   ({ lagging, traceEvent }) => {
+  //     processLogStreamResponse(lagging, traceEvent, "runtime");
+  //   }
+  // );
 
   return () => {
-    editorSubscription.unsubscribe();
-    runtimeSubscription.unsubscribe();
+    // editorSubscription.unsubscribe();
+    // runtimeSubscription.unsubscribe();
   };
 }
