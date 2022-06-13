@@ -47,9 +47,9 @@ impl Pose {
         for n_bone in 0..self.skeleton.bone_ids.len() {
             if !self.is_root_bone(n_bone) {
                 self.transforms[n_bone].global = self.transforms
-                    [self.skeleton.parent_indices[n_bone] as usize]
-                    .global
-                    .mul_transform(self.transforms[n_bone].local);
+                    [self.skeleton.parent_indices[n_bone].unwrap()]
+                .global
+                .mul_transform(self.transforms[n_bone].local);
             } else {
                 self.transforms[n_bone].global = self.transforms[n_bone].local.into();
             }
@@ -57,6 +57,6 @@ impl Pose {
     }
 
     fn is_root_bone(&self, bone_index: usize) -> bool {
-        self.skeleton.parent_indices[bone_index] == -1
+        self.skeleton.parent_indices[bone_index].is_none()
     }
 }

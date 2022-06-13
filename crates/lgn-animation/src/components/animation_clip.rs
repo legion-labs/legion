@@ -20,9 +20,20 @@ pub struct RuntimeAnimationClip {
 impl RuntimeAnimationClip {
     #[must_use]
     pub fn new(raw_animation_track: &AnimationTrack) -> Self {
+        let mut parent_indices: Vec<Option<usize>> = Vec::new();
+        raw_animation_track
+            .parent_indices
+            .iter()
+            .for_each(|parent_idx| {
+                if *parent_idx >= 0 {
+                    parent_indices.push(Some((*parent_idx).try_into().unwrap()));
+                } else {
+                    parent_indices.push(None);
+                }
+            });
         let skeleton = Skeleton {
             bone_ids: raw_animation_track.bone_ids.clone(),
-            parent_indices: raw_animation_track.parent_indices.clone(),
+            parent_indices,
         };
         let converted_transforms = convert_raw_pose_data(&raw_animation_track.key_frames);
         let mut converted_poses = Vec::new();
