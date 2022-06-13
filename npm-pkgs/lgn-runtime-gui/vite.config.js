@@ -30,7 +30,7 @@ export default defineConfig(() => {
         filename: "streaming",
       }),
       viteApiCodegen({
-        path: "../../crates/lgn-log-stream/apis",
+        path: "../../crates/lgn-log/apis",
         apiNames: ["log"],
         withPackageJson: true,
         aliasMappings: {

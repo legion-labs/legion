@@ -11,5 +11,4 @@ mod plugin;
 mod server;
 
 pub use broadcast_sink::{BroadcastSink, TraceEvent};
-pub use plugin::LogStreamPlugin;
-pub use server::TraceEventsReceiver;
+pub use plugin::{LogStreamPlugin, TraceEventsReceiver};

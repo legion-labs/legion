@@ -29,7 +29,7 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 #[cfg(not(feature = "standalone"))]
-use lgn_log_stream::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
+use lgn_log::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 #[cfg(not(feature = "standalone"))]
 use lgn_scene_plugin::SceneMessage;
