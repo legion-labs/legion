@@ -7,6 +7,8 @@
 // generated from def\animation.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
+mod animation_clip;
+mod animation_graph_events;
 mod animation_options;
 mod animation_pose;
 mod animation_skeleton;
@@ -14,6 +16,7 @@ mod animation_system;
 pub mod components;
 mod debug_display;
 mod labels;
+mod tmp;
 
 use crate::{
     animation_options::AnimationOptions, animation_system::update,
