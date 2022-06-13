@@ -1,6 +1,6 @@
 type Fetch = typeof globalThis.fetch;
 
-const defaultFetch = globalThis.fetch;
+const defaultFetch = globalThis.fetch.bind(globalThis);
 
 export abstract class ApiClient {
     protected fetch: Fetch;
