@@ -17,13 +17,31 @@ pub(crate) fn display_animation(
 
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
-            let debug_color = Color::new(0, 255, 52, 255);
             for animation in animations.iter() {
                 for n_bone in 0..animation.poses[animation.current_key_frame_index as usize]
                     .skeleton
                     .bone_ids
                     .len()
                 {
+                    let bone_depth: u8 = animation.poses
+                        [animation.current_key_frame_index as usize]
+                        .skeleton
+                        .get_bone_depth(
+                            animation.poses[animation.current_key_frame_index as usize]
+                                .skeleton
+                                .bone_ids[n_bone]
+                                .unwrap(),
+                        )
+                        .try_into()
+                        .unwrap();
+                    let color_interval: u8 = (255
+                        / animation.poses[animation.current_key_frame_index as usize]
+                            .skeleton
+                            .get_max_bone_depth()
+                            .unwrap())
+                    .try_into()
+                    .unwrap();
+                    let debug_color = Color::new(bone_depth * color_interval, 255, 52, 255);
                     builder.add_default_mesh(
                         &animation.poses[animation.current_key_frame_index as usize].transforms
                             [n_bone]

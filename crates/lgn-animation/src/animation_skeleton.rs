@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 #[derive(Clone)]
 pub struct Skeleton {
-    pub bone_ids: Vec<i32>,
+    pub bone_ids: Vec<Option<usize>>,
     pub parent_indices: Vec<Option<usize>>,
 }
 
@@ -16,7 +18,7 @@ impl Skeleton {
     }
 
     #[inline]
-    pub fn get_bone_index(&self, id: i32) -> usize {
+    pub fn get_bone_index(&self, id: Option<usize>) -> usize {
         self.bone_ids
             .binary_search(&id)
             .expect("Bone is not present in skeleton.")
@@ -80,5 +82,31 @@ impl Skeleton {
     ) -> bool {
         self.is_child_bone_of(bone_idx_0, bone_idx_1)
             || self.is_child_bone_of(bone_idx_1, bone_idx_0)
+    }
+
+    pub fn get_max_bone_depth(&self) -> Option<usize> {
+        let mut bone_depths = HashMap::new();
+        for bone_id in &self.bone_ids {
+            bone_depths.insert(*bone_id, self.get_bone_depth(bone_id.unwrap()));
+        }
+
+        *bone_depths
+            .iter()
+            .max_by(|depth_1, depth_2| depth_1.1.cmp(depth_2.1))
+            .map(|(k, _v)| k)
+            .unwrap()
+    }
+
+    pub(crate) fn get_bone_depth(&self, mut bone_idx: usize) -> u32 {
+        let mut n_total_parents = 0;
+        loop {
+            n_total_parents += 1;
+            let parent_bone_idx = self.get_parent_bone_idx(bone_idx);
+            if parent_bone_idx.is_none() {
+                break;
+            }
+            bone_idx = parent_bone_idx.unwrap();
+        }
+        n_total_parents
     }
 }

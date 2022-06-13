@@ -1,3 +1,5 @@
+//! Animation plugin for Legion's ECS
+
 // crate-specific lint exceptions:
 #![allow(dead_code)]
 #![allow(clippy::cast_possible_wrap)]
