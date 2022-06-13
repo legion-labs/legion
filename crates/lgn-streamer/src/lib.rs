@@ -6,9 +6,12 @@
 
 use std::sync::Arc;
 
+use axum::Router;
 use lgn_app::prelude::*;
 use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_core::Time;
+
+use crate::server::Server;
 
 mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
@@ -20,8 +23,9 @@ use lgn_ecs::prelude::{Res, ResMut};
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_graphics_renderer::{resources::PipelineManager, Renderer};
 
+mod api;
 mod config;
-mod grpc;
+mod server;
 mod streamer;
 mod webrtc;
 
@@ -59,12 +63,15 @@ impl Plugin for StreamerPlugin {
 
         let webrtc_server = webrtc::WebRTCServer::new(self.config.webrtc.clone())
             .expect("failed to instantiate a WebRTC server");
-        let grpc_server = grpc::GRPCServer::new(webrtc_server, stream_events_sender);
+
+        let server = Arc::new(Server::new(webrtc_server, stream_events_sender));
+
+        let router = api::streaming::server::register_routes(Router::new(), server);
 
         app.world
             .resource_mut::<lgn_grpc::GRPCPluginSettings>()
             .into_inner()
-            .register_service(grpc_server.service());
+            .register_router(router);
     }
 }
 

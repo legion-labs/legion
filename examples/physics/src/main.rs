@@ -10,7 +10,10 @@ use clap::{ArgEnum, Parser};
 use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_offline::{
+    resource::{Project, ResourcePathName},
+    vfs::AddDeviceSourceCas,
+};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
     ResourceTypeAndId,
@@ -79,23 +82,19 @@ async fn main() -> anyhow::Result<()> {
             .unwrap(),
     );
 
-    let absolute_project_dir = {
-        if !project_dir.is_absolute() {
-            std::env::current_dir().unwrap().join(&project_dir)
-        } else {
-            project_dir.clone()
-        }
-    };
-    let mut project = Project::create(
-        absolute_project_dir,
+    let mut project = Project::new(
         &repository_index,
-        repository_name,
+        &repository_name,
+        "main",
         Arc::clone(&source_control_content_provider),
     )
     .await
     .expect("failed to create a project");
 
-    let mut asset_registry = AssetRegistryOptions::new().add_device_dir(project.resource_dir());
+    let mut asset_registry = AssetRegistryOptions::new().add_device_source_cas(
+        Arc::clone(&source_control_content_provider),
+        project.source_manifest_id(),
+    );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
     generic_data::offline::add_loaders(&mut asset_registry);
     sample_data::offline::add_loaders(&mut asset_registry);
@@ -133,6 +132,7 @@ async fn main() -> anyhow::Result<()> {
     let data_build = DataBuildOptions::new_with_sqlite_output(
         &absolute_build_dir,
         compilers,
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .asset_registry(asset_registry.clone());
@@ -409,10 +409,11 @@ async fn create_offline_entity(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let exists = project.exists(id).await;
+    let exists = project.exists(type_id).await;
     let handle = if exists {
         project
             .load_resource(type_id, resources)
+            .await
             .expect("failed to load resource")
     } else {
         resources
@@ -437,14 +438,7 @@ async fn create_offline_entity(
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(
-                name,
-                sample_data::offline::Entity::TYPENAME,
-                kind,
-                id,
-                handle,
-                resources,
-            )
+            .add_resource_with_id(name, type_id, handle, resources)
             .await
             .expect("failed to add new resource");
     }
@@ -467,10 +461,11 @@ async fn create_offline_model(
     let type_id = ResourceTypeAndId { kind, id };
     let name: ResourcePathName = resource_path.into();
 
-    let exists = project.exists(id).await;
+    let exists = project.exists(type_id).await;
     let handle = if exists {
         project
             .load_resource(type_id, resources)
+            .await
             .expect("failed to load resource")
     } else {
         resources
@@ -505,14 +500,7 @@ async fn create_offline_model(
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(
-                name,
-                lgn_graphics_data::offline::Model::TYPENAME,
-                kind,
-                id,
-                handle,
-                resources,
-            )
+            .add_resource_with_id(name, type_id, handle, resources)
             .await
             .expect("failed to add new resource");
     }

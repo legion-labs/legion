@@ -45,7 +45,7 @@ mod tests {
     #[test]
     fn test_lock_from_proto() {
         let lock = Lock {
-            canonical_path: CanonicalPath::new_from_name("canonical_path"),
+            canonical_path: CanonicalPath::new("/canonical_path").unwrap(),
             lock_domain_id: "lock_domain_id".to_string(),
             workspace_id: "workspace_id".to_string(),
             branch_name: "branch_name".to_string(),
@@ -78,7 +78,7 @@ mod tests {
         assert_eq!(
             lock,
             Lock {
-                canonical_path: CanonicalPath::new_from_name("canonical_path"),
+                canonical_path: CanonicalPath::new("/canonical_path").unwrap(),
                 lock_domain_id: "lock_domain_id".to_string(),
                 workspace_id: "workspace_id".to_string(),
                 branch_name: "branch_name".to_string(),

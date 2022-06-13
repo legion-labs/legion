@@ -41,7 +41,6 @@ impl Plugin for ResourceRegistryPlugin {
                 .after(AssetRegistryScheduling::AssetRegistryCreated)
                 .label(ResourceRegistryPluginScheduling::ResourceRegistryCreated),
         );
-        app.add_startup_system(register_resource_dir);
     }
 }
 
@@ -67,28 +66,14 @@ impl ResourceRegistryPlugin {
                     .unwrap(),
             );
 
-            let project = {
-                if let Ok(project) = Project::open(
-                    &project_dir,
-                    &settings.source_control_repository_index,
-                    Arc::clone(&source_control_content_provider),
-                )
-                .await
-                {
-                    project
-                } else {
-                    let mut project = Project::create(
-                        &project_dir,
-                        &settings.source_control_repository_index,
-                        settings.source_control_repository_name.clone(),
-                        source_control_content_provider,
-                    )
-                    .await
-                    .expect("cannot create project");
-                    project.sync_latest().await.unwrap();
-                    project
-                }
-            };
+            let project = Project::new(
+                &settings.source_control_repository_index,
+                &settings.source_control_repository_name,
+                &settings.source_control_branch_name,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .unwrap();
 
             let mut compiler_dir = std::env::current_exe().expect("cannot access current_exe");
             compiler_dir.pop(); // pop the .exe name
@@ -108,6 +93,7 @@ impl ResourceRegistryPlugin {
                     project_dir.as_path(),
                     DataBuild::version(),
                 ),
+                Arc::clone(&source_control_content_provider),
                 Arc::clone(&data_content_provider),
                 compilers,
             );
@@ -127,13 +113,4 @@ impl ResourceRegistryPlugin {
 
         world.insert_resource(transaction_manager);
     }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn register_resource_dir(
-    settings: Res<'_, ResourceRegistrySettings>,
-    mut registry: NonSendMut<'_, lgn_data_runtime::AssetRegistryOptions>,
-) {
-    let project_dir = settings.root_folder.join("offline");
-    registry.add_device_dir_mut(project_dir);
 }

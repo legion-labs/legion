@@ -1,12 +1,12 @@
 //! Content providers for various backends.
 
+mod api;
 #[cfg(feature = "aws")]
 mod aws_dynamodb;
 #[cfg(feature = "aws")]
 mod aws_s3;
 mod cache;
 mod errors;
-mod grpc;
 mod hash_ref;
 mod local;
 #[cfg(feature = "lru")]
@@ -28,6 +28,7 @@ use std::{
 pub use self::lru::LruContentProvider;
 #[cfg(feature = "redis")]
 pub use self::redis::RedisContentProvider;
+pub use api::ApiContentProvider;
 use async_trait::async_trait;
 #[cfg(feature = "aws")]
 pub use aws_dynamodb::AwsDynamoDbContentProvider;
@@ -35,7 +36,6 @@ pub use aws_dynamodb::AwsDynamoDbContentProvider;
 pub use aws_s3::{AwsS3ContentProvider, AwsS3Url};
 pub use cache::ContentProviderCache;
 pub use errors::{Error, Result};
-pub use grpc::GrpcContentProvider;
 pub use hash_ref::{HashAlgorithm, HashRef, InvalidHashRef};
 use lgn_tracing::async_span_scope;
 pub use local::LocalContentProvider;

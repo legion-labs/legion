@@ -6,7 +6,7 @@ use lgn_content_store::{
 };
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
 use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
@@ -75,9 +75,10 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     std::fs::create_dir_all(&build_dir).unwrap();
 
     let source_control_content_provider = Arc::new(Provider::new_in_memory());
-    let project = Project::create_with_remote_mock(&project_dir, source_control_content_provider)
-        .await
-        .expect("failed to create a project");
+    let project =
+        Project::new_with_remote_mock(&project_dir, Arc::clone(&source_control_content_provider))
+            .await
+            .expect("failed to create a project");
 
     let data_content_provider = Arc::new(Provider::new_in_memory());
 
@@ -88,7 +89,10 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
             Arc::clone(&data_content_provider),
             runtime_manifest_id.clone(),
         )
-        .add_device_dir(project.resource_dir());
+        .add_device_source_cas(
+            Arc::clone(&source_control_content_provider),
+            project.source_manifest_id(),
+        );
     sample_data::offline::add_loaders(&mut asset_registry);
     lgn_scripting_data::offline::add_loaders(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
@@ -100,6 +104,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     let options = DataBuildOptions::new_with_sqlite_output(
         &build_dir,
         compilers,
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
     .asset_registry(asset_registry.clone());
@@ -120,7 +125,6 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
 #[tokio::test]
 async fn test_resource_browser() -> anyhow::Result<()> {
     //let project_dir = std::path::PathBuf::from("d:/local_db/");
-    //std::fs::remove_dir_all(&project_dir.join("offline")).ok();
     //std::fs::remove_dir_all(&project_dir.join("remote")).ok();
     let project_dir = tempfile::tempdir().unwrap();
 
@@ -293,6 +297,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             }))
             .await?;
 
+        /*
         // Reparent under folder entity
         resource_browser
             .reparent_resource(Request::new(ReparentResourceRequest {
@@ -300,6 +305,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 new_path: "/root_entity/test_folder".into(),
             }))
             .await?;
+        */
 
         // Reparent under root
         resource_browser

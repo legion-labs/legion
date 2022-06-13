@@ -100,13 +100,13 @@ impl<'de> Deserializer<'de> for &PercentEncodingDeserializer {
 
     fn deserialize_newtype_struct<V>(
         self,
-        name: &'static str,
-        _visitor: V,
+        _name: &'static str,
+        visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        Err(Error::Unsupported(format!("<newtype struct {}>", name)))
+        visitor.visit_newtype_struct(self)
     }
 
     fn deserialize_seq<V>(self, _visitor: V) -> Result<V::Value, Self::Error>

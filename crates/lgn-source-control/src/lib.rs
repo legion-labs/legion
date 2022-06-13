@@ -12,7 +12,6 @@ pub mod index;
 //pub mod resolve;
 //pub mod revert;
 mod config;
-mod utils;
 pub mod workspace;
 
 pub use data_types::*;
@@ -24,5 +23,4 @@ pub use index::*;
 //pub use resolve::*;
 //pub use revert::*;
 pub use config::{Config, GrpcConfig, LocalConfig, RepositoryIndexConfig, SqlConfig};
-pub(crate) use utils::*;
 pub use workspace::*;

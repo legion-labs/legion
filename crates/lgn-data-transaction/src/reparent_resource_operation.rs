@@ -31,7 +31,8 @@ impl TransactionOperation for ReparentResourceOperation {
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
         let raw_name = ctx
             .project
-            .raw_resource_name(self.resource_id.id)
+            .raw_resource_name(self.resource_id)
+            .await
             .map_err(|err| Error::Project(self.resource_id, err))?;
 
         // Check if the parent is a resource or just a path
@@ -43,6 +44,8 @@ impl TransactionOperation for ReparentResourceOperation {
 
         let mut raw_path: ResourcePathName = if parent_id.is_some() {
             format!("/!{}/{}", parent_id.unwrap(), name).into()
+        } else if self.new_path == ResourcePathName::new("/") {
+            format!("/{}", name).into()
         } else {
             format!("{}/{}", self.new_path, name).into()
         };

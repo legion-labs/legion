@@ -14,8 +14,6 @@ pub trait Device: Send + Sync {
 
 mod build_device;
 mod cas_device;
-mod dir_device;
 
 pub(crate) use build_device::*;
 pub(crate) use cas_device::*;
-pub(crate) use dir_device::*;

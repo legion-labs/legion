@@ -5,7 +5,7 @@ mod tests {
     use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_offline::resource::Project;
-    use lgn_source_control::LocalRepositoryIndex;
+    use lgn_source_control::{LocalRepositoryIndex, RepositoryName};
     use tempfile::TempDir;
 
     use crate::{databuild::DataBuild, output_index::OutputIndex, DataBuildOptions};
@@ -42,26 +42,36 @@ mod tests {
     async fn invalid_project() {
         let work_dir = tempfile::tempdir().unwrap();
         let (
-            project_dir,
+            _project_dir,
             output_dir,
             repository_index,
             source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
-        let build = DataBuildOptions::new_with_sqlite_output(
-            &output_dir,
-            CompilerRegistryOptions::default(),
-            data_content_provider,
-        )
-        .create_with_project(
-            &project_dir,
+        let repository_name: RepositoryName = "default".parse().unwrap();
+        let branch_name = "main";
+
+        let project = Project::new(
             repository_index,
-            source_control_content_provider,
+            &repository_name,
+            branch_name,
+            Arc::clone(&source_control_content_provider),
         )
         .await;
 
-        assert!(build.is_err());
+        if let Ok(project) = project {
+            let build = DataBuildOptions::new_with_sqlite_output(
+                &output_dir,
+                CompilerRegistryOptions::default(),
+                Arc::clone(&source_control_content_provider),
+                data_content_provider,
+            )
+            .create(&project)
+            .await;
+
+            assert!(build.is_err());
+        }
     }
 
     #[tokio::test]
@@ -70,12 +80,13 @@ mod tests {
         let (
             project_dir,
             output_dir,
-            repository_index,
-            source_control_content_provider,
+            _repository_index,
+            _source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
-        let _project = Project::create_with_remote_mock(
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
+        let project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
         )
@@ -88,14 +99,11 @@ mod tests {
         {
             let _build = DataBuildOptions::new(
                 db_uri.clone(),
+                Arc::clone(&source_control_content_provider),
                 data_content_provider,
                 CompilerRegistryOptions::default(),
             )
-            .create_with_project(
-                project_dir,
-                repository_index,
-                source_control_content_provider,
-            )
+            .create(&project)
             .await
             .expect("valid data build index");
         }

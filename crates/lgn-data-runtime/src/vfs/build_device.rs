@@ -7,7 +7,7 @@ use std::{
 
 use async_trait::async_trait;
 use lgn_content_store::{
-    indexing::{empty_tree_id, BasicIndexer, ResourceReader, TreeIdentifier, TreeLeafNode},
+    indexing::{ResourceIndex, ResourceReader, TreeIdentifier},
     Provider,
 };
 use lgn_tracing::info;
@@ -18,12 +18,12 @@ use crate::{new_resource_type_and_id_indexer, ResourceTypeAndId, ResourceTypeAnd
 /// Storage device that builds resources on demand. Resources are accessed
 /// through a manifest access table.
 pub(crate) struct BuildDevice {
-    manifest_id: TreeIdentifier,
     provider: Arc<Provider>,
-    indexer: ResourceTypeAndIdIndexer,
+    manifest: ResourceIndex<ResourceTypeAndIdIndexer>,
     databuild_bin: PathBuf,
     output_db_addr: String,
-    project: PathBuf,
+    repository_name: String,
+    branch_name: String,
     force_recompile: bool,
 }
 
@@ -32,29 +32,34 @@ impl BuildDevice {
         manifest_id: Option<TreeIdentifier>,
         provider: Arc<Provider>,
         build_bin: impl AsRef<Path>,
-        output_db_addr: String,
-        project: impl AsRef<Path>,
+        output_db_addr: &str,
+        repository_name: &str,
+        branch_name: &str,
         force_recompile: bool,
     ) -> Self {
-        let empty_manifest_id = empty_tree_id(&provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &provider).await;
+        if let Some(manifest_id) = manifest_id {
+            manifest.set_id(manifest_id);
+        }
         Self {
-            manifest_id: manifest_id.unwrap_or(empty_manifest_id),
             provider,
-            indexer: new_resource_type_and_id_indexer(),
+            manifest,
             databuild_bin: build_bin.as_ref().to_owned(),
-            output_db_addr,
-            project: project.as_ref().to_owned(),
+            output_db_addr: output_db_addr.to_owned(),
+            repository_name: repository_name.to_owned(),
+            branch_name: branch_name.to_owned(),
             force_recompile,
         }
     }
 
     async fn load_internal(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        if let Ok(Some(TreeLeafNode::Resource(leaf_id))) = self
-            .indexer
-            .get_leaf(&self.provider, &self.manifest_id, &type_id.into())
+        if let Ok(Some(resource_id)) = self
+            .manifest
+            .get_identifier(&self.provider, &type_id.into())
             .await
         {
-            if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&leaf_id).await {
+            if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&resource_id).await {
                 return Some(resource_bytes);
             }
         }
@@ -75,7 +80,7 @@ impl Device for BuildDevice {
 
     async fn reload(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
         let manifest_id = self.build_resource(type_id).ok()?;
-        self.manifest_id = manifest_id;
+        self.manifest.set_id(manifest_id);
 
         self.load_internal(type_id).await
     }
@@ -87,7 +92,8 @@ impl BuildDevice {
             &self.databuild_bin,
             resource_id,
             &self.output_db_addr,
-            &self.project,
+            &self.repository_name,
+            &self.branch_name,
         );
 
         info!("Running DataBuild for ResourceId: {}", resource_id);
@@ -144,7 +150,8 @@ fn build_command(
     databuild_path: impl AsRef<Path>,
     resource_id: ResourceTypeAndId,
     output_db_addr: &str,
-    project: impl AsRef<Path>,
+    repository_name: &str,
+    branch_name: &str,
 ) -> std::process::Command {
     let target = "game";
     let platform = "windows";
@@ -157,6 +164,7 @@ fn build_command(
     command.arg(format!("--platform={}", platform));
     command.arg(format!("--locale={}", locale));
     command.arg(format!("--output={}", output_db_addr));
-    command.arg(format!("--project={}", project.as_ref().to_str().unwrap()));
+    command.arg(format!("--repository-name={}", repository_name));
+    command.arg(format!("--branch-name={}", branch_name));
     command
 }

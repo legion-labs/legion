@@ -134,14 +134,16 @@ type = "local"
 path = "$(git-root)/target/source-control"
 
 [content_store.persistent.content_provider]
-#type = "grpc"
+#type = "api"
 #data_space = "persistent"
+#space_id = "default"
 type = "local"
 path = "$(git-root)/target/content-store/persistent/content"
 
 [content_store.persistent.alias_provider]
-#type = "grpc"
+#type = "api"
 #data_space = "persistent"
+#space_id = "default"
 type = "local"
 path = "$(git-root)/target/content-store/persistent/aliases"
 
@@ -154,14 +156,16 @@ type = "lru"
 size = 250
 
 [content_store.volatile.content_provider]
-#type = "grpc"
+#type = "api"
 #data_space = "volatile"
+#space_id = "default"
 type = "local"
 path = "$(git-root)/target/content-store/volatile/content"
 
 [content_store.volatile.alias_provider]
-#type = "grpc"
+#type = "api"
 #data_space = "volatile"
+#space_id = "default"
 type = "local"
 path = "$(git-root)/target/content-store/volatile/aliases"
 

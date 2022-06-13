@@ -235,6 +235,7 @@ dependencies = [
  "serde_qs",
  "thiserror",
  "tokio",
+ "tower-http",
 ]
 
 [[package]]
@@ -411,9 +412,9 @@ checksum = "30696a84d817107fc028e049980e09d5e140e8da8f1caeb17e8e950658a3cea9"
 
 [[package]]
 name = "async-trait"
-version = "0.1.53"
+version = "0.1.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed6aa3524a2dfcf9fe180c51eae2b58738348d819517ceadf95789c51fff7600"
+checksum = "96cf8829f67d2eab0b2dfa42c5d0ef737e0724e4a82b01b3e292456202b19716"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4347,10 +4348,11 @@ dependencies = [
  "hyper",
  "indicatif",
  "itertools",
+ "lgn-api-codegen",
  "lgn-auth",
  "lgn-cli-utils",
  "lgn-config",
- "lgn-content-store-proto",
+ "lgn-governance",
  "lgn-online",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -4363,6 +4365,7 @@ dependencies = [
  "rmp-serde",
  "serde",
  "serde_json",
+ "serde_qs",
  "smallvec",
  "tempfile",
  "termtree",
@@ -4372,23 +4375,9 @@ dependencies = [
  "tokio-stream",
  "tokio-util 0.6.10",
  "toml",
- "tonic",
- "tonic-web",
  "tower",
  "tower-http",
  "uuid 1.1.0",
-]
-
-[[package]]
-name = "lgn-content-store-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "prost-types",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -4764,6 +4753,7 @@ dependencies = [
  "lgn-telemetry-sink",
  "lgn-tracing",
  "log",
+ "lru_time_cache",
  "reqwest",
  "serde",
  "serde_json",
@@ -4929,6 +4919,7 @@ name = "lgn-grpc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "futures-lite",
  "lgn-app",
  "lgn-async",
@@ -5029,6 +5020,7 @@ dependencies = [
  "bytes",
  "directories",
  "dyn-clone",
+ "futures",
  "http",
  "http-body",
  "http-serde",
@@ -5278,7 +5270,6 @@ dependencies = [
  "termcolor",
  "thiserror",
  "tokio",
- "tokio-stream",
  "tokio-util 0.6.10",
  "tonic",
  "tonic-web",
@@ -5323,19 +5314,26 @@ name = "lgn-streamer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "axum",
  "base64 0.13.0",
  "bytes",
  "crossbeam",
  "futures-lite",
  "hex",
+ "http",
+ "hyper",
  "interceptor",
+ "lgn-api-codegen",
  "lgn-app",
  "lgn-async",
+ "lgn-cli-utils",
  "lgn-codec-api",
  "lgn-config",
  "lgn-core",
  "lgn-ecs",
  "lgn-embedded-fs",
+ "lgn-governance",
  "lgn-graphics-api",
  "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
@@ -5344,27 +5342,17 @@ dependencies = [
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
- "lgn-streaming-proto",
+ "lgn-online",
  "lgn-tasks",
  "lgn-tracing",
  "lgn-utils",
  "lgn-window",
  "serde",
  "serde_json",
+ "serde_qs",
+ "thiserror",
  "tokio",
- "tonic",
  "webrtc",
-]
-
-[[package]]
-name = "lgn-streaming-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -5633,6 +5621,12 @@ checksum = "8015d95cb7b2ddd3c0d32ca38283ceb1eea09b4713ee380bceb942d85a244228"
 dependencies = [
  "hashbrown 0.11.2",
 ]
+
+[[package]]
+name = "lru_time_cache"
+version = "0.11.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9106e1d747ffd48e6be5bb2d97fa706ed25b144fbee4d5c02eae110cd8d6badd"
 
 [[package]]
 name = "lz4"
@@ -8512,9 +8506,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.95"
+version = "1.0.96"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbaf6116ab8924f39d52792136fb74fd60a80194cf1b1c6ffa6453eef1c3f942"
+checksum = "0748dd251e24453cb8717f0354206b91557e4ec8703673a4b30208f2abaf1ebf"
 dependencies = [
  "proc-macro2",
  "quote",

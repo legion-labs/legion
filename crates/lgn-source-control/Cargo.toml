@@ -19,6 +19,7 @@ required-features = ["server"]
 default = ["cli", "server"]
 cli = ["lgn-telemetry-sink", "atty", "clap", "termcolor"]
 server = ["lgn-telemetry-sink", "clap", "tonic-web", "tower", "tower-http"]
+verbose = []
 
 [dependencies]
 atty = { version = "0.2", optional = true }
@@ -59,7 +60,6 @@ termcolor = { version = "1.1.2", optional = true }
 thiserror = "1"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 tokio-util = { version = "0.6.9", features = ["full"] }
-tokio-stream = "0.1.8"
 tonic = "0.6.2"
 tonic-web = { version = "0.2", optional = true }
 tower = { version = "0.4", optional = true }

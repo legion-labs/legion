@@ -144,6 +144,12 @@ impl Visitor {
                         Type::Bytes,
                     ]);
 
+                    if http::header::HeaderName::from_lowercase(parameter_data.name.as_bytes())
+                        .is_err()
+                    {
+                        return Err(Error::InvalidHeaderName(parameter_data.name.clone()));
+                    }
+
                     parameters.header.push(self.visit_parameter(
                         &parameter.as_element_ref([&parameter_data.name], parameter_data),
                         allowed_types,
@@ -270,6 +276,10 @@ impl Visitor {
 
             for (header_name, header_ref) in &response.headers {
                 let header = response.resolve_reference_or(["headers", header_name], header_ref)?;
+
+                if http::header::HeaderName::from_lowercase(header_name.as_bytes()).is_err() {
+                    return Err(Error::InvalidHeaderName(header_name.clone()));
+                }
 
                 headers.insert(
                     header_name.clone(),

@@ -1,18 +1,20 @@
 use super::{params, responses, requests};
-use http::{header::CONTENT_TYPE, HeaderValue};
-use hyper::{Body, Method, Request};
+use http::{header::CONTENT_TYPE, HeaderValue, Request, Response};
+use hyper::service::Service;
 use lgn_online::{
-    codegen::{Bytes, Context},
+    codegen::Bytes,
     server::{Error, Result},
 };
+use lgn_tracing::debug;
 
+#[derive(Debug)]
 pub struct Client<C> {
-    inner: hyper::Client<C>,
-    base_uri: String,
+    inner: C,
+    base_uri: http::Uri,
 }
 
-impl<C> Client<C> {
-    pub fn new(inner: hyper::Client<C>, base_uri: String) -> Self {
+impl<C> Client<C>{
+    pub fn new(inner: C, base_uri: http::Uri) -> Self {
         Self {
             inner,
             base_uri,
@@ -20,18 +22,46 @@ impl<C> Client<C> {
     }
 }
 
-#[async_trait::async_trait]
-impl<C> super::Api for Client<C>
+impl<C, ResBody> Client<C>
 where
-    C: hyper::client::connect::Connect + Clone + Send + Sync + 'static, {
+    C: Service<Request<hyper::Body>, Response = Response<ResBody>> + Clone + Send + Sync,
+    C::Error: Into<lgn_online::server::StdError>,
+    C::Future: Send,
+    ResBody: hyper::body::HttpBody + Send,
+    ResBody::Data: Send,
+    ResBody::Error: Into<lgn_online::server::StdError>,
+{
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
 
-        {% include "signature.rs.jinja" %}{
+        /// Call to `{{ route.name|snake_case }}`.
+        ///
+        /// # Errors
+        ///
+        /// Returns an error in case of failure.
+        pub async fn {{ route.name|snake_case }}(
+            &self,
+            {% if !route.has_empty_request() %}request: requests::{{ route.name|pascal_case }}Request{% endif %}
+        ) -> Result<responses::{{ route.name|pascal_case }}Response> {
+            self.{{ route.name|snake_case }}_with_parts({% if !route.has_empty_request() %}request{% endif %})
+                .await
+                .map(|(_, resp)| resp)
+        }
+
+        /// Call to `{{ route.name|snake_case }}` including response parts.
+        ///
+        /// # Errors
+        ///
+        /// Returns an error in case of failure.
+        pub async fn {{ route.name|snake_case }}_with_parts(
+            &self,
+            {% if !route.has_empty_request() %}request: requests::{{ route.name|pascal_case }}Request{% endif %}
+        ) -> Result<(http::response::Parts, responses::{{ route.name|pascal_case }}Response)> {
             let mut uri = format!(
-                "{}{{ path|fmt_rust_path }}",
-                self.base_uri
+                "{}://{}{{ path|fmt_rust_path }}",
+                self.base_uri.scheme_str().unwrap(),
+                self.base_uri.authority().unwrap()
                 {% for parameter in route.parameters.path -%}
                     , lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ parameter.name|snake_case }})?
                 {% endfor -%}
@@ -49,30 +79,23 @@ where
                 }
             {% endif -%}
 
-            let mut req = Request::builder()
-                .method(Method::{{ route.method|uppercase }})
-                .uri(uri)
+            debug!("{{ route.name|snake_case }}: {}", uri);
+
             {% if let Some(request_body) = route.request_body %}
                 {% match request_body.content.media_type %}
                     {% when MediaType::Json %}
-                        .body(Body::from(serde_json::to_string(&request.body)?))
-                            .map_err(|err| Error::Internal(format!("invalid body: {}", err)))?;
+                        let body = hyper::Body::from(serde_json::to_string(&request.body)?);
                     {% when MediaType::Bytes %}
-                        .body(Body::from(request.body)).map_err(|err| {
-                            Error::Internal(format!("invalid body: {}", err))
-                        })?;
+                        let body = hyper::Body::from(request.body);
                 {% endmatch %}
             {% else %}
-                .body(Body::empty()).unwrap();
+                let body = hyper::Body::empty();
             {% endif -%}
 
-            if let Some(extensions) = api_codegen_context.request_extensions() {
-                req.extensions_mut().extend(extensions);
-            }
-
-            if let Some(headers) = api_codegen_context.request_headers() {
-                req.headers_mut().extend(headers);
-            }
+            let mut req = Request::builder()
+                .method(hyper::Method::{{ route.method|uppercase }})
+                .uri(uri)
+                .body(body)?;
 
             {% if let Some(request_body) = route.request_body -%}
                 req.headers_mut().insert(
@@ -106,12 +129,10 @@ where
                 {% endfor -%}
             {% endif -%}
 
-            let resp = self.inner.request(req).await?;
+            let mut client = self.inner.clone();
+            let resp = client.call(req).await.map_err(Into::into)?;
 
-            let (parts, body) = resp.into_parts();
-            let resp = responses::{{ enum_name }}::from_response(&parts, body).await;
-            api_codegen_context.set_response(parts);
-            resp
+            responses::{{ enum_name }}::from_response(resp).await
         }
     {% endfor %}
 {% endfor %}

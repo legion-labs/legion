@@ -1,6 +1,4 @@
-use lgn_content_store::indexing::{
-    self, BasicIndexer, ResourceWriter, SharedTreeIdentifier, TreeLeafNode,
-};
+use lgn_content_store::indexing::{ResourceIndex, ResourceWriter, SharedTreeIdentifier};
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 use lgn_data_offline::resource::Project;
@@ -71,13 +69,10 @@ impl BuildManager {
         let derived_id = Self::get_derived_id(resource_id);
 
         let indexer = new_resource_type_and_id_indexer();
-        let start_manifest = indexing::enumerate_resources(
-            self.build.get_provider(),
-            &indexer,
-            &self.runtime_manifest_id.read(),
-        )
-        .await
-        .map_err(Error::InvalidContentStoreIndexing)?;
+        let start_manifest =
+            ResourceIndex::new_exclusive_with_id(indexer.clone(), self.runtime_manifest_id.read())
+                .enumerate_resources(self.build.get_provider())
+                .await?;
 
         self.build.source_pull(project).await?;
         match self
@@ -90,9 +85,9 @@ impl BuildManager {
                 let runtime_manifest_id =
                     output.into_rt_manifest(data_provider, |_rpid| true).await;
                 let runtime_manifest =
-                    indexing::enumerate_resources(data_provider, &indexer, &runtime_manifest_id)
-                        .await
-                        .map_err(Error::InvalidContentStoreIndexing)?;
+                    ResourceIndex::new_exclusive_with_id(indexer.clone(), runtime_manifest_id)
+                        .enumerate_resources(data_provider)
+                        .await?;
 
                 let mut added_resources = Vec::new();
                 let mut changed_resources = Vec::new();
@@ -119,35 +114,24 @@ impl BuildManager {
                     start.elapsed(),
                 );
 
-                let mut runtime_manifest_id = self.runtime_manifest_id.read();
+                let mut runtime_manifest = ResourceIndex::new_exclusive_with_id(
+                    indexer.clone(),
+                    self.runtime_manifest_id.read(),
+                );
                 for (index_key, resource_id) in added_resources {
-                    runtime_manifest_id = indexer
-                        .add_leaf(
-                            data_provider,
-                            &runtime_manifest_id,
-                            &index_key,
-                            TreeLeafNode::Resource(resource_id),
-                        )
+                    runtime_manifest
+                        .add_resource(data_provider, &index_key, resource_id)
                         .await?;
                 }
                 for (index_key, resource_id, old_resource_id) in &changed_resources {
-                    let (manifest_id, old_node) = indexer
-                        .replace_leaf(
-                            data_provider,
-                            &runtime_manifest_id,
-                            index_key,
-                            TreeLeafNode::Resource(resource_id.clone()),
-                        )
+                    let replaced_id = runtime_manifest
+                        .replace_resource(data_provider, index_key, resource_id.clone())
                         .await?;
-                    runtime_manifest_id = manifest_id;
-
-                    if let TreeLeafNode::Resource(id) = old_node {
-                        assert_eq!(&id, old_resource_id);
-                    }
+                    assert_eq!(&replaced_id, old_resource_id);
 
                     data_provider.unwrite_resource(old_resource_id).await?;
                 }
-                self.runtime_manifest_id.write(runtime_manifest_id);
+                self.runtime_manifest_id.write(runtime_manifest.id());
 
                 let changed_resources = changed_resources
                     .into_iter()

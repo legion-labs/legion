@@ -56,8 +56,8 @@ export type Config = {
     /** Transports to use */
     transports: NonEmptyArray<Transport>;
   };
-  editorServerUrl?: string;
-  runtimeServerUrl?: string;
+  restEditorServerUrl?: string;
+  restRuntimeServerUrl?: string;
 };
 
 /**
@@ -78,12 +78,17 @@ export async function run({
   rootQuerySelector,
   auth: authConfig,
   log: logConfig,
-  editorServerUrl,
-  runtimeServerUrl,
+  restEditorServerUrl,
+  restRuntimeServerUrl,
 }: Config): Promise<void> {
   await onPreInit?.();
 
-  initApiClient({ editorServerUrl, runtimeServerUrl });
+  initApiClient({
+    restEditorServerUrl,
+    restRuntimeServerUrl,
+    accessTokenCookieName: authConfig?.login.cookies?.accessToken,
+    fetch: authConfig?.fetch,
+  });
 
   const target = getTarget(rootQuerySelector);
 
@@ -166,8 +171,8 @@ export type HeadlessConfig = {
     /** Transports to use */
     transports: NonEmptyArray<Transport>;
   };
-  editorServerUrl?: string;
-  runtimeServerUrl?: string;
+  restEditorServerUrl?: string;
+  restRuntimeServerUrl?: string;
 };
 
 export type HeadlessRun = {
@@ -192,12 +197,17 @@ export async function headlessRun({
   onPreInit,
   auth: authConfig,
   log: logConfig,
-  editorServerUrl,
-  runtimeServerUrl,
+  restEditorServerUrl,
+  restRuntimeServerUrl,
 }: HeadlessConfig): Promise<HeadlessRun> {
   await onPreInit?.();
 
-  initApiClient({ editorServerUrl, runtimeServerUrl });
+  initApiClient({
+    restEditorServerUrl,
+    restRuntimeServerUrl,
+    accessTokenCookieName: authConfig?.login.cookies?.accessToken,
+    fetch: authConfig?.fetch,
+  });
 
   if (logConfig) {
     log.init(logConfig.transports);

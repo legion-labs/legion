@@ -1,4 +1,4 @@
-use std::{io, path::Path, sync::Arc};
+use std::{io, sync::Arc};
 
 use async_trait::async_trait;
 use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};
@@ -54,7 +54,7 @@ impl CompilerStub for InProcessCompilerStub {
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
         provider: &Provider,
-        _project_dir: &Path,
+        _source_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {

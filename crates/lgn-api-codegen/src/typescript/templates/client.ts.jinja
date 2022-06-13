@@ -1,10 +1,15 @@
-export class Client implements Api {
+export class Client extends ApiClient implements Api {
     #baseUri: string | URL;
-    #fetch: Fetch;
 
-    constructor({ baseUri, fetch = defaultFetch }: { baseUri: string | URL, fetch?: Fetch }) {
+    constructor({
+        baseUri,
+        fetch = defaultFetch,
+    }: {
+        baseUri: string | URL,
+        fetch?: Fetch,
+    }) {
+        super({ fetch });
         this.#baseUri = baseUri;
-        this.#fetch = fetch;
     }
 
     {% for (path, routes) in api.paths %}
@@ -77,7 +82,7 @@ export class Client implements Api {
                     {% endfor %}
                 {% endif -%}
 
-                const response = await this.#fetch(url.toString(), {
+                const response = await this.performRequest(url.toString(), {
                     method: "{{ route.method|uppercase }}",
                     headers,
                     {% if let Some(request_body) = route.request_body %}

@@ -1,0 +1,173 @@
+openapi: 3.0.3
+info:
+  title: "Content Store API"
+  description: "The OpenAPI specification for the content store service."
+  version: 1.0.0
+paths:
+  /v1/spaces/{space-id}/content-store/data-space/{data-space}/alias/{alias-key}:
+    parameters:
+      - $ref: "space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/data_space"
+      - $ref: "#/components/parameters/alias_key"
+    get:
+      description: Resolves an alias.
+      operationId: resolveAlias
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    $ref: "#/components/schemas/ContentId"
+                required:
+                  - id
+        "404":
+          description: Not found.
+    put:
+      description: Registers an alias.
+      operationId: registerAlias
+      parameters:
+        - name: content-id
+          in: query
+          description: The content identifier.
+          required: true
+          schema:
+            $ref: "#/components/schemas/ContentId"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    $ref: "#/components/schemas/ContentId"
+                required:
+                  - id
+        "409":
+          description: Already exists.
+  /v1/spaces/{space-id}/content-store/data-space/{data-space}/content/{content-id}:
+    parameters:
+      - $ref: "space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/data_space"
+      - $ref: "#/components/parameters/content_id"
+    get:
+      description: Read the content.
+      operationId: readContent
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: byte
+          headers:
+            x-origin:
+              $ref: "#/components/headers/X-Origin"
+        "204":
+          description: Content located at another url.
+          headers:
+            x-origin:
+              $ref: "#/components/headers/X-Origin"
+            x-url:
+              $ref: "#/components/headers/X-Url"
+        "404":
+          description: Not found.
+  /v1/spaces/{space-id}/content-store/data-space/{data-space}/content:
+    parameters:
+      - $ref: "space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/data_space"
+    post:
+      description: Write the content.
+      operationId: writeContent
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    $ref: "#/components/schemas/ContentId"
+                required:
+                  - id
+  /v1/spaces/{space-id}/content-store/data-space/{data-space}/content/{content-id}/write-url:
+    parameters:
+      - $ref: "space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/data_space"
+      - $ref: "#/components/parameters/content_id"
+    get:
+      description: Get an URL to write content to.
+      operationId: getContentWriter
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    $ref: "#/components/schemas/Url"
+                required:
+                  - url
+        "409":
+          description: Already exists.
+components:
+  headers:
+    X-Origin:
+      schema:
+        $ref: "#/components/schemas/Origin"
+    X-Url:
+      schema:
+        $ref: "#/components/schemas/Url"
+  parameters:
+    data_space:
+      name: data-space
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/DataSpace"
+    content_id:
+      name: content-id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/ContentId"
+    alias_key:
+      name: alias-key
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/AliasKey"
+  schemas:
+    DataSpace:
+      description: The data space.
+      type: string
+    ContentId:
+      description: The content identifier.
+      type: string
+    AliasKey:
+      description: The alias key.
+      type: string
+      format: byte
+    Origin:
+      description: The content origin.
+      type: string
+      format: byte
+    Url:
+      description: The content url.
+      type: string

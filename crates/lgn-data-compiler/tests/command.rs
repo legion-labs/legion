@@ -1,8 +1,6 @@
-use std::path::Path;
-
 use lgn_content_store::{
-    indexing::{ResourceExists, ResourceReader},
-    Config,
+    indexing::{ResourceExists, ResourceReader, TreeIdentifier},
+    Config, Provider,
 };
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
 use lgn_data_runtime::{
@@ -12,10 +10,11 @@ use lgn_data_runtime::{
 
 mod common;
 
-fn create_test_resource(id: ResourceTypeAndId, dir: &Path, content: &str) {
-    let path = dir.join(id.id.resource_path());
-    let mut file = common::create_resource_file(&path).expect("new file");
-
+async fn create_test_resource(
+    id: ResourceTypeAndId,
+    provider: &Provider,
+    content: &str,
+) -> TreeIdentifier {
     let mut proc = refs_resource::TestResourceProc {};
     let mut resource = proc.new_resource();
 
@@ -23,8 +22,8 @@ fn create_test_resource(id: ResourceTypeAndId, dir: &Path, content: &str) {
         .downcast_mut::<refs_resource::TestResource>()
         .unwrap()
         .content = String::from(content);
-    proc.write_resource(resource.as_ref(), &mut file)
-        .expect("write to file");
+
+    common::write_resource(id, provider, &proc, resource.as_ref()).await
 }
 
 #[tokio::test]
@@ -69,8 +68,9 @@ async fn command_compiler_hash() {
 
 #[tokio::test]
 async fn command_compile() {
-    let work_dir = tempfile::tempdir().unwrap();
-    let (resource_dir, _output_dir) = common::setup_dir(&work_dir);
+    let persistent_content_provider = Config::load_and_instantiate_persistent_provider()
+        .await
+        .unwrap();
 
     let content = "test content";
 
@@ -78,7 +78,8 @@ async fn command_compile() {
         kind: refs_resource::TestResource::TYPE,
         id: ResourceId::new(),
     };
-    create_test_resource(source, &resource_dir, content);
+    let source_manifest_id =
+        create_test_resource(source, &persistent_content_provider, content).await;
 
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
@@ -89,7 +90,7 @@ async fn command_compile() {
         &compile_path,
         &[],
         &[],
-        &resource_dir,
+        &source_manifest_id,
         &common::test_env(),
     );
 

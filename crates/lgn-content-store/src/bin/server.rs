@@ -1,25 +1,18 @@
 //! A content-store implementation that stores immutable assets in a efficient
 //! and cachable manner.
 
+use axum::Router;
 use bytesize::ByteSize;
 use clap::Parser;
-use http::{header, Method};
-use lgn_auth::{jwt::RequestAuthorizer, UserInfo};
-use lgn_cli_utils::termination_handler::AsyncTerminationHandler;
 use lgn_content_store::{
-    AddressProviderConfig, AliasProviderConfig, ContentProviderConfig, DataSpace, GrpcProviderSet,
-    GrpcService, Result,
+    content_store::server, AddressProviderConfig, AliasProviderConfig, ApiProviderSet,
+    ContentProviderConfig, DataSpace, Result, Server,
 };
-use lgn_content_store_proto::content_store_server::ContentStoreServer;
+use lgn_online::server::RouterExt;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::prelude::*;
 use serde::Deserialize;
-use std::{collections::HashMap, net::SocketAddr, time::Duration};
-use tonic::transport::Server;
-use tower_http::{
-    auth::RequireAuthorizationLayer,
-    cors::{AllowOrigin, CorsLayer},
-};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -44,7 +37,7 @@ struct Config {
 }
 
 impl Config {
-    async fn instantiate_providers(&self) -> Result<HashMap<DataSpace, GrpcProviderSet>> {
+    async fn instantiate_providers(&self) -> Result<HashMap<DataSpace, ApiProviderSet>> {
         let mut result = HashMap::new();
 
         for (data_space, provider_set_config) in &self.providers {
@@ -71,8 +64,8 @@ impl ProviderSetConfig {
         "128KiB".parse().unwrap()
     }
 
-    async fn instantiate(&self) -> Result<GrpcProviderSet> {
-        Ok(GrpcProviderSet {
+    async fn instantiate(&self) -> Result<ApiProviderSet> {
+        Ok(ApiProviderSet {
             content_provider: self.content_provider.instantiate().await?,
             alias_provider: self.alias_provider.instantiate().await?,
             content_address_provider: self.address_provider.instantiate().await?,
@@ -102,42 +95,6 @@ async fn main() -> anyhow::Result<()> {
     let config: Config = lgn_config::get("content_store.server")?
         .ok_or_else(|| anyhow::anyhow!("no configuration was found for `content_store.server`"))?;
 
-    let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list(args.origins))
-        .allow_credentials(true)
-        .max_age(Duration::from_secs(60 * 60))
-        .allow_headers(vec![
-            header::ACCEPT,
-            header::ACCEPT_LANGUAGE,
-            header::AUTHORIZATION,
-            header::CONTENT_LANGUAGE,
-            header::CONTENT_TYPE,
-            header::HeaderName::from_static("x-grpc-web"),
-        ])
-        .allow_methods(vec![
-            Method::GET,
-            Method::POST,
-            Method::PUT,
-            Method::HEAD,
-            Method::OPTIONS,
-            Method::CONNECT,
-        ]);
-
-    let validation = lgn_online::Config::load()?
-        .signature_validation
-        .instantiate_validation()
-        .await?;
-
-    let auth_layer =
-        RequireAuthorizationLayer::custom(RequestAuthorizer::<UserInfo, _, _>::new(validation));
-
-    let layer = tower::ServiceBuilder::new() //todo: compose with cors layer
-        .layer(auth_layer)
-        .layer(cors)
-        .into_inner();
-
-    let mut server = Server::builder().accept_http1(true).layer(layer);
-
     let providers = config.instantiate_providers().await?;
 
     if providers.is_empty() {
@@ -158,17 +115,17 @@ async fn main() -> anyhow::Result<()> {
         );
     }
 
-    let grpc_service = GrpcService::new(providers);
+    let server = Arc::new(Server::new(providers));
+    let router = Router::new();
+    let router = server::register_routes(router, server);
+    let router = router.apply_development_router_options();
 
-    let service = ContentStoreServer::new(grpc_service);
-    let server = server.add_service(tonic_web::enable(service));
+    info!("HTTP server listening on: {}", args.listen_endpoint);
 
-    let handler = AsyncTerminationHandler::new()?;
+    axum::Server::bind(&args.listen_endpoint)
+        .serve(router.into_make_service_with_connect_info::<SocketAddr>())
+        .with_graceful_shutdown(async move { lgn_cli_utils::wait_for_termination().await.unwrap() })
+        .await?;
 
-    info!("Listening on {}", args.listen_endpoint);
-
-    tokio::select! {
-        _ = handler.wait() => Ok(()),
-        res = server.serve(args.listen_endpoint) => res.map_err(Into::into),
-    }
+    Ok(())
 }

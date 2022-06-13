@@ -4,8 +4,10 @@ import { DefaultSessionStorage } from "../lib/storage";
 import { connected } from "../lib/store";
 
 export type DevSettingsValue = {
-  editorServerUrl: string;
-  runtimeServerUrl: string;
+  grpcEditorServerUrl: string;
+  grpcRuntimeServerUrl: string;
+  restEditorServerUrl: string;
+  restRuntimeServerUrl: string;
 };
 
 export type DevSettingsStore = Writable<DevSettingsValue>;

@@ -6,7 +6,7 @@ use lgn_tracing::prelude::*;
 use crate::{
     Branch, CanonicalPath, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
     ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result,
-    SqlRepositoryIndex, Tree, WorkspaceRegistration,
+    SqlRepositoryIndex,
 };
 
 #[derive(Debug, Clone)]
@@ -108,16 +108,6 @@ impl Index for LocalIndex {
         self.inner_index.repository_name()
     }
 
-    async fn register_workspace(
-        &self,
-        workspace_registration: &WorkspaceRegistration,
-    ) -> Result<()> {
-        async_span_scope!("LocalIndexBackend::register_workspace");
-        self.inner_index
-            .register_workspace(workspace_registration)
-            .await
-    }
-
     async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
         async_span_scope!("LocalIndexBackend::get_branch");
         self.inner_index.get_branch(branch_name).await
@@ -146,16 +136,6 @@ impl Index for LocalIndex {
     async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
         async_span_scope!("LocalIndexBackend::commit_to_branch");
         self.inner_index.commit_to_branch(commit, branch).await
-    }
-
-    async fn get_tree(&self, id: &str) -> Result<Tree> {
-        async_span_scope!("LocalIndexBackend::get_tree");
-        self.inner_index.get_tree(id).await
-    }
-
-    async fn save_tree(&self, tree: &Tree) -> Result<String> {
-        async_span_scope!("LocalIndexBackend::save_tree");
-        self.inner_index.save_tree(tree).await
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {

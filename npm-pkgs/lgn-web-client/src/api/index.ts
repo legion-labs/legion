@@ -1,21 +1,19 @@
-import {
-  StreamerClientImpl,
-  GrpcWebImpl as StreamingGrpcWebImpl,
-} from "@lgn/proto-streaming/dist/streaming";
+import { Streaming } from "@lgn/apis";
 
-import { bytesToJson, jsonToBytes } from "../lib/api";
+import { blobToJson, jsonToBlob } from "../lib/api";
+import { addAuthToClient } from "../lib/client";
 import log from "../lib/log";
 
-const defaultEditorServerUrl = "[::1]:50001";
-const defaultRuntimeServerUrl = "[::1]:50002";
+const defaultRestEditorServerUrl = "http://[::1]:5051";
+const defaultRestRuntimeServerUrl = "http://[::1]:5052";
 
 export type ServerType = "editor" | "runtime";
 
-let editorClient: StreamerClientImpl;
+let editorClient: Streaming.Client;
 
-let runtimeClient: StreamerClientImpl;
+let runtimeClient: Streaming.Client;
 
-function getClientFor(type: ServerType): StreamerClientImpl {
+function getClientFor(type: ServerType): Streaming.Client {
   switch (type) {
     case "editor":
       return editorClient;
@@ -26,23 +24,43 @@ function getClientFor(type: ServerType): StreamerClientImpl {
 }
 
 export function initApiClient({
-  editorServerUrl = defaultEditorServerUrl,
-  runtimeServerUrl = defaultRuntimeServerUrl,
+  restEditorServerUrl = defaultRestEditorServerUrl,
+  restRuntimeServerUrl = defaultRestRuntimeServerUrl,
+  accessTokenCookieName,
+  fetch,
 }: {
-  editorServerUrl?: string;
-  runtimeServerUrl?: string;
+  restEditorServerUrl?: string;
+  restRuntimeServerUrl?: string;
+  accessTokenCookieName?: string;
+  fetch?: typeof globalThis.fetch;
 } = {}) {
-  editorClient = new StreamerClientImpl(
-    new StreamingGrpcWebImpl(editorServerUrl, {
-      debug: false,
-    })
-  );
+  if (accessTokenCookieName !== undefined) {
+    editorClient = addAuthToClient(
+      new Streaming.Client({
+        baseUri: restEditorServerUrl,
+        fetch,
+      }),
+      accessTokenCookieName
+    );
 
-  runtimeClient = new StreamerClientImpl(
-    new StreamingGrpcWebImpl(runtimeServerUrl, {
-      debug: false,
-    })
-  );
+    runtimeClient = addAuthToClient(
+      new Streaming.Client({
+        baseUri: restRuntimeServerUrl,
+        fetch,
+      }),
+      accessTokenCookieName
+    );
+  } else {
+    editorClient = new Streaming.Client({
+      baseUri: restEditorServerUrl,
+      fetch,
+    });
+
+    runtimeClient = new Streaming.Client({
+      baseUri: restRuntimeServerUrl,
+      fetch,
+    });
+  }
 }
 
 /**
@@ -58,11 +76,13 @@ export async function initializeStream(
   const client = getClientFor(serverType);
 
   const response = await client.initializeStream({
+    params: { "space-id": "0", "workspace-id": "0" },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    rtcSessionDescription: jsonToBytes(localSessionDescription.toJSON()),
+    body: jsonToBlob(localSessionDescription.toJSON()),
   });
 
-  return new RTCSessionDescription(bytesToJson(response.rtcSessionDescription));
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  return new RTCSessionDescription(await blobToJson(response.value));
 }
 
 /**

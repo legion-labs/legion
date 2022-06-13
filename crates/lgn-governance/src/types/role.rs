@@ -9,7 +9,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::{Error, PermissionSet, Result};
+use super::{Error, PermissionSet, Result, SpaceId, UserId};
 
 #[macro_export]
 macro_rules! declare_built_in_roles {
@@ -216,4 +216,12 @@ impl IntoIterator for RoleList {
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
+}
+
+/// Defines the assignation of a role to a user, in an optional space.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RoleUserAssignation {
+    pub user_id: UserId,
+    pub role_id: RoleId,
+    pub space_id: Option<SpaceId>,
 }

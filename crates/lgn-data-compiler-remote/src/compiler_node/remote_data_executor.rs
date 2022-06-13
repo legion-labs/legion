@@ -3,16 +3,13 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-use crate::node_crunch::nc_error::NCError;
-use lgn_data_runtime::ResourcePathId;
-use serde::{Deserialize, Serialize};
-
 use lgn_content_store::{Config, Identifier, Provider};
-use lgn_data_compiler::{
-    compiler_api::CompilerError, compiler_cmd::CompilerCompileCmd, CompiledResource,
-};
+use lgn_data_compiler::{compiler_api::CompilerError, compiler_cmd::CompilerCompileCmd};
 use lgn_tracing::info;
+use serde::{Deserialize, Serialize};
 use tokio::{fs, io::AsyncWriteExt};
+
+use crate::node_crunch::nc_error::NCError;
 
 /// The outgoing message for the Data-Executor server, requesting a compilation.
 #[derive(Serialize, Deserialize)]
@@ -21,6 +18,7 @@ pub struct CompileMessage {
     pub files_to_package: Vec<(String, Identifier)>,
 }
 
+#[allow(dead_code)]
 async fn deploy_remotely(
     provider: &Provider,
     full_file_path: &Path,
@@ -37,31 +35,10 @@ async fn deploy_remotely(
     Ok(())
 }
 
-async fn write_res(
-    provider: &Provider,
-    res: &ResourcePathId,
-    resource_dir: &Path,
-    files_to_package: Arc<RwLock<Vec<(String, Identifier)>>>,
-) -> Result<(), CompilerError> {
-    let mut source = PathBuf::from(resource_dir);
-    source.push(&res.source_resource().id.resource_path());
-
-    deploy_remotely(
-        provider,
-        &source,
-        PathBuf::from(resource_dir).parent().unwrap(),
-        files_to_package,
-    )
-    .await
-}
-
+#[allow(dead_code)]
 /// Upload the data compiler & its associated input dependencies to the CAS and create a message.
 pub(crate) async fn collect_local_resources(
     executable: &Path,
-    resource_dir: &Path,
-    compile_path: &ResourcePathId,
-    dependencies: &[ResourcePathId],
-    _derived_deps: &[CompiledResource],
     build_script: &CompilerCompileCmd,
     data_provider: &Provider,
 ) -> Result<String, CompilerError> {
@@ -76,20 +53,6 @@ pub(crate) async fn collect_local_resources(
         files_to_package.clone(),
     )
     .await?;
-
-    // Write the main resource.
-    write_res(
-        data_provider,
-        compile_path,
-        resource_dir,
-        files_to_package.clone(),
-    )
-    .await?;
-
-    // Write the direct offline dependencies
-    for dep in dependencies {
-        write_res(data_provider, dep, resource_dir, files_to_package.clone()).await?;
-    }
 
     // Write the build script into the message.
     let msg = CompileMessage {

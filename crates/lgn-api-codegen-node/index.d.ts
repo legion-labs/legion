@@ -16,6 +16,8 @@ export interface GenerateOption {
   withPackageJson?: boolean
   /** Skips code formatting */
   skipFormat?: boolean
+  /** Aliases for external API references */
+  aliasMappings?: Record<string, string>
 }
 /**
  * Generate api clients.

@@ -1,30 +1,29 @@
-use core::fmt;
 use std::{
-    collections::{hash_map::Entry, HashMap},
-    fs::{self, File, OpenOptions},
-    io::Seek,
+    collections::HashMap,
+    fmt,
+    io::Write,
     path::{Path, PathBuf},
-    str::FromStr,
     sync::Arc,
 };
 
-use lgn_content_store::Provider;
+use async_recursion::async_recursion;
+use lgn_content_store::{
+    indexing::{IndexKey, ResourceIdentifier, SharedTreeIdentifier, TreeIdentifier},
+    Provider,
+};
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId, ResourcePathId, ResourceType,
-    ResourceTypeAndId,
+    new_resource_type_and_id_indexer, AssetRegistry, AssetRegistryError, HandleUntyped, ResourceId,
+    ResourcePathId, ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
-    CanonicalPath, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Staging,
-    Workspace, WorkspaceConfig, WorkspaceRegistration,
+    CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
 };
 use lgn_tracing::error;
 use thiserror::Error;
 
 use crate::resource::{metadata::Metadata, ResourcePathName};
 
-const METADATA_EXT: &str = "meta";
-
-pub use lgn_source_control::data_types::Tree;
+use super::deserialize_and_skip_metadata;
 
 /// A source-control-backed state of the project
 ///
@@ -71,9 +70,7 @@ pub use lgn_source_control::data_types::Tree;
 /// Note: Resource's [`ResourcePathName`] is only used for display purposes and
 /// can be changed freely.
 pub struct Project {
-    project_dir: PathBuf,
-    resource_dir: PathBuf,
-    workspace: Workspace,
+    workspace: Workspace<ResourceTypeAndIdIndexer>,
     deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
 }
 
@@ -98,6 +95,12 @@ pub enum Error {
     /// RegistryRegistry Error
     #[error("ResourceRegistry Error: '{1}' on resource '{0}'")]
     ResourceRegistry(ResourceTypeAndId, #[source] AssetRegistryError),
+    /// Name already used
+    #[error("name '{0}' already used by resource '{1}'")]
+    NameAlreadyUsed(ResourcePathName, ResourceTypeAndId),
+    /// Resource not found in content-store
+    #[error("resource '{0}' not found")]
+    ResourceNotFound(ResourceTypeAndId),
 }
 
 /// The type of change done to a resource.
@@ -110,6 +113,7 @@ pub enum ChangeType {
     /// Resource has been modified.
     Edit,
 }
+
 impl<'a> From<&'a lgn_source_control::ChangeType> for ChangeType {
     fn from(change_type: &lgn_source_control::ChangeType) -> Self {
         match change_type {
@@ -124,13 +128,36 @@ impl<'a> From<&'a lgn_source_control::ChangeType> for ChangeType {
 }
 
 impl Project {
-    /// Returns directory the project is in, relative to CWD.
-    pub fn project_dir(&self) -> &Path {
-        &self.project_dir
+    /// Returns current manifest (main index) of the workspace associated with the project
+    pub fn source_manifest_id(&self) -> SharedTreeIdentifier {
+        self.workspace.clone_main_index_id()
     }
 
-    /// Same as [`Self::create`] but it creates an origin source control index at ``project_dir/remote``.
-    pub async fn create_with_remote_mock(
+    /// Creates a new project index file turning the containing directory into a
+    /// project.
+    pub async fn new(
+        repository_index: impl RepositoryIndex,
+        repository_name: &RepositoryName,
+        branch_name: &str,
+        source_control_content_provider: Arc<Provider>,
+    ) -> Result<Self, Error> {
+        let workspace = Workspace::new(
+            repository_index,
+            repository_name,
+            branch_name,
+            source_control_content_provider,
+            new_resource_type_and_id_indexer(),
+        )
+        .await?;
+
+        Ok(Self {
+            workspace,
+            deleted_pending: HashMap::new(),
+        })
+    }
+
+    /// Same as [`Self::new`] but it creates an origin source control index at ``project_dir/remote``.
+    pub async fn new_with_remote_mock(
         project_dir: impl AsRef<Path>,
         source_control_content_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
@@ -140,76 +167,16 @@ impl Project {
 
         repository_index.create_repository(&repository_name).await?;
 
-        Self::create(
-            project_dir,
+        Self::new(
             repository_index,
-            repository_name,
+            &repository_name,
+            "main",
             source_control_content_provider,
         )
         .await
     }
 
-    /// Creates a new project index file turning the containing directory into a
-    /// project.
-    pub async fn create(
-        project_dir: impl AsRef<Path>,
-        repository_index: impl RepositoryIndex,
-        repository_name: RepositoryName,
-        source_control_content_provider: Arc<Provider>,
-    ) -> Result<Self, Error> {
-        let resource_dir = project_dir.as_ref().join("offline");
-        if !resource_dir.exists() {
-            std::fs::create_dir_all(&resource_dir)
-                .map_err(|e| Error::Io(resource_dir.clone(), e))?;
-        }
-
-        let workspace = Workspace::init(
-            &resource_dir,
-            repository_index,
-            WorkspaceConfig::new(
-                repository_name,
-                WorkspaceRegistration::new_with_current_user(),
-            ),
-            source_control_content_provider,
-        )
-        .await?;
-
-        Ok(Self {
-            project_dir: project_dir.as_ref().to_owned(),
-            resource_dir,
-            workspace,
-            deleted_pending: HashMap::new(),
-        })
-    }
-
-    /// Opens the project index specified
-    pub async fn open(
-        project_dir: impl AsRef<Path>,
-        repository_index: impl RepositoryIndex,
-        source_control_content_provider: Arc<Provider>,
-    ) -> Result<Self, Error> {
-        let resource_dir = project_dir.as_ref().join("offline");
-
-        let workspace = Workspace::load(
-            &resource_dir,
-            repository_index,
-            source_control_content_provider,
-        )
-        .await?;
-
-        Ok(Self {
-            project_dir: project_dir.as_ref().to_owned(),
-            resource_dir,
-            workspace,
-            deleted_pending: HashMap::new(),
-        })
-    }
-
-    /// Deletes the project by deleting the index file.
-    pub async fn delete(self) {
-        std::fs::remove_dir_all(self.resource_dir()).unwrap_or(());
-    }
-
+    /*
     /// Return the list of stages resources
     pub async fn get_staged_changes(&self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
         let local_changes = self.workspace.get_staged_changes().await?;
@@ -228,81 +195,40 @@ impl Project {
 
         Ok(changes)
     }
-
-    /// Return the list of local resources
-    pub async fn local_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let local_changes = self.workspace.get_staged_changes().await?;
-
-        let changes = local_changes
-            .iter()
-            .map(|(path, _)| PathBuf::from(path.to_string()))
-            .filter(|path| path.extension().is_none())
-            .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
-            .collect::<Vec<_>>();
-
-        Ok(changes)
-    }
-
-    async fn remote_resource_list(&self) -> Result<Vec<ResourceId>, Error> {
-        let tree = self.workspace.get_current_tree().await?;
-
-        let files = tree
-            .files()
-            .map(|(path, _)| PathBuf::from(path.to_string()))
-            .filter(|path| path.extension().is_none())
-            .map(|path| ResourceId::from_str(path.file_name().unwrap().to_str().unwrap()).unwrap())
-            .collect::<Vec<_>>();
-
-        Ok(files)
-    }
+    */
 
     /// Returns an iterator on the list of resources.
     ///
     /// This method flattens the `remote` and `local` resources into one list.
-    pub async fn resource_list(&self) -> Vec<ResourceId> {
-        let mut all = self.local_resource_list().await.unwrap();
-        match self.remote_resource_list().await {
-            Ok(remote) => all.extend(remote),
-            Err(err) => lgn_tracing::error!("Error fetching remote resources: {}", err),
-        }
-        all
+    pub async fn resource_list(&self) -> Vec<ResourceTypeAndId> {
+        self.get_resources()
+            .await
+            .unwrap()
+            .iter()
+            .map(|(index_key, _resource_id)| index_key.into())
+            .collect()
     }
 
     /// Finds resource by its name and returns its `ResourceTypeAndId`.
     pub async fn find_resource(&self, name: &ResourcePathName) -> Result<ResourceTypeAndId, Error> {
-        // this below would be better expressed as try_map (still experimental).
-        let res = self
-            .resource_list()
-            .await
-            .into_iter()
-            .find_map(|id| match self.read_meta(id) {
-                Ok(meta) => {
-                    if &meta.name == name {
-                        Some(Ok(ResourceTypeAndId {
-                            id,
-                            kind: meta.type_id,
-                        }))
-                    } else {
-                        None
-                    }
-                }
-                Err(_err) => None, // TODO: Ignore for now to fix deleted files
-            });
-
-        match res {
-            None => Err(Error::FileNotFound(name.to_string())),
-            Some(e) => e,
-        }
+        let (meta, _resource_id) = self.read_meta_by_name(name).await?;
+        Ok(meta.type_id)
     }
 
     /// Checks if a resource with a given name is part of the project.
     pub async fn exists_named(&self, name: &ResourcePathName) -> bool {
-        self.find_resource(name).await.is_ok()
+        self.workspace
+            .resource_exists_by_path(name.as_str())
+            .await
+            .unwrap()
     }
 
     /// Checks if a resource is part of the project.
-    pub async fn exists(&self, id: ResourceId) -> bool {
-        self.resource_list().await.iter().any(|v| v == &id)
+    pub async fn exists(&self, type_id: ResourceTypeAndId) -> bool {
+        self.workspace
+            .resource_exists(&type_id.into())
+            .await
+            .unwrap()
     }
 
     /// From a specific `ResourcePathName`, validate that the resource doesn't already exists
@@ -359,13 +285,17 @@ impl Project {
     pub async fn add_resource(
         &mut self,
         name: ResourcePathName,
-        kind_name: &str,
         kind: ResourceType,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
     ) -> Result<ResourceTypeAndId, Error> {
-        self.add_resource_with_id(name, kind_name, kind, ResourceId::new(), handle, registry)
-            .await
+        let type_id = ResourceTypeAndId {
+            kind,
+            id: ResourceId::new(),
+        };
+        self.add_resource_with_id(name, type_id, handle, registry)
+            .await?;
+        Ok(type_id)
     }
 
     /// Add a given resource of a given type and id with an associated `.meta`.
@@ -380,75 +310,67 @@ impl Project {
     pub async fn add_resource_with_id(
         &mut self,
         name: ResourcePathName,
-        kind_name: &str,
-        kind: ResourceType,
-        id: ResourceId,
+        type_id: ResourceTypeAndId,
         handle: impl AsRef<HandleUntyped>,
         registry: &AssetRegistry,
-    ) -> Result<ResourceTypeAndId, Error> {
-        let meta_path = self.metadata_path(id);
-        let resource_path = self.resource_path(id);
-
-        let directory = {
-            let mut directory = resource_path.clone();
-            directory.pop();
-            directory
-        };
-
-        std::fs::create_dir_all(&directory).map_err(|e| Error::Io(directory.clone(), e))?;
-
-        let build_dependencies = {
-            let mut resource_file =
-                File::create(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
-
-            let (_written, build_deps) = registry
-                .serialize_resource(kind, handle, &mut resource_file)
-                .map_err(|e| Error::ResourceRegistry(ResourceTypeAndId { kind, id }, e))?;
-            build_deps
-        };
-
-        let meta_file = File::create(&meta_path).map_err(|e| {
-            fs::remove_file(&resource_path).unwrap();
-            Error::Io(meta_path.clone(), e)
-        })?;
-
-        let metadata = Metadata::new_with_dependencies(name, kind_name, kind, &build_dependencies);
-        serde_json::to_writer_pretty(meta_file, &metadata).unwrap();
+    ) -> Result<(), Error> {
+        let contents = Self::get_resource_contents(&name, type_id, handle, registry)?;
 
         self.workspace
-            .add_files([meta_path.as_path(), resource_path.as_path()])
+            .add_resource(&type_id.into(), name.as_str(), &contents)
             .await?;
 
-        let type_id = ResourceTypeAndId { kind, id };
+        Ok(())
+    }
 
-        Ok(type_id)
+    fn get_resource_contents(
+        name: &ResourcePathName,
+        type_id: ResourceTypeAndId,
+        handle: impl AsRef<HandleUntyped>,
+        registry: &AssetRegistry,
+    ) -> Result<Vec<u8>, Error> {
+        let mut contents = std::io::Cursor::new(Vec::new());
+
+        let dependencies = registry
+            .get_build_dependencies(type_id.kind, &handle)
+            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
+
+        // pre-pend metadata before serialized resource
+        let metadata = Metadata {
+            name: name.clone(),
+            type_id,
+            dependencies,
+        };
+        metadata.serialize(&mut contents);
+
+        let _written = registry
+            .serialize_resource_without_dependencies(type_id.kind, &handle, &mut contents)
+            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
+
+        Ok(contents.into_inner())
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub async fn delete_resource(&mut self, id: ResourceId) -> Result<(), Error> {
-        let resource_path = self.resource_path(id);
-        let metadata_path = self.metadata_path(id);
-
-        {
-            let files = [metadata_path.as_path(), resource_path.as_path()];
-
-            self.workspace.delete_files(files).await?;
-        }
+    pub async fn delete_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
+        let name = self.raw_resource_name(type_id).await?;
+        self.workspace
+            .delete_resource(&type_id.into(), name.as_str())
+            .await?;
 
         Ok(())
     }
 
     /// Delete the resource+meta files, remove from Registry and Flush index
-    pub async fn revert_resource(&mut self, id: ResourceId) -> Result<(), Error> {
-        let resource_path = self.resource_path(id);
-        let metadata_path = self.metadata_path(id);
+    pub async fn revert_resource(&mut self, _type_id: ResourceTypeAndId) -> Result<(), Error> {
+        // let resource_path = self.resource_path(id);
+        // let metadata_path = self.metadata_path(id);
 
-        {
-            let files = [metadata_path.as_path(), resource_path.as_path()];
-            self.workspace
-                .revert_files(files, Staging::StagedAndUnstaged)
-                .await?;
-        }
+        // {
+        //     let files = [metadata_path.as_path(), resource_path.as_path()];
+        //     self.workspace
+        //         .revert_files(files, Staging::StagedAndUnstaged)
+        //         .await?;
+        // }
 
         Ok(())
     }
@@ -459,222 +381,176 @@ impl Project {
         &mut self,
         type_id: ResourceTypeAndId,
         handle: impl AsRef<HandleUntyped>,
-        resources: &AssetRegistry,
+        registry: &AssetRegistry,
     ) -> Result<(), Error> {
-        let resource_path = self.resource_path(type_id.id);
-        let metadata_path = self.metadata_path(type_id.id);
-
-        self.checkout(type_id).await?;
-
-        let mut meta_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&metadata_path)
-            .map_err(|e| Error::Io(metadata_path.clone(), e))?;
-        let mut metadata: Metadata = serde_json::from_reader(&meta_file)
-            .map_err(|e| Error::Parse(metadata_path.clone(), e))?;
-
-        let build_dependencies = {
-            let mut resource_file = OpenOptions::new()
-                .write(true)
-                .truncate(true)
-                .open(&resource_path)
-                .map_err(|e| Error::Io(resource_path.clone(), e))?;
-
-            let (_written, build_deps) = resources
-                .serialize_resource(type_id.kind, handle, &mut resource_file)
-                .map_err(|e| Error::ResourceRegistry(type_id, e))?;
-            build_deps
-        };
-
-        metadata.dependencies = build_dependencies;
-
-        meta_file.set_len(0).unwrap();
-        meta_file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&meta_file, &metadata).unwrap(); // todo(kstasik): same as above.
+        let (meta, resource_id) = self.read_meta(type_id).await?;
+        let contents = Self::get_resource_contents(&meta.name, type_id, handle, registry)?;
 
         self.workspace
-            .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
+            .update_resource(&type_id.into(), meta.name.as_str(), &contents, &resource_id)
             .await?;
 
         Ok(())
     }
 
     /// Loads a resource of a given id.
-    pub fn load_resource(
+    pub async fn load_resource(
         &self,
         type_id: ResourceTypeAndId,
         resources: &AssetRegistry,
     ) -> Result<HandleUntyped, Error> {
-        let resource_path = self.resource_path(type_id.id);
+        let (resource_bytes, _resource_id) = self.workspace.load_resource(&type_id.into()).await?;
 
-        let mut resource_file =
-            File::open(&resource_path).map_err(|e| Error::Io(resource_path.clone(), e))?;
-        let handle = resources
-            .deserialize_resource(type_id, &mut resource_file)
-            .map_err(|e| Error::ResourceRegistry(type_id, e))?;
-        Ok(handle)
+        let mut reader = std::io::Cursor::new(resource_bytes);
+
+        // skip over the pre-pended metadata
+        deserialize_and_skip_metadata(&mut reader);
+
+        resources
+            .deserialize_resource(type_id, &mut reader)
+            .map_err(|e| Error::ResourceRegistry(type_id, e))
     }
 
     /// Returns information about a given resource from its `.meta` file.
-    pub fn resource_info(
+    pub async fn resource_dependencies(
         &self,
-        id: ResourceId,
-    ) -> Result<(ResourceType, Vec<ResourcePathId>), Error> {
-        let meta = self.read_meta(id)?;
-        let dependencies = meta.dependencies;
-
-        Ok((meta.type_id, dependencies))
-    }
-
-    /// Returns type of the resource.
-    pub fn resource_type(&self, id: ResourceId) -> Result<ResourceType, Error> {
-        let meta = self.read_meta(id)?;
-        Ok(meta.type_id)
+        type_id: ResourceTypeAndId,
+    ) -> Result<Vec<ResourcePathId>, Error> {
+        let (meta, _resource_id) = self.read_meta(type_id).await?;
+        Ok(meta.dependencies)
     }
 
     /// Returns the name of the resource from its `.meta` file.
-    pub fn resource_name(&self, id: ResourceId) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(id)?;
-        if let Some((resource_id, suffix)) = meta
-            .name
+    #[async_recursion]
+    pub async fn resource_name(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<ResourcePathName, Error> {
+        let name = self.raw_resource_name(type_id).await?;
+        if let Some((resource_id, suffix)) = name
             .as_str()
             .strip_prefix("/!")
             .and_then(|v| v.split_once('/'))
         {
             if let Ok(type_id) = <ResourceTypeAndId as std::str::FromStr>::from_str(resource_id) {
-                if let Ok(mut parent_path) = self.resource_name(type_id.id) {
+                if let Ok(mut parent_path) = self.resource_name(type_id).await {
                     parent_path.push(suffix);
                     return Ok(parent_path);
                 }
             }
         }
-        Ok(meta.name)
+        Ok(name)
     }
 
     /// Returns the name of the resource from its `.meta` file.
     pub async fn deleted_resource_info(
         &mut self,
-        id: ResourceId,
-    ) -> Result<(ResourcePathName, ResourceType), Error> {
-        let metadata_path = self.metadata_path(id);
+        _type_id: ResourceTypeAndId,
+    ) -> Result<ResourcePathName, Error> {
+        // let metadata_path = self.metadata_path(id);
 
-        match self.deleted_pending.entry(id) {
-            Entry::Vacant(entry) => {
-                let tree = self.workspace.get_staged_changes().await?;
+        // match self.deleted_pending.entry(id) {
+        //     Entry::Vacant(entry) => {
+        //         let tree = self.workspace.get_staged_changes().await?;
 
-                let meta_lsc_path =
-                    CanonicalPath::new_from_canonical_paths(self.workspace.root(), &metadata_path)
-                        .map_err(|err| {
-                            error!(
-                                "Failed to retrieve delete info for Resource {}: {}",
-                                id, err
-                            );
-                            Error::SourceControl(err)
-                        })?;
+        //         let meta_lsc_path =
+        //             CanonicalPath::new_from_canonical_paths(self.workspace.root(), &metadata_path)
+        //                 .map_err(|err| {
+        //                     error!(
+        //                         "Failed to retrieve delete info for Resource {}: {}",
+        //                         id, err
+        //                     );
+        //                     Error::SourceControl(err)
+        //                 })?;
 
-                if let Some(lgn_source_control::ChangeType::Delete { old_id }) = tree
-                    .get(&meta_lsc_path)
-                    .map(lgn_source_control::Change::change_type)
-                {
-                    match self.workspace.provider().read(old_id).await {
-                        Ok(data) => {
-                            if let Ok(meta) = serde_json::from_slice::<Metadata>(&data) {
-                                let value = (meta.name, meta.type_id);
-                                entry.insert(value.clone());
-                                return Ok(value);
-                            }
-                        }
-                        Err(err) => {
-                            error!(
-                                "Failed to retrieve delete info for Resource {}: {}",
-                                id, err
-                            );
-                        }
-                    }
-                }
+        //         if let Some(lgn_source_control::ChangeType::Delete { old_id }) = tree
+        //             .get(&meta_lsc_path)
+        //             .map(lgn_source_control::Change::change_type)
+        //         {
+        //             match self.workspace.provider().read(old_id).await {
+        //                 Ok(data) => {
+        //                     if let Ok(meta) = serde_json::from_slice::<Metadata>(&data) {
+        //                         let value = (meta.name, meta.type_id);
+        //                         entry.insert(value.clone());
+        //                         return Ok(value);
+        //                     }
+        //                 }
+        //                 Err(err) => {
+        //                     error!(
+        //                         "Failed to retrieve delete info for Resource {}: {}",
+        //                         id, err
+        //                     );
+        //                 }
+        //             }
+        //         }
 
-                Err(Error::FileNotFound(meta_lsc_path.to_string()))
-            }
-            Entry::Occupied(entry) => Ok(entry.get().clone()),
-        }
+        //         Err(Error::FileNotFound(meta_lsc_path.to_string()))
+        //     }
+        //     Entry::Occupied(entry) => Ok(entry.get().clone()),
+        // }
+
+        Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
     /// Returns the raw name of the resource from its `.meta` file.
-    pub fn raw_resource_name(&self, type_id: ResourceId) -> Result<ResourcePathName, Error> {
-        let meta = self.read_meta(type_id)?;
+    pub async fn raw_resource_name(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<ResourcePathName, Error> {
+        let (meta, _resource_id) = self.read_meta(type_id).await?;
         Ok(meta.name)
     }
 
-    /// Returns the type name of the resource from its `.meta` file.
-    pub fn resource_type_name(&self, id: ResourceId) -> Result<String, Error> {
-        let meta = self.read_meta(id)?;
-        Ok(meta.type_name)
-    }
-
-    /// Returns the root directory where resources are located.
-    pub fn resource_dir(&self) -> PathBuf {
-        self.resource_dir.clone()
-    }
-
-    fn metadata_path(&self, id: ResourceId) -> PathBuf {
-        let mut path = self.resource_dir();
-        path.push(id.resource_path());
-        path.set_extension(METADATA_EXT);
-        path
-    }
-
-    fn resource_path(&self, id: ResourceId) -> PathBuf {
-        self.resource_dir().join(id.resource_path())
-    }
-
-    /// Moves a `remote` resources to the list of `local` resources.
-    pub async fn checkout(&mut self, id: ResourceTypeAndId) -> Result<(), Error> {
-        let metadata_path = self.metadata_path(id.id);
-        let resource_path = self.resource_path(id.id);
-        self.workspace
-            .checkout_files([metadata_path.as_path(), resource_path.as_path()])
-            .await
-            .map_err(Error::SourceControl)
-            .map(|_e| ())
-    }
-
-    fn read_meta(&self, id: ResourceId) -> Result<Metadata, Error> {
-        let path = self.metadata_path(id);
-
-        let file = File::open(&path).map_err(|e| Error::Io(path.clone(), e))?;
-
-        let result = serde_json::from_reader(file).map_err(|e| Error::Parse(path, e))?;
-        Ok(result)
-    }
-
-    async fn update_meta<F>(&self, id: ResourceId, mut func: F)
-    where
-        F: FnMut(&mut Metadata),
-    {
-        let path = self.metadata_path(id);
-
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&path)
-            .unwrap(); // todo(kstasik): return a result and propagate an error
-
-        let mut meta = serde_json::from_reader(&file).unwrap();
-
-        func(&mut meta);
-
-        file.set_len(0).unwrap();
-        file.seek(std::io::SeekFrom::Start(0)).unwrap();
-        serde_json::to_writer_pretty(&file, &meta).unwrap();
-
+    async fn read_meta(
+        &self,
+        type_id: ResourceTypeAndId,
+    ) -> Result<(Metadata, ResourceIdentifier), Error> {
+        if let Some(resource_id) = self
+            .workspace
+            .get_resource_identifier(&type_id.into())
+            .await?
         {
-            self.workspace
-                .checkout_files([path.as_path()])
-                .await
-                .map_err(Error::SourceControl)
-                .unwrap();
+            let metadata = self.read_meta_by_resource_id(&resource_id).await?;
+            Ok((metadata, resource_id))
+        } else {
+            Err(Error::SourceControl(
+                lgn_source_control::Error::ResourceNotFoundById { id: type_id.into() },
+            ))
         }
+    }
+
+    async fn read_meta_by_name(
+        &self,
+        name: &ResourcePathName,
+    ) -> Result<(Metadata, ResourceIdentifier), Error> {
+        if let Some(resource_id) = self
+            .workspace
+            .get_resource_identifier_by_path(name.as_str())
+            .await?
+        {
+            let metadata = self.read_meta_by_resource_id(&resource_id).await?;
+            Ok((metadata, resource_id))
+        } else {
+            Err(Error::SourceControl(
+                lgn_source_control::Error::ResourceNotFoundByPath {
+                    path: name.as_str().to_owned(),
+                },
+            ))
+        }
+    }
+
+    async fn read_meta_by_resource_id(
+        &self,
+        resource_id: &ResourceIdentifier,
+    ) -> Result<Metadata, Error> {
+        let resource_bytes = self.workspace.load_resource_by_id(resource_id).await?;
+
+        let mut reader = std::io::Cursor::new(resource_bytes);
+
+        // just read the pre-pended metadata
+        let metadata = Metadata::deserialize(&mut reader);
+
+        Ok(metadata)
     }
 
     /// Change the name of the resource.
@@ -686,22 +562,44 @@ impl Project {
         type_id: ResourceTypeAndId,
         new_name: &ResourcePathName,
     ) -> Result<ResourcePathName, Error> {
-        self.checkout(type_id).await?;
+        let (resource_bytes, resource_id) = self.workspace.load_resource(&type_id.into()).await?;
+        let mut reader = std::io::Cursor::new(resource_bytes);
 
-        let mut old_name: Option<ResourcePathName> = None;
-        self.update_meta(type_id.id, |data| {
-            old_name = Some(data.rename(new_name));
-        })
-        .await;
+        // read existing pre-pended metadata
+        let mut metadata = Metadata::deserialize(&mut reader);
+        let old_name = metadata.rename(new_name);
 
-        let metadata_path = self.metadata_path(type_id.id);
-        let resource_path = self.resource_path(type_id.id);
-        self.workspace
-            .add_files([metadata_path.as_path(), resource_path.as_path()]) // add
-            .await
-            .map_err(Error::SourceControl)?;
+        if new_name != &old_name {
+            // already used?
+            if let Ok(existing_type_id) = self.find_resource(new_name).await {
+                return Err(Error::NameAlreadyUsed(new_name.clone(), existing_type_id));
+            }
 
-        Ok(old_name.unwrap())
+            // update resource contents since embedded metadata has changed
+            let mut contents = std::io::Cursor::new(Vec::new());
+            metadata.serialize(&mut contents);
+            let resource_bytes = {
+                let pos = reader.position() as usize;
+                let resource_bytes = reader.into_inner();
+                resource_bytes[pos..].to_vec()
+            };
+            contents
+                .write_all(&resource_bytes)
+                .expect("failed to transfert buffer contents");
+            let contents = contents.into_inner();
+
+            self.workspace
+                .update_resource_and_path(
+                    &type_id.into(),
+                    old_name.as_str(),
+                    new_name.as_str(),
+                    &contents,
+                    &resource_id,
+                )
+                .await?;
+        }
+
+        Ok(old_name)
     }
 
     /// Moves `local` resources to `remote` resource list.
@@ -715,48 +613,63 @@ impl Project {
     }
 
     /// Pulls all changes from the origin.
-    pub async fn sync_latest(&mut self) -> Result<Vec<(ResourceId, ChangeType)>, Error> {
-        let (_, changed) = self.workspace.sync().await.map_err(Error::SourceControl)?;
+    pub async fn sync_latest(&mut self) -> Result<Vec<(ResourceTypeAndId, ChangeType)>, Error> {
+        // let (_, changed) = self.workspace.sync().await.map_err(Error::SourceControl)?;
 
-        let resources = changed
-            .iter()
-            .filter_map(|change| {
-                let id = change
-                    .canonical_path()
-                    .name()
-                    .filter(|filename| !filename.contains('.')) // skip .meta files
-                    .map(|filename| (ResourceId::from_str(filename).unwrap()));
+        // let resources = changed
+        //     .iter()
+        //     .filter_map(|change| {
+        //         let id = change
+        //             .canonical_path()
+        //             .name()
+        //             .filter(|filename| !filename.contains('.')) // skip .meta files
+        //             .map(|filename| (ResourceId::from_str(filename).unwrap()));
 
-                id.map(|id| (id, change.change_type().into()))
-            })
-            .collect::<Vec<_>>();
-        Ok(resources)
+        //         id.map(|id| (id, change.change_type().into()))
+        //     })
+        //     .collect::<Vec<_>>();
+        // Ok(resources)
+
+        Err(Error::FileNotFound("not implemented".to_owned()))
     }
 
-    /// Returns the current state of the workspace that includes staged changes.
-    pub async fn tree(&self) -> Result<Tree, Error> {
-        let remote = self
-            .workspace
-            .get_current_tree()
+    /// Returns list of resources stored in the content store
+    pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
+        self.workspace
+            .get_resources()
             .await
-            .map_err(Error::SourceControl)?;
+            .map_err(Error::SourceControl)
+    }
 
-        let staged_changes = self
+    /// Return the list of resources that have pending (uncommitted) changes
+    pub async fn get_pending_changes(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
+        Ok(self
             .workspace
-            .get_staged_changes()
-            .await
-            .map_err(Error::SourceControl)?;
+            .get_pending_changes()
+            .await?
+            .into_iter()
+            .map(Into::into)
+            .collect())
+    }
 
-        let local = remote
-            .with_changes(staged_changes.values())
-            .map_err(Error::SourceControl)?;
-        Ok(local)
+    /// Return the list of all resources that were previously committed
+    pub async fn get_committed_resources(
+        &self,
+    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>, Error> {
+        self.workspace
+            .get_committed_resources()
+            .await
+            .map_err(Error::SourceControl)
     }
 
     /// Returns the checksum of the root project directory at the current state.
-    pub async fn root_checksum(&self) -> Result<String, Error> {
-        let tree = self.tree().await?;
-        Ok(tree.id())
+    pub fn root_checksum(&self) -> (TreeIdentifier, TreeIdentifier) {
+        self.workspace.indices()
+    }
+
+    /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.
+    pub async fn has_pending_changes(&self) -> bool {
+        self.workspace.has_pending_changes().await
     }
 }
 
@@ -781,11 +694,11 @@ mod tests {
     use crate::resource::project::Project;
     use crate::resource::ResourcePathName;
 
-    const RESOURCE_TEXTURE: &str = "texture";
-    const RESOURCE_MATERIAL: &str = "material";
-    const RESOURCE_GEOMETRY: &str = "geometry";
-    const RESOURCE_SKELETON: &str = "skeleton";
-    const RESOURCE_ACTOR: &str = "actor";
+    const RESOURCE_TEXTURE: ResourceType = ResourceType::new(b"texture");
+    const RESOURCE_MATERIAL: ResourceType = ResourceType::new(b"material");
+    const RESOURCE_GEOMETRY: ResourceType = ResourceType::new(b"geometry");
+    const RESOURCE_SKELETON: ResourceType = ResourceType::new(b"skeleton");
+    const RESOURCE_ACTOR: ResourceType = ResourceType::new(b"actor");
 
     #[resource("null")]
     #[derive(Clone)]
@@ -870,44 +783,26 @@ mod tests {
     #[allow(clippy::too_many_lines)]
     async fn create_actor(project: &mut Project) -> Arc<AssetRegistry> {
         let resources = AssetRegistryOptions::new()
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_TEXTURE.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_MATERIAL.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_GEOMETRY.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_SKELETON.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
-            .add_processor_ext(
-                ResourceType::new(RESOURCE_ACTOR.as_bytes()),
-                Box::new(NullResourceProc {}),
-            )
+            .add_processor_ext(RESOURCE_TEXTURE, Box::new(NullResourceProc {}))
+            .add_processor_ext(RESOURCE_MATERIAL, Box::new(NullResourceProc {}))
+            .add_processor_ext(RESOURCE_GEOMETRY, Box::new(NullResourceProc {}))
+            .add_processor_ext(RESOURCE_SKELETON, Box::new(NullResourceProc {}))
+            .add_processor_ext(RESOURCE_ACTOR, Box::new(NullResourceProc {}))
             .create()
             .await;
 
-        let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("albedo.texture"),
                 RESOURCE_TEXTURE,
-                texture_type,
-                resources.new_resource(texture_type).unwrap(),
+                resources.new_resource(RESOURCE_TEXTURE).unwrap(),
                 &resources,
             )
             .await
             .unwrap();
 
-        let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
         let material = resources
-            .new_resource(material_type)
+            .new_resource(RESOURCE_MATERIAL)
             .unwrap()
             .typed::<NullResource>();
         let mut edit = material.instantiate(&resources).unwrap();
@@ -918,16 +813,14 @@ mod tests {
             .add_resource(
                 ResourcePathName::new("body.material"),
                 RESOURCE_MATERIAL,
-                material_type,
                 &material,
                 &resources,
             )
             .await
             .unwrap();
 
-        let geometry_type = ResourceType::new(RESOURCE_GEOMETRY.as_bytes());
         let geometry = resources
-            .new_resource(geometry_type)
+            .new_resource(RESOURCE_GEOMETRY)
             .unwrap()
             .typed::<NullResource>();
         let mut edit = geometry.instantiate(&resources).unwrap();
@@ -937,28 +830,24 @@ mod tests {
             .add_resource(
                 ResourcePathName::new("hero.geometry"),
                 RESOURCE_GEOMETRY,
-                geometry_type,
                 &geometry,
                 &resources,
             )
             .await
             .unwrap();
 
-        let skeleton_type = ResourceType::new(RESOURCE_SKELETON.as_bytes());
         let skeleton = project
             .add_resource(
                 ResourcePathName::new("hero.skeleton"),
                 RESOURCE_SKELETON,
-                skeleton_type,
-                &resources.new_resource(skeleton_type).unwrap(),
+                &resources.new_resource(RESOURCE_SKELETON).unwrap(),
                 &resources,
             )
             .await
             .unwrap();
 
-        let actor_type = ResourceType::new(RESOURCE_ACTOR.as_bytes());
         let actor = resources
-            .new_resource(actor_type)
+            .new_resource(RESOURCE_ACTOR)
             .unwrap()
             .typed::<NullResource>();
         let mut edit = actor.instantiate(&resources).unwrap();
@@ -971,7 +860,6 @@ mod tests {
             .add_resource(
                 ResourcePathName::new("hero.actor"),
                 RESOURCE_ACTOR,
-                actor_type,
                 &actor,
                 &resources,
             )
@@ -982,21 +870,18 @@ mod tests {
     }
 
     async fn create_sky_material(project: &mut Project, resources: &AssetRegistry) {
-        let texture_type = ResourceType::new(RESOURCE_TEXTURE.as_bytes());
         let texture = project
             .add_resource(
                 ResourcePathName::new("sky.texture"),
                 RESOURCE_TEXTURE,
-                texture_type,
-                &resources.new_resource(texture_type).unwrap(),
+                &resources.new_resource(RESOURCE_TEXTURE).unwrap(),
                 resources,
             )
             .await
             .unwrap();
 
-        let material_type = ResourceType::new(RESOURCE_MATERIAL.as_bytes());
         let material = resources
-            .new_resource(material_type)
+            .new_resource(RESOURCE_MATERIAL)
             .unwrap()
             .typed::<NullResource>();
         let mut edit = material.instantiate(resources).unwrap();
@@ -1007,7 +892,6 @@ mod tests {
             .add_resource(
                 ResourcePathName::new("sky.material"),
                 RESOURCE_MATERIAL,
-                material_type,
                 &material,
                 resources,
             )
@@ -1022,18 +906,18 @@ mod tests {
     async fn proj_create_delete() {
         let root = tempfile::tempdir().unwrap();
 
-        let project = Project::create_with_remote_mock(root.path())
+        let project = Project::new_with_remote_mock(root.path())
             .await
             .expect("failed to create project");
-        let same_project = Project::create_with_remote_mock(root.path()).await;
+        let same_project = Project::new_with_remote_mock(root.path()).await;
         assert!(same_project.is_err());
 
         project.delete().await;
 
-        let _project = Project::create_with_remote_mock(root.path())
+        let _project = Project::new_with_remote_mock(root.path())
             .await
             .expect("failed to re-create project");
-        let same_project = Project::create_with_remote_mock(root.path()).await;
+        let same_project = Project::new_with_remote_mock(root.path()).await;
         assert!(same_project.is_err());
     }*/
 
@@ -1041,19 +925,19 @@ mod tests {
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let _resources = create_actor(&mut project).await;
 
-        assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
     }
 
     #[tokio::test]
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1063,12 +947,12 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(project.local_resource_list().await.unwrap().len(), 5);
-        assert_eq!(project.remote_resource_list().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
+        assert_eq!(project.get_committed_resources().await.unwrap().len(), 0);
 
         // modify before commit
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).await.unwrap();
             let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             content.content = 8;
             handle.apply(content, &resources);
@@ -1081,12 +965,12 @@ mod tests {
 
         project.commit("add resources").await.unwrap();
 
-        assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
-        assert_eq!(project.remote_resource_list().await.unwrap().len(), 5);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
+        assert_eq!(project.get_committed_resources().await.unwrap().len(), 5);
 
         // modify resource
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).await.unwrap();
             let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             assert_eq!(content.content, 8);
             content.content = 9;
@@ -1096,19 +980,19 @@ mod tests {
                 .await
                 .unwrap();
 
-            assert_eq!(project.local_resource_list().await.unwrap().len(), 1);
+            assert_eq!(project.get_pending_changes().await.unwrap().len(), 1);
         }
 
         project.commit("update actor").await.unwrap();
 
-        assert_eq!(project.local_resource_list().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
     }
 
     #[tokio::test]
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;
@@ -1122,7 +1006,7 @@ mod tests {
 
         // modify resource
         let original_content = {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).await.unwrap();
             let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             let previous_value = content.content;
             content.content = 9;
@@ -1136,7 +1020,7 @@ mod tests {
         };
 
         {
-            let handle = project.load_resource(actor_id, &resources).unwrap();
+            let handle = project.load_resource(actor_id, &resources).await.unwrap();
             let mut content = handle.instantiate::<NullResource>(&resources).unwrap();
             content.content = original_content;
             handle.apply(content, &resources);
@@ -1153,7 +1037,7 @@ mod tests {
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let _resources = create_actor(&mut project).await;
@@ -1163,7 +1047,10 @@ mod tests {
             .await
             .unwrap();
 
-        let (_, dependencies) = project.resource_info(top_level_resource.id).unwrap();
+        let dependencies = project
+            .resource_dependencies(top_level_resource)
+            .await
+            .unwrap();
 
         assert_eq!(dependencies.len(), 2);
     }
@@ -1190,7 +1077,7 @@ mod tests {
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
         let provider = Arc::new(Provider::new_in_memory());
-        let mut project = Project::create_with_remote_mock(root.path(), provider)
+        let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
         let resources = create_actor(&mut project).await;

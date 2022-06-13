@@ -6,7 +6,9 @@
 use std::path::PathBuf;
 
 use clap::{ArgEnum, Parser};
-use lgn_api_codegen::{generate, Language as InternalLanguage, RustOptions, TypeScriptOptions};
+use lgn_api_codegen::{
+    generate, Language as InternalLanguage, RustOptions, TypeScriptAliasMappings, TypeScriptOptions,
+};
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::LevelFilter;
 
@@ -77,6 +79,7 @@ fn main() -> anyhow::Result<()> {
     let internal_language = match args.language {
         Language::Rust => InternalLanguage::Rust(RustOptions::default()),
         Language::TypeScript => InternalLanguage::TypeScript(TypeScriptOptions {
+            alias_mappings: TypeScriptAliasMappings::default(),
             prettier_config_path: args.prettier_config_path.map(PathBuf::from),
             skip_format: args.skip_format,
             with_package_json: args.with_package_json,

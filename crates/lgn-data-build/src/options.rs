@@ -7,7 +7,6 @@ use lgn_content_store::Provider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::AssetRegistry;
-use lgn_source_control::RepositoryIndex;
 
 use crate::{DataBuild, Error};
 
@@ -29,12 +28,13 @@ use crate::{DataBuild, Error};
 /// # tokio_test::block_on(async {
 /// let source_control_content_provider = Arc::new(Provider::new_in_memory());
 /// let data_content_provider = Arc::new(Provider::new_in_memory());
-/// let project = Project::open("project/", source_control_content_provider).await.unwrap();
+/// let project = Project::new("project/", source_control_content_provider).await.unwrap();
 /// let build = DataBuildOptions::new("temp/".to_string(), data_content_provider, CompilerRegistryOptions::local_compilers("./"))
 ///         .create(&project).await.unwrap();
 /// # })
 /// ```
 pub struct DataBuildOptions {
+    pub(crate) source_control_content_provider: Arc<Provider>,
     pub(crate) data_content_provider: Arc<Provider>,
     pub(crate) output_db_addr: String,
     pub(crate) compiler_options: CompilerRegistryOptions,
@@ -46,6 +46,7 @@ impl DataBuildOptions {
     pub fn new_with_sqlite_output(
         output_dir: impl AsRef<Path>,
         compiler_options: CompilerRegistryOptions,
+        source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,
     ) -> Self {
         assert!(output_dir.as_ref().is_absolute());
@@ -56,6 +57,7 @@ impl DataBuildOptions {
         );
 
         Self {
+            source_control_content_provider,
             data_content_provider,
             output_db_addr,
             compiler_options,
@@ -66,10 +68,12 @@ impl DataBuildOptions {
     /// Create new instance of `DataBuildOptions` with the mandatory options.
     pub fn new(
         output_db_addr: String,
+        source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,
         compiler_options: CompilerRegistryOptions,
     ) -> Self {
         Self {
+            source_control_content_provider,
             data_content_provider,
             output_db_addr,
             compiler_options,
@@ -144,27 +148,6 @@ impl DataBuildOptions {
     ) -> Self {
         self.output_db_addr = Self::output_db_path(build_output_db_addr, cwd, version);
         self
-    }
-
-    /// Create new build index for a specified project.
-    ///
-    /// `project_dir` must be either an absolute path or path relative to
-    /// `buildindex_dir`.
-    pub async fn create_with_project(
-        self,
-        project_dir: impl AsRef<Path>,
-        repository_index: impl RepositoryIndex,
-        source_control_content_provider: Arc<Provider>,
-    ) -> Result<(DataBuild, Project), Error> {
-        let project = Project::open(
-            project_dir,
-            repository_index,
-            source_control_content_provider,
-        )
-        .await
-        .map_err(Error::from)?;
-        let build = DataBuild::new(self, &project).await?;
-        Ok((build, project))
     }
 
     /// Opens the existing build index.
