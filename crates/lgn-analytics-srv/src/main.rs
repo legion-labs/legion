@@ -153,7 +153,7 @@ pub async fn connect_to_remote_data_lake(
         .with_context(|| String::from("Connecting to telemetry database"))?;
 
     let lakehouse = new_jit_lakehouse(
-        lakehouse_uri.unwrap_or_else(|| format!("{}/tables", s3_url_data_lake)),
+        lakehouse_uri.unwrap_or_else(|| format!("{}/tables", s3_url_cache)),
         pool.clone(),
         data_lake_blobs.clone(),
     )
