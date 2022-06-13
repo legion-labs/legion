@@ -99,8 +99,9 @@ impl CumulativeCallGraphHandler {
         let mut result = CallNodeHashMap::new();
         let mut full = true;
         if let Some(root) = tree.root {
-            scopes.extend(tree.scopes);
-            build_graph(&root, begin_ms, end_ms, &mut result, &mut full, None);
+            scopes = tree.scopes;
+            full = root.begin_ms >= begin_ms && root.end_ms <= end_ms;
+            build_graph(&root, begin_ms, end_ms, &mut result, None);
         }
 
         Ok(CumulativeCallGraphComputedBlock {
@@ -125,11 +126,9 @@ fn build_graph(
     begin_ms: f64,
     end_ms: f64,
     result: &mut CallNodeHashMap,
-    full_flag: &mut bool,
     parent: Option<&CallTreeNode>,
 ) {
     if !tree_overlaps(tree, begin_ms, end_ms) {
-        *full_flag = false;
         return;
     }
 
@@ -139,7 +138,7 @@ fn build_graph(
     node.add_call(tree, parent);
 
     for child in &tree.children {
-        build_graph(child, begin_ms, end_ms, result, full_flag, Some(tree));
+        build_graph(child, begin_ms, end_ms, result, Some(tree));
     }
 }
 
