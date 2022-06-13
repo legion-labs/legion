@@ -323,8 +323,8 @@ impl GpuInstanceManager {
     fn update_gpu_instance_block(
         &self,
         entity: Entity,
+        transform: &GlobalTransform,
         visual: &VisualComponent,
-        // updater: &mut GPUDataUpdaterBuilder,
         render_commands: &mut RenderCommandBuilder,
     ) {
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
@@ -332,13 +332,17 @@ impl GpuInstanceManager {
         instance_color.set_color_blend(visual.color_blend().into());
         self.color_manager
             .update_gpu_data(&entity, &instance_color, render_commands);
+
+        let mut world = cgen::cgen_type::TransformData::default();
+        world.set_translation(transform.translation.into());
+        world.set_rotation(Vec4::from(transform.rotation).into());
+        world.set_scale(transform.scale.into());
+
+        self.transform_manager
+            .update_gpu_data(&entity, &world, render_commands);
     }
 
-    fn remove_gpu_instance_block(
-        &mut self,
-        entity: Entity,
-        // event_writer: &mut EventWriter<'_, '_, GpuInstanceEvent>,
-    ) {
+    fn remove_gpu_instance_block(&mut self, entity: Entity) {
         let gpu_instance_block = self.entity_to_gpu_instance_block.remove(&entity);
         if let Some(mut gpu_instance_block) = gpu_instance_block {
             self.transform_manager.remove_gpu_data(&entity);
@@ -429,8 +433,13 @@ fn update_gpu_instances(
 
     // TODO(vdbdd): this update could be done in a separate system once we don't reconstruct everything on each change.
     {
-        for (entity, _, visual) in instance_query.iter() {
-            instance_manager.update_gpu_instance_block(entity, visual, &mut render_commands);
+        for (entity, transform, visual) in instance_query.iter() {
+            instance_manager.update_gpu_instance_block(
+                entity,
+                transform,
+                visual,
+                &mut render_commands,
+            );
         }
     }
 }
