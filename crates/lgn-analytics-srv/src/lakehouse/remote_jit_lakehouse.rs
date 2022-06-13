@@ -10,15 +10,16 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::{AwsS3Url, BlobStorage};
-use lgn_telemetry_proto::analytics::{
-    BlockSpansReply, CallTree, ScopeDesc, Span, SpanBlockLod, SpanTrack,
-};
+use lgn_telemetry_proto::analytics::{BlockSpansReply, CallTree, ScopeDesc, SpanBlockLod};
 use lgn_tracing::prelude::*;
 use parquet::file::serialized_reader::SerializedFileReader;
 use parquet::{file::reader::FileReader, record::RowAccessor};
 use std::sync::Arc;
 
-use super::{scope_table::ScopeRowGroup, span_table::SpanRowGroup};
+use super::{
+    scope_table::ScopeRowGroup,
+    span_table::{read_spans, SpanRowGroup},
+};
 
 pub struct RemoteJitLakehouse {
     pool: sqlx::any::AnyPool,
@@ -56,27 +57,7 @@ impl RemoteJitLakehouse {
             bytes: get_obj_output.body.collect().await?.into_bytes(),
         };
         let file_reader = SerializedFileReader::new(bytes)?;
-        let mut lod = SpanBlockLod {
-            lod_id: 0,
-            tracks: vec![],
-        };
-        for row in file_reader.get_row_iter(None)? {
-            let hash = row.get_int(0)?;
-            let depth = row.get_int(1)?;
-            let begin = row.get_double(2)?;
-            let end = row.get_double(3)?;
-            if lod.tracks.len() <= depth as usize {
-                lod.tracks.push(SpanTrack { spans: vec![] });
-            }
-            let span = Span {
-                scope_hash: hash as u32,
-                begin_ms: begin,
-                end_ms: end,
-                alpha: 255,
-            };
-            lod.tracks[depth as usize].spans.push(span);
-        }
-        Ok(lod)
+        read_spans(&file_reader)
     }
 
     async fn read_scopes(&self, scopes_key: String) -> Result<ScopeHashMap> {

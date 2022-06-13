@@ -3,7 +3,7 @@ use std::{path::PathBuf, sync::Arc};
 #[cfg(feature = "deltalake-proto")]
 use super::span_delta_table::update_spans_delta_table;
 
-use super::span_table::{make_rows_from_tree, write_spans_parquet, SpanRowGroup};
+use super::span_table::{make_rows_from_tree, read_spans, write_spans_parquet, SpanRowGroup};
 use crate::lakehouse::bytes_chunk_reader::BytesChunkReader;
 use crate::scope::ScopeHashMap;
 use crate::{
@@ -14,9 +14,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::{
-    BlockSpansReply, CallTree, ScopeDesc, Span, SpanBlockLod, SpanTrack,
-};
+use lgn_telemetry_proto::analytics::{BlockSpansReply, CallTree, ScopeDesc, SpanBlockLod};
 use lgn_tracing::prelude::*;
 use parquet::file::reader::FileReader;
 use parquet::file::serialized_reader::SerializedFileReader;
@@ -111,27 +109,7 @@ impl LocalJitLakehouse {
             bytes: bytes::Bytes::from(buffer),
         };
         let file_reader = SerializedFileReader::new(bytes)?;
-        let mut lod = SpanBlockLod {
-            lod_id: 0,
-            tracks: vec![],
-        };
-        for row in file_reader.get_row_iter(None)? {
-            let hash = row.get_int(0)?;
-            let depth = row.get_int(1)?;
-            let begin = row.get_double(2)?;
-            let end = row.get_double(3)?;
-            if lod.tracks.len() <= depth as usize {
-                lod.tracks.push(SpanTrack { spans: vec![] });
-            }
-            let span = Span {
-                scope_hash: hash as u32,
-                begin_ms: begin,
-                end_ms: end,
-                alpha: 255,
-            };
-            lod.tracks[depth as usize].spans.push(span);
-        }
-        Ok(lod)
+        read_spans(&file_reader)
     }
 
     async fn read_scopes(&self, spans_file_uri: &str) -> Result<ScopeHashMap> {

@@ -1,5 +1,12 @@
 use anyhow::{Context, Result};
 use lgn_telemetry_proto::analytics::CallTreeNode;
+use lgn_telemetry_proto::analytics::Span;
+use lgn_telemetry_proto::analytics::SpanBlockLod;
+use lgn_telemetry_proto::analytics::SpanTrack;
+use parquet::file::reader::ChunkReader;
+use parquet::file::reader::FileReader;
+use parquet::file::serialized_reader::SerializedFileReader;
+use parquet::record::RowAccessor;
 use std::io::Write;
 use std::path::Path;
 
@@ -118,4 +125,30 @@ pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &mut i64, table: &mut S
     } else {
         make_rows_from_tree_impl(tree, 0, 0, next_id, &mut |row| table.append(&row));
     }
+}
+
+pub fn read_spans<R: 'static + ChunkReader>(
+    file_reader: &SerializedFileReader<R>,
+) -> Result<SpanBlockLod> {
+    let mut lod = SpanBlockLod {
+        lod_id: 0,
+        tracks: vec![],
+    };
+    for row in file_reader.get_row_iter(None)? {
+        let hash = row.get_int(0)?;
+        let depth = row.get_int(1)?;
+        let begin = row.get_double(2)?;
+        let end = row.get_double(3)?;
+        if lod.tracks.len() <= depth as usize {
+            lod.tracks.push(SpanTrack { spans: vec![] });
+        }
+        let span = Span {
+            scope_hash: hash as u32,
+            begin_ms: begin,
+            end_ms: end,
+            alpha: 255,
+        };
+        lod.tracks[depth as usize].spans.push(span);
+    }
+    Ok(lod)
 }
