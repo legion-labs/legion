@@ -13,7 +13,7 @@ use crate::{
 
 use super::{RenderGraphContext, RenderGraphLoadState, ResourceData};
 
-pub(crate) struct GraphicsPassBuilder {
+pub struct GraphicsPassBuilder {
     node: RGNode,
 }
 
@@ -70,7 +70,7 @@ impl GraphicsPassBuilder {
     }
 }
 
-pub(crate) struct ComputePassBuilder {
+pub struct ComputePassBuilder {
     node: RGNode,
 }
 
@@ -100,22 +100,21 @@ impl ComputePassBuilder {
     }
 }
 
-pub(crate) struct RenderGraphBuilder<'a> {
-    pub(crate) current_parent: Option<RGNode>,
-    pub(crate) resources: Vec<RenderGraphResourceDef>,
-    pub(crate) resource_names: Vec<String>,
-    pub(crate) injected_resources:
-        Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>,
-    pub(crate) next_resource_id: RenderGraphResourceId,
-    pub(crate) views: Vec<RenderGraphViewDef>,
-    pub(crate) next_view_id: RenderGraphViewId,
-    pub(crate) top_level_nodes: Vec<RGNode>,
+pub struct RenderGraphBuilder<'a> {
+    pub current_parent: Option<RGNode>,
+    pub resources: Vec<RenderGraphResourceDef>,
+    pub resource_names: Vec<String>,
+    pub injected_resources: Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>,
+    pub next_resource_id: RenderGraphResourceId,
+    pub views: Vec<RenderGraphViewDef>,
+    pub next_view_id: RenderGraphViewId,
+    pub top_level_nodes: Vec<RGNode>,
 
     // Stuff used to initialize pass-specific user data when building render passes.
     // Should not be stored anywhere, they are made accessible in the execute functions anyways.
-    pub(crate) render_resources: &'a RenderResources,
-    pub(crate) pipeline_manager: &'a mut PipelineManager,
-    pub(crate) device_context: &'a DeviceContext,
+    pub render_resources: &'a RenderResources,
+    pub pipeline_manager: &'a mut PipelineManager,
+    pub device_context: &'a DeviceContext,
 }
 
 impl<'a> RenderGraphBuilder<'a> {

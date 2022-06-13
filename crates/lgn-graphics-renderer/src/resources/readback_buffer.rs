@@ -9,7 +9,7 @@ use lgn_graphics_api::{
 
 use super::GpuSafePool;
 
-pub(crate) struct ReadbackBuffer {
+pub struct ReadbackBuffer {
     buffer: Buffer,
     cpu_frame_for_results: u64,
 }
