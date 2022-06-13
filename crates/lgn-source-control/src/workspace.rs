@@ -2,16 +2,18 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
-        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier,
+        tree_diff, BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
+        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
+        TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
 use lgn_tracing::error;
+use tokio_stream::StreamExt;
 
 use crate::{
-    Branch, Change, ChangeType, Commit, CommitId, Error, Index, ListBranchesQuery,
-    ListCommitsQuery, RepositoryIndex, RepositoryName, Result,
+    Branch, ChangeType, Commit, Error, Index, ListBranchesQuery, ListCommitsQuery, RepositoryIndex,
+    RepositoryName, Result,
 };
 
 /// Represents a workspace.
@@ -140,9 +142,7 @@ where
                 .await
         } else {
             // path is invalid, too short
-            Err(Error::InvalidPath {
-                path: path.to_owned(),
-            })
+            Err(Error::invalid_path(path))
         }
     }
 
@@ -180,7 +180,7 @@ where
             println!("reading resource '{}' -> {}", id.to_hex(), resource_id);
             Ok((resource_bytes, resource_id))
         } else {
-            Err(Error::ResourceNotFoundById { id: id.clone() })
+            Err(Error::resource_not_found_by_id(id.clone()))
         }
     }
 
@@ -194,25 +194,12 @@ where
             println!("reading resource '{}' -> {}", path, resource_id);
             Ok((resource_bytes, resource_id))
         } else {
-            Err(Error::ResourceNotFoundByPath {
-                path: path.to_owned(),
-            })
+            Err(Error::resource_not_found_by_path(path))
         }
     }
 
     pub async fn load_resource_by_id(&self, resource_id: &ResourceIdentifier) -> Result<Vec<u8>> {
-        match self.transaction.read_resource_as_bytes(resource_id).await {
-            Ok(resource_bytes) => Ok(resource_bytes),
-            Err(e) => {
-                #[cfg(feature = "verbose")]
-                {
-                    eprintln!("failed to read resource '{}': {}", resource_id, e,);
-                    self.dump_all_indices(Some(resource_id)).await;
-                }
-
-                Err(Error::ContentStoreIndexing(e))
-            }
-        }
+        Ok(self.transaction.read_resource_as_bytes(resource_id).await?)
     }
 
     pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
@@ -517,7 +504,117 @@ where
     }
 
     pub async fn get_pending_changes(&self) -> Result<Vec<(IndexKey, ChangeType)>> {
-        Err(Error::Unspecified("todo: get_pending_changes".to_owned()))
+        let commit_index_id = self.get_current_commit().await?.main_index_tree_id;
+        let main_index_id = self.main_index.id();
+
+        let base_key = IndexKey::default();
+        let mut leaves = tree_diff(
+            &self.transaction,
+            &base_key,
+            &commit_index_id,
+            &main_index_id,
+        )
+        .map(|(side, index_key, leaf)| match leaf {
+            Ok(leaf) => match leaf {
+                TreeLeafNode::Resource(resource_id) => Ok((index_key, side, resource_id)),
+                TreeLeafNode::TreeRoot(_) => {
+                    Err(lgn_content_store::indexing::Error::CorruptedTree(
+                        "found unexpected tree-root node".to_owned(),
+                    ))
+                }
+            },
+            Err(err) => Err(err),
+        })
+        .collect::<Result<Vec<_>, lgn_content_store::indexing::Error>>()
+        .await?;
+        leaves.sort();
+        let mut leaves = leaves.into_iter();
+
+        let mut changes = Vec::new();
+        if let Some((mut previous_index_key, mut previous_side, mut previous_resource_id)) =
+            leaves.next()
+        {
+            if previous_side == TreeDiffSide::Right {
+                changes.push((
+                    previous_index_key.clone(),
+                    ChangeType::Add {
+                        new_id: previous_resource_id.clone(),
+                    },
+                ));
+            }
+
+            for (index_key, side, resource_id) in leaves.by_ref() {
+                if side == TreeDiffSide::Right {
+                    if previous_side == TreeDiffSide::Left {
+                        // pattern: Left, Right -> Edit | (Delete, Add)
+                        if index_key == previous_index_key {
+                            // same index-key in both trees
+                            changes.push((
+                                previous_index_key.clone(),
+                                ChangeType::Edit {
+                                    old_id: previous_resource_id.clone(),
+                                    new_id: resource_id.clone(),
+                                },
+                            ));
+                        } else {
+                            // keys don't match, so left entry represents something deleted ...
+                            changes.push((
+                                previous_index_key.clone(),
+                                ChangeType::Delete {
+                                    old_id: previous_resource_id.clone(),
+                                },
+                            ));
+                            // ... and right entry something added
+                            changes.push((
+                                index_key.clone(),
+                                ChangeType::Add {
+                                    new_id: resource_id.clone(),
+                                },
+                            ));
+                        }
+                    } else {
+                        // pattern: Right, Right -> (Add | Edit), Add
+                        changes.push((
+                            index_key.clone(),
+                            ChangeType::Add {
+                                new_id: resource_id.clone(),
+                            },
+                        ));
+                    }
+                } else {
+                    // side == TreeDiffSide::Left
+
+                    if previous_side == TreeDiffSide::Left {
+                        // pattern: Left, Left -> Delete, (Delete | Edit)
+                        changes.push((
+                            previous_index_key.clone(),
+                            ChangeType::Delete {
+                                old_id: previous_resource_id.clone(),
+                            },
+                        ));
+                    } else {
+                        // pattern: Right, Left -> (Add | Edit), (Delete | Edit)
+                        // do nothing, either was already handled, or will be handled next iteration
+                    }
+                }
+
+                previous_index_key = index_key;
+                previous_side = side;
+                previous_resource_id = resource_id;
+            }
+
+            if previous_side == TreeDiffSide::Left {
+                // ended with left-side, so must be a deletion (since it can't be an edit without matching right side)
+                changes.push((
+                    previous_index_key,
+                    ChangeType::Delete {
+                        old_id: previous_resource_id,
+                    },
+                ));
+            }
+        }
+
+        Ok(changes)
     }
 
     /// Commit the changes in the workspace.
@@ -555,7 +652,6 @@ where
             let mut commit = Commit::new_unique_now(
                 whoami::username(),
                 message,
-                commit.changes.clone(),
                 self.main_index.id(),
                 self.path_index.id(),
                 BTreeSet::from([commit.id]),
@@ -708,11 +804,11 @@ where
             .collect())
     }
 
+    /*
     /// Switch to a different branch and updates the current files.
     ///
     /// Returns the commit id of the new branch as well as the changes.
     pub async fn switch_branch(&self, _branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
-        /*
         let current_branch = self.get_current_branch().await?;
 
         if branch_name == current_branch.name {
@@ -730,10 +826,11 @@ where
         self.backend.set_current_branch(&branch).await?;
 
         Ok((branch, changes))
-        */
         Err(Error::Unspecified("todo".to_owned()))
     }
+    */
 
+    /*
     /// Sync the current branch to its latest commit.
     ///
     /// # Returns
@@ -746,7 +843,9 @@ where
 
         Ok((current_branch, changes))
     }
+    */
 
+    /*
     /// Sync the current branch with the specified commit.
     ///
     /// # Returns
@@ -775,6 +874,7 @@ where
         */
         Err(Error::Unspecified("todo".to_owned()))
     }
+    */
 
     /*
     async fn sync_tree(&self, from: &Tree, to: &Tree) -> Result<BTreeSet<Change>> {

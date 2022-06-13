@@ -500,7 +500,7 @@ impl Project {
             Ok((metadata, resource_id))
         } else {
             Err(Error::SourceControl(
-                lgn_source_control::Error::ResourceNotFoundById { id: type_id.into() },
+                lgn_source_control::Error::resource_not_found_by_id(type_id),
             ))
         }
     }
@@ -518,9 +518,7 @@ impl Project {
             Ok((metadata, resource_id))
         } else {
             Err(Error::SourceControl(
-                lgn_source_control::Error::ResourceNotFoundByPath {
-                    path: name.as_str().to_owned(),
-                },
+                lgn_source_control::Error::resource_not_found_by_path(name.as_str()),
             ))
         }
     }
