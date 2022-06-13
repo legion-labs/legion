@@ -1,6 +1,9 @@
 use lgn_transform::components::Transform;
 
-use crate::animation_graph_events::SampledEventRange;
+use crate::{
+    animation_graph_events::SampledEventRange, components::AnimationClip,
+    tmp::animation_bone_mask::BoneMask, tmp::animation_sync_track::SyncTrack,
+};
 
 pub struct Settings {
     node_idx: i16,
