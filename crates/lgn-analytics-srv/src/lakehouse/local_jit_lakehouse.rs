@@ -90,7 +90,6 @@ impl LocalJitLakehouse {
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, &mut next_id, &mut rows);
         write_spans_parquet(&rows, &spans_file_path).await?;
-
         write_scopes_parquet(&processed.scopes, &scopes_file_path).await?;
 
         //todo: do not iterate twice

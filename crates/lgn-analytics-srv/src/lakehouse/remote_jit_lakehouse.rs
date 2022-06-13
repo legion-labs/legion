@@ -2,7 +2,7 @@ use crate::{
     call_tree::{compute_block_spans, process_thread_block},
     lakehouse::{
         bytes_chunk_reader::BytesChunkReader, jit_lakehouse::JitLakehouse,
-        parquet_buffer::ParquetBufferWriter, span_table::make_rows_from_tree,
+        span_table::make_rows_from_tree,
     },
     scope::ScopeHashMap,
 };
@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use super::{
     scope_table::{make_scopes_table_writer, ScopeRowGroup},
-    span_table::{read_spans, SpanRowGroup},
+    span_table::{make_spans_table_writer, read_spans, SpanRowGroup},
 };
 
 pub struct RemoteJitLakehouse {
@@ -138,16 +138,7 @@ impl RemoteJitLakehouse {
     }
 
     async fn write_spans(&self, rows: &SpanRowGroup, key: String) -> Result<()> {
-        let schema = "message schema {
-    REQUIRED INT32 hash;
-    REQUIRED INT32 depth;
-    REQUIRED DOUBLE begin_ms;
-    REQUIRED DOUBLE end_ms;
-    REQUIRED INT64 id;
-    REQUIRED INT64 parent;
-  }
-";
-        let mut writer = ParquetBufferWriter::create(schema)?;
+        let mut writer = make_spans_table_writer()?;
         writer.write_row_group(&rows.get_columns())?;
         let buffer = Arc::get_mut(&mut writer.close()?)
             .with_context(|| "getting exclusive access to parquet buffer")?

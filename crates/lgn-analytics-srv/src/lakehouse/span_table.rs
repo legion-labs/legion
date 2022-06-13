@@ -14,7 +14,7 @@ use super::column::TableColumn;
 use super::parquet_buffer::write_to_file;
 use super::parquet_buffer::ParquetBufferWriter;
 
-pub async fn write_spans_parquet(rows: &SpanRowGroup, parquet_full_path: &Path) -> Result<()> {
+pub fn make_spans_table_writer() -> Result<ParquetBufferWriter> {
     let schema = "message schema {
     REQUIRED INT32 hash;
     REQUIRED INT32 depth;
@@ -24,7 +24,11 @@ pub async fn write_spans_parquet(rows: &SpanRowGroup, parquet_full_path: &Path) 
     REQUIRED INT64 parent;
   }
 ";
-    let mut writer = ParquetBufferWriter::create(schema)?;
+    ParquetBufferWriter::create(schema)
+}
+
+pub async fn write_spans_parquet(rows: &SpanRowGroup, parquet_full_path: &Path) -> Result<()> {
+    let mut writer = make_spans_table_writer()?;
     writer.write_row_group(&rows.get_columns())?;
     write_to_file(writer, parquet_full_path).await?;
     Ok(())
