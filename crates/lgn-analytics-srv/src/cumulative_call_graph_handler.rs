@@ -47,7 +47,7 @@ impl CumulativeCallGraphHandler {
 
         // For now child processes are not queried and as a result don't participate in cumulative call graph computations.
         let process = find_process(&mut connection, &process_id).await?;
-        let time_range = Self::get_process_time_range(&process, begin_ms, end_ms)?;
+        let time_range = get_process_time_range(&process, begin_ms, end_ms)?;
         let begin = time_range.0.to_rfc3339();
         let end = time_range.1.to_rfc3339();
 
@@ -100,7 +100,7 @@ impl CumulativeCallGraphHandler {
         let mut full = true;
         if let Some(root) = tree.root {
             scopes.extend(tree.scopes);
-            Self::build_graph(&root, begin_ms, end_ms, &mut result, &mut full, None);
+            build_graph(&root, begin_ms, end_ms, &mut result, &mut full, None);
         }
 
         Ok(CumulativeCallGraphComputedBlock {
@@ -117,43 +117,43 @@ impl CumulativeCallGraphHandler {
             },
         })
     }
+}
 
-    #[span_fn]
-    fn build_graph(
-        tree: &CallTreeNode,
-        begin_ms: f64,
-        end_ms: f64,
-        result: &mut CallNodeHashMap,
-        full_flag: &mut bool,
-        parent: Option<&CallTreeNode>,
-    ) {
-        if !tree_overlaps(tree, begin_ms, end_ms) {
-            *full_flag = false;
-            return;
-        }
-
-        let node = result
-            .entry(tree.hash)
-            .or_insert_with(|| CallGraphNode::new(tree.hash, begin_ms, end_ms));
-        node.add_call(tree, parent);
-
-        for child in &tree.children {
-            Self::build_graph(child, begin_ms, end_ms, result, full_flag, Some(tree));
-        }
+#[span_fn]
+fn build_graph(
+    tree: &CallTreeNode,
+    begin_ms: f64,
+    end_ms: f64,
+    result: &mut CallNodeHashMap,
+    full_flag: &mut bool,
+    parent: Option<&CallTreeNode>,
+) {
+    if !tree_overlaps(tree, begin_ms, end_ms) {
+        *full_flag = false;
+        return;
     }
 
-    #[span_fn]
-    fn get_process_time_range(
-        process: &Process,
-        begin_ms: f64,
-        end_ms: f64,
-    ) -> Result<(DateTime<FixedOffset>, DateTime<FixedOffset>)> {
-        let start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
-            .with_context(|| String::from("parsing process start time"))?;
-        let begin_offset_ns = begin_ms * 1_000_000.0;
-        let begin_time = start_time + chrono::Duration::nanoseconds(begin_offset_ns as i64);
-        let end_offset_ns = end_ms * 1_000_000.0;
-        let end_time = start_time + chrono::Duration::nanoseconds(end_offset_ns as i64);
-        Ok((begin_time, end_time))
+    let node = result
+        .entry(tree.hash)
+        .or_insert_with(|| CallGraphNode::new(tree.hash, begin_ms, end_ms));
+    node.add_call(tree, parent);
+
+    for child in &tree.children {
+        build_graph(child, begin_ms, end_ms, result, full_flag, Some(tree));
     }
+}
+
+#[span_fn]
+fn get_process_time_range(
+    process: &Process,
+    begin_ms: f64,
+    end_ms: f64,
+) -> Result<(DateTime<FixedOffset>, DateTime<FixedOffset>)> {
+    let start_time = chrono::DateTime::parse_from_rfc3339(&process.start_time)
+        .with_context(|| String::from("parsing process start time"))?;
+    let begin_offset_ns = begin_ms * 1_000_000.0;
+    let begin_time = start_time + chrono::Duration::nanoseconds(begin_offset_ns as i64);
+    let end_offset_ns = end_ms * 1_000_000.0;
+    let end_time = start_time + chrono::Duration::nanoseconds(end_offset_ns as i64);
+    Ok((begin_time, end_time))
 }
