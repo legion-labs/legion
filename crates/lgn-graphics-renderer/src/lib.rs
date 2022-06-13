@@ -112,8 +112,8 @@ use crate::resources::{
 
 use crate::{
     components::{
-        apply_camera_setups, camera_control, create_camera, ui_camera, CameraComponent,
-        LightComponent, RenderSurface, VisualComponent,
+        apply_camera_setups, camera_control, create_camera, CameraComponent, LightComponent,
+        RenderSurface, VisualComponent,
     },
     labels::CommandBufferLabel,
 };
@@ -320,7 +320,6 @@ impl Plugin for RendererPlugin {
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
         app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
         app.add_system_to_stage(RenderStage::Prepare, tmp_debug_display_lights);
-        app.add_system_to_stage(RenderStage::Prepare, ui_camera);
         app.add_system_to_stage(
             RenderStage::Prepare,
             camera_control.exclusive_system().at_start(),

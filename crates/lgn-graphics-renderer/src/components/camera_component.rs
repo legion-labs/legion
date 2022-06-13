@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use dolly::driver::RigDriver;
-use dolly::prelude::{Handedness, Position, Smooth, YawPitch};
+use dolly::prelude::{Handedness, Position, Smooth};
 use dolly::rig::{CameraRig, RigUpdateParams};
 use dolly::transform::Transform;
 use lgn_core::Time;
@@ -19,8 +19,7 @@ use lgn_input::{
 use lgn_math::{Angle, DMat4, EulerRot, Mat3, Mat4, Quat, Vec2, Vec3, Vec4};
 use lgn_transform::components::GlobalTransform;
 
-use crate::egui::Egui;
-use crate::{cgen, Renderer, UP_VECTOR};
+use crate::{cgen, UP_VECTOR};
 
 #[derive(Debug)]
 pub struct EulerRotator {
@@ -47,27 +46,34 @@ impl EulerRotator {
         }
     }
 
+    #[must_use]
     pub fn rotation_quat(mut self, rotation: Quat) -> Self {
         self.set_rotation_quat(rotation);
         self
     }
 
     pub fn rotate(&mut self, alpha: Angle, beta: Angle, gamma: Angle) {
-        self.alpha = Angle::from_radians((self.alpha + alpha).radians() % std::f32::consts::TAU);
-        self.beta = Angle::from_radians((self.beta + beta).radians() % std::f32::consts::TAU);
-        self.gamma = Angle::from_radians((self.gamma + gamma).radians().clamp(0.0, 180.0));
+        self.set_rotation_angles(self.alpha + alpha, self.beta + beta, self.gamma + gamma);
     }
 
     pub fn set_rotation_quat(&mut self, rotation: Quat) {
         let (alpha, beta, gamma) = rotation.to_euler(self.euler);
-        self.alpha = Angle::from_radians(alpha);
-        self.beta = Angle::from_radians(beta);
-        self.gamma = Angle::from_radians(gamma);
+        self.set_rotation_angles(
+            Angle::from_radians(alpha),
+            Angle::from_radians(beta),
+            Angle::from_radians(gamma),
+        );
+    }
+
+    fn set_rotation_angles(&mut self, alpha: Angle, beta: Angle, gamma: Angle) {
+        self.alpha = Angle::from_radians(alpha.radians() % (2.0 * std::f32::consts::TAU));
+        self.beta = Angle::from_radians(beta.radians() % (2.0 * std::f32::consts::TAU));
+        self.gamma = Angle::from_radians(gamma.radians().clamp(-std::f32::consts::PI, 0.0));
     }
 }
 
 impl<H: Handedness> RigDriver<H> for EulerRotator {
-    fn update(&mut self, params: RigUpdateParams<H>) -> Transform<H> {
+    fn update(&mut self, params: RigUpdateParams<'_, H>) -> Transform<H> {
         Transform {
             position: params.parent.position,
             rotation: Quat::from_euler(
@@ -345,10 +351,10 @@ pub(crate) fn camera_control(
                 camera_translation_change -= camera.camera_rig.final_transform.forward();
             }
             if keys.pressed(KeyCode::A) {
-                camera_translation_change += camera.camera_rig.final_transform.right();
+                camera_translation_change -= camera.camera_rig.final_transform.right();
             }
             if keys.pressed(KeyCode::D) {
-                camera_translation_change -= camera.camera_rig.final_transform.right();
+                camera_translation_change += camera.camera_rig.final_transform.right();
             }
 
             if let Some(gamepad) = gamepad {
@@ -390,7 +396,7 @@ pub(crate) fn camera_control(
                 camera_driver.rotate(
                     Angle::from_degrees(0.0),
                     Angle::from_degrees(mouse_motion_event.delta.x * rotation),
-                    Angle::from_degrees(mouse_motion_event.delta.y * rotation),
+                    Angle::from_degrees(-mouse_motion_event.delta.y * rotation),
                 );
             }
             for mouse_wheel_event in mouse_wheel_events.iter() {
@@ -406,83 +412,4 @@ pub(crate) fn camera_control(
         }
         camera.camera_rig.update(time.delta_seconds());
     }
-}
-
-#[derive(Default)]
-pub struct Euler(EulerRot);
-
-impl PartialEq<Euler> for Euler {
-    fn eq(&self, other: &Euler) -> bool {
-        match self.0 {
-            EulerRot::ZYX => {
-                if let EulerRot::ZYX = other.0 {
-                    return true;
-                }
-            }
-            EulerRot::ZXY => {
-                if let EulerRot::ZXY = other.0 {
-                    return true;
-                }
-            }
-            EulerRot::YXZ => {
-                if let EulerRot::YXZ = other.0 {
-                    return true;
-                }
-            }
-            EulerRot::YZX => {
-                if let EulerRot::YZX = other.0 {
-                    return true;
-                }
-            }
-            EulerRot::XYZ => {
-                if let EulerRot::XYZ = other.0 {
-                    return true;
-                }
-            }
-            EulerRot::XZY => {
-                if let EulerRot::XZY = other.0 {
-                    return true;
-                }
-            }
-            _ => todo!(),
-        }
-        return false;
-    }
-    fn ne(&self, other: &Euler) -> bool {
-        !self.eq(other)
-    }
-}
-#[derive(Default)]
-pub struct UICameraState {
-    pub euler: Euler,
-}
-
-pub fn ui_camera(
-    mut cameras_query: Query<'_, '_, &mut CameraComponent>,
-    egui: Res<'_, Egui>,
-    renderer: ResMut<'_, Renderer>,
-    mut ui_camera_state: Local<'_, UICameraState>,
-) {
-    egui.window("Camera", |ui| {
-        if cameras_query.is_empty() {
-            return;
-        }
-        for mut camera in cameras_query.iter_mut() {
-            let camera = camera.as_mut();
-            ui.selectable_value(&mut ui_camera_state.euler, Euler(EulerRot::ZYX), "ZYX");
-            ui.selectable_value(&mut ui_camera_state.euler, Euler(EulerRot::ZXY), "ZXY");
-            ui.selectable_value(&mut ui_camera_state.euler, Euler(EulerRot::YXZ), "YXZ");
-            ui.selectable_value(&mut ui_camera_state.euler, Euler(EulerRot::YZX), "YZX");
-            ui.selectable_value(&mut ui_camera_state.euler, Euler(EulerRot::XYZ), "XYZ");
-            ui.selectable_value(&mut ui_camera_state.euler, Euler(EulerRot::XZY), "XZY");
-
-            let (mut a, mut b, mut c) = camera.rotation().to_euler(ui_camera_state.euler.0);
-
-            ui.add(egui::Slider::new(&mut a, -6.28..=6.28));
-            ui.add(egui::Slider::new(&mut b, -6.28..=6.28));
-            ui.add(egui::Slider::new(&mut c, -6.28..=6.28));
-            camera.camera_rig.final_transform.rotation =
-                Quat::from_euler(ui_camera_state.euler.0, a, b, c);
-        }
-    });
 }

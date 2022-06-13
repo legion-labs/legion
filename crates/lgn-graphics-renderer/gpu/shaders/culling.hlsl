@@ -66,7 +66,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
 
             float4 min_view = center_pos_view + float4(-bv_radius, -bv_radius, 0.0, 0.0);
             float4 max_view = center_pos_view + float4(bv_radius, bv_radius, 0.0, 0.0);
-            float4 closest_view = center_pos_view + float4(0.0, 0.0, -bv_radius, 0.0);
+            float4 closest_view = center_pos_view + float4(0.0, 0.0, bv_radius, 0.0);
 
             float4 min_proj = mul(view_data.projection, min_view);
             float4 max_proj = mul(view_data.projection, max_view);
@@ -81,6 +81,10 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
             culling_debug[debug_index].gpu_instance = instance_data.gpu_instance_id;
             culling_debug[debug_index].depth = depth;
             culling_debug[debug_index].min_z = min_z;
+            culling_debug[debug_index].sphere = float4(sphere_world_pos, bv_radius);
+            culling_debug[debug_index].closest_proj = closest_proj;
+            culling_debug[debug_index].center_pos_view = center_pos_view;
+            culling_debug[debug_index].sphere_world_pos = sphere_world_pos;
 
             if (enable_culling && depth > 0.0f && depth < min_z) {
                 culled = true;

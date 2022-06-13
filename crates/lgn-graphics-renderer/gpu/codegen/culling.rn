@@ -44,6 +44,10 @@ pub fn main(persistent_descriptor_set, frame_descriptor_set, view_descriptor_set
                 #{ name:"depth", ty:"Float1" },
                 #{ name:"min_z", ty:"Float1" },
                 #{ name:"gpu_instance", ty:"Uint1" },
+                #{ name:"sphere", ty:"Float4" },
+                #{ name:"closest_proj", ty:"Float4" },
+                #{ name:"center_pos_view", ty:"Float4" },
+                #{ name:"sphere_world_pos", ty:"Float3" },
             ]
         },
         #{
