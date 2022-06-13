@@ -35,7 +35,7 @@ pub async fn write_local_partition(
     if let Some(root) = processed_block.call_tree_root {
         let mut rows = SpanRowGroup::new();
         make_rows_from_tree(&root, next_id, &mut rows);
-        write_spans_parquet(&rows, parquet_full_path)?;
+        write_spans_parquet(&rows, parquet_full_path).await?;
 
         let attr = tokio::fs::metadata(&parquet_full_path).await?; //that's not cool, we should already know how big the file is
         Ok(Some(deltalake::action::Action::add(

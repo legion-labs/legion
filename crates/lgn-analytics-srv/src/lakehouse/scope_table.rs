@@ -2,13 +2,12 @@ use std::path::Path;
 
 use super::{
     column::{Column, TableColumn},
-    parquet_buffer::ParquetBufferWriter,
+    parquet_buffer::{write_to_file, ParquetBufferWriter},
 };
 use crate::scope::ScopeHashMap;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use lgn_telemetry_proto::analytics::ScopeDesc;
 use parquet::data_type::ByteArray;
-use std::io::Write;
 
 #[derive(Debug)]
 pub struct ScopeRowGroup {
@@ -42,11 +41,7 @@ impl ScopeRowGroup {
     }
 }
 
-pub fn write_scopes_parquet(scopes: &ScopeHashMap, parquet_path: &Path) -> Result<()> {
-    let mut rows = ScopeRowGroup::new();
-    for (_k, v) in scopes.iter() {
-        rows.append(v);
-    }
+pub fn make_scopes_table_writer() -> Result<ParquetBufferWriter> {
     let schema = "message schema {
     REQUIRED INT32 hash;
     REQUIRED BYTE_ARRAY name;
@@ -54,15 +49,21 @@ pub fn write_scopes_parquet(scopes: &ScopeHashMap, parquet_path: &Path) -> Resul
     REQUIRED INT32 line;
   }
 ";
-    let mut writer = ParquetBufferWriter::create(schema)?;
+    ParquetBufferWriter::create(schema)
+}
+
+fn make_scope_rows(scopes: &ScopeHashMap) -> ScopeRowGroup {
+    let mut rows = ScopeRowGroup::new();
+    for (_k, v) in scopes.iter() {
+        rows.append(v);
+    }
+    rows
+}
+
+pub async fn write_scopes_parquet(scopes: &ScopeHashMap, parquet_path: &Path) -> Result<()> {
+    let mut writer = make_scopes_table_writer()?;
+    let rows = make_scope_rows(scopes);
     writer.write_row_group(&rows.get_columns())?;
-    let buffer = writer.close()?;
-    //todo: extraire
-    let mut file = std::fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(parquet_path)
-        .with_context(|| format!("creating file {}", parquet_path.display()))?;
-    file.write_all(buffer.as_ref().get_ref())?;
+    write_to_file(writer, parquet_path).await?;
     Ok(())
 }

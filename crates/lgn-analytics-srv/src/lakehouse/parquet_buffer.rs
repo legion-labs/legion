@@ -1,3 +1,4 @@
+use super::column::TableColumn;
 use anyhow::{Context, Result};
 use lgn_tracing::prelude::*;
 use parquet::file::properties::WriterProperties;
@@ -6,9 +7,9 @@ use parquet::file::writer::SerializedFileWriter;
 use parquet::file::writer::TryClone;
 use parquet::schema::parser::parse_message_type;
 use std::io::Cursor;
+use std::path::Path;
 use std::sync::Arc;
-
-use super::column::TableColumn;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Clone)]
 pub struct InMemStream {
@@ -32,12 +33,12 @@ impl InMemStream {
 impl std::io::Write for InMemStream {
     #[allow(unsafe_code)]
     fn write(&mut self, buf: &[u8]) -> Result<usize, std::io::Error> {
-        unsafe { (&mut *self.cursor_ptr).write(buf) }
+        unsafe { std::io::Write::write(&mut *self.cursor_ptr, buf) }
     }
 
     #[allow(unsafe_code)]
     fn flush(&mut self) -> Result<(), std::io::Error> {
-        unsafe { (&mut *self.cursor_ptr).flush() }
+        unsafe { std::io::Write::flush(&mut *self.cursor_ptr) }
     }
 }
 
@@ -98,4 +99,23 @@ impl ParquetBufferWriter {
             .with_context(|| "closing row group")?;
         Ok(())
     }
+}
+
+//
+// file output
+//
+pub async fn write_to_file(writer: ParquetBufferWriter, filepath: &Path) -> Result<()> {
+    if let Some(parent) = filepath.parent() {
+        tokio::fs::create_dir_all(&parent)
+            .await
+            .with_context(|| format!("creating directory {}", parent.display()))?;
+    }
+    let buffer = writer.close()?;
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .open(filepath)
+        .await
+        .with_context(|| format!("creating file {}", filepath.display()))?;
+    file.write_all(buffer.as_ref().get_ref()).await?;
+    Ok(())
 }

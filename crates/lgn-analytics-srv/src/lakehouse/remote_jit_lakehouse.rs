@@ -17,7 +17,7 @@ use parquet::{file::reader::FileReader, record::RowAccessor};
 use std::sync::Arc;
 
 use super::{
-    scope_table::ScopeRowGroup,
+    scope_table::{make_scopes_table_writer, ScopeRowGroup},
     span_table::{read_spans, SpanRowGroup},
 };
 
@@ -121,14 +121,7 @@ impl RemoteJitLakehouse {
         for (_k, v) in scopes.iter() {
             rows.append(v);
         }
-        let schema = "message schema {
-    REQUIRED INT32 hash;
-    REQUIRED BYTE_ARRAY name;
-    REQUIRED BYTE_ARRAY filename;
-    REQUIRED INT32 line;
-  }
-";
-        let mut writer = ParquetBufferWriter::create(schema)?;
+        let mut writer = make_scopes_table_writer()?;
         writer.write_row_group(&rows.get_columns())?;
         let buffer = Arc::get_mut(&mut writer.close()?)
             .with_context(|| "getting exclusive access to parquet buffer")?

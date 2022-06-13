@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::analytics::Span;
 use lgn_telemetry_proto::analytics::SpanBlockLod;
@@ -7,14 +7,14 @@ use parquet::file::reader::ChunkReader;
 use parquet::file::reader::FileReader;
 use parquet::file::serialized_reader::SerializedFileReader;
 use parquet::record::RowAccessor;
-use std::io::Write;
 use std::path::Path;
 
 use super::column::Column;
 use super::column::TableColumn;
+use super::parquet_buffer::write_to_file;
 use super::parquet_buffer::ParquetBufferWriter;
 
-pub fn write_spans_parquet(rows: &SpanRowGroup, parquet_full_path: &Path) -> Result<()> {
+pub async fn write_spans_parquet(rows: &SpanRowGroup, parquet_full_path: &Path) -> Result<()> {
     let schema = "message schema {
     REQUIRED INT32 hash;
     REQUIRED INT32 depth;
@@ -26,14 +26,7 @@ pub fn write_spans_parquet(rows: &SpanRowGroup, parquet_full_path: &Path) -> Res
 ";
     let mut writer = ParquetBufferWriter::create(schema)?;
     writer.write_row_group(&rows.get_columns())?;
-    let buffer = writer.close()?;
-    //todo: factor out
-    let mut file = std::fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(parquet_full_path)
-        .with_context(|| format!("creating file {}", parquet_full_path.display()))?;
-    file.write_all(buffer.as_ref().get_ref())?;
+    write_to_file(writer, parquet_full_path).await?;
     Ok(())
 }
 
