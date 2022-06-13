@@ -2352,9 +2352,9 @@ dependencies = [
 
 [[package]]
 name = "dolly"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13a956e7201e6d83f09cdd044314a385d51cb66262dafc7e3db2a5012f0fff7b"
+checksum = "72ca62af80028e899eae554918f89106ae480104b1de01965b454601e1ad87de"
 dependencies = [
  "glam",
 ]

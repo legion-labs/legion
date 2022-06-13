@@ -26,18 +26,18 @@ impl ScaleManipulator {
         picking_context: &mut PickingIdContext<'_>,
     ) {
         let rotate_x_pointer =
-            Mat4::from_axis_angle(Vec3::new(0.0, 0.0, 1.0), -std::f32::consts::PI * 0.5);
-        let rotate_z_pointer =
-            Mat4::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), std::f32::consts::PI * 0.5);
+            Mat4::from_axis_angle(Vec3::new(0.0, 1.0, 0.0), std::f32::consts::PI * 0.5);
+        let rotate_y_pointer =
+            Mat4::from_axis_angle(Vec3::new(1.0, 0.0, 0.0), -std::f32::consts::PI * 0.5);
 
-        let rotate_yz_plane = Mat4::from_axis_angle(Vec3::X, -std::f32::consts::PI * 0.5);
-        let rotate_xy_plane = Mat4::from_axis_angle(Vec3::Z, std::f32::consts::PI * 0.5);
+        let rotate_yz_plane = Mat4::from_axis_angle(Vec3::X, std::f32::consts::PI * 0.5);
+        let rotate_xz_plane = Mat4::from_axis_angle(Vec3::Y, -std::f32::consts::PI * 0.5);
 
-        let cube_offset = Mat4::from_translation(Vec3::new(0.0, 0.25, 0.0));
-        let plane_offset = Mat4::from_translation(Vec3::new(0.1, 0.0, 0.1));
+        let cube_offset = Mat4::from_translation(Vec3::new(0.0, 0.0, 0.25));
+        let plane_offset = Mat4::from_translation(Vec3::new(0.1, 0.1, 0.0));
 
         let cube_scale = Vec3::new(0.05, 0.05, 0.05);
-        let cylinder_scale = Vec3::new(0.0125, 0.25, 0.0125);
+        let cylinder_scale = Vec3::new(0.0125, 0.0125, 0.25);
         let plane_scale = Vec3::new(0.1, 0.1, 0.1);
 
         self.parts = vec![
@@ -66,7 +66,7 @@ impl ScaleManipulator {
                 ManipulatorType::Scale,
                 2,
                 false,
-                Transform::from_matrix(cube_offset).with_scale(cube_scale),
+                Transform::from_matrix(rotate_y_pointer * cube_offset).with_scale(cube_scale),
                 DefaultMeshType::Cube,
                 commands,
                 picking_context,
@@ -76,7 +76,7 @@ impl ScaleManipulator {
                 ManipulatorType::Scale,
                 3,
                 false,
-                Transform::from_scale(cylinder_scale),
+                Transform::from_matrix(rotate_y_pointer).with_scale(cylinder_scale),
                 DefaultMeshType::Cylinder,
                 commands,
                 picking_context,
@@ -86,7 +86,7 @@ impl ScaleManipulator {
                 ManipulatorType::Scale,
                 4,
                 false,
-                Transform::from_matrix(rotate_z_pointer * cube_offset).with_scale(cube_scale),
+                Transform::from_matrix(cube_offset).with_scale(cube_scale),
                 DefaultMeshType::Cube,
                 commands,
                 picking_context,
@@ -96,7 +96,7 @@ impl ScaleManipulator {
                 ManipulatorType::Scale,
                 5,
                 false,
-                Transform::from_matrix(rotate_z_pointer).with_scale(cylinder_scale),
+                Transform::from_scale(cylinder_scale),
                 DefaultMeshType::Cylinder,
                 commands,
                 picking_context,
@@ -122,11 +122,11 @@ impl ScaleManipulator {
                 picking_context,
             ),
             ManipulatorPart::new(
-                Color::YELLOW,
+                Color::ORANGE,
                 ManipulatorType::Scale,
                 8,
                 true,
-                Transform::from_matrix(rotate_xy_plane * plane_offset).with_scale(plane_scale),
+                Transform::from_matrix(rotate_xz_plane * plane_offset).with_scale(plane_scale),
                 DefaultMeshType::Plane,
                 commands,
                 picking_context,

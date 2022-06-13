@@ -4,9 +4,9 @@
     parent: Some("world/sample_1.ent"),
     components: [
         Transform((
-            position: (0, -0.025, 0),
+            position: (0, 0, -0.025),
             rotation: (0, 0, 0, 1),
-            scale: (10, 0.1, 10),
+            scale: (10, 10, 0.1),
         )),
         Visual((
             renderable_geometry: None,

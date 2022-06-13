@@ -125,8 +125,8 @@ use crate::{
     labels::CommandBufferLabel,
 };
 
-pub const UP_VECTOR: Vec3 = Vec3::Y;
-pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
+pub const UP_VECTOR: Vec3 = Vec3::Z;
+pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, 0_f32, -1_f32]);
 
 #[derive(Clone)]
 pub struct GraphicsQueue {
