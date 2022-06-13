@@ -1,5 +1,5 @@
 [package]
-name = "lgn-log-stream"
+name = "lgn-log"
 version = "0.1.0"
 edition = "2021"
 description = "Legion's Log plugin"
@@ -25,8 +25,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_qs = { version = "0.9", features = ["axum"] }
 tokio = { version = "1.13", features = ["full", "tracing"] }
-tokio-stream = "0.1.8"
-tonic = "0.6"
 
 [build-dependencies]
 lgn-api-codegen = { path = "../lgn-api-codegen", version = "0.1.0" }

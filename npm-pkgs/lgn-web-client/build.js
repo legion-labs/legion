@@ -13,7 +13,7 @@ async function build() {
       filename: "streaming",
     }).buildStart(),
     apiCodegen({
-      path: "../../crates/lgn-log-stream/apis",
+      path: "../../crates/lgn-log/apis",
       apiNames: ["log"],
       withPackageJson: true,
       aliasMappings: {

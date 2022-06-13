@@ -33,7 +33,7 @@ components:
           enum: [Error, Warn, Info, Debug, Trace]
         time:
           type: integer
-          format: i64
+          format: int64
         target:
           type: string
         message:

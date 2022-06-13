@@ -2470,7 +2470,7 @@ dependencies = [
  "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
- "lgn-log-stream",
+ "lgn-log",
  "lgn-math",
  "lgn-mp4",
  "lgn-online",
@@ -5010,7 +5010,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-log-stream"
+name = "lgn-log"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -5029,8 +5029,6 @@ dependencies = [
  "serde_json",
  "serde_qs",
  "tokio",
- "tokio-stream",
- "tonic",
 ]
 
 [[package]]
@@ -7649,7 +7647,7 @@ dependencies = [
  "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
- "lgn-log-stream",
+ "lgn-log",
  "lgn-online",
  "lgn-physics",
  "lgn-presenter-window",

@@ -72,6 +72,8 @@
         devSettings.restRuntimeServerUrl,
     }));
 
+    const accessTokenCookieName = "editor_access_token";
+
     const {
       grpcEditorServerUrl,
       grpcRuntimeServerUrl,
@@ -84,6 +86,7 @@
       grpcRuntimeServerUrl,
       restEditorServerUrl,
       restRuntimeServerUrl,
+      accessTokenCookieName,
     });
 
     try {
@@ -99,7 +102,7 @@
           },
           login: {
             cookies: {
-              accessToken: "editor_access_token",
+              accessToken: accessTokenCookieName,
               refreshToken: "editor_refresh_token",
             },
             extraParams: {

@@ -8,7 +8,7 @@ expression: content
 
 pub mod cars {
 
-    use lgn_online::codegen::Bytes;
+    use lgn_online::{codegen::Bytes, server::Error};
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub enum TestOneOf200Response {
@@ -2119,7 +2119,7 @@ pub mod cars {
 
 pub mod components {
 
-    use lgn_online::codegen::Bytes;
+    use lgn_online::{codegen::Bytes, server::Error};
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Car {
@@ -2149,6 +2149,62 @@ pub mod components {
         Blue,
         #[serde(rename = "yellow")]
         Yellow,
+    }
+
+    impl std::str::FromStr for CarColor {
+        type Err = Error;
+
+        fn from_str(s: &str) -> Result<Self, <CarColor as std::str::FromStr>::Err> {
+            match s {
+                "Red" => Ok(Self::Red),
+                "Blue" => Ok(Self::Blue),
+                "Yellow" => Ok(Self::Yellow),
+                _ => Err(Error::Internal(format!("unknown enum value {}", s))),
+            }
+        }
+    }
+
+    impl TryFrom<u32> for CarColor {
+        type Error = Error;
+
+        fn try_from(n: u32) -> Result<Self, <CarColor as TryFrom<u32>>::Error> {
+            match n {
+                0 => Ok(Self::Red),
+                1 => Ok(Self::Blue),
+                2 => Ok(Self::Yellow),
+                _ => Err(Error::Internal(format!(
+                    "index out of bound {}, accepted index between 0 and 2",
+                    n
+                ))),
+            }
+        }
+    }
+
+    impl TryFrom<i32> for CarColor {
+        type Error = Error;
+
+        fn try_from(n: i32) -> Result<Self, <CarColor as TryFrom<i32>>::Error> {
+            match n {
+                0 => Ok(Self::Red),
+                1 => Ok(Self::Blue),
+                2 => Ok(Self::Yellow),
+                _ => Err(Error::Internal(format!(
+                    "index out of bound {}, accepted index between 0 and 2",
+                    n
+                ))),
+            }
+        }
+    }
+
+    impl ToString for CarColor {
+        fn to_string(&self) -> String {
+            match self {
+                Self::Red => "Red",
+                Self::Blue => "Blue",
+                Self::Yellow => "Yellow",
+            }
+            .into()
+        }
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]

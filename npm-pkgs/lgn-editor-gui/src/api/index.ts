@@ -23,6 +23,7 @@ import {
   RuntimeClientImpl,
   GrpcWebImpl as RuntimeImpl,
 } from "@lgn/proto-runtime/dist/runtime";
+import { addAuthToClient } from "@lgn/web-client/src/lib/client";
 import log from "@lgn/web-client/src/lib/log";
 
 import { formatProperties } from "../components/propertyGrid/lib/propertyGrid";
@@ -54,11 +55,13 @@ export function initApiClient({
   grpcRuntimeServerUrl = defaultGrpcRuntimeServerURL,
   restEditorServerUrl = defaultRestEditorServerURL,
   restRuntimeServerUrl = defaultRestRuntimeServerURL,
+  accessTokenCookieName,
 }: {
   grpcEditorServerUrl?: string;
   grpcRuntimeServerUrl?: string;
   restEditorServerUrl?: string;
   restRuntimeServerUrl?: string;
+  accessTokenCookieName: string;
 }) {
   resourceBrowserClient = new ResourceBrowserClientImpl(
     new EditorResourceBrowserWebImpl(grpcEditorServerUrl, { debug: false })
@@ -86,9 +89,15 @@ export function initApiClient({
     })
   );
 
-  editorLogStreamClient = new Log.Client({ baseUri: restEditorServerUrl });
+  editorLogStreamClient = addAuthToClient(
+    new Log.Client({ baseUri: restEditorServerUrl }),
+    accessTokenCookieName
+  );
 
-  runtimeLogStreamClient = new Log.Client({ baseUri: restRuntimeServerUrl });
+  runtimeLogStreamClient = addAuthToClient(
+    new Log.Client({ baseUri: restRuntimeServerUrl }),
+    accessTokenCookieName
+  );
 }
 
 /**
@@ -388,13 +397,13 @@ export async function getActiveScenes() {
   return getAllRootResources(await getActiveSceneIds());
 }
 
-export function getEditorLogEntries() {
+export function getEditorTraceEvents() {
   return editorLogStreamClient.logEntries({
     params: { "space-id": "0", "workspace-id": "0" },
   });
 }
 
-export function getRuntimeLogEntries() {
+export function getRuntimeTraceEvents() {
   return runtimeLogStreamClient.logEntries({
     params: { "space-id": "0", "workspace-id": "0" },
   });
