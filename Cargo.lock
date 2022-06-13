@@ -4753,6 +4753,7 @@ dependencies = [
  "lgn-telemetry-sink",
  "lgn-tracing",
  "log",
+ "lru_time_cache",
  "reqwest",
  "serde",
  "serde_json",
@@ -5620,6 +5621,12 @@ checksum = "8015d95cb7b2ddd3c0d32ca38283ceb1eea09b4713ee380bceb942d85a244228"
 dependencies = [
  "hashbrown 0.11.2",
 ]
+
+[[package]]
+name = "lru_time_cache"
+version = "0.11.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9106e1d747ffd48e6be5bb2d97fa706ed25b144fbee4d5c02eae110cd8d6badd"
 
 [[package]]
 name = "lz4"
