@@ -300,7 +300,7 @@ async fn main() -> anyhow::Result<()> {
                 Ok(_) => {
                     println!("The repository exists");
                 }
-                Err(Error::RepositoryDoesNotExist { repository_name }) => {
+                Err(Error::RepositoryNotFound { repository_name }) => {
                     println!("The repository `{}` does not exist", repository_name);
                 }
                 Err(e) => {

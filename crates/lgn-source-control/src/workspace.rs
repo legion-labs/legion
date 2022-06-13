@@ -10,8 +10,8 @@ use lgn_content_store::{
 use tokio_stream::StreamExt;
 
 use crate::{
-    Branch, ChangeType, Commit, Error, Index, ListBranchesQuery, ListCommitsQuery, RepositoryIndex,
-    RepositoryName, Result,
+    Branch, BranchName, ChangeType, Commit, Error, Index, ListBranchesQuery, ListCommitsQuery,
+    NewCommit, RepositoryIndex, RepositoryName, Result,
 };
 
 /// Represents a workspace.
@@ -22,7 +22,7 @@ where
     index: Box<dyn Index>,
     persistent_provider: Arc<Provider>,
     volatile_provider: Arc<Provider>,
-    branch_name: String,
+    branch_name: BranchName,
     main_index: ResourceIndex<MainIndexer>,
     path_index: ResourceIndex<StringPathIndexer>,
 }
@@ -70,14 +70,14 @@ where
     pub async fn new(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        branch_name: &str,
+        branch_name: &BranchName,
         persistent_provider: Arc<Provider>,
         volatile_provider: Arc<Provider>,
         main_indexer: MainIndexer,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
         let branch = index.get_branch(branch_name).await?;
-        let commit = index.get_commit(branch.head).await?;
+        let commit = index.get_commit(branch_name, branch.head).await?;
         let main_index = ResourceIndex::new_shared_with_raw_id(
             Arc::clone(&volatile_provider),
             main_indexer,
@@ -92,7 +92,7 @@ where
             index,
             persistent_provider,
             volatile_provider,
-            branch_name: branch_name.to_owned(),
+            branch_name: branch_name.clone(),
             main_index,
             path_index,
         })
@@ -121,7 +121,9 @@ where
     async fn get_current_commit(&self) -> Result<Commit> {
         let current_branch = self.get_current_branch().await?;
 
-        self.index.get_commit(current_branch.head).await
+        self.index
+            .get_commit(&current_branch.name, current_branch.head)
+            .await
     }
 
     pub async fn get_resource_identifier(
@@ -603,7 +605,10 @@ where
     pub async fn commit(&mut self, message: &str, behavior: CommitMode) -> Result<Commit> {
         let current_branch = self.get_current_branch().await?;
         let mut branch = self.index.get_branch(&current_branch.name).await?;
-        let commit = self.index.get_commit(current_branch.head).await?;
+        let commit = self
+            .index
+            .get_commit(&current_branch.name, current_branch.head)
+            .await?;
 
         // Early check in case we are out-of-date long before making the commit.
         if branch.head != current_branch.head {
@@ -618,7 +623,7 @@ where
         }
 
         let commit = if !empty_commit {
-            let mut commit = Commit::new_unique_now(
+            let new_commit = NewCommit::new_unique_now(
                 whoami::username(),
                 message,
                 self.main_index.id(),
@@ -626,7 +631,10 @@ where
                 BTreeSet::from([commit.id]),
             );
 
-            commit.id = self.index.commit_to_branch(&commit, &branch).await?;
+            let commit = self
+                .index
+                .commit_to_branch(&branch.name, new_commit)
+                .await?;
 
             branch.head = commit.id;
 
@@ -706,26 +714,26 @@ where
 
     /// Get the current branch.
     pub async fn get_current_branch(&self) -> Result<Branch> {
-        self.index.get_branch(self.branch_name.as_str()).await
+        self.index.get_branch(&self.branch_name).await
     }
 
     /// Create a branch with the given name and the current commit as its head.
     ///
     /// The newly created branch will be a descendant of the current branch and
     /// share the same lock domain.
-    pub async fn create_branch(&mut self, branch_name: &str) -> Result<Branch> {
+    pub async fn create_branch(&mut self, branch_name: &BranchName) -> Result<Branch> {
         let current_branch = self.get_current_branch().await?;
 
-        if branch_name == current_branch.name {
+        if branch_name == &current_branch.name {
             return Err(Error::already_on_branch(current_branch.name));
         }
 
-        let new_branch = current_branch.branch_out(branch_name.to_owned());
+        let new_branch = current_branch.branch_out(branch_name.clone());
 
-        self.index.insert_branch(&new_branch).await?;
-        self.branch_name = new_branch.name.clone();
+        let branch = self.index.insert_branch(new_branch).await?;
+        self.branch_name = branch.name.clone();
 
-        Ok(new_branch)
+        Ok(branch)
     }
 
     /// Detach the current branch from its parent.
@@ -734,13 +742,12 @@ where
     ///
     /// The resulting branch is detached and now uses its own lock domain.
     pub async fn detach_branch(&self) -> Result<Branch> {
-        let mut current_branch = self.get_current_branch().await?;
+        let current_branch = self.get_current_branch().await?;
 
-        current_branch.detach();
+        let new_branch = current_branch.detach();
+        let branch = self.index.insert_branch(new_branch).await?;
 
-        self.index.insert_branch(&current_branch).await?;
-
-        Ok(current_branch)
+        Ok(branch)
     }
 
     /// Attach the current branch to the specified branch.
@@ -749,16 +756,15 @@ where
     ///
     /// The resulting branch is attached and now uses the same lock domain as
     /// its parent.
-    pub async fn attach_branch(&self, branch_name: &str) -> Result<Branch> {
-        let mut current_branch = self.get_current_branch().await?;
+    pub async fn attach_branch(&self, branch_name: &BranchName) -> Result<Branch> {
+        let current_branch = self.get_current_branch().await?;
         let parent_branch = self.index.get_branch(branch_name).await?;
 
-        current_branch.attach(&parent_branch);
-
-        self.index.insert_branch(&current_branch).await?;
+        let new_branch = current_branch.attach(&parent_branch);
+        let branch = self.index.insert_branch(new_branch).await?;
         // self.backend.set_current_branch(&current_branch).await?;
 
-        Ok(current_branch)
+        Ok(branch)
     }
 
     /// Get the branches in the repository.
@@ -775,7 +781,7 @@ where
     /// Switch to a different branch and updates the current files.
     ///
     /// Returns the commit id of the new branch as well as the changes.
-    pub async fn switch_branch(&self, _branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
+    pub async fn switch_branch(&self, _branch_name: &BranchName) -> Result<(Branch, BTreeSet<Change>)> {
         let current_branch = self.get_current_branch().await?;
 
         if branch_name == current_branch.name {

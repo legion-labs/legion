@@ -16,7 +16,7 @@ use lgn_data_runtime::{
     ResourcePathId, ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
-    CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
+    BranchName, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
 };
 use lgn_tracing::error;
 use thiserror::Error;
@@ -138,7 +138,7 @@ impl Project {
     pub async fn new(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        branch_name: &str,
+        branch_name: &BranchName,
         persistent_provider: Arc<Provider>,
         volatile_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
@@ -167,13 +167,14 @@ impl Project {
         let remote_dir = project_dir.as_ref().join("remote");
         let repository_index = LocalRepositoryIndex::new(remote_dir).await?;
         let repository_name: RepositoryName = "default".parse().unwrap();
+        let branch_name: BranchName = "main".parse().unwrap();
 
         repository_index.create_repository(&repository_name).await?;
 
         Self::new(
             repository_index,
             &repository_name,
-            "main",
+            &branch_name,
             persistent_provider,
             volatile_provider,
         )

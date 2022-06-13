@@ -9,25 +9,22 @@ pub struct Change {
     change_type: ChangeType,
 }
 
-impl From<Change> for lgn_source_control_proto::Change {
+impl From<Change> for crate::api::source_control::Change {
     fn from(change: Change) -> Self {
         Self {
-            canonical_path: change.canonical_path.to_string(),
-            change_type: Some(change.change_type.into()),
+            canonical_path: change.canonical_path.into(),
+            change_type: change.change_type.into(),
         }
     }
 }
 
-impl TryFrom<lgn_source_control_proto::Change> for Change {
+impl TryFrom<crate::api::source_control::Change> for Change {
     type Error = Error;
 
-    fn try_from(change: lgn_source_control_proto::Change) -> Result<Self> {
+    fn try_from(change: crate::api::source_control::Change) -> Result<Self> {
         Ok(Self {
-            canonical_path: CanonicalPath::new(&change.canonical_path)?,
-            change_type: change
-                .change_type
-                .ok_or(Error::InvalidChangeType)?
-                .try_into()?,
+            canonical_path: change.canonical_path.try_into()?,
+            change_type: change.change_type.try_into()?,
         })
     }
 }

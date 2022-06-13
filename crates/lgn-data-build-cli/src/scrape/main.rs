@@ -380,6 +380,10 @@ async fn main() -> Result<(), String> {
                     .parse()
                     .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
 
+                let branch_name = branch_name
+                    .parse()
+                    .map_err(|_e| format!("Invalid branch name '{}'", branch_name))?;
+
                 let (mut build, project) = config
                     .open(
                         &repository_name,
@@ -426,6 +430,10 @@ async fn main() -> Result<(), String> {
             let repository_name = repository_name
                 .parse()
                 .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
+
+            let branch_name = branch_name
+                .parse()
+                .map_err(|_e| format!("Invalid branch name '{}'", branch_name))?;
 
             let project = Project::new(
                 repository_index,
@@ -498,6 +506,10 @@ async fn main() -> Result<(), String> {
                 let repository_name = repository_name
                     .parse()
                     .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
+
+                let branch_name = branch_name
+                    .parse()
+                    .map_err(|_e| format!("Invalid branch name '{}'", branch_name))?;
 
                 let (mut build, project) = config
                     .open(
