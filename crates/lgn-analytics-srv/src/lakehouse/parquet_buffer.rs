@@ -113,6 +113,7 @@ pub async fn write_to_file(writer: ParquetBufferWriter, filepath: &Path) -> Resu
     let buffer = writer.close()?;
     let mut file = tokio::fs::OpenOptions::new()
         .write(true)
+        .create(true)
         .open(filepath)
         .await
         .with_context(|| format!("creating file {}", filepath.display()))?;
