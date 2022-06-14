@@ -4,6 +4,7 @@ use std::{
 };
 
 use indexmap::IndexMap;
+use openapiv3::AdditionalProperties;
 
 use super::api_types::{
     Api, Field, GenerationContext, Method, Model, Parameter, RequestBody, Response, Route,
@@ -519,11 +520,21 @@ impl Visitor {
         visited_refs: &HashSet<OpenApiRef>,
     ) -> Result<Type> {
         // New model is created on the fly for each object type.
-        if object_type.additional_properties.is_some() {
-            return Err(Error::Unsupported(
-                object_type.ref_().clone(),
-                "additional properties".to_string(),
-            ));
+
+        let additional_properties = match &object_type.additional_properties {
+            None | Some(AdditionalProperties::Any(false)) => None,
+            Some(AdditionalProperties::Any(true)) => Some(Type::Any),
+            Some(AdditionalProperties::Schema(property_ref)) => Some(self.resolve_type_ref(
+                ModelOrigin::Schemas,
+                &object_type.as_element_ref(["additionalProperties"], &*property_ref),
+                visited_refs.clone(),
+            )?),
+        };
+
+        if object_type.properties.is_empty() {
+            if let Some(additional_properties) = additional_properties {
+                return Ok(Type::Map(Box::new(additional_properties)));
+            }
         }
 
         let mut properties = BTreeMap::new();
@@ -548,7 +559,10 @@ impl Visitor {
             properties.insert(property.name.clone(), property);
         }
 
-        Ok(Type::Struct { fields: properties })
+        Ok(Type::Struct {
+            fields: properties,
+            map: additional_properties.map(Box::new),
+        })
     }
 
     fn resolve_one_of(
@@ -863,6 +877,7 @@ mod tests {
                         required: false,
                     },
                 )]),
+                map: None,
             },
         };
 
@@ -1010,6 +1025,7 @@ mod tests {
                         },
                     ),
                 ]),
+                map: None,
             },
         };
 
@@ -1085,6 +1101,7 @@ mod tests {
                         },
                     ),
                 ]),
+                map: None,
             },
         };
 
@@ -1153,6 +1170,7 @@ mod tests {
                         required: false,
                     },
                 )]),
+                map: None,
             },
         };
 
@@ -1172,6 +1190,7 @@ mod tests {
                         required: false,
                     },
                 )]),
+                map: None,
             },
         };
 
@@ -1263,6 +1282,7 @@ mod tests {
                         required: false,
                     },
                 )]),
+                map: None,
             },
         };
 
@@ -1384,6 +1404,7 @@ mod tests {
                         required: false,
                     },
                 )]),
+                map: None,
             },
         };
 
@@ -1403,6 +1424,7 @@ mod tests {
                         required: false,
                     },
                 )]),
+                map: None,
             },
         };
 
@@ -1522,6 +1544,7 @@ mod tests {
                         required: false,
                     },
                 )]),
+                map: None,
             },
         };
 
