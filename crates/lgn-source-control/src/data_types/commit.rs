@@ -5,7 +5,7 @@ use lgn_content_store::indexing::TreeIdentifier;
 use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
 
-use crate::{Change, Error, Result};
+use crate::{Error, Result};
 
 /// The ID for a commit.
 ///
@@ -35,7 +35,6 @@ pub struct Commit {
     pub id: CommitId,
     pub owner: String,
     pub message: String,
-    pub changes: BTreeSet<Change>,
     pub main_index_tree_id: TreeIdentifier,
     pub path_index_tree_id: TreeIdentifier,
     pub parents: BTreeSet<CommitId>,
@@ -49,7 +48,6 @@ impl Commit {
         id: CommitId,
         owner: String,
         message: String,
-        changes: BTreeSet<Change>,
         main_index_tree_id: TreeIdentifier,
         path_index_tree_id: TreeIdentifier,
         parents: BTreeSet<CommitId>,
@@ -61,7 +59,6 @@ impl Commit {
             id,
             owner,
             message,
-            changes,
             main_index_tree_id,
             path_index_tree_id,
             parents,
@@ -73,7 +70,6 @@ impl Commit {
     pub fn new_unique_now(
         owner: String,
         message: impl Into<String>,
-        changes: BTreeSet<Change>,
         main_index_tree_id: TreeIdentifier,
         path_index_tree_id: TreeIdentifier,
         parents: BTreeSet<CommitId>,
@@ -85,7 +81,6 @@ impl Commit {
             id,
             owner,
             message.into(),
-            changes,
             main_index_tree_id,
             path_index_tree_id,
             parents,
@@ -102,7 +97,6 @@ impl From<Commit> for lgn_source_control_proto::Commit {
             id: commit.id.0,
             owner: commit.owner,
             message: commit.message,
-            changes: commit.changes.into_iter().map(Into::into).collect(),
             main_index_tree_id: commit.main_index_tree_id.to_string(),
             path_index_tree_id: commit.path_index_tree_id.to_string(),
             parents: commit.parents.into_iter().map(|id| id.0).collect(),
@@ -121,17 +115,10 @@ impl TryFrom<lgn_source_control_proto::Commit> for Commit {
             Utc,
         );
 
-        let changes = commit
-            .changes
-            .into_iter()
-            .map(TryInto::try_into)
-            .collect::<Result<BTreeSet<Change>>>()?;
-
         Ok(Self {
             id: CommitId(commit.id),
             owner: commit.owner,
             message: commit.message,
-            changes,
             main_index_tree_id: commit.main_index_tree_id.parse().unwrap(),
             path_index_tree_id: commit.path_index_tree_id.parse().unwrap(),
             parents: commit.parents.into_iter().map(CommitId).collect(),
@@ -156,7 +143,6 @@ mod tests {
             id: 42,
             owner: "owner".to_owned(),
             message: "message".to_owned(),
-            changes: vec![],
             main_index_tree_id: MAIN_INDEX_TREE_ID.to_owned(),
             path_index_tree_id: PATH_INDEX_TREE_ID.to_owned(),
             parents: vec![43],
@@ -171,7 +157,6 @@ mod tests {
                 id: CommitId(42),
                 owner: "owner".to_owned(),
                 message: "message".to_owned(),
-                changes: BTreeSet::new(),
                 main_index_tree_id: MAIN_INDEX_TREE_ID.parse().unwrap(),
                 path_index_tree_id: PATH_INDEX_TREE_ID.parse().unwrap(),
                 parents: vec![CommitId(43)].into_iter().collect(),
@@ -189,7 +174,6 @@ mod tests {
             id: CommitId(42),
             owner: "owner".to_owned(),
             message: "message".to_owned(),
-            changes: BTreeSet::new(),
             main_index_tree_id: MAIN_INDEX_TREE_ID.parse().unwrap(),
             path_index_tree_id: PATH_INDEX_TREE_ID.parse().unwrap(),
             parents: vec![CommitId(43)].into_iter().collect(),
@@ -204,7 +188,6 @@ mod tests {
                 id: 42,
                 owner: "owner".to_owned(),
                 message: "message".to_owned(),
-                changes: vec![],
                 main_index_tree_id: MAIN_INDEX_TREE_ID.to_owned(),
                 path_index_tree_id: PATH_INDEX_TREE_ID.to_owned(),
                 parents: vec![43],
