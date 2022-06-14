@@ -262,13 +262,13 @@ where
 
                 if previous_side == TreeDiffSide::Right {
                     if let Some(tree_id) = &previous_tree_id {
-                        let leaves = self.first.enumerate_leaves(provider, tree_id).await;
+                        let leaves = self.second.enumerate_leaves(provider, tree_id).await;
                         match leaves {
                             Ok(leaves) => {
                                 tokio::pin!(leaves);
 
-                                while let Some((index_key, leaf_result)) = leaves.next().await {
-                                    yield (TreeDiffSide::Right, index_key, leaf_result);
+                                while let Some((sub_key, leaf_result)) = leaves.next().await {
+                                    yield (TreeDiffSide::Right, previous_index_key.clone().compose_with(sub_key), leaf_result);
                                 }
                             }
                             Err(err) => {
@@ -305,8 +305,8 @@ where
                                             Ok(leaves) => {
                                                 tokio::pin!(leaves);
 
-                                                while let Some((side, index_key, leaf_result)) = leaves.next().await {
-                                                    yield (side, index_key, leaf_result);
+                                                while let Some((side, subkey, leaf_result)) = leaves.next().await {
+                                                    yield (side, index_key.clone().compose_with(subkey), leaf_result);
                                                 }
                                             }
                                             Err(err) => {
@@ -319,13 +319,13 @@ where
                                 // keys don't match, list all entries for both sides
 
                                 if let Some(left_id) = &previous_tree_id {
-                                    let leaves = self.first.enumerate_leaves(provider, left_id).await;
+                                    let leaves = self.second.enumerate_leaves(provider, left_id).await;
                                     match leaves {
                                         Ok(leaves) => {
                                             tokio::pin!(leaves);
 
-                                            while let Some((index_key, leaf_result)) = leaves.next().await {
-                                                yield (TreeDiffSide::Left, index_key, leaf_result);
+                                            while let Some((sub_key, leaf_result)) = leaves.next().await {
+                                                yield (TreeDiffSide::Left, previous_index_key.clone().compose_with(sub_key), leaf_result);
                                             }
                                         }
                                         Err(err) => {
@@ -335,13 +335,13 @@ where
                                 }
 
                                 if let Some(right_id) = &tree_id {
-                                    let leaves = self.first.enumerate_leaves(provider, right_id).await;
+                                    let leaves = self.second.enumerate_leaves(provider, right_id).await;
                                     match leaves {
                                         Ok(leaves) => {
                                             tokio::pin!(leaves);
 
-                                            while let Some((index_key, leaf_result)) = leaves.next().await {
-                                                yield (TreeDiffSide::Right, index_key, leaf_result);
+                                            while let Some((sub_key, leaf_result)) = leaves.next().await {
+                                                yield (TreeDiffSide::Right, index_key.clone().compose_with(sub_key), leaf_result);
                                             }
                                         }
                                         Err(err) => {
@@ -353,13 +353,13 @@ where
                         } else {
                             // previous_side == TreeDiffSide::Right
                             if let Some(right_id) = &tree_id {
-                                let leaves = self.first.enumerate_leaves(provider, right_id).await;
+                                let leaves = self.second.enumerate_leaves(provider, right_id).await;
                                 match leaves {
                                     Ok(leaves) => {
                                         tokio::pin!(leaves);
 
-                                        while let Some((index_key, leaf_result)) = leaves.next().await {
-                                            yield (TreeDiffSide::Right, index_key, leaf_result);
+                                        while let Some((sub_key, leaf_result)) = leaves.next().await {
+                                            yield (TreeDiffSide::Right, index_key.clone().compose_with(sub_key), leaf_result);
                                         }
                                     }
                                     Err(err) => {
@@ -372,13 +372,13 @@ where
                         // side == TreeDiffSide::Left
                         if previous_side == TreeDiffSide::Left {
                             if let Some(left_id) = &previous_tree_id {
-                                let leaves = self.first.enumerate_leaves(provider, left_id).await;
+                                let leaves = self.second.enumerate_leaves(provider, left_id).await;
                                 match leaves {
                                     Ok(leaves) => {
                                         tokio::pin!(leaves);
 
-                                        while let Some((index_key, leaf_result)) = leaves.next().await {
-                                            yield (TreeDiffSide::Left, index_key, leaf_result);
+                                        while let Some((sub_key, leaf_result)) = leaves.next().await {
+                                            yield (TreeDiffSide::Left, previous_index_key.clone().compose_with(sub_key), leaf_result);
                                         }
                                     }
                                     Err(err) => {
@@ -396,13 +396,13 @@ where
 
                 if previous_side == TreeDiffSide::Left {
                     if let Some(tree_id) = &previous_tree_id {
-                        let leaves = self.first.enumerate_leaves(provider, tree_id).await;
+                        let leaves = self.enumerate_leaves(provider, tree_id).await;
                         match leaves {
                             Ok(leaves) => {
                                 tokio::pin!(leaves);
 
-                                while let Some((index_key, leaf_result)) = leaves.next().await {
-                                    yield (TreeDiffSide::Left, index_key, leaf_result);
+                                while let Some((sub_key, leaf_result)) = leaves.next().await {
+                                    yield (TreeDiffSide::Left, previous_index_key.clone().compose_with(sub_key), leaf_result);
                                 }
                             }
                             Err(err) => {
