@@ -112,6 +112,7 @@ paths:
                 oneOf:
                   - $ref: "./components.yaml#/schemas/Pet"
                   - $ref: "./components.yaml#/schemas/Car"
+                  - $ref: "./components.yaml#/schemas/Alpha"
   /test-headers:
     get:
       operationId: testHeaders

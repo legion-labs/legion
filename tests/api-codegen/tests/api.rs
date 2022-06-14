@@ -8,7 +8,7 @@ use api_codegen::api::cars::{
     },
     server, TestOneOf200Response,
 };
-use api_codegen::api::components::{Car, CarColor, Cars, Pet};
+use api_codegen::api::components::{Alpha, Beta, Car, CarColor, Cars, Gamma, Pet};
 use axum::Router;
 use http::{header::HeaderName, HeaderValue};
 use lgn_online::client::HyperClient;
@@ -98,9 +98,9 @@ async fn test_one_of() {
     match resp {
         TestOneOfResponse::Status200 { body, .. } => assert_eq!(
             body,
-            TestOneOf200Response::Option1(Pet {
-                name: Some("Cat".to_string()),
-            })
+            TestOneOf200Response::Option3(Alpha {
+                beta: Some(Beta(vec![Gamma::Option1(Box::new(Alpha { beta: None }),)])),
+            }),
         ),
     };
 

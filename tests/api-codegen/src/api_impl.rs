@@ -61,8 +61,10 @@ impl Api for ApiImpl {
 
     async fn test_one_of(&self, _request: TestOneOfRequest) -> Result<TestOneOfResponse> {
         Ok(TestOneOfResponse::Status200(
-            cars::TestOneOf200Response::Option1(components::Pet {
-                name: Some("Cat".to_string()),
+            cars::TestOneOf200Response::Option3(components::Alpha {
+                beta: Some(components::Beta(vec![components::Gamma::Option1(
+                    Box::new(components::Alpha { beta: None }),
+                )])),
             }),
         ))
     }
