@@ -19,12 +19,12 @@ import {
   SourceControlClientImpl,
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
-import {
-  RuntimeClientImpl,
-  GrpcWebImpl as RuntimeImpl,
-} from "@lgn/proto-runtime/dist/runtime";
 import { addAuthToClient } from "@lgn/web-client/src/lib/client";
+import { Runtime } from "@lgn/apis";
 import log from "@lgn/web-client/src/lib/log";
+
+import { blobToJson, jsonToBlob } from "../lib/api";
+import { addAuthToClient } from "../lib/client";
 
 import { formatProperties } from "../components/propertyGrid/lib/propertyGrid";
 import type {
@@ -45,7 +45,7 @@ let sourceControlClient: SourceControlClientImpl;
 
 let editorClient: EditorClientImpl;
 
-let runtimeClient: RuntimeClientImpl;
+let runtimeClient: Runtime.Client;
 
 let editorLogStreamClient: Log.Client;
 let runtimeLogStreamClient: Log.Client;
@@ -83,11 +83,9 @@ export function initApiClient({
     })
   );
 
-  runtimeClient = new RuntimeClientImpl(
-    new RuntimeImpl(grpcRuntimeServerUrl, {
-      debug: false,
-    })
-  );
+  runtimeClient = addAuthToClient(new Runtime.Client(
+    {baseUri: restEditorServerUrl,
+  }));
 
   editorLogStreamClient = addAuthToClient(
     new Log.Client({ baseUri: restEditorServerUrl }),
@@ -418,7 +416,10 @@ export async function loadRuntimeManifest({
 }: {
   manifestId: string;
 }) {
-  return runtimeClient.loadManifest({ manifestId });
+  return runtimeClient.loadManifest({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: jsonToBlob( manifestId )
+  });
 }
 
 export async function loadRuntimeRootAsset({
@@ -426,9 +427,14 @@ export async function loadRuntimeRootAsset({
 }: {
   rootAssetId: string;
 }) {
-  return runtimeClient.loadRootAsset({ rootAssetId });
+  return runtimeClient.loadRootAsset({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: jsonToBlob( rootAssetId )
+  });
 }
 
 export async function pauseRuntime() {
-  return runtimeClient.pause({});
+  return runtimeClient.pause({
+    params: { "space-id": "0", "workspace-id": "0" }
+  });
 }
