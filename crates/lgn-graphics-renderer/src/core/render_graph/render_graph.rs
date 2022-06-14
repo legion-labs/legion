@@ -14,8 +14,8 @@ use lgn_graphics_api::{
 };
 use lgn_tracing::span_scope;
 
-use crate::components::RenderViewport;
 use crate::core::render_graph::RenderGraphBuilder;
+use crate::core::RenderViewport;
 use crate::core::{RenderCamera, RenderListSet, RenderResources};
 use crate::egui::Egui;
 

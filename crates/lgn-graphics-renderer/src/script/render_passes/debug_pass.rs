@@ -9,8 +9,10 @@ use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen::{self, cgen_type::TransformData},
-    components::{ManipulatorComponent, RenderViewport, VisualComponent},
-    core::{RenderCamera, RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId},
+    components::{ManipulatorComponent, VisualComponent},
+    core::{
+        RenderCamera, RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId, RenderViewport,
+    },
     debug_display::{DebugDisplay, DebugPrimitiveType},
     picking::ManipulatorManager,
     resources::{

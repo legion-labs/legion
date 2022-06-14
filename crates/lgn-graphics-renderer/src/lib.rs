@@ -15,12 +15,14 @@ mod cgen {
 use crate::components::{
     reflect_camera_components, reflect_viewports, reflect_visual_components, tmp_create_camera,
     tmp_debug_display_lights, EcsToRenderCamera, EcsToRenderLight, EcsToRenderViewport,
-    EcsToRenderVisual, RenderViewport, RenderViewportPrivateData, RenderViewportPrivateDataHandler,
+    EcsToRenderVisual,
 };
 use crate::core::{
     RenderCamera, RenderCameraPrivateData, RenderCameraPrivateDataHandler, RenderCommandQueuePool,
     RenderFeatures, RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder,
-    RenderLayers, RenderObjects, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
+    RenderLayers, RenderObjects, RenderViewport, RenderViewportPrivateData,
+    RenderViewportPrivateDataHandler, Viewport, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE,
+    RENDER_LAYER_PICKING,
 };
 use crate::features::{ModelFeature, RenderVisual};
 use crate::lighting::{RenderLight, RenderLightTestData};
@@ -36,7 +38,6 @@ use cgen::*;
 
 pub mod labels;
 
-use components::Viewport;
 use gpu_renderer::GpuInstanceManager;
 
 pub use labels::*;

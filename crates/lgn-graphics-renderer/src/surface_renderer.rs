@@ -2,10 +2,9 @@ use lgn_graphics_api::{BufferViewDef, ResourceUsage};
 use lgn_math::Vec2;
 
 use crate::cgen::cgen_type;
-use crate::components::{RenderViewport, RenderViewportPrivateData};
 use crate::core::{
     DebugStuff, PrepareRenderContext, RenderCamera, RenderCameraPrivateData, RenderFeatures,
-    RenderLayers, RenderObjects, VisibilityContext,
+    RenderLayers, RenderObjects, RenderViewport, RenderViewportPrivateData, VisibilityContext,
 };
 use crate::gpu_renderer::GpuInstanceManager;
 use crate::lighting::LightingManager;
