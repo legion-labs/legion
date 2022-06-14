@@ -5326,6 +5326,7 @@ dependencies = [
  "termcolor",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tokio-util 0.6.10",
  "tonic",
  "tonic-web",
