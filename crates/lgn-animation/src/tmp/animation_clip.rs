@@ -1,9 +1,7 @@
-use lgn_math::{Quat, Vec4};
 use lgn_transform::components::Transform;
 
 use crate::{
-    animation_event::Event, animation_frame_time::FrameTime, animation_skeleton::Skeleton,
-    animation_sync_track::SyncTrack,
+    animation_skeleton::Skeleton, tmp::animation_event::Event, tmp::animation_sync_track::SyncTrack,
 };
 
 pub struct QuantizationRange {
@@ -14,17 +12,17 @@ pub struct QuantizationRange {
 impl QuantizationRange {
     #[inline]
     fn is_valid() -> bool {
-        return false;
+        false
     }
 }
 
 pub struct TrackCompressionSettings {
-    translation_range_X: QuantizationRange, // TODO QUantizationRange
-    translation_range_Y: QuantizationRange,
-    translation_range_Z: QuantizationRange,
-    scale_range_X: QuantizationRange,
-    scale_range_Y: QuantizationRange,
-    scale_range_Z: QuantizationRange,
+    translation_range_x: QuantizationRange, // TODO QUantizationRange
+    translation_range_y: QuantizationRange,
+    translation_range_z: QuantizationRange,
+    scale_range_x: QuantizationRange,
+    scale_range_y: QuantizationRange,
+    scale_range_z: QuantizationRange,
     track_start_index: u32,
     is_translation_static: bool,
     is_scale_static: bool,

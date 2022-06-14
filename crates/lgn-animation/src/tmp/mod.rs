@@ -1,4 +1,5 @@
 pub mod animation_bone_mask;
+pub mod animation_clip;
 pub mod animation_editor_flow_graph;
 pub mod animation_editor_graph_compilation;
 pub mod animation_editor_graph_definition;
@@ -13,5 +14,6 @@ pub mod animation_task_pose_pool;
 pub mod animation_task_system;
 pub mod graph_instance;
 pub mod graph_nodes;
+pub mod node_animation_clip;
 
-pub use animation_bone_mask::*;
+// pub use animation_bone_mask::*;

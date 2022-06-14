@@ -1,9 +1,6 @@
 use lgn_transform::components::Transform;
 
-use crate::{
-    animation_graph_events::SampledEventRange, components::AnimationClip,
-    tmp::animation_bone_mask::BoneMask, tmp::animation_sync_track::SyncTrack,
-};
+use crate::animation_graph_events::SampledEventRange;
 
 pub struct Settings {
     node_idx: i16,
@@ -39,9 +36,6 @@ pub trait GraphNode {
     fn mark_node_active();
     fn initialize_internal();
     fn shutdown_internal();
-    const settings: Settings;
-    const last_update_id: u32;
-    const initialization_count: u32 = 0;
 }
 
 pub struct GraphPoseNodeResult {
