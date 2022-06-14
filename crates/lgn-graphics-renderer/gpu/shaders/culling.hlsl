@@ -66,7 +66,7 @@ void main_cs(uint3 dt_id : SV_DispatchThreadID) {
 
             float4 min_view = center_pos_view + float4(-bv_radius, -bv_radius, 0.0, 0.0);
             float4 max_view = center_pos_view + float4(bv_radius, bv_radius, 0.0, 0.0);
-            float4 closest_view = center_pos_view + float4(0.0, 0.0, -bv_radius, 0.0);
+            float4 closest_view = center_pos_view + float4(0.0, 0.0, bv_radius, 0.0);
 
             float4 min_proj = mul(view_data.projection, min_view);
             float4 max_proj = mul(view_data.projection, max_view);
