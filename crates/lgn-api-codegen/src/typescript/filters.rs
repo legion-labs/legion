@@ -39,6 +39,7 @@ pub fn fmt_type(
                 "complex types cannot be formatted".to_string(),
             ))))
         }
+        Type::Box(inner) => fmt_type(inner.as_ref(), ctx, module_path)?,
     })
 }
 

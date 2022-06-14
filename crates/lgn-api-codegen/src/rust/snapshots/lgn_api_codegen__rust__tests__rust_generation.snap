@@ -16,6 +16,8 @@ pub mod cars {
         Option1(super::components::Pet),
         #[serde(rename = "option2")]
         Option2(super::components::Car),
+        #[serde(rename = "option3")]
+        Option3(super::components::Alpha),
     }
 
     // API Test API v1.0.0
@@ -2330,6 +2332,22 @@ pub mod components {
     use lgn_online::codegen::Error;
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Alpha {
+        #[serde(rename = "beta")]
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub beta: Option<Beta>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub struct Beta(pub Vec<Gamma>);
+
+    impl From<Vec<Gamma>> for Beta {
+        fn from(t: Vec<Gamma>) -> Self {
+            Self(t)
+        }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Car {
         #[serde(rename = "code")]
         pub code: u32,
@@ -2425,6 +2443,12 @@ pub mod components {
         fn from(t: Vec<Car>) -> Self {
             Self(t)
         }
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    pub enum Gamma {
+        #[serde(rename = "option1")]
+        Option1(Box<Alpha>),
     }
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]

@@ -60,7 +60,7 @@ pub fn fmt_type(
         Type::Bytes | Type::Binary => "lgn_online::codegen::Bytes".to_string(),
         Type::DateTime => "chrono::DateTime::<chrono::Utc>".to_string(),
         Type::Date => "chrono::Date::<chrono::Utc>".to_string(),
-        Type::Array(inner) => format!("Vec<{}>", fmt_type(inner, ctx, module_path).unwrap()),
+        Type::Array(inner) => format!("Vec<{}>", fmt_type(inner, ctx, module_path)?),
         Type::HashSet(inner) => format!(
             "std::collections::HashSet<{}>",
             fmt_type(inner, ctx, module_path).unwrap()
@@ -81,6 +81,7 @@ pub fn fmt_type(
                 "complex types cannot be formatted".to_string(),
             ))))
         }
+        Type::Box(inner) => format!("Box<{}>", fmt_type(inner, ctx, module_path)?),
     })
 }
 

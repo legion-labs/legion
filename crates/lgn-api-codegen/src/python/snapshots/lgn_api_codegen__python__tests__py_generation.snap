@@ -35,6 +35,9 @@ class TestOneOf200Response:
         if isinstance(value, Car):
             self.type = Car
         
+        if isinstance(value, Alpha):
+            self.type = Alpha
+        
 
     def from_json(body):
         value = None
@@ -44,6 +47,9 @@ class TestOneOf200Response:
         
         if "option2" in body:
             value = Car.from_json(body["option2"])
+        
+        if "option3" in body:
+            value = Alpha.from_json(body["option3"])
         
         return TestOneOf200Response(
             value
@@ -688,6 +694,50 @@ class ModelEncoder(JSONEncoder):
 
 
 
+class Alpha:
+    def __init__(
+        self,
+        beta, # : Beta 
+    ):
+        self.beta = beta
+
+    def to_json(self):
+        return ModelEncoder().encode(self)
+
+    def from_json(body):
+        beta = Beta.from_json(body['beta'])
+        return Alpha(
+            beta,
+        )
+
+    def __str__(self):
+        return ("Alpha (\n"
+        "  beta : {}\n"
+        ")"
+        ).format(
+            self.beta,
+        )
+
+
+class Beta:
+    def __init__(
+        self,
+        value: list[Gamma]
+    ):
+        self.value = value
+
+    def to_json(self):
+        return ModelEncoder().encode(self)
+
+    def from_json(body):
+        return Beta(body)
+
+    def __str__(self):
+        return "Beta ( value: {} )".format(self.value)
+   
+
+
+
 class Car:
     def __init__(
         self,
@@ -767,6 +817,32 @@ class Cars:
     def __str__(self):
         return "Cars ( value: {} )".format(self.value)
    
+
+
+
+class Gamma:
+    def __init__(self, value):
+        self.value = value 
+        self.type = None
+        
+        if isinstance(value, Alpha):
+            self.type = Alpha
+        
+
+    def from_json(body):
+        value = None
+        
+        if "option1" in body:
+            value = Alpha.from_json(body["option1"])
+        
+        return Gamma(
+            value
+        )
+
+    def __str__(self):
+        return "Gamma ( value: {} )".format(self.value)
+
+                
 
 
 
