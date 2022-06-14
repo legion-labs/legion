@@ -56,8 +56,8 @@ impl Viewport {
         self.extents
     }
 
-    pub fn camera_id(&self) -> RenderObjectId {
-        self.camera_id.unwrap()
+    pub fn camera_id(&self) -> Option<RenderObjectId> {
+        self.camera_id
     }
 
     pub fn set_camera_id(&mut self, camera: RenderObjectId) {

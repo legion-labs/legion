@@ -6,7 +6,7 @@ use lgn_graphics_cgen_runtime::Float4;
 use lgn_math::{Angle, DMat4, Mat4, Vec2, Vec4};
 use lgn_transform::prelude::GlobalTransform;
 
-use crate::{cgen, components::CameraComponent, core::SecondaryTableHandler, UP_VECTOR};
+use crate::{cgen, components::CameraComponent, UP_VECTOR};
 
 pub fn view_transform(final_transform: &Transform<RightHanded>) -> GlobalTransform {
     let eye = final_transform.position.as_dvec3();
@@ -119,20 +119,10 @@ impl RenderCamera {
             self.z_far,
         )
     }
-}
 
-pub struct RenderCameraPrivateData {}
-
-impl RenderCameraPrivateData {
-    pub fn new(_render_camera: &RenderCamera) -> Self {
-        Self {}
-    }
-
-    #[allow(clippy::unused_self)]
     #[allow(clippy::too_many_arguments)]
     pub fn tmp_build_view_data(
         &self,
-        render_camera: &RenderCamera,
         pixel_width: f32,
         pixel_height: f32,
         logical_width: f32,
@@ -140,9 +130,9 @@ impl RenderCameraPrivateData {
         cursor_x: f32,
         cursor_y: f32,
     ) -> cgen::cgen_type::ViewData {
-        let view_transform = render_camera.view_transform();
-        let projection = render_camera.build_projection(pixel_width, pixel_height);
-        let culling_planes = render_camera.build_culling_planes(pixel_width / pixel_height);
+        let view_transform = self.view_transform();
+        let projection = self.build_projection(pixel_width, pixel_height);
+        let culling_planes = self.build_culling_planes(pixel_width / pixel_height);
 
         let mut camera_props = cgen::cgen_type::ViewData::default();
 
@@ -171,35 +161,5 @@ impl RenderCameraPrivateData {
         camera_props.set_cursor_pos(Vec2::new(cursor_x, cursor_y).into());
 
         camera_props
-    }
-}
-
-pub struct RenderCameraPrivateDataHandler {}
-
-impl SecondaryTableHandler<RenderCamera, RenderCameraPrivateData>
-    for RenderCameraPrivateDataHandler
-{
-    fn create(&self, render_camera: &RenderCamera) -> RenderCameraPrivateData {
-        RenderCameraPrivateData::new(render_camera)
-    }
-
-    fn update(
-        &self,
-        _render_camera: &RenderCamera,
-        _render_camera_private_data: &mut RenderCameraPrivateData,
-    ) {
-    }
-
-    fn destroy(
-        &self,
-        _render_camera: &RenderCamera,
-        _render_camera_private_data: &mut RenderCameraPrivateData,
-    ) {
-    }
-}
-
-impl RenderCameraPrivateDataHandler {
-    pub fn new() -> Self {
-        Self {}
     }
 }

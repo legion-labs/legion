@@ -18,11 +18,10 @@ use crate::components::{
     EcsToRenderVisual,
 };
 use crate::core::{
-    RenderCamera, RenderCameraPrivateData, RenderCameraPrivateDataHandler, RenderCommandQueuePool,
-    RenderFeatures, RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder,
-    RenderLayers, RenderObjects, RenderViewport, RenderViewportPrivateData,
-    RenderViewportPrivateDataHandler, Viewport, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE,
-    RENDER_LAYER_PICKING,
+    RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
+    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, RenderViewport,
+    RenderViewportPrivateData, RenderViewportPrivateDataHandler, Viewport, RENDER_LAYER_DEPTH,
+    RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
 use crate::features::{ModelFeature, RenderVisual};
 use crate::lighting::{RenderLight, RenderLightTestData};
@@ -260,9 +259,6 @@ impl Plugin for RendererPlugin {
             .add_primary_table::<RenderVisual>()
             // Camera
             .add_primary_table::<RenderCamera>()
-            .add_secondary_table_with_handler::<RenderCamera, RenderCameraPrivateData>(Box::new(
-                RenderCameraPrivateDataHandler::new(),
-            ))
             // Done!
             .finalize();
 
