@@ -2,9 +2,8 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
-        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
-        TreeIdentifier, TreeLeafNode,
+        BasicIndexer, IndexKey, ResourceIdentifier, ResourceIndex, ResourceReader, ResourceWriter,
+        SharedTreeIdentifier, StringPathIndexer, TreeDiffSide, TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
@@ -481,26 +480,6 @@ where
     /// Does the current transaction hold any changes that have not yet been committed?
     pub async fn has_pending_resources(&self) -> bool {
         self.transaction.has_references().await
-    }
-
-    pub async fn get_pending_resources(&self) -> Result<Vec<IndexKey>> {
-        let pending_resources = self.transaction.referenced_resources().await;
-        let indexed_resources = self.get_resources().await?;
-        Ok(pending_resources
-            .into_iter()
-            .filter_map(|resource_id| {
-                indexed_resources
-                    .iter()
-                    .find_map(|(index_key, matched_id)| {
-                        if matched_id == &resource_id {
-                            Some(index_key)
-                        } else {
-                            None
-                        }
-                    })
-            })
-            .cloned()
-            .collect())
     }
 
     pub async fn get_pending_changes(&self) -> Result<Vec<(IndexKey, ChangeType)>> {

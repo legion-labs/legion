@@ -635,17 +635,6 @@ impl Project {
         self.workspace.has_pending_resources().await
     }
 
-    /// Return the list of resources that have pending (uncommitted) changes
-    pub async fn get_pending_resources(&self) -> Result<Vec<ResourceTypeAndId>, Error> {
-        Ok(self
-            .workspace
-            .get_pending_resources()
-            .await?
-            .into_iter()
-            .map(Into::into)
-            .collect())
-    }
-
     /// Return the list of all resources that were previously committed
     pub async fn get_committed_resources(
         &self,
