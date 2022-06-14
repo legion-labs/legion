@@ -83,7 +83,7 @@ pub(crate) fn tree_leaves<'s>(
 /// A stream of differences, in an unspecified - but stable - order.
 pub fn tree_diff<'s>(
     provider: &'s Provider,
-    base_key: &'s IndexKey,
+    base_key: IndexKey,
     left_id: &'s TreeIdentifier,
     right_id: &'s TreeIdentifier,
 ) -> impl Stream<Item = (TreeDiffSide, IndexKey, Result<TreeLeafNode>)> + 's {
@@ -92,7 +92,7 @@ pub fn tree_diff<'s>(
             base_key.clone(),
             left_id.clone(),
         ), (
-            base_key.clone(),
+            base_key,
             right_id.clone(),
         ))].into();
 
@@ -765,7 +765,7 @@ pub trait TreeVisitor: Sized {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TreeDiffSide {
     Left,
     Right,
@@ -1141,12 +1141,16 @@ mod tests {
         .await
         .unwrap();
 
-        let base_key = IndexKey::default();
-        let mut leaves = tree_diff(&provider, &base_key, &left_tree_id, &right_tree_id)
-            .map(|(side, index_key, leaf)| leaf.map(|leaf| (side, index_key, leaf)))
-            .collect::<Result<Vec<_>>>()
-            .await
-            .unwrap();
+        let mut leaves = tree_diff(
+            &provider,
+            IndexKey::default(),
+            &left_tree_id,
+            &right_tree_id,
+        )
+        .map(|(side, index_key, leaf)| leaf.map(|leaf| (side, index_key, leaf)))
+        .collect::<Result<Vec<_>>>()
+        .await
+        .unwrap();
 
         leaves.sort();
 
@@ -1190,12 +1194,16 @@ mod tests {
         .await
         .unwrap();
 
-        let base_key = IndexKey::default();
-        let mut leaves = tree_diff(&provider, &base_key, &left_tree_id, &right_tree_id)
-            .map(|(side, index_key, leaf)| leaf.map(|leaf| (side, index_key, leaf)))
-            .collect::<Result<Vec<_>>>()
-            .await
-            .unwrap();
+        let mut leaves = tree_diff(
+            &provider,
+            IndexKey::default(),
+            &left_tree_id,
+            &right_tree_id,
+        )
+        .map(|(side, index_key, leaf)| leaf.map(|leaf| (side, index_key, leaf)))
+        .collect::<Result<Vec<_>>>()
+        .await
+        .unwrap();
 
         leaves.sort();
 
@@ -1247,12 +1255,16 @@ mod tests {
         .await
         .unwrap();
 
-        let base_key = IndexKey::default();
-        let mut leaves = tree_diff(&provider, &base_key, &left_tree_id, &right_tree_id)
-            .map(|(side, index_key, leaf)| leaf.map(|leaf| (side, index_key, leaf)))
-            .collect::<Result<Vec<_>>>()
-            .await
-            .unwrap();
+        let mut leaves = tree_diff(
+            &provider,
+            IndexKey::default(),
+            &left_tree_id,
+            &right_tree_id,
+        )
+        .map(|(side, index_key, leaf)| leaf.map(|leaf| (side, index_key, leaf)))
+        .collect::<Result<Vec<_>>>()
+        .await
+        .unwrap();
 
         leaves.sort();
 

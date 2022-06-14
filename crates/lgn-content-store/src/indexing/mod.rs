@@ -170,13 +170,17 @@ pub trait BasicIndexer {
     async fn diff_leaves<'s>(
         &'s self,
         provider: &'s Provider,
-        base_key: &'s IndexKey,
         left_id: &'s TreeIdentifier,
         right_id: &'s TreeIdentifier,
     ) -> Result<
         Pin<Box<dyn Stream<Item = (TreeDiffSide, IndexKey, Result<TreeLeafNode>)> + Send + 's>>,
     > {
-        Ok(Box::pin(tree_diff(provider, base_key, left_id, right_id)))
+        Ok(Box::pin(tree_diff(
+            provider,
+            IndexKey::default(),
+            left_id,
+            right_id,
+        )))
     }
 }
 
