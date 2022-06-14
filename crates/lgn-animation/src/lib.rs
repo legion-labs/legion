@@ -47,8 +47,6 @@ impl Plugin for AnimationPlugin {
                 RenderStage::Prepare,
                 animation_options::ui_animation_options,
             )
-            .add_system_to_stage(RenderStage::Prepare, display_animation_2);
+            .add_system_to_stage(RenderStage::Prepare, display_animation);
     }
 }
-
-impl AnimationPlugin {}
