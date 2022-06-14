@@ -2,7 +2,7 @@ use std::collections::hash_map::{Values, ValuesMut};
 use std::hash::Hash;
 use std::{cmp::max, sync::Arc};
 
-use lgn_ecs::prelude::ResMut;
+use lgn_ecs::prelude::{Query, ResMut};
 use lgn_graphics_api::{
     CmdCopyTextureParams, CommandBuffer, DeviceContext, Extents2D, Extents3D, Format, MemoryUsage,
     Offset2D, Offset3D, PlaneSlice, ResourceFlags, ResourceState, ResourceUsage, Semaphore,
@@ -20,6 +20,8 @@ use crate::core::{
 };
 use crate::render_pass::PickingRenderPass;
 use crate::{RenderContext, Renderer};
+
+use super::CameraComponent;
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents);
@@ -585,13 +587,25 @@ impl EcsToRenderViewport {
 pub(crate) fn reflect_viewports(
     mut render_surfaces: ResMut<'_, RenderSurfaces>,
     mut ecs_to_render: ResMut<'_, EcsToRenderViewport>,
+    q_cameras: Query<'_, '_, &CameraComponent>,
 ) {
+    let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
+    let default_camera = CameraComponent::default();
+    let camera_component = if !q_cameras.is_empty() {
+        q_cameras[0]
+    } else {
+        &default_camera
+    };
+
     let mut render_commands = ecs_to_render.command_builder();
 
     let mut all_viewports = vec![];
     for render_surface in render_surfaces.iter_mut() {
         let viewports = render_surface.viewports_mut();
         for viewport in viewports {
+            // TODO(jsg): A single camera for all viewports for now (there's a single viewport anyways)
+            viewport.set_camera_id(camera_component.render_object_id().unwrap());
+
             all_viewports.push(viewport);
         }
     }

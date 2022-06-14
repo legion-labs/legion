@@ -118,9 +118,7 @@ use crate::resources::{
 };
 
 use crate::{
-    components::{
-        apply_camera_setups, camera_control, CameraComponent, RenderSurface, VisualComponent,
-    },
+    components::{apply_camera_setups, camera_control, RenderSurface, VisualComponent},
     labels::CommandBufferLabel,
 };
 
@@ -535,7 +533,6 @@ fn render_update(
     queries: (
         Query<'_, '_, (&VisualComponent, &GlobalTransform), With<PickedComponent>>,
         Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,
-        Query<'_, '_, &CameraComponent>,
     ),
 ) {
     // resources
@@ -551,7 +548,6 @@ fn render_update(
     // queries
     let q_picked_drawables = queries.0;
     let q_manipulator_drawables = queries.1;
-    let q_cameras = queries.2;
 
     //
     // Simulation thread
@@ -618,21 +614,6 @@ fn render_update(
     task_pool.scope(|scope| {
         scope.spawn(async move {
             span_scope!("render_thread");
-
-            let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
-            let default_camera = CameraComponent::default();
-            let camera_component = if !q_cameras.is_empty() {
-                q_cameras[0]
-            } else {
-                &default_camera
-            };
-
-            // TODO(jsg): A single camera for all viewports for now (there's a single viewport anyways)
-            for render_surface in render_surfaces.iter_mut() {
-                for viewport in render_surface.viewports_mut() {
-                    viewport.set_camera_id(camera_component.render_object_id().unwrap());
-                }
-            }
 
             let mut herd = render_resources.get_mut::<Herd>();
             let mut render_scope = render_resources.get_mut::<RenderScope>();
