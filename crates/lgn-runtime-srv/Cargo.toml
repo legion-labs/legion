@@ -24,8 +24,7 @@ lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
 lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-input = { path = "../lgn-input", version = "0.1.0" }
-lgn-log-stream = { path = "../lgn-log-stream", version = "0.1.0" }
-lgn-log-stream-proto = { path = "../lgn-log-stream-proto", version = "0.1.0" }
+lgn-log = { path = "../lgn-log", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-physics = { path = "../lgn-physics", version = "0.1.0" }
 lgn-presenter-window = { path = "../lgn-presenter-window", version = "0.1.0", optional = true }
@@ -110,8 +109,7 @@ extra-files = [
 normal = [
     "lgn-async",
     "lgn-grpc",
-    "lgn-log-stream",
-    "lgn-log-stream-proto",
+    "lgn-log",
     "lgn-runtime-proto",
     "lgn-streamer",
 ]

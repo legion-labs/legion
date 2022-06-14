@@ -16,7 +16,7 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
-use lgn_log_stream::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
+use lgn_log::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
 use lgn_resource_registry::{
     settings::CompilationMode, ResourceRegistryPlugin, ResourceRegistrySettings,
 };
@@ -308,8 +308,8 @@ fn main() {
             rest_listen_endpoint,
         ))
         .insert_resource(trace_events_receiver)
-        .add_plugin(LogStreamPlugin::default())
         .add_plugin(GRPCPlugin::hybrid())
+        .add_plugin(LogStreamPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::default())
         .add_plugin(streamer_plugin)

@@ -845,9 +845,9 @@ dependencies = [
 
 [[package]]
 name = "axum"
-version = "0.5.6"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab2504b827a8bef941ba3dd64bdffe9cf56ca182908a147edd6189c95fbcae7d"
+checksum = "dc47084705629d09d15060d70a8dbfce479c842303d05929ce29c74c995916ae"
 dependencies = [
  "async-trait",
  "axum-core",
@@ -876,9 +876,9 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da31c0ed7b4690e2c78fe4b880d21cd7db04a346ebc658b4270251b695437f17"
+checksum = "c2efed1c501becea07ce48118786ebcf229531d0d3b28edf224a720020d9e106"
 dependencies = [
  "async-trait",
  "bytes",
@@ -2470,8 +2470,7 @@ dependencies = [
  "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
- "lgn-log-stream",
- "lgn-log-stream-proto",
+ "lgn-log",
  "lgn-math",
  "lgn-mp4",
  "lgn-online",
@@ -3353,9 +3352,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff8670570af52249509a86f5e3e18a08c60b177071826898fde8997cf5f6bfbb"
+checksum = "75f43d41e26995c17e71ee126451dd3941010b0514a81a9d11f3b341debc2399"
 dependencies = [
  "bytes",
  "fnv",
@@ -5011,29 +5010,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-log-stream"
+name = "lgn-log"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "axum",
+ "http",
+ "hyper",
+ "lgn-api-codegen",
  "lgn-app",
  "lgn-async",
  "lgn-ecs",
+ "lgn-governance",
  "lgn-grpc",
- "lgn-log-stream-proto",
+ "lgn-online",
  "lgn-tracing",
+ "serde",
+ "serde_json",
+ "serde_qs",
  "tokio",
- "tokio-stream",
- "tonic",
-]
-
-[[package]]
-name = "lgn-log-stream-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -7652,8 +7647,7 @@ dependencies = [
  "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
- "lgn-log-stream",
- "lgn-log-stream-proto",
+ "lgn-log",
  "lgn-online",
  "lgn-physics",
  "lgn-presenter-window",

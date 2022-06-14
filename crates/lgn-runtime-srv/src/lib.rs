@@ -30,7 +30,7 @@ use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 #[cfg(not(feature = "standalone"))]
-use lgn_log_stream::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
+use lgn_log::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
 use lgn_physics::{PhysicsPlugin, PhysicsSettingsBuilder};
 #[cfg(not(feature = "standalone"))]
 use lgn_scene_plugin::SceneMessage;
@@ -303,8 +303,8 @@ pub fn build_runtime() -> App {
             rest_listen_endpoint,
         ))
         .insert_resource(trace_events_receiver)
-        .add_plugin(LogStreamPlugin::default())
         .add_plugin(GRPCPlugin::hybrid())
+        .add_plugin(LogStreamPlugin::default())
         .add_plugin(streamer_plugin);
 
         app.add_startup_system_to_stage(

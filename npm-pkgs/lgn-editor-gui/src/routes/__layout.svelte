@@ -72,6 +72,8 @@
         devSettings.restRuntimeServerUrl,
     }));
 
+    const accessTokenCookieName = "editor_access_token";
+
     const {
       grpcEditorServerUrl,
       grpcRuntimeServerUrl,
@@ -80,8 +82,11 @@
     } = get(devSettings);
 
     initApiClient({
-      editorServerUrl: grpcEditorServerUrl,
-      runtimeServerUrl: grpcRuntimeServerUrl,
+      grpcEditorServerUrl,
+      grpcRuntimeServerUrl,
+      restEditorServerUrl,
+      restRuntimeServerUrl,
+      accessTokenCookieName,
     });
 
     try {
@@ -97,7 +102,7 @@
           },
           login: {
             cookies: {
-              accessToken: "editor_access_token",
+              accessToken: accessTokenCookieName,
               refreshToken: "editor_refresh_token",
             },
             extraParams: {
