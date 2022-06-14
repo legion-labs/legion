@@ -21,7 +21,6 @@ const plugins = [
   viteTsProto({
     modules: [
       { name: "@lgn/proto-editor", glob: "*.proto" },
-      { name: "@lgn/proto-runtime", glob: "*.proto" },
     ],
   }),
   viteApiCodegen({
@@ -43,6 +42,15 @@ const plugins = [
       "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
     },
     filename: "log",
+  }),
+  viteApiCodegen({
+    path: "../../crates/lgn-runtime-srv/apis",
+    apiNames: ["runtime"],
+    withPackageJson: true,
+    aliasMappings: {
+      "../../crates/lgn-governance/apis/space.yaml": "Space",
+      "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
+    },
   }),
   // viteWasmPack({
   //   crates: [

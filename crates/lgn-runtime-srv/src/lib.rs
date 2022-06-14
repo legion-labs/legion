@@ -9,6 +9,8 @@
 
 use std::{net::SocketAddr, path::PathBuf};
 
+use crate::server::{RuntimeServerCommand, Server};
+
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
 use lgn_animation::AnimationPlugin;
@@ -50,12 +52,11 @@ use serde::Deserialize;
 use tokio::sync::broadcast;
 
 #[cfg(not(feature = "standalone"))]
-mod grpc;
+mod api;
+#[cfg(not(feature = "standalone"))]
+mod server;
 #[cfg(feature = "standalone")]
 mod standalone;
-
-#[cfg(not(feature = "standalone"))]
-use crate::grpc::{GRPCServer, RuntimeServerCommand};
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Labs runtime server")]
@@ -291,27 +292,26 @@ pub fn build_runtime() -> App {
 
     #[cfg(not(feature = "standalone"))]
     {
-        use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
+        //use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
         use lgn_window::WindowPlugin;
 
         app.add_plugin(WindowPlugin {
             add_primary_window: false,
             exit_on_close: false,
         })
-        .insert_resource(GRPCPluginSettings::hybrid(
+        /*.insert_resource(GRPCPluginSettings::hybrid(
             listen_endpoint,
             rest_listen_endpoint,
-        ))
+        ))*/
         .insert_resource(trace_events_receiver)
-        .add_plugin(GRPCPlugin::hybrid())
+        //.add_plugin(GRPCPlugin::hybrid())
+        .init_resource::<lgn_grpc::SharedRouter>()
         .add_plugin(LogStreamPlugin::default())
         .add_plugin(streamer_plugin);
 
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
-            setup_runtime_grpc
-                .exclusive_system()
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+            setup_runtime_grpc.exclusive_system(), //.before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
         )
         .add_system_to_stage(CoreStage::PreUpdate, rebroadcast_commands);
     }
@@ -326,11 +326,16 @@ pub fn start_runtime(app: &mut App) {
 
 #[cfg(not(feature = "standalone"))]
 fn setup_runtime_grpc(world: &mut World) {
+    use std::sync::Arc;
+
     let (command_sender, command_receiver) = crossbeam_channel::unbounded::<RuntimeServerCommand>();
 
-    let grpc_server = GRPCServer::new(command_sender);
-    let mut grpc_settings = world.resource_mut::<lgn_grpc::GRPCPluginSettings>();
-    grpc_settings.register_service(grpc_server.service());
+    let server = Arc::new(Server::new(command_sender));
+
+    world
+        .resource_mut::<lgn_grpc::SharedRouter>()
+        .into_inner()
+        .register_routes(crate::api::runtime::server::register_routes, server);
 
     world.insert_resource(command_receiver);
 }

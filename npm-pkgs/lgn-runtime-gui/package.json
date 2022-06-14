@@ -61,7 +61,6 @@
   },
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
-    "@lgn/proto-runtime": "^0.1.0",
     "@lgn/web-client": "^0.1.0",
     "browser-headers": "^0.4.1",
     "color-convert": "^2.0.1",
