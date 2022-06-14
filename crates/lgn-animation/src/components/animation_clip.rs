@@ -9,7 +9,7 @@ use lgn_transform::{
 };
 
 #[derive(Component, Clone)]
-pub struct RuntimeAnimationClip {
+pub struct AnimationClip {
     pub(crate) current_key_frame_index: u32,
     pub(crate) duration_key_frames: Vec<f32>,
     pub(crate) time_since_last_tick: f32,
@@ -17,7 +17,7 @@ pub struct RuntimeAnimationClip {
     pub(crate) poses: Vec<Pose>,
 }
 
-impl RuntimeAnimationClip {
+impl AnimationClip {
     #[must_use]
     pub fn new(raw_animation_track: &AnimationTrack) -> Self {
         let mut bone_ids: Vec<Option<usize>> = Vec::new();
