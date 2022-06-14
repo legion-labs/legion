@@ -691,12 +691,14 @@ class ModelEncoder(JSONEncoder):
 class Car:
     def __init__(
         self,
+        code, # : int 
         color, # : CarColor 
         extra, # : str 
         id, # : int 
         is_new, # : bool 
         name, # : str 
     ):
+        self.code = code
         self.color = color
         self.extra = extra
         self.id = id
@@ -707,12 +709,14 @@ class Car:
         return ModelEncoder().encode(self)
 
     def from_json(body):
+        code = body['code']
         color = CarColor.from_json(body['color'])
         extra = body['extra']
         id = body['id']
         is_new = body['is_new']
         name = body['name']
         return Car(
+            code,
             color,
             extra,
             id,
@@ -722,6 +726,7 @@ class Car:
 
     def __str__(self):
         return ("Car (\n"
+        "  code : {}\n"
         "  color : {}\n"
         "  extra : {}\n"
         "  id : {}\n"
@@ -729,6 +734,7 @@ class Car:
         "  name : {}\n"
         ")"
         ).format(
+            self.code,
             self.color,
             self.extra,
             self.id,

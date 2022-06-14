@@ -25,6 +25,10 @@ schemas:
       id:
         type: integer
         format: int64
+      code:
+        type: integer
+        format: int32
+        minimum: 0
       name:
         type: string
       color:
@@ -41,6 +45,7 @@ schemas:
         format: byte
     required:
       - id
+      - code
       - name
       - color
       - is_new

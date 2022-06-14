@@ -412,6 +412,18 @@ impl Visitor {
             ));
         }
 
+        if let Some(minimum) = integer_type.minimum {
+            if minimum == 0 {
+                return Ok(match &integer_type.format {
+                    openapiv3::VariantOrUnknownOrEmpty::Item(format) => match format {
+                        openapiv3::IntegerFormat::Int32 => Type::UInt32,
+                        openapiv3::IntegerFormat::Int64 => Type::UInt64,
+                    },
+                    _ => Type::UInt32,
+                });
+            }
+        }
+
         Ok(match &integer_type.format {
             openapiv3::VariantOrUnknownOrEmpty::Item(format) => match format {
                 openapiv3::IntegerFormat::Int32 => Type::Int32,
@@ -643,10 +655,42 @@ mod tests {
             "#,
             )
             .unwrap();
+        let uint = loader
+            .import_from_yaml(
+                "uint",
+                r#"
+            type: integer
+            minimum: 0
+            "#,
+            )
+            .unwrap();
+        let uint32 = loader
+            .import_from_yaml(
+                "uint32",
+                r#"
+            type: integer
+            format: int32
+            minimum: 0
+            "#,
+            )
+            .unwrap();
+        let uint64 = loader
+            .import_from_yaml(
+                "uint64",
+                r#"
+            type: integer
+            format: int64
+            minimum: 0
+            "#,
+            )
+            .unwrap();
 
         assert_eq!(Visitor::resolve_integer(&int).unwrap(), Type::Int32);
         assert_eq!(Visitor::resolve_integer(&int32).unwrap(), Type::Int32);
         assert_eq!(Visitor::resolve_integer(&int64).unwrap(), Type::Int64);
+        assert_eq!(Visitor::resolve_integer(&uint).unwrap(), Type::UInt32);
+        assert_eq!(Visitor::resolve_integer(&uint32).unwrap(), Type::UInt32);
+        assert_eq!(Visitor::resolve_integer(&uint64).unwrap(), Type::UInt64);
     }
 
     #[test]

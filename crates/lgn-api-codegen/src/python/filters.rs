@@ -37,7 +37,7 @@ pub fn fmt_model_name(model: &Model, ctx: &GenerationContext) -> ::askama::Resul
 #[allow(clippy::unnecessary_wraps)]
 pub fn fmt_type(type_: &Type, ctx: &GenerationContext) -> ::askama::Result<String> {
     Ok(match type_ {
-        Type::Int32 | Type::Int64 => "int".to_string(),
+        Type::Int32 | Type::Int64 | Type::UInt32 | Type::UInt64 => "int".to_string(),
         Type::String | Type::Bytes | Type::Binary => "str".to_string(), // at the moment the binary is passed as string
         Type::Boolean => "bool".to_string(),
         Type::Float32 | Type::Float64 => "float".to_string(),

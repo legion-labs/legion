@@ -505,6 +505,8 @@ pub struct Api {
 pub enum Type {
     Int32,
     Int64,
+    UInt32,
+    UInt64,
     String,
     Boolean,
     Float32,

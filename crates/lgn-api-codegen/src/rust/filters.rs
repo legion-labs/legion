@@ -51,6 +51,8 @@ pub fn fmt_type(
     Ok(match type_ {
         Type::Int32 => "i32".to_string(),
         Type::Int64 => "i64".to_string(),
+        Type::UInt32 => "u32".to_string(),
+        Type::UInt64 => "u64".to_string(),
         Type::String => "String".to_string(),
         Type::Boolean => "bool".to_string(),
         Type::Float32 => "f32".to_string(),

@@ -28,6 +28,7 @@ async fn test_crud() {
     let span_id = "123456".to_string();
     let car = Car {
         id: 1,
+        code: 65,
         color: CarColor::Red,
         name: "car1".to_string(),
         is_new: true,
