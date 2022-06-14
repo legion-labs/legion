@@ -21,7 +21,6 @@ const plugins = [
   viteTsProto({
     modules: [
       { name: "@lgn/proto-editor", glob: "*.proto" },
-      { name: "@lgn/proto-log-stream", glob: "*.proto" },
       { name: "@lgn/proto-runtime", glob: "*.proto" },
     ],
   }),
@@ -33,6 +32,17 @@ const plugins = [
       "../../crates/lgn-governance/apis/space.yaml": "Space",
       "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
     },
+    filename: "streaming",
+  }),
+  viteApiCodegen({
+    path: "../../crates/lgn-log/apis",
+    apiNames: ["log"],
+    withPackageJson: true,
+    aliasMappings: {
+      "../../crates/lgn-governance/apis/space.yaml": "Space",
+      "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
+    },
+    filename: "log",
   }),
   // viteWasmPack({
   //   crates: [

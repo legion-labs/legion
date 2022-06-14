@@ -43,6 +43,7 @@
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-svelte3": "^4.0.0",
     "jsdom": "^19.0.0",
+    "node-fetch": "^3.2.6",
     "postcss": "^8.4.14",
     "postcss-load-config": "^4.0.1",
     "prettier": "2.6.2",
@@ -60,7 +61,6 @@
   },
   "dependencies": {
     "@improbable-eng/grpc-web": "^0.15.0",
-    "@lgn/proto-log-stream": "^0.1.0",
     "@lgn/proto-runtime": "^0.1.0",
     "@lgn/web-client": "^0.1.0",
     "browser-headers": "^0.4.1",

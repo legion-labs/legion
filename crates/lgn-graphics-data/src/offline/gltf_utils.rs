@@ -53,17 +53,16 @@ impl GltfFile {
                 let reader = primitive.reader(|buffer| Some(&self.buffers[buffer.index()]));
                 if let Some(iter) = reader.read_positions() {
                     for position in iter {
-                        // GLTF uses RH Y-up coordinate system, Legion Engine uses LH Y-up. Flipping Z for positions
-                        // and normals gives us the desired result. Note that it also rotates the model 90 degrees around
-                        // the up axis. It compensates 90 degrees rotation that happens when the model is exported from Blender
-                        // to GLTF. As a result, imported model is oriented the same relative to the axis of Legion Engine as it
-                        // was oriented relative to the axis of Blender.
-                        positions.push(Vec3::new(position[0], position[1], -position[2]));
+                        // GLTF uses RH Y-up coordinate system, Legion Engine uses RH Z-up. By importing -Z -> Y and Y -> Z we
+                        // rotate the imported model 90 degrees. This is done to compensate rotation caused by Blender exporting
+                        // to GLTF which rotates the model 90 degrees. Compensating like this will yield us the same positioning
+                        // as in Blender
+                        positions.push(Vec3::new(position[0], -position[2], position[1]));
                     }
                 }
                 if let Some(iter) = reader.read_normals() {
                     for normal in iter {
-                        normals.push(Vec3::new(normal[0], normal[1], -normal[2]));
+                        normals.push(Vec3::new(normal[0], -normal[2], normal[1]));
                     }
                 }
                 if let Some(iter) = reader.read_tangents() {
@@ -71,7 +70,7 @@ impl GltfFile {
                         // Same rule as above applies to the tangents. W coordinate of the tangent contains the handedness
                         // of the tangent space. -1 handedness corresponds to a LH tangent basis in a RH coordinate system.
                         // Since our coordinate system is LH, we have to flip it on import.
-                        tangents.push(Vec4::new(tangent[0], tangent[1], -tangent[2], -tangent[3]));
+                        tangents.push(Vec4::new(tangent[0], -tangent[2], tangent[1], tangent[3]));
                     }
                 }
                 if let Some(tex_coords_option) = reader.read_tex_coords(0) {
@@ -103,15 +102,12 @@ impl GltfFile {
                             }
                         }
                     }
-                    for i in 0..indices.len() / 3 {
-                        indices.swap(i * 3 + 1, i * 3 + 2);
-                    }
                 }
 
                 if tangents.is_empty() && !normals.is_empty() {
                     tangents = lgn_math::calculate_tangents(&positions, &tex_coords, &indices)
                         .iter()
-                        .map(|v| v.extend(-1.0))
+                        .map(|v| v.extend(1.0))
                         .collect();
                 }
 

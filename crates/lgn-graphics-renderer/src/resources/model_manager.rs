@@ -296,6 +296,21 @@ fn debug_bounding_spheres(
                             );
                         }
                     }
+                } else {
+                    let model = model_manager.get_default_model(DefaultMeshType::Cube);
+                    for mesh in &model.mesh_instances {
+                        let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+                        builder.add_default_mesh(
+                            &GlobalTransform::identity()
+                                .with_translation(
+                                    transform.translation + mesh_data.bounding_sphere.truncate(),
+                                )
+                                .with_scale(Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w)
+                                .with_rotation(transform.rotation),
+                            DefaultMeshType::Sphere,
+                            Color::WHITE,
+                        );
+                    }
                 }
             }
         });

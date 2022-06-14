@@ -12,14 +12,18 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
-use crate::components::{tmp_debug_display_lights, EcsToRender};
-use crate::core::{
-    DebugStuff, PrepareRenderContext, RenderFeatures, RenderFeaturesBuilder,
-    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, VisibilityContext,
-    RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
+use crate::components::{
+    reflect_camera_components, reflect_visual_components, tmp_create_camera,
+    tmp_debug_display_lights, EcsToRenderCamera, EcsToRenderLight, EcsToRenderVisual,
 };
-use crate::features::ModelFeature;
-use crate::lighting::{RenderLight, RenderLightTestData};
+use crate::core::{
+    DebugStuff, PrepareRenderContext, RenderCamera, RenderCommandQueuePool, RenderFeatures,
+    RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder, RenderLayers,
+    RenderObjects, VisibilityContext, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE,
+    RENDER_LAYER_PICKING,
+};
+use crate::features::{ModelFeature, RenderVisual};
+use crate::lighting::RenderLight;
 use crate::script::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
     PickingPass, PostProcessPass, SSAOPass, UiPass,
@@ -84,8 +88,7 @@ pub mod shared;
 mod renderdoc;
 
 use crate::core::{
-    GpuUploadManager, RenderCommandBuilder, RenderCommandManager, RenderCommandQueuePool,
-    RenderObjectsBuilder, RenderResourcesBuilder,
+    GpuUploadManager, RenderCommandManager, RenderObjectsBuilder, RenderResourcesBuilder,
 };
 
 use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
@@ -117,14 +120,13 @@ use crate::resources::{
 
 use crate::{
     components::{
-        apply_camera_setups, camera_control, create_camera, CameraComponent, LightComponent,
-        RenderSurface, VisualComponent,
+        apply_camera_setups, camera_control, CameraComponent, RenderSurface, VisualComponent,
     },
     labels::CommandBufferLabel,
 };
 
-pub const UP_VECTOR: Vec3 = Vec3::Y;
-pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
+pub const UP_VECTOR: Vec3 = Vec3::Z;
+pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, 0_f32, -1_f32]);
 
 #[derive(Clone)]
 pub struct GraphicsQueue {
@@ -177,9 +179,9 @@ impl Plugin for RendererPlugin {
         let upload_manager = GpuUploadManager::new();
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
-        let render_command_manager = RenderCommandManager::new();
         let render_command_queue_pool = RenderCommandQueuePool::new();
-        let mut render_commands = RenderCommandBuilder::new(&render_command_queue_pool);
+        let render_command_manager = RenderCommandManager::new(&render_command_queue_pool);
+        let mut render_commands = render_command_queue_pool.builder();
         let descriptor_heap_manager = DescriptorHeapManager::new(NUM_RENDER_FRAMES, device_context);
         let transient_commandbuffer_manager =
             TransientCommandBufferManager::new(NUM_RENDER_FRAMES, &graphics_queue);
@@ -244,8 +246,13 @@ impl Plugin for RendererPlugin {
         let renderdoc_manager = RenderDocManager::default();
 
         let render_objects = RenderObjectsBuilder::default()
+            // Lights
             .add_primary_table::<RenderLight>()
-            .add_secondary_table::<RenderLight, RenderLightTestData>()
+            // Visual
+            .add_primary_table::<RenderVisual>()
+            // Camera
+            .add_primary_table::<RenderCamera>()
+            // Done!
             .finalize();
 
         //
@@ -273,13 +280,29 @@ impl Plugin for RendererPlugin {
         // Stage Startup
         //
         app.add_startup_system(init_manipulation_manager);
-        app.add_startup_system(create_camera);
+        app.add_startup_system(tmp_create_camera);
 
         //
         // RenderObjects
         //
-        app.insert_resource(EcsToRender::<LightComponent, RenderLight>::new())
-            .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+
+        // Lights
+        app.insert_resource(EcsToRenderLight::new(
+            render_objects.primary_table_view::<RenderLight>(),
+        ))
+        .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+
+        // Model
+        app.insert_resource(EcsToRenderVisual::new(
+            render_objects.primary_table_view::<RenderVisual>(),
+        ))
+        .add_system_to_stage(RenderStage::Prepare, reflect_visual_components);
+
+        // Camera
+        app.insert_resource(EcsToRenderCamera::new(
+            render_objects.primary_table_view::<RenderCamera>(),
+        ))
+        .add_system_to_stage(RenderStage::Prepare, reflect_camera_components);
 
         //
         // Resources
@@ -500,7 +523,7 @@ fn init_manipulation_manager(
 fn render_update(
     task_pool: Res<'_, ComputeTaskPool>,
     resources: (
-        ResMut<'_, Renderer>,
+        Res<'_, Renderer>,
         ResMut<'_, PipelineManager>,
         ResMut<'_, PickingManager>,
         ResMut<'_, Egui>,
@@ -516,7 +539,7 @@ fn render_update(
     ),
 ) {
     // resources
-    let mut renderer = resources.0;
+    let renderer = resources.0;
     let mut pipeline_manager = resources.1;
     let picking_manager = resources.2;
     let mut egui = resources.3;
@@ -565,11 +588,14 @@ fn render_update(
 
     let render_resources = renderer.render_resources().clone();
 
-    render_resources
-        .get_mut::<RenderCommandManager>()
-        .sync_update(renderer.render_command_queue_pool());
+    {
+        span_scope!("sync window");
+        render_resources
+            .get_mut::<RenderCommandManager>()
+            .sync_update();
 
-    render_resources.get_mut::<RenderObjects>().sync_update();
+        render_resources.get_mut::<RenderObjects>().sync_update();
+    }
 
     // objectives: drop all resources/queries
 

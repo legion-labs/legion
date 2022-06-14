@@ -5,10 +5,7 @@ use lgn_graphics_api::{ApiDef, DeviceContext, Fence, FenceStatus, GfxApi};
 
 use lgn_tracing::span_fn;
 
-use crate::core::{
-    RenderCommandBuilder, RenderCommandQueuePool, RenderObject, RenderObjectAllocator,
-    RenderObjects, RenderResources,
-};
+use crate::core::{RenderCommandBuilder, RenderCommandQueuePool, RenderResources};
 
 use crate::GraphicsQueue;
 
@@ -72,26 +69,12 @@ impl Renderer {
         self.gfx_api.device_context()
     }
 
-    pub(crate) fn render_command_queue_pool(&mut self) -> &mut RenderCommandQueuePool {
-        &mut self.command_queue_pool
-    }
-
     pub fn render_command_builder(&self) -> RenderCommandBuilder {
-        RenderCommandBuilder::new(&self.command_queue_pool)
+        self.command_queue_pool.builder()
     }
 
     pub fn graphics_queue(&self) -> &GraphicsQueue {
         &self.graphics_queue
-    }
-
-    pub fn allocate_render_object<F, R>(&self, func: F)
-    where
-        F: FnOnce(&mut RenderObjectAllocator<'_, R>),
-        R: RenderObject,
-    {
-        let render_objects = self.render_resources.get::<RenderObjects>();
-        let mut allocator = render_objects.create_allocator::<R>();
-        func(&mut allocator);
     }
 }
 

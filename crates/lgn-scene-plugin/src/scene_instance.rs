@@ -189,7 +189,7 @@ impl SceneInstance {
                     component.downcast_ref::<runtime_data::GltfLoader>()
                 {
                     // nothing to do
-                }
+            }
 
             }*/
 
