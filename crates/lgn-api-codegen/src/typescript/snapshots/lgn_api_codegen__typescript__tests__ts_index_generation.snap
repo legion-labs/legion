@@ -82,7 +82,8 @@ export abstract class ApiClient {
 export namespace Cars {
   export type TestOneOf200Response =
     | { type: "option1"; value: Components.Pet }
-    | { type: "option2"; value: Components.Car };
+    | { type: "option2"; value: Components.Car }
+    | { type: "option3"; value: Components.Alpha };
 
   // ---------- Api ----------
 
@@ -519,6 +520,12 @@ export namespace Cars {
 // Models and API from: components
 
 export namespace Components {
+  export type Alpha = {
+    beta?: Beta;
+  };
+
+  export type Beta = Gamma[];
+
   export type Car = {
     code: number;
     color: CarColor;
@@ -532,6 +539,8 @@ export namespace Components {
   export type CarColor = "red" | "blue" | "yellow";
 
   export type Cars = Car[];
+
+  export type Gamma = { type: "option1"; value: Alpha };
 
   export type Pet = {
     name?: string;

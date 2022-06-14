@@ -52,6 +52,7 @@ pub fn fmt_type(type_: &Type, ctx: &GenerationContext) -> ::askama::Result<Strin
                 "complex types cannot be formatted".to_string(),
             ))))
         }
+        Type::Box(inner) => fmt_type(inner.as_ref(), ctx)?,
     })
 }
 
