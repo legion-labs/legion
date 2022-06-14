@@ -1,0 +1,90 @@
+openapi: 3.1.0
+info:
+  title: "Property Inspector API"
+  description: "The OpenAPI specification for the Legion Labs property inspector."
+  version: 1.0.0
+paths:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/{resource-id}/properties/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/resource_id"
+    get:
+      description: Get all properties.
+      operationId: getProperties
+      responses:
+        "200":
+          description: The properties
+          schemas:
+            $ref: "#/components/schemas/ResourceDescriptionProperties"
+        "404":
+          description: Resource not found
+
+components:
+  parameters:
+    resource_id:
+      name: resource-id
+      in: path
+      description: The resource identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/ResourceId"
+  schemas:
+    ResourceId:
+      description: An identifier to a unique a resource.
+      type: string
+    ResourceDescription:
+      description: A resource description
+      type: object
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        version:
+          type: integer
+          format: uint32
+        type:
+          type: string
+      required:
+        - id
+        - path
+        - version
+        - type
+    ResourceProperties:
+      type: object
+      properties:
+        name:
+          type: string
+        ptype:
+          type: string
+        json_value:
+          type: string
+        # recursive schemas don't work yet
+        # sub_properties:
+        #   type: array
+        #   items:
+        #     $ref: "#/components/schemas/ResourceProperties"
+        # additional properties don't work yet
+        # attributes:
+        #   type: object
+        #   additionalProperties:
+        #     type: string
+      required:
+        - name
+        - ptype
+        # - sub_properties
+        # - attributes
+    ResourceDescriptionProperties:
+      description: A resources with all its properties
+      type: object
+      properties:
+        description:
+          $ref: "#/components/schemas/ResourceDescription"
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceProperties"
+      required:
+        - description
+        - properties

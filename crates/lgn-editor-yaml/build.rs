@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "../lgn-governance/apis/workspace.yaml",
         "lgn_governance::api::workspace",
     )?;
-    lgn_api_codegen::generate!(lgn_api_codegen::Language::Rust(options), "apis", ["editor"]);
+    lgn_api_codegen::generate!(lgn_api_codegen::Language::Rust(options), "apis", ["editor", "property_inspector"]);
     // lgn_api_codegen::generate!(lgn_api_codegen::Language::Rust(options), "apis", ["editor, property_inspector, resource_browser, source_control"]);
 
     Ok(())
