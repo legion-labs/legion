@@ -122,3 +122,36 @@ components:
           type: string
       required:
         - description
+    RoleUserAssignation:
+      type: object
+      description: The assignation of a user to a role, in an optional space.
+      properties:
+        user_id:
+          $ref: "user.yaml#/components/schemas/UserId"
+        role_id:
+          $ref: "#/components/schemas/RoleId"
+        space_id:
+          $ref: "space.yaml#/components/schemas/SpaceId"
+      required:
+        - user_id
+        - role_id
+    RoleUserAssignationList:
+      type: array
+      description: A list of user role assignations.
+      items:
+        $ref: "#/components/schemas/RoleUserAssignation"
+    RoleAssignation:
+      type: object
+      description: The assignation of a role, in an optional space.
+      properties:
+        role_id:
+          $ref: "#/components/schemas/RoleId"
+        space_id:
+          $ref: "space.yaml#/components/schemas/SpaceId"
+      required:
+        - role_id
+    RoleAssignationList:
+      type: array
+      description: A list of role assignations.
+      items:
+        $ref: "#/components/schemas/RoleAssignation"

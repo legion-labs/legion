@@ -3,10 +3,11 @@ use lgn_tracing::{debug, info, warn};
 
 use crate::{
     api::user::{server, Api},
-    types::{PermissionId, UserId},
+    check_user_global_permissions,
+    types::UserId,
 };
 
-use super::Server;
+use super::{Error, Server};
 
 #[async_trait]
 impl Api for Server {
@@ -61,17 +62,7 @@ impl Api for Server {
         );
 
         if user_id != caller_user_id {
-            self.permissions_cache
-                .check_user_permissions(&caller_user_id, None, &[PermissionId::USER_READ])
-                .await?;
-
-            let roles_assignations = self
-                .mysql_dal
-                .list_roles_for_user(&caller_user_id, None)
-                .await?;
-
-            println!("LOOOL: {:?}", roles_assignations);
-            // TODO: Check permissions.
+            check_user_global_permissions!(self, caller_user_id, USER_READ);
         }
 
         let user_info = self
@@ -82,12 +73,71 @@ impl Api for Server {
         Ok(server::GetUserInfoResponse::Status200(user_info.into()))
     }
 
-    async fn list_current_user_spaces(
+    async fn resolve_user_id(
         &self,
-        _request: server::ListCurrentUserSpacesRequest,
-    ) -> lgn_online::server::Result<server::ListCurrentUserSpacesResponse> {
-        Ok(server::ListCurrentUserSpacesResponse::Status200(
-            vec![].into(),
+        request: server::ResolveUserIdRequest,
+    ) -> lgn_online::server::Result<server::ResolveUserIdResponse> {
+        let user_id = match self
+            .aws_cognito_dal
+            .resolve_username_by("email", &request.email)
+            .await
+        {
+            Ok(user_id) => user_id,
+            Err(Error::DoesNotExist) => {
+                return Ok(server::ResolveUserIdResponse::Status404(request.email))
+            }
+            Err(err) => return Err(err.into()),
+        };
+
+        Ok(server::ResolveUserIdResponse::Status200(user_id.into()))
+    }
+
+    async fn list_user_spaces(
+        &self,
+        request: server::ListUserSpacesRequest,
+    ) -> lgn_online::server::Result<server::ListUserSpacesResponse> {
+        let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
+        let user_id = request.user_id.into();
+
+        if caller_user_id != user_id {
+            check_user_global_permissions!(self, caller_user_id, ROOT);
+        }
+
+        // This function is a bit special in that it relies on permissions for
+        // space-visibility, and so performs their own permission checks.
+        //
+        // If a user does not have any `SPACE_READ` permission, they simply
+        // won't see any spaces.
+        let spaces = self.mysql_dal.list_spaces_for_user(&user_id).await?;
+
+        Ok(server::ListUserSpacesResponse::Status200(
+            spaces
+                .into_iter()
+                .map(Into::into)
+                .collect::<Vec<_>>()
+                .into(),
+        ))
+    }
+
+    async fn list_user_roles(
+        &self,
+        request: server::ListUserRolesRequest,
+    ) -> lgn_online::server::Result<server::ListUserRolesResponse> {
+        let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
+        let user_id = request.user_id.into();
+
+        if caller_user_id != user_id {
+            check_user_global_permissions!(self, caller_user_id, USER_ADMIN);
+        }
+
+        let spaces = self.mysql_dal.list_all_roles_for_user(&user_id).await?;
+
+        Ok(server::ListUserRolesResponse::Status200(
+            spaces
+                .into_iter()
+                .map(Into::into)
+                .collect::<Vec<_>>()
+                .into(),
         ))
     }
 }

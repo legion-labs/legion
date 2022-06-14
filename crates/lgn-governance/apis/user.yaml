@@ -34,12 +34,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserInfo"
+        "404":
+          description: The user with the specified id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserId"
+  /v1/resolve-users/email/{email}:
+    parameters:
+      - name: email
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The user's email address.
+    get:
+      description: Resolve a user by its email address.
+      operationId: resolveUserId
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserId"
+        "404":
+          description: The user with the specified email was not found.
+          content:
+            application/json:
+              schema:
+                type: string
   /v1/users/{user-id}/spaces/:
     parameters:
       - $ref: "#/components/parameters/user_id"
     get:
       description: List all the spaces that the current user has access to.
-      operationId: listCurrentUserSpaces
+      operationId: listUserSpaces
       responses:
         "200":
           description: Ok.
@@ -47,6 +77,19 @@ paths:
             application/json:
               schema:
                 $ref: "space.yaml#/components/schemas/SpaceList"
+  /v1/users/{user-id}/roles/:
+    parameters:
+      - $ref: "#/components/parameters/user_id"
+    get:
+      description: List all the roles that the current user has.
+      operationId: listUserRoles
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "role.yaml#/components/schemas/RoleAssignationList"
 components:
   parameters:
     user_id:

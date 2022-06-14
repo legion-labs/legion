@@ -1,13 +1,16 @@
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    collections::{btree_map::Entry, BTreeMap},
+};
 
 use async_trait::async_trait;
 use lgn_tracing::info;
-use sqlx::{migrate::Migrator, Row};
+use sqlx::{migrate::Migrator, mysql::MySqlRow, MySqlConnection, Row};
 
 use super::PermissionsProvider;
 use crate::types::{
-    Permission, PermissionId, PermissionList, PermissionSet, Role, RoleId, RoleList,
-    RoleUserAssignation, Space, SpaceId, UserId,
+    Permission, PermissionId, PermissionList, PermissionSet, Role, RoleAssignation, RoleId,
+    RoleList, Space, SpaceId, SpaceUpdate, UserId,
 };
 
 use super::Result;
@@ -109,15 +112,14 @@ impl MySqlDal {
             .collect::<Result<_>>()
     }
 
-    pub async fn get_permissions_with_parent(
+    pub async fn get_permissions_with_parent_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
         &self,
+        tx: Tx,
         permission_id: &PermissionId,
     ) -> Result<PermissionSet> {
-        // TODO: This would highly benefit from caching.
-
         sqlx::query("SELECT id FROM `permissions` WHERE parent_id = ?")
             .bind(permission_id)
-            .fetch_all(&self.sqlx_pool)
+            .fetch_all(tx)
             .await?
             .into_iter()
             .map(|row| {
@@ -128,14 +130,46 @@ impl MySqlDal {
             .collect::<Result<_>>()
     }
 
-    pub async fn list_permissions_for_role(&self, role_id: &RoleId) -> Result<PermissionSet> {
+    async fn list_permissions_for_role_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
+        &self,
+        tx: Tx,
+        role_id: &RoleId,
+    ) -> Result<PermissionSet> {
         sqlx::query("SELECT permission_id FROM `roles_to_permissions` WHERE `role_id` = ?")
             .bind(role_id)
-            .fetch_all(&self.sqlx_pool)
+            .fetch_all(tx)
             .await?
             .into_iter()
             .map(|row| row.get::<&str, _>(0).parse().map_err(Into::into))
             .collect::<Result<_>>()
+    }
+
+    async fn list_all_permissions_for_role_tx(
+        &self,
+        tx: &mut MySqlConnection,
+        role_id: &RoleId,
+    ) -> Result<PermissionSet> {
+        let mut permissions = self.list_permissions_for_role_tx(&mut *tx, role_id).await?;
+
+        // Now we need to resolve parent permissions as well to make sure we
+        // end-up with a complete permissions set.
+        let mut unhandled = permissions.clone().into_iter().collect::<Vec<_>>();
+
+        while let Some(permission_id) = unhandled.pop() {
+            let child_permissions = self
+                .get_permissions_with_parent_tx(&mut *tx, &permission_id)
+                .await?;
+
+            for child_permission_id in &child_permissions {
+                if !permissions.contains(child_permission_id) {
+                    unhandled.push(child_permission_id.clone());
+                }
+            }
+
+            permissions.extend(child_permissions);
+        }
+
+        Ok(permissions)
     }
 
     pub async fn list_roles(&self) -> Result<RoleList> {
@@ -156,26 +190,25 @@ impl MySqlDal {
             .collect::<Result<RoleList>>()?;
 
         for role in role_list.iter_mut() {
-            role.permissions =
-                sqlx::query("SELECT permission_id FROM `roles_to_permissions` WHERE role_id = ?")
-                    .bind(&role.id)
-                    .fetch_all(&mut tx)
-                    .await?
-                    .into_iter()
-                    .map(|row| Ok(row.get::<&str, _>(0).parse()?))
-                    .collect::<Result<_>>()?;
+            role.permissions = self.list_permissions_for_role_tx(&mut tx, &role.id).await?;
         }
 
         tx.commit().await.map(|_| role_list).map_err(Into::into)
     }
 
-    pub async fn list_roles_for_user(
+    pub async fn list_all_roles_for_user(&self, user_id: &UserId) -> Result<Vec<RoleAssignation>> {
+        self.list_all_roles_for_user_tx(&self.sqlx_pool, user_id)
+            .await
+    }
+
+    async fn list_roles_for_user_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
         &self,
+        tx: Tx,
         user_id: &UserId,
         space_id: Option<&SpaceId>,
-    ) -> Result<Vec<RoleUserAssignation>> {
+    ) -> Result<Vec<RoleAssignation>> {
         let query = if let Some(space_id) = space_id {
-            sqlx::query("SELECT role_id, space_id FROM `users_to_roles` WHERE `user_id` = ? AND (`space_id` IS NULL OR `space_id` == ?)")
+            sqlx::query("SELECT role_id, space_id FROM `users_to_roles` WHERE `user_id` = ? AND (`space_id` IS NULL OR `space_id` = ?)")
             .bind(user_id)
             .bind(space_id)
         } else {
@@ -184,12 +217,11 @@ impl MySqlDal {
         };
 
         query
-            .fetch_all(&self.sqlx_pool)
+            .fetch_all(tx)
             .await?
             .into_iter()
             .map(|row| {
-                Ok(RoleUserAssignation {
-                    user_id: user_id.clone(),
+                Ok(RoleAssignation {
                     role_id: row.get::<&str, _>(0).parse()?,
                     space_id: row.get(1),
                 })
@@ -197,20 +229,177 @@ impl MySqlDal {
             .collect::<Result<_>>()
     }
 
-    pub async fn list_spaces(&self) -> Result<Vec<Space>> {
-        Ok(
-            sqlx::query("SELECT id, description, cordoned, created_at FROM `spaces`")
-                .fetch_all(&self.sqlx_pool)
-                .await?
-                .into_iter()
-                .map(|row| Space {
-                    id: row.get(0),
-                    description: row.get(1),
-                    cordoned: row.get(2),
-                    created_at: row.get(3),
+    async fn list_all_roles_for_user_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
+        &self,
+        tx: Tx,
+        user_id: &UserId,
+    ) -> Result<Vec<RoleAssignation>> {
+        sqlx::query("SELECT role_id, space_id FROM `users_to_roles` WHERE `user_id` = ?")
+            .bind(user_id)
+            .fetch_all(tx)
+            .await?
+            .into_iter()
+            .map(|row| {
+                Ok(RoleAssignation {
+                    role_id: row.get::<&str, _>(0).parse()?,
+                    space_id: row.get(1),
                 })
-                .collect::<Vec<_>>(),
-        )
+            })
+            .collect::<Result<_>>()
+    }
+
+    async fn list_all_permissions_by_space_for_user_tx(
+        &self,
+        tx: &mut MySqlConnection,
+        user_id: &UserId,
+    ) -> Result<(PermissionSet, BTreeMap<SpaceId, PermissionSet>)> {
+        let mut global_permissions = PermissionSet::default();
+        let mut permissions_by_space = BTreeMap::new();
+
+        for role_assignation in self.list_all_roles_for_user_tx(&mut *tx, user_id).await? {
+            let permissions = self
+                .list_all_permissions_for_role_tx(&mut *tx, &role_assignation.role_id)
+                .await?;
+
+            if let Some(space_id) = role_assignation.space_id {
+                match permissions_by_space.entry(space_id) {
+                    Entry::Vacant(entry) => {
+                        entry.insert(permissions);
+                    }
+                    Entry::Occupied(entry) => {
+                        entry.into_mut().extend(permissions);
+                    }
+                }
+            } else {
+                global_permissions.extend(permissions);
+            }
+        }
+
+        Ok((global_permissions, permissions_by_space))
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    fn row_to_space(row: MySqlRow) -> Result<Space> {
+        Ok(Space {
+            id: row.try_get(0)?,
+            description: row.try_get(1)?,
+            cordoned: row.try_get(2)?,
+            created_at: row.try_get(3)?,
+        })
+    }
+
+    async fn list_spaces_tx(&self, tx: &mut MySqlConnection) -> Result<Vec<Space>> {
+        sqlx::query("SELECT id, description, cordoned, created_at FROM `spaces`")
+            .fetch_all(tx)
+            .await?
+            .into_iter()
+            .map(Self::row_to_space)
+            .collect::<Result<_>>()
+    }
+
+    pub async fn list_spaces_for_user(&self, user_id: &UserId) -> Result<Vec<Space>> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
+        let (global_permissions, permissions_by_space) = self
+            .list_all_permissions_by_space_for_user_tx(&mut *tx, user_id)
+            .await?;
+
+        let spaces = if global_permissions.contains(&PermissionId::SPACE_READ) {
+            self.list_spaces_tx(&mut *tx).await?
+        } else {
+            let mut spaces = Vec::with_capacity(permissions_by_space.len());
+
+            for (space_id, permissions) in permissions_by_space {
+                if permissions.contains(&PermissionId::SPACE_READ) {
+                    spaces.push(self.get_space_tx(&mut *tx, &space_id).await?);
+                }
+            }
+
+            spaces
+        };
+
+        tx.commit().await.map(|_| spaces).map_err(Into::into)
+    }
+
+    async fn get_space_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
+        &self,
+        tx: Tx,
+        space_id: &SpaceId,
+    ) -> Result<Space> {
+        sqlx::query("SELECT id, description, cordoned, created_at FROM `spaces` WHERE id = ?")
+            .bind(space_id)
+            .fetch_one(tx)
+            .await
+            .map(Self::row_to_space)?
+    }
+
+    pub async fn get_space(&self, space_id: &SpaceId) -> Result<Space> {
+        self.get_space_tx(&self.sqlx_pool, space_id).await
+    }
+
+    pub async fn create_space(&self, space_id: &SpaceId, description: &str) -> Result<Space> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
+        sqlx::query("INSERT INTO `spaces` (id, description) VALUES (?, ?)")
+            .bind(space_id)
+            .bind(description)
+            .execute(&mut tx)
+            .await?;
+
+        let space = self.get_space_tx(&mut tx, space_id).await?;
+
+        tx.commit().await.map(|_| space).map_err(Into::into)
+    }
+
+    pub async fn update_space(&self, space_id: &SpaceId, update: SpaceUpdate) -> Result<Space> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
+        if let Some(description) = update.description {
+            sqlx::query("UPDATE `spaces` SET `description`=? WHERE `id` = ?")
+                .bind(description)
+                .bind(space_id)
+                .execute(&mut tx)
+                .await?;
+        }
+
+        let space = self.get_space_tx(&mut tx, space_id).await?;
+
+        tx.commit().await.map(|_| space).map_err(Into::into)
+    }
+
+    pub async fn delete_space(&self, space_id: &SpaceId) -> Result<Space> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
+        let space = self.get_space_tx(&mut tx, space_id).await?;
+
+        sqlx::query("DELETE FROM `spaces` WHERE `id` = ?")
+            .bind(space_id)
+            .execute(&mut tx)
+            .await?;
+
+        tx.commit().await.map(|_| space).map_err(Into::into)
+    }
+
+    pub async fn cordon_space(&self, space_id: &SpaceId) -> Result<Space> {
+        self.set_space_cordoned(space_id, true).await
+    }
+
+    pub async fn uncordon_space(&self, space_id: &SpaceId) -> Result<Space> {
+        self.set_space_cordoned(space_id, false).await
+    }
+
+    async fn set_space_cordoned(&self, space_id: &SpaceId, cordoned: bool) -> Result<Space> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
+        sqlx::query("UPDATE `spaces` SET `cordoned`=? WHERE `id` = ?")
+            .bind(cordoned)
+            .bind(space_id)
+            .execute(&mut tx)
+            .await?;
+
+        let space = self.get_space_tx(&mut tx, space_id).await?;
+
+        tx.commit().await.map(|_| space).map_err(Into::into)
     }
 }
 
@@ -221,31 +410,20 @@ impl PermissionsProvider for MySqlDal {
         user_id: &UserId,
         space_id: Option<&SpaceId>,
     ) -> Result<PermissionSet> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
         let mut permissions = PermissionSet::default();
 
-        for role_assignation in self.list_roles_for_user(user_id, space_id).await? {
+        for role_assignation in self
+            .list_roles_for_user_tx(&mut tx, user_id, space_id)
+            .await?
+        {
             permissions.extend(
-                self.list_permissions_for_role(&role_assignation.role_id)
+                self.list_all_permissions_for_role_tx(&mut tx, &role_assignation.role_id)
                     .await?,
             );
         }
 
-        // Now we need to resolve parent permissions as well to make sure we
-        // end-up with a complete permissions set.
-        let mut unhandled = permissions.clone().into_iter().collect::<Vec<_>>();
-
-        while let Some(permission_id) = unhandled.pop() {
-            let child_permissions = self.get_permissions_with_parent(&permission_id).await?;
-
-            for child_permission_id in &child_permissions {
-                if !permissions.contains(child_permission_id) {
-                    unhandled.push(child_permission_id.clone());
-                }
-            }
-
-            permissions.extend(child_permissions);
-        }
-
-        Ok(permissions)
+        tx.commit().await.map(|_| permissions).map_err(Into::into)
     }
 }

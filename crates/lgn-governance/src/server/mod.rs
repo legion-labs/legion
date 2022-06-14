@@ -46,6 +46,46 @@ pub struct ServerAwsCognitoOptions {
     pub user_pool_id: String,
 }
 
+/// A macro for checking global permissions in a server handler.
+#[macro_export]
+macro_rules! check_user_global_permissions {
+    ($self:expr, $user_id:expr, $($permission:ident),+) => {{
+        $self.permissions_cache
+            .check_user_permissions(&$user_id, None, &[$(crate::types::PermissionId::$permission),+])
+            .await?;
+    }};
+}
+
+/// A macro for checking global permissions in a server handler.
+#[macro_export]
+macro_rules! check_user_space_permissions {
+    ($self:expr, $user_id:expr, $space_id:expr, $($permission:ident),+) => {{
+        $self.permissions_cache
+            .check_user_permissions(&$user_id, Some(&$space_id), &[$(crate::types::PermissionId::$permission),+])
+            .await?;
+    }};
+}
+
+/// A macro for checking global permissions in a server handler.
+#[macro_export]
+macro_rules! user_has_global_permissions {
+    ($self:expr, $user_id:expr, $($permission:ident),+) => {{
+        $self.permissions_cache
+            .user_has_permissions(&$user_id, None, &[$(crate::types::PermissionId::$permission),+])
+            .await?
+    }};
+}
+
+/// A macro for checking global permissions in a server handler.
+#[macro_export]
+macro_rules! user_has_space_permissions {
+    ($self:expr, $user_id:expr, $space_id:expr, $($permission:ident),+) => {{
+        $self.permissions_cache
+            .user_has_permissions(&$user_id, Some(&$space_id), &[$(crate::types::PermissionId::$permission),+])
+            .await?
+    }};
+}
+
 impl Server {
     /// Builds a new server.
     ///

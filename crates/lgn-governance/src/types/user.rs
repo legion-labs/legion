@@ -7,11 +7,15 @@ use serde::{Deserialize, Serialize};
 
 use super::{Error, Result};
 
+#[cfg(feature = "tabled")]
+use tabled::Tabled;
+
 /// A user identifier.
 #[derive(
     Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type,
 )]
 #[sqlx(transparent)]
+#[cfg_attr(feature = "tabled", derive(Tabled))]
 pub struct UserId(String);
 
 impl Display for UserId {
@@ -52,6 +56,7 @@ impl<'s> PartialEq<&'s str> for UserId {
 
 /// User information.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "tabled", derive(Tabled))]
 pub struct UserInfo {
     pub id: UserId,
     pub name: String,
