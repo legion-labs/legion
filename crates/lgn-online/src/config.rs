@@ -13,6 +13,7 @@ use lgn_auth::{
 use serde::Deserialize;
 
 use crate::{
+    client::HyperClient,
     grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
     Result,
 };
@@ -51,7 +52,7 @@ impl Config {
         Ok(lgn_config::get("online")?.unwrap_or_default())
     }
 
-    /// Instantiate a API client.
+    /// Instantiate an API client.
     ///
     /// # Errors
     ///
@@ -59,18 +60,39 @@ impl Config {
     pub async fn instantiate_api_client(
         &self,
         scopes: &[String],
-    ) -> Result<AuthenticatedClient<GrpcClient, BoxedAuthenticator>> {
-        self.instantiate_api_client_with_url(None, scopes).await
+    ) -> Result<AuthenticatedClient<HyperClient, BoxedAuthenticator>> {
+        let client = HyperClient::default();
+
+        let authenticator = match &self.authentication {
+            Some(config) => Some(config.instantiate_authenticator().await?),
+            None => None,
+        };
+
+        let client = AuthenticatedClient::new(client, authenticator, scopes);
+
+        Ok(client)
     }
 
-    /// Instantiate a API client.
+    /// Instantiate a `gRPC` API client.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the authentication settings are invalid.
+    pub async fn instantiate_grpc_client(
+        &self,
+        scopes: &[String],
+    ) -> Result<AuthenticatedClient<GrpcClient, BoxedAuthenticator>> {
+        self.instantiate_grpc_client_with_url(None, scopes).await
+    }
+
+    /// Instantiate a `gRPC` API client.
     ///
     /// If an URL is specified, is it used instead of the default.
     ///
     /// # Errors
     ///
     /// Returns an error if the authentication settings are invalid.
-    pub async fn instantiate_api_client_with_url(
+    pub async fn instantiate_grpc_client_with_url(
         &self,
         url: Option<&Uri>,
         scopes: &[String],
@@ -87,26 +109,27 @@ impl Config {
         Ok(client)
     }
 
-    /// Instantiate a Web API client.
+    /// Instantiate a Web `gRPC` API client.
     ///
     /// # Errors
     ///
     /// Returns an error if the authentication settings are invalid.
-    pub async fn instantiate_web_api_client(
+    pub async fn instantiate_web_grpc_client(
         &self,
         scopes: &[String],
     ) -> Result<AuthenticatedClient<GrpcWebClient, BoxedAuthenticator>> {
-        self.instantiate_web_api_client_with_url(None, scopes).await
+        self.instantiate_web_grpc_client_with_url(None, scopes)
+            .await
     }
 
-    /// Instantiate a Web API client.
+    /// Instantiate a Web `gRPC` API client.
     ///
     /// If an URL is specified, is it used instead of the default.
     ///
     /// # Errors
     ///
     /// Returns an error if the authentication settings are invalid.
-    pub async fn instantiate_web_api_client_with_url(
+    pub async fn instantiate_web_grpc_client_with_url(
         &self,
         url: Option<&Uri>,
         scopes: &[String],

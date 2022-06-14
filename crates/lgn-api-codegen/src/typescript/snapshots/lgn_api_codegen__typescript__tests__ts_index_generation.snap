@@ -4,6 +4,7 @@ expression: content
 ---
 // Auto-generated file
 
+// @ts-ignore
 import qs from "qs";
 
 // ---------- Errors ----------
@@ -30,12 +31,58 @@ type Fetch = typeof globalThis.fetch;
 
 const defaultFetch = globalThis.fetch;
 
+export abstract class ApiClient {
+  protected fetch: Fetch;
+  protected onRequestStartInterceptors: ((
+    ...request: Parameters<Fetch>
+  ) => Promise<Parameters<Fetch>> | Parameters<Fetch>)[] = [];
+  protected onRequestEndInterceptors: ((
+    response: Response
+  ) => Promise<Response> | Response)[] = [];
+
+  constructor({ fetch = defaultFetch }: { fetch?: Fetch }) {
+    this.fetch = fetch;
+  }
+
+  addRequestStartInterceptor(
+    interceptor: (
+      ...request: Parameters<Fetch>
+    ) => Promise<Parameters<Fetch>> | Parameters<Fetch>
+  ) {
+    this.onRequestStartInterceptors.push(interceptor);
+  }
+
+  addRequestEndInterceptor(
+    interceptor: (response: Response) => Promise<Response> | Response
+  ) {
+    this.onRequestEndInterceptors.push(interceptor);
+  }
+
+  protected async performRequest(
+    ...args: Parameters<Fetch>
+  ): Promise<Response> {
+    let fetchArgs = args;
+
+    for (const interceptor of this.onRequestStartInterceptors) {
+      fetchArgs = await interceptor(...fetchArgs);
+    }
+
+    let response = await this.fetch(...fetchArgs);
+
+    for (const interceptor of this.onRequestEndInterceptors) {
+      response = await interceptor(response);
+    }
+
+    return response;
+  }
+}
+
 // Models and API from: cars
 
 export namespace Cars {
-  export type TestOneOf200ResponseModel =
-    | { type: "option1"; value: Components.PetModel }
-    | { type: "option2"; value: Components.CarModel };
+  export type TestOneOf200Response =
+    | { type: "option1"; value: Components.Pet }
+    | { type: "option2"; value: Components.Car };
 
   // ---------- Api ----------
 
@@ -70,7 +117,7 @@ export namespace Cars {
         "span-id"?: string;
       };
 
-      body: Components.CarModel;
+      body: Components.Car;
     }): Promise<CreateCarResponse>;
 
     getCar(input: {
@@ -98,9 +145,8 @@ export namespace Cars {
 
   // ---------- Client ----------
 
-  export class Client implements Api {
+  export class Client extends ApiClient implements Api {
     #baseUri: string | URL;
-    #fetch: Fetch;
 
     constructor({
       baseUri,
@@ -109,8 +155,8 @@ export namespace Cars {
       baseUri: string | URL;
       fetch?: Fetch;
     }) {
+      super({ fetch });
       this.#baseUri = baseUri;
-      this.#fetch = fetch;
     }
 
     async testHeaders(input: {
@@ -148,7 +194,7 @@ export namespace Cars {
         );
       }
 
-      const response = await this.#fetch(url.toString(), {
+      const response = await this.performRequest(url.toString(), {
         method: "GET",
         headers,
       });
@@ -161,7 +207,7 @@ export namespace Cars {
 
       const headers = new Headers();
 
-      const response = await this.#fetch(url.toString(), {
+      const response = await this.performRequest(url.toString(), {
         method: "GET",
         headers,
       });
@@ -194,7 +240,7 @@ export namespace Cars {
 
       const headers = new Headers();
 
-      const response = await this.#fetch(url.toString(), {
+      const response = await this.performRequest(url.toString(), {
         method: "GET",
         headers,
       });
@@ -211,7 +257,7 @@ export namespace Cars {
         "span-id"?: string;
       };
 
-      body: Components.CarModel;
+      body: Components.Car;
     }): Promise<CreateCarResponse> {
       const url = new URL(
         `${this.#baseUri}/v1/spaces/${
@@ -231,7 +277,7 @@ export namespace Cars {
         );
       }
 
-      const response = await this.#fetch(url.toString(), {
+      const response = await this.performRequest(url.toString(), {
         method: "POST",
         headers,
 
@@ -255,7 +301,7 @@ export namespace Cars {
 
       const headers = new Headers();
 
-      const response = await this.#fetch(url.toString(), {
+      const response = await this.performRequest(url.toString(), {
         method: "GET",
         headers,
       });
@@ -277,7 +323,7 @@ export namespace Cars {
 
       const headers = new Headers();
 
-      const response = await this.#fetch(url.toString(), {
+      const response = await this.performRequest(url.toString(), {
         method: "DELETE",
         headers,
       });
@@ -302,7 +348,7 @@ export namespace Cars {
 
       headers.set("Content-Type", "application/octet-stream");
 
-      const response = await this.#fetch(url.toString(), {
+      const response = await this.performRequest(url.toString(), {
         method: "POST",
         headers,
 
@@ -324,7 +370,7 @@ export namespace Cars {
 
   export type TestHeadersResponse = {
     /** Ok. */ type: "200";
-    value: Components.PetModel;
+    value: Components.Pet;
   };
 
   export const TestHeadersResponse = {
@@ -345,7 +391,7 @@ export namespace Cars {
 
   export type TestOneOfResponse = {
     /** Ok. */ type: "200";
-    value: TestOneOf200ResponseModel;
+    value: TestOneOf200Response;
   };
 
   export const TestOneOfResponse = {
@@ -366,7 +412,7 @@ export namespace Cars {
 
   export type GetCarsResponse = {
     /** List of cars. */ type: "200";
-    value: Components.CarsModel;
+    value: Components.Cars;
   };
 
   export const GetCarsResponse = {
@@ -403,7 +449,7 @@ export namespace Cars {
   };
 
   export type GetCarResponse =
-    | { /** A car. */ type: "200"; value: Components.CarModel }
+    | { /** A car. */ type: "200"; value: Components.Car }
     | { /** Car not found. */ type: "404" };
 
   export const GetCarResponse = {
@@ -473,24 +519,20 @@ export namespace Cars {
 // Models and API from: components
 
 export namespace Components {
-  export type CarModel = {
-    color: CarModelColorModel;
-
+  export type Car = {
+    color: CarColor;
     extra?: Blob;
-
     id: bigint;
-
     is_new: boolean;
-
     name: string;
   };
 
   /** The car color. */
-  export type CarModelColorModel = "red" | "blue" | "yellow";
+  export type CarColor = "red" | "blue" | "yellow";
 
-  export type CarsModel = CarModel[];
+  export type Cars = Car[];
 
-  export type PetModel = {
+  export type Pet = {
     name?: string;
   };
 }

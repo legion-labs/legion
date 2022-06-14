@@ -4,6 +4,23 @@ info:
   description: "The OpenAPI specification for the Legion Labs User API."
   version: 1.0.0
 paths:
+  /v1/init/:
+    get:
+      description: Initialize the stack, and assign the superadmin role to the caller if no other user has it.
+      operationId: initStack
+      parameters:
+        - in: header
+          name: x-init-key
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Ok.
+        "403":
+          description: The init-key is invalid.
+        "409":
+          description: The stack was already initialized.
   /v1/users/{user-id}/:
     parameters:
       - $ref: "#/components/parameters/user_id"

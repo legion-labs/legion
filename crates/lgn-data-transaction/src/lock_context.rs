@@ -48,6 +48,7 @@ impl<'a> LockContext<'a> {
                 let handle = self
                     .project
                     .load_resource(resource_id, &self.asset_registry)
+                    .await
                     .map_err(|err| Error::Project(resource_id, err))?;
                 e.insert(handle.clone());
                 handle
@@ -60,6 +61,7 @@ impl<'a> LockContext<'a> {
         let handle = self
             .project
             .load_resource(resource_id, &self.asset_registry)
+            .await
             .map_err(|err| Error::Project(resource_id, err))?;
 
         self.loaded_resource_handles.insert(resource_id, handle);

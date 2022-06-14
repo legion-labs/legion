@@ -89,6 +89,22 @@ impl FromStr for Identifier {
     }
 }
 
+impl TryFrom<crate::api::content_store::ContentId> for Identifier {
+    type Error = InvalidIdentifier;
+
+    fn try_from(
+        content_id: crate::api::content_store::ContentId,
+    ) -> Result<Self, InvalidIdentifier> {
+        Self::from_str(&content_id.0)
+    }
+}
+
+impl From<&Identifier> for crate::api::content_store::ContentId {
+    fn from(id: &Identifier) -> Self {
+        Self(id.to_string())
+    }
+}
+
 impl Identifier {
     pub const SMALL_IDENTIFIER_SIZE: usize = SMALL_IDENTIFIER_SIZE;
 

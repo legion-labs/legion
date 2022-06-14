@@ -12,6 +12,7 @@ expression: content
   "private": true,
   "scripts": {},
   "peerDependencies": {
+    "@types/qs": "^6.9.7",
     "qs": "^6.10.5"
   }
 }

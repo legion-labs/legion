@@ -1,10 +1,14 @@
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
+use std::{env, path::PathBuf};
 
+use lgn_content_store::{
+    indexing::{ResourceIndex, ResourceWriter, TreeIdentifier},
+    Provider,
+};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-use tempfile::TempDir;
+use lgn_data_offline::resource::{serialize_metadata, ResourcePathName};
+use lgn_data_runtime::{
+    new_resource_type_and_id_indexer, Resource, ResourceProcessor, ResourceTypeAndId,
+};
 
 pub fn target_dir() -> PathBuf {
     env::current_exe()
@@ -23,15 +27,6 @@ pub fn compiler_exe(name: &str) -> PathBuf {
     target_dir().join(format!("compiler-{}{}", name, env::consts::EXE_SUFFIX))
 }
 
-pub fn setup_dir(work_dir: &TempDir) -> (PathBuf, PathBuf) {
-    let resource_dir = work_dir.path().join("offline");
-    let output_dir = work_dir.path().join("temp");
-
-    std::fs::create_dir_all(&resource_dir).unwrap();
-    std::fs::create_dir_all(&output_dir).unwrap();
-    (resource_dir, output_dir)
-}
-
 pub fn test_env() -> CompilationEnv {
     CompilationEnv {
         target: Target::Game,
@@ -40,13 +35,32 @@ pub fn test_env() -> CompilationEnv {
     }
 }
 
-pub fn create_resource_file(path: &Path) -> std::io::Result<std::fs::File> {
-    let directory = {
-        let mut directory = path.to_owned();
-        directory.pop();
-        directory
-    };
+pub async fn write_resource(
+    id: ResourceTypeAndId,
+    provider: &Provider,
+    proc: &impl ResourceProcessor,
+    resource: &dyn Resource,
+) -> TreeIdentifier {
+    let mut bytes = std::io::Cursor::new(Vec::new());
 
-    std::fs::create_dir_all(&directory)?;
-    std::fs::File::create(path)
+    // pre-pend metadata before serialized resource
+    let name = ResourcePathName::new("test_resource");
+    let dependencies = proc.extract_build_dependencies(resource);
+    serialize_metadata(name, id, dependencies, &mut bytes);
+
+    proc.write_resource(resource, &mut bytes)
+        .expect("write to memory");
+
+    let resource_id = provider
+        .write_resource_from_bytes(&bytes.into_inner())
+        .await
+        .expect("write to content-store");
+
+    let mut source_manifest =
+        ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), provider).await;
+    source_manifest
+        .add_resource(provider, &id.into(), resource_id)
+        .await
+        .expect("write manifest to content-store");
+    source_manifest.id()
 }

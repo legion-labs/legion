@@ -12,4 +12,4 @@ pub use authentication::AuthenticatedClient;
 pub use client::{GrpcClient, GrpcWebClient};
 pub use errors::{Error, Result};
 pub use multiplexer_service::MultiplexerService;
-pub use server::Server;
+pub use server::{HybridServer, Server};

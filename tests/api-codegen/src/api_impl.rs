@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use crate::api::cars::{
     self,
@@ -13,7 +13,8 @@ use crate::api::cars::{
     Api,
 };
 use crate::api::components;
-use lgn_online::{codegen::Context, server::Result};
+use axum::extract::ConnectInfo;
+use lgn_online::server::Result;
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone, Default)]
@@ -25,10 +26,11 @@ pub struct ApiImpl {
 impl Api for ApiImpl {
     async fn get_cars(
         &self,
-        context: &mut Context,
+        parts: http::request::Parts,
         _request: GetCarsRequest,
     ) -> Result<GetCarsResponse> {
-        println!("Request addr: {}", context.request_addr().unwrap());
+        let connect_info = parts.extensions.get::<ConnectInfo<SocketAddr>>().unwrap();
+        println!("Request addr: {}", connect_info.0);
 
         Ok(GetCarsResponse::Status200(components::Cars(
             self.cars.read().await.values().cloned().collect(),
@@ -37,7 +39,7 @@ impl Api for ApiImpl {
 
     async fn get_car(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         request: GetCarRequest,
     ) -> Result<GetCarResponse> {
         let car = self.cars.read().await.get(&request.car_id).cloned();
@@ -49,7 +51,7 @@ impl Api for ApiImpl {
 
     async fn create_car(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         request: CreateCarRequest,
     ) -> Result<CreateCarResponse> {
         self.cars
@@ -61,7 +63,7 @@ impl Api for ApiImpl {
 
     async fn delete_car(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         request: DeleteCarRequest,
     ) -> Result<DeleteCarResponse> {
         self.cars.write().await.remove(&request.car_id);
@@ -70,13 +72,13 @@ impl Api for ApiImpl {
 
     async fn test_binary(
         &self,
-        _context: &mut Context,
+        _parts: http::request::Parts,
         request: TestBinaryRequest,
     ) -> Result<TestBinaryResponse> {
         Ok(TestBinaryResponse::Status200(request.body))
     }
 
-    async fn test_one_of(&self, _context: &mut Context) -> Result<TestOneOfResponse> {
+    async fn test_one_of(&self, _parts: http::request::Parts) -> Result<TestOneOfResponse> {
         Ok(TestOneOfResponse::Status200(
             cars::TestOneOf200Response::Option1(components::Pet {
                 name: Some("Cat".to_string()),
@@ -86,22 +88,22 @@ impl Api for ApiImpl {
 
     async fn test_headers(
         &self,
-        context: &mut Context,
+        mut parts: http::request::Parts,
         request: TestHeadersRequest,
     ) -> Result<TestHeadersResponse> {
-        if let Some(value) = context.request().unwrap().headers.get("X-Dyn-Header") {
-            let mut headers = http::HeaderMap::new();
-            headers.insert("X-Dyn-Header", value.clone());
-            context.set_response_headers(headers);
-        }
-
-        Ok(TestHeadersResponse::Status200 {
+        let resp = TestHeadersResponse::Status200 {
             x_string_header: request.x_string_header.unwrap(),
             x_bytes_header: request.x_bytes_header.unwrap(),
             x_int_header: request.x_int_header.unwrap(),
             body: components::Pet {
                 name: Some("Cat".to_string()),
             },
+        };
+
+        Ok(if let Some(value) = parts.headers.remove("x-dyn-header") {
+            resp.with_header("x-dyn-header", value)
+        } else {
+            resp
         })
     }
 }

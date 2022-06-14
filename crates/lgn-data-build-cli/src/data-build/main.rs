@@ -28,18 +28,24 @@ enum Commands {
         /// Path to build output database.
         #[clap(long = "output")]
         build_output: String,
-        /// Source project path.
+        /// Name of the source control repository.
         #[clap(long)]
-        project: PathBuf,
+        repository_name: String,
+        /// Name of the source control branch.
+        #[clap(long)]
+        branch_name: String,
     },
     /// Compile input resource
     #[clap(name = "compile")]
     Compile {
         /// Path in build graph to compile.
         resource: String,
-        /// Source project path.
-        #[clap(long = "project")]
-        project: PathBuf,
+        /// Name of the source control repository.
+        #[clap(long)]
+        repository_name: String,
+        /// Name of the source control branch.
+        #[clap(long)]
+        branch_name: String,
         /// Build index file.
         #[clap(long = "output")]
         build_output: String,
@@ -81,18 +87,29 @@ async fn main() -> Result<(), String> {
     match args.command {
         Commands::Create {
             build_output,
-            project: project_dir,
+            repository_name,
+            branch_name,
         } => {
-            let (mut build, project) = DataBuildOptions::new(
+            let repository_name = repository_name
+                .parse()
+                .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
+
+            let project = Project::new(
+                repository_index,
+                &repository_name,
+                &branch_name,
+                Arc::clone(&source_control_content_provider),
+            )
+            .await
+            .map_err(|e| format!("failed to open project {}", e))?;
+
+            let mut build = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
+                Arc::clone(&source_control_content_provider),
                 Arc::clone(&data_content_provider),
                 CompilerRegistryOptions::default(),
             )
-            .create_with_project(
-                &project_dir,
-                repository_index,
-                Arc::clone(&source_control_content_provider),
-            )
+            .create(&project)
             .await
             .map_err(|e| format!("failed creating build index {}", e))?;
 
@@ -102,13 +119,17 @@ async fn main() -> Result<(), String> {
         }
         Commands::Compile {
             resource,
-            project: project_dir,
+            repository_name,
+            branch_name,
             build_output,
             runtime_flag,
             target,
             platform,
             locale,
         } => {
+            let repository_name = repository_name
+                .parse()
+                .map_err(|_e| format!("Invalid repository name '{}'", repository_name))?;
             let target = target
                 .parse()
                 .map_err(|_e| format!("Invalid Target '{}'", target))?;
@@ -129,9 +150,10 @@ async fn main() -> Result<(), String> {
                 })
                 .unwrap_or_default();
 
-            let project = Project::open(
-                &project_dir,
+            let project = Project::new(
                 repository_index,
+                &repository_name,
+                &branch_name,
                 Arc::clone(&source_control_content_provider),
             )
             .await
@@ -139,6 +161,7 @@ async fn main() -> Result<(), String> {
 
             let mut build = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
+                Arc::clone(&source_control_content_provider),
                 Arc::clone(&data_content_provider),
                 compilers,
             )

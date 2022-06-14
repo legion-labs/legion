@@ -50,7 +50,7 @@ impl fmt::Debug for CompilerNode {
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, sync::Arc};
+    use std::sync::Arc;
 
     use async_trait::async_trait;
     use lgn_content_store::{
@@ -175,8 +175,14 @@ mod tests {
             kind: ResourceType::new(b"input"),
             id: ResourceId::new(),
         };
-        let proj_dir = PathBuf::from(".");
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
+
+        let source_control_content_provider = Provider::new_in_memory();
+        let source_manifest_id = SharedTreeIdentifier::new(
+            empty_tree_id(&source_control_content_provider)
+                .await
+                .expect("initialize content-store manifest"),
+        );
 
         let data_content_provider = Arc::new(Provider::new_in_memory());
         let runtime_manifest_id = SharedTreeIdentifier::new(
@@ -195,7 +201,7 @@ mod tests {
                     &[],
                     registry,
                     &data_content_provider,
-                    &proj_dir,
+                    &source_manifest_id,
                     &runtime_manifest_id,
                     &env,
                 )

@@ -7,10 +7,10 @@ use anyhow::Result;
 
 use lgn_source_control::Index;
 
-#[cfg(not(target_os = "windows"))]
-mod filesystem;
-#[cfg(not(target_os = "windows"))]
-mod inode_index;
+// #[cfg(not(target_os = "windows"))]
+// mod filesystem;
+// #[cfg(not(target_os = "windows"))]
+// mod inode_index;
 
 /// Implements all the running logic, so that we can easily conditionally
 /// compile it for UNIX systems only.
@@ -19,15 +19,15 @@ mod inode_index;
 ///
 /// This function will return an error if the filesystem cannot be mounted.
 ///
-#[cfg_attr(
-    windows,
+#[/*cfg_attr(
+    windows,*/
     allow(
         unused_variables,
         unreachable_code,
         clippy::unused_async,
         clippy::unimplemented
     )
-)]
+/*)*/]
 pub async fn run(
     index: Box<dyn Index>,
     branch: String,
@@ -38,26 +38,28 @@ pub async fn run(
 
     #[cfg(not(target_os = "windows"))]
     {
-        use anyhow::Context;
-        use filesystem::SourceControlFilesystem;
-        use fuser::MountOption;
-        use tokio::sync::Semaphore;
+        unimplemented!("needs to be rewritten since source-control refactor to use content-store");
 
-        let fs = SourceControlFilesystem::new(index, branch).await?;
-        let options = vec![MountOption::RO, MountOption::FSName("hello".to_string())];
+        // use anyhow::Context;
+        // use filesystem::SourceControlFilesystem;
+        // use fuser::MountOption;
+        // use tokio::sync::Semaphore;
 
-        let session = fuser::Session::new(fs, mountpoint.as_ref(), &options)
-            .context("failed to create fuse session")?;
+        // let fs = SourceControlFilesystem::new(index, branch).await?;
+        // let options = vec![MountOption::RO, MountOption::FSName("hello".to_string())];
 
-        let session = session
-            .spawn()
-            .context("failed to run fuse session in the background")?;
+        // let session = fuser::Session::new(fs, mountpoint.as_ref(), &options)
+        //     .context("failed to create fuse session")?;
 
-        let semaphore = Semaphore::new(0);
-        let _permit = semaphore.acquire().await?;
+        // let session = session
+        //     .spawn()
+        //     .context("failed to run fuse session in the background")?;
 
-        session.join();
+        // let semaphore = Semaphore::new(0);
+        // let _permit = semaphore.acquire().await?;
 
-        Ok(())
+        // session.join();
+
+        // Ok(())
     }
 }

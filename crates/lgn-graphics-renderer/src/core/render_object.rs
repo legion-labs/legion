@@ -1,7 +1,6 @@
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
 use bit_set::BitSet;
 
-use lgn_transform::prelude::GlobalTransform;
 use lgn_utils::HashMap;
 
 use std::{
@@ -18,13 +17,6 @@ use super::{CommandBuilder, CommandQueuePool, RenderCommand};
 
 //
 // RenderObjectId
-//
-pub trait AsSpatialRenderObject<R>
-where
-    R: RenderObject,
-{
-    fn as_spatial_render_object(&self, transform: GlobalTransform) -> R;
-}
 
 pub trait RenderObject: 'static + Send {}
 
@@ -413,7 +405,7 @@ impl RenderObjectsBuilder {
         self.secondary_tables.insert(
             secondary_key,
             AtomicRefCell::new(SecondaryTable {
-                key: secondary_key,
+                _key: secondary_key,
                 primary_key,
                 storage: RenderObjectStorage::new(Layout::new::<S>(), drop_func::<S>, 256),
                 handler_fat_ptr: get_fat_ptr(handler),
@@ -496,6 +488,7 @@ impl PrimaryTable {
     }
 
     #[allow(unsafe_code)]
+    #[allow(dead_code)]
     pub fn try_get<R: RenderObject>(&self, id: RenderObjectId) -> Option<&R> {
         let index = id.index as usize;
         let generation = id.generation;
@@ -551,7 +544,7 @@ impl<R: RenderObject> PrimaryTableView<R> {
     pub fn writer(&self) -> PrimaryTableWriter<'_, R> {
         PrimaryTableWriter {
             view: self,
-            command_builder: self.command_builder(),
+            command_builder: self.command_queue.builder(),
         }
     }
 }
@@ -631,7 +624,7 @@ where
 //
 
 pub struct SecondaryTable {
-    key: RenderObjectKey,
+    _key: RenderObjectKey,
     primary_key: RenderObjectKey,
     storage: RenderObjectStorage,
     handler_fat_ptr: FatPtr,

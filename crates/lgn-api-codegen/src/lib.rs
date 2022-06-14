@@ -7,7 +7,7 @@
 //#![allow()]
 
 pub(crate) mod api_types;
-pub(crate) mod errors;
+pub mod errors;
 pub(crate) mod filters;
 pub(crate) mod openapi_loader;
 pub(crate) mod python;
@@ -15,7 +15,9 @@ pub(crate) mod rust;
 pub(crate) mod typescript;
 pub(crate) mod visitor;
 
-pub use api_types::{Language, ModulePath, RustOptions, TypeScriptOptions};
+pub use api_types::{
+    Language, ModulePath, RustOptions, TypeScriptAliasMappings, TypeScriptOptions,
+};
 use errors::{Error, Result};
 use openapi_loader::{OpenApi, OpenApiElement, OpenApiLoader, OpenApiRefLocation};
 use std::path::{Path, PathBuf};

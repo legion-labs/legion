@@ -1,6 +1,9 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
-use lgn_content_store::Identifier;
+use lgn_content_store::{
+    indexing::{IndexKey, TreeIdentifier},
+    Identifier,
+};
 use thiserror::Error;
 
 use crate::{Branch, CanonicalPath, Change, CommitId, Lock, RepositoryName};
@@ -90,6 +93,16 @@ pub enum Error {
     },
     #[error("{0}")]
     Unspecified(String),
+    #[error("content store indexing: {0}")]
+    ContentStoreIndexing(#[from] lgn_content_store::indexing::Error),
+    #[error("resource  `{id}` not found in content store")]
+    ResourceNotFoundById { id: IndexKey },
+    #[error("resource  `{path}` not found in content store")]
+    ResourceNotFoundByPath { path: String },
+    #[error("corrupted resource index  `{tree_id}` in content store")]
+    CorruptedIndex { tree_id: TreeIdentifier },
+    #[error("path `{path}` is not valid for storage in content store")]
+    InvalidPath { path: String },
 }
 
 impl Error {

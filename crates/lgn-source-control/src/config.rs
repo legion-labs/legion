@@ -96,7 +96,7 @@ impl GrpcConfig {
     pub async fn instantiate(&self) -> Result<Box<dyn RepositoryIndex>> {
         let online_config = lgn_online::Config::load()?;
         let client = online_config
-            .instantiate_web_api_client_with_url(self.web_api_url.as_ref(), &[])
+            .instantiate_web_grpc_client_with_url(self.web_api_url.as_ref(), &[])
             .await?;
 
         let index = GrpcRepositoryIndex::new(client);

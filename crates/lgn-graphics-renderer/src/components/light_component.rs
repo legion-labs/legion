@@ -8,8 +8,8 @@ use lgn_utils::HashMap;
 
 use crate::{
     core::{
-        AsSpatialRenderObject, InsertRenderObjectCommand, PrimaryTableCommandBuilder,
-        PrimaryTableView, RemoveRenderObjectCommand, RenderObjectId, UpdateRenderObjectCommand,
+        InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
+        RemoveRenderObjectCommand, RenderObjectId, UpdateRenderObjectCommand,
     },
     debug_display::DebugDisplay,
     lighting::RenderLight,
@@ -46,20 +46,6 @@ impl Default for LightComponent {
             enabled: true,
             picking_id: 0,
             render_object_id: None,
-        }
-    }
-}
-
-impl AsSpatialRenderObject<RenderLight> for LightComponent {
-    fn as_spatial_render_object(&self, transform: GlobalTransform) -> RenderLight {
-        RenderLight {
-            transform,
-            light_type: self.light_type,
-            color: self.color,
-            radiance: self.radiance,
-            cone_angle: self.cone_angle,
-            enabled: self.enabled,
-            picking_id: self.picking_id,
         }
     }
 }
@@ -126,7 +112,7 @@ pub(crate) fn reflect_light_components(
 
             render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                 render_object_id,
-                data: light.as_spatial_render_object(*transform),
+                data: (transform, light.as_ref()).into(),
             });
         } else {
             let is_already_inserted = ecs_to_render.map.contains_key(&e);
@@ -157,12 +143,12 @@ pub(crate) fn reflect_light_components(
 
                 render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                     render_object_id,
-                    data: light.as_spatial_render_object(*transform),
+                    data: (transform, light.as_ref()).into(),
                 });
             } else {
                 render_commands.push(InsertRenderObjectCommand::<RenderLight> {
                     render_object_id,
-                    data: light.as_spatial_render_object(*transform),
+                    data: (transform, light.as_ref()).into(),
                 });
             }
         };
@@ -196,7 +182,7 @@ pub(crate) fn tmp_debug_display_lights(
                             &GlobalTransform::identity()
                                 .with_translation(
                                     transform.translation
-                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
+                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.0, 0.3)), // assumes arrow length to be 0.3
                                 )
                                 .with_rotation(transform.rotation),
                             DefaultMeshType::Arrow,
@@ -208,9 +194,9 @@ pub(crate) fn tmp_debug_display_lights(
                         builder.add_default_mesh(
                             &GlobalTransform::identity()
                                 .with_translation(
-                                    transform.translation - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
+                                    transform.translation - transform.rotation.mul_vec3(Vec3::Z), // assumes cone height to be 1.0
                                 )
-                                .with_scale(Vec3::new(factor, 1.0, factor))
+                                .with_scale(Vec3::new(factor, factor, 1.0))
                                 .with_rotation(transform.rotation),
                             DefaultMeshType::Cone,
                             Color::WHITE,

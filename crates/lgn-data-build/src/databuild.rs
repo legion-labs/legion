@@ -3,7 +3,7 @@ use std::{
     env,
     hash::{Hash, Hasher},
     io,
-    path::{Path, PathBuf},
+    path::PathBuf,
     pin::Pin,
     sync::Arc,
     time::SystemTime,
@@ -22,7 +22,7 @@ use lgn_data_compiler::{
     compiler_node::{CompilerNode, CompilerStub},
     CompiledResource, CompiledResources,
 };
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
@@ -115,7 +115,7 @@ fn compute_context_hash(
 pub struct DataBuild {
     source_index: SourceIndex,
     output_index: OutputIndex,
-    resource_dir: PathBuf,
+    source_manifest_id: SharedTreeIdentifier,
     runtime_manifest_id: SharedTreeIdentifier,
     data_content_provider: Arc<Provider>,
     compilers: CompilerNode,
@@ -166,7 +166,10 @@ impl DataBuild {
                         Arc::clone(&config.data_content_provider),
                         runtime_manifest_id.clone(),
                     )
-                    .add_device_dir(&project.resource_dir());
+                    .add_device_source_cas(
+                        Arc::clone(&config.source_control_content_provider),
+                        project.source_manifest_id(),
+                    );
 
                 options = compilers.init_all(options).await;
 
@@ -177,7 +180,7 @@ impl DataBuild {
         Ok(Self {
             source_index,
             output_index,
-            resource_dir: project.resource_dir(),
+            source_manifest_id: project.source_manifest_id(),
             runtime_manifest_id,
             data_content_provider: Arc::clone(&config.data_content_provider),
             compilers: CompilerNode::new(compilers, registry),
@@ -261,7 +264,7 @@ impl DataBuild {
     async fn compile_node(
         output_index: &OutputIndex,
         data_provider: &Provider,
-        project_dir: &Path,
+        source_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         compile_node: &ResourcePathId,
         context_hash: AssetHash,
@@ -311,7 +314,7 @@ impl DataBuild {
                         derived_deps,
                         resources,
                         data_provider,
-                        project_dir,
+                        source_manifest_id,
                         runtime_manifest_id,
                         env,
                     )
@@ -374,17 +377,20 @@ impl DataBuild {
     ///
     /// `std::string::ToString::to_string` can be used as a default
     /// `name_parser`.
-    pub fn print_build_graph(
+    pub async fn print_build_graph<R>(
         &self,
         compile_path: ResourcePathId,
-        name_parser: impl Fn(&ResourcePathId) -> String,
-    ) -> String {
+        _name_parser: impl Fn(&ResourcePathId) -> R,
+    ) -> String
+    where
+        R: Future<Output = String>,
+    {
         if let Some(source_index) = self.source_index.current() {
             let build_graph = source_index.generate_build_graph(compile_path);
             #[rustfmt::skip]
         let inner_getter = |_g: &Graph<ResourcePathId, ()>,
-                            nr: <&petgraph::Graph<lgn_data_runtime::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
-            format!("label = \"{}\"", (name_parser)(nr.1))
+                            _nr: <&petgraph::Graph<lgn_data_runtime::ResourcePathId, ()> as petgraph::visit::IntoNodeReferences>::NodeRef| {
+            format!("label = \"{}\"", "todo"/*(name_parser)(nr.1)*/)
         };
             let dot = petgraph::dot::Dot::with_attr_getters(
                 &build_graph,
@@ -683,7 +689,7 @@ impl DataBuild {
 
                     let output_index = &self.output_index;
                     let data_content_provider = &self.data_content_provider;
-                    let project_dir = &self.resource_dir;
+                    let source_manifest_id = &self.source_manifest_id;
                     let runtime_manifest_id = &self.runtime_manifest_id;
                     let resources = self.compilers.registry();
                     let acc_deps = accumulated_dependencies.clone();
@@ -701,7 +707,7 @@ impl DataBuild {
                         let (resource_infos, resource_references, stats) = Self::compile_node(
                             output_index,
                             data_content_provider,
-                            project_dir,
+                            source_manifest_id,
                             runtime_manifest_id,
                             &compile_node,
                             context_hash,

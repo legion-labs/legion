@@ -15,7 +15,7 @@ use std::{path::Path, sync::Arc};
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_content_store::{
-    indexing::{empty_tree_id, SharedTreeIdentifier, TreeIdentifier},
+    indexing::{empty_tree_id, ResourceIndex, SharedTreeIdentifier, TreeIdentifier},
     Config,
 };
 use lgn_data_runtime::{
@@ -96,12 +96,11 @@ impl AssetRegistryPlugin {
 
         if load_all_assets_from_manifest {
             if let Ok(resources) = world.resource::<TokioAsyncRuntime>().block_on(async {
-                lgn_content_store::indexing::enumerate_resources(
-                    &data_provider,
-                    &new_resource_type_and_id_indexer(),
-                    &manifest_id.read(),
-                )
-                .await
+                let manifest = ResourceIndex::new_shared_with_id(
+                    new_resource_type_and_id_indexer(),
+                    manifest_id.clone(),
+                );
+                manifest.enumerate_resources(&data_provider).await
             }) {
                 let mut config = world.resource_mut::<AssetRegistrySettings>();
 

@@ -2,11 +2,14 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
+use std::collections::{HashMap, HashSet};
+use std::path::{Path, PathBuf};
+use std::{str::FromStr, sync::Arc};
+
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_model::json_utils::get_property_as_json_string;
-use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_offline::resource::{Project, ResourceHandles};
+use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName};
 use lgn_data_runtime::{
     Resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
@@ -16,25 +19,23 @@ use lgn_data_transaction::{
     TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
-use lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest;
-use lgn_editor_proto::resource_browser::{
-    Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
-    DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest, GetActiveScenesResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, GetRuntimeSceneInfoRequest,
-    GetRuntimeSceneInfoResponse, ImportResourceRequest, ImportResourceResponse, ListAssetsRequest,
-    ListAssetsResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
-    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
-    SearchResourcesRequest,
+use lgn_editor_proto::{
+    property_inspector::UpdateResourcePropertiesRequest,
+    resource_browser::{
+        Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
+        DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest,
+        GetActiveScenesResponse, GetResourceTypeNamesRequest, GetResourceTypeNamesResponse,
+        GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse, ImportResourceRequest,
+        ImportResourceResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
+        OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+        ReparentResourceResponse, SearchResourcesRequest,
+    },
 };
-
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_scene_plugin::SceneMessage;
 use lgn_tracing::{error, info, span_scope, warn};
 use serde_json::json;
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
-use std::{str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 use tonic::{codegen::http::status, Request, Response, Status};
 
@@ -80,16 +81,13 @@ impl IndexSnapshot {
         let mut entity_to_names = HashMap::new();
         let mut name_to_entity = HashMap::new();
 
-        for id in ctx.project.resource_list().await {
+        for res_id in ctx.project.resource_list().await {
             if let (Ok(raw_name), Ok(res_name)) = (
-                ctx.project.raw_resource_name(id),
-                ctx.project.resource_name(id),
+                ctx.project.raw_resource_name(res_id).await,
+                ctx.project.resource_name(res_id).await,
             ) {
-                let kind = ctx.project.resource_type(id).unwrap();
-                let res_id = ResourceTypeAndId { kind, id };
-
                 let mut parent_id = raw_name.extract_parent_info().0;
-                if parent_id.is_none() && kind == sample_data::offline::Entity::TYPE {
+                if parent_id.is_none() && res_id.kind == sample_data::offline::Entity::TYPE {
                     if let Ok(handle) = ctx.get_or_load(res_id).await {
                         if let Some(entity) =
                             handle.get::<sample_data::offline::Entity>(&ctx.asset_registry)
@@ -348,38 +346,32 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let request = request.get_ref();
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
-        let descriptors = ctx
-            .project
-            .resource_list()
-            .await
-            .into_iter()
-            .filter_map(|resource_id| {
-                let path: String = ctx
-                    .project
-                    .resource_name(resource_id)
-                    .unwrap_or_else(|_err| "".into())
-                    .to_string();
+        let resources = ctx.project.resource_list().await;
+        let mut descriptors = Vec::new();
+        for resource_id in resources {
+            let path: String = ctx
+                .project
+                .resource_name(resource_id)
+                .await
+                .unwrap_or_else(|_err| "".into())
+                .to_string();
 
-                // Basic Filter
-                if !request.search_token.is_empty() {
-                    path.find(&request.search_token)?;
-                }
+            // Basic Filter
+            if !request.search_token.is_empty() && !path.contains(&request.search_token) {
+                continue;
+            }
 
-                if let Ok(kind) = ctx.project.resource_type(resource_id) {
-                    Some(ResourceDescription {
-                        id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                            kind,
-                            id: resource_id,
-                        }),
-                        path,
-                        r#type: kind.as_pretty().trim_start_matches("offline_").into(),
-                        version: 1,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<ResourceDescription>>();
+            descriptors.push(ResourceDescription {
+                id: ResourceTypeAndId::to_string(&resource_id),
+                path,
+                r#type: resource_id
+                    .kind
+                    .as_pretty()
+                    .trim_start_matches("offline_")
+                    .into(),
+                version: 1,
+            });
+        }
 
         Ok(Response::new(SearchResourcesResponse {
             next_search_token: "".to_string(),
@@ -699,7 +691,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
             let guard = LockContext::new(&transaction_manager).await;
             guard
                 .project
-                .resource_name(clone_id.id)
+                .resource_name(*clone_id)
+                .await
                 .map_err(|err| Status::internal(err.to_string()))?
                 .as_str()
                 .to_string()
@@ -905,34 +898,22 @@ impl ResourceBrowser for ResourceBrowserRPC {
                     .map_err(|err| Status::internal(err.to_string()))?,
             );
         }
-        let assets = ctx
-            .project
-            .resource_list()
-            .await
-            .into_iter()
-            .filter_map(|resource_id| {
-                if let Ok(kind) = ctx.project.resource_type(resource_id) {
-                    if asset_types.contains(&kind) {
-                        let path: String = ctx
-                            .project
-                            .resource_name(resource_id)
-                            .unwrap_or_else(|_err| "".into())
-                            .to_string();
-                        Some(Asset {
-                            id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                                kind,
-                                id: resource_id,
-                            }),
-                            asset_name: path,
-                        })
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<Asset>>();
+        let resources = ctx.project.resource_list().await;
+        let mut assets = Vec::new();
+        for resource_id in resources {
+            if asset_types.contains(&resource_id.kind) {
+                let path: String = ctx
+                    .project
+                    .resource_name(resource_id)
+                    .await
+                    .unwrap_or_else(|_err| "".into())
+                    .to_string();
+                assets.push(Asset {
+                    id: ResourceTypeAndId::to_string(&resource_id),
+                    asset_name: path,
+                });
+            }
+        }
 
         Ok(Response::new(ListAssetsResponse { assets }))
     }

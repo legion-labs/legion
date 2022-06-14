@@ -10,18 +10,19 @@ use api_codegen::api::cars::{
         CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
         TestHeadersResponse, TestOneOfResponse,
     },
-    server, Api, TestOneOf200Response,
+    server, TestOneOf200Response,
 };
 use api_codegen::api::components::{Car, CarColor, Cars, Pet};
 use axum::Router;
-use lgn_online::codegen::Context;
+use http::{header::HeaderName, HeaderValue};
+use lgn_online::client::HyperClient;
 use tokio::task::JoinHandle;
 
 #[tokio::test]
 async fn test_crud() {
-    let addr = "127.0.0.1:3000".parse().unwrap();
-    let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
+    let addr = "127.0.0.1:3001".parse().unwrap();
     let handle = start_server(addr).await;
+    let client = new_client(addr);
 
     let space_id = "ABCDEF".to_string();
     let span_id = "123456".to_string();
@@ -33,128 +34,145 @@ async fn test_crud() {
         extra: None,
     };
 
-    let mut ctx = Context::default();
     let req = CreateCarRequest {
         space_id: space_id.clone(),
         span_id: Some(span_id),
         body: car.clone(),
     };
-    let resp = client.create_car(&mut ctx, req).await.unwrap();
-    assert_eq!(resp, CreateCarResponse::Status201);
+    let resp = client.create_car(req).await.unwrap();
+    assert!(matches!(resp, CreateCarResponse::Status201));
 
-    let mut ctx = Context::default();
     let req = GetCarsRequest {
         space_id: space_id.clone(),
-        names: Some(vec!["car1".to_string()]),
+        names: Some(vec!["car1".to_string(), "car2".to_string()]),
         q: None,
     };
-    let resp = client.get_cars(&mut ctx, req).await.unwrap();
-    assert_eq!(resp, GetCarsResponse::Status200(Cars(vec![car.clone()])));
+    let resp = client.get_cars(req).await.unwrap();
+
+    match resp {
+        GetCarsResponse::Status200(cars) => {
+            assert_eq!(cars, Cars(vec![car.clone()]));
+        }
+        _ => panic!("Unexpected response"),
+    };
 
     let req = GetCarRequest {
         space_id: space_id.clone(),
         car_id: 2,
     };
-    let resp = client.get_car(&mut ctx, req).await.unwrap();
-    assert_eq!(resp, GetCarResponse::Status404);
+    let resp = client.get_car(req).await.unwrap();
+    assert!(matches!(resp, GetCarResponse::Status404));
 
     let req = DeleteCarRequest {
         space_id: space_id.clone(),
         car_id: 1,
     };
-    let resp = client.delete_car(&mut ctx, req).await.unwrap();
-    assert_eq!(resp, DeleteCarResponse::Status200);
+    let resp = client.delete_car(req).await.unwrap();
+    assert!(matches!(resp, DeleteCarResponse::Status200));
 
     handle.abort();
 }
 
 #[tokio::test]
 async fn test_binary() {
-    let addr = "127.0.0.1:3001".parse().unwrap();
-    let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
+    let addr = "127.0.0.1:3002".parse().unwrap();
     let handle = start_server(addr).await;
+    let client = new_client(addr);
 
-    let mut ctx = Context::default();
     let req = TestBinaryRequest {
         space_id: "ABCDEF".to_string(),
         body: b"123456".to_vec().into(),
     };
-    let resp = client.test_binary(&mut ctx, req).await.unwrap();
-    assert_eq!(
-        resp,
-        TestBinaryResponse::Status200(b"123456".to_vec().into())
-    );
+    let resp = client.test_binary(req).await.unwrap();
+
+    match resp {
+        TestBinaryResponse::Status200(r) => assert_eq!(r, b"123456".to_vec().into()),
+        _ => panic!("Unexpected response"),
+    };
 
     handle.abort();
 }
 
 #[tokio::test]
 async fn test_one_of() {
-    let addr = "127.0.0.1:3002".parse().unwrap();
-    let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
+    let addr = "127.0.0.1:3003".parse().unwrap();
     let handle = start_server(addr).await;
+    let client = new_client(addr);
 
-    let mut ctx = Context::default();
-    let resp = client.test_one_of(&mut ctx).await.unwrap();
-    assert_eq!(
-        resp,
-        TestOneOfResponse::Status200(TestOneOf200Response::Option1(Pet {
-            name: Some("Cat".to_string()),
-        }),)
-    );
+    let resp = client.test_one_of().await.unwrap();
+    match resp {
+        TestOneOfResponse::Status200(r) => assert_eq!(
+            r,
+            TestOneOf200Response::Option1(Pet {
+                name: Some("Cat".to_string()),
+            })
+        ),
+        _ => panic!("Unexpected response"),
+    };
 
     handle.abort();
 }
 
 #[tokio::test]
 async fn test_headers() {
-    let addr = "127.0.0.1:3003".parse().unwrap();
-    let client = client::Client::new(hyper::Client::new(), format!("http://{}", addr));
+    let addr = "127.0.0.1:3004".parse().unwrap();
     let handle = start_server(addr).await;
+    let client = HyperClient::default();
+    let client = tower_http::add_extension::AddExtension::new(client, 5i32);
+    let client = tower_http::set_header::SetRequestHeader::if_not_present(
+        client,
+        HeaderName::from_static("x-dyn-header"),
+        HeaderValue::from_str("dyn").unwrap(),
+    );
+    let client = client::Client::new(client, format!("http://{}", addr).parse().unwrap());
 
-    let mut extensions = http::Extensions::new();
-    extensions.insert(5i32);
-
-    let mut headers = http::HeaderMap::new();
-    headers.insert("X-Dyn-Header", http::HeaderValue::from_static("dyn"));
-
-    let mut ctx = Context::default();
-    ctx.set_request_extensions(extensions);
-    ctx.set_request_headers(headers);
     let req = TestHeadersRequest {
         x_string_header: Some("string".to_string()),
         x_int_header: Some(5),
         x_bytes_header: Some(b"bytes".to_vec().into()),
     };
-    let resp = client.test_headers(&mut ctx, req).await.unwrap();
+    let (mut parts, resp) = client.test_headers_with_parts(req).await.unwrap();
 
-    println!("{:#?}", resp);
-    assert_eq!(
-        resp,
+    match resp {
         TestHeadersResponse::Status200 {
-            x_string_header: "string".to_string(),
-            x_int_header: 5,
-            x_bytes_header: b"bytes".to_vec().into(),
-            body: Pet {
-                name: Some("Cat".to_string()),
-            }
+            x_string_header,
+            x_int_header,
+            x_bytes_header,
+            body,
+        } => {
+            assert_eq!(x_string_header, "string".to_string());
+            assert_eq!(x_int_header, 5);
+            assert_eq!(x_bytes_header, b"bytes".to_vec().into());
+            assert_eq!(
+                body,
+                Pet {
+                    name: Some("Cat".to_string()),
+                }
+            );
         }
-    );
+        _ => panic!("Unexpected response"),
+    };
 
     assert_eq!(
-        ctx.response().unwrap().headers.get("X-Dyn-Header"),
-        Some(&http::HeaderValue::from_static("dyn"))
+        parts.headers.remove("X-Dyn-Header"),
+        Some(http::HeaderValue::from_static("dyn"))
     );
 
     handle.abort();
 }
 
 async fn start_server(addr: SocketAddr) -> JoinHandle<Result<(), hyper::Error>> {
-    let router = Router::new();
     let api = api_codegen::api_impl::ApiImpl::default();
-    let router = server::register_routes(router, api);
+    let router = server::register_routes(Router::new(), api);
     let server =
         axum::Server::bind(&addr).serve(router.into_make_service_with_connect_info::<SocketAddr>());
 
     tokio::spawn(async move { server.await })
+}
+
+fn new_client(addr: SocketAddr) -> client::Client<HyperClient> {
+    client::Client::new(
+        HyperClient::default(),
+        format!("http://{}", addr).parse().unwrap(),
+    )
 }

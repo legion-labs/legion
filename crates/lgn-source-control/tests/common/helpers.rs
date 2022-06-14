@@ -11,7 +11,6 @@ macro_rules! init_test_workspace_and_index {
             .create_repository(&repository_name)
             .await
             .unwrap();
-        let workspace_root = tempfile::tempdir().expect("failed to create temp dir");
 
         // Initialize the workspace.
         let config = WorkspaceConfig::new(
@@ -21,21 +20,11 @@ macro_rules! init_test_workspace_and_index {
 
         let provider = Arc::new(Provider::new_in_memory());
 
-        let workspace = Workspace::init(
-            &workspace_root.path(),
-            &repository_index,
-            config,
-            Arc::clone(&provider),
-        )
-        .await
-        .expect("failed to initialize workspace");
+        let workspace = Workspace::init(&repository_index, config, Arc::clone(&provider))
+            .await
+            .expect("failed to initialize workspace");
 
-        (
-            repository_index,
-            workspace,
-            provider,
-            [index_root, workspace_root],
-        )
+        (repository_index, workspace, provider, [index_root])
     }};
 }
 

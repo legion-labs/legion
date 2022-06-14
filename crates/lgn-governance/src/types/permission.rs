@@ -258,6 +258,11 @@ impl PermissionSet {
     pub fn remove(&mut self, permission_id: &PermissionId) -> bool {
         self.0.remove(permission_id)
     }
+
+    /// Extend the set with the given permission set.
+    pub fn extend(&mut self, iter: impl IntoIterator<Item = PermissionId>) {
+        self.0.extend(iter);
+    }
 }
 
 impl IntoIterator for PermissionSet {

@@ -12,6 +12,8 @@ pub enum Error {
     InvalidRoleId(String),
     #[error("invalid user id: {0}")]
     InvalidUserId(String),
+    #[error("unexpected: {0}")]
+    Unexpected(String),
 }
 
 /// A result type.

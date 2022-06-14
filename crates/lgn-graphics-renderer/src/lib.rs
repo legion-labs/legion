@@ -13,18 +13,19 @@ mod cgen {
 }
 
 use crate::components::{
-    reflect_viewports, tmp_debug_display_lights, EcsToRenderLight, EcsToRenderViewport,
-    RenderViewport, RenderViewportPrivateData, RenderViewportPrivateDataHandler,
+    reflect_viewports, reflect_visual_components, tmp_debug_display_lights, EcsToRenderLight,
+    EcsToRenderViewport, EcsToRenderVisual, RenderViewport, RenderViewportPrivateData,
+    RenderViewportPrivateDataHandler,
 };
 use crate::core::{
     RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
     RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects,
     RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
-use crate::features::ModelFeature;
+use crate::features::{ModelFeature, RenderVisual};
 use crate::lighting::{RenderLight, RenderLightTestData};
-
 use crate::surface_renderer::SurfaceRenderer;
+
 use std::sync::Arc;
 
 use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
@@ -124,8 +125,8 @@ use crate::{
     labels::CommandBufferLabel,
 };
 
-pub const UP_VECTOR: Vec3 = Vec3::Y;
-pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, -1_f32, 0_f32]);
+pub const UP_VECTOR: Vec3 = Vec3::Z;
+pub const DOWN_VECTOR: Vec3 = const_vec3!([0_f32, 0_f32, -1_f32]);
 
 #[derive(Clone)]
 pub struct GraphicsQueue {
@@ -245,15 +246,21 @@ impl Plugin for RendererPlugin {
         let renderdoc_manager = RenderDocManager::default();
 
         let render_objects = RenderObjectsBuilder::default()
+            // Lights
             .add_primary_table::<RenderLight>()
             .add_secondary_table::<RenderLight, RenderLightTestData>()
+            // Viewports
             .add_primary_table::<RenderViewport>()
             .add_secondary_table_with_handler::<RenderViewport, RenderViewportPrivateData>(
                 Box::new(RenderViewportPrivateDataHandler::new(
                     device_context.clone(),
                 )),
             )
+            // Cameras
             .add_primary_table::<RenderCamera>()
+            // Visual
+            .add_primary_table::<RenderVisual>()
+            // Done!
             .finalize();
 
         //
@@ -286,6 +293,8 @@ impl Plugin for RendererPlugin {
         //
         // RenderObjects
         //
+
+        // Lights
         app.insert_resource(EcsToRenderLight::new(
             render_objects.primary_table_view::<RenderLight>(),
         ))
@@ -294,6 +303,12 @@ impl Plugin for RendererPlugin {
             render_objects.primary_table_view::<RenderViewport>(),
         ))
         .add_system_to_stage(RenderStage::Prepare, reflect_viewports);
+
+        // Model
+        app.insert_resource(EcsToRenderVisual::new(
+            render_objects.primary_table_view::<RenderVisual>(),
+        ))
+        .add_system_to_stage(RenderStage::Prepare, reflect_visual_components);
 
         //
         // Resources

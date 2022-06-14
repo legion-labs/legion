@@ -1,12 +1,14 @@
 use crate::{
-    AliasProvider, AliasProviderCache, AwsDynamoDbAliasProvider, AwsDynamoDbContentProvider,
-    AwsS3ContentProvider, AwsS3Url, ContentAddressProvider, ContentProvider, ContentProviderCache,
-    DataSpace, Error, GrpcAliasProvider, GrpcContentProvider, LocalAliasProvider,
-    LocalContentProvider, LruAliasProvider, LruContentProvider, MemoryAliasProvider,
-    MemoryContentProvider, Provider, RedisAliasProvider, RedisContentProvider, Result,
+    AliasProvider, AliasProviderCache, ApiAliasProvider, ApiContentProvider,
+    AwsDynamoDbAliasProvider, AwsDynamoDbContentProvider, AwsS3ContentProvider, AwsS3Url,
+    ContentAddressProvider, ContentProvider, ContentProviderCache, DataSpace, Error,
+    LocalAliasProvider, LocalContentProvider, LruAliasProvider, LruContentProvider,
+    MemoryAliasProvider, MemoryContentProvider, Provider, RedisAliasProvider, RedisContentProvider,
+    Result,
 };
 use http::Uri;
 use lgn_config::RichPathBuf;
+use lgn_governance::types::SpaceId;
 use serde::Deserialize;
 
 /// The configuration of the content-store.
@@ -28,7 +30,7 @@ pub enum ContentProviderConfig {
     Lru(LruContentProviderConfig),
     Local(LocalContentProviderConfig),
     Redis(RedisContentProviderConfig),
-    Grpc(GrpcContentProviderConfig),
+    Api(ApiContentProviderConfig),
     AwsS3(AwsS3ContentProviderConfig),
     AwsDynamoDb(AwsDynamoDbContentProviderConfig),
 }
@@ -40,7 +42,7 @@ pub enum AliasProviderConfig {
     Lru(LruAliasProviderConfig),
     Local(LocalAliasProviderConfig),
     Redis(RedisAliasProviderConfig),
-    Grpc(GrpcAliasProviderConfig),
+    Api(ApiAliasProviderConfig),
     AwsDynamoDb(AwsDynamoDbAliasProviderConfig),
 }
 
@@ -83,16 +85,18 @@ pub struct RedisAliasProviderConfig {
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct GrpcContentProviderConfig {
+pub struct ApiContentProviderConfig {
     #[serde(default, with = "option_uri")]
-    pub api_url: Option<Uri>,
+    pub base_url: Option<Uri>,
+    pub space_id: SpaceId,
     pub data_space: DataSpace,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct GrpcAliasProviderConfig {
+pub struct ApiAliasProviderConfig {
     #[serde(default, with = "option_uri")]
-    pub api_url: Option<Uri>,
+    pub base_url: Option<Uri>,
+    pub space_id: SpaceId,
     pub data_space: DataSpace,
 }
 
@@ -302,12 +306,25 @@ impl ContentProviderConfig {
                 AwsDynamoDbContentProvider::new(config.region.clone(), config.table_name.clone())
                     .await?,
             ),
-            Self::Grpc(config) => {
+            Self::Api(config) => {
+                let base_url = config
+                    .base_url
+                    .clone()
+                    .unwrap_or(lgn_online::Config::load()?.api_base_url);
+
                 let client = lgn_online::Config::load()?
-                    .instantiate_api_client_with_url(config.api_url.as_ref(), &[])
+                    .instantiate_api_client(&[])
                     .await?;
 
-                Box::new(GrpcContentProvider::new(client, config.data_space.clone()).await)
+                Box::new(
+                    ApiContentProvider::new(
+                        client,
+                        base_url,
+                        config.space_id.clone(),
+                        config.data_space.clone(),
+                    )
+                    .await,
+                )
             }
         })
     }
@@ -356,12 +373,25 @@ impl AliasProviderConfig {
                 AwsDynamoDbAliasProvider::new(config.region.clone(), config.table_name.clone())
                     .await?,
             ),
-            Self::Grpc(config) => {
+            Self::Api(config) => {
+                let base_url = config
+                    .base_url
+                    .clone()
+                    .unwrap_or(lgn_online::Config::load()?.api_base_url);
+
                 let client = lgn_online::Config::load()?
-                    .instantiate_api_client_with_url(config.api_url.as_ref(), &[])
+                    .instantiate_api_client(&[])
                     .await?;
 
-                Box::new(GrpcAliasProvider::new(client, config.data_space.clone()).await)
+                Box::new(
+                    ApiAliasProvider::new(
+                        client,
+                        base_url,
+                        config.space_id.clone(),
+                        config.data_space.clone(),
+                    )
+                    .await,
+                )
             }
         })
     }

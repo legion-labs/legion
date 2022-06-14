@@ -1,8 +1,4 @@
-use std::{
-    io,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{io, path::PathBuf, sync::Arc};
 
 use async_trait::async_trait;
 use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};
@@ -54,7 +50,7 @@ impl CompilerStub for BinCompilerStub {
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
         _provider: &Provider,
-        resource_dir: &Path,
+        source_manifest_id: &SharedTreeIdentifier,
         _runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
@@ -63,7 +59,7 @@ impl CompilerStub for BinCompilerStub {
             &compile_path,
             dependencies,
             derived_deps,
-            resource_dir,
+            &source_manifest_id.read(),
             env,
         )
         .execute()

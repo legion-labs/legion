@@ -1,5 +1,4 @@
 use super::{Error, Result};
-use percent_encoding::utf8_percent_encode;
 
 #[derive(Default)]
 pub(crate) struct PercentEncodingSerializer {}
@@ -7,7 +6,11 @@ pub(crate) struct PercentEncodingSerializer {}
 impl PercentEncodingSerializer {
     #[allow(clippy::unnecessary_wraps)]
     fn serialize_as_string<T: std::fmt::Display>(v: T) -> Result<String> {
-        Ok(utf8_percent_encode(&v.to_string(), super::FRAGMENT_ENCODE_SET).to_string())
+        Ok(percent_encoding::utf8_percent_encode(
+            &v.to_string(),
+            percent_encoding::NON_ALPHANUMERIC,
+        )
+        .to_string())
     }
 }
 
@@ -111,13 +114,13 @@ impl<'a> serde::ser::Serializer for &'a mut PercentEncodingSerializer {
 
     fn serialize_newtype_struct<T: ?Sized>(
         self,
-        name: &'static str,
-        _value: &T,
+        _name: &'static str,
+        value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: serde::Serialize,
     {
-        Err(Error::Unsupported(format!("<newtype struct {}>", name)))
+        value.serialize(self)
     }
 
     fn serialize_newtype_variant<T: ?Sized>(

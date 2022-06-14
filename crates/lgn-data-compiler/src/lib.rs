@@ -12,7 +12,7 @@ use std::str::FromStr;
 
 use compiler_api::CompilerError;
 use lgn_content_store::{
-    indexing::{empty_tree_id, BasicIndexer, ResourceIdentifier, TreeIdentifier, TreeLeafNode},
+    indexing::{ResourceIdentifier, ResourceIndex, TreeIdentifier},
     Provider,
 };
 use lgn_data_runtime::{new_resource_type_and_id_indexer, ResourcePathId};
@@ -88,20 +88,19 @@ impl CompiledResources {
             .filter(|resource| filter(&resource.path))
             .collect::<Vec<_>>();
 
-        let indexer = new_resource_type_and_id_indexer();
-        let mut manifest_id = empty_tree_id(provider).await.unwrap();
+        let mut manifest =
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), provider).await;
         for resource in runtime_resources {
-            manifest_id = indexer
-                .add_leaf(
+            manifest
+                .add_resource(
                     provider,
-                    &manifest_id,
                     &resource.path.resource_id().into(),
-                    TreeLeafNode::Resource(resource.content_id),
+                    resource.content_id,
                 )
                 .await
                 .unwrap();
         }
-        manifest_id
+        manifest.id()
     }
 }
 

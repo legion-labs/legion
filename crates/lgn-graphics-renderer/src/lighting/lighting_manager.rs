@@ -12,7 +12,7 @@ use crate::{
         cgen_type::{DirectionalLight, LightingData, OmniDirectionalLight, SpotLight},
         descriptor_set::frame_descriptor_set,
     },
-    components::LightType,
+    components::{LightComponent, LightType},
     core::{RenderObjectQuery, RenderObjects},
     egui::Egui,
     resources::TransientBufferAllocator,
@@ -28,6 +28,21 @@ pub struct RenderLight {
     pub cone_angle: f32,
     pub enabled: bool,
     pub picking_id: u32,
+}
+
+impl From<(&GlobalTransform, &LightComponent)> for RenderLight {
+    fn from(components: (&GlobalTransform, &LightComponent)) -> Self {
+        let (xform_component, light_component) = components;
+        RenderLight {
+            transform: *xform_component,
+            light_type: light_component.light_type,
+            color: light_component.color,
+            radiance: light_component.radiance,
+            cone_angle: light_component.cone_angle,
+            enabled: light_component.enabled,
+            picking_id: light_component.picking_id,
+        }
+    }
 }
 
 #[derive(Default)]

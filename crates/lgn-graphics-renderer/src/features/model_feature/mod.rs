@@ -1,7 +1,20 @@
-use crate::core::{
-    RenderFeature, RenderLayerId, RenderListCallable, RenderListSlice, RenderListSliceRequirement,
-    RenderListSliceTyped, TmpDrawContext, VisibleView,
+use lgn_transform::prelude::GlobalTransform;
+
+use crate::{
+    components::VisualComponent,
+    core::{
+        RenderFeature, RenderLayerId, RenderListCallable, RenderListSlice,
+        RenderListSliceRequirement, RenderListSliceTyped, TmpDrawContext, VisibleView,
+    },
 };
+
+pub struct RenderVisual {}
+
+impl From<(&GlobalTransform, &VisualComponent)> for RenderVisual {
+    fn from(_: (&GlobalTransform, &VisualComponent)) -> Self {
+        RenderVisual {}
+    }
+}
 
 #[allow(dead_code)]
 struct TmpKickLayer {

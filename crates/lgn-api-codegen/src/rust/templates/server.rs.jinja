@@ -14,7 +14,7 @@ use serde_qs::axum::QsQuery;
 use http::request::Parts;
 use http::header::HeaderName;
 use lgn_online::{
-    codegen::{Bytes, Context},
+    codegen::Bytes,
     server::{Error, Result},
 };
 use lgn_tracing::error;
@@ -26,7 +26,7 @@ where
     T: super::Api + Clone + Send + Sync + 'static,
 {
     router
-    {% for (path, routes) in api.paths %}
+    {%- for (path, routes) in api.paths -%}
         .route("{{ path|fmt_axum_path }}",
             {% for route in routes -%}
                 {% if loop.first %}routing::{% else %}.{% endif -%}
@@ -59,7 +59,6 @@ where
                         body: axum::body::Bytes,
                 {% endmatch -%}
             {% endif -%}
-            ConnectInfo(addr): ConnectInfo<SocketAddr>,
             parts: Parts,
         ) -> Response
         where
@@ -72,28 +71,25 @@ where
                     .map(|h| {
                         let s = h.to_str()
                         .map_err(|err| {
-                            Error::Internal("invalid header: {{ parameter.name }}".to_owned()).into_response()
+                            Error::BadRequest(format!("invalid header: {{ parameter.name }}: {}", err)).into_response()
                         })
                         .unwrap();
 
                         lgn_online::codegen::encoding::from_percent_encoded_string(s)
                         .map_err(|err| {
-                            Error::Internal("invalid header: {{ parameter.name }}".to_owned()).into_response()
+                            Error::BadRequest(format!("invalid header: {{ parameter.name }}: {}", err)).into_response()
                         })
                         .unwrap()
                 });
 
                 {% if parameter.required %}
                     if {{ param_name }}.is_none() {
-                        return Error::Internal("missing header: {{ parameter.name }}".to_owned()).into_response();
+                        return Error::BadRequest("missing header: {{ parameter.name }}".to_owned()).into_response();
                     }
                     let {{ param_name }} = {{ param_name }}.unwrap();
                 {% endif %}
             {% endfor %}
 
-            let mut context = Context::default();
-            context.set_request_addr(addr);
-            context.set_request(parts);
             {% if !route.has_empty_request() %}
             let request = requests::{{ route.name|pascal_case }}Request {
                 {%- for parameter in route.parameters.path -%}
@@ -116,21 +112,10 @@ where
             };
             {% endif %}
 
-            let resp = api.{{ route.name|snake_case }}(&mut context{% if !route.has_empty_request() %}, request{% endif %}).await;
-            let mut resp = match resp {
+            match api.{{ route.name|snake_case }}(parts{% if !route.has_empty_request() %}, request{% endif %}).await {
                 Ok(resp) => resp.into_response(),
                 Err(err) => err.into_response(),
-            };
-
-            if let Some(extensions) = context.response_extensions() {
-                resp.extensions_mut().extend(extensions);
             }
-
-            if let Some(headers) = context.response_headers() {
-                resp.headers_mut().extend(headers);
-            }
-
-            resp
         }
     {% endfor %}
 {% endfor %}

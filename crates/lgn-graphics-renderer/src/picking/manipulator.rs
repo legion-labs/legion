@@ -34,8 +34,8 @@ impl AxisComponents {
             0 | 1 => Self::XAxis,
             2 | 3 => Self::YAxis,
             4 | 5 => Self::ZAxis,
-            6 => Self::XYPlane,
-            7 => Self::XZPlane,
+            6 => Self::XZPlane,
+            7 => Self::XYPlane,
             8 => Self::YZPlane,
             _ => panic!("Unknown index: {}", index),
         }

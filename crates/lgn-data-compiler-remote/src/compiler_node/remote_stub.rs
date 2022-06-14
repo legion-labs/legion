@@ -1,8 +1,4 @@
-use std::{
-    io,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{io, path::PathBuf, sync::Arc};
 
 use async_trait::async_trait;
 use lgn_content_store::{indexing::SharedTreeIdentifier, Provider};
@@ -58,7 +54,7 @@ impl CompilerStub for RemoteCompilerStub {
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
         data_provider: &Provider,
-        resource_dir: &Path,
+        source_manifest_id: &SharedTreeIdentifier,
         _runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
@@ -67,20 +63,11 @@ impl CompilerStub for RemoteCompilerStub {
             &compile_path,
             dependencies,
             derived_deps,
-            resource_dir.strip_prefix(resource_dir.parent().unwrap())?, // only 'offline'
+            &source_manifest_id.read(),
             env,
         );
 
-        let msg = collect_local_resources(
-            &self.bin_path,
-            resource_dir,
-            &compile_path,
-            dependencies,
-            derived_deps,
-            &cmd,
-            data_provider,
-        )
-        .await?;
+        let msg = collect_local_resources(&self.bin_path, &cmd, data_provider).await?;
 
         let result = crate::remote_service::client::send_receive_workload(&self.server_addr, msg);
         Ok(serde_json::from_str::<CompilationOutput>(&result)?)

@@ -30,6 +30,7 @@ async fn build_device() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
+    let branch_name = "main";
     repository_index
         .create_repository(&repository_name)
         .await
@@ -48,15 +49,16 @@ async fn build_device() {
     let initial_content = "foo";
 
     // create project that contains test resource.
+    let mut project = Project::new(
+        &repository_index,
+        &repository_name,
+        branch_name,
+        Arc::clone(&source_control_content_provider),
+    )
+    .await
+    .expect("new project");
+
     let source_id = {
-        let mut project = Project::create(
-            project_dir,
-            &repository_index,
-            repository_name,
-            Arc::clone(&source_control_content_provider),
-        )
-        .await
-        .expect("new project");
         let resources = AssetRegistryOptions::new()
             .add_processor::<refs_resource::TestResource>()
             .create()
@@ -71,16 +73,19 @@ async fn build_device() {
         edit.content = initial_content.to_string();
         resource.apply(edit, &resources);
 
-        project
+        let source_id = project
             .add_resource(
                 ResourcePathName::new("test_source"),
-                refs_resource::TestResource::TYPENAME,
                 refs_resource::TestResource::TYPE,
                 &resource,
                 &resources,
             )
             .await
-            .expect("adding the resource")
+            .expect("adding the resource");
+
+        project.commit("add resource").await.expect("committing");
+
+        source_id
     };
 
     let target_dir = {
@@ -97,16 +102,13 @@ async fn build_device() {
     };
 
     // create build index.
-    let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+    let mut build = DataBuildOptions::new_with_sqlite_output(
         &output_dir,
         CompilerRegistryOptions::local_compilers(target_dir),
+        Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
-    .create_with_project(
-        project_dir,
-        &repository_index,
-        Arc::clone(&source_control_content_provider),
-    )
+    .create(&project)
     .await
     .expect("new build index");
     build.source_pull(&project).await.expect("successful pull");
@@ -147,8 +149,9 @@ async fn build_device() {
             Arc::clone(&data_content_provider),
             None,
             DATABUILD_EXE,
-            DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
-            project_dir,
+            &DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
+            repository_name.as_str(),
+            branch_name,
             true,
         )
         .await
@@ -174,13 +177,6 @@ async fn build_device() {
     let changed_content = "bar";
     let changed_derived_content = changed_content.chars().rev().collect::<String>();
     {
-        let mut project = Project::open(
-            project_dir,
-            &repository_index,
-            Arc::clone(&source_control_content_provider),
-        )
-        .await
-        .expect("new project");
         let resources = AssetRegistryOptions::new()
             .add_processor::<refs_resource::TestResource>()
             .create()
@@ -188,6 +184,7 @@ async fn build_device() {
 
         let resource = project
             .load_resource(source_id, &resources)
+            .await
             .expect("existing resource")
             .typed::<refs_resource::TestResource>();
 
@@ -199,6 +196,8 @@ async fn build_device() {
             .save_resource(source_id, resource, &resources)
             .await
             .expect("successful save");
+
+        project.commit("save resource").await.expect("committing");
     }
 
     registry.update();
@@ -232,6 +231,7 @@ async fn no_intermediate_resource() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
+    let branch_name = "main";
     repository_index
         .create_repository(&repository_name)
         .await
@@ -249,15 +249,16 @@ async fn no_intermediate_resource() {
 
     // create project that contains test resource.
     let resource_id = {
+        let mut project = Project::new(
+            &repository_index,
+            &repository_name,
+            branch_name,
+            Arc::clone(&source_control_content_provider),
+        )
+        .await
+        .expect("new project");
+
         let resource_id = {
-            let mut project = Project::create(
-                project_dir,
-                &repository_index,
-                repository_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("new project");
             let resources = AssetRegistryOptions::new()
                 .add_processor::<refs_resource::TestResource>()
                 .create()
@@ -267,27 +268,28 @@ async fn no_intermediate_resource() {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("new resource");
 
-            project
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("test_source"),
-                    refs_resource::TestResource::TYPENAME,
                     refs_resource::TestResource::TYPE,
                     &resource,
                     &resources,
                 )
                 .await
-                .expect("adding the resource")
+                .expect("adding the resource");
+
+            project.commit("add resource").await.expect("committing");
+
+            resource_id
         };
-        let (mut build, project) = DataBuildOptions::new(
+
+        let mut build = DataBuildOptions::new(
             DataBuildOptions::output_db_path_dir(output_dir, &project_dir, DataBuild::version()),
+            Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
             CompilerRegistryOptions::default(),
         )
-        .create_with_project(
-            project_dir,
-            &repository_index,
-            Arc::clone(&source_control_content_provider),
-        )
+        .create(&project)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -308,7 +310,8 @@ async fn no_intermediate_resource() {
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
         command.arg(format!("--output={}", output_dir.to_str().unwrap()));
-        command.arg(format!("--project={}", project_dir.to_str().unwrap()));
+        command.arg(format!("--repository-name={}", repository_name));
+        command.arg(format!("--branch-name={}", branch_name));
         command
     };
 
@@ -342,12 +345,12 @@ async fn with_intermediate_resource() {
         work_dir.path().join("legion.toml").to_str().unwrap(),
     );
 
-    let project_dir = work_dir.path();
     let output_dir = work_dir.path();
     let repository_index = lgn_source_control::Config::load_and_instantiate_repository_index()
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
+    let branch_name = "main";
     repository_index
         .create_repository(&repository_name)
         .await
@@ -366,15 +369,16 @@ async fn with_intermediate_resource() {
 
     // create project that contains test resource.
     let resource_id = {
+        let mut project = Project::new(
+            &repository_index,
+            &repository_name,
+            branch_name,
+            Arc::clone(&source_control_content_provider),
+        )
+        .await
+        .expect("new project");
+
         let resource_id = {
-            let mut project = Project::create(
-                project_dir,
-                &repository_index,
-                repository_name,
-                Arc::clone(&source_control_content_provider),
-            )
-            .await
-            .expect("new project");
             let resources = AssetRegistryOptions::new()
                 .add_processor::<text_resource::TextResource>()
                 .create()
@@ -384,27 +388,28 @@ async fn with_intermediate_resource() {
                 .new_resource(text_resource::TextResource::TYPE)
                 .expect("new resource");
 
-            project
+            let resource_id = project
                 .add_resource(
                     ResourcePathName::new("test_source"),
-                    text_resource::TextResource::TYPENAME,
                     text_resource::TextResource::TYPE,
                     &resource,
                     &resources,
                 )
                 .await
-                .expect("adding the resource")
+                .expect("adding the resource");
+
+            project.commit("add resource").await.expect("committing");
+
+            resource_id
         };
-        let (mut build, project) = DataBuildOptions::new_with_sqlite_output(
+
+        let mut build = DataBuildOptions::new_with_sqlite_output(
             &output_dir,
             CompilerRegistryOptions::default(),
+            Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
         )
-        .create_with_project(
-            project_dir,
-            &repository_index,
-            Arc::clone(&source_control_content_provider),
-        )
+        .create(&project)
         .await
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
@@ -428,7 +433,8 @@ async fn with_intermediate_resource() {
         command.arg(format!("--platform={}", platform));
         command.arg(format!("--locale={}", locale));
         command.arg(format!("--output={}", output_dir.to_str().unwrap()));
-        command.arg(format!("--project={}", project_dir.to_str().unwrap()));
+        command.arg(format!("--repository-name={}", repository_name));
+        command.arg(format!("--branch-name={}", branch_name));
         command
     };
 

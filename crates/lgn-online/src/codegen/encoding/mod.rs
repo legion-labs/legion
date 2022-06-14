@@ -4,15 +4,7 @@ mod ser;
 
 pub use errors::{Error, Result};
 
-use percent_encoding::AsciiSet;
 use serde::{Deserialize, Serialize};
-
-const FRAGMENT_ENCODE_SET: &AsciiSet = &percent_encoding::CONTROLS
-    .add(b' ')
-    .add(b'"')
-    .add(b'<')
-    .add(b'>')
-    .add(b'`');
 
 pub fn to_percent_encoded_string<T>(value: &T) -> Result<String>
 where
@@ -60,6 +52,10 @@ mod tests {
             "hello%20world".to_string()
         );
         assert_eq!(
+            to_percent_encoded_string(&"hello%20world").unwrap(),
+            "hello%2520world".to_string()
+        );
+        assert_eq!(
             to_percent_encoded_string(&"this is a \"very\" <complex> val`ue").unwrap(),
             "this%20is%20a%20%22very%22%20%3Ccomplex%3E%20val%60ue".to_string()
         );
@@ -83,6 +79,10 @@ mod tests {
         assert_eq!(
             from_percent_encoded_string::<String>("foo").unwrap(),
             "foo".to_string()
+        );
+        assert_eq!(
+            from_percent_encoded_string::<String>("hello%2520world").unwrap(),
+            "hello%20world".to_string()
         );
         assert_eq!(
             from_percent_encoded_string::<String>("hello%20world").unwrap(),
