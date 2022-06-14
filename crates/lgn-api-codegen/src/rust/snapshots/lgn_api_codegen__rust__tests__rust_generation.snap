@@ -2123,6 +2123,9 @@ pub mod components {
 
     #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
     pub struct Car {
+        #[serde(rename = "code")]
+        pub code: u32,
+
         #[serde(rename = "color")]
         pub color: CarColor,
 
