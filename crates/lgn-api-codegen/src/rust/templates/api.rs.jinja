@@ -19,24 +19,3 @@ pub mod server {
     {% include "server.rs.jinja" %}
     {% let module_path = module_path.parent().unwrap() %}
 }
-
-// ---------- Params ----------
-pub(crate) mod params {
-    {% let module_path = module_path.join("params") %}
-    {% include "parameters.rs.jinja" %}
-    {% let module_path = module_path.parent().unwrap() %}
-}
-
-// ---------- Requests ----------
-pub mod requests {
-    {% let module_path = module_path.join("requests") %}
-    {% include "requests.rs.jinja" %}
-    {% let module_path = module_path.parent().unwrap() %}
-}
-
-// ---------- Responses ----------
-pub mod responses {
-    {% let module_path = module_path.join("responses") %}
-    {% include "responses.rs.jinja" %}
-    {% let module_path = module_path.parent().unwrap() %}
-}

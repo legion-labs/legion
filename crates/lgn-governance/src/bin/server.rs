@@ -4,7 +4,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::Router;
 use clap::Parser;
-use lgn_governance::{Server, ServerAwsCognitoOptions, ServerMySqlOptions};
+use lgn_governance::server::{Server, ServerAwsCognitoOptions, ServerMySqlOptions, ServerOptions};
 use lgn_online::server::RouterExt;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, debug, info, LevelFilter};
@@ -73,7 +73,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Init key set to: `{}`", args.init_key);
 
-    let options = lgn_governance::ServerOptions {
+    let options = ServerOptions {
         init_key: args.init_key,
         mysql: ServerMySqlOptions {
             database_url: args.database_url,
