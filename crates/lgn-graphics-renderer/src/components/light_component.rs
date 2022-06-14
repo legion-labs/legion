@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use lgn_core::BumpAllocatorPool;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
@@ -10,13 +8,12 @@ use lgn_utils::HashMap;
 
 use crate::{
     core::{
-        AsSpatialRenderObject, InsertRenderObjectCommand, RemoveRenderObjectCommand, RenderObject,
-        RenderObjectAllocator, RenderObjectId, UpdateRenderObjectCommand,
+        InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
+        RemoveRenderObjectCommand, RenderObjectId, UpdateRenderObjectCommand,
     },
     debug_display::DebugDisplay,
     lighting::RenderLight,
     resources::DefaultMeshType,
-    Renderer,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -53,47 +50,35 @@ impl Default for LightComponent {
     }
 }
 
-impl AsSpatialRenderObject<RenderLight> for LightComponent {
-    fn as_spatial_render_object(&self, transform: GlobalTransform) -> RenderLight {
-        RenderLight {
-            transform,
-            light_type: self.light_type,
-            color: self.color,
-            radiance: self.radiance,
-            cone_angle: self.cone_angle,
-            enabled: self.enabled,
-            picking_id: self.picking_id,
-        }
-    }
-}
-
 struct LightDynamicData {
     render_object_id: RenderObjectId,
     picking_id: u32,
 }
 
-pub(crate) struct EcsToRender<C, R> {
+pub(crate) struct EcsToRenderLight {
+    view: PrimaryTableView<RenderLight>,
     map: HashMap<Entity, LightDynamicData>,
-    phantom: PhantomData<C>,
-    phantom2: PhantomData<R>,
 }
 
-impl<C, R> EcsToRender<C, R>
-where
-    R: RenderObject,
-{
-    pub fn new() -> Self {
+impl EcsToRenderLight {
+    pub fn new(view: PrimaryTableView<RenderLight>) -> Self {
         Self {
             map: HashMap::new(),
-            phantom: PhantomData,
-            phantom2: PhantomData,
+            view,
         }
+    }
+
+    pub fn alloc_id(&self) -> RenderObjectId {
+        self.view.allocate()
+    }
+
+    pub fn command_builder(&self) -> PrimaryTableCommandBuilder {
+        self.view.command_builder()
     }
 }
 
 #[allow(clippy::needless_pass_by_value, clippy::type_complexity)]
 pub(crate) fn reflect_light_components(
-    renderer: Res<'_, Renderer>,
     mut q_changes: Query<
         '_,
         '_,
@@ -101,9 +86,9 @@ pub(crate) fn reflect_light_components(
         Or<(Changed<GlobalTransform>, Changed<LightComponent>)>,
     >,
     q_removals: RemovedComponents<'_, LightComponent>,
-    mut ecs_to_render: ResMut<'_, EcsToRender<LightComponent, RenderLight>>,
+    mut ecs_to_render: ResMut<'_, EcsToRenderLight>,
 ) {
-    let mut render_commands = renderer.render_command_builder();
+    let mut render_commands = ecs_to_render.command_builder();
 
     for e in q_removals.iter() {
         let light_dynamic_data = ecs_to_render.map.remove(&e);
@@ -114,62 +99,60 @@ pub(crate) fn reflect_light_components(
         }
     }
 
-    renderer.allocate_render_object(|allocator: &mut RenderObjectAllocator<'_, RenderLight>| {
-        for (e, transform, mut light) in q_changes.iter_mut() {
-            if let Some(render_object_id) = light.render_object_id {
-                // Update picking_id in hash map.
+    for (e, transform, mut light) in q_changes.iter_mut() {
+        if let Some(render_object_id) = light.render_object_id {
+            // Update picking_id in hash map.
+            ecs_to_render.map.insert(
+                e,
+                LightDynamicData {
+                    render_object_id,
+                    picking_id: light.picking_id,
+                },
+            );
+
+            render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
+                render_object_id,
+                data: (transform, light.as_ref()).into(),
+            });
+        } else {
+            let is_already_inserted = ecs_to_render.map.contains_key(&e);
+            let light_dynamic_data = if is_already_inserted {
+                // This happens when the manipulator is released. The component gets recreated but we do not
+                // go into the removals code above for some reason. So we need to handle it ourselves.
+                ecs_to_render.map.get(&e).unwrap()
+            } else {
+                let render_object_id = ecs_to_render.alloc_id();
+
                 ecs_to_render.map.insert(
                     e,
                     LightDynamicData {
                         render_object_id,
-                        picking_id: light.picking_id,
+                        picking_id: 0,
                     },
                 );
 
+                ecs_to_render.map.get(&e).unwrap()
+            };
+
+            let render_object_id = light_dynamic_data.render_object_id;
+            light.render_object_id = Some(render_object_id);
+
+            if is_already_inserted {
+                // Component was recreated; assign the old picking_id back to it.
+                light.picking_id = light_dynamic_data.picking_id;
+
                 render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                     render_object_id,
-                    data: light.as_spatial_render_object(*transform),
+                    data: (transform, light.as_ref()).into(),
                 });
             } else {
-                let is_already_inserted = ecs_to_render.map.contains_key(&e);
-                let light_dynamic_data = if is_already_inserted {
-                    // This happens when the manipulator is released. The component gets recreated but we do not
-                    // go into the removals code above for some reason. So we need to handle it ourselves.
-                    ecs_to_render.map.get(&e).unwrap()
-                } else {
-                    let render_object_id = allocator.alloc();
-
-                    ecs_to_render.map.insert(
-                        e,
-                        LightDynamicData {
-                            render_object_id,
-                            picking_id: 0,
-                        },
-                    );
-
-                    ecs_to_render.map.get(&e).unwrap()
-                };
-
-                let render_object_id = light_dynamic_data.render_object_id;
-                light.render_object_id = Some(render_object_id);
-
-                if is_already_inserted {
-                    // Component was recreated; assign the old picking_id back to it.
-                    light.picking_id = light_dynamic_data.picking_id;
-
-                    render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
-                        render_object_id,
-                        data: light.as_spatial_render_object(*transform),
-                    });
-                } else {
-                    render_commands.push(InsertRenderObjectCommand::<RenderLight> {
-                        render_object_id,
-                        data: light.as_spatial_render_object(*transform),
-                    });
-                }
-            };
-        }
-    });
+                render_commands.push(InsertRenderObjectCommand::<RenderLight> {
+                    render_object_id,
+                    data: (transform, light.as_ref()).into(),
+                });
+            }
+        };
+    }
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -199,7 +182,7 @@ pub(crate) fn tmp_debug_display_lights(
                             &GlobalTransform::identity()
                                 .with_translation(
                                     transform.translation
-                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.3, 0.0)), // assumes arrow length to be 0.3
+                                        - transform.rotation.mul_vec3(Vec3::new(0.0, 0.0, 0.3)), // assumes arrow length to be 0.3
                                 )
                                 .with_rotation(transform.rotation),
                             DefaultMeshType::Arrow,
@@ -211,9 +194,9 @@ pub(crate) fn tmp_debug_display_lights(
                         builder.add_default_mesh(
                             &GlobalTransform::identity()
                                 .with_translation(
-                                    transform.translation - transform.rotation.mul_vec3(Vec3::Y), // assumes cone height to be 1.0
+                                    transform.translation - transform.rotation.mul_vec3(Vec3::Z), // assumes cone height to be 1.0
                                 )
-                                .with_scale(Vec3::new(factor, 1.0, factor))
+                                .with_scale(Vec3::new(factor, factor, 1.0))
                                 .with_rotation(transform.rotation),
                             DefaultMeshType::Cone,
                             Color::WHITE,

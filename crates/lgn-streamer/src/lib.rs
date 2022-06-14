@@ -6,10 +6,10 @@
 
 use std::sync::Arc;
 
-use axum::Router;
 use lgn_app::prelude::*;
 use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_core::Time;
+use lgn_grpc::SharedRouter;
 
 use crate::server::Server;
 
@@ -66,12 +66,9 @@ impl Plugin for StreamerPlugin {
 
         let server = Arc::new(Server::new(webrtc_server, stream_events_sender));
 
-        let router = api::streaming::server::register_routes(Router::new(), server);
+        let router = app.world.resource_mut::<SharedRouter>().into_inner();
 
-        app.world
-            .resource_mut::<lgn_grpc::GRPCPluginSettings>()
-            .into_inner()
-            .register_router(router);
+        router.register_routes(api::streaming::server::register_routes, server);
     }
 }
 

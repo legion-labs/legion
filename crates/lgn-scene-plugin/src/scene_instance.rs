@@ -50,10 +50,10 @@ impl SceneInstance {
             let runtime_entity = handle.get();
             if runtime_entity.is_none() {
                 if handle.id().kind != sample_data::runtime::Instance::TYPE {
-                    warn!(
-                        "Failed to spawn {:?}. Resource not found in AssetRegistry ",
+                warn!(
+                    "Failed to spawn {:?}. Resource not found in AssetRegistry ",
                         handle.id()
-                    );
+                );
                 }
                 continue;
             }
@@ -189,7 +189,7 @@ impl SceneInstance {
                     component.downcast_ref::<runtime_data::GltfLoader>()
                 {
                     // nothing to do
-                }
+            }
 
             }*/
 

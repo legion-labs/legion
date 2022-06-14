@@ -23,6 +23,8 @@ pub struct GenerateOption {
     pub skip_format: Option<bool>,
     /// Aliases for external API references
     pub alias_mappings: Option<HashMap<String, String>>,
+    /// Filename without prefix nor extension
+    pub filename: Option<String>,
 }
 
 /// Generate api clients.
@@ -45,6 +47,7 @@ pub fn generate(options: GenerateOption) -> Result<()> {
             prettier_config_path: options.prettier_config_path.map(PathBuf::from),
             with_package_json: options.with_package_json.unwrap_or_default(),
             skip_format: options.skip_format.unwrap_or_default(),
+            filename: options.filename,
         }),
         &options.path,
         &options.api_names,

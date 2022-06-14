@@ -54,6 +54,12 @@ impl From<http::Error> for Error {
     }
 }
 
+impl From<Response> for Error {
+    fn from(resp: Response) -> Self {
+        Self::Custom(resp)
+    }
+}
+
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 impl IntoResponse for Error {

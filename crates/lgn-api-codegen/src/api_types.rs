@@ -271,6 +271,7 @@ pub struct TypeScriptOptions {
     pub with_package_json: bool,
     pub skip_format: bool,
     pub alias_mappings: TypeScriptAliasMappings,
+    pub filename: Option<String>,
 }
 
 #[derive(Debug)]

@@ -44,15 +44,21 @@ impl From<crate::api::user::UserId> for UserId {
     }
 }
 
+impl<'s> PartialEq<&'s str> for UserId {
+    fn eq(&self, other: &&'s str) -> bool {
+        self.0 == *other
+    }
+}
+
 /// User information.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct UserInfo {
-    id: UserId,
-    name: String,
-    family_name: String,
-    middle_name: String,
-    given_name: String,
-    email: String,
+    pub id: UserId,
+    pub name: String,
+    pub family_name: String,
+    pub middle_name: String,
+    pub given_name: String,
+    pub email: String,
 }
 
 impl TryFrom<lgn_auth::UserInfo> for UserInfo {
@@ -60,7 +66,11 @@ impl TryFrom<lgn_auth::UserInfo> for UserInfo {
 
     fn try_from(user_info: lgn_auth::UserInfo) -> Result<Self> {
         Ok(Self {
-            id: user_info.username().parse()?,
+            id: user_info
+                .username
+                .as_ref()
+                .ok_or_else(|| Error::Unexpected("missing `username` in user info while converting from `lgn_auth::UserInfo` to `types::UserInfo`".to_string()))?
+                .parse()?,
             name: user_info.name(),
             family_name: user_info.family_name.unwrap_or_default(),
             middle_name: user_info.middle_name.unwrap_or_default(),

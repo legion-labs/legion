@@ -15,6 +15,8 @@ export type Config = {
   skipFormat?: boolean;
   /** Maps external references to TS namespaces */
   aliasMappings?: Record<string, string>;
+  /** Filename without prefix nor extension */
+  filename?: string;
 };
 
 /**
@@ -27,6 +29,7 @@ export default function vitePluginApiCodegen({
   skipFormat,
   withPackageJson,
   aliasMappings,
+  filename,
 }: Config) {
   return {
     name: "@lgn/vite-plugin-api-codegen",
@@ -43,6 +46,7 @@ export default function vitePluginApiCodegen({
         skipFormat,
         withPackageJson,
         aliasMappings,
+        filename,
       });
     },
   };

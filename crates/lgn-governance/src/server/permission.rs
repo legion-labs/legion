@@ -13,7 +13,7 @@ impl Api for Server {
         _parts: http::request::Parts,
     ) -> Result<responses::ListPermissionsResponse> {
         let permissions = self
-            .dal
+            .mysql_dal
             .list_permissions()
             .await
             .into_internal_server_error()?;

@@ -1,30 +1,30 @@
-import { Level } from "@lgn/proto-log-stream/dist/log_stream";
+import type { Log } from "@lgn/apis/log";
 
 export type Severity = "error" | "warn" | "info" | "trace" | "debug";
 
-export function severityFromLevel(level: Level): Severity | null {
+export function severityFromLevel(level: Log.TraceEventLevel): Severity | null {
   switch (level) {
-    case Level.DEBUG: {
+    case "Debug": {
       return "debug";
     }
 
-    case Level.ERROR: {
+    case "Error": {
       return "error";
     }
 
-    case Level.INFO: {
+    case "Info": {
       return "info";
     }
 
-    case Level.TRACE: {
+    case "Trace": {
       return "trace";
     }
 
-    case Level.WARN: {
+    case "Warn": {
       return "warn";
     }
 
-    case Level.UNRECOGNIZED: {
+    default: {
       return null;
     }
   }

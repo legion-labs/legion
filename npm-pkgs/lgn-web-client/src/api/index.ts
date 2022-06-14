@@ -1,4 +1,4 @@
-import { Streaming } from "@lgn/apis";
+import { Streaming } from "@lgn/apis/streaming";
 
 import { blobToJson, jsonToBlob } from "../lib/api";
 import { addAuthToClient } from "../lib/client";
