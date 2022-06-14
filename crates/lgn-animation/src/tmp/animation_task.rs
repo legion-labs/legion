@@ -1,7 +1,4 @@
-use crate::{
-    animation_clip::AnimationClip, animation_task_pose_pool::PoseBuffer,
-    animation_task_system::TaskUpdateStage,
-};
+use crate::tmp::animation_clip::AnimationClip;
 
 pub trait Task {
     fn execute();
@@ -40,11 +37,6 @@ pub trait Task {
     fn mark_task_complete() {
         /* */
     }
-    const source_id: i16;
-    const update_stage: TaskUpdateStage;
-    const buffer_idx: i8;
-    const dependencies: Vec<i8>;
-    const is_complete: bool;
 }
 
 pub struct SampleTask {
