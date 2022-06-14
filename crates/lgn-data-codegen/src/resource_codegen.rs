@@ -66,7 +66,6 @@ pub(crate) fn generate(resource_struct_info: &StructMetaInfo) -> TokenStream {
             const TYPENAME : &'static str = #offline_name;
         }
 
-        #[async_trait::async_trait]
         impl lgn_data_runtime::Resource for #offline_identifier {
             fn as_reflect(&self) -> &dyn lgn_data_model::TypeReflection {
                 self

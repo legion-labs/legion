@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{
-    from_binary_reader, AssetRegistryError, AssetRegistryReader, HandleUntyped, LoadRequest,
+    from_binary_reader, AssetRegistryError, AssetRegistryReader, LoadRequest, Resource,
     ResourceDescriptor, ResourceId, ResourceInstaller, ResourceTypeAndId,
 };
 use lgn_ecs::{
@@ -50,11 +50,12 @@ impl ResourceInstaller for ModelInstaller {
     async fn install_from_stream(
         &self,
         resource_id: ResourceTypeAndId,
-        request: &mut LoadRequest,
+        _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
-    ) -> Result<HandleUntyped, AssetRegistryError> {
+    ) -> Result<Box<dyn Resource>, AssetRegistryError> {
         let model = from_binary_reader::<lgn_graphics_data::runtime::Model>(reader).await?;
         lgn_tracing::info!("Model {} | ({} meshes)", resource_id.id, model.meshes.len(),);
+        Ok(model)
 
         /*
            let model = resource.get(asset_registry)?;
@@ -112,8 +113,6 @@ impl ResourceInstaller for ModelInstaller {
             );
             Some(entity.id())
         */
-        let handle = request.asset_registry.set_resource(resource_id, model)?;
-        Ok(handle)
     }
 }
 

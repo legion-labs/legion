@@ -57,8 +57,39 @@ pub fn to_binary_writer(
     Ok(())
 }
 
+/// Create a runtime Resource
+#[macro_export]
+macro_rules! implement_runtime_resource {
+    ($type_id:ident) => {
+        impl lgn_data_runtime::ResourceDescriptor for $type_id {
+            const TYPENAME: &'static str = stringify!($type_id);
+        }
+        impl lgn_data_runtime::Resource for $type_id {
+            fn as_reflect(&self) -> &dyn lgn_data_model::TypeReflection {
+                self
+            }
+            fn as_reflect_mut(&mut self) -> &mut dyn lgn_data_model::TypeReflection {
+                self
+            }
+            fn clone_dyn(&self) -> Box<dyn lgn_data_runtime::Resource> {
+                Box::new(self.clone())
+            }
+            fn get_resource_type(&self) -> lgn_data_runtime::ResourceType {
+                <Self as lgn_data_runtime::ResourceDescriptor>::TYPE
+            }
+        }
+        impl lgn_data_model::TypeReflection for $type_id {
+            fn get_type(&self) -> lgn_data_model::TypeDefinition {
+                Self::get_type_def()
+            }
+            fn get_type_def() -> lgn_data_model::TypeDefinition {
+                lgn_data_model::TypeDefinition::None
+            }
+        }
+    };
+}
+
 /// Trait describing a resource
-#[async_trait::async_trait]
 pub trait Resource: TypeReflection + Any + Send + Sync {
     /// Return the `Resource` as a reflected type
     fn as_reflect(&self) -> &dyn TypeReflection;
