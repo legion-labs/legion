@@ -157,6 +157,31 @@ pub trait BasicIndexer {
             IndexKey::default(),
         )))
     }
+
+    /// Compare two indices for differences.
+    ///
+    /// Identical children are silently ignored. This is in essence, the main
+    /// optimization that avoids running through the whole tree when comparing
+    /// identical branches.
+    ///
+    /// # Returns
+    ///
+    /// A stream of differences, in an unspecified - but stable - order.
+    async fn diff_leaves<'s>(
+        &'s self,
+        provider: &'s Provider,
+        left_id: &'s TreeIdentifier,
+        right_id: &'s TreeIdentifier,
+    ) -> Result<
+        Pin<Box<dyn Stream<Item = (TreeDiffSide, IndexKey, Result<TreeLeafNode>)> + Send + 's>>,
+    > {
+        Ok(Box::pin(tree_diff(
+            provider,
+            IndexKey::default(),
+            left_id,
+            right_id,
+        )))
+    }
 }
 
 #[async_trait]
