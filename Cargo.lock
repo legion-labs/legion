@@ -4705,6 +4705,7 @@ dependencies = [
  "lgn-online",
  "lgn-tracing",
  "serde",
+ "serde_json",
  "serde_qs",
  "thiserror",
 ]

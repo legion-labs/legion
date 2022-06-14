@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::{str::FromStr, sync::Arc};
 
+use async_trait::async_trait;
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_model::json_utils::get_property_as_json_string;
@@ -28,9 +29,17 @@ use lgn_editor_proto::{
         GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse, ImportResourceRequest,
         ImportResourceResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
         OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
-        ReparentResourceResponse, SearchResourcesRequest,
+        ReparentResourceResponse,
     },
 };
+
+use lgn_editor_yaml::resource_browser::responses::SearchResourcesResponse;
+use lgn_online::server::Result;
+
+use lgn_editor_yaml::resource_browser::{
+    requests, responses, Api, NextSearchToken, ResourceDescription,
+};
+
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_scene_plugin::SceneMessage;
@@ -121,7 +130,7 @@ impl IndexSnapshot {
 
 use lgn_editor_proto::resource_browser::{
     resource_browser_server::{ResourceBrowser, ResourceBrowserServer},
-    CreateResourceRequest, CreateResourceResponse, ResourceDescription, SearchResourcesResponse,
+    CreateResourceRequest, CreateResourceResponse,
 };
 
 impl Plugin for ResourceBrowserPlugin {
@@ -336,14 +345,18 @@ fn create_gltf_resource(gltf_path: &Path) -> Result<PathBuf, Status> {
     Ok(path)
 }
 
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
+pub(crate) struct Server {
+    pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
+}
+
+#[async_trait]
+impl Api for Server {
     /// Search for all resources
     async fn search_resources(
         &self,
-        request: Request<SearchResourcesRequest>,
-    ) -> Result<Response<SearchResourcesResponse>, Status> {
-        let request = request.get_ref();
+        _parts: http::request::Parts,
+        request: requests::SearchResourcesRequest,
+    ) -> Result<responses::SearchResourcesResponse> {
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
         let resources = ctx.project.resource_list().await;
@@ -357,14 +370,14 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 .to_string();
 
             // Basic Filter
-            if !request.search_token.is_empty() && !path.contains(&request.search_token) {
+            if !request.token.0.is_empty() && !path.contains(&request.token.0) {
                 continue;
             }
 
             descriptors.push(ResourceDescription {
                 id: ResourceTypeAndId::to_string(&resource_id),
                 path,
-                r#type: resource_id
+                type_: resource_id
                     .kind
                     .as_pretty()
                     .trim_start_matches("offline_")
@@ -373,13 +386,20 @@ impl ResourceBrowser for ResourceBrowserRPC {
             });
         }
 
-        Ok(Response::new(SearchResourcesResponse {
+        let next_search_token = NextSearchToken {
             next_search_token: "".to_string(),
-            total: descriptors.len() as u64,
-            resource_descriptions: descriptors,
-        }))
-    }
+            total: descriptors.len() as i32,
+            resource_description: descriptors,
+        };
 
+        Ok(responses::SearchResourcesResponse::Status204(
+            next_search_token,
+        ))
+    }
+}
+
+#[tonic::async_trait]
+impl ResourceBrowser for ResourceBrowserRPC {
     /// Create a new resource
     async fn create_resource(
         &self,
@@ -699,7 +719,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         };
 
         Ok(Response::new(CloneResourceResponse {
-            new_resource: Some(ResourceDescription {
+            new_resource: Some(lgn_editor_proto::resource_browser::ResourceDescription {
                 id: clone_id.to_string(),
                 path,
                 r#type: clone_id

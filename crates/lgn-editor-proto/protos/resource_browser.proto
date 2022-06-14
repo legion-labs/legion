@@ -2,8 +2,6 @@ syntax = "proto3";
 package resource_browser;
 
 service ResourceBrowser {
-  rpc SearchResources(SearchResourcesRequest) returns (SearchResourcesResponse);
-
   rpc CreateResource(CreateResourceRequest) returns (CreateResourceResponse);
 
   rpc GetResourceTypeNames(GetResourceTypeNamesRequest) returns (GetResourceTypeNamesResponse);
@@ -27,16 +25,6 @@ service ResourceBrowser {
   rpc GetRuntimeSceneInfo(GetRuntimeSceneInfoRequest) returns (GetRuntimeSceneInfoResponse);
 
   rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
-}
-
-message SearchResourcesRequest {
-  string searchToken = 1;
-  optional string root_resource_id = 2;
-}
-message SearchResourcesResponse {
-  string nextSearchToken = 2;
-  uint64 total = 3;
-  repeated ResourceDescription resourceDescriptions = 4;
 }
 
 message ResourceDescription {

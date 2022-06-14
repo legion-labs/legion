@@ -1,0 +1,67 @@
+openapi: 3.1.0
+info:
+  title: "Resource Browser API"
+  description: "The OpenAPI specification for the Legion Labs resource browser."
+  version: 1.0.0
+paths:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/search/{token}:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/token"
+    get:
+      description: Search Resources
+      operationId: SearchResources
+      responses:
+        "204":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NextSearchToken"
+components:
+  parameters:
+    token:
+      name: token
+      in: path
+      description: The resource to search for.
+      required: true
+      schema:
+        $ref: "#/components/schemas/Token"
+  schemas:
+    Token:
+      description: Token to search for
+      type: string
+    NextSearchToken:
+      description: The following search token
+      type: object
+      properties:
+        next_search_token:
+          type: string
+        total:
+          type: integer
+        resource_description:
+            type: array
+            items:
+              $ref: "#/components/schemas/ResourceDescription"
+      required:
+        - next_search_token
+        - total
+        - resource_description
+    ResourceDescription:
+      description: Description of a resource
+      type: object
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        version:
+          type: integer
+        type:
+          type: string
+      required:
+        - id
+        - path
+        - version
+        - type
