@@ -1,8 +1,7 @@
 mod de;
-mod errors;
 mod ser;
 
-pub use errors::{Error, Result};
+pub use super::{Error, Result};
 
 use serde::{Deserialize, Serialize};
 

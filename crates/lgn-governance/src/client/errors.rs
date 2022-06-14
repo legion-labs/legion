@@ -7,8 +7,8 @@ pub enum Error {
     Unauthorized,
     #[error("the stack was already initialized")]
     StackAlreadyInitialized,
-    #[error("server error: {0}")]
-    ServerError(#[from] lgn_online::server::Error),
+    #[error("client error: {0}")]
+    ClientError(#[from] lgn_online::client::Error),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

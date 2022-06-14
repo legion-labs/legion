@@ -21,11 +21,11 @@ impl<Inner> Client<Inner> {
 impl<Inner, ResBody> Client<Inner>
 where
     Inner: Service<Request<hyper::Body>, Response = Response<ResBody>> + Send + Sync + Clone,
-    Inner::Error: Into<lgn_online::StdError>,
+    Inner::Error: Into<lgn_online::client::Error>,
     Inner::Future: Send,
     ResBody: hyper::body::HttpBody + Send,
     ResBody::Data: Send,
-    ResBody::Error: Into<lgn_online::StdError>,
+    ResBody::Error: std::error::Error,
 {
     /// Initialize the stack.
     ///
@@ -34,7 +34,7 @@ where
     /// This function will return an error if the client does not have the
     /// appropriate permissions or if the stack was already initialized.
     pub async fn init_stack(&self, init_key: &str) -> Result<()> {
-        use crate::api::user::{requests::InitStackRequest, responses::InitStackResponse};
+        use crate::api::user::client::{InitStackRequest, InitStackResponse};
 
         match self
             .user_client
@@ -43,10 +43,9 @@ where
             })
             .await?
         {
-            InitStackResponse::Status200 => Ok(()),
-            InitStackResponse::Status403 => Err(Error::Unauthorized),
-            InitStackResponse::Status409 => Err(Error::StackAlreadyInitialized),
-            _ => unreachable!(),
+            InitStackResponse::Status200 { .. } => Ok(()),
+            InitStackResponse::Status403 { .. } => Err(Error::Unauthorized),
+            InitStackResponse::Status409 { .. } => Err(Error::StackAlreadyInitialized),
         }
     }
 }

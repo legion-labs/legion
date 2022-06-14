@@ -1,13 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::api::content_store::{
-    requests::{
-        GetContentWriterRequest, ReadContentRequest, RegisterAliasRequest, ResolveAliasRequest,
-        WriteContentRequest,
-    },
-    responses::{
-        GetContentWriterResponse, ReadContentResponse, RegisterAliasResponse, ResolveAliasResponse,
-        WriteContentResponse,
+    server::{
+        GetContentWriterRequest, GetContentWriterResponse, ReadContentRequest, ReadContentResponse,
+        RegisterAliasRequest, RegisterAliasResponse, ResolveAliasRequest, ResolveAliasResponse,
+        WriteContentRequest, WriteContentResponse,
     },
     Api, ContentId, GetContentWriter200Response, Origin, RegisterAlias201Response,
     ResolveAlias200Response, Url, WriteContent200Response,
@@ -50,19 +47,15 @@ impl Server {
 
 #[async_trait]
 impl Api for Arc<Server> {
-    async fn resolve_alias(
-        &self,
-        parts: http::request::Parts,
-        request: ResolveAliasRequest,
-    ) -> Result<ResolveAliasResponse> {
+    async fn resolve_alias(&self, request: ResolveAliasRequest) -> Result<ResolveAliasResponse> {
         async_span_scope!("Server::resolve_alias");
 
-        let user_info = parts.extensions.get::<UserInfo>().cloned();
+        let user_info = request.parts.extensions.get::<UserInfo>().cloned();
 
         let data_space = request
             .data_space
             .try_into()
-            .map_err(|err| Error::Internal(format!("failed to parse data space: {}", err)))?;
+            .map_err(|err| Error::bad_request(format!("failed to parse data space: {}", err)))?;
         let key: Vec<u8> = request.alias_key.0.into();
 
         if let Some(user_info) = user_info {
@@ -75,7 +68,7 @@ impl Api for Arc<Server> {
         }
 
         let provider_set = self.providers.get(&data_space).ok_or_else(|| {
-            Error::Internal(format!("no provider set for data space `{}`", data_space))
+            Error::internal(format!("no provider set for data space `{}`", data_space))
         })?;
 
         Ok(ResolveAliasResponse::Status200(ResolveAlias200Response {
@@ -83,30 +76,26 @@ impl Api for Arc<Server> {
                 Ok(id) => id.to_string().into(),
                 Err(crate::alias_providers::Error::AliasNotFound { .. }) => "".to_string().into(),
                 Err(err) => {
-                    return Err(Error::Internal(format!("failed to resolve alias: {}", err)))
+                    return Err(Error::internal(format!("failed to resolve alias: {}", err)))
                 }
             },
         }))
     }
 
-    async fn register_alias(
-        &self,
-        parts: http::request::Parts,
-        request: RegisterAliasRequest,
-    ) -> Result<RegisterAliasResponse> {
+    async fn register_alias(&self, request: RegisterAliasRequest) -> Result<RegisterAliasResponse> {
         async_span_scope!("Server::register_alias");
 
-        let user_info = parts.extensions.get::<UserInfo>().cloned();
+        let user_info = request.parts.extensions.get::<UserInfo>().cloned();
 
         let data_space = request
             .data_space
             .try_into()
-            .map_err(|err| Error::Internal(format!("failed to parse data space: {}", err)))?;
+            .map_err(|err| Error::bad_request(format!("failed to parse data space: {}", err)))?;
         let key: Vec<u8> = request.alias_key.0.into();
         let id: HashRef = request
             .content_id
             .try_into()
-            .map_err(|err| Error::Internal(format!("failed to parse identifier: {}", err)))?;
+            .map_err(|err| Error::bad_request(format!("failed to parse identifier: {}", err)))?;
 
         if let Some(user_info) = user_info {
             info!(
@@ -118,7 +107,7 @@ impl Api for Arc<Server> {
         }
 
         let provider_set = self.providers.get(&data_space).ok_or_else(|| {
-            Error::Internal(format!("no provider set for data space `{}`", data_space))
+            Error::internal(format!("no provider set for data space `{}`", data_space))
         })?;
 
         match provider_set
@@ -133,7 +122,7 @@ impl Api for Arc<Server> {
                 Ok(RegisterAliasResponse::Status409)
             }
             Err(err) => {
-                return Err(Error::Internal(format!(
+                return Err(Error::internal(format!(
                     "failed to register alias: {}",
                     err
                 )))
@@ -141,23 +130,19 @@ impl Api for Arc<Server> {
         }
     }
 
-    async fn read_content(
-        &self,
-        parts: http::request::Parts,
-        request: ReadContentRequest,
-    ) -> Result<ReadContentResponse> {
+    async fn read_content(&self, request: ReadContentRequest) -> Result<ReadContentResponse> {
         async_span_scope!("Server::read_content");
 
-        let user_info = parts.extensions.get::<UserInfo>().cloned();
+        let user_info = request.parts.extensions.get::<UserInfo>().cloned();
 
         let data_space = request
             .data_space
             .try_into()
-            .map_err(|err| Error::Internal(format!("failed to parse data space: {}", err)))?;
+            .map_err(|err| Error::bad_request(format!("failed to parse data space: {}", err)))?;
         let id: HashRef = request
             .content_id
             .try_into()
-            .map_err(|err| Error::Internal(format!("failed to parse identifier: {}", err)))?;
+            .map_err(|err| Error::bad_request(format!("failed to parse identifier: {}", err)))?;
 
         if let Some(user_info) = user_info {
             info!(
@@ -168,7 +153,7 @@ impl Api for Arc<Server> {
         }
 
         let provider_set = self.providers.get(&data_space).ok_or_else(|| {
-            Error::Internal(format!("no provider set for data space `{}`", data_space))
+            Error::internal(format!("no provider set for data space `{}`", data_space))
         })?;
 
         if id.data_size() <= provider_set.size_threshold {
@@ -184,7 +169,7 @@ impl Api for Arc<Server> {
                 Err(crate::content_providers::Error::HashRefNotFound(_)) => {
                     Ok(ReadContentResponse::Status404)
                 }
-                Err(err) => Err(Error::Internal(format!("failed to read content: {}", err))),
+                Err(err) => Err(Error::internal(format!("failed to read content: {}", err))),
             }
         } else {
             match provider_set
@@ -199,7 +184,7 @@ impl Api for Arc<Server> {
                 Err(crate::content_providers::Error::HashRefNotFound(_)) => {
                     Ok(ReadContentResponse::Status404)
                 }
-                Err(err) => Err(Error::Internal(format!(
+                Err(err) => Err(Error::internal(format!(
                     "failed to read content address: {}",
                     err
                 ))),
@@ -207,18 +192,14 @@ impl Api for Arc<Server> {
         }
     }
 
-    async fn write_content(
-        &self,
-        parts: http::request::Parts,
-        request: WriteContentRequest,
-    ) -> Result<WriteContentResponse> {
+    async fn write_content(&self, request: WriteContentRequest) -> Result<WriteContentResponse> {
         async_span_scope!("Server::write_content");
 
-        let user_info = parts.extensions.get::<UserInfo>().cloned();
+        let user_info = request.parts.extensions.get::<UserInfo>().cloned();
         let data_space = request
             .data_space
             .try_into()
-            .map_err(|err| Error::Internal(format!("failed to parse data space: {}", err)))?;
+            .map_err(|err| Error::bad_request(format!("failed to parse data space: {}", err)))?;
 
         if let Some(user_info) = user_info {
             info!(
@@ -228,13 +209,13 @@ impl Api for Arc<Server> {
         }
 
         let provider_set = self.providers.get(&data_space).ok_or_else(|| {
-            Error::Internal(format!("no provider set for data space `{}`", data_space))
+            Error::internal(format!("no provider set for data space `{}`", data_space))
         })?;
 
         let data = request.body;
 
         if data.len() > provider_set.size_threshold as usize {
-            return Err(Error::Internal(format!(
+            return Err(Error::internal(format!(
                 "refusing to write content of size {} that exceeds the size threshold of {}",
                 data.len(),
                 provider_set.size_threshold
@@ -245,7 +226,7 @@ impl Api for Arc<Server> {
             .content_provider
             .write_content(&data)
             .await
-            .map_err(|err| Error::Internal(format!("failed to write content: {}", err)))?;
+            .map_err(|err| Error::internal(format!("failed to write content: {}", err)))?;
 
         Ok(WriteContentResponse::Status200(WriteContent200Response {
             id: ContentId(id.to_string()),
@@ -254,20 +235,19 @@ impl Api for Arc<Server> {
 
     async fn get_content_writer(
         &self,
-        parts: http::request::Parts,
         request: GetContentWriterRequest,
     ) -> Result<GetContentWriterResponse> {
         async_span_scope!("Server::get_content_writer");
 
-        let user_info = parts.extensions.get::<UserInfo>().cloned();
+        let user_info = request.parts.extensions.get::<UserInfo>().cloned();
         let data_space = request
             .data_space
             .try_into()
-            .map_err(|err| Error::Internal(format!("failed to parse data space: {}", err)))?;
+            .map_err(|err| Error::bad_request(format!("failed to parse data space: {}", err)))?;
         let id: HashRef = request
             .content_id
             .try_into()
-            .map_err(|err| Error::Internal(format!("failed to parse identifier: {}", err)))?;
+            .map_err(|err| Error::bad_request(format!("failed to parse identifier: {}", err)))?;
 
         if let Some(user_info) = user_info {
             info!(
@@ -278,7 +258,7 @@ impl Api for Arc<Server> {
         }
 
         let provider_set = self.providers.get(&data_space).ok_or_else(|| {
-            Error::Internal(format!("no provider set for data space `{}`", data_space))
+            Error::internal(format!("no provider set for data space `{}`", data_space))
         })?;
 
         if id.data_size() <= provider_set.size_threshold {
@@ -297,7 +277,7 @@ impl Api for Arc<Server> {
                     Ok(GetContentWriterResponse::Status409)
                 }
                 Err(err) => {
-                    return Err(Error::Internal(format!(
+                    return Err(Error::internal(format!(
                         "failed to read content address: {}",
                         err
                     )))
@@ -316,7 +296,7 @@ impl Api for Arc<Server> {
                     Ok(GetContentWriterResponse::Status409)
                 }
                 Err(err) => {
-                    return Err(Error::Internal(format!(
+                    return Err(Error::internal(format!(
                         "failed to read content address: {}",
                         err
                     )))

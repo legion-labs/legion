@@ -14,6 +14,36 @@ pub struct Error {
     msg: String,
 }
 
+impl Error {
+    pub fn internal(msg: impl Into<String>) -> Self {
+        Error {
+            status_code: StatusCode::INTERNAL_SERVER_ERROR,
+            msg: msg.into(),
+        }
+    }
+
+    pub fn bad_request(msg: impl Into<String>) -> Self {
+        Error {
+            status_code: StatusCode::BAD_REQUEST,
+            msg: msg.into(),
+        }
+    }
+
+    pub fn unauthorized(msg: impl Into<String>) -> Self {
+        Error {
+            status_code: StatusCode::UNAUTHORIZED,
+            msg: msg.into(),
+        }
+    }
+
+    pub fn forbidden(msg: impl Into<String>) -> Self {
+        Error {
+            status_code: StatusCode::FORBIDDEN,
+            msg: msg.into(),
+        }
+    }
+}
+
 impl std::error::Error for Error {}
 
 impl Display for Error {

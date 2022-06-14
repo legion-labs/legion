@@ -6,7 +6,8 @@ use std::{
 use async_trait::async_trait;
 
 use crate::api::log::{
-    requests::LogEntriesRequest, responses::LogEntriesResponse, Api, TraceEvent,
+    server::{LogEntriesRequest, LogEntriesResponse},
+    Api, TraceEvent,
 };
 use lgn_online::server::Result;
 
@@ -72,11 +73,7 @@ impl Server {
 
 #[async_trait]
 impl Api for Server {
-    async fn log_entries(
-        &self,
-        _parts: http::request::Parts,
-        _request: LogEntriesRequest,
-    ) -> Result<LogEntriesResponse> {
+    async fn log_entries(&self, _request: LogEntriesRequest) -> Result<LogEntriesResponse> {
         Ok(LogEntriesResponse::Status200(self.trace_events.to_vec()))
     }
 }
