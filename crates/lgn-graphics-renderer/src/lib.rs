@@ -13,9 +13,9 @@ mod cgen {
 }
 
 use crate::components::{
-    reflect_viewports, reflect_visual_components, tmp_debug_display_lights, EcsToRenderLight,
-    EcsToRenderViewport, EcsToRenderVisual, RenderViewport, RenderViewportPrivateData,
-    RenderViewportPrivateDataHandler,
+    reflect_camera_components, reflect_viewports, reflect_visual_components, tmp_create_camera,
+    tmp_debug_display_lights, EcsToRenderCamera, EcsToRenderLight, EcsToRenderViewport,
+    EcsToRenderVisual, RenderViewport, RenderViewportPrivateData, RenderViewportPrivateDataHandler,
 };
 use crate::core::{
     RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
@@ -119,8 +119,7 @@ use crate::resources::{
 
 use crate::{
     components::{
-        apply_camera_setups, camera_control, create_camera, CameraComponent, RenderSurface,
-        VisualComponent,
+        apply_camera_setups, camera_control, CameraComponent, RenderSurface, VisualComponent,
     },
     labels::CommandBufferLabel,
 };
@@ -256,10 +255,10 @@ impl Plugin for RendererPlugin {
                     device_context.clone(),
                 )),
             )
-            // Cameras
-            .add_primary_table::<RenderCamera>()
             // Visual
             .add_primary_table::<RenderVisual>()
+            // Camera
+            .add_primary_table::<RenderCamera>()
             // Done!
             .finalize();
 
@@ -288,7 +287,7 @@ impl Plugin for RendererPlugin {
         // Stage Startup
         //
         app.add_startup_system(init_manipulation_manager);
-        app.add_startup_system(create_camera);
+        app.add_startup_system(tmp_create_camera);
 
         //
         // RenderObjects
@@ -309,6 +308,12 @@ impl Plugin for RendererPlugin {
             render_objects.primary_table_view::<RenderVisual>(),
         ))
         .add_system_to_stage(RenderStage::Prepare, reflect_visual_components);
+
+        // Camera
+        app.insert_resource(EcsToRenderCamera::new(
+            render_objects.primary_table_view::<RenderCamera>(),
+        ))
+        .add_system_to_stage(RenderStage::Prepare, reflect_camera_components);
 
         //
         // Resources

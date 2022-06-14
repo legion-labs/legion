@@ -1,29 +1,29 @@
-pub mod alpha_blend_pass;
-pub use alpha_blend_pass::*;
+mod alpha_blend_pass;
+pub(crate) use alpha_blend_pass::*;
 
-pub mod picking_pass;
-pub use picking_pass::*;
+mod picking_pass;
+pub(crate) use picking_pass::*;
 
-pub mod debug_pass;
-pub use debug_pass::*;
+mod debug_pass;
+pub(crate) use debug_pass::*;
 
-pub mod gpu_culling_pass;
-pub use gpu_culling_pass::*;
+mod gpu_culling_pass;
+pub(crate) use gpu_culling_pass::*;
 
-pub mod lighting_pass;
-pub use lighting_pass::*;
+mod lighting_pass;
+pub(crate) use lighting_pass::*;
 
-pub mod opaque_pass;
-pub use opaque_pass::*;
+mod opaque_pass;
+pub(crate) use opaque_pass::*;
 
-pub mod post_process_pass;
-pub use post_process_pass::*;
+mod post_process_pass;
+pub(crate) use post_process_pass::*;
 
-pub mod ssao_pass;
-pub use ssao_pass::*;
+mod ssao_pass;
+pub(crate) use ssao_pass::*;
 
-pub mod ui_pass;
-pub use ui_pass::*;
+mod ui_pass;
+pub(crate) use ui_pass::*;
 
-pub mod egui_pass;
-pub use egui_pass::*;
+mod egui_pass;
+pub(crate) use egui_pass::*;

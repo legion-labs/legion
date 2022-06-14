@@ -31,6 +31,9 @@ lgn-scripting-data = { path = "../lgn-scripting-data", version = "0.1.0", featur
 ] }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
+lgn-animation = { path = "../lgn-animation", version = "0.1.0", features = [
+    "runtime",
+] }
 
 # temp dependency on sample-data, until runtime data moved to plugins
 sample-data = { path = "../../tests/sample-data", version = "0.1.0", features = [

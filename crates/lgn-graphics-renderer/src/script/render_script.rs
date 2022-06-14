@@ -103,7 +103,7 @@ impl RenderScript<'_> {
     ///
     /// This function will return an error if .
     #[span_fn]
-    pub(crate) fn build_render_graph(
+    pub fn build_render_graph(
         &mut self,
         view: &RenderView<'_>,
         config: &Config,

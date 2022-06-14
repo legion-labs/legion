@@ -18,7 +18,9 @@ use lgn_input::{
 };
 use lgn_math::{Angle, DMat4, EulerRot, Mat3, Mat4, Quat, Vec3, Vec4};
 use lgn_transform::components::GlobalTransform;
+use lgn_utils::HashMap;
 
+use crate::core::{PrimaryTableView, RenderCamera, RenderObjectId};
 use crate::UP_VECTOR;
 
 #[derive(Debug)]
@@ -95,6 +97,7 @@ pub struct CameraComponent {
     fov_y: Angle,
     z_near: f32,
     z_far: f32,
+    render_object_id: Option<RenderObjectId>,
 }
 
 impl CameraComponent {
@@ -223,12 +226,15 @@ impl Default for CameraComponent {
             fov_y: Angle::from_radians(std::f32::consts::FRAC_PI_4),
             z_near: 0.01,
             z_far: 100.0,
+            render_object_id: None,
         }
     }
 }
 
-pub(crate) fn create_camera(mut commands: Commands<'_, '_>) {
-    commands.spawn().insert(CameraComponent::default());
+pub(crate) fn tmp_create_camera(mut commands: Commands<'_, '_>) {
+    commands
+        .spawn()
+        .insert_bundle((GlobalTransform::default(), CameraComponent::default()));
 }
 
 #[derive(Component, Default)]
@@ -373,5 +379,71 @@ pub(crate) fn camera_control(
             }
         }
         camera.camera_rig.update(time.delta_seconds());
+    }
+}
+
+pub(crate) struct EcsToRenderCamera {
+    view: PrimaryTableView<RenderCamera>,
+    map: HashMap<Entity, RenderObjectId>,
+}
+
+impl EcsToRenderCamera {
+    pub fn new(view: PrimaryTableView<RenderCamera>) -> Self {
+        Self {
+            map: HashMap::new(),
+            view,
+        }
+    }
+}
+
+#[allow(clippy::needless_pass_by_value, clippy::type_complexity)]
+pub(crate) fn reflect_camera_components(
+    mut queries: ParamSet<
+        '_,
+        '_,
+        (
+            Query<
+                '_,
+                '_,
+                (&GlobalTransform, &mut CameraComponent),
+                Or<(Changed<GlobalTransform>, Changed<CameraComponent>)>,
+            >,
+            Query<'_, '_, (Entity, &CameraComponent), Added<CameraComponent>>,
+        ),
+    >,
+
+    q_removals: RemovedComponents<'_, CameraComponent>,
+    mut ecs_to_render: ResMut<'_, EcsToRenderCamera>,
+) {
+    // Base path. Can be simplfied more by having access to the data of removed components
+    {
+        let mut writer = ecs_to_render.view.writer();
+
+        for e in q_removals.iter() {
+            let render_object_id = ecs_to_render.map.get(&e);
+            if let Some(render_object_id) = render_object_id {
+                writer.remove(*render_object_id);
+            }
+        }
+
+        for (transform, mut camera) in queries.p0().iter_mut() {
+            if let Some(render_object_id) = camera.render_object_id {
+                writer.update(render_object_id, (transform, camera.as_ref()).into());
+            } else {
+                camera.render_object_id = Some(writer.insert((transform, camera.as_ref()).into()));
+            };
+        }
+    }
+    // Update map because of removed components
+    {
+        let map = &mut ecs_to_render.map;
+
+        for e in q_removals.iter() {
+            map.remove(&e);
+        }
+
+        for (e, visual) in queries.p1().iter() {
+            map.insert(e, visual.render_object_id.unwrap());
+        }
     }
 }

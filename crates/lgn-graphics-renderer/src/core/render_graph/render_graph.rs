@@ -143,7 +143,7 @@ impl From<RenderGraphBufferViewDef> for BufferViewDef {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum RenderGraphResourceDef {
+pub enum RenderGraphResourceDef {
     Texture(RenderGraphTextureDef),
     Buffer(RenderGraphBufferDef),
 }
@@ -203,7 +203,7 @@ impl<'a> TryFrom<&'a RenderGraphResourceDef> for &'a RenderGraphBufferDef {
 pub type RenderGraphResourceId = u32;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum RenderGraphViewDef {
+pub enum RenderGraphViewDef {
     Texture(RenderGraphTextureViewDef),
     Buffer(RenderGraphBufferViewDef),
 }
@@ -396,17 +396,17 @@ pub struct ResourceData {
     pub load_state: RenderGraphLoadState,
 }
 
-pub(crate) type RenderGraphExecuteFn =
+pub type RenderGraphExecuteFn =
     dyn Fn(&RenderGraphContext, &mut RenderGraphExecuteContext<'_, '_>, &mut CommandBuffer);
 
-pub(crate) struct RGNode {
-    pub(crate) name: String,
-    pub(crate) read_resources: Vec<ResourceData>,
-    pub(crate) write_resources: Vec<ResourceData>,
-    pub(crate) render_targets: Vec<Option<ResourceData>>,
-    pub(crate) depth_stencil: Option<ResourceData>,
-    pub(crate) children: Vec<RGNode>,
-    pub(crate) execute_fn: Option<Box<RenderGraphExecuteFn>>,
+pub struct RGNode {
+    pub name: String,
+    pub read_resources: Vec<ResourceData>,
+    pub write_resources: Vec<ResourceData>,
+    pub render_targets: Vec<Option<ResourceData>>,
+    pub depth_stencil: Option<ResourceData>,
+    pub children: Vec<RGNode>,
+    pub execute_fn: Option<Box<RenderGraphExecuteFn>>,
 }
 
 impl Default for RGNode {
@@ -635,37 +635,36 @@ impl RenderGraphContext {
     }
 }
 
-pub(crate) struct DebugStuff<'a> {
-    pub(crate) picking_renderpass: &'a RwLock<PickingRenderPass>,
-    pub(crate) render_camera: RenderCamera,
-    pub(crate) egui: &'a Egui,
+pub struct DebugStuff<'a> {
+    pub picking_renderpass: &'a RwLock<PickingRenderPass>,
+    pub render_camera: RenderCamera,
+    pub egui: &'a Egui,
 }
 
-pub(crate) struct RenderGraphExecuteContext<'a, 'frame> {
+pub struct RenderGraphExecuteContext<'a, 'frame> {
     // Managers and data used when rendering.
     pub render_list_set: &'a RenderListSet<'frame>,
-    pub(crate) render_resources: &'a RenderResources,
-    pub(crate) render_context: &'a mut RenderContext<'frame>,
+    pub render_resources: &'a RenderResources,
+    pub render_context: &'a mut RenderContext<'frame>,
 
     // Stuff needed only for the debug/picking/egui passes
-    pub(crate) debug_stuff: &'a DebugStuff<'a>,
+    pub debug_stuff: &'a DebugStuff<'a>,
 
     // TODO(jsg): need a better way to pass data from one pass to another, like a blackboard
     // (but these buffers should be managed by the render graph anyways)
-    pub(crate) count_readback: Handle<ReadbackBuffer>,
-    pub(crate) picked_readback: Handle<ReadbackBuffer>,
+    pub count_readback: Handle<ReadbackBuffer>,
+    pub picked_readback: Handle<ReadbackBuffer>,
 }
 
-pub(crate) struct RenderGraph {
-    pub(crate) root_nodes: Vec<RGNode>,
-    pub(crate) resource_defs: Vec<RenderGraphResourceDef>, // index is RenderGraphResourceId
-    pub(crate) resource_names: Vec<String>,                // indexed by RenderGraphResourceId
-    pub(crate) injected_resources:
-        Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>,
-    pub(crate) view_defs: Vec<RenderGraphViewDef>, // index is RenderGraphViewId
+pub struct RenderGraph {
+    pub root_nodes: Vec<RGNode>,
+    pub resource_defs: Vec<RenderGraphResourceDef>, // index is RenderGraphResourceId
+    pub resource_names: Vec<String>,                // indexed by RenderGraphResourceId
+    pub injected_resources: Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>,
+    pub view_defs: Vec<RenderGraphViewDef>, // index is RenderGraphViewId
 }
 
-pub(crate) struct RenderGraphPersistentState {
+pub struct RenderGraphPersistentState {
     resources: RwLock<HashMap<String, (RenderGraphResourceDef, RenderGraphResource)>>,
     views: RwLock<HashMap<(RenderGraphViewDef, GPUViewType), RenderGraphView>>,
     injected_resources: RwLock<Vec<(RenderGraphResourceId, (RenderGraphResource, ResourceState))>>,
@@ -770,7 +769,7 @@ struct ResourceBarrier {
 }
 
 impl RenderGraph {
-    pub(crate) fn builder<'a>(
+    pub fn builder<'a>(
         render_resources: &'a RenderResources,
         pipeline_manager: &'a mut PipelineManager,
         device_context: &'a DeviceContext,
@@ -1616,7 +1615,7 @@ impl RenderGraph {
         context
     }
 
-    pub(crate) fn execute<'rt>(
+    pub fn execute<'rt>(
         &self,
         context: &mut RenderGraphContext,
         render_list_set: &RenderListSet<'rt>,
