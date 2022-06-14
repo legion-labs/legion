@@ -11,6 +11,7 @@ use std::{net::SocketAddr, path::PathBuf};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
+use lgn_animation::AnimationPlugin;
 use lgn_app::prelude::App;
 #[cfg(not(feature = "standalone"))]
 use lgn_app::{prelude::StartupStage, CoreStage};
@@ -282,7 +283,8 @@ pub fn build_runtime() -> App {
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::default())
         .insert_resource(physics_settings.build())
-        .add_plugin(PhysicsPlugin::default());
+        .add_plugin(PhysicsPlugin::default())
+        .add_plugin(AnimationPlugin::default());
 
     #[cfg(feature = "standalone")]
     standalone::build_standalone(&mut app);
