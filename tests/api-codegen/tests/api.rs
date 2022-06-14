@@ -1,14 +1,10 @@
 use std::net::SocketAddr;
 
 use api_codegen::api::cars::{
-    client,
-    requests::{
-        CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
-        TestHeadersRequest,
-    },
-    responses::{
-        CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
-        TestHeadersResponse, TestOneOfResponse,
+    client::{
+        Client, CreateCarRequest, CreateCarResponse, DeleteCarRequest, DeleteCarResponse,
+        GetCarRequest, GetCarResponse, GetCarsRequest, GetCarsResponse, TestBinaryRequest,
+        TestBinaryResponse, TestHeadersRequest, TestHeadersResponse, TestOneOfResponse,
     },
     server, TestOneOf200Response,
 };
@@ -40,7 +36,7 @@ async fn test_crud() {
         body: car.clone(),
     };
     let resp = client.create_car(req).await.unwrap();
-    assert!(matches!(resp, CreateCarResponse::Status201));
+    assert!(matches!(resp, CreateCarResponse::Status201 { .. }));
 
     let req = GetCarsRequest {
         space_id: space_id.clone(),
@@ -50,10 +46,9 @@ async fn test_crud() {
     let resp = client.get_cars(req).await.unwrap();
 
     match resp {
-        GetCarsResponse::Status200(cars) => {
-            assert_eq!(cars, Cars(vec![car.clone()]));
+        GetCarsResponse::Status200 { body, .. } => {
+            assert_eq!(body, Cars(vec![car.clone()]));
         }
-        _ => panic!("Unexpected response"),
     };
 
     let req = GetCarRequest {
@@ -61,14 +56,14 @@ async fn test_crud() {
         car_id: 2,
     };
     let resp = client.get_car(req).await.unwrap();
-    assert!(matches!(resp, GetCarResponse::Status404));
+    assert!(matches!(resp, GetCarResponse::Status404 { .. }));
 
     let req = DeleteCarRequest {
         space_id: space_id.clone(),
         car_id: 1,
     };
     let resp = client.delete_car(req).await.unwrap();
-    assert!(matches!(resp, DeleteCarResponse::Status200));
+    assert!(matches!(resp, DeleteCarResponse::Status200 { .. }));
 
     handle.abort();
 }
@@ -86,8 +81,7 @@ async fn test_binary() {
     let resp = client.test_binary(req).await.unwrap();
 
     match resp {
-        TestBinaryResponse::Status200(r) => assert_eq!(r, b"123456".to_vec().into()),
-        _ => panic!("Unexpected response"),
+        TestBinaryResponse::Status200 { body, .. } => assert_eq!(body, b"123456".to_vec().into()),
     };
 
     handle.abort();
@@ -101,13 +95,12 @@ async fn test_one_of() {
 
     let resp = client.test_one_of().await.unwrap();
     match resp {
-        TestOneOfResponse::Status200(r) => assert_eq!(
-            r,
+        TestOneOfResponse::Status200 { body, .. } => assert_eq!(
+            body,
             TestOneOf200Response::Option1(Pet {
                 name: Some("Cat".to_string()),
             })
         ),
-        _ => panic!("Unexpected response"),
     };
 
     handle.abort();
@@ -124,14 +117,14 @@ async fn test_headers() {
         HeaderName::from_static("x-dyn-header"),
         HeaderValue::from_str("dyn").unwrap(),
     );
-    let client = client::Client::new(client, format!("http://{}", addr).parse().unwrap());
+    let client = Client::new(client, format!("http://{}", addr).parse().unwrap());
 
     let req = TestHeadersRequest {
         x_string_header: Some("string".to_string()),
         x_int_header: Some(5),
         x_bytes_header: Some(b"bytes".to_vec().into()),
     };
-    let (mut parts, resp) = client.test_headers_with_parts(req).await.unwrap();
+    let resp = client.test_headers(req).await.unwrap();
 
     match resp {
         TestHeadersResponse::Status200 {
@@ -139,6 +132,8 @@ async fn test_headers() {
             x_int_header,
             x_bytes_header,
             body,
+            mut extra_headers,
+            ..
         } => {
             assert_eq!(x_string_header, "string".to_string());
             assert_eq!(x_int_header, 5);
@@ -149,14 +144,12 @@ async fn test_headers() {
                     name: Some("Cat".to_string()),
                 }
             );
+            assert_eq!(
+                extra_headers.remove("X-Dyn-Header"),
+                Some(http::HeaderValue::from_static("dyn"))
+            );
         }
-        _ => panic!("Unexpected response"),
     };
-
-    assert_eq!(
-        parts.headers.remove("X-Dyn-Header"),
-        Some(http::HeaderValue::from_static("dyn"))
-    );
 
     handle.abort();
 }
@@ -170,8 +163,8 @@ async fn start_server(addr: SocketAddr) -> JoinHandle<Result<(), hyper::Error>> 
     tokio::spawn(async move { server.await })
 }
 
-fn new_client(addr: SocketAddr) -> client::Client<HyperClient> {
-    client::Client::new(
+fn new_client(addr: SocketAddr) -> Client<HyperClient> {
+    Client::new(
         HyperClient::default(),
         format!("http://{}", addr).parse().unwrap(),
     )

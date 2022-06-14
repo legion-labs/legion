@@ -17,7 +17,7 @@ impl<T: Api + Send + Sync> Api for std::sync::Arc<T> {
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% include "signature.rs.jinja" %} {
-            self.as_ref().{{ route.name|snake_case }}(parts, {% if !route.has_empty_request() %}request{% endif %}).await
+            self.as_ref().{{ route.name|snake_case }}(request).await
         }
     {% endfor %}
 {% endfor %}
@@ -28,7 +28,7 @@ impl<T: Api + Send + Sync + ?Sized> Api for Box<T> {
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% include "signature.rs.jinja" %} {
-            self.as_ref().{{ route.name|snake_case }}(parts, {% if !route.has_empty_request() %}request{% endif %}).await
+            self.as_ref().{{ route.name|snake_case }}(request).await
         }
     {% endfor %}
 {% endfor %}
@@ -39,7 +39,7 @@ impl<T: Api + Send + Sync + ?Sized> Api for &T {
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% include "signature.rs.jinja" %} {
-            (**self).{{ route.name|snake_case }}(parts, {% if !route.has_empty_request() %}request{% endif %}).await
+            (**self).{{ route.name|snake_case }}(request).await
         }
     {% endfor %}
 {% endfor %}

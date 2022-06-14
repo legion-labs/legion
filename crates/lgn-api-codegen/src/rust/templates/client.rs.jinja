@@ -1,11 +1,129 @@
-use super::{params, responses, requests};
-use http::{header::CONTENT_TYPE, HeaderValue, Request, Response};
+use http::{header::CONTENT_TYPE, HeaderValue, Request, Response, HeaderMap, Extensions};
 use hyper::service::Service;
-use lgn_online::{
-    codegen::Bytes,
-    server::{Error, Result},
-};
+use lgn_online::client::{Error, Result};
 use lgn_tracing::debug;
+
+{% for (path, routes) in api.paths %}
+    {% for route in routes %}
+        {% if !route.parameters.query.is_empty() -%}
+            #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+            struct {{ route.name|pascal_case }}Query {
+                {% for parameter in route.parameters.query -%}
+                    #[serde(rename = "{{ parameter.name }}")]
+                    {%- if parameter.required -%}
+                        {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type(ctx, module_path) }},
+                    {%- else -%}
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type(ctx, module_path) }}>,
+                    {%- endif -%}
+                {% endfor -%}
+            }
+        {% endif %}
+
+        {% if !route.has_empty_request() %}
+
+        // Request type.
+        {% let request_type = "{}Request"|format(route.name|pascal_case) %}
+
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        pub struct {{ request_type }} {
+            {% for parameter in route.parameters -%}
+                {%- if parameter.required -%}
+                    pub {{ parameter.name|snake_case }}: {{ parameter.type_|fmt_type(ctx, module_path) }},
+                {%- else -%}
+                    pub {{ parameter.name|snake_case }}: Option<{{ parameter.type_|fmt_type(ctx, module_path) }}>,
+                {%- endif -%}
+            {% endfor -%}
+            {% if let Some(request_body) = route.request_body -%}
+                {%- if request_body.required -%}
+                    pub body: {{ request_body.content.type_|fmt_type(ctx, module_path) }},
+                {%- else -%}
+                    pub body: Option<{{ request_body.content.type_|fmt_type(ctx, module_path) }}>,
+                {%- endif -%}
+            {% endif -%}
+        }
+        {% endif %}
+
+        // Response type.
+        {% let response_type = "{}Response"|format(route.name|pascal_case) %}
+        
+        #[derive(Debug)]
+        pub enum {{ response_type }} {
+            {% for (status_code, response) in route.responses -%}
+                /// {{ response.description }}
+                Status{{ status_code }}{
+                    {% for (header_name, header) in response.headers -%}
+                        {{ header_name|snake_case }}: {{ header.type_|fmt_type(ctx, module_path) }},
+                    {% endfor -%}
+                    {% if let Some(content) = response.content -%}
+                        body: {{ content.type_|fmt_type(ctx, module_path) }},
+                    {% endif -%}
+                    extra_headers: HeaderMap,
+                    extensions: Extensions,
+                },
+            {% endfor -%}
+        }
+
+        impl {{ response_type }} {
+            pub(crate) async fn from_response<ResBody>(resp: http::Response<ResBody>) -> Result<Self>
+            where
+                ResBody: hyper::body::HttpBody,
+                ResBody::Error: std::error::Error,
+            {
+                let (mut parts, {% if route.has_no_responses_content() %}_{% endif %}body) = resp.into_parts();
+                {% if route.responses.is_empty() %}
+                    Err(Error::InvalidReply(format!(
+                        "unexpected status code: {}",
+                        parts.status.as_u16()
+                    )))
+                {% else %}
+                    match parts.status.as_u16() {
+                        {% for (status_code, response) in route.responses %}
+                            {% let response_name = "{}{}Response"|format(route.name|pascal_case, status_code) %}
+                            {{ status_code.as_u16() }} =>
+                                {
+                                    {% for (header_name, header) in response.headers -%}
+                                        let {{ header_name|snake_case }} = lgn_online::codegen::encoding::from_percent_encoded_string(
+                                                parts.headers
+                                                .remove("{{ header_name }}")
+                                                .ok_or_else(|| Error::InvalidReply("missing header: {{ header_name }}".to_owned()))?
+                                                .to_str()
+                                                .map_err(|err| Error::InvalidReply(format!("invalid header: {{ header_name }}: {}", err)))?
+                                            ).map_err(|err| Error::InvalidReply(format!("failed to decode header `{{ header_name }}`: {}", err)))?;
+                                    {% endfor -%}
+
+                                    {% if let Some(content) = response.content -%}
+                                        let bytes = hyper::body::to_bytes(body).await.map_err(|err| Error::InvalidReply(format!("failed to read response body: {}", err)))?;
+                                        let body = {% match content.media_type -%}
+                                                        {% when MediaType::Json -%}
+                                                            serde_json::from_slice(&bytes).map_err(|err| Error::InvalidReply(format!("failed to JSON-decode response body: {}", err)))?;
+                                                        {% when MediaType::Bytes -%}
+                                                            bytes.into();
+                                                    {% endmatch -%}
+                                    {% endif -%}
+
+                                    Ok(Self::Status{{ status_code }}{
+                                        {% for (header_name, header) in response.headers -%}
+                                            {{ header_name|snake_case }},
+                                        {% endfor -%}
+                                        {% if let Some(content) = response.content -%}
+                                            body,
+                                        {% endif -%}
+                                        extra_headers: parts.headers,
+                                        extensions: parts.extensions,
+                                    })
+                                },
+                        {%- endfor -%}
+                        status => Err(Error::InvalidReply(format!(
+                            "unexpected status code: {}",
+                            status
+                        ))),
+                    }
+                {% endif %}
+            }
+        }
+    {% endfor %}
+{% endfor %}
 
 #[derive(Debug)]
 pub struct Client<C> {
@@ -25,15 +143,16 @@ impl<C> Client<C>{
 impl<C, ResBody> Client<C>
 where
     C: Service<Request<hyper::Body>, Response = Response<ResBody>> + Clone + Send + Sync,
-    C::Error: Into<lgn_online::StdError>,
+    C::Error: Into<Error>,
     C::Future: Send,
     ResBody: hyper::body::HttpBody + Send,
     ResBody::Data: Send,
-    ResBody::Error: Into<lgn_online::StdError>,
+    ResBody::Error: std::error::Error,
 {
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
-        {% let enum_name = "{}Response"|format(route.name|pascal_case) %}
+        {% let request_type = "{}Request"|format(route.name|pascal_case) %}
+        {% let response_type = "{}Response"|format(route.name|pascal_case) %}
 
         /// Call to `{{ route.name|snake_case }}`.
         ///
@@ -42,38 +161,26 @@ where
         /// Returns an error in case of failure.
         pub async fn {{ route.name|snake_case }}(
             &self,
-            {% if !route.has_empty_request() %}request: requests::{{ route.name|pascal_case }}Request{% endif %}
-        ) -> Result<responses::{{ route.name|pascal_case }}Response> {
-            self.{{ route.name|snake_case }}_with_parts({% if !route.has_empty_request() %}request{% endif %})
-                .await
-                .map(|(_, resp)| resp)
-        }
-
-        /// Call to `{{ route.name|snake_case }}` including response parts.
-        ///
-        /// # Errors
-        ///
-        /// Returns an error in case of failure.
-        pub async fn {{ route.name|snake_case }}_with_parts(
-            &self,
-            {% if !route.has_empty_request() %}request: requests::{{ route.name|pascal_case }}Request{% endif %}
-        ) -> Result<(http::response::Parts, responses::{{ route.name|pascal_case }}Response)> {
+            {% if !route.has_empty_request() %}request: {{ request_type }}{% endif %}
+        ) -> Result<{{ response_type }}> {
             let mut uri = format!(
                 "{}://{}{{ path|fmt_rust_path }}",
                 self.base_uri.scheme_str().unwrap(),
                 self.base_uri.authority().unwrap()
                 {% for parameter in route.parameters.path -%}
-                    , lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ parameter.name|snake_case }})?
+                    ,
+                    lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ parameter.name|snake_case }})
+                    .map_err(|err| Error::InvalidRequest(format!("failed to encode path parameter `{{ parameter.name }}`: {}", err)))?
                 {% endfor -%}
             );
 
             {% if !route.parameters.query.is_empty() %}
-                let query = params::{{ route.name|pascal_case }}Query {
+                let query = {{ route.name|pascal_case }}Query {
                     {% for parameter in route.parameters.query -%}
                         {{ parameter.name|snake_case }}: request.{{ parameter.name|snake_case }},
                     {% endfor -%}
                 };
-                let query_string = serde_qs::to_string(&query)?;
+                let query_string = serde_qs::to_string(&query).map_err(|err| Error::InvalidRequest(format!("failed to encode query string: {}", err)))?;
                 if !query_string.is_empty() {
                     uri += &format!("?{}", query_string);
                 }
@@ -84,7 +191,7 @@ where
             {% if let Some(request_body) = route.request_body %}
                 {% match request_body.content.media_type %}
                     {% when MediaType::Json %}
-                        let body = hyper::Body::from(serde_json::to_string(&request.body)?);
+                        let body = hyper::Body::from(serde_json::to_string(&request.body).map_err(|err| Error::InvalidRequest(format!("failed to JSON-encode request body: {}", err)))?);
                     {% when MediaType::Bytes %}
                         let body = hyper::Body::from(request.body);
                 {% endmatch %}
@@ -107,24 +214,21 @@ where
             {% if !route.parameters.header.is_empty() %}
                 {%- for parameter in route.parameters.header -%}
                     {% let param_name = "{}"|format(parameter.name|snake_case) %}
-                    {% if parameter.required -%}
-                        let {{ param_name }} = lgn_online::codegen::encoding::to_percent_encoded_string(&request.{{ param_name }})?;
+                    let {{ param_name }} = request.{{ param_name }};
+                    {% if !parameter.required -%}
+                    if let Some({{ param_name }}) = {{ param_name }} {
+                    {% endif -%}
+                        let {{ param_name }} = lgn_online::codegen::encoding::to_percent_encoded_string(&{{ param_name }})
+                            .map_err(|err| Error::InvalidRequest(format!("failed to encode header parameter `{{ param_name }}`: {}", err)))?;
+
                         req.headers_mut().insert(
                             "{{ parameter.name }}",
                             HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
-                                Error::BadRequest(format!("invalid header: {{ parameter.name }}: {}", err))
+                                Error::InvalidRequest(format!("invalid header: {{ parameter.name }}: {}", err))
                             })?,
                         );
-                    {% else -%}
-                        if let Some({{ param_name }}) = request.{{ param_name }} {
-                            let {{ param_name }} = lgn_online::codegen::encoding::to_percent_encoded_string(&{{ param_name }})?;
-                            req.headers_mut().insert(
-                                "{{ parameter.name }}",
-                                HeaderValue::from_str(&{{ param_name }}).map_err(|err| {
-                                    Error::BadRequest(format!("invalid header: {{ parameter.name }}: {}", err))
-                                })?,
-                            );
-                        }
+                    {% if !parameter.required -%}
+                    }
                     {% endif -%}
                 {% endfor -%}
             {% endif -%}
@@ -132,7 +236,7 @@ where
             let mut client = self.inner.clone();
             let resp = client.call(req).await.map_err(Into::into)?;
 
-            responses::{{ enum_name }}::from_response(resp).await
+            {{ response_type }}::from_response(resp).await
         }
     {% endfor %}
 {% endfor %}

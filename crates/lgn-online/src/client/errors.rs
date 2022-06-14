@@ -8,6 +8,12 @@ pub enum Error {
     Hyper(#[from] hyper::Error),
     #[error("grpc-web: {0}")]
     GrpcWeb(#[from] crate::grpc::web::Error),
+    #[error("invalid request: {0}")]
+    InvalidRequest(String),
+    #[error("invalid reply: {0}")]
+    InvalidReply(String),
+    #[error("http: {0}")]
+    Http(#[from] http::Error),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
