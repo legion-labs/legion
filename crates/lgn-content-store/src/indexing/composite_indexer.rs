@@ -7,7 +7,10 @@ use tokio_stream::StreamExt;
 
 use crate::Provider;
 
-use super::{empty_tree_id, BasicIndexer, Error, IndexKey, Result, TreeIdentifier, TreeLeafNode};
+use super::{
+    empty_tree_id, BasicIndexer, Error, IndexKey, Result, TreeDiffSide, TreeIdentifier,
+    TreeLeafNode,
+};
 
 /// A composite indexer that combines multiple indexers to create composite
 /// indexes.
@@ -21,7 +24,7 @@ pub struct CompositeIndexer<First, Second> {
 }
 
 impl<First, Second> CompositeIndexer<First, Second> {
-    /// Instanciates a new composite indexer.
+    /// Instantiates a new composite indexer.
     pub fn new(first: First, second: Second) -> Self {
         Self { first, second }
     }
@@ -223,6 +226,29 @@ where
                         yield (key, Err(err));
                     }
                 }
+            }
+        }))
+    }
+
+    async fn diff_leaves<'s>(
+        &'s self,
+        provider: &'s Provider,
+        base_key: &'s IndexKey,
+        left_id: &'s TreeIdentifier,
+        right_id: &'s TreeIdentifier,
+    ) -> Result<
+        Pin<Box<dyn Stream<Item = (TreeDiffSide, IndexKey, Result<TreeLeafNode>)> + Send + 's>>,
+    > {
+        let diff = self
+            .first
+            .diff_leaves(provider, base_key, left_id, right_id)
+            .await?;
+
+        Ok(Box::pin(stream! {
+            tokio::pin!(diff);
+
+            while let Some((side, index_key, leaf_node_result)) = diff.next().await {
+                yield (side, index_key, leaf_node_result);
             }
         }))
     }

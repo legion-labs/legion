@@ -123,7 +123,7 @@ pub fn tree_diff<'s>(
                 tokio::pin!(leaves);
 
                 while let Some((key, node)) = leaves.next().await {
-                    yield (TreeDiffSide::Left, key, node);
+                    yield (TreeDiffSide::Right, key, node);
                 }
             } else if left_key.len() < right_key.len() {
                 let left = match provider.read_tree(&left_id).await {
