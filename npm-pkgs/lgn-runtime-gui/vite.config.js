@@ -39,9 +39,6 @@ export default defineConfig(() => {
         },
         filename: "log",
       }),
-      viteTsProto({
-        modules: [{ name: "@lgn/proto-runtime", glob: "*.proto" }],
-      }),
     ],
     test: {
       environment: "jsdom",
