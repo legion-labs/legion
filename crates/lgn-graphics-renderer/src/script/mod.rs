@@ -1,4 +1,4 @@
-pub mod render_script;
-pub use render_script::*;
+mod render_script;
+pub(crate) use render_script::*;
 
-pub mod render_passes;
+pub(crate) mod render_passes;
