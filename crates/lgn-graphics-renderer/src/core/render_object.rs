@@ -5,7 +5,7 @@ use lgn_utils::HashMap;
 
 use std::{
     alloc::Layout,
-    any::TypeId,
+    any::{type_name, TypeId},
     cell::{Cell, RefCell},
     intrinsics::transmute,
     marker::PhantomData,
@@ -29,6 +29,8 @@ impl<T> RenderObject for T where T: 'static + Send {}
 #[derive(Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Clone, Debug)]
 struct RenderObjectKey {
     type_id: TypeId,
+    #[cfg(debug_assertions)]
+    type_name: &'static str,
 }
 
 impl RenderObjectKey {
@@ -38,6 +40,8 @@ impl RenderObjectKey {
     {
         Self {
             type_id: TypeId::of::<R>(),
+            #[cfg(debug_assertions)]
+            type_name: type_name::<R>(),
         }
     }
 }

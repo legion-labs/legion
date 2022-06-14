@@ -604,7 +604,9 @@ pub(crate) fn reflect_viewports(
         let viewports = render_surface.viewports_mut();
         for viewport in viewports {
             // TODO(jsg): A single camera for all viewports for now (there's a single viewport anyways)
-            viewport.set_camera_id(camera_component.render_object_id().unwrap());
+            if let Some(camera_id) = camera_component.render_object_id() {
+                viewport.set_camera_id(camera_id);
+            }
 
             all_viewports.push(viewport);
         }
