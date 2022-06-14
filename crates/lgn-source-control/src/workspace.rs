@@ -477,11 +477,6 @@ where
         Err(Error::Unspecified("todo: revert_resource".to_owned()))
     }
 
-    /// Does the current transaction hold any changes that have not yet been committed?
-    pub async fn has_pending_resources(&self) -> bool {
-        self.transaction.has_references().await
-    }
-
     pub async fn get_pending_changes(&self) -> Result<Vec<(IndexKey, ChangeType)>> {
         let commit_index_id = self.get_current_commit().await?.main_index_tree_id;
         let main_index_id = self.main_index.id();

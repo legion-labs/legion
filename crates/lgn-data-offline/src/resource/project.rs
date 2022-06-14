@@ -630,11 +630,6 @@ impl Project {
             .collect())
     }
 
-    /// Returns whether or not the workspace contains any changes that have not yet been committed to the content-store.
-    pub async fn has_pending_resources(&self) -> bool {
-        self.workspace.has_pending_resources().await
-    }
-
     /// Return the list of all resources that were previously committed
     pub async fn get_committed_resources(
         &self,
