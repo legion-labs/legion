@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use lgn_content_store::Identifier;
+use lgn_content_store::indexing::ResourceIdentifier;
 
 use crate::{Error, MapOtherError, Result};
 
@@ -9,19 +9,22 @@ use crate::{Error, MapOtherError, Result};
 
 pub enum ChangeType {
     Add {
-        new_id: Identifier,
+        new_id: ResourceIdentifier,
     },
     Edit {
-        old_id: Identifier,
-        new_id: Identifier,
+        old_id: ResourceIdentifier,
+        new_id: ResourceIdentifier,
     },
     Delete {
-        old_id: Identifier,
+        old_id: ResourceIdentifier,
     },
 }
 
 impl ChangeType {
-    pub fn new(old_id: Option<Identifier>, new_id: Option<Identifier>) -> Option<Self> {
+    pub fn new(
+        old_id: Option<ResourceIdentifier>,
+        new_id: Option<ResourceIdentifier>,
+    ) -> Option<Self> {
         match (old_id, new_id) {
             (Some(old_id), Some(new_id)) => Some(Self::Edit { old_id, new_id }),
             (Some(old_id), None) => Some(Self::Delete { old_id }),
@@ -30,14 +33,14 @@ impl ChangeType {
         }
     }
 
-    pub fn old_id(&self) -> Option<&Identifier> {
+    pub fn old_id(&self) -> Option<&ResourceIdentifier> {
         match self {
             ChangeType::Add { .. } => None,
             ChangeType::Edit { old_id, .. } | ChangeType::Delete { old_id } => Some(old_id),
         }
     }
 
-    pub fn new_id(&self) -> Option<&Identifier> {
+    pub fn new_id(&self) -> Option<&ResourceIdentifier> {
         match self {
             ChangeType::Add { new_id } | ChangeType::Edit { new_id, .. } => Some(new_id),
             ChangeType::Delete { .. } => None,
@@ -148,12 +151,16 @@ impl TryFrom<lgn_source_control_proto::ChangeType> for ChangeType {
 
 #[cfg(test)]
 mod tests {
-    use lgn_content_store::{Identifier, Provider};
+    use std::str::FromStr;
+
+    use lgn_content_store::Provider;
 
     use super::*;
 
-    fn id(data: &str) -> Identifier {
-        Provider::new_in_memory().compute_id(data.as_bytes())
+    fn id(data: &str) -> ResourceIdentifier {
+        let id = Provider::new_in_memory().compute_id(data.as_bytes());
+        let id_as_str = format!("{}", id);
+        ResourceIdentifier::from_str(id_as_str.as_str()).expect("failed to parse")
     }
 
     #[test]

@@ -1,6 +1,5 @@
 mod branch;
 mod canonical_path;
-mod change;
 mod change_type;
 mod commit;
 mod lock;
@@ -10,7 +9,6 @@ mod resolve_pending;
 
 pub use branch::Branch;
 pub use canonical_path::CanonicalPath;
-pub use change::Change;
 pub use change_type::ChangeType;
 pub use commit::{Commit, CommitId};
 pub use lock::Lock;
