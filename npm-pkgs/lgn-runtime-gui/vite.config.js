@@ -3,6 +3,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
+import viteApiCodegen from "@lgn/vite-plugin-api-codegen";
 import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
 process.env.VITE_CONSOLE_LOG_LEVEL = "debug";
@@ -18,6 +19,15 @@ export default defineConfig(() => {
       // will return `undefined` which make hot `true`...
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
       svelte({ hot: !!process.env.DEV && !process.env.VITEST }),
+      viteApiCodegen({
+        path: "../../crates/lgn-streamer/apis",
+        apiNames: ["streaming"],
+        withPackageJson: true,
+        aliasMappings: {
+          "../../crates/lgn-governance/apis/space.yaml": "Space",
+          "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
+        },
+      }),
       viteTsProto({
         modules: [
           { name: "@lgn/proto-log-stream", glob: "*.proto" },

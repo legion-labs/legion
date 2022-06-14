@@ -2,7 +2,7 @@ use lgn_tracing::{info, warn};
 
 use renderdoc::Version;
 
-use crate::core::RenderCommand;
+use crate::core::{RenderCommand, RenderResources};
 
 type RenderDocVersion = renderdoc::V141;
 
@@ -63,8 +63,8 @@ unsafe impl Sync for RenderDocManager {}
 #[derive(Default)]
 pub struct RenderDocCaptureCommand;
 
-impl RenderCommand for RenderDocCaptureCommand {
-    fn execute(self, render_resources: &crate::core::RenderResources) {
+impl RenderCommand<RenderResources> for RenderDocCaptureCommand {
+    fn execute(self, render_resources: &RenderResources) {
         let mut renderdoc_manager = render_resources.get_mut::<RenderDocManager>();
         renderdoc_manager.schedule_capture();
     }
