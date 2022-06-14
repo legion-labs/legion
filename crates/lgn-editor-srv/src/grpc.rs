@@ -1,15 +1,10 @@
-use std::sync::Arc;
-
 use lgn_async::receiver::SharedUnboundedReceiver;
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_data_transaction::TransactionManager;
 use lgn_editor_proto::editor::{
     editor_server::{Editor, EditorServer},
     init_message_stream_response, InitMessageStreamRequest, InitMessageStreamResponse,
-    RedoTransactionRequest, RedoTransactionResponse, UndoTransactionRequest,
-    UndoTransactionResponse,
 };
-use tokio::sync::{broadcast::error::RecvError, mpsc, Mutex};
+use tokio::sync::{broadcast::error::RecvError, mpsc};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Request, Response, Status};
 
@@ -22,18 +17,13 @@ pub(crate) enum EditorEvent {
 pub(crate) type EditorEventsReceiver = SharedUnboundedReceiver<EditorEvent>;
 
 pub(crate) struct GRPCServer {
-    transaction_manager: Arc<Mutex<TransactionManager>>,
     editor_events_receiver: EditorEventsReceiver,
 }
 
 impl GRPCServer {
     /// Instantiate a new `GRPCServer`
-    pub(crate) fn new(
-        transaction_manager: Arc<Mutex<TransactionManager>>,
-        editor_events_receiver: EditorEventsReceiver,
-    ) -> Self {
+    pub(crate) fn new(editor_events_receiver: EditorEventsReceiver) -> Self {
         Self {
-            transaction_manager,
             editor_events_receiver,
         }
     }
@@ -45,32 +35,6 @@ impl GRPCServer {
 
 #[tonic::async_trait]
 impl Editor for GRPCServer {
-    async fn undo_transaction(
-        &self,
-        _request: Request<UndoTransactionRequest>,
-    ) -> Result<Response<UndoTransactionResponse>, Status> {
-        let mut transaction_manager = self.transaction_manager.lock().await;
-        transaction_manager
-            .undo_transaction()
-            .await
-            .map_err(|err| Status::internal(format!("Undo transaction failed: {}", err)))?;
-
-        Ok(Response::new(UndoTransactionResponse { id: 0 }))
-    }
-
-    async fn redo_transaction(
-        &self,
-        _request: Request<RedoTransactionRequest>,
-    ) -> Result<Response<RedoTransactionResponse>, Status> {
-        let mut transaction_manager = self.transaction_manager.lock().await;
-        transaction_manager
-            .redo_transaction()
-            .await
-            .map_err(|err| Status::internal(format!("Redo transaction failed: {}", err)))?;
-
-        Ok(Response::new(RedoTransactionResponse { id: 0 }))
-    }
-
     type InitMessageStreamStream =
         UnboundedReceiverStream<Result<InitMessageStreamResponse, Status>>;
 

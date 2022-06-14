@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use lgn_async::receiver::SharedUnboundedReceiver;
-use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::TransactionManager;
 use lgn_editor_yaml::editor::{
     requests::{self},
@@ -12,28 +10,14 @@ use lgn_editor_yaml::editor::{
 use lgn_online::server::Result;
 use tokio::sync::Mutex;
 
-#[derive(Debug, Clone)]
-pub(crate) enum EditorEvent {
-    SelectionChanged(Vec<ResourceTypeAndId>),
-    ResourceChanged(Vec<ResourceTypeAndId>),
-}
-
-pub(crate) type EditorEventsReceiver = SharedUnboundedReceiver<EditorEvent>;
-
 pub(crate) struct Server {
     transaction_manager: Arc<Mutex<TransactionManager>>,
-    editor_events_receiver: EditorEventsReceiver,
 }
 
 impl Server {
-    /// Instantiate a new `GRPCServer`
-    pub(crate) fn new(
-        transaction_manager: Arc<Mutex<TransactionManager>>,
-        editor_events_receiver: EditorEventsReceiver,
-    ) -> Self {
+    pub(crate) fn new(transaction_manager: Arc<Mutex<TransactionManager>>) -> Self {
         Self {
             transaction_manager,
-            editor_events_receiver,
         }
     }
 }

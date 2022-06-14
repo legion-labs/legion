@@ -58,14 +58,10 @@ impl Plugin for EditorPlugin {
 impl EditorPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
-        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
         editor_events_receiver: Res<'_, EditorEventsReceiver>,
     ) {
-        let grpc_server = super::grpc::GRPCServer::new(
-            transaction_manager.clone(),
-            editor_events_receiver.clone(),
-        );
+        let grpc_server = super::grpc::GRPCServer::new(editor_events_receiver.clone());
 
         grpc_settings.register_service(grpc_server.service());
     }

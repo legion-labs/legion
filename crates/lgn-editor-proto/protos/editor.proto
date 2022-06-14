@@ -2,24 +2,7 @@ syntax = "proto3";
 package editor;
 
 service Editor {
-  rpc UndoTransaction(UndoTransactionRequest) returns (UndoTransactionResponse);
-
-  rpc RedoTransaction(RedoTransactionRequest) returns (RedoTransactionResponse);
-
   rpc InitMessageStream(InitMessageStreamRequest) returns (stream InitMessageStreamResponse);
-}
-
-message UndoTransactionRequest {
-  int32 id = 1;
-}
-message UndoTransactionResponse {
-  int32 id = 1;
-}
-message RedoTransactionRequest {
-  int32 id = 1;
-}
-message RedoTransactionResponse {
-  int32 id = 1;
 }
 
 message InitMessageStreamRequest {}
