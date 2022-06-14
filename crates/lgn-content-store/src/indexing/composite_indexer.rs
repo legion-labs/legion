@@ -269,6 +269,7 @@ where
                 };
 
                 if previous_side == TreeDiffSide::Right {
+                    // no matching Left side, since first in list, so list all content
                     let leaves = self.second.enumerate_leaves(provider, &previous_tree_id).await;
                     match leaves {
                         Ok(leaves) => {
@@ -349,6 +350,8 @@ where
                             }
                         } else {
                             // previous_side == TreeDiffSide::Right
+
+                            // no matching left-side (two Rights in a row), so list all contents
                             let leaves = self.second.enumerate_leaves(provider, &tree_id).await;
                             match leaves {
                                 Ok(leaves) => {
@@ -365,7 +368,9 @@ where
                         }
                     } else {
                         // side == TreeDiffSide::Left
+
                         if previous_side == TreeDiffSide::Left {
+                            // two Lefts in a row, previous left side does not have a match
                             let leaves = self.second.enumerate_leaves(provider, &previous_tree_id).await;
                             match leaves {
                                 Ok(leaves) => {
@@ -388,6 +393,7 @@ where
                 }
 
                 if previous_side == TreeDiffSide::Left {
+                    // trailing left side, no upcoming Right side to potentially match with
                     let leaves = self.enumerate_leaves(provider, &previous_tree_id).await;
                     match leaves {
                         Ok(leaves) => {
