@@ -5,11 +5,11 @@ use lgn_tracing::span_scope;
 
 use crate::core::RenderLayerMask;
 
-use super::{RenderCamera, RenderLayers};
+use super::{RenderLayers, RenderObjectId};
 
 pub struct VisibleView {
     pub render_layer_mask: RenderLayerMask,
-    pub render_camera: RenderCamera,
+    pub render_camera: RenderObjectId,
 }
 
 pub struct VisibilitySet<'a> {
@@ -29,7 +29,7 @@ impl<'a> VisibilitySet<'a> {
 pub struct VisibilityContext<'rt> {
     pub herd: &'rt Herd,
     pub bump: &'rt Bump,
-    pub render_camera: RenderCamera,
+    pub render_camera: RenderObjectId,
     pub render_layers: &'rt RenderLayers,
 }
 

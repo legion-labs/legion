@@ -14,6 +14,7 @@ use lgn_graphics_api::{
 };
 use lgn_tracing::span_scope;
 
+use crate::components::RenderViewport;
 use crate::core::render_graph::RenderGraphBuilder;
 use crate::core::{RenderCamera, RenderListSet, RenderResources};
 use crate::egui::Egui;
@@ -637,7 +638,8 @@ impl RenderGraphContext {
 
 pub struct DebugStuff<'a> {
     pub picking_renderpass: &'a RwLock<PickingRenderPass>,
-    pub render_camera: RenderCamera,
+    pub render_viewport: &'a RenderViewport,
+    pub render_camera: &'a RenderCamera,
     pub egui: &'a Egui,
 }
 

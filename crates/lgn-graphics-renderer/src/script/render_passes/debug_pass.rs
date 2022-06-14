@@ -9,7 +9,7 @@ use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen::{self, cgen_type::TransformData},
-    components::{ManipulatorComponent, VisualComponent},
+    components::{ManipulatorComponent, RenderViewport, VisualComponent},
     core::{RenderCamera, RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId},
     debug_display::{DebugDisplay, DebugPrimitiveType},
     picking::ManipulatorManager,
@@ -80,6 +80,7 @@ impl DebugPass {
                         cmd_buffer,
                         render_context.manipulator_drawables,
                         &mesh_manager,
+                        execute_context.debug_stuff.render_viewport,
                         execute_context.debug_stuff.render_camera,
                         solid_pso_no_depth_handle,
                     );
@@ -333,17 +334,23 @@ impl DebugPass {
         cmd_buffer: &mut CommandBuffer,
         manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
         mesh_manager: &MeshManager,
-        render_camera: RenderCamera,
+        render_viewport: &RenderViewport,
+        render_camera: &RenderCamera,
         solid_pso_no_depth_handle: PipelineHandle,
     ) {
         for (transform, manipulator) in manipulator_meshes.iter() {
             if manipulator.active {
                 cmd_buffer.with_label("Manipulator", |cmd_buffer| {
+                    let view_transform = render_camera.view_transform();
+                    let projection = render_camera.build_projection(
+                        render_viewport.extents().width as f32,
+                        render_viewport.extents().height as f32,
+                    );
                     let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
                         transform,
                         &manipulator.local_transform,
-                        render_camera.projection,
-                        &render_camera.view_transform,
+                        projection,
+                        &view_transform,
                     );
 
                     let mut color = if manipulator.selected {

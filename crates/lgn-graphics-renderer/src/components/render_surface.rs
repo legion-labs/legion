@@ -16,8 +16,7 @@ use uuid::Uuid;
 
 use crate::core::{
     InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
-    RemoveRenderObjectCommand, RenderCamera, RenderObjectId, SecondaryTableHandler,
-    UpdateRenderObjectCommand,
+    RemoveRenderObjectCommand, RenderObjectId, SecondaryTableHandler, UpdateRenderObjectCommand,
 };
 use crate::render_pass::PickingRenderPass;
 use crate::{RenderContext, Renderer};
@@ -200,7 +199,7 @@ pub struct Viewport {
     id: ViewportId,
     offset: Offset2D,
     extents: Extents2D,
-    camera: Option<RenderCamera>,
+    camera_id: Option<RenderObjectId>,
     render_object_id: Option<RenderObjectId>,
 }
 
@@ -210,7 +209,7 @@ impl Viewport {
             id: ViewportId::new(),
             offset,
             extents,
-            camera: None,
+            camera_id: None,
             render_object_id: None,
         }
     }
@@ -230,12 +229,12 @@ impl Viewport {
         self.extents
     }
 
-    pub fn camera(&self) -> RenderCamera {
-        self.camera.unwrap()
+    pub fn camera_id(&self) -> RenderObjectId {
+        self.camera_id.unwrap()
     }
 
-    pub fn set_camera(&mut self, camera: RenderCamera) {
-        self.camera = Some(camera);
+    pub fn set_camera_id(&mut self, camera: RenderObjectId) {
+        self.camera_id = Some(camera);
     }
 
     pub fn render_object_id(&self) -> Option<RenderObjectId> {
@@ -247,15 +246,15 @@ impl Viewport {
 pub struct RenderViewport {
     offset: Offset2D,
     extents: Extents2D,
-    camera: Option<RenderCamera>,
+    camera_id: Option<RenderObjectId>,
 }
 
 impl RenderViewport {
-    pub fn new(offset: Offset2D, extents: Extents2D, camera: Option<RenderCamera>) -> Self {
+    pub fn new(offset: Offset2D, extents: Extents2D, camera: Option<RenderObjectId>) -> Self {
         Self {
             offset,
             extents,
-            camera,
+            camera_id: camera,
         }
     }
 
@@ -267,19 +266,18 @@ impl RenderViewport {
         self.extents
     }
 
-    pub fn camera(&self) -> Option<RenderCamera> {
-        self.camera
+    pub fn camera_id(&self) -> Option<RenderObjectId> {
+        self.camera_id
     }
 
-    pub fn set_camera(&mut self, camera: RenderCamera) {
-        self.camera = Some(camera);
+    pub fn set_camera_id(&mut self, camera: RenderObjectId) {
+        self.camera_id = Some(camera);
     }
 }
 
 fn as_render_object(viewport: &Viewport) -> RenderViewport {
-    RenderViewport::new(viewport.offset, viewport.extents, viewport.camera)
+    RenderViewport::new(viewport.offset, viewport.extents, viewport.camera_id)
 }
-
 
 pub struct RenderViewportPrivateData {
     view_target: Texture,
@@ -872,8 +870,9 @@ impl EcsToRenderViewport {
                         .iter()
                         .find(|v2| v2.id == *v2_id)
                         .unwrap();
-                    changed =
-                        v.offset != v2.offset || v.extents != v2.extents || v.camera != v2.camera;
+                    changed = v.offset != v2.offset
+                        || v.extents != v2.extents
+                        || v.camera_id != v2.camera_id;
                     break;
                 }
             }

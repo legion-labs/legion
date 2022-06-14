@@ -4,8 +4,8 @@ use lgn_math::Vec2;
 use crate::cgen::cgen_type;
 use crate::components::{RenderViewport, RenderViewportPrivateData};
 use crate::core::{
-    DebugStuff, PrepareRenderContext, RenderFeatures, RenderLayers, RenderObjects,
-    VisibilityContext,
+    DebugStuff, PrepareRenderContext, RenderCamera, RenderCameraPrivateData, RenderFeatures,
+    RenderLayers, RenderObjects, VisibilityContext,
 };
 use crate::gpu_renderer::GpuInstanceManager;
 use crate::lighting::LightingManager;
@@ -79,6 +79,9 @@ impl SurfaceRenderer {
             let primary_table = render_objects.primary_table::<RenderViewport>();
             let mut secondary_table =
                 render_objects.secondary_table_mut::<RenderViewportPrivateData>();
+            let camera_primary_table = render_objects.primary_table::<RenderCamera>();
+            let camera_secondary_table =
+                render_objects.secondary_table_mut::<RenderCameraPrivateData>();
 
             for viewport in viewports {
                 let render_object_id = viewport.render_object_id();
@@ -95,16 +98,19 @@ impl SurfaceRenderer {
                 // Visibility
                 //
 
-                let render_camera = render_viewport.camera();
-                if render_camera.is_none() {
+                let render_camera_id = render_viewport.camera_id();
+                if render_camera_id.is_none() {
                     continue;
                 }
-                let render_camera = render_camera.unwrap();
+                let render_camera_id = render_camera_id.unwrap();
+                let render_camera = camera_primary_table.get::<RenderCamera>(render_camera_id);
+                let render_camera_private_data =
+                    camera_secondary_table.get::<RenderCameraPrivateData>(render_camera_id);
 
                 let visibility_context = VisibilityContext {
                     herd: render_context.herd,
                     bump: render_context.bump,
-                    render_camera,
+                    render_camera: render_camera_id,
                     render_layers,
                 };
 
@@ -141,7 +147,8 @@ impl SurfaceRenderer {
 
                     let cursor_pos = render_context.picking_manager.current_cursor_pos();
 
-                    let view_data = render_camera.tmp_build_view_data(
+                    let view_data = render_camera_private_data.tmp_build_view_data(
+                        render_camera,
                         render_viewport.extents().width as f32,
                         render_viewport.extents().height as f32,
                         screen_rect.x,
@@ -242,6 +249,7 @@ impl SurfaceRenderer {
 
                         let debug_stuff = DebugStuff {
                             picking_renderpass: &picking_renderpass,
+                            render_viewport,
                             render_camera,
                             egui: render_context.egui,
                         };

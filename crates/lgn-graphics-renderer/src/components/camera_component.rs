@@ -1,12 +1,11 @@
 use std::marker::PhantomData;
 
 use dolly::driver::RigDriver;
-use dolly::prelude::{Handedness, Position, Smooth};
+use dolly::prelude::{Handedness, Position, RightHanded, Smooth};
 use dolly::rig::{CameraRig, RigUpdateParams};
 use dolly::transform::Transform;
 use lgn_core::Time;
 use lgn_ecs::prelude::*;
-use lgn_graphics_cgen_runtime::Float4;
 use lgn_graphics_data::runtime::CameraSetup;
 use lgn_input::gamepad::GamepadButtonType;
 use lgn_input::mouse::MouseScrollUnit;
@@ -16,7 +15,7 @@ use lgn_input::{
         Axis, GamepadAxis, GamepadAxisType, GamepadButton, Gamepads, Input, KeyCode, MouseButton,
     },
 };
-use lgn_math::{Angle, DMat4, EulerRot, Mat3, Mat4, Quat, Vec3, Vec4};
+use lgn_math::{Angle, EulerRot, Mat3, Quat, Vec3};
 use lgn_transform::components::GlobalTransform;
 use lgn_utils::HashMap;
 
@@ -101,77 +100,16 @@ pub struct CameraComponent {
 }
 
 impl CameraComponent {
-    pub fn view_transform(&self) -> GlobalTransform {
-        let eye = self.camera_rig.final_transform.position.as_dvec3();
-        let forward = self.camera_rig.final_transform.forward().as_dvec3();
-
-        let view_matrix = DMat4::look_at_rh(eye, eye + forward, UP_VECTOR.as_dvec3());
-        let (_scale, rotation, translation) = view_matrix.to_scale_rotation_translation();
-
-        let mut view_transform = GlobalTransform::identity();
-        view_transform.translation = translation.as_vec3();
-        view_transform.rotation = rotation.as_f32();
-
-        view_transform
-    }
-
-    pub fn build_projection(&self, width: f32, height: f32) -> Mat4 {
-        let aspect_ratio = width / height;
-        Mat4::perspective_infinite_reverse_rh(self.fov_y.radians(), aspect_ratio, self.z_near)
-    }
-
-    pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
-        let eye = self.camera_rig.final_transform.position;
-        let forward = self.camera_rig.final_transform.forward();
-        let up = self.camera_rig.final_transform.up();
-        let right = self.camera_rig.final_transform.right();
-
-        let half_v_side = self.z_far * (self.fov_y.radians() * 0.5).tan();
-        let half_h_side = half_v_side * aspect_ratio;
-
-        let near_face_point = eye + forward * self.z_near;
-        let near_normal = -forward;
-        let near_plane: Float4 =
-            Vec4::from((near_normal, -near_normal.dot(near_face_point))).into();
-
-        let far_face_point = eye + forward * self.z_far;
-        let far_normal = forward;
-        let far_plane: Float4 = Vec4::from((far_normal, -far_normal.dot(far_face_point))).into();
-
-        let front_mult_far = self.z_far * forward;
-
-        let right_side = front_mult_far - right * half_h_side;
-        let right_normal = up.cross(right_side).normalize();
-        let right_plane: Float4 = Vec4::from((right_normal, -right_normal.dot(eye))).into();
-
-        let left_side = front_mult_far + right * half_h_side;
-        let left_normal = left_side.cross(up).normalize();
-        let left_plane: Float4 = Vec4::from((left_normal, -left_normal.dot(eye))).into();
-
-        let top_side = front_mult_far - up * half_v_side;
-        let top_normal = top_side.cross(right).normalize();
-        let top_plane: Float4 = Vec4::from((top_normal, -top_normal.dot(eye))).into();
-
-        let bottom_side = front_mult_far + up * half_v_side;
-        let bottom_normal = right.cross(bottom_side).normalize();
-        let bottom_plane: Float4 = Vec4::from((bottom_normal, -bottom_normal.dot(eye))).into();
-
-        [
-            near_plane,
-            far_plane,
-            right_plane,
-            left_plane,
-            top_plane,
-            bottom_plane,
-        ]
-    }
-
     pub fn position(&self) -> Vec3 {
         self.camera_rig.final_transform.position
     }
 
     pub fn rotation(&self) -> Quat {
         self.camera_rig.final_transform.rotation
+    }
+
+    pub fn final_transform(&self) -> Transform<RightHanded> {
+        self.camera_rig.final_transform
     }
 
     pub fn fov_y(&self) -> Angle {
@@ -184,6 +122,10 @@ impl CameraComponent {
 
     pub fn z_far(&self) -> f32 {
         self.z_far
+    }
+
+    pub fn render_object_id(&self) -> Option<RenderObjectId> {
+        self.render_object_id
     }
 
     fn build_rig(setup: &CameraSetup) -> CameraRig {

@@ -18,9 +18,9 @@ use crate::components::{
     EcsToRenderVisual, RenderViewport, RenderViewportPrivateData, RenderViewportPrivateDataHandler,
 };
 use crate::core::{
-    RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
-    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects,
-    RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
+    RenderCamera, RenderCameraPrivateData, RenderCameraPrivateDataHandler, RenderCommandQueuePool,
+    RenderFeatures, RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder,
+    RenderLayers, RenderObjects, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
 use crate::features::{ModelFeature, RenderVisual};
 use crate::lighting::{RenderLight, RenderLightTestData};
@@ -259,6 +259,9 @@ impl Plugin for RendererPlugin {
             .add_primary_table::<RenderVisual>()
             // Camera
             .add_primary_table::<RenderCamera>()
+            .add_secondary_table_with_handler::<RenderCamera, RenderCameraPrivateData>(Box::new(
+                RenderCameraPrivateDataHandler::new(),
+            ))
             // Done!
             .finalize();
 
@@ -298,6 +301,8 @@ impl Plugin for RendererPlugin {
             render_objects.primary_table_view::<RenderLight>(),
         ))
         .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+
+        // Viewports
         app.insert_resource(EcsToRenderViewport::new(
             render_objects.primary_table_view::<RenderViewport>(),
         ))
@@ -625,15 +630,10 @@ fn render_update(
                 &default_camera
             };
 
-            // TODO(jsg): Reflect camera components.
             // TODO(jsg): A single camera for all viewports for now (there's a single viewport anyways)
             for render_surface in render_surfaces.iter_mut() {
                 for viewport in render_surface.viewports_mut() {
-                    viewport.set_camera(RenderCamera::new(
-                        camera_component,
-                        viewport.extents().width as f32,
-                        viewport.extents().height as f32,
-                    ));
+                    viewport.set_camera_id(camera_component.render_object_id().unwrap());
                 }
             }
 

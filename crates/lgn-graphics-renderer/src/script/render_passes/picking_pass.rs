@@ -150,7 +150,11 @@ impl PickingPass {
 
                                 let manipulator_meshes =
                                 render_context.manipulator_drawables;
+                                let render_viewport = execute_context.debug_stuff.render_viewport;
                                 let render_camera = execute_context.debug_stuff.render_camera;
+
+                                let view_transform = render_camera.view_transform();
+                                let projection = render_camera.build_projection(render_viewport.extents().width as f32, render_viewport.extents().height as f32);
                                 for (transform, manipulator) in manipulator_meshes.iter() {
                                     if manipulator.active {
                                         let picking_distance = 50.0;
@@ -158,8 +162,8 @@ impl PickingPass {
                                             ManipulatorManager::scale_manipulator_for_viewport(
                                                 transform,
                                                 &manipulator.local_transform,
-                                                render_camera.projection,
-                                                &render_camera.view_transform,
+                                                projection,
+                                                &view_transform,
                                             );
 
                                         Self::render_mesh(
