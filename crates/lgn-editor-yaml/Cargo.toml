@@ -15,6 +15,7 @@ async-trait = "0.1.56"
 axum = "0.5"
 http = "0.2"
 hyper = { version = "0.14", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_qs = { version = "0.9", features = ["axum"] }
 thiserror = "1"
 

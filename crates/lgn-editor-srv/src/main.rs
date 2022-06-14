@@ -43,6 +43,8 @@ use resource_browser_plugin::{ResourceBrowserPlugin, ResourceBrowserSettings};
 mod source_control_plugin;
 use source_control_plugin::SourceControlPlugin;
 
+mod editor;
+
 #[cfg(test)]
 #[path = "tests/test_resource_browser.rs"]
 mod test_resource_browser;

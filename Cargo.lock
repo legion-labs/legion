@@ -2412,11 +2412,15 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "axum",
  "bytes",
  "clap 3.1.18",
  "crossbeam-channel",
  "erased-serde",
  "generic-data",
+ "http",
+ "hyper",
  "inventory",
  "lgn-app",
  "lgn-asset-registry",
@@ -2459,6 +2463,7 @@ dependencies = [
  "sample-data",
  "serde",
  "serde_json",
+ "serde_qs",
  "tempfile",
  "thiserror",
  "tokio",
@@ -4699,6 +4704,7 @@ dependencies = [
  "lgn-governance",
  "lgn-online",
  "lgn-tracing",
+ "serde",
  "serde_qs",
  "thiserror",
 ]

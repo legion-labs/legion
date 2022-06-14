@@ -50,6 +50,11 @@ bytes = "1.1.0"
 thiserror = "1.0.30"
 crossbeam-channel = "0.5.1"
 zip = { version = "0.5.13" }
+async-trait = "0.1.56"
+axum = "0.5"
+http = "0.2"
+hyper = { version = "0.14", features = ["full"] }
+serde_qs = { version = "0.9", features = ["axum"] }
 
 # PlugIn
 generic-data = { path = "../../tests/generic-data", version = "0.1.0", features = [

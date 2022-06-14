@@ -1,17 +1,45 @@
 openapi: 3.1.0
 info:
-  title: "Streaming API"
+  title: "Editor API"
   description: "The OpenAPI specification for the Legion Labs editor."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspace/{workspace-id}/session/editor:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/undo/{transaction-id}:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/transaction_id"
     post:
-      description: Undo transaction request.
-      operationId: UndoTransactionRequest
+      description: Undo transaction.
+      operationId: UndoTransaction
       responses:
-        "200":
+        "204":
           description: Ok.
-          
+        "409":
+          description: Undo transaction failed
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/redo/{transaction-id}:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/transaction_id"
+    post:
+      description: Redo transaction.
+      operationId: RedoTransaction
+      responses:
+        "204":
+          description: Ok.
+        "409":
+          description: Redo transaction failed
+components:
+  parameters:
+    transaction_id:
+      name: transaction-id
+      in: path
+      description: The transaction identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/TransactionId"
+  schemas:
+    TransactionId:
+      description: An identifier to a unique a transaction.
+      type: string
