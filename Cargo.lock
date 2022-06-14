@@ -200,6 +200,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "animation-rebuild-data"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 3.1.18",
+ "generic-data",
+ "lgn-animation",
+ "lgn-app",
+ "lgn-compiler-runtime-entity",
+ "lgn-compiler-runtime-model",
+ "lgn-content-store",
+ "lgn-data-build",
+ "lgn-data-compiler",
+ "lgn-data-compiler-remote",
+ "lgn-data-offline",
+ "lgn-data-runtime",
+ "lgn-data-transaction",
+ "lgn-ecs",
+ "lgn-graphics-data",
+ "lgn-graphics-renderer",
+ "lgn-math",
+ "lgn-physics",
+ "lgn-source-control",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
+ "sample-data",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3866,6 +3897,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-animation"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "crossbeam-channel",
+ "egui",
+ "erased-serde",
+ "inventory",
+ "lazy_static",
+ "lgn-app",
+ "lgn-core",
+ "lgn-data-codegen",
+ "lgn-data-model",
+ "lgn-data-runtime",
+ "lgn-ecs",
+ "lgn-graphics-data",
+ "lgn-graphics-renderer",
+ "lgn-math",
+ "lgn-tracing",
+ "lgn-transform",
+ "memoffset",
+ "serde",
+ "thiserror",
+ "typetag",
+]
+
+[[package]]
 name = "lgn-api-codegen"
 version = "0.1.0"
 dependencies = [
@@ -5166,6 +5224,7 @@ name = "lgn-scene-plugin"
 version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
+ "lgn-animation",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-config",
@@ -7579,6 +7638,7 @@ dependencies = [
  "crossbeam-channel",
  "generic-data",
  "instant",
+ "lgn-animation",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
