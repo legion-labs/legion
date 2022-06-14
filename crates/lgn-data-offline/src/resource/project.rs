@@ -919,7 +919,7 @@ mod tests {
             .expect("new project");
         let _resources = create_actor(&mut project).await;
 
-        assert_eq!(project.get_pending_resources().await.unwrap().len(), 5);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
     }
 
     #[tokio::test]
@@ -936,7 +936,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(project.get_pending_resources().await.unwrap().len(), 5);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
         assert_eq!(project.get_committed_resources().await.unwrap().len(), 0);
 
         // modify before commit
@@ -954,7 +954,7 @@ mod tests {
 
         project.commit("add resources").await.unwrap();
 
-        assert_eq!(project.get_pending_resources().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
         assert_eq!(project.get_committed_resources().await.unwrap().len(), 5);
 
         // modify resource
@@ -969,12 +969,12 @@ mod tests {
                 .await
                 .unwrap();
 
-            assert_eq!(project.get_pending_resources().await.unwrap().len(), 1);
+            assert_eq!(project.get_pending_changes().await.unwrap().len(), 1);
         }
 
         project.commit("update actor").await.unwrap();
 
-        assert_eq!(project.get_pending_resources().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
     }
 
     #[tokio::test]

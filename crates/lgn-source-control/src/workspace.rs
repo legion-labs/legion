@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        tree_diff, BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
+        BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
         ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
         TreeIdentifier, TreeLeafNode,
     },
@@ -507,26 +507,24 @@ where
         let commit_index_id = self.get_current_commit().await?.main_index_tree_id;
         let main_index_id = self.main_index.id();
 
-        let base_key = IndexKey::default();
-        let mut leaves = tree_diff(
-            &self.transaction,
-            &base_key,
-            &commit_index_id,
-            &main_index_id,
-        )
-        .map(|(side, index_key, leaf)| match leaf {
-            Ok(leaf) => match leaf {
-                TreeLeafNode::Resource(resource_id) => Ok((index_key, side, resource_id)),
-                TreeLeafNode::TreeRoot(_) => {
-                    Err(lgn_content_store::indexing::Error::CorruptedTree(
-                        "found unexpected tree-root node".to_owned(),
-                    ))
-                }
-            },
-            Err(err) => Err(err),
-        })
-        .collect::<Result<Vec<_>, lgn_content_store::indexing::Error>>()
-        .await?;
+        let mut leaves = self
+            .main_index
+            .indexer()
+            .diff_leaves(&self.transaction, &commit_index_id, &main_index_id)
+            .await?
+            .map(|(side, index_key, leaf)| match leaf {
+                Ok(leaf) => match leaf {
+                    TreeLeafNode::Resource(resource_id) => Ok((index_key, side, resource_id)),
+                    TreeLeafNode::TreeRoot(_) => {
+                        Err(lgn_content_store::indexing::Error::CorruptedTree(
+                            "found unexpected tree-root node".to_owned(),
+                        ))
+                    }
+                },
+                Err(err) => Err(err),
+            })
+            .collect::<Result<Vec<_>, lgn_content_store::indexing::Error>>()
+            .await?;
         leaves.sort();
         let mut leaves = leaves.into_iter();
 
