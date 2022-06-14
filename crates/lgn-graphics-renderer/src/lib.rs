@@ -515,8 +515,7 @@ fn init_manipulation_manager(
 #[allow(
     clippy::needless_pass_by_value,
     clippy::too_many_arguments,
-    clippy::type_complexity,
-    unsafe_code
+    clippy::type_complexity
 )]
 fn render_update(
     task_pool: Res<'_, ComputeTaskPool>,
