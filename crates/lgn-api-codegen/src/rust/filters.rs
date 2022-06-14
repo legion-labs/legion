@@ -49,6 +49,7 @@ pub fn fmt_type(
     module_path: &ModulePath,
 ) -> ::askama::Result<String> {
     Ok(match type_ {
+        Type::Any => "serde_json::Value".to_string(),
         Type::Int32 => "i32".to_string(),
         Type::Int64 => "i64".to_string(),
         Type::UInt32 => "u32".to_string(),
@@ -63,6 +64,10 @@ pub fn fmt_type(
         Type::Array(inner) => format!("Vec<{}>", fmt_type(inner, ctx, module_path)?),
         Type::HashSet(inner) => format!(
             "std::collections::HashSet<{}>",
+            fmt_type(inner, ctx, module_path).unwrap()
+        ),
+        Type::Map(inner) => format!(
+            "std::collections::HashMap<String, {}>",
             fmt_type(inner, ctx, module_path).unwrap()
         ),
         Type::Named(ref_) => {
@@ -156,6 +161,17 @@ pub fn join_types(
     } else {
         Ok(joined)
     }
+}
+
+#[allow(clippy::unnecessary_wraps)]
+pub fn fmt_struct_derive(type_: &Option<Box<Type>>) -> ::askama::Result<String> {
+    Ok(match type_ {
+        Some(type_) if matches!(**type_, Type::Any) => {
+            "#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]"
+        }
+        _ => "#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]",
+    }
+    .to_string())
 }
 
 fn is_keyword(name: &str) -> bool {
