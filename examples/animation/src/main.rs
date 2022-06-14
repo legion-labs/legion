@@ -15,25 +15,22 @@ use lgn_animation::offline::{
 };
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::{
-    resource::{Project, ResourcePathName},
-    vfs::AddDeviceSourceCas,
-};
+use lgn_data_offline::{vfs::AddDeviceSourceCas, Project, ResourcePathName, SourceResource};
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
+    AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
     ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
-use lgn_graphics_data::offline::CameraSetup;
+use lgn_graphics_data::{
+    offline::{CameraSetup, Light, Visual},
+    LightType,
+};
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::{Quat, Vec3};
 use lgn_physics::offline::PhysicsSceneSettings;
 
 use lgn_tracing::{info, LevelFilter};
-use sample_data::{
-    offline::{Light, Transform, Visual},
-    LightType,
-};
+use sample_data::offline::Transform;
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
 enum CompilersSource {
@@ -98,12 +95,12 @@ async fn main() -> anyhow::Result<()> {
         Arc::clone(&source_control_content_provider),
         project.source_manifest_id(),
     );
-    lgn_graphics_data::offline::add_loaders(&mut asset_registry);
-    generic_data::offline::add_loaders(&mut asset_registry);
-    sample_data::offline::add_loaders(&mut asset_registry);
+    lgn_graphics_data::register_types(&mut asset_registry);
+    generic_data::register_types(&mut asset_registry);
+    sample_data::register_types(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
 
-    let resource_ids = create_offline_data(&mut project, &asset_registry).await;
+    let resource_ids = create_offline_data(&mut project).await;
     project
         .commit("initial commit")
         .await
@@ -166,13 +163,9 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn create_offline_data(
-    project: &mut Project,
-    resource_registry: &AssetRegistry,
-) -> Vec<ResourceTypeAndId> {
+async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
     let cube_model_id = create_offline_model(
         project,
-        resource_registry,
         "84510591-4ccd-4818-bf73-15375e6b140a",
         "/scene/models/skeleton.mod",
         Mesh::new_cube(0.1),
@@ -181,7 +174,6 @@ async fn create_offline_data(
 
     let light_id = create_offline_entity(
         project,
-        resource_registry,
         "85701c5f-f9f8-4ca0-9111-8243c4ea2cd6",
         "/scene/light.ent",
         vec![
@@ -589,7 +581,6 @@ async fn create_offline_data(
     });
     let skeleton = create_offline_entity(
         project,
-        resource_registry,
         "825f5f93-7a86-4616-81aa-ce3e146248ab",
         "/scene/skeleton.ent",
         vec![
@@ -609,7 +600,6 @@ async fn create_offline_data(
     .await;
     let scene_id = create_offline_entity(
         project,
-        resource_registry,
         "09f7380d-51b2-4061-9fe4-52ceccce55e7",
         "/scene.ent",
         vec![
@@ -630,7 +620,6 @@ async fn create_offline_data(
 
 async fn create_offline_entity(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     components: Vec<Box<dyn Component>>,
@@ -644,35 +633,31 @@ async fn create_offline_entity(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut entity = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<sample_data::offline::Entity>(type_id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(sample_data::offline::Entity::new_with_id(
+            name.as_str(),
+            type_id,
+        ))
     };
 
-    let mut entity = handle
-        .instantiate::<sample_data::offline::Entity>(resources)
-        .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
     entity.children.clear();
     entity.children.extend(children.into_iter());
 
-    handle.apply(entity, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(type_id, entity.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(type_id, entity.as_ref())
             .await
             .expect("failed to add new resource");
     }
@@ -683,7 +668,6 @@ async fn create_offline_entity(
 
 async fn create_offline_model(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     mesh: Mesh,
@@ -696,22 +680,19 @@ async fn create_offline_model(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut model = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<lgn_graphics_data::offline::Model>(type_id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(lgn_graphics_data::offline::Model::new_with_id(
+            name.as_str(),
+            type_id,
+        ))
     };
 
-    let mut model = handle
-        .instantiate::<lgn_graphics_data::offline::Model>(resources)
-        .unwrap();
     model.meshes.clear();
-
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
         normals: mesh.normals.unwrap(),
@@ -726,16 +707,14 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
-    handle.apply(model, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(type_id, model.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(type_id, model.as_ref())
             .await
             .expect("failed to add new resource");
     }

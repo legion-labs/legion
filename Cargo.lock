@@ -5216,9 +5216,9 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "crossbeam-channel",
- "lgn-animation",
  "erased-serde",
  "futures",
+ "lgn-animation",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
