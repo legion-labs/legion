@@ -2,6 +2,7 @@ use lgn_graphics_api::{BufferViewDef, ResourceUsage};
 use lgn_math::Vec2;
 
 use crate::cgen::cgen_type;
+use crate::components::{RenderViewport, RenderViewportPrivateData};
 use crate::core::{
     DebugStuff, PrepareRenderContext, RenderFeatures, RenderLayers, RenderObjects,
     VisibilityContext,
@@ -72,14 +73,33 @@ impl SurfaceRenderer {
         for render_surface in render_surfaces.iter_mut() {
             let picking_renderpass = render_surface.picking_renderpass();
 
-            for viewport in render_surface.viewports_mut() {
-                // TODO: #1997 From this point, we should be per RenderViewport, each viewport owning its own top level camera and properties (grid, gizmos etc...).
+            let viewports = render_surface.viewports();
+
+            let render_objects = render_resources.get::<RenderObjects>();
+            let primary_table = render_objects.primary_table::<RenderViewport>();
+            let mut secondary_table =
+                render_objects.secondary_table_mut::<RenderViewportPrivateData>();
+
+            for viewport in viewports {
+                let render_object_id = viewport.render_object_id();
+                if render_object_id.is_none() {
+                    continue;
+                }
+                let render_object_id = render_object_id.unwrap();
+
+                let render_viewport = primary_table.get::<RenderViewport>(render_object_id);
+                let render_viewport_private_data =
+                    secondary_table.get_mut::<RenderViewportPrivateData>(render_object_id);
 
                 //
                 // Visibility
                 //
 
-                let render_camera = viewport.camera();
+                let render_camera = render_viewport.camera();
+                if render_camera.is_none() {
+                    continue;
+                }
+                let render_camera = render_camera.unwrap();
 
                 let visibility_context = VisibilityContext {
                     herd: render_context.herd,
@@ -114,16 +134,16 @@ impl SurfaceRenderer {
                     let mut screen_rect = render_context.picking_manager.screen_rect();
                     if screen_rect.x == 0.0 || screen_rect.y == 0.0 {
                         screen_rect = Vec2::new(
-                            viewport.extents().width as f32,
-                            viewport.extents().height as f32,
+                            render_viewport.extents().width as f32,
+                            render_viewport.extents().height as f32,
                         );
                     }
 
                     let cursor_pos = render_context.picking_manager.current_cursor_pos();
 
                     let view_data = render_camera.tmp_build_view_data(
-                        viewport.extents().width as f32,
-                        viewport.extents().height as f32,
+                        render_viewport.extents().width as f32,
+                        render_viewport.extents().height as f32,
                         screen_rect.x,
                         screen_rect.y,
                         cursor_pos.x,
@@ -160,7 +180,7 @@ impl SurfaceRenderer {
 
                 cmd_buffer.begin();
 
-                viewport.clear_hzb_if_needed(cmd_buffer);
+                render_viewport_private_data.clear_hzb_if_needed(cmd_buffer);
 
                 cmd_buffer.end();
 
@@ -174,7 +194,7 @@ impl SurfaceRenderer {
                     .release(cmd_buffer_handle);
 
                 let view = RenderView {
-                    target: viewport.view_target(),
+                    target: render_viewport_private_data.view_target(),
                 };
 
                 let gpu_culling_pass = GpuCullingPass;
@@ -199,7 +219,10 @@ impl SurfaceRenderer {
                     lighting_pass,
                     ui_pass,
                     egui_pass,
-                    hzb: [viewport.hzb()[0], viewport.hzb()[1]],
+                    hzb: [
+                        render_viewport_private_data.hzb()[0],
+                        render_viewport_private_data.hzb()[1],
+                    ],
                 };
 
                 let config = Config {
@@ -239,12 +262,34 @@ impl SurfaceRenderer {
                 render_list_set.consume();
             }
 
+            //---------------- composite viewports
             let mut cmd_buffer_handle = render_context.transient_commandbuffer_allocator.acquire();
             let cmd_buffer = cmd_buffer_handle.as_mut();
 
             cmd_buffer.begin();
 
+            let mut render_viewports = vec![];
+            let mut render_viewports_private_data = vec![];
+
+            for viewport in viewports {
+                if let Some(render_object_id) = viewport.render_object_id() {
+                    let render_viewport = primary_table.get::<RenderViewport>(render_object_id);
+                    let render_viewport_private_data =
+                        secondary_table.get::<RenderViewportPrivateData>(render_object_id);
+
+                    render_viewports.push(render_viewport);
+                    render_viewports_private_data.push(render_viewport_private_data);
+                }
+            }
+
+            render_surface.composite_viewports(
+                &render_viewports,
+                &render_viewports_private_data,
+                cmd_buffer,
+            );
+
             cmd_buffer.end();
+            //---------------- composite viewports
 
             // queue
             let present_semaphore = render_surface.acquire();

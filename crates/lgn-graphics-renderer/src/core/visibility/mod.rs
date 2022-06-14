@@ -12,7 +12,7 @@ use crate::core::RenderLayerMask;
 
 use super::RenderLayers;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RenderCamera {
     pub view_transform: GlobalTransform,
     pub projection: Mat4,

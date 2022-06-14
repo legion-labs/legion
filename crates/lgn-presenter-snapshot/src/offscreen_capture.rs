@@ -128,7 +128,6 @@ impl OffscreenHelper {
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;
 
-        render_surface.composite_viewports(cmd_buffer);
         let final_target_srv = render_surface.final_target_srv();
 
         cmd_buffer.cmd_resource_barrier(

@@ -1,6 +1,8 @@
 use std::collections::hash_map::{Values, ValuesMut};
+use std::hash::Hash;
 use std::{cmp::max, sync::Arc};
 
+use lgn_ecs::prelude::ResMut;
 use lgn_graphics_api::{
     CmdCopyTextureParams, ColorClearValue, ColorRenderTargetBinding, CommandBuffer, DeviceContext,
     Extents2D, Extents3D, Format, GPUViewType, LoadOp, MemoryUsage, Offset2D, Offset3D, PlaneSlice,
@@ -12,7 +14,11 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::core::RenderCamera;
+use crate::core::{
+    InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
+    RemoveRenderObjectCommand, RenderCamera, RenderObjectId, SecondaryTableHandler,
+    UpdateRenderObjectCommand,
+};
 use crate::render_pass::PickingRenderPass;
 use crate::{RenderContext, Renderer};
 
@@ -180,20 +186,112 @@ pub enum RenderSurfacePresentingStatus {
     Paused,
 }
 
+#[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct ViewportId(Uuid);
+
+impl ViewportId {
+    fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+#[derive(Clone)]
 pub struct Viewport {
+    id: ViewportId,
     offset: Offset2D,
     extents: Extents2D,
     camera: Option<RenderCamera>,
+    render_object_id: Option<RenderObjectId>,
+}
+
+impl Viewport {
+    pub fn new(offset: Offset2D, extents: Extents2D) -> Self {
+        Self {
+            id: ViewportId::new(),
+            offset,
+            extents,
+            camera: None,
+            render_object_id: None,
+        }
+    }
+
+    pub fn resize(&mut self, offset: Offset2D, extents: Extents2D) {
+        if self.offset != offset || self.extents != extents {
+            self.offset = offset;
+            self.extents = extents;
+        }
+    }
+
+    pub fn offset(&self) -> Offset2D {
+        self.offset
+    }
+
+    pub fn extents(&self) -> Extents2D {
+        self.extents
+    }
+
+    pub fn camera(&self) -> RenderCamera {
+        self.camera.unwrap()
+    }
+
+    pub fn set_camera(&mut self, camera: RenderCamera) {
+        self.camera = Some(camera);
+    }
+
+    pub fn render_object_id(&self) -> Option<RenderObjectId> {
+        self.render_object_id
+    }
+}
+
+#[derive(Debug)]
+pub struct RenderViewport {
+    offset: Offset2D,
+    extents: Extents2D,
+    camera: Option<RenderCamera>,
+}
+
+impl RenderViewport {
+    pub fn new(offset: Offset2D, extents: Extents2D, camera: Option<RenderCamera>) -> Self {
+        Self {
+            offset,
+            extents,
+            camera,
+        }
+    }
+
+    pub fn offset(&self) -> Offset2D {
+        self.offset
+    }
+
+    pub fn extents(&self) -> Extents2D {
+        self.extents
+    }
+
+    pub fn camera(&self) -> Option<RenderCamera> {
+        self.camera
+    }
+
+    pub fn set_camera(&mut self, camera: RenderCamera) {
+        self.camera = Some(camera);
+    }
+}
+
+fn as_render_object(viewport: &Viewport) -> RenderViewport {
+    RenderViewport::new(viewport.offset, viewport.extents, viewport.camera)
+}
+
+
+pub struct RenderViewportPrivateData {
     view_target: Texture,
     view_target_srv: TextureView,
     hzb: [Texture; 2],
     hzb_cleared: bool,
 }
 
-impl Viewport {
-    pub fn new(renderer: &Renderer, offset: Offset2D, extents: Extents2D) -> Self {
-        let extents_3d = extents.to_3d(1);
-        let device_context = renderer.device_context();
+impl RenderViewportPrivateData {
+    pub fn new(render_viewport: &RenderViewport, device_context: &DeviceContext) -> Self {
+        let extents_3d = render_viewport.extents().to_3d(1);
+
         let view_desc = TextureDef {
             extents: extents_3d,
             array_length: 1,
@@ -220,14 +318,23 @@ impl Viewport {
         ];
 
         Self {
-            offset,
-            extents,
-            camera: None,
             view_target,
             view_target_srv,
             hzb,
             hzb_cleared: false,
         }
+    }
+
+    pub fn view_target(&self) -> &Texture {
+        &self.view_target
+    }
+
+    pub fn view_target_srv(&self) -> &TextureView {
+        &self.view_target_srv
+    }
+
+    pub(crate) fn hzb(&self) -> [&Texture; 2] {
+        [&self.hzb[0], &self.hzb[1]]
     }
 
     pub fn resize(&mut self, device_context: &DeviceContext, extents: Extents3D) {
@@ -244,6 +351,7 @@ impl Viewport {
             memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         };
+
         self.view_target = device_context.create_texture(view_desc, "ViewBuffer");
         self.view_target_srv =
             self.view_target
@@ -301,34 +409,6 @@ impl Viewport {
         }
     }
 
-    pub fn offset(&self) -> Offset2D {
-        self.offset
-    }
-
-    pub fn extents(&self) -> Extents2D {
-        self.extents
-    }
-
-    pub fn camera(&self) -> RenderCamera {
-        self.camera.unwrap()
-    }
-
-    pub fn set_camera(&mut self, camera: RenderCamera) {
-        self.camera = Some(camera);
-    }
-
-    pub fn view_target(&self) -> &Texture {
-        &self.view_target
-    }
-
-    pub fn view_target_srv(&self) -> &TextureView {
-        &self.view_target_srv
-    }
-
-    pub(crate) fn hzb(&self) -> [&Texture; 2] {
-        [&self.hzb[0], &self.hzb[1]]
-    }
-
     pub(crate) fn clear_hzb_if_needed(&mut self, cmd_buffer: &mut CommandBuffer) {
         if !self.hzb_cleared {
             self.hzb_cleared = true;
@@ -383,6 +463,47 @@ impl Viewport {
     }
 }
 
+pub struct RenderViewportPrivateDataHandler {
+    device_context: DeviceContext,
+}
+
+impl SecondaryTableHandler<RenderViewport, RenderViewportPrivateData>
+    for RenderViewportPrivateDataHandler
+{
+    fn create(&self, render_viewport: &RenderViewport) -> RenderViewportPrivateData {
+        RenderViewportPrivateData::new(render_viewport, &self.device_context)
+    }
+
+    fn update(
+        &self,
+        render_viewport: &RenderViewport,
+        render_viewport_private_data: &mut RenderViewportPrivateData,
+    ) {
+        let viewport_extents = render_viewport.extents.to_3d(1);
+        if viewport_extents
+            != render_viewport_private_data
+                .view_target
+                .definition()
+                .extents
+        {
+            render_viewport_private_data.resize(&self.device_context, viewport_extents);
+        }
+    }
+
+    fn destroy(
+        &self,
+        _render_viewport: &RenderViewport,
+        _render_viewport_private_data: &mut RenderViewportPrivateData,
+    ) {
+    }
+}
+
+impl RenderViewportPrivateDataHandler {
+    pub fn new(device_context: DeviceContext) -> Self {
+        Self { device_context }
+    }
+}
+
 pub struct RenderSurface {
     id: RenderSurfaceId,
     window_id: Option<WindowId>,
@@ -427,14 +548,6 @@ impl RenderSurface {
             .map(|_| device_context.create_semaphore(SemaphoreDef::default()))
             .collect();
 
-        // TODO(jsg): Only one viewport for now.
-        let viewport_offset = Offset2D { x: 0, y: 0 };
-        let viewport_extents = Extents2D {
-            width: render_surface_extents.width(),
-            height: render_surface_extents.height(),
-        };
-        let viewports = vec![Viewport::new(renderer, viewport_offset, viewport_extents)];
-
         let final_target_desc = TextureDef {
             extents: Extents3D {
                 width: render_surface_extents.width(),
@@ -469,7 +582,7 @@ impl RenderSurface {
             picking_renderpass: Arc::new(RwLock::new(PickingRenderPass::new(device_context))),
             presenters: Vec::new(),
             presenting_status: RenderSurfacePresentingStatus::Presenting,
-            viewports,
+            viewports: vec![],
         }
     }
 
@@ -495,6 +608,10 @@ impl RenderSurface {
 
     pub fn viewports_mut(&mut self) -> &mut Vec<Viewport> {
         &mut self.viewports
+    }
+
+    pub fn add_viewport(&mut self, viewport: Viewport) {
+        self.viewports.push(viewport);
     }
 
     pub fn final_target(&self) -> &Texture {
@@ -540,13 +657,46 @@ impl RenderSurface {
             for presenter in &mut self.presenters {
                 presenter.resize(device_context, render_surface_extents);
             }
+
+            // TODO(jsg): is this what we want to do on surface resize? Resize all viewports proportionally to how much of the surface they used to cover?
+            for viewport in &mut self.viewports {
+                let viewport_relative_position = (
+                    viewport.offset.x as f32 / self.extents.width() as f32,
+                    viewport.offset.y as f32 / self.extents.height() as f32,
+                );
+
+                let viewport_relative_size = (
+                    viewport.extents.width as f32 / self.extents.width() as f32,
+                    viewport.extents.height as f32 / self.extents.height() as f32,
+                );
+
+                let viewport_new_offset = Offset2D {
+                    x: (extents.width as f32 * viewport_relative_position.0) as i32,
+                    y: (extents.height as f32 * viewport_relative_position.1) as i32,
+                };
+
+                let viewport_new_extents = Extents2D {
+                    width: (extents.width as f32 * viewport_relative_size.0) as u32,
+                    height: (extents.height as f32 * viewport_relative_size.1) as u32,
+                };
+
+                viewport.resize(viewport_new_offset, viewport_new_extents);
+            }
+
             self.extents = render_surface_extents;
         }
     }
 
-    pub fn composite_viewports(&self, cmd_buffer: &mut CommandBuffer) {
-        for viewport in &self.viewports {
-            let view_target = viewport.view_target();
+    pub fn composite_viewports(
+        &self,
+        render_viewports: &[&RenderViewport],
+        render_viewports_private_data: &[&RenderViewportPrivateData],
+        cmd_buffer: &mut CommandBuffer,
+    ) {
+        for (i, render_viewport_private_data) in render_viewports_private_data.iter().enumerate() {
+            let render_viewport = render_viewports[i];
+
+            let view_target = render_viewport_private_data.view_target();
 
             cmd_buffer.cmd_resource_barrier(
                 &[],
@@ -571,7 +721,7 @@ impl RenderSurface {
                     src_state: ResourceState::COPY_SRC,
                     dst_state: ResourceState::COPY_DST,
                     src_offset: Offset3D { x: 0, y: 0, z: 0 },
-                    dst_offset: viewport.offset().to_3d(0),
+                    dst_offset: render_viewport.offset().to_3d(0),
                     src_mip_level: 0,
                     dst_mip_level: 0,
                     src_array_slice: 0,
@@ -649,5 +799,162 @@ impl RenderSurface {
     pub fn resume(&mut self) -> &mut Self {
         self.presenting_status = RenderSurfacePresentingStatus::Presenting;
         self
+    }
+}
+
+// We need to manually find out which viewports have been added, modified or removed.
+struct ChangeLog<T> {
+    pub added: Vec<T>,
+    pub modified: Vec<T>,
+    pub removed: Vec<T>,
+}
+
+pub(crate) struct EcsToRenderViewport {
+    view: PrimaryTableView<RenderViewport>,
+    prev_viewport_ids: Vec<ViewportId>,
+    prev_viewports: Vec<Viewport>, // clones of the viewports -- do not try to modify
+}
+
+impl EcsToRenderViewport {
+    pub fn new(view: PrimaryTableView<RenderViewport>) -> Self {
+        Self {
+            view,
+            prev_viewport_ids: vec![],
+            prev_viewports: vec![],
+        }
+    }
+
+    pub fn alloc_id(&self) -> RenderObjectId {
+        self.view.allocate()
+    }
+
+    pub fn command_builder(&self) -> PrimaryTableCommandBuilder {
+        self.view.command_builder()
+    }
+
+    fn compare_viewports(
+        &mut self,
+        new_viewport_ids: &[ViewportId],
+        viewports: &[&mut Viewport],
+    ) -> ChangeLog<ViewportId> {
+        let mut added = new_viewport_ids.to_vec();
+        added.retain(|v_id| {
+            let mut found = false;
+            for v2_id in &self.prev_viewport_ids {
+                if v_id == v2_id {
+                    found = true;
+                    break;
+                }
+            }
+            !found
+        });
+
+        let mut removed = self.prev_viewport_ids.clone();
+        removed.retain(|v_id| {
+            let mut found = false;
+            for v2_id in new_viewport_ids {
+                if v_id == v2_id {
+                    found = true;
+                    break;
+                }
+            }
+            !found
+        });
+
+        let mut modified = new_viewport_ids.to_vec();
+        modified.retain(|v_id| {
+            let mut changed = false;
+            for v2_id in &self.prev_viewport_ids {
+                if v_id == v2_id {
+                    let v = viewports.iter().find(|v| v.id == *v_id).unwrap();
+                    let v2 = self
+                        .prev_viewports
+                        .iter()
+                        .find(|v2| v2.id == *v2_id)
+                        .unwrap();
+                    changed =
+                        v.offset != v2.offset || v.extents != v2.extents || v.camera != v2.camera;
+                    break;
+                }
+            }
+            changed
+        });
+
+        ChangeLog::<ViewportId> {
+            added,
+            modified,
+            removed,
+        }
+    }
+
+    fn update(&mut self, new_viewport_ids: &[ViewportId], viewports: &[&mut Viewport]) {
+        self.prev_viewport_ids = new_viewport_ids.to_vec();
+
+        let mut viewports_clone: Vec<Viewport> = vec![];
+        for viewport in viewports {
+            let viewport = (**viewport).clone();
+            viewports_clone.push(viewport);
+        }
+        self.prev_viewports = viewports_clone;
+    }
+}
+
+#[allow(clippy::needless_pass_by_value, clippy::type_complexity)]
+pub(crate) fn reflect_viewports(
+    mut render_surfaces: ResMut<'_, RenderSurfaces>,
+    mut ecs_to_render: ResMut<'_, EcsToRenderViewport>,
+) {
+    let mut render_commands = ecs_to_render.command_builder();
+
+    let mut all_viewports = vec![];
+    for render_surface in render_surfaces.iter_mut() {
+        let viewports = render_surface.viewports_mut();
+        for viewport in viewports {
+            all_viewports.push(viewport);
+        }
+    }
+
+    let viewport_ids: Vec<ViewportId> = all_viewports.iter().map(|v| v.id).collect();
+
+    let changes = ecs_to_render.compare_viewports(&viewport_ids, &all_viewports);
+
+    for v_id in changes.removed {
+        if let Some(viewport) = ecs_to_render.prev_viewports.iter().find(|v| v.id == v_id) {
+            render_commands.push(RemoveRenderObjectCommand {
+                render_object_id: viewport.render_object_id.unwrap(),
+            });
+        } else {
+            panic!();
+        }
+    }
+
+    ecs_to_render.update(&viewport_ids, &all_viewports);
+
+    for v_id in changes.added {
+        let render_object_id = ecs_to_render.alloc_id();
+        if let Some(viewport) = all_viewports.iter_mut().find(|v| v.id == v_id) {
+            viewport.render_object_id = Some(render_object_id);
+            render_commands.push(InsertRenderObjectCommand::<RenderViewport> {
+                render_object_id,
+                data: as_render_object(viewport),
+            });
+        } else {
+            panic!();
+        }
+    }
+
+    for v_id in changes.modified {
+        if let Some(viewport) = all_viewports.iter().find(|v| v.id == v_id) {
+            if let Some(render_object_id) = viewport.render_object_id {
+                render_commands.push(UpdateRenderObjectCommand::<RenderViewport> {
+                    render_object_id,
+                    data: as_render_object(viewport),
+                });
+            } else {
+                panic!();
+            }
+        } else {
+            panic!();
+        }
     }
 }

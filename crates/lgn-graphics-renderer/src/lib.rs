@@ -12,12 +12,14 @@ mod cgen {
     include!(concat!(env!("OUT_DIR"), "/rust/mod.rs"));
 }
 
-use crate::components::{tmp_debug_display_lights, EcsToRenderLight};
+use crate::components::{
+    reflect_viewports, tmp_debug_display_lights, EcsToRenderLight, EcsToRenderViewport,
+    RenderViewport, RenderViewportPrivateData, RenderViewportPrivateDataHandler,
+};
 use crate::core::{
-    DebugStuff, PrepareRenderContext, RenderCamera, RenderCommandQueuePool, RenderFeatures,
-    RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder, RenderLayers,
-    RenderObjects, VisibilityContext, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE,
-    RENDER_LAYER_PICKING,
+    RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
+    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects,
+    RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
 use crate::features::ModelFeature;
 use crate::lighting::{RenderLight, RenderLightTestData};
@@ -33,6 +35,7 @@ use cgen::*;
 
 pub mod labels;
 
+use components::Viewport;
 use gpu_renderer::GpuInstanceManager;
 
 pub use labels::*;
@@ -41,7 +44,8 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    ApiDef, DescriptorHeapDef, DeviceContext, Queue, QueueType, BACKBUFFER_COUNT,
+    ApiDef, DescriptorHeapDef, DeviceContext, Extents2D, Offset2D, Queue, QueueType,
+    BACKBUFFER_COUNT,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
@@ -243,6 +247,13 @@ impl Plugin for RendererPlugin {
         let render_objects = RenderObjectsBuilder::default()
             .add_primary_table::<RenderLight>()
             .add_secondary_table::<RenderLight, RenderLightTestData>()
+            .add_primary_table::<RenderViewport>()
+            .add_secondary_table_with_handler::<RenderViewport, RenderViewportPrivateData>(
+                Box::new(RenderViewportPrivateDataHandler::new(
+                    device_context.clone(),
+                )),
+            )
+            .add_primary_table::<RenderCamera>()
             .finalize();
 
         //
@@ -279,6 +290,10 @@ impl Plugin for RendererPlugin {
             render_objects.primary_table_view::<RenderLight>(),
         ))
         .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+        app.insert_resource(EcsToRenderViewport::new(
+            render_objects.primary_table_view::<RenderViewport>(),
+        ))
+        .add_system_to_stage(RenderStage::Prepare, reflect_viewports);
 
         //
         // Resources
@@ -421,7 +436,16 @@ fn on_window_created(
     for ev in event_window_created.iter() {
         let wnd = window_list.get(ev.id).unwrap();
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
-        let render_surface = RenderSurface::new(wnd.id(), &renderer, extents);
+        let mut render_surface = RenderSurface::new(wnd.id(), &renderer, extents);
+
+        // TODO(jsg): Only one viewport for now.
+        let viewport_offset = Offset2D { x: 0, y: 0 };
+        let viewport_extents = Extents2D {
+            width: extents.width(),
+            height: extents.height(),
+        };
+        let viewport = Viewport::new(viewport_offset, viewport_extents);
+        render_surface.add_viewport(viewport);
 
         render_surfaces.insert(render_surface);
 

@@ -107,7 +107,6 @@ impl Hdr2Rgb {
 
         cmd_buffer.begin();
 
-        render_surface.composite_viewports(cmd_buffer);
         let final_target = render_surface.final_target();
 
         assert_eq!(

@@ -30,6 +30,7 @@ pub struct RenderLight {
     pub picking_id: u32,
 }
 
+#[derive(Default)]
 pub struct RenderLightTestData {
     //foo: u32,
 }

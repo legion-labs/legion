@@ -167,7 +167,6 @@ impl RgbToYuvConverter {
 
         cmd_buffer.begin();
 
-        render_surface.composite_viewports(cmd_buffer);
         let final_target_srv = render_surface.final_target_srv();
 
         cmd_buffer.cmd_resource_barrier(&[], &[]);
