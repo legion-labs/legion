@@ -1,6 +1,7 @@
 import type { Observable } from "rxjs";
 
 import { Log } from "@lgn/apis/log";
+import { Runtime } from "@lgn/apis/runtime";
 import {
   EditorClientImpl,
   GrpcWebImpl as EditorImpl,
@@ -20,11 +21,7 @@ import {
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
 import { addAuthToClient } from "@lgn/web-client/src/lib/client";
-import { Runtime } from "@lgn/apis";
 import log from "@lgn/web-client/src/lib/log";
-
-import { blobToJson, jsonToBlob } from "../lib/api";
-import { addAuthToClient } from "../lib/client";
 
 import { formatProperties } from "../components/propertyGrid/lib/propertyGrid";
 import type {
@@ -33,7 +30,7 @@ import type {
 } from "../components/propertyGrid/lib/propertyGrid";
 
 const defaultGrpcEditorServerURL = "http://[::1]:50051";
-const defaultGrpcRuntimeServerURL = "http://[::1]:50052";
+// const defaultGrpcRuntimeServerURL = "http://[::1]:50052";
 const defaultRestEditorServerURL = "http://[::1]:5051";
 const defaultRestRuntimeServerURL = "http://[::1]:5052";
 
@@ -52,7 +49,7 @@ let runtimeLogStreamClient: Log.Client;
 
 export function initApiClient({
   grpcEditorServerUrl = defaultGrpcEditorServerURL,
-  grpcRuntimeServerUrl = defaultGrpcRuntimeServerURL,
+  // grpcRuntimeServerUrl = defaultGrpcRuntimeServerURL,
   restEditorServerUrl = defaultRestEditorServerURL,
   restRuntimeServerUrl = defaultRestRuntimeServerURL,
   accessTokenCookieName,
@@ -83,9 +80,10 @@ export function initApiClient({
     })
   );
 
-  runtimeClient = addAuthToClient(new Runtime.Client(
-    {baseUri: restEditorServerUrl,
-  }));
+  runtimeClient = addAuthToClient(
+    new Runtime.Client({ baseUri: restEditorServerUrl }),
+    accessTokenCookieName
+  );
 
   editorLogStreamClient = addAuthToClient(
     new Log.Client({ baseUri: restEditorServerUrl }),
@@ -418,7 +416,7 @@ export async function loadRuntimeManifest({
 }) {
   return runtimeClient.loadManifest({
     params: { "space-id": "0", "workspace-id": "0" },
-    body: jsonToBlob( manifestId )
+    body: new Blob([manifestId]),
   });
 }
 
@@ -429,12 +427,12 @@ export async function loadRuntimeRootAsset({
 }) {
   return runtimeClient.loadRootAsset({
     params: { "space-id": "0", "workspace-id": "0" },
-    body: jsonToBlob( rootAssetId )
+    body: new Blob([rootAssetId]),
   });
 }
 
 export async function pauseRuntime() {
   return runtimeClient.pause({
-    params: { "space-id": "0", "workspace-id": "0" }
+    params: { "space-id": "0", "workspace-id": "0" },
   });
 }

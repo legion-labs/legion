@@ -229,7 +229,7 @@ importers:
       postcss-load-config: 4.0.1_postcss@8.4.14
       prettier: 2.6.2
       prettier-plugin-svelte: 2.7.0_kkjbqzpydplecjtkxrgomroeru
-      puppeteer: 14.3.0
+      puppeteer: 14.4.0
       replace-in-file: 6.3.5
       rimraf: 3.0.2
       svelte: 3.48.0
@@ -383,7 +383,6 @@ importers:
     specifiers:
       '@improbable-eng/grpc-web': ^0.15.0
       '@lgn/vite-plugin-api-codegen': workspace:^0.1.0
-      '@lgn/vite-plugin-ts-proto': workspace:^0.1.0
       '@lgn/web-client': ^0.1.0
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.47
       '@swc/core': ^1.2.196
@@ -443,7 +442,6 @@ importers:
       uuid-random: 1.3.2
     devDependencies:
       '@lgn/vite-plugin-api-codegen': link:../vite-plugin-api-codegen
-      '@lgn/vite-plugin-ts-proto': link:../vite-plugin-ts-proto
       '@sveltejs/vite-plugin-svelte': 1.0.0-next.47_svelte@3.48.0+vite@2.9.9
       '@swc/core': 1.2.196
       '@testing-library/jest-dom': 5.16.4
@@ -4410,8 +4408,8 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /puppeteer/14.3.0:
-    resolution: {integrity: sha512-pDtg1+vyw1UPIhUjh2/VW1HUdQnaZJHfMacrJciR3AVm+PBiqdCEcFeFb3UJ/CDEQlHOClm3/WFa7IjY25zIGg==}
+  /puppeteer/14.4.0:
+    resolution: {integrity: sha512-hAXoJX7IAmnRBwf4VrowoRdrS8hqWZsGuQ1Dg5R0AwDK5juaxnNO/obySo9+ytyF7pp9/VsmIA9yFE1GLSouCQ==}
     engines: {node: '>=14.1.0'}
     requiresBuild: true
     dependencies:
