@@ -19,9 +19,7 @@ const plugins = [
     extensions: [".ts", ".svelte"],
   }),
   viteTsProto({
-    modules: [
-      { name: "@lgn/proto-editor", glob: "*.proto" },
-    ],
+    modules: [{ name: "@lgn/proto-editor", glob: "*.proto" }],
   }),
   viteApiCodegen({
     path: "../../crates/lgn-streamer/apis",
@@ -51,6 +49,7 @@ const plugins = [
       "../../crates/lgn-governance/apis/space.yaml": "Space",
       "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
     },
+    filename: "runtime",
   }),
   // viteWasmPack({
   //   crates: [

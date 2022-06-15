@@ -4,7 +4,6 @@ import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import viteApiCodegen from "@lgn/vite-plugin-api-codegen";
-import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
 process.env.VITE_CONSOLE_LOG_LEVEL = "debug";
 
