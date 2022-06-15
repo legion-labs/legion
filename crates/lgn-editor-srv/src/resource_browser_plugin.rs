@@ -33,12 +33,11 @@ use lgn_editor_proto::{
     },
 };
 
-use lgn_editor_yaml::resource_browser::responses::SearchResourcesResponse;
+use lgn_editor_yaml::resource_browser::server::SearchResourcesRequest;
+use lgn_editor_yaml::resource_browser::server::SearchResourcesResponse;
 use lgn_online::server::Result;
 
-use lgn_editor_yaml::resource_browser::{
-    requests, responses, Api, NextSearchToken, ResourceDescription,
-};
+use lgn_editor_yaml::resource_browser::{Api, NextSearchToken, ResourceDescription};
 
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_resource_registry::ResourceRegistrySettings;
@@ -354,9 +353,8 @@ impl Api for Server {
     /// Search for all resources
     async fn search_resources(
         &self,
-        _parts: http::request::Parts,
-        request: requests::SearchResourcesRequest,
-    ) -> Result<responses::SearchResourcesResponse> {
+        request: SearchResourcesRequest,
+    ) -> Result<SearchResourcesResponse> {
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
         let resources = ctx.project.resource_list().await;
@@ -392,9 +390,7 @@ impl Api for Server {
             resource_description: descriptors,
         };
 
-        Ok(responses::SearchResourcesResponse::Status204(
-            next_search_token,
-        ))
+        Ok(SearchResourcesResponse::Status204(next_search_token))
     }
 }
 

@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use lgn_data_transaction::TransactionManager;
-use lgn_editor_yaml::editor::{
-    requests::{self},
-    responses::{self, RedoTransactionResponse, UndoTransactionResponse},
-    Api,
+use lgn_editor_yaml::editor::server::{
+    RedoTransactionRequest, RedoTransactionResponse, UndoTransactionRequest,
+    UndoTransactionResponse,
 };
+use lgn_editor_yaml::editor::Api;
 use lgn_online::server::Result;
 use tokio::sync::Mutex;
 
@@ -26,9 +26,8 @@ impl Server {
 impl Api for Server {
     async fn undo_transaction(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::UndoTransactionRequest,
-    ) -> Result<responses::UndoTransactionResponse> {
+        _request: UndoTransactionRequest,
+    ) -> Result<UndoTransactionResponse> {
         let mut transaction_manager = self.transaction_manager.lock().await;
 
         match transaction_manager.undo_transaction().await {
@@ -39,9 +38,8 @@ impl Api for Server {
 
     async fn redo_transaction(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::RedoTransactionRequest,
-    ) -> Result<responses::RedoTransactionResponse> {
+        _request: RedoTransactionRequest,
+    ) -> Result<RedoTransactionResponse> {
         let mut transaction_manager = self.transaction_manager.lock().await;
 
         match transaction_manager.redo_transaction().await {
