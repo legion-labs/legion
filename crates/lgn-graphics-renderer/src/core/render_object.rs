@@ -303,16 +303,6 @@ impl RenderObjectSet {
     }
 }
 
-impl Drop for RenderObjectSet {
-    fn drop(&mut self) {
-        for slot_index in 0..self.len {
-            if self.allocated.contains(slot_index) {
-                self.storage.remove_value(slot_index);
-            }
-        }
-    }
-}
-
 //
 // RenderObjectsBuilder
 //
@@ -885,6 +875,29 @@ unsafe impl Send for RenderObjects {}
 #[allow(unsafe_code)]
 unsafe impl Sync for RenderObjects {}
 
+impl Drop for RenderObjects {
+    fn drop(&mut self) {
+        for secondary_table in self.secondary_tables.values() {
+            let mut secondary_table = secondary_table.borrow_mut();
+
+            let primary_table_key = secondary_table.primary_key;
+            let primary_table = &self.primary_tables.get(&primary_table_key).unwrap().0;
+            let primary_table_set = primary_table.set.borrow();
+
+            for allocated_index in primary_table_set.allocated.iter() {
+                secondary_table.storage.remove_value(allocated_index);
+            }
+        }
+
+        for (_, (primary_table, _)) in self.primary_tables.iter_mut() {
+            let mut primary_table_set = primary_table.set.borrow_mut();
+            let allocated = primary_table_set.allocated.clone();
+            for allocated_index in allocated.iter() {
+                primary_table_set.storage.remove_value(allocated_index);
+            }
+        }
+    }
+}
 //
 // AddRenderObjectCommand
 //
