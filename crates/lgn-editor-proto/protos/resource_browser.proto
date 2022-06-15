@@ -2,26 +2,12 @@ syntax = "proto3";
 package resource_browser;
 
 service ResourceBrowser {
-  rpc OpenScene(OpenSceneRequest) returns (OpenSceneResponse);
-
-  rpc CloseScene(CloseSceneRequest) returns (CloseSceneResponse);
-
   rpc GetActiveScenes(GetActiveScenesRequest) returns (GetActiveScenesResponse);
 
   rpc GetRuntimeSceneInfo(GetRuntimeSceneInfoRequest) returns (GetRuntimeSceneInfoResponse);
 
   rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
 }
-
-message OpenSceneRequest {
-  string id = 1;
-}
-message OpenSceneResponse {}
-
-message CloseSceneRequest {
-  string id = 1;
-}
-message CloseSceneResponse {}
 
 message GetActiveScenesRequest {}
 message GetActiveScenesResponse {

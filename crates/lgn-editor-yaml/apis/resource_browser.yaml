@@ -176,6 +176,29 @@ paths:
         "204":
           description: Ok.
 
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}/open:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/scene_id"
+    get:
+      description: Open a Scene
+      operationId: OpenScene
+      responses:
+        "204":
+          description: Ok.
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}/close:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/scene_id"
+    get:
+      description: Close a Scene
+      operationId: CloseScene
+      responses:
+        "204":
+          description: Ok.
+
 components:
   parameters:
     token:
@@ -185,9 +208,19 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/Token"
+    scene_id:
+      name: scene_id
+      in: path
+      description: The scene id
+      required: true
+      schema:
+        $ref: "#/components/schemas/SceneId"
   schemas:
     Token:
       description: Token to search for
+      type: string
+    SceneId:
+      description: Scene ID
       type: string
     NextSearchToken:
       description: The following search token

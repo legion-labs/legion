@@ -23,18 +23,17 @@ use lgn_ecs::prelude::*;
 use lgn_editor_proto::{
     property_inspector::UpdateResourcePropertiesRequest,
     resource_browser::{
-        Asset, CloseSceneRequest, CloseSceneResponse, GetActiveScenesRequest,
-        GetActiveScenesResponse, GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse,
-        ListAssetsRequest, ListAssetsResponse, OpenSceneRequest, OpenSceneResponse,
+        Asset, GetActiveScenesRequest, GetActiveScenesResponse, GetRuntimeSceneInfoRequest,
+        GetRuntimeSceneInfoResponse, ListAssetsRequest, ListAssetsResponse,
     },
 };
 
 use lgn_editor_yaml::resource_browser::server::{
-    CloneResourceRequest, CloneResourceResponse, CreateResourceRequest, CreateResourceResponse,
-    DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
-    GetResourceTypeNamesResponse, RenameResourceRequest, RenameResourceResponse,
-    ReparentResourceRequest, ReparentResourceResponse, SearchResourcesRequest,
-    SearchResourcesResponse,
+    CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
+    CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
+    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, OpenSceneRequest, OpenSceneResponse,
+    RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+    ReparentResourceResponse, SearchResourcesRequest, SearchResourcesResponse,
 };
 use lgn_online::server::{Error, Result};
 
@@ -350,6 +349,7 @@ fn create_gltf_resource(gltf_path: &Path) -> Result<PathBuf, Status> {
 pub(crate) struct Server {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
     pub(crate) uploads_folder: PathBuf,
+    pub(crate) scene_events_tx: crossbeam_channel::Sender<SceneMessage>,
 }
 
 #[async_trait]
@@ -773,20 +773,14 @@ impl Api for Server {
 
         Ok(ReparentResourceResponse::Status204)
     }
-}
 
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
     /// Open a Scene
-    async fn open_scene(
-        &self,
-        request: Request<OpenSceneRequest>,
-    ) -> Result<Response<OpenSceneResponse>, Status> {
-        let request = request.get_ref();
-        let mut resource_id = parse_resource_id(request.id.as_str())?;
+    async fn open_scene(&self, request: OpenSceneRequest) -> Result<OpenSceneResponse> {
+        let mut resource_id = parse_resource_id(request.scene_id.0.as_str())
+            .map_err(|err| Error::bad_request(format!("failed to parse scene_id: {}", err)))?;
 
         if resource_id.kind != sample_data::offline::Entity::TYPE {
-            return Err(Status::internal(format!(
+            return Err(Error::internal(format!(
                 "Expected Entity in OpenScene. Resource {} is a {}",
                 resource_id,
                 resource_id.kind.as_pretty()
@@ -798,7 +792,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         transaction_manager
             .add_scene(resource_id)
             .await
-            .map_err(|err| Status::internal(err.to_string()))?;
+            .map_err(|err| Error::internal(err.to_string()))?;
 
         // Get runtime entity id
         if resource_id.kind == sample_data::offline::Entity::TYPE {
@@ -813,16 +807,13 @@ impl ResourceBrowser for ResourceBrowserRPC {
             warn!("Failed to OpenScene for {}: {}", resource_id, err);
         }
 
-        Ok(Response::new(OpenSceneResponse {}))
+        Ok(OpenSceneResponse::Status204)
     }
 
     /// Close a Scene
-    async fn close_scene(
-        &self,
-        request: Request<CloseSceneRequest>,
-    ) -> Result<Response<CloseSceneResponse>, Status> {
-        let request = request.get_ref();
-        let mut resource_id = parse_resource_id(request.id.as_str())?;
+    async fn close_scene(&self, request: CloseSceneRequest) -> Result<CloseSceneResponse> {
+        let mut resource_id = parse_resource_id(request.scene_id.0.as_str())
+            .map_err(|err| Error::bad_request(format!("failed to parse scene_id: {}", err)))?;
 
         let mut transaction_manager = self.transaction_manager.lock().await;
         transaction_manager.remove_scene(resource_id).await;
@@ -840,9 +831,12 @@ impl ResourceBrowser for ResourceBrowserRPC {
         {
             warn!("Failed to Close Scene for {}: {}", resource_id, err);
         }
-        Ok(Response::new(CloseSceneResponse {}))
+        Ok(CloseSceneResponse::Status204)
     }
+}
 
+#[tonic::async_trait]
+impl ResourceBrowser for ResourceBrowserRPC {
     /// Get active scenes
     async fn get_active_scenes(
         &self,
