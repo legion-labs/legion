@@ -64,7 +64,6 @@ mod tests {
                 )
                 .await
                 .unwrap();
-            project.commit("add resource").await.unwrap();
             resource_id
         });
 
@@ -134,8 +133,6 @@ mod tests {
                 )
                 .await
                 .unwrap();
-
-            project.commit("added parent and child").await.unwrap();
 
             (
                 ResourcePathId::from(child_id),

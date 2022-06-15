@@ -98,10 +98,6 @@ mod tests {
             .save_resource(resource_id, &handle, &resources)
             .await
             .expect("failed to save resource");
-        project
-            .commit("change resource")
-            .await
-            .expect("failed to commit");
     }
 
     fn test_env() -> CompilationEnv {
@@ -141,10 +137,6 @@ mod tests {
                 )
                 .await
                 .unwrap();
-            project
-                .commit("add resource")
-                .await
-                .expect("failed to commit");
 
             (resource_id, resource_handle)
         };
@@ -200,10 +192,6 @@ mod tests {
                 .save_resource(resource_id, &resource_handle, &resources)
                 .await
                 .unwrap();
-            project
-                .commit("save resource")
-                .await
-                .expect("failed to commit");
         }
 
         // ..re-compile changed resource..
@@ -309,8 +297,6 @@ mod tests {
         )
         .await;
 
-        project.commit("setup project").await.unwrap();
-
         (project, [res_a, res_b, res_c, res_d, res_e])
     }
 
@@ -339,7 +325,7 @@ mod tests {
             let mut edit = resource_handle.instantiate(&resources).unwrap();
             edit.content = source_magic_value.clone();
             resource_handle.apply(edit, &resources);
-            let source_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     text_resource::TextResource::TYPE,
@@ -347,9 +333,7 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
-            project.commit("added resource").await.unwrap();
-            source_id
+                .unwrap()
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -569,7 +553,7 @@ mod tests {
             edit.text_list = magic_list.clone();
             resource_handle.apply(edit, &resources);
 
-            let source_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     multitext_resource::MultiTextResource::TYPE,
@@ -577,11 +561,7 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
-
-            project.commit("add resource").await.unwrap();
-
-            source_id
+                .unwrap()
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -713,8 +693,6 @@ mod tests {
                 .await
                 .expect("successful save");
 
-            project.commit("change text_1").await.unwrap();
-
             build.source_pull(&project).await.expect("pulled change");
         }
 
@@ -758,8 +736,6 @@ mod tests {
                 .save_resource(source_id, &handle, &resources)
                 .await
                 .expect("successful save");
-
-            project.commit("change text_0 and text_1").await.unwrap();
 
             build.source_pull(&project).await.expect("pulled change");
         }
@@ -856,7 +832,7 @@ mod tests {
                 vec![ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE)];
             parent_handle.apply(parent, &resources);
 
-            let parent_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPE,
@@ -864,11 +840,7 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
-
-            project.commit("create parent and child").await.unwrap();
-
-            parent_id
+                .unwrap()
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -961,7 +933,7 @@ mod tests {
                 .push(ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE));
             child_handle.apply(edit, &resources);
 
-            let parent_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPE,
@@ -969,11 +941,7 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap();
-
-            project.commit("add parent and child").await.unwrap();
-
-            parent_id
+                .unwrap()
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(

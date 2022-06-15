@@ -74,7 +74,7 @@ async fn build_device() {
         edit.content = initial_content.to_string();
         resource.apply(edit, &resources);
 
-        let source_id = project
+        project
             .add_resource(
                 ResourcePathName::new("test_source"),
                 refs_resource::TestResource::TYPE,
@@ -82,11 +82,7 @@ async fn build_device() {
                 &resources,
             )
             .await
-            .expect("adding the resource");
-
-        project.commit("add resource").await.expect("committing");
-
-        source_id
+            .expect("adding the resource")
     };
 
     let target_dir = {
@@ -197,8 +193,6 @@ async fn build_device() {
             .save_resource(source_id, resource, &resources)
             .await
             .expect("successful save");
-
-        project.commit("save resource").await.expect("committing");
     }
 
     registry.update();
@@ -270,7 +264,7 @@ async fn no_intermediate_resource() {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("new resource");
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     refs_resource::TestResource::TYPE,
@@ -278,11 +272,7 @@ async fn no_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource");
-
-            project.commit("add resource").await.expect("committing");
-
-            resource_id
+                .expect("adding the resource")
         };
 
         let mut build = DataBuildOptions::new(
@@ -391,7 +381,7 @@ async fn with_intermediate_resource() {
                 .new_resource(text_resource::TextResource::TYPE)
                 .expect("new resource");
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     text_resource::TextResource::TYPE,
@@ -399,11 +389,7 @@ async fn with_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource");
-
-            project.commit("add resource").await.expect("committing");
-
-            resource_id
+                .expect("adding the resource")
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
