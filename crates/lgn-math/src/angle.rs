@@ -1,3 +1,5 @@
+use std::ops::{Add, Sub};
+
 #[derive(Clone, Copy)]
 pub struct Angle(f32);
 
@@ -19,6 +21,26 @@ impl Angle {
     }
 }
 
+impl Add for Angle {
+    type Output = Self;
+    fn add(self, other: Angle) -> Self {
+        Angle::from_radians(self.0 + other.0)
+    }
+}
+
+impl Sub for Angle {
+    type Output = Self;
+    fn sub(self, other: Angle) -> Self {
+        Angle::from_radians(self.0 - other.0)
+    }
+}
+
+impl std::fmt::Debug for Angle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Angle").field("radians", &self.0).finish()
+    }
+}
+
 #[cfg(test)]
 mod test {
     #[test]
@@ -30,5 +52,9 @@ mod test {
 
         assert!((angle_45_rad.radians() - angle_45_deg.radians()).abs() < std::f32::EPSILON);
         assert!((angle_45_rad.degrees() - angle_45_deg.degrees()).abs() < std::f32::EPSILON);
+
+        let angle = Angle::from_degrees(25.0) + Angle::from_degrees(65.0);
+        assert!((angle.radians() - std::f32::consts::FRAC_PI_2).abs() < std::f32::EPSILON);
+        assert!((angle - Angle::from_degrees(90.0)).radians().abs() < std::f32::EPSILON);
     }
 }

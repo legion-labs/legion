@@ -271,6 +271,7 @@ pub struct TypeScriptOptions {
     pub with_package_json: bool,
     pub skip_format: bool,
     pub alias_mappings: TypeScriptAliasMappings,
+    pub filename: Option<String>,
 }
 
 #[derive(Debug)]
@@ -500,10 +501,12 @@ pub struct Api {
     pub paths: BTreeMap<Path, Vec<Route>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Type {
     Int32,
     Int64,
+    UInt32,
+    UInt64,
     String,
     Boolean,
     Float32,
@@ -518,6 +521,7 @@ pub enum Type {
     Enum { variants: Vec<String> },
     Struct { fields: BTreeMap<String, Field> },
     OneOf { types: Vec<Self> },
+    Box(Box<Self>),
 }
 
 impl Type {
@@ -558,7 +562,7 @@ impl Model {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Field {
     pub name: String,
     pub description: Option<String>,

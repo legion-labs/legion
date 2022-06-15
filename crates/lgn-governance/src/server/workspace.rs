@@ -4,7 +4,7 @@ use lgn_online::server::{ErrorExt, Result};
 
 use crate::api::{
     session,
-    workspace::{self, requests, responses, Api},
+    workspace::{self, server, Api},
 };
 
 use super::Server;
@@ -13,20 +13,18 @@ use super::Server;
 impl Api for Server {
     async fn list_current_user_workspaces(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::ListCurrentUserWorkspacesRequest,
-    ) -> Result<responses::ListCurrentUserWorkspacesResponse> {
-        Ok(responses::ListCurrentUserWorkspacesResponse::Status200(
+        _request: server::ListCurrentUserWorkspacesRequest,
+    ) -> Result<server::ListCurrentUserWorkspacesResponse> {
+        Ok(server::ListCurrentUserWorkspacesResponse::Status200(
             vec![].into(),
         ))
     }
 
     async fn get_current_user_workspace(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::GetCurrentUserWorkspaceRequest,
-    ) -> Result<responses::GetCurrentUserWorkspaceResponse> {
-        Ok(responses::GetCurrentUserWorkspaceResponse::Status200(
+        _request: server::GetCurrentUserWorkspaceRequest,
+    ) -> Result<server::GetCurrentUserWorkspaceResponse> {
+        Ok(server::GetCurrentUserWorkspaceResponse::Status200(
             workspace::Workspace {
                 id: "lol".to_string().into(),
                 created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
@@ -41,11 +39,10 @@ impl Api for Server {
 
     async fn get_current_user_workspace_session(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::GetCurrentUserWorkspaceSessionRequest,
-    ) -> Result<responses::GetCurrentUserWorkspaceSessionResponse> {
-        Ok(
-            responses::GetCurrentUserWorkspaceSessionResponse::Status200(session::Session {
+        _request: server::GetCurrentUserWorkspaceSessionRequest,
+    ) -> Result<server::GetCurrentUserWorkspaceSessionResponse> {
+        Ok(server::GetCurrentUserWorkspaceSessionResponse::Status200(
+            session::Session {
                 user_id: "lol".to_string().into(),
                 workspace_id: "lol".to_string().into(),
                 created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
@@ -54,17 +51,16 @@ impl Api for Server {
                 last_updated_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
                     .into_internal_server_error()?
                     .with_timezone(&Utc),
-            }),
-        )
+            },
+        ))
     }
 
     async fn create_current_user_workspace_session(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::CreateCurrentUserWorkspaceSessionRequest,
-    ) -> Result<responses::CreateCurrentUserWorkspaceSessionResponse> {
+        _request: server::CreateCurrentUserWorkspaceSessionRequest,
+    ) -> Result<server::CreateCurrentUserWorkspaceSessionResponse> {
         Ok(
-            responses::CreateCurrentUserWorkspaceSessionResponse::Status201(session::Session {
+            server::CreateCurrentUserWorkspaceSessionResponse::Status201(session::Session {
                 user_id: "lol".to_string().into(),
                 workspace_id: "lol".to_string().into(),
                 created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
@@ -79,11 +75,10 @@ impl Api for Server {
 
     async fn delete_current_user_workspace_session(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::DeleteCurrentUserWorkspaceSessionRequest,
-    ) -> Result<responses::DeleteCurrentUserWorkspaceSessionResponse> {
+        _request: server::DeleteCurrentUserWorkspaceSessionRequest,
+    ) -> Result<server::DeleteCurrentUserWorkspaceSessionResponse> {
         Ok(
-            responses::DeleteCurrentUserWorkspaceSessionResponse::Status200(session::Session {
+            server::DeleteCurrentUserWorkspaceSessionResponse::Status200(session::Session {
                 user_id: "lol".to_string().into(),
                 workspace_id: "lol".to_string().into(),
                 created_at: DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")

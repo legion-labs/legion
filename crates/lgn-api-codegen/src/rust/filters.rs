@@ -51,14 +51,16 @@ pub fn fmt_type(
     Ok(match type_ {
         Type::Int32 => "i32".to_string(),
         Type::Int64 => "i64".to_string(),
+        Type::UInt32 => "u32".to_string(),
+        Type::UInt64 => "u64".to_string(),
         Type::String => "String".to_string(),
         Type::Boolean => "bool".to_string(),
         Type::Float32 => "f32".to_string(),
         Type::Float64 => "f64".to_string(),
-        Type::Bytes | Type::Binary => "Bytes".to_string(),
+        Type::Bytes | Type::Binary => "lgn_online::codegen::Bytes".to_string(),
         Type::DateTime => "chrono::DateTime::<chrono::Utc>".to_string(),
         Type::Date => "chrono::Date::<chrono::Utc>".to_string(),
-        Type::Array(inner) => format!("Vec<{}>", fmt_type(inner, ctx, module_path).unwrap()),
+        Type::Array(inner) => format!("Vec<{}>", fmt_type(inner, ctx, module_path)?),
         Type::HashSet(inner) => format!(
             "std::collections::HashSet<{}>",
             fmt_type(inner, ctx, module_path).unwrap()
@@ -79,6 +81,7 @@ pub fn fmt_type(
                 "complex types cannot be formatted".to_string(),
             ))))
         }
+        Type::Box(inner) => format!("Box<{}>", fmt_type(inner, ctx, module_path)?),
     })
 }
 

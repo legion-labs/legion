@@ -31,15 +31,15 @@ where
         scopes: &[String],
         extra_params: &Option<HashMap<String, String>>,
     ) -> Result<ClientTokenSet> {
-        self.login(scopes, extra_params).await
+        self.as_ref().login(scopes, extra_params).await
     }
 
     async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
-        self.refresh_login(client_token_set).await
+        self.as_ref().refresh_login(client_token_set).await
     }
 
     async fn logout(&self) -> Result<()> {
-        self.logout().await
+        self.as_ref().logout().await
     }
 }
 
@@ -53,15 +53,15 @@ where
         scopes: &[String],
         extra_params: &Option<HashMap<String, String>>,
     ) -> Result<ClientTokenSet> {
-        self.login(scopes, extra_params).await
+        self.as_ref().login(scopes, extra_params).await
     }
 
     async fn refresh_login(&self, client_token_set: ClientTokenSet) -> Result<ClientTokenSet> {
-        self.refresh_login(client_token_set).await
+        self.as_ref().refresh_login(client_token_set).await
     }
 
     async fn logout(&self) -> Result<()> {
-        self.logout().await
+        self.as_ref().logout().await
     }
 }
 

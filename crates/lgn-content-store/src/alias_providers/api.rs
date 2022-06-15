@@ -4,9 +4,10 @@ use std::{
 };
 
 use crate::api::content_store::{
-    client::Client,
-    requests::{RegisterAliasRequest, ResolveAliasRequest},
-    responses::{RegisterAliasResponse, ResolveAliasResponse},
+    client::{
+        Client, RegisterAliasRequest, RegisterAliasResponse, ResolveAliasRequest,
+        ResolveAliasResponse,
+    },
     AliasKey,
 };
 use async_trait::async_trait;
@@ -52,11 +53,11 @@ where
         + Sync
         + Debug
         + 'static,
-    C::Error: Into<lgn_online::server::StdError>,
+    C::Error: Into<lgn_online::client::Error>,
     C::Future: Send,
     ResBody: hyper::body::HttpBody + Send,
     ResBody::Data: Send,
-    ResBody::Error: Into<lgn_online::server::StdError>,
+    ResBody::Error: std::error::Error,
 {
     async fn resolve_alias(&self, key: &[u8]) -> Result<Identifier> {
         async_span_scope!("ApiAliasProvider::resolve_alias");
@@ -74,9 +75,8 @@ where
             .map_err(|err| anyhow::anyhow!("request failed: {}", err))?;
 
         match resp {
-            ResolveAliasResponse::Status200(resp) => Ok(resp.id.try_into()?),
-            ResolveAliasResponse::Status404 => Err(Error::AliasNotFound(key.into())),
-            _ => Err(anyhow::anyhow!("unexpected response: {:?}", resp).into()),
+            ResolveAliasResponse::Status200 { body, .. } => Ok(body.id.try_into()?),
+            ResolveAliasResponse::Status404 { .. } => Err(Error::AliasNotFound(key.into())),
         }
     }
 }
@@ -90,11 +90,11 @@ where
         + Sync
         + Debug
         + 'static,
-    C::Error: Into<lgn_online::server::StdError>,
+    C::Error: Into<lgn_online::client::Error>,
     C::Future: Send,
     ResBody: hyper::body::HttpBody + Send,
     ResBody::Data: Send,
-    ResBody::Error: Into<lgn_online::server::StdError>,
+    ResBody::Error: std::error::Error,
 {
     async fn register_alias(&self, key: &[u8], id: &Identifier) -> Result<Identifier> {
         async_span_scope!("ApiAliasProvider::register_alias");
@@ -113,9 +113,8 @@ where
             .map_err(|err| anyhow::anyhow!("request failed: {}", err))?;
 
         match resp {
-            RegisterAliasResponse::Status201(resp) => Ok(resp.id.try_into()?),
-            RegisterAliasResponse::Status409 => Err(Error::AliasAlreadyExists(key.into())),
-            _ => Err(anyhow::anyhow!("unexpected response: {:?}", resp).into()),
+            RegisterAliasResponse::Status201 { body, .. } => Ok(body.id.try_into()?),
+            RegisterAliasResponse::Status409 { .. } => Err(Error::AliasAlreadyExists(key.into())),
         }
     }
 }

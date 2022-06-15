@@ -1,5 +1,3 @@
-use axum::response::IntoResponse;
-use http::StatusCode;
 use thiserror::Error;
 
 use crate::types::{PermissionId, SpaceId, UserId};
@@ -28,33 +26,24 @@ pub enum Error {
 impl From<Error> for lgn_online::server::Error {
     fn from(err: Error) -> Self {
         match err {
-            Error::Sqlx(err) => Self::Internal(err.to_string()),
-            Error::SqlxMigrate(err) => Self::Internal(err.to_string()),
-            Error::AwsCognito(err) => Self::Internal(err.to_string()),
-            Error::Types(err) => Self::Internal(err.to_string()),
-            Error::Unauthorized => Self::Custom(
-                (StatusCode::UNAUTHORIZED, "missing authentication info").into_response(),
-            ),
-            Error::PermissionDenied(user_id, permission_id, space_id) => Self::Custom(
-                match space_id {
-                    Some(space_id) => (
-                        StatusCode::FORBIDDEN,
-                        format!(
-                            "user `{}` does not have the `{}` permission in space `{}`",
-                            user_id, permission_id, space_id
-                        ),
+            Error::Sqlx(err) => Self::internal(err.to_string()),
+            Error::SqlxMigrate(err) => Self::internal(err.to_string()),
+            Error::AwsCognito(err) => Self::internal(err.to_string()),
+            Error::Types(err) => Self::internal(err.to_string()),
+            Error::Unauthorized => Self::unauthorized("missing authentication info"),
+            Error::PermissionDenied(user_id, permission_id, space_id) => {
+                Self::forbidden(match space_id {
+                    Some(space_id) => format!(
+                        "user `{}` does not have the `{}` permission in space `{}`",
+                        user_id, permission_id, space_id
                     ),
-                    None => (
-                        StatusCode::FORBIDDEN,
-                        format!(
-                            "user `{}` does not have the global `{}` permission",
-                            user_id, permission_id
-                        ),
+                    None => format!(
+                        "user `{}` does not have the global `{}` permission",
+                        user_id, permission_id
                     ),
-                }
-                .into_response(),
-            ),
-            Error::Configuration(msg) | Error::Unexpected(msg) => Self::Internal(msg),
+                })
+            }
+            Error::Configuration(msg) | Error::Unexpected(msg) => Self::internal(msg),
         }
     }
 }

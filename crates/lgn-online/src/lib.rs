@@ -13,4 +13,4 @@ mod config;
 mod errors;
 
 pub use config::{AuthenticationConfig, Config, OAuthClientConfig, SignatureValidationConfig};
-pub use errors::{Error, Result};
+pub use errors::{Error, Result, StdError};

@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::{BTreeMap, HashSet},
+    path::PathBuf,
+};
 
 use indexmap::IndexMap;
 
@@ -51,7 +54,7 @@ impl Visitor {
             for (name, schema_ref) in &openapi.components.as_ref().unwrap().schemas {
                 let schema =
                     openapi.resolve_reference_or(["components", "schemas", name], schema_ref)?;
-                self.register_model_from_schema(ModelOrigin::Schemas, &schema)?;
+                self.register_model_from_schema(ModelOrigin::Schemas, &schema, HashSet::new())?;
             }
         }
 
@@ -188,6 +191,7 @@ impl Visitor {
                                 },
                                 &request_body
                                     .as_element_ref(["content", media_type, "schema"], schema_ref),
+                                HashSet::new(),
                             )?,
                             None => {
                                 return Err(Error::Invalid(
@@ -257,6 +261,7 @@ impl Visitor {
                                 },
                                 &response
                                     .as_element_ref(["content", media_type, "schema"], schema_ref),
+                                HashSet::new(),
                             )?
                         }),
                         None => None,
@@ -290,6 +295,7 @@ impl Visitor {
                                 .resolve_type_ref(
                                     ModelOrigin::Schemas,
                                     &header.as_element_ref(["format"], schema_ref),
+                                    HashSet::new(),
                                 )?,
                             openapiv3::ParameterSchemaOrContent::Content(_) => {
                                 return Err(Error::Unsupported(
@@ -344,6 +350,7 @@ impl Visitor {
             openapiv3::ParameterSchemaOrContent::Schema(schema_ref) => self.resolve_type_ref(
                 ModelOrigin::Schemas,
                 &parameter_data.as_element_ref(["format", "schema"], schema_ref),
+                HashSet::new(),
             )?,
             openapiv3::ParameterSchemaOrContent::Content(_) => {
                 return Err(Error::Unsupported(
@@ -372,12 +379,13 @@ impl Visitor {
         &mut self,
         origin: ModelOrigin,
         schema: &OpenApiElement<'_, openapiv3::Schema>,
+        visited_refs: HashSet<OpenApiRef>,
     ) -> Result<Type> {
         let model = Model {
             ref_: schema.ref_().clone(),
             description: schema.schema_data.description.clone(),
             origin,
-            type_: self.resolve_type_from_schema(schema)?,
+            type_: self.resolve_type_from_schema(schema, visited_refs)?,
         };
 
         self.register_model(model)
@@ -412,6 +420,18 @@ impl Visitor {
             ));
         }
 
+        if let Some(minimum) = integer_type.minimum {
+            if minimum == 0 {
+                return Ok(match &integer_type.format {
+                    openapiv3::VariantOrUnknownOrEmpty::Item(format) => match format {
+                        openapiv3::IntegerFormat::Int32 => Type::UInt32,
+                        openapiv3::IntegerFormat::Int64 => Type::UInt64,
+                    },
+                    _ => Type::UInt32,
+                });
+            }
+        }
+
         Ok(match &integer_type.format {
             openapiv3::VariantOrUnknownOrEmpty::Item(format) => match format {
                 openapiv3::IntegerFormat::Int32 => Type::Int32,
@@ -441,6 +461,7 @@ impl Visitor {
     fn resolve_array(
         &mut self,
         array_type: &OpenApiElement<'_, openapiv3::ArrayType>,
+        visited_refs: HashSet<OpenApiRef>,
     ) -> Result<Type> {
         match &array_type.items {
             None => Err(Error::Invalid(
@@ -451,6 +472,7 @@ impl Visitor {
                 let type_ = self.resolve_type_ref(
                     ModelOrigin::Schemas,
                     &array_type.as_element_ref(["items"], &items.clone().unbox()),
+                    visited_refs,
                 )?;
 
                 if array_type.unique_items {
@@ -494,6 +516,7 @@ impl Visitor {
     fn resolve_object(
         &mut self,
         object_type: &OpenApiElement<'_, openapiv3::ObjectType>,
+        visited_refs: &HashSet<OpenApiRef>,
     ) -> Result<Type> {
         // New model is created on the fly for each object type.
         if object_type.additional_properties.is_some() {
@@ -513,6 +536,7 @@ impl Visitor {
                 },
                 &object_type
                     .as_element_ref(["properties", property_name], &property_ref.clone().unbox()),
+                visited_refs.clone(),
             )?;
             let property = Field {
                 name: property_name.to_string(),
@@ -530,6 +554,7 @@ impl Visitor {
     fn resolve_one_of(
         &mut self,
         one_of: &OpenApiElement<'_, Vec<openapiv3::ReferenceOr<openapiv3::Schema>>>,
+        visited_refs: &HashSet<OpenApiRef>,
     ) -> Result<Type> {
         Ok(Type::OneOf {
             types: one_of
@@ -539,6 +564,7 @@ impl Visitor {
                     self.resolve_type_ref(
                         ModelOrigin::Schemas,
                         &one_of.as_element_ref([&i.to_string()], schema_ref),
+                        visited_refs.clone(),
                     )
                 })
                 .collect::<Result<Vec<_>>>()?,
@@ -548,6 +574,7 @@ impl Visitor {
     fn resolve_type_from_schema(
         &mut self,
         schema: &OpenApiElement<'_, openapiv3::Schema>,
+        visited_refs: HashSet<OpenApiRef>,
     ) -> Result<Type> {
         match &schema.schema_kind {
             openapiv3::SchemaKind::Type(type_) => match type_ {
@@ -557,11 +584,15 @@ impl Visitor {
                 }
                 openapiv3::Type::Number(t) => Self::resolve_number(&schema.as_self_element_ref(t)),
                 openapiv3::Type::String(t) => Self::resolve_string(&schema.as_self_element_ref(t)),
-                openapiv3::Type::Array(t) => self.resolve_array(&schema.as_self_element_ref(t)),
-                openapiv3::Type::Object(t) => self.resolve_object(&schema.as_self_element_ref(t)),
+                openapiv3::Type::Array(t) => {
+                    self.resolve_array(&schema.as_self_element_ref(t), visited_refs)
+                }
+                openapiv3::Type::Object(t) => {
+                    self.resolve_object(&schema.as_self_element_ref(t), &visited_refs)
+                }
             },
             openapiv3::SchemaKind::OneOf { one_of } => {
-                self.resolve_one_of(&schema.as_element_ref(["one_of"], one_of))
+                self.resolve_one_of(&schema.as_element_ref(["one_of"], one_of), &visited_refs)
             }
             _ => Err(Error::Unsupported(
                 schema.ref_().clone(),
@@ -574,11 +605,12 @@ impl Visitor {
         &mut self,
         origin: ModelOrigin,
         schema: &OpenApiElement<'_, openapiv3::ReferenceOr<openapiv3::Schema>>,
+        mut visited_refs: HashSet<OpenApiRef>,
     ) -> Result<Type> {
         match schema.as_ref() {
             openapiv3::ReferenceOr::Item(inner_schema) => {
                 let schema = &schema.as_self_element_ref(inner_schema);
-                let type_ = self.resolve_type_from_schema(schema)?;
+                let type_ = self.resolve_type_from_schema(schema, visited_refs.clone())?;
 
                 // TODO: If we find another way to check for that, we may
                 // simplify the whole function using `resolve_reference_or`
@@ -588,7 +620,7 @@ impl Visitor {
                 // feels wrong. Perhaps we should inject the logic of that check
                 // into the visitor, depending on the language.
                 if type_.requires_model() {
-                    self.register_model_from_schema(origin, schema)
+                    self.register_model_from_schema(origin, schema, visited_refs)
                 } else {
                     Ok(type_)
                 }
@@ -598,8 +630,13 @@ impl Visitor {
 
                 let schema = schema
                     .loader()
-                    .resolve_reference::<openapiv3::Schema>(ref_)?;
-                self.register_model_from_schema(ModelOrigin::Schemas, &schema)
+                    .resolve_reference::<openapiv3::Schema>(ref_.clone())?;
+
+                if visited_refs.insert(ref_.clone()) {
+                    self.register_model_from_schema(ModelOrigin::Schemas, &schema, visited_refs)
+                } else {
+                    Ok(Type::Box(Box::new(Type::Named(ref_))))
+                }
             }
         }
     }
@@ -643,10 +680,42 @@ mod tests {
             "#,
             )
             .unwrap();
+        let uint = loader
+            .import_from_yaml(
+                "uint",
+                r#"
+            type: integer
+            minimum: 0
+            "#,
+            )
+            .unwrap();
+        let uint32 = loader
+            .import_from_yaml(
+                "uint32",
+                r#"
+            type: integer
+            format: int32
+            minimum: 0
+            "#,
+            )
+            .unwrap();
+        let uint64 = loader
+            .import_from_yaml(
+                "uint64",
+                r#"
+            type: integer
+            format: int64
+            minimum: 0
+            "#,
+            )
+            .unwrap();
 
         assert_eq!(Visitor::resolve_integer(&int).unwrap(), Type::Int32);
         assert_eq!(Visitor::resolve_integer(&int32).unwrap(), Type::Int32);
         assert_eq!(Visitor::resolve_integer(&int64).unwrap(), Type::Int64);
+        assert_eq!(Visitor::resolve_integer(&uint).unwrap(), Type::UInt32);
+        assert_eq!(Visitor::resolve_integer(&uint32).unwrap(), Type::UInt32);
+        assert_eq!(Visitor::resolve_integer(&uint64).unwrap(), Type::UInt64);
     }
 
     #[test]
@@ -842,7 +911,7 @@ mod tests {
         let mut v = Visitor::new(std::env::current_dir().unwrap());
 
         assert_eq!(
-            v.resolve_array(&array).unwrap(),
+            v.resolve_array(&array, HashSet::new()).unwrap(),
             Type::Array(Box::new(Type::String))
         );
     }
@@ -865,7 +934,7 @@ mod tests {
         let mut v = Visitor::new(std::env::current_dir().unwrap());
 
         assert_eq!(
-            v.resolve_array(&array).unwrap(),
+            v.resolve_array(&array, HashSet::new()).unwrap(),
             Type::HashSet(Box::new(Type::String))
         );
     }

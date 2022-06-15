@@ -23,8 +23,7 @@ lgn-mp4 = { path = "../lgn-mp4", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
-lgn-log-stream = { path = "../lgn-log-stream", version = "0.1.0" }
-lgn-log-stream-proto = { path = "../lgn-log-stream-proto", version = "0.1.0" }
+lgn-log = { path = "../lgn-log", version = "0.1.0" }
 lgn-resource-registry = { path = "../lgn-resource-registry", version = "0.1.0" }
 lgn-scene-plugin = { path = "../lgn-scene-plugin", version = "0.1.0" }
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }

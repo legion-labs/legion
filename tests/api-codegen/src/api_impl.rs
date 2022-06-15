@@ -2,13 +2,10 @@ use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 use crate::api::cars::{
     self,
-    requests::{
-        CreateCarRequest, DeleteCarRequest, GetCarRequest, GetCarsRequest, TestBinaryRequest,
-        TestHeadersRequest,
-    },
-    responses::{
-        CreateCarResponse, DeleteCarResponse, GetCarResponse, GetCarsResponse, TestBinaryResponse,
-        TestHeadersResponse, TestOneOfResponse,
+    server::{
+        CreateCarRequest, CreateCarResponse, DeleteCarRequest, DeleteCarResponse, GetCarRequest,
+        GetCarResponse, GetCarsRequest, GetCarsResponse, TestBinaryRequest, TestBinaryResponse,
+        TestHeadersRequest, TestHeadersResponse, TestOneOfRequest, TestOneOfResponse,
     },
     Api,
 };
@@ -24,12 +21,12 @@ pub struct ApiImpl {
 
 #[async_trait::async_trait]
 impl Api for ApiImpl {
-    async fn get_cars(
-        &self,
-        parts: http::request::Parts,
-        _request: GetCarsRequest,
-    ) -> Result<GetCarsResponse> {
-        let connect_info = parts.extensions.get::<ConnectInfo<SocketAddr>>().unwrap();
+    async fn get_cars(&self, request: GetCarsRequest) -> Result<GetCarsResponse> {
+        let connect_info = request
+            .parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .unwrap();
         println!("Request addr: {}", connect_info.0);
 
         Ok(GetCarsResponse::Status200(components::Cars(
@@ -37,11 +34,7 @@ impl Api for ApiImpl {
         )))
     }
 
-    async fn get_car(
-        &self,
-        _parts: http::request::Parts,
-        request: GetCarRequest,
-    ) -> Result<GetCarResponse> {
+    async fn get_car(&self, request: GetCarRequest) -> Result<GetCarResponse> {
         let car = self.cars.read().await.get(&request.car_id).cloned();
         match car {
             Some(car) => Ok(GetCarResponse::Status200(car)),
@@ -49,11 +42,7 @@ impl Api for ApiImpl {
         }
     }
 
-    async fn create_car(
-        &self,
-        _parts: http::request::Parts,
-        request: CreateCarRequest,
-    ) -> Result<CreateCarResponse> {
+    async fn create_car(&self, request: CreateCarRequest) -> Result<CreateCarResponse> {
         self.cars
             .write()
             .await
@@ -61,36 +50,26 @@ impl Api for ApiImpl {
         Ok(CreateCarResponse::Status201)
     }
 
-    async fn delete_car(
-        &self,
-        _parts: http::request::Parts,
-        request: DeleteCarRequest,
-    ) -> Result<DeleteCarResponse> {
+    async fn delete_car(&self, request: DeleteCarRequest) -> Result<DeleteCarResponse> {
         self.cars.write().await.remove(&request.car_id);
         Ok(DeleteCarResponse::Status200)
     }
 
-    async fn test_binary(
-        &self,
-        _parts: http::request::Parts,
-        request: TestBinaryRequest,
-    ) -> Result<TestBinaryResponse> {
+    async fn test_binary(&self, request: TestBinaryRequest) -> Result<TestBinaryResponse> {
         Ok(TestBinaryResponse::Status200(request.body))
     }
 
-    async fn test_one_of(&self, _parts: http::request::Parts) -> Result<TestOneOfResponse> {
+    async fn test_one_of(&self, _request: TestOneOfRequest) -> Result<TestOneOfResponse> {
         Ok(TestOneOfResponse::Status200(
-            cars::TestOneOf200Response::Option1(components::Pet {
-                name: Some("Cat".to_string()),
+            cars::TestOneOf200Response::Option3(components::Alpha {
+                beta: Some(components::Beta(vec![components::Gamma::Option1(
+                    Box::new(components::Alpha { beta: None }),
+                )])),
             }),
         ))
     }
 
-    async fn test_headers(
-        &self,
-        mut parts: http::request::Parts,
-        request: TestHeadersRequest,
-    ) -> Result<TestHeadersResponse> {
+    async fn test_headers(&self, mut request: TestHeadersRequest) -> Result<TestHeadersResponse> {
         let resp = TestHeadersResponse::Status200 {
             x_string_header: request.x_string_header.unwrap(),
             x_bytes_header: request.x_bytes_header.unwrap(),
@@ -100,10 +79,12 @@ impl Api for ApiImpl {
             },
         };
 
-        Ok(if let Some(value) = parts.headers.remove("x-dyn-header") {
-            resp.with_header("x-dyn-header", value)
-        } else {
-            resp
-        })
+        Ok(
+            if let Some(value) = request.parts.headers.remove("x-dyn-header") {
+                resp.with_header("x-dyn-header", value)
+            } else {
+                resp
+            },
+        )
     }
 }

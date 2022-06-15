@@ -128,7 +128,12 @@ impl Language {
         std::fs::create_dir_all(output_dir)?;
 
         let ctx = ctx.with_options(options);
-        let output_file = output_dir.join("index.ts");
+        let filename = ctx
+            .options
+            .filename
+            .as_ref()
+            .map_or_else(|| "index", String::as_str);
+        let output_file = output_dir.join(filename).with_extension("ts");
         let content = generate_index_content(&ctx)?;
 
         std::fs::write(output_file, content)?;
