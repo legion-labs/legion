@@ -74,7 +74,7 @@ async fn build_device() {
         edit.content = initial_content.to_string();
         resource.apply(edit, &resources);
 
-        let source_id = project
+        project
             .add_resource(
                 ResourcePathName::new("test_source"),
                 refs_resource::TestResource::TYPE,
@@ -82,11 +82,7 @@ async fn build_device() {
                 &resources,
             )
             .await
-            .expect("adding the resource");
-
-        project.commit("add resource").await.expect("committing");
-
-        source_id
+            .expect("adding the resource")
     };
 
     let target_dir = {
@@ -197,8 +193,6 @@ async fn build_device() {
             .save_resource(source_id, resource, &resources)
             .await
             .expect("successful save");
-
-        project.commit("save resource").await.expect("committing");
     }
 
     registry.update();
