@@ -26,6 +26,7 @@ use lgn_editor_yaml::resource_browser::{
     RenameResourceBody, ReparentResourceBody,
 };
 use lgn_math::Vec3;
+use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;
 
@@ -139,11 +140,14 @@ async fn test_resource_browser() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();
 
     {
+        let (scene_events_tx, _rx) = crossbeam_channel::unbounded::<SceneMessage>();
+
         let transaction_manager = setup_project(&project_dir).await;
 
         let resource_browser_server = crate::resource_browser_plugin::Server {
             transaction_manager: transaction_manager.clone(),
             uploads_folder: "".into(),
+            scene_events_tx,
         };
 
         // Read all Resource Type registered
