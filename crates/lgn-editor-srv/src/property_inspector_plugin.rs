@@ -26,7 +26,7 @@ use lgn_data_transaction::{
 use lgn_ecs::prelude::*;
 use lgn_editor_yaml::property_inspector::{
     server::{
-        DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
+        register_routes, DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
         GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
         GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
         ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
@@ -36,6 +36,7 @@ use lgn_editor_yaml::property_inspector::{
     ResourceProperty,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
+use lgn_grpc::SharedRouter;
 use lgn_online::server::{Error, Result};
 use lgn_scene_plugin::SceneMessage;
 use sample_data::offline::GltfLoader;
@@ -66,6 +67,21 @@ fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Status> {
 
 impl Plugin for PropertyInspectorPlugin {
     fn build(&self, app: &mut App) {
+        let transaction_manager = app
+            .world
+            .resource::<Arc<Mutex<TransactionManager>>>()
+            .clone();
+        let event_sender = app
+            .world
+            .resource::<broadcast::Sender<EditorEvent>>()
+            .clone();
+
+        let mut router = app.world.resource_mut::<SharedRouter>();
+
+        let server = Arc::new(Server::new(transaction_manager, event_sender));
+
+        router.register_routes(register_routes, server);
+
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
             Self::setup
@@ -735,6 +751,18 @@ impl PropertyCollector for ResourcePropertyCollector {
 pub(crate) struct Server {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
     pub(crate) event_sender: broadcast::Sender<EditorEvent>,
+}
+
+impl Server {
+    fn new(
+        transaction_manager: Arc<Mutex<TransactionManager>>,
+        event_sender: broadcast::Sender<EditorEvent>,
+    ) -> Self {
+        Self {
+            transaction_manager,
+            event_sender,
+        }
+    }
 }
 
 #[async_trait]
