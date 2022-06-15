@@ -70,11 +70,10 @@ components:
           type: string
         json_value:
           type: string
-        # recursive schemas don't work yet
-        # sub_properties:
-        #   type: array
-        #   items:
-        #     $ref: "#/components/schemas/ResourceProperties"
+        sub_properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceProperties"
         # additional properties don't work yet
         # attributes:
         #   type: object
@@ -83,7 +82,6 @@ components:
       required:
         - name
         - ptype
-        # - sub_properties
         # - attributes
     ResourceDescriptionProperties:
       description: A resources with all its properties

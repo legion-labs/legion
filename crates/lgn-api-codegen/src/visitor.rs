@@ -401,13 +401,9 @@ impl Visitor {
             .or_default()
             .models;
 
-        if let Some(old_model) = models.get(model.ref_.json_pointer()) {
-            if old_model != &model {
-                return Err(Error::ModelAlreadyRegistered(model));
-            }
+        if !models.contains_key(model.ref_.json_pointer()) {
+            models.insert(model.ref_.json_pointer().clone(), model);
         }
-
-        models.insert(model.ref_.json_pointer().clone(), model);
 
         Ok(type_)
     }
