@@ -103,7 +103,7 @@ use crate::{
     resources::MeshManager,
     RenderStage,
 };
-use lgn_app::{App, CoreStage, Events, Plugin};
+use lgn_app::{App, AppExit, CoreStage, Events, Plugin};
 
 use lgn_ecs::prelude::*;
 use lgn_math::{const_vec3, Vec3};
@@ -432,6 +432,8 @@ impl Plugin for RendererPlugin {
             .insert(Herd::new())
             .finalize();
 
+        app.add_system_to_stage(CoreStage::Last, on_app_exit);
+
         let renderer = Renderer::new(
             NUM_RENDER_FRAMES,
             render_command_queue_pool,
@@ -510,6 +512,19 @@ fn init_manipulation_manager(
     picking_manager: Res<'_, PickingManager>,
 ) {
     manipulation_manager.initialize(commands, picking_manager);
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn on_app_exit(mut app_exit: EventReader<'_, '_, AppExit>, renderer: Res<'_, Renderer>) {
+    // "Un dernier tour de crinque" to flush any remaining commands.
+    if app_exit.iter().last().is_some() {
+        renderer.graphics_queue().queue_mut().wait_for_queue_idle();
+        renderer.device_context().free_gpu_memory();
+
+        let mut render_objects = renderer.render_resources().get_mut::<RenderObjects>();
+        render_objects.sync_update();
+        render_objects.begin_frame();
+    }
 }
 
 #[allow(
