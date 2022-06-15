@@ -87,12 +87,14 @@ async fn main() -> anyhow::Result<()> {
         &repository_name,
         "main",
         Arc::clone(&source_control_content_provider),
+        Arc::clone(&data_content_provider),
     )
     .await
     .expect("failed to create a project");
 
     let mut asset_registry = AssetRegistryOptions::new().add_device_source_cas(
         Arc::clone(&source_control_content_provider),
+        Arc::clone(&data_content_provider),
         project.source_manifest_id(),
     );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
@@ -200,9 +202,9 @@ async fn create_offline_data(
         "/scene/ground.ent",
         vec![
             Box::new(Transform {
-                position: (0_f32, -1_f32, 0_f32).into(),
+                position: (0_f32, 0_f32, -1_f32).into(),
                 rotation: Quat::from_rotation_x(-0.01_f32),
-                scale: (12_f32, 0.1_f32, 12_f32).into(),
+                scale: (12_f32, 12_f32, 0.1_f32).into(),
             }),
             Box::new(Visual {
                 renderable_geometry: Some(cube_model_id.clone()),
@@ -225,7 +227,7 @@ async fn create_offline_data(
         "/scene/box-a.ent",
         vec![
             Box::new(Transform {
-                position: (-1_f32, 0.1_f32, 1_f32).into(),
+                position: (-1_f32, 1_f32, 0.1_f32).into(),
                 rotation: Quat::from_rotation_z(0.3_f32),
                 ..Transform::default()
             }),
@@ -250,7 +252,7 @@ async fn create_offline_data(
         "/scene/box-b.ent",
         vec![
             Box::new(Transform {
-                position: (-1_f32, 1.3_f32, 1.2_f32).into(),
+                position: (-1_f32, 1.2_f32, 1.3_f32).into(),
                 rotation: Quat::from_rotation_x(-0.2_f32),
                 ..Transform::default()
             }),
@@ -275,7 +277,7 @@ async fn create_offline_data(
         "/scene/box-c.ent",
         vec![
             Box::new(Transform {
-                position: (-0.5_f32, 0_f32, 0.5_f32).into(),
+                position: (-0.5_f32, 0.5_f32, 0_f32).into(),
                 rotation: Quat::from_rotation_y(1_f32),
                 ..Transform::default()
             }),
@@ -300,7 +302,7 @@ async fn create_offline_data(
         "/scene/ball-a.ent",
         vec![
             Box::new(Transform {
-                position: (0.2_f32, 2.3_f32, 0.5_f32).into(),
+                position: (0.2_f32, 0.5_f32, 2.3_f32).into(),
                 ..Transform::default()
             }),
             Box::new(Visual {
@@ -324,7 +326,7 @@ async fn create_offline_data(
         "/scene/pyramid.ent",
         vec![
             Box::new(Transform {
-                position: (0_f32, 0.6_f32, 0_f32).into(),
+                position: (0_f32, 0_f32, 0.6_f32).into(),
                 rotation: Quat::from_rotation_z(1_f32),
                 ..Transform::default()
             }),
@@ -337,9 +339,9 @@ async fn create_offline_data(
                 actor_type: RigidActorType::Dynamic,
                 vertices: vec![
                     Vec3::new(0.5, -0.5, -0.5),
-                    Vec3::new(0.5, -0.5, 0.5),
+                    Vec3::new(0.5, 0.5, -0.5),
                     Vec3::new(-0.5, -0.5, -0.5),
-                    Vec3::new(-0.5, -0.5, 0.5),
+                    Vec3::new(-0.5, 0.5, -0.5),
                     Vec3::new(0.0, 0.0, 0.0),
                 ],
                 ..PhysicsRigidConvexMesh::default()
@@ -356,13 +358,13 @@ async fn create_offline_data(
         "/scene/light.ent",
         vec![
             Box::new(Transform {
-                position: (0_f32, 10_f32, 0_f32).into(),
+                position: (0_f32, 0_f32, 10_f32).into(),
                 ..Transform::default()
             }),
             Box::new(Light {
                 light_type: LightType::Directional,
                 color: (0xFF, 0xFF, 0xEF).into(),
-                radiance: 12_f32,
+                radiance: 40_f32,
                 enabled: true,
                 ..Light::default()
             }),
@@ -378,11 +380,11 @@ async fn create_offline_data(
         "/scene.ent",
         vec![
             Box::new(CameraSetup {
-                eye: Vec3::new(0.0, 1.2, -3.0),
+                eye: Vec3::new(0.0, 3.0, 1.2),
                 look_at: Vec3::ZERO,
             }),
             Box::new(PhysicsSceneSettings {
-                gravity: Vec3::new(0.0, -1.0, 0.0),
+                gravity: Vec3::new(0.0, 0.0, -1.0),
             }),
         ],
         vec![

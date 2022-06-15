@@ -1,6 +1,9 @@
 pub mod encoding;
+mod errors;
 
 mod bytes;
+
+pub use errors::{Error, Result};
 
 pub use self::bytes::Bytes;
 

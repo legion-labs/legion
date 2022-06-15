@@ -2,12 +2,14 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("complex type `{0}` cannot be percent encoded")]
+    #[error("complex type `{0}` is not supported")]
     Unsupported(String),
     #[error("parsing error: {0}")]
     Parsing(String),
     #[error("utf8 error: {0}")]
     Utf8(#[from] std::str::Utf8Error),
+    #[error("invalid: {0}")]
+    Invalid(String),
     #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }

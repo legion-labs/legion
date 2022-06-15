@@ -1,11 +1,11 @@
 import getPkce from "oauth-pkce";
 
-import userInfo from "../orchestrators/userInfo";
-import accessToken from "../stores/accessToken";
-import type { NonEmptyArray } from "./array";
-import { getCookie, setCookie } from "./cookie";
-import { displayError } from "./errors";
-import log from "./log";
+import userInfo from "../../orchestrators/userInfo";
+import accessToken from "../../stores/accessToken";
+import type { NonEmptyArray } from "../array";
+import { getCookie, setCookie } from "../cookie";
+import { displayError } from "../errors";
+import log from "../log";
 
 // https://connect2id.com/products/server/docs/api/token#token-response
 export type ClientTokenSet = {

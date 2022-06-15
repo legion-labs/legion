@@ -298,8 +298,7 @@ impl SourceIndex {
 
             let mut content = SourceContent::new(version);
 
-            for (index_key, content_store_resource_id) in resources {
-                let resource_type_id: ResourceTypeAndId = index_key.into();
+            for (resource_type_id, content_store_resource_id) in resources {
                 let resource_hash = {
                     let mut hasher = DefaultHasher256::new();
                     content_store_resource_id.hash(&mut hasher);
@@ -328,10 +327,6 @@ impl SourceIndex {
     }
 
     pub async fn source_pull(&mut self, project: &Project, version: &str) -> Result<(), Error> {
-        if project.has_pending_changes().await {
-            return Err(Error::ProjectNotCommitted);
-        }
-
         let root_checksum = SourceChecksum(project.root_checksum());
 
         if let Some((current_checksum, _source_index)) = &self.current {
@@ -469,14 +464,15 @@ mod tests {
     #[tokio::test]
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
-        let source_control_content_provider = Arc::new(Provider::new_in_memory());
-
-        let mut project =
-            Project::new_with_remote_mock(&work_dir.path(), source_control_content_provider)
-                .await
-                .expect("failed to create a project");
-
         let data_provider = Arc::new(Provider::new_in_memory());
+
+        let mut project = Project::new_with_remote_mock(
+            &work_dir.path(),
+            Arc::new(Provider::new_in_memory()),
+            Arc::clone(&data_provider),
+        )
+        .await
+        .expect("failed to create a project");
 
         let version = "0.0.1";
 
@@ -519,11 +515,6 @@ mod tests {
                 .await
                 .expect("adding the resource");
 
-            project
-                .commit("add resource")
-                .await
-                .expect("successful commit");
-
             (resource_id, resource_handle)
         };
 
@@ -563,11 +554,6 @@ mod tests {
                 .await
                 .expect("successful save");
 
-            project
-                .commit("save resource")
-                .await
-                .expect("successful commit");
-
             source_index.source_pull(&project, version).await.unwrap();
             current_checksum(&source_index)
         };
@@ -585,10 +571,6 @@ mod tests {
                 .delete_resource(resource_id)
                 .await
                 .expect("removed resource");
-            project
-                .commit("delete resource")
-                .await
-                .expect("successful commit");
             source_index.source_pull(&project, version).await.unwrap();
             // TODO: fix test, main index id changes event though content returns to "empty"
             // assert_eq!(current_checksum(&source_index), first_entry_checksum);

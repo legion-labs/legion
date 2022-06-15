@@ -1,0 +1,19 @@
+{
+  "uat": {
+    "cognitoRegion": "ca-central-1",
+    "cognitoPoolId": "ca-central-1_4M4ix7FmM",
+    "clientId": "772bd7gv0m2bveb6vr8lobdfko"
+  },
+
+  "production": {
+    "cognitoRegion": "ca-central-1",
+    "cognitoPoolId": "ca-central-1_SkZKDimWz",
+    "clientId": "2kp01gr54dfc7qp1325hibcro3"
+  },
+
+  "local": {
+    "cognitoRegion": "ca-central-1",
+    "cognitoPoolId": "ca-central-1_SkZKDimWz",
+    "clientId": "2kp01gr54dfc7qp1325hibcro3"
+  }
+}

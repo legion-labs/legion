@@ -19,12 +19,13 @@ use lgn_ecs::{
 };
 use lgn_editor_proto::source_control::{
     source_control_server::{SourceControl, SourceControlServer},
-    upload_raw_file_response, CancelUploadRawFileRequest, CancelUploadRawFileResponse,
-    CommitStagedResourcesRequest, CommitStagedResourcesResponse, GetStagedResourcesRequest,
-    GetStagedResourcesResponse, InitUploadRawFileRequest, InitUploadRawFileResponse,
-    PullAssetRequest, PullAssetResponse, RevertResourcesRequest, RevertResourcesResponse,
-    SyncLatestResponse, SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest,
-    UploadRawFileResponse, UploadStatus,
+    staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
+    CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
+    GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
+    InitUploadRawFileResponse, PullAssetRequest, PullAssetResponse, ResourceDescription,
+    RevertResourcesRequest, RevertResourcesResponse, StagedResource, SyncLatestResponse,
+    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
+    UploadStatus,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
@@ -626,43 +627,37 @@ impl SourceControl for SourceControlRPC {
         &self,
         _request: Request<GetStagedResourcesRequest>,
     ) -> Result<Response<GetStagedResourcesResponse>, Status> {
-        /*
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
         let changes = ctx
             .project
-            .get_staged_changes()
+            .get_pending_changes()
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
 
         let mut entries = Vec::<StagedResource>::new();
-        for (resource_id, change_type) in changes {
-            let (path, kind) = if let ChangeType::Delete = change_type {
+        for (resource_type_id, change_type) in changes {
+            let path = if let ChangeType::Delete = change_type {
                 ctx.project
-                    .deleted_resource_info(resource_id)
+                    .deleted_resource_info(resource_type_id)
                     .await
-                    .unwrap_or_else(|_err| ("(error)".into(), sample_data::offline::Entity::TYPE))
+                    .unwrap_or_else(|_err| "(error)".into())
             } else {
-                let path = ctx
-                    .project
-                    .resource_name(resource_id)
-                    .unwrap_or_else(|_err| "(error)".into());
-
-                let kind = ctx
-                    .project
-                    .resource_type(resource_id)
-                    .unwrap_or(sample_data::offline::Entity::TYPE); // Hack, figure out a way to get type for deleted resources
-                (path, kind)
+                ctx.project
+                    .resource_name(resource_type_id)
+                    .await
+                    .unwrap_or_else(|_err| "(error)".into())
             };
 
             entries.push(StagedResource {
                 info: Some(ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&ResourceTypeAndId {
-                        kind,
-                        id: resource_id,
-                    }),
+                    id: ResourceTypeAndId::to_string(&resource_type_id),
                     path: path.to_string(),
-                    r#type: kind.as_pretty().trim_start_matches("offline_").into(),
+                    r#type: resource_type_id
+                        .kind
+                        .as_pretty()
+                        .trim_start_matches("offline_")
+                        .into(),
                     version: 1,
                 }),
                 change_type: match change_type {
@@ -674,8 +669,6 @@ impl SourceControl for SourceControlRPC {
         }
 
         Ok(Response::new(GetStagedResourcesResponse { entries }))
-        */
-        Err(Status::internal("todo".to_string()))
     }
 
     async fn revert_resources(

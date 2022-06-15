@@ -6,10 +6,9 @@ use std::{
     task::Poll,
 };
 
-use crate::api::content_store::{
-    client::Client,
-    requests::{GetContentWriterRequest, ReadContentRequest, WriteContentRequest},
-    responses::{GetContentWriterResponse, ReadContentResponse, WriteContentResponse},
+use crate::api::content_store::client::{
+    Client, GetContentWriterRequest, GetContentWriterResponse, ReadContentRequest,
+    ReadContentResponse, WriteContentRequest, WriteContentResponse,
 };
 use async_trait::async_trait;
 use futures::{stream::TryStreamExt, Future, FutureExt};
@@ -69,11 +68,11 @@ where
         + Sync
         + Debug
         + 'static,
-    C::Error: Into<lgn_online::server::StdError>,
+    C::Error: Into<lgn_online::client::Error>,
     C::Future: Send,
     ResBody: hyper::body::HttpBody + Send,
     ResBody::Data: Send,
-    ResBody::Error: Into<lgn_online::server::StdError>,
+    ResBody::Error: std::error::Error,
 {
     async fn get_content_reader(&self, id: &HashRef) -> Result<ContentAsyncReadWithOriginAndSize> {
         async_span_scope!("ApiContentProvider::get_content_reader");
@@ -93,7 +92,7 @@ where
             .map_err(|err| anyhow::anyhow!("request failed: {}", err))?;
 
         match resp {
-            ReadContentResponse::Status200 { body, x_origin } => {
+            ReadContentResponse::Status200 { body, x_origin, .. } => {
                 debug!(
                     "ApiContentProvider::get_content_reader({}) -> content data is available",
                     id
@@ -104,7 +103,9 @@ where
 
                 Ok(std::io::Cursor::new(body.0).with_origin_and_size(origin, id.data_size()))
             }
-            ReadContentResponse::Status204 { x_origin, x_url } => {
+            ReadContentResponse::Status204 {
+                x_origin, x_url, ..
+            } => {
                 debug!(
                     "ApiContentProvider::get_content_reader({}) -> content URL is available",
                     id
@@ -115,7 +116,7 @@ where
 
                 Ok(HttpDownloader::new(x_url.0).with_origin_and_size(origin, id.data_size()))
             }
-            ReadContentResponse::Status404 => {
+            ReadContentResponse::Status404 { .. } => {
                 warn!(
                     "ApiContentProvider::get_content_reader({}) -> content does not exist",
                     id
@@ -123,7 +124,6 @@ where
 
                 Err(Error::HashRefNotFound(id.clone()))
             }
-            _ => Err(anyhow::anyhow!("unexpected response: {:?}", resp).into()),
         }
     }
 }
@@ -238,11 +238,11 @@ where
         + Sync
         + Debug
         + 'static,
-    C::Error: Into<lgn_online::server::StdError>,
+    C::Error: Into<lgn_online::client::Error>,
     C::Future: Send,
     ResBody: hyper::body::HttpBody + Send,
     ResBody::Data: Send,
-    ResBody::Error: Into<lgn_online::server::StdError>,
+    ResBody::Error: std::error::Error,
 {
     async fn get_content_writer(&self, id: &HashRef) -> Result<ContentAsyncWrite> {
         async_span_scope!("ApiContentProvider::get_content_writer");
@@ -260,21 +260,22 @@ where
             .map_err(|err| anyhow::anyhow!("request failed: {}", err))?;
 
         match resp {
-            GetContentWriterResponse::Status200(resp) => {
-                if resp.url.0.is_empty() {
+            GetContentWriterResponse::Status200 { body, .. } => {
+                if body.url.0.is_empty() {
                     Ok(Box::pin(OpenApiUploader::new(OpenApiUploaderImpl {
                         client: Arc::clone(&self.client),
                         space_id: self.space_id.clone(),
                         data_space: self.data_space.clone(),
                     })))
                 } else {
-                    let uploader = HttpUploader::new(id.clone(), resp.url.0, self.buf_size);
+                    let uploader = HttpUploader::new(id.clone(), body.url.0, self.buf_size);
 
                     Ok(Box::pin(uploader))
                 }
             }
-            GetContentWriterResponse::Status409 => Err(Error::HashRefAlreadyExists(id.clone())),
-            _ => Err(anyhow::anyhow!("unexpected response: {:?}", resp).into()),
+            GetContentWriterResponse::Status409 { .. } => {
+                Err(Error::HashRefAlreadyExists(id.clone()))
+            }
         }
     }
 }
@@ -297,11 +298,11 @@ where
         + Sync
         + Debug
         + 'static,
-    C::Error: Into<lgn_online::server::StdError>,
+    C::Error: Into<lgn_online::client::Error>,
     C::Future: Send,
     ResBody: hyper::body::HttpBody + Send,
     ResBody::Data: Send,
-    ResBody::Error: Into<lgn_online::server::StdError>,
+    ResBody::Error: std::error::Error,
 {
     async fn upload(self, data: Vec<u8>) -> Result<()> {
         async_span_scope!("ApiContentProvider::upload");
@@ -320,8 +321,8 @@ where
             .map_err(|err| anyhow::anyhow!("request failed: {}", err))?;
 
         match resp {
-            WriteContentResponse::Status200(resp) => {
-                let res_id: HashRef = resp.id.try_into()?;
+            WriteContentResponse::Status200 { body, .. } => {
+                let res_id: HashRef = body.id.try_into()?;
 
                 if res_id != id {
                     Err(Error::UnexpectedHashRef {
@@ -332,7 +333,6 @@ where
                     Ok(())
                 }
             }
-            _ => Err(anyhow::anyhow!("unexpected response: {:?}", resp).into()),
         }
     }
 }

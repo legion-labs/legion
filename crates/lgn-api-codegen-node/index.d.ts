@@ -18,6 +18,8 @@ export interface GenerateOption {
   skipFormat?: boolean
   /** Aliases for external API references */
   aliasMappings?: Record<string, string>
+  /** Filename without prefix nor extension */
+  filename?: string
 }
 /**
  * Generate api clients.

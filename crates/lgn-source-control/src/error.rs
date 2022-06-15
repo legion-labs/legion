@@ -1,12 +1,9 @@
 use std::{collections::BTreeSet, path::PathBuf};
 
-use lgn_content_store::{
-    indexing::{IndexKey, TreeIdentifier},
-    Identifier,
-};
+use lgn_content_store::{indexing::IndexKey, Identifier};
 use thiserror::Error;
 
-use crate::{Branch, CanonicalPath, Change, CommitId, Lock, RepositoryName};
+use crate::{Branch, CanonicalPath, CommitId, Lock, RepositoryName};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -41,9 +38,7 @@ pub enum Error {
     #[error("cannot commit on stale branch `{}` who is now at `{}`", .branch.name, .branch.head)]
     StaleBranch { branch: Branch },
     #[error("cannot sync with conflicting changes")]
-    ConflictingChanges {
-        conflicting_changes: BTreeSet<Change>,
-    },
+    ConflictingChanges,
     #[error("lock `{lock}` already exists")]
     LockAlreadyExists { lock: Lock },
     #[error("empty commits are not allowed: have you forgotten to stage your changes?")]
@@ -74,13 +69,6 @@ pub enum Error {
     InvalidChangeType,
     #[error("invalid tree node")]
     InvalidTreeNode,
-    #[error("path `{path}` is not included")]
-    PathNotIncluded { path: CanonicalPath },
-    #[error("path `{path}` is excluded by `{exclusion_rule}`")]
-    PathExcluded {
-        path: CanonicalPath,
-        exclusion_rule: CanonicalPath,
-    },
     #[error("online error: {0}")]
     Online(#[from] lgn_online::Error),
     #[error("configuration error: {0}")]
@@ -99,8 +87,6 @@ pub enum Error {
     ResourceNotFoundById { id: IndexKey },
     #[error("resource  `{path}` not found in content store")]
     ResourceNotFoundByPath { path: String },
-    #[error("corrupted resource index  `{tree_id}` in content store")]
-    CorruptedIndex { tree_id: TreeIdentifier },
     #[error("path `{path}` is not valid for storage in content store")]
     InvalidPath { path: String },
 }
@@ -149,25 +135,8 @@ impl Error {
         Self::StaleBranch { branch }
     }
 
-    pub fn conflicting_changes(conflicting_changes: BTreeSet<Change>) -> Self {
-        Self::ConflictingChanges {
-            conflicting_changes,
-        }
-    }
-
     pub fn lock_already_exists(lock: Lock) -> Self {
         Self::LockAlreadyExists { lock }
-    }
-
-    pub fn path_not_included(path: CanonicalPath) -> Self {
-        Self::PathNotIncluded { path }
-    }
-
-    pub fn path_excluded(path: CanonicalPath, exclusion_rule: CanonicalPath) -> Self {
-        Self::PathExcluded {
-            path,
-            exclusion_rule,
-        }
     }
 
     pub fn unchanged_files_marked_for_edition(paths: BTreeSet<CanonicalPath>) -> Self {
@@ -211,6 +180,18 @@ impl Error {
             path: path.into(),
             reason: reason.into(),
         }
+    }
+
+    pub fn resource_not_found_by_id(id: impl Into<IndexKey>) -> Self {
+        Self::ResourceNotFoundById { id: id.into() }
+    }
+
+    pub fn resource_not_found_by_path(path: impl Into<String>) -> Self {
+        Self::ResourceNotFoundByPath { path: path.into() }
+    }
+
+    pub fn invalid_path(path: impl Into<String>) -> Self {
+        Self::InvalidPath { path: path.into() }
     }
 
     /// Prepends the parent node name to the canonical path of some

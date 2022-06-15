@@ -4,14 +4,12 @@
 //! service, which controls the main aspects of the Legion Engine ecosystem.
 
 pub mod api;
-mod client;
+pub mod client;
+mod config;
 mod errors;
-mod server;
+pub mod server;
 pub mod types;
 
 pub use api::register_routes;
-pub use client::Client;
+pub use config::*;
 pub use errors::{Error, Result};
-pub use server::{
-    PermissionsCache, Server, ServerAwsCognitoOptions, ServerMySqlOptions, ServerOptions,
-};

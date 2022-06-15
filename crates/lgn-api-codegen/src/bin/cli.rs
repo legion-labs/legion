@@ -17,6 +17,7 @@ pub enum Language {
     Rust,
     #[clap(name = "typescript")]
     TypeScript,
+    Python,
 }
 
 #[derive(Parser, Debug)]
@@ -65,6 +66,12 @@ struct Args {
     with_package_json: bool,
     #[clap(long, help = "Skip code format (only works when targeting TypeScript)")]
     skip_format: bool,
+    #[clap(
+        long,
+        help = "Specify filename without prefix nor extension (only works when targeting TypeScript)",
+        default_value = "index"
+    )]
+    typescript_filename: String,
 }
 
 #[allow(clippy::let_unit_value)]
@@ -83,7 +90,9 @@ fn main() -> anyhow::Result<()> {
             prettier_config_path: args.prettier_config_path.map(PathBuf::from),
             skip_format: args.skip_format,
             with_package_json: args.with_package_json,
+            filename: Some(args.typescript_filename),
         }),
+        Language::Python => InternalLanguage::Python,
     };
 
     generate(internal_language, args.root, &args.openapis, &args.out_dir)?;

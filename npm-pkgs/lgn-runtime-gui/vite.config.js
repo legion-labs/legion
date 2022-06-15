@@ -4,7 +4,6 @@ import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import viteApiCodegen from "@lgn/vite-plugin-api-codegen";
-import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
 process.env.VITE_CONSOLE_LOG_LEVEL = "debug";
 
@@ -27,12 +26,17 @@ export default defineConfig(() => {
           "../../crates/lgn-governance/apis/space.yaml": "Space",
           "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
         },
+        filename: "streaming",
       }),
-      viteTsProto({
-        modules: [
-          { name: "@lgn/proto-log-stream", glob: "*.proto" },
-          { name: "@lgn/proto-runtime", glob: "*.proto" },
-        ],
+      viteApiCodegen({
+        path: "../../crates/lgn-log/apis",
+        apiNames: ["log"],
+        withPackageJson: true,
+        aliasMappings: {
+          "../../crates/lgn-governance/apis/space.yaml": "Space",
+          "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
+        },
+        filename: "log",
       }),
     ],
     test: {

@@ -1,3 +1,9 @@
+mod authenticated_client;
+mod errors;
+
+pub use authenticated_client::AuthenticatedClient;
+pub use errors::{Error, Result};
+
 use std::task::{Context, Poll};
 
 use http::{Request, Response};

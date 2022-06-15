@@ -80,13 +80,38 @@ export abstract class ApiClient {
 // Models and API from: cars
 
 export namespace Cars {
+  export type TestAdditionalPropertiesCompositeAny200Response = {
+    [key: string]: any;
+  } & {
+    name?: string;
+    time?: number;
+  };
+
+  export type TestAdditionalPropertiesCompositeSchema200Response = {
+    [key: string]: Components.Pet;
+  } & {
+    name?: string;
+    time?: number;
+  };
+
   export type TestOneOf200Response =
     | { type: "option1"; value: Components.Pet }
-    | { type: "option2"; value: Components.Car };
+    | { type: "option2"; value: Components.Car }
+    | { type: "option3"; value: Components.Alpha };
 
   // ---------- Api ----------
 
   export interface Api {
+    testAdditionalPropertiesAny(): Promise<TestAdditionalPropertiesAnyResponse>;
+
+    testAdditionalPropertiesCompositeAny(): Promise<TestAdditionalPropertiesCompositeAnyResponse>;
+
+    testAdditionalPropertiesCompositeSchema(): Promise<TestAdditionalPropertiesCompositeSchemaResponse>;
+
+    testAdditionalPropertiesSchema(): Promise<TestAdditionalPropertiesSchemaResponse>;
+
+    testAdditionalPropertiesString(): Promise<TestAdditionalPropertiesStringResponse>;
+
     testHeaders(input: {
       headers: {
         "x-string-header"?: string;
@@ -159,6 +184,79 @@ export namespace Cars {
       this.#baseUri = baseUri;
     }
 
+    async testAdditionalPropertiesAny(): Promise<TestAdditionalPropertiesAnyResponse> {
+      const url = new URL(`${this.#baseUri}/test-additional-properties-any`);
+
+      const headers = new Headers();
+
+      const response = await this.performRequest(url.toString(), {
+        method: "GET",
+        headers,
+      });
+
+      return TestAdditionalPropertiesAnyResponse.fromResponse(response);
+    }
+
+    async testAdditionalPropertiesCompositeAny(): Promise<TestAdditionalPropertiesCompositeAnyResponse> {
+      const url = new URL(
+        `${this.#baseUri}/test-additional-properties-composite-any`
+      );
+
+      const headers = new Headers();
+
+      const response = await this.performRequest(url.toString(), {
+        method: "GET",
+        headers,
+      });
+
+      return TestAdditionalPropertiesCompositeAnyResponse.fromResponse(
+        response
+      );
+    }
+
+    async testAdditionalPropertiesCompositeSchema(): Promise<TestAdditionalPropertiesCompositeSchemaResponse> {
+      const url = new URL(
+        `${this.#baseUri}/test-additional-properties-composite-schema`
+      );
+
+      const headers = new Headers();
+
+      const response = await this.performRequest(url.toString(), {
+        method: "GET",
+        headers,
+      });
+
+      return TestAdditionalPropertiesCompositeSchemaResponse.fromResponse(
+        response
+      );
+    }
+
+    async testAdditionalPropertiesSchema(): Promise<TestAdditionalPropertiesSchemaResponse> {
+      const url = new URL(`${this.#baseUri}/test-additional-properties-schema`);
+
+      const headers = new Headers();
+
+      const response = await this.performRequest(url.toString(), {
+        method: "GET",
+        headers,
+      });
+
+      return TestAdditionalPropertiesSchemaResponse.fromResponse(response);
+    }
+
+    async testAdditionalPropertiesString(): Promise<TestAdditionalPropertiesStringResponse> {
+      const url = new URL(`${this.#baseUri}/test-additional-properties-string`);
+
+      const headers = new Headers();
+
+      const response = await this.performRequest(url.toString(), {
+        method: "GET",
+        headers,
+      });
+
+      return TestAdditionalPropertiesStringResponse.fromResponse(response);
+    }
+
     async testHeaders(input: {
       headers: {
         "x-string-header"?: string;
@@ -170,7 +268,7 @@ export namespace Cars {
 
       const headers = new Headers();
 
-      if ("x-string-header" in input.headers) {
+      if (input.headers["x-string-header"]) {
         headers.set(
           "x-string-header",
 
@@ -178,7 +276,7 @@ export namespace Cars {
         );
       }
 
-      if ("x-bytes-header" in input.headers) {
+      if (input.headers["x-bytes-header"]) {
         headers.set(
           "x-bytes-header",
 
@@ -186,7 +284,7 @@ export namespace Cars {
         );
       }
 
-      if ("x-int-header" in input.headers) {
+      if (input.headers["x-int-header"]) {
         headers.set(
           "x-int-header",
 
@@ -269,7 +367,7 @@ export namespace Cars {
 
       headers.set("Content-Type", "application/json");
 
-      if ("span-id" in input.headers) {
+      if (input.headers["span-id"]) {
         headers.set(
           "span-id",
 
@@ -367,6 +465,121 @@ export namespace Cars {
   };
 
   // ---------- Responses ----------
+
+  export type TestAdditionalPropertiesAnyResponse = {
+    /** Ok. */ type: "200";
+    value: Record<string, any>;
+  };
+
+  export const TestAdditionalPropertiesAnyResponse = {
+    async fromResponse(
+      response: Response
+    ): Promise<TestAdditionalPropertiesAnyResponse> {
+      switch (response.status) {
+        case 200: {
+          return {
+            type: "200",
+            value: await response.json(),
+          };
+        }
+        default: {
+          throw new InternalError(`unexpected status code: ${response.status}`);
+        }
+      }
+    },
+  };
+
+  export type TestAdditionalPropertiesCompositeAnyResponse = {
+    /** Ok. */ type: "200";
+    value: TestAdditionalPropertiesCompositeAny200Response;
+  };
+
+  export const TestAdditionalPropertiesCompositeAnyResponse = {
+    async fromResponse(
+      response: Response
+    ): Promise<TestAdditionalPropertiesCompositeAnyResponse> {
+      switch (response.status) {
+        case 200: {
+          return {
+            type: "200",
+            value: await response.json(),
+          };
+        }
+        default: {
+          throw new InternalError(`unexpected status code: ${response.status}`);
+        }
+      }
+    },
+  };
+
+  export type TestAdditionalPropertiesCompositeSchemaResponse = {
+    /** Ok. */ type: "200";
+    value: TestAdditionalPropertiesCompositeSchema200Response;
+  };
+
+  export const TestAdditionalPropertiesCompositeSchemaResponse = {
+    async fromResponse(
+      response: Response
+    ): Promise<TestAdditionalPropertiesCompositeSchemaResponse> {
+      switch (response.status) {
+        case 200: {
+          return {
+            type: "200",
+            value: await response.json(),
+          };
+        }
+        default: {
+          throw new InternalError(`unexpected status code: ${response.status}`);
+        }
+      }
+    },
+  };
+
+  export type TestAdditionalPropertiesSchemaResponse = {
+    /** Ok. */ type: "200";
+    value: Record<string, Components.Pet>;
+  };
+
+  export const TestAdditionalPropertiesSchemaResponse = {
+    async fromResponse(
+      response: Response
+    ): Promise<TestAdditionalPropertiesSchemaResponse> {
+      switch (response.status) {
+        case 200: {
+          return {
+            type: "200",
+            value: await response.json(),
+          };
+        }
+        default: {
+          throw new InternalError(`unexpected status code: ${response.status}`);
+        }
+      }
+    },
+  };
+
+  export type TestAdditionalPropertiesStringResponse = {
+    /** Ok. */ type: "200";
+    value: Record<string, string>;
+  };
+
+  export const TestAdditionalPropertiesStringResponse = {
+    async fromResponse(
+      response: Response
+    ): Promise<TestAdditionalPropertiesStringResponse> {
+      switch (response.status) {
+        case 200: {
+          return {
+            type: "200",
+            value: await response.json(),
+          };
+        }
+        default: {
+          throw new InternalError(`unexpected status code: ${response.status}`);
+        }
+      }
+    },
+  };
 
   export type TestHeadersResponse = {
     /** Ok. */ type: "200";
@@ -519,7 +732,14 @@ export namespace Cars {
 // Models and API from: components
 
 export namespace Components {
+  export type Alpha = {
+    beta?: Beta;
+  };
+
+  export type Beta = Gamma[];
+
   export type Car = {
+    code: number;
     color: CarColor;
     extra?: Blob;
     id: bigint;
@@ -531,6 +751,8 @@ export namespace Components {
   export type CarColor = "red" | "blue" | "yellow";
 
   export type Cars = Car[];
+
+  export type Gamma = { type: "option1"; value: Alpha };
 
   export type Pet = {
     name?: string;

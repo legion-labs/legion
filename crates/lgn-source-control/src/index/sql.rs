@@ -8,14 +8,13 @@ use sqlx::{
 use std::collections::{BTreeSet, VecDeque};
 
 use crate::{
-    Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error, Index, ListBranchesQuery,
-    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result,
+    Branch, CanonicalPath, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
+    ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result,
 };
 
 const TABLE_REPOSITORIES: &str = "repositories";
 const TABLE_COMMITS: &str = "commits";
 const TABLE_COMMIT_PARENTS: &str = "commit_parents";
-const TABLE_COMMIT_CHANGES: &str = "commit_changes";
 const TABLE_BRANCHES: &str = "branches";
 const TABLE_LOCKS: &str = "locks";
 
@@ -186,18 +185,13 @@ impl SqlRepositoryIndex {
         "CREATE TABLE `{}` (repository_id INTEGER NOT NULL, id INTEGER NOT NULL {} PRIMARY KEY, owner VARCHAR(255), message TEXT, main_index_tree_id CHAR(64), path_index_tree_id CHAR(64), date_time_utc VARCHAR(255), FOREIGN KEY (repository_id) REFERENCES `{}`(id) ON DELETE CASCADE);
          CREATE INDEX repository_id_commit on `{}`(repository_id, id);
          CREATE TABLE `{}` (id INTEGER NOT NULL, parent_id INTEGER NOT NULL);
-         CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_cs_id VARCHAR(255), new_cs_id VARCHAR(255), FOREIGN KEY (commit_id) REFERENCES `{}`(id) ON DELETE CASCADE);
-         CREATE INDEX commit_changes_commit on `{}`(commit_id);",
+         CREATE INDEX commit_parents_id on `{}`(id);",
          TABLE_COMMITS,
          driver.auto_increment(),
          TABLE_REPOSITORIES,
          TABLE_COMMITS,
          TABLE_COMMIT_PARENTS,
          TABLE_COMMIT_PARENTS,
-         TABLE_COMMIT_CHANGES,
-         TABLE_COMMITS,
-         TABLE_COMMIT_CHANGES
         );
 
         conn.execute(sql)
@@ -390,7 +384,6 @@ impl SqlIndex {
         let initial_commit = Commit::new_unique_now(
             whoami::username(),
             String::from("initial commit"),
-            BTreeSet::new(),
             empty_tree_id.clone(),
             empty_tree_id,
             BTreeSet::new(),
@@ -614,57 +607,6 @@ impl SqlIndex {
                 *depth -= 1;
             }
 
-            let changes = sqlx::query(&format!(
-                "SELECT canonical_path, old_cs_id, new_cs_id
-             FROM `{}`
-             WHERE commit_id=?;",
-                TABLE_COMMIT_CHANGES,
-            ))
-            .bind(&commit_id)
-            .fetch_all(&mut *transaction)
-            .await
-            .map_other_err(format!(
-                "failed to fetch commit changes for commit `{}`",
-                &commit_id
-            ))?
-            .into_iter()
-            .filter_map(|row| {
-                if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
-                    let old_cs_id: String = row.get("old_cs_id");
-
-                    let old_cs_id = if !old_cs_id.is_empty() {
-                        match old_cs_id
-                            .parse()
-                            .map_other_err("failed to parse the old chunk id")
-                        {
-                            Ok(id) => Some(id),
-                            Err(err) => return Some(Err(err)),
-                        }
-                    } else {
-                        None
-                    };
-
-                    let new_cs_id: String = row.get("new_cs_id");
-                    let new_cs_id = if !new_cs_id.is_empty() {
-                        match new_cs_id
-                            .parse()
-                            .map_other_err("failed to parse the new chunk id")
-                        {
-                            Ok(id) => Some(id),
-                            Err(err) => return Some(Err(err)),
-                        }
-                    } else {
-                        None
-                    };
-
-                    ChangeType::new(old_cs_id, new_cs_id)
-                        .map(|change_type| Ok(Change::new(canonical_path, change_type)))
-                } else {
-                    None
-                }
-            })
-            .collect::<Result<BTreeSet<_>>>()?;
-
             let parents: BTreeSet<i64> = sqlx::query(&format!(
                 "SELECT parent_id
                 FROM `{}`
@@ -719,7 +661,6 @@ impl SqlIndex {
                             ),
                             row.get("owner"),
                             row.get("message"),
-                            changes,
                             row.get::<String, &str>("main_index_tree_id")
                                 .parse()
                                 .unwrap(),
@@ -788,35 +729,6 @@ impl SqlIndex {
             .map_other_err(format!(
                 "failed to insert the commit parent `{}` for commit `{}`",
                 parent_id, &commit.id
-            ))?;
-        }
-
-        for change in &commit.changes {
-            sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-                TABLE_COMMIT_CHANGES
-            ))
-            .bind(commit_id)
-            .bind(change.canonical_path().to_string())
-            .bind(
-                change
-                    .change_type()
-                    .old_id()
-                    .map(std::string::ToString::to_string)
-                    .unwrap_or_default(),
-            )
-            .bind(
-                change
-                    .change_type()
-                    .new_id()
-                    .map(std::string::ToString::to_string)
-                    .unwrap_or_default(),
-            )
-            .execute(&mut *transaction)
-            .await
-            .map_other_err(format!(
-                "failed to insert the commit change for commit `{}`",
-                &commit.id
             ))?;
         }
 
