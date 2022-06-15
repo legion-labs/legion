@@ -2,34 +2,14 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
+use std::{
+    collections::{BTreeMap, HashMap},
+    str::FromStr,
+    sync::Arc,
+};
+
 use async_trait::async_trait;
 use lgn_app::prelude::*;
-use lgn_editor_proto::property_inspector::{
-    property_inspector_server::{PropertyInspector, PropertyInspectorServer},
-    DeleteArrayElementRequest, DeleteArrayElementResponse, GetResourcePropertiesRequest,
-    GetResourcePropertiesResponse, InsertNewArrayElementRequest, InsertNewArrayElementResponse,
-    ReorderArrayElementRequest, ReorderArrayElementResponse, ResourceDescription, ResourceProperty,
-    ResourcePropertyUpdate, UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
-    UpdateSelectionRequest, UpdateSelectionResponse,
-};
-use lgn_editor_yaml::property_inspector::{
-    server::{
-        DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
-        GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
-        GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
-        ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
-        UpdatePropertiesResponse, UpdatePropertySelectionRequest, UpdatePropertySelectionResponse,
-    },
-    Api,
-};
-use lgn_graphics_data::offline_gltf::GltfFile;
-use lgn_online::server::{Error, Result};
-use lgn_scene_plugin::SceneMessage;
-use sample_data::offline::GltfLoader;
-use std::{collections::HashMap, str::FromStr, sync::Arc};
-use tokio::sync::{broadcast, Mutex};
-use tonic::{codegen::http::status, Request, Response, Status};
-
 use lgn_data_model::{
     collector::{collect_properties, ItemInfo, PropertyCollector},
     json_utils::{self, get_property_as_json_string},
@@ -44,6 +24,22 @@ use lgn_data_transaction::{
     ArrayOperation, LockContext, Transaction, TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
+use lgn_editor_yaml::property_inspector::{
+    server::{
+        DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
+        GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
+        GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
+        ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
+        UpdatePropertiesResponse, UpdatePropertySelectionRequest, UpdatePropertySelectionResponse,
+    },
+    Api, ResourceDescription, ResourceDescriptionProperties, ResourceProperty,
+};
+use lgn_graphics_data::offline_gltf::GltfFile;
+use lgn_online::server::{Error, Result};
+use lgn_scene_plugin::SceneMessage;
+use sample_data::offline::GltfLoader;
+use tokio::sync::{broadcast, Mutex};
+use tonic::{codegen::http::status, Request, Response, Status};
 
 use crate::grpc::EditorEvent;
 
@@ -86,7 +82,7 @@ impl PropertyInspectorPlugin {
         event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
         mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
-        let property_inspector = PropertyInspectorServer::new(PropertyInspectorRPC {
+        let property_inspector = lgn_editor_proto::property_inspector::property_inspector_server::PropertyInspectorServer::new(PropertyInspectorRPC {
             transaction_manager: transaction_manager.clone(),
             event_sender: event_sender.clone(),
         });
@@ -94,9 +90,9 @@ impl PropertyInspectorPlugin {
     }
 }
 
-struct ResourcePropertyCollector;
-impl PropertyCollector for ResourcePropertyCollector {
-    type Item = ResourceProperty;
+struct GrpcResourcePropertyCollector;
+impl PropertyCollector for GrpcResourcePropertyCollector {
+    type Item = lgn_editor_proto::property_inspector::ResourceProperty;
     fn new_item(item_info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError> {
         let mut name = item_info
             .field_descriptor
@@ -149,22 +145,26 @@ impl PropertyCollector for ResourcePropertyCollector {
                 sub_properties = enum_descriptor
                     .variants
                     .iter()
-                    .map(|enum_variant| ResourceProperty {
-                        name: enum_variant.variant_name.clone(),
-                        ptype: "_enumvariant_".into(),
-                        json_value: Some(serde_json::json!(enum_variant.variant_name).to_string()),
-                        sub_properties: Vec::new(),
-                        attributes: enum_variant.attributes.as_ref().map_or(
-                            std::collections::HashMap::default(),
-                            std::clone::Clone::clone,
-                        ),
-                    })
+                    .map(
+                        |enum_variant| lgn_editor_proto::property_inspector::ResourceProperty {
+                            name: enum_variant.variant_name.clone(),
+                            ptype: "_enumvariant_".into(),
+                            json_value: Some(
+                                serde_json::json!(enum_variant.variant_name).to_string(),
+                            ),
+                            sub_properties: Vec::new(),
+                            attributes: enum_variant.attributes.as_ref().map_or(
+                                std::collections::HashMap::default(),
+                                std::clone::Clone::clone,
+                            ),
+                        },
+                    )
                     .collect();
             }
             _ => {}
         }
 
-        Ok(ResourceProperty {
+        Ok(lgn_editor_proto::property_inspector::ResourceProperty {
             name,
             ptype,
             json_value,
@@ -189,7 +189,7 @@ impl PropertyCollector for ResourcePropertyCollector {
                 sub_properties.push(Self::Item {
                     name: group_name.into(),
                     ptype: "_group_".into(),
-                    ..ResourceProperty::default()
+                    ..lgn_editor_proto::property_inspector::ResourceProperty::default()
                 });
                 sub_properties.last_mut().unwrap()
             };
@@ -203,11 +203,14 @@ impl PropertyCollector for ResourcePropertyCollector {
 }
 
 #[tonic::async_trait]
-impl PropertyInspector for PropertyInspectorRPC {
+impl lgn_editor_proto::property_inspector::property_inspector_server::PropertyInspector
+    for PropertyInspectorRPC
+{
     async fn update_selection(
         &self,
-        request: Request<UpdateSelectionRequest>,
-    ) -> Result<Response<UpdateSelectionResponse>, Status> {
+        request: Request<lgn_editor_proto::property_inspector::UpdateSelectionRequest>,
+    ) -> Result<Response<lgn_editor_proto::property_inspector::UpdateSelectionResponse>, Status>
+    {
         let request = request.into_inner();
 
         let resource_id = request
@@ -231,13 +234,16 @@ impl PropertyInspector for PropertyInspectorRPC {
                 .await
                 .map_err(|err| Status::internal(err.to_string()))?;
         };
-        Ok(Response::new(UpdateSelectionResponse {}))
+        Ok(Response::new(
+            lgn_editor_proto::property_inspector::UpdateSelectionResponse {},
+        ))
     }
 
     async fn get_resource_properties(
         &self,
-        request: Request<GetResourcePropertiesRequest>,
-    ) -> Result<Response<GetResourcePropertiesResponse>, Status> {
+        request: Request<lgn_editor_proto::property_inspector::GetResourcePropertiesRequest>,
+    ) -> Result<Response<lgn_editor_proto::property_inspector::GetResourcePropertiesResponse>, Status>
+    {
         let request = request.into_inner();
         let resource_id = parse_resource_id(request.id.as_str())?;
 
@@ -252,11 +258,11 @@ impl PropertyInspector for PropertyInspectorRPC {
             .asset_registry
             .get_resource_reflection(resource_id.kind, &handle)
         {
-            collect_properties::<ResourcePropertyCollector>(reflection.as_reflect())
+            collect_properties::<GrpcResourcePropertyCollector>(reflection.as_reflect())
                 .map_err(|err| Status::internal(err.to_string()))?
         } else {
             // Return a default bag if there's no reflection
-            ResourceProperty {
+            lgn_editor_proto::property_inspector::ResourceProperty {
                 name: "".into(),
                 ptype: resource_id.kind.as_pretty().into(),
                 json_value: None,
@@ -268,7 +274,7 @@ impl PropertyInspector for PropertyInspectorRPC {
         // Add Id property
         property_bag.sub_properties.insert(
             0,
-            ResourceProperty {
+            lgn_editor_proto::property_inspector::ResourceProperty {
                 name: "id".into(),
                 ptype: "String".into(),
                 sub_properties: Vec::new(),
@@ -281,30 +287,35 @@ impl PropertyInspector for PropertyInspectorRPC {
             },
         );
 
-        Ok(Response::new(GetResourcePropertiesResponse {
-            description: Some(ResourceDescription {
-                id: ResourceTypeAndId::to_string(&resource_id),
-                path: ctx
-                    .project
-                    .resource_name(resource_id)
-                    .await
-                    .unwrap_or_else(|_err| "".into())
-                    .to_string(),
-                version: 1,
-                r#type: resource_id
-                    .kind
-                    .as_pretty()
-                    .trim_start_matches("offline_")
-                    .into(),
-            }),
-            properties: vec![property_bag],
-        }))
+        Ok(Response::new(
+            lgn_editor_proto::property_inspector::GetResourcePropertiesResponse {
+                description: Some(lgn_editor_proto::property_inspector::ResourceDescription {
+                    id: ResourceTypeAndId::to_string(&resource_id),
+                    path: ctx
+                        .project
+                        .resource_name(resource_id)
+                        .await
+                        .unwrap_or_else(|_err| "".into())
+                        .to_string(),
+                    version: 1,
+                    r#type: resource_id
+                        .kind
+                        .as_pretty()
+                        .trim_start_matches("offline_")
+                        .into(),
+                }),
+                properties: vec![property_bag],
+            },
+        ))
     }
 
     async fn update_resource_properties(
         &self,
-        request: Request<UpdateResourcePropertiesRequest>,
-    ) -> Result<Response<UpdateResourcePropertiesResponse>, Status> {
+        request: Request<lgn_editor_proto::property_inspector::UpdateResourcePropertiesRequest>,
+    ) -> Result<
+        Response<lgn_editor_proto::property_inspector::UpdateResourcePropertiesResponse>,
+        Status,
+    > {
         let mut request = request.into_inner();
         let resource_id = parse_resource_id(request.id.as_str())?;
 
@@ -419,13 +430,16 @@ impl PropertyInspector for PropertyInspectorRPC {
                 .await
                 .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
         }
-        Ok(Response::new(UpdateResourcePropertiesResponse {}))
+        Ok(Response::new(
+            lgn_editor_proto::property_inspector::UpdateResourcePropertiesResponse {},
+        ))
     }
 
     async fn delete_array_element(
         &self,
-        request: Request<DeleteArrayElementRequest>,
-    ) -> Result<Response<DeleteArrayElementResponse>, Status> {
+        request: Request<lgn_editor_proto::property_inspector::DeleteArrayElementRequest>,
+    ) -> Result<Response<lgn_editor_proto::property_inspector::DeleteArrayElementResponse>, Status>
+    {
         let mut request = request.into_inner();
         let resource_id = parse_resource_id(request.resource_id.as_str())?;
         let transaction = {
@@ -449,13 +463,16 @@ impl PropertyInspector for PropertyInspectorRPC {
             .await
             .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
 
-        Ok(Response::new(DeleteArrayElementResponse {}))
+        Ok(Response::new(
+            lgn_editor_proto::property_inspector::DeleteArrayElementResponse {},
+        ))
     }
 
     async fn insert_new_array_element(
         &self,
-        request: Request<InsertNewArrayElementRequest>,
-    ) -> Result<Response<InsertNewArrayElementResponse>, Status> {
+        request: Request<lgn_editor_proto::property_inspector::InsertNewArrayElementRequest>,
+    ) -> Result<Response<lgn_editor_proto::property_inspector::InsertNewArrayElementResponse>, Status>
+    {
         let request = request.into_inner();
         let resource_id = parse_resource_id(request.resource_id.as_str())?;
         let transaction = {
@@ -514,12 +531,14 @@ impl PropertyInspector for PropertyInspectorRPC {
                 suffix: Some(&array_subscript),
                 depth: 0,
             }
-            .collect::<ResourcePropertyCollector>()
+            .collect::<GrpcResourcePropertyCollector>()
             .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
 
-            Ok(Response::new(InsertNewArrayElementResponse {
-                new_value: Some(resource_property),
-            }))
+            Ok(Response::new(
+                lgn_editor_proto::property_inspector::InsertNewArrayElementResponse {
+                    new_value: Some(resource_property),
+                },
+            ))
         } else {
             Err(Status::internal("Invalid Array Descriptor"))
         }
@@ -527,8 +546,9 @@ impl PropertyInspector for PropertyInspectorRPC {
 
     async fn reorder_array_element(
         &self,
-        request: Request<ReorderArrayElementRequest>,
-    ) -> Result<Response<ReorderArrayElementResponse>, Status> {
+        request: Request<lgn_editor_proto::property_inspector::ReorderArrayElementRequest>,
+    ) -> Result<Response<lgn_editor_proto::property_inspector::ReorderArrayElementResponse>, Status>
+    {
         let request = request.into_inner();
         let resource_id = parse_resource_id(request.resource_id.as_str())?;
         let transaction = {
@@ -547,7 +567,9 @@ impl PropertyInspector for PropertyInspectorRPC {
             .await
             .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
 
-        Ok(Response::new(ReorderArrayElementResponse {}))
+        Ok(Response::new(
+            lgn_editor_proto::property_inspector::ReorderArrayElementResponse {},
+        ))
     }
 
     async fn get_available_dyn_traits(
@@ -584,6 +606,131 @@ impl PropertyInspector for PropertyInspectorRPC {
     }
 }
 
+struct ResourcePropertyCollector;
+
+impl PropertyCollector for ResourcePropertyCollector {
+    type Item = ResourceProperty;
+
+    fn new_item(item_info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError> {
+        let mut name = item_info
+            .field_descriptor
+            .map_or(String::new(), |field| field.field_name.clone())
+            + item_info.suffix.unwrap_or_default();
+
+        let mut ptype: String = item_info.type_def.get_type_name().into();
+        let mut sub_properties = Vec::new();
+        let mut attributes = None;
+        if let Some(field_desc) = &item_info.field_descriptor {
+            attributes = field_desc
+                .attributes
+                .as_ref()
+                .map(|attrs| attrs.clone().into_iter().collect());
+        }
+
+        let mut json_value: Option<String> = None;
+
+        match item_info.type_def {
+            TypeDefinition::Struct(struct_descriptor) => {
+                attributes = struct_descriptor
+                    .attributes
+                    .as_ref()
+                    .map(|attrs| attrs.clone().into_iter().collect());
+            }
+
+            TypeDefinition::Primitive(primitive_descriptor) => {
+                let mut output = Vec::new();
+                let mut json = serde_json::Serializer::new(&mut output);
+
+                let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
+                #[allow(unsafe_code)]
+                unsafe {
+                    (primitive_descriptor.base_descriptor.dynamic_serialize)(
+                        item_info.base,
+                        &mut serializer,
+                    )?;
+                }
+                json_value = Some(String::from_utf8(output).unwrap());
+            }
+            TypeDefinition::Enum(enum_descriptor) => {
+                let mut output = Vec::new();
+                let mut json = serde_json::Serializer::new(&mut output);
+
+                let mut serializer = <dyn erased_serde::Serializer>::erase(&mut json);
+                #[allow(unsafe_code)]
+                unsafe {
+                    (enum_descriptor.base_descriptor.dynamic_serialize)(
+                        item_info.base,
+                        &mut serializer,
+                    )?;
+                }
+                json_value = Some(String::from_utf8(output).unwrap());
+                ptype = format!("_enum_:{}", ptype);
+
+                sub_properties = enum_descriptor
+                    .variants
+                    .iter()
+                    .map(|enum_variant| {
+                        Box::new(ResourceProperty {
+                            name: enum_variant.variant_name.clone(),
+                            ptype: "_enumvariant_".into(),
+                            json_value: Some(
+                                serde_json::json!(enum_variant.variant_name).to_string(),
+                            ),
+                            sub_properties: Vec::new(),
+                            attributes: enum_variant
+                                .attributes
+                                .as_ref()
+                                .map_or(std::collections::BTreeMap::default(), |attrs| {
+                                    attrs.clone().into_iter().collect()
+                                }),
+                        })
+                    })
+                    .collect();
+            }
+            _ => {}
+        }
+
+        Ok(ResourceProperty {
+            name,
+            ptype,
+            json_value,
+            sub_properties,
+            attributes: attributes.unwrap_or_default(),
+        })
+    }
+
+    fn add_child(parent: &mut Self::Item, child: Self::Item) {
+        let sub_properties = &mut parent.sub_properties;
+
+        // If there's a 'Group' attribute, find or create a PropertyBag for the Group within the parent
+        if let Some(group_name) = child.attributes.get("group") {
+            // Search for the Group within the Parent SubProperties
+
+            let group_bag = if let Some(group_bag) = sub_properties
+                .iter_mut()
+                .find(|bag| bag.ptype == "_group_" && bag.name == *group_name)
+            {
+                group_bag
+            } else {
+                // Create a new group bag if not found
+                sub_properties.push(Box::new(Self::Item {
+                    name: group_name.into(),
+                    ptype: "_group_".into(),
+                    json_value: None,
+                    attributes: BTreeMap::new(),
+                    sub_properties: Vec::new(),
+                }));
+                sub_properties.last_mut().unwrap()
+            };
+
+            // Add child to group
+            group_bag.sub_properties.push(Box::new(child));
+        } else {
+            sub_properties.push(Box::new(child));
+        }
+    }
+}
+
 pub(crate) struct Server {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
     pub(crate) event_sender: broadcast::Sender<EditorEvent>,
@@ -614,7 +761,7 @@ impl Api for Server {
                 name: "".into(),
                 ptype: resource_id.kind.as_pretty().into(),
                 json_value: None,
-                attributes: HashMap::new(),
+                attributes: BTreeMap::new(),
                 sub_properties: Vec::new(),
             }
         };
@@ -622,80 +769,80 @@ impl Api for Server {
         // Add Id property
         property_bag.sub_properties.insert(
             0,
-            ResourceProperty {
+            Box::new(ResourceProperty {
                 name: "id".into(),
                 ptype: "String".into(),
                 sub_properties: Vec::new(),
                 json_value: Some(serde_json::json!(resource_id.id.to_string()).to_string()),
                 attributes: {
-                    let mut attr = HashMap::new();
+                    let mut attr = BTreeMap::new();
                     attr.insert("readonly".into(), "true".into());
                     attr
                 },
-            },
+            }),
         );
 
-        unimplemented!()
-
-        // Ok(GetPropertiesResponse::Status200 {
-        //     description: Some(ResourceDescription {
-        //         id: ResourceTypeAndId::to_string(&resource_id),
-        //         path: ctx
-        //             .project
-        //             .resource_name(resource_id)
-        //             .await
-        //             .unwrap_or_else(|_err| "".into())
-        //             .to_string(),
-        //         version: 1,
-        //         r#type: resource_id
-        //             .kind
-        //             .as_pretty()
-        //             .trim_start_matches("offline_")
-        //             .into(),
-        //     }),
-        //     properties: vec![property_bag],
-        // })
+        Ok(GetPropertiesResponse::Status200(
+            ResourceDescriptionProperties {
+                description: ResourceDescription {
+                    id: ResourceTypeAndId::to_string(&resource_id),
+                    path: ctx
+                        .project
+                        .resource_name(resource_id)
+                        .await
+                        .unwrap_or_else(|_err| "".into())
+                        .to_string(),
+                    version: 1,
+                    type_: resource_id
+                        .kind
+                        .as_pretty()
+                        .trim_start_matches("offline_")
+                        .into(),
+                },
+                properties: vec![property_bag],
+            },
+        ))
     }
 
     async fn update_properties(
         &self,
         _request: UpdatePropertiesRequest,
     ) -> Result<UpdatePropertiesResponse> {
-        unimplemented!()
+        Err(Error::internal("unimplemented"))
     }
 
     async fn get_available_dyn_traits(
         &self,
         _request: GetAvailableDynTraitsRequest,
     ) -> Result<GetAvailableDynTraitsResponse> {
-        unimplemented!()
+        Err(Error::internal("unimplemented"))
     }
 
     async fn insert_property_array_item(
         &self,
         _request: InsertPropertyArrayItemRequest,
     ) -> Result<InsertPropertyArrayItemResponse> {
-        unimplemented!()
+        Err(Error::internal("unimplemented"))
     }
 
     async fn delete_properties_array_item(
         &self,
         _request: DeletePropertiesArrayItemRequest,
     ) -> Result<DeletePropertiesArrayItemResponse> {
-        unimplemented!()
+        Err(Error::internal("unimplemented"))
     }
 
     async fn reorder_property_array(
         &self,
         _request: ReorderPropertyArrayRequest,
     ) -> Result<ReorderPropertyArrayResponse> {
-        unimplemented!()
+        Err(Error::internal("unimplemented"))
     }
 
     async fn update_property_selection(
         &self,
         _request: UpdatePropertySelectionRequest,
     ) -> Result<UpdatePropertySelectionResponse> {
-        unimplemented!()
+        Err(Error::internal("unimplemented"))
     }
 }

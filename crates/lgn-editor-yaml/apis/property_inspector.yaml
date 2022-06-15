@@ -186,6 +186,7 @@ components:
       required:
         - name
         - ptype
+        - sub_properties
         - attributes
     ResourceDescriptionProperties:
       description: A resources with all its properties

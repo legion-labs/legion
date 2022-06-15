@@ -404,7 +404,7 @@ pub mod cars {
         pub enum TestAdditionalPropertiesAnyResponse {
             /// Ok.
             Status200 {
-                body: std::collections::HashMap<String, serde_json::Value>,
+                body: std::collections::BTreeMap<String, serde_json::Value>,
                 extra_headers: HeaderMap,
                 extensions: Extensions,
             },
@@ -545,7 +545,7 @@ pub mod cars {
         pub enum TestAdditionalPropertiesSchemaResponse {
             /// Ok.
             Status200 {
-                body: std::collections::HashMap<String, super::super::components::Pet>,
+                body: std::collections::BTreeMap<String, super::super::components::Pet>,
                 extra_headers: HeaderMap,
                 extensions: Extensions,
             },
@@ -592,7 +592,7 @@ pub mod cars {
         pub enum TestAdditionalPropertiesStringResponse {
             /// Ok.
             Status200 {
-                body: std::collections::HashMap<String, String>,
+                body: std::collections::BTreeMap<String, String>,
                 extra_headers: HeaderMap,
                 extensions: Extensions,
             },
@@ -1611,7 +1611,7 @@ pub mod cars {
         #[derive(Debug)]
         pub enum TestAdditionalPropertiesAnyResponse {
             /// Ok.
-            Status200(std::collections::HashMap<String, serde_json::Value>),
+            Status200(std::collections::BTreeMap<String, serde_json::Value>),
             WithHeaders(HeaderMap, Box<TestAdditionalPropertiesAnyResponse>),
             WithExtensions(Extensions, Box<TestAdditionalPropertiesAnyResponse>),
         }
@@ -2064,7 +2064,7 @@ pub mod cars {
         #[derive(Debug)]
         pub enum TestAdditionalPropertiesSchemaResponse {
             /// Ok.
-            Status200(std::collections::HashMap<String, super::super::components::Pet>),
+            Status200(std::collections::BTreeMap<String, super::super::components::Pet>),
             WithHeaders(HeaderMap, Box<TestAdditionalPropertiesSchemaResponse>),
             WithExtensions(Extensions, Box<TestAdditionalPropertiesSchemaResponse>),
         }
@@ -2211,7 +2211,7 @@ pub mod cars {
         #[derive(Debug)]
         pub enum TestAdditionalPropertiesStringResponse {
             /// Ok.
-            Status200(std::collections::HashMap<String, String>),
+            Status200(std::collections::BTreeMap<String, String>),
             WithHeaders(HeaderMap, Box<TestAdditionalPropertiesStringResponse>),
             WithExtensions(Extensions, Box<TestAdditionalPropertiesStringResponse>),
         }
