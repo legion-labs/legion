@@ -107,7 +107,6 @@ async fn main() {
         &repository_name,
         branch_name,
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
         true,
     )
     .await;

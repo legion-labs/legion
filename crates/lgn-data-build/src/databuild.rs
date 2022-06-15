@@ -168,7 +168,6 @@ impl DataBuild {
                     )
                     .add_device_source_cas(
                         Arc::clone(&config.source_control_content_provider),
-                        Arc::clone(&config.data_content_provider),
                         project.source_manifest_id(),
                     );
 
@@ -264,7 +263,7 @@ impl DataBuild {
     #[allow(clippy::type_complexity)]
     async fn compile_node(
         output_index: &OutputIndex,
-        data_provider: Arc<Provider>,
+        data_provider: &Provider,
         source_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         compile_node: &ResourcePathId,
@@ -689,7 +688,7 @@ impl DataBuild {
                     node_hash.insert(compile_node_index, (context_hash, source_hash));
 
                     let output_index = &self.output_index;
-                    let data_content_provider = Arc::clone(&self.data_content_provider);
+                    let data_content_provider = &self.data_content_provider;
                     let source_manifest_id = &self.source_manifest_id;
                     let runtime_manifest_id = &self.runtime_manifest_id;
                     let resources = self.compilers.registry();
@@ -948,7 +947,7 @@ impl DataBuild {
     }
 
     /// Returns data content provider
-    pub fn get_provider(&self) -> &Arc<Provider> {
+    pub fn get_provider(&self) -> &Provider {
         &self.data_content_provider
     }
 }

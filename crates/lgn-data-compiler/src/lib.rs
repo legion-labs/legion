@@ -7,7 +7,8 @@
 #![allow(unsafe_code, clippy::missing_errors_doc)]
 #![warn(missing_docs)]
 
-use std::{fmt, str::FromStr, sync::Arc};
+use core::fmt;
+use std::str::FromStr;
 
 use compiler_api::CompilerError;
 use lgn_content_store::{
@@ -78,7 +79,7 @@ impl CompiledResources {
     /// which runtime operates on.
     pub async fn into_rt_manifest(
         self,
-        provider: Arc<Provider>,
+        provider: &Provider,
         filter: fn(&ResourcePathId) -> bool,
     ) -> TreeIdentifier {
         let runtime_resources = self
@@ -88,10 +89,14 @@ impl CompiledResources {
             .collect::<Vec<_>>();
 
         let mut manifest =
-            ResourceIndex::new_exclusive(provider, new_resource_type_and_id_indexer()).await;
+            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), provider).await;
         for resource in runtime_resources {
             manifest
-                .add_resource(&resource.path.resource_id().into(), resource.content_id)
+                .add_resource(
+                    provider,
+                    &resource.path.resource_id().into(),
+                    resource.content_id,
+                )
                 .await
                 .unwrap();
         }

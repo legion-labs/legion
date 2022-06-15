@@ -98,6 +98,10 @@ mod tests {
             .save_resource(resource_id, &handle, &resources)
             .await
             .expect("failed to save resource");
+        project
+            .commit("change resource")
+            .await
+            .expect("failed to commit");
     }
 
     fn test_env() -> CompilationEnv {
@@ -118,7 +122,6 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -137,6 +140,10 @@ mod tests {
                 )
                 .await
                 .unwrap();
+            project
+                .commit("add resource")
+                .await
+                .expect("failed to commit");
 
             (resource_id, resource_handle)
         };
@@ -192,6 +199,10 @@ mod tests {
                 .save_resource(resource_id, &resource_handle, &resources)
                 .await
                 .unwrap();
+            project
+                .commit("save resource")
+                .await
+                .expect("failed to commit");
         }
 
         // ..re-compile changed resource..
@@ -253,15 +264,11 @@ mod tests {
     async fn setup_project(
         project_dir: impl AsRef<Path>,
         source_control_content_provider: Arc<Provider>,
-        data_content_provider: Arc<Provider>,
     ) -> (Project, [ResourceTypeAndId; 5]) {
-        let mut project = Project::new_with_remote_mock(
-            project_dir.as_ref(),
-            source_control_content_provider,
-            data_content_provider,
-        )
-        .await
-        .expect("failed to create a project");
+        let mut project =
+            Project::new_with_remote_mock(project_dir.as_ref(), source_control_content_provider)
+                .await
+                .expect("failed to create a project");
 
         let resources = setup_registry().await;
 
@@ -297,6 +304,8 @@ mod tests {
         )
         .await;
 
+        project.commit("setup project").await.unwrap();
+
         (project, [res_a, res_b, res_c, res_d, res_e])
     }
 
@@ -312,7 +321,6 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -325,7 +333,7 @@ mod tests {
             let mut edit = resource_handle.instantiate(&resources).unwrap();
             edit.content = source_magic_value.clone();
             resource_handle.apply(edit, &resources);
-            project
+            let source_id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     text_resource::TextResource::TYPE,
@@ -333,7 +341,9 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+            project.commit("added resource").await.unwrap();
+            source_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -423,12 +433,8 @@ mod tests {
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
             setup_dir(&work_dir);
 
-        let (mut project, resource_list) = setup_project(
-            &project_dir,
-            Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
-        )
-        .await;
+        let (mut project, resource_list) =
+            setup_project(&project_dir, Arc::clone(&source_control_content_provider)).await;
         let root_resource = resource_list[0];
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -539,7 +545,6 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -553,7 +558,7 @@ mod tests {
             edit.text_list = magic_list.clone();
             resource_handle.apply(edit, &resources);
 
-            project
+            let source_id = project
                 .add_resource(
                     ResourcePathName::new("resource"),
                     multitext_resource::MultiTextResource::TYPE,
@@ -561,7 +566,11 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            project.commit("add resource").await.unwrap();
+
+            source_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -693,6 +702,8 @@ mod tests {
                 .await
                 .expect("successful save");
 
+            project.commit("change text_1").await.unwrap();
+
             build.source_pull(&project).await.expect("pulled change");
         }
 
@@ -736,6 +747,8 @@ mod tests {
                 .save_resource(source_id, &handle, &resources)
                 .await
                 .expect("successful save");
+
+            project.commit("change text_0 and text_1").await.unwrap();
 
             build.source_pull(&project).await.expect("pulled change");
         }
@@ -795,7 +808,6 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");
@@ -832,7 +844,7 @@ mod tests {
                 vec![ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE)];
             parent_handle.apply(parent, &resources);
 
-            project
+            let parent_id = project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPE,
@@ -840,7 +852,11 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            project.commit("create parent and child").await.unwrap();
+
+            parent_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -905,7 +921,6 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");
@@ -933,7 +948,7 @@ mod tests {
                 .push(ResourcePathId::from(child_id).push(refs_asset::RefsAsset::TYPE));
             child_handle.apply(edit, &resources);
 
-            project
+            let parent_id = project
                 .add_resource(
                     ResourcePathName::new("parent"),
                     refs_resource::TestResource::TYPE,
@@ -941,7 +956,11 @@ mod tests {
                     &resources,
                 )
                 .await
-                .unwrap()
+                .unwrap();
+
+            project.commit("add parent and child").await.unwrap();
+
+            parent_id
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
