@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 use lgn_core::prelude::Time;
 use lgn_ecs::prelude::{Query, Res, ResMut};
 use lgn_tracing::prelude::error;
@@ -6,18 +8,20 @@ use physx::prelude::{Owner, RigidActor, RigidDynamic, Scene, ScratchBuffer};
 
 use crate::PxScene;
 
-pub(crate) fn step_simulation(mut scene: ResMut<'_, Owner<PxScene>>, time: Res<'_, Time>) {
+pub(crate) fn step_simulation(
+    mut scene: ResMut<'_, Owner<PxScene>>,
+    time: Res<'_, Time>,
+    mut memory: ResMut<'_, SimulationMemory>,
+) {
     let delta_time = time.delta_seconds();
     if delta_time <= 0_f32 {
         return;
     }
 
-    let mut scratch = create_scratch_buffer();
-
     if let Err(error) = scene.step(
         delta_time,
         None::<&mut physx_sys::PxBaseTask>,
-        Some(&mut scratch),
+        Some(&mut memory),
         true,
     ) {
         error!("error occurred during physics step: {}", error);
@@ -46,9 +50,31 @@ pub(crate) fn sync_transforms(
     }
 }
 
-fn create_scratch_buffer() -> ScratchBuffer {
-    #[allow(unsafe_code)]
-    unsafe {
-        ScratchBuffer::new(4)
+pub(crate) struct SimulationMemory(ScratchBuffer);
+
+impl Default for SimulationMemory {
+    fn default() -> Self {
+        #[allow(unsafe_code)]
+        let scratch_buffer = unsafe { ScratchBuffer::new(4) };
+        Self(scratch_buffer)
     }
 }
+
+impl Deref for SimulationMemory {
+    type Target = ScratchBuffer;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for SimulationMemory {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[allow(unsafe_code)]
+unsafe impl Send for SimulationMemory {}
+#[allow(unsafe_code)]
+unsafe impl Sync for SimulationMemory {}
