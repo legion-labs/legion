@@ -1,10 +1,10 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
   title: "Runtime API"
   description: "The OpenAPI specification for the Legion Labs runtime."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspace/{workspace-id}/runtime/manifest/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/runtime/manifest/reload:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -22,7 +22,7 @@ paths:
       responses:
         "204":
           description: Successful operation
-  /v1/spaces/{space-id}/workspace/{workspace-id}/runtime/root_asset/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/runtime/root_asset/reload:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -40,7 +40,7 @@ paths:
       responses:
         "204":
           description: Successful operation
-  /v1/spaces/{space-id}/workspace/{workspace-id}/runtime/pause:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/runtime/pause:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"

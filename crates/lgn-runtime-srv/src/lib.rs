@@ -29,6 +29,7 @@ use lgn_ecs::prelude::{
 };
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
+use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 #[cfg(not(feature = "standalone"))]
@@ -292,26 +293,23 @@ pub fn build_runtime() -> App {
 
     #[cfg(not(feature = "standalone"))]
     {
-        //use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
         use lgn_window::WindowPlugin;
 
         app.add_plugin(WindowPlugin {
             add_primary_window: false,
             exit_on_close: false,
         })
-        /*.insert_resource(GRPCPluginSettings::hybrid(
-            listen_endpoint,
-            rest_listen_endpoint,
-        ))*/
+        .insert_resource(GRPCPluginSettings::rest(rest_listen_endpoint))
         .insert_resource(trace_events_receiver)
-        //.add_plugin(GRPCPlugin::hybrid())
-        .init_resource::<lgn_grpc::SharedRouter>()
+        .add_plugin(GRPCPlugin::rest_only())
         .add_plugin(LogStreamPlugin::default())
         .add_plugin(streamer_plugin);
 
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
-            setup_runtime_grpc.exclusive_system(), //.before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+            setup_runtime_grpc
+                .exclusive_system()
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
         )
         .add_system_to_stage(CoreStage::PreUpdate, rebroadcast_commands);
     }
