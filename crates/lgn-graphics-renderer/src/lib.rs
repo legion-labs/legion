@@ -327,7 +327,12 @@ impl Plugin for RendererPlugin {
         MissingVisualTracker::init_ecs(app);
         GpuInstanceManager::init_ecs(app);
 
-        app.add_startup_system(register_installers);
+        if app
+            .world
+            .contains_resource::<lgn_asset_registry::AssetRegistrySettings>()
+        {
+            app.add_startup_system(register_installers);
+        }
 
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use lgn_data_model::{ReflectionError, TypeDefinition, TypeReflection};
+use lgn_data_model::{ReflectionError, TypeDefinition};
 use lgn_data_runtime::{extract_resource_dependencies, prelude::*};
 
 /// Implement a default `ResourceInstaller` using `from_json_reader` interface
