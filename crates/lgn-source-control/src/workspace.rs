@@ -7,6 +7,7 @@ use lgn_content_store::{
     },
     Provider,
 };
+use lgn_tracing::error;
 use tokio_stream::StreamExt;
 
 use crate::{
@@ -20,8 +21,7 @@ where
     MainIndexer: BasicIndexer + Clone + Sync,
 {
     index: Box<dyn Index>,
-    persistent_provider: Arc<Provider>,
-    volatile_provider: Arc<Provider>,
+    transaction: Provider,
     branch_name: String,
     main_index: ResourceIndex<MainIndexer>,
     path_index: ResourceIndex<StringPathIndexer>,
@@ -71,30 +71,25 @@ where
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
         branch_name: &str,
-        persistent_provider: Arc<Provider>,
-        volatile_provider: Arc<Provider>,
+        provider: Arc<Provider>,
         main_indexer: MainIndexer,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
         let branch = index.get_branch(branch_name).await?;
         let commit = index.get_commit(branch.head).await?;
-        let main_index = ResourceIndex::new_shared_with_raw_id(
-            Arc::clone(&volatile_provider),
-            main_indexer,
-            commit.main_index_tree_id,
-        );
-        let path_index = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(&volatile_provider),
-            StringPathIndexer::default(),
-            commit.path_index_tree_id,
-        );
+
         Ok(Self {
             index,
-            persistent_provider,
-            volatile_provider,
+            transaction: provider.begin_transaction_in_memory(),
             branch_name: branch_name.to_owned(),
-            main_index,
-            path_index,
+            main_index: ResourceIndex::new_shared_with_raw_id(
+                main_indexer,
+                commit.main_index_tree_id,
+            ),
+            path_index: ResourceIndex::new_exclusive_with_id(
+                StringPathIndexer::default(),
+                commit.path_index_tree_id,
+            ),
         })
     }
 
@@ -122,6 +117,11 @@ where
         let current_branch = self.get_current_branch().await?;
 
         self.index.get_commit(current_branch.head).await
+    }
+
+    /// Get the current transaction/provider
+    pub fn get_provider(&self) -> &Provider {
+        &self.transaction
     }
 
     pub async fn get_resource_identifier(
@@ -154,7 +154,7 @@ where
         Indexer: BasicIndexer + Sync,
     {
         index
-            .get_identifier(id)
+            .get_identifier(&self.transaction, id)
             .await
             .map_err(Error::ContentStoreIndexing)
     }
@@ -198,28 +198,24 @@ where
     }
 
     pub async fn load_resource_by_id(&self, resource_id: &ResourceIdentifier) -> Result<Vec<u8>> {
-        Ok(self
-            .persistent_provider
-            .read_resource_as_bytes(resource_id)
-            .await?)
+        Ok(self.transaction.read_resource_as_bytes(resource_id).await?)
     }
 
     pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         let commit = self.get_current_commit().await?;
         let commit_manifest = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(&self.volatile_provider),
             self.main_index.indexer().clone(),
             commit.main_index_tree_id,
         );
         commit_manifest
-            .enumerate_resources()
+            .enumerate_resources(&self.transaction)
             .await
             .map_err(Error::ContentStoreIndexing)
     }
 
     pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         self.main_index
-            .enumerate_resources()
+            .enumerate_resources(&self.transaction)
             .await
             .map_err(Error::ContentStoreIndexing)
     }
@@ -238,7 +234,7 @@ where
         Indexer: BasicIndexer + Sync,
         F: Fn(&IndexKey) -> String,
     {
-        if let Ok(contents) = index.enumerate_resources().await {
+        if let Ok(contents) = index.enumerate_resources(&self.transaction).await {
             match resource_id {
                 Some(resource_id) => {
                     if let Some((index_key, resource_id)) = contents
@@ -283,16 +279,13 @@ where
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         self.main_index
-            .add_resource(id, resource_identifier.clone())
+            .add_resource(&self.transaction, id, resource_identifier.clone())
             .await?;
         self.path_index
-            .add_resource(&path.into(), resource_identifier.clone())
+            .add_resource(&self.transaction, &path.into(), resource_identifier.clone())
             .await?;
 
         #[cfg(feature = "verbose")]
@@ -316,10 +309,7 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
@@ -337,17 +327,15 @@ where
             // update indices
             let _replaced_id = self
                 .main_index
-                .replace_resource(id, resource_identifier.clone())
+                .replace_resource(&self.transaction, id, resource_identifier.clone())
                 .await?;
             let _replaced_id = self
                 .path_index
-                .replace_resource(&path.into(), resource_identifier.clone())
+                .replace_resource(&self.transaction, &path.into(), resource_identifier.clone())
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.persistent_provider
-                .unwrite_resource(old_identifier)
-                .await?;
+            self.transaction.unwrite_resource(old_identifier).await?;
 
             #[cfg(feature = "verbose")]
             {
@@ -372,10 +360,7 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
@@ -393,21 +378,26 @@ where
             // update indices
             let replaced_id = self
                 .main_index
-                .replace_resource(id, resource_identifier.clone())
+                .replace_resource(&self.transaction, id, resource_identifier.clone())
                 .await?;
             assert_eq!(&replaced_id, old_identifier);
 
-            let removed_id = self.path_index.remove_resource(&old_path.into()).await?;
+            let removed_id = self
+                .path_index
+                .remove_resource(&self.transaction, &old_path.into())
+                .await?;
             assert_eq!(&removed_id, old_identifier);
 
             self.path_index
-                .add_resource(&new_path.into(), resource_identifier.clone())
+                .add_resource(
+                    &self.transaction,
+                    &new_path.into(),
+                    resource_identifier.clone(),
+                )
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.persistent_provider
-                .unwrite_resource(old_identifier)
-                .await?;
+            self.transaction.unwrite_resource(old_identifier).await?;
 
             #[cfg(feature = "verbose")]
             {
@@ -434,15 +424,19 @@ where
         path: &str,
     ) -> Result<ResourceIdentifier> {
         // remove from main index
-        let resource_id = self.main_index.remove_resource(id).await?;
+        let resource_id = self
+            .main_index
+            .remove_resource(&self.transaction, id)
+            .await?;
 
-        let removed_id = self.path_index.remove_resource(&path.into()).await?;
+        let removed_id = self
+            .path_index
+            .remove_resource(&self.transaction, &path.into())
+            .await?;
         assert_eq!(resource_id, removed_id);
 
         // unwrite resource from content-store
-        self.persistent_provider
-            .unwrite_resource(&resource_id)
-            .await?;
+        self.transaction.unwrite_resource(&resource_id).await?;
 
         #[cfg(feature = "verbose")]
         {
@@ -490,7 +484,7 @@ where
         let mut leaves = self
             .main_index
             .indexer()
-            .diff_leaves(&self.volatile_provider, &commit_index_id, &main_index_id)
+            .diff_leaves(&self.transaction, &commit_index_id, &main_index_id)
             .await?
             .map(|(side, index_key, leaf)| match leaf {
                 Ok(leaf) => match leaf {
@@ -601,6 +595,15 @@ where
     ///
     /// The commit id.
     pub async fn commit(&mut self, message: &str, behavior: CommitMode) -> Result<Commit> {
+        let transaction = std::mem::replace(&mut self.transaction, Provider::new_in_memory());
+        let provider = match transaction.commit_transaction().await {
+            Ok(provider) => provider,
+            Err((provider, e)) => {
+                error!("failed to commit to content-store: {}", e);
+                provider
+            }
+        };
+
         let current_branch = self.get_current_branch().await?;
         let mut branch = self.index.get_branch(&current_branch.name).await?;
         let commit = self.index.get_commit(current_branch.head).await?;
@@ -634,6 +637,8 @@ where
         } else {
             commit
         };
+
+        self.transaction = provider.begin_transaction_in_memory();
 
         Ok(commit)
     }

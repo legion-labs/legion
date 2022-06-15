@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use tokio_stream::StreamExt;
 
 use crate::Provider;
@@ -18,7 +16,6 @@ pub struct ResourceIndex<Indexer>
 where
     Indexer: BasicIndexer + Sync,
 {
-    provider: Arc<Provider>,
     indexer: Indexer,
     tree_id: TreeIdentifierType, // to do: maybe generic, supporting TreeIdentifierAccessor trait (implemented for TreeIdentifier and SharedTreeIdentifier)
 }
@@ -27,43 +24,29 @@ impl<Indexer> ResourceIndex<Indexer>
 where
     Indexer: BasicIndexer + Sync,
 {
-    pub async fn new_exclusive(provider: Arc<Provider>, indexer: Indexer) -> Self {
-        let tree_id = empty_tree_id(&provider).await.unwrap();
-        Self::new_exclusive_with_id(provider, indexer, tree_id)
+    pub async fn new_exclusive(indexer: Indexer, provider: &Provider) -> Self {
+        let tree_id = empty_tree_id(provider).await.unwrap();
+        Self::new_exclusive_with_id(indexer, tree_id)
     }
 
-    pub fn new_exclusive_with_id(
-        provider: Arc<Provider>,
-        indexer: Indexer,
-        tree_id: TreeIdentifier,
-    ) -> Self {
+    pub fn new_exclusive_with_id(indexer: Indexer, tree_id: TreeIdentifier) -> Self {
         Self {
-            provider,
             indexer,
             tree_id: TreeIdentifierType::Exclusive(tree_id),
         }
     }
 
-    pub async fn new_shared(provider: Arc<Provider>, indexer: Indexer) -> Self {
-        let tree_id = empty_tree_id(&provider).await.unwrap();
-        Self::new_shared_with_raw_id(provider, indexer, tree_id)
+    pub async fn new_shared(indexer: Indexer, provider: &Provider) -> Self {
+        let tree_id = empty_tree_id(provider).await.unwrap();
+        Self::new_shared_with_raw_id(indexer, tree_id)
     }
 
-    pub fn new_shared_with_raw_id(
-        provider: Arc<Provider>,
-        indexer: Indexer,
-        tree_id: TreeIdentifier,
-    ) -> Self {
-        Self::new_shared_with_id(provider, indexer, SharedTreeIdentifier::new(tree_id))
+    pub fn new_shared_with_raw_id(indexer: Indexer, tree_id: TreeIdentifier) -> Self {
+        Self::new_shared_with_id(indexer, SharedTreeIdentifier::new(tree_id))
     }
 
-    pub fn new_shared_with_id(
-        provider: Arc<Provider>,
-        indexer: Indexer,
-        shared_tree_id: SharedTreeIdentifier,
-    ) -> Self {
+    pub fn new_shared_with_id(indexer: Indexer, shared_tree_id: SharedTreeIdentifier) -> Self {
         Self {
-            provider,
             indexer,
             tree_id: TreeIdentifierType::Shared(shared_tree_id),
         }
@@ -105,10 +88,14 @@ where
     ///
     /// If the specified index key is invalid or the tree is corrupted, an error
     /// will be returned.
-    pub async fn get_identifier(&self, index_key: &IndexKey) -> Result<Option<ResourceIdentifier>> {
+    pub async fn get_identifier(
+        &self,
+        provider: &Provider,
+        index_key: &IndexKey,
+    ) -> Result<Option<ResourceIdentifier>> {
         let leaf_node = self
             .indexer
-            .get_leaf(&self.provider, &self.id(), index_key)
+            .get_leaf(provider, &self.id(), index_key)
             .await?;
 
         match leaf_node {
@@ -133,13 +120,14 @@ where
     /// will be returned.
     pub async fn add_resource(
         &mut self,
+        provider: &Provider,
         index_key: &IndexKey,
         resource_id: ResourceIdentifier,
     ) -> Result<()> {
         let tree_id = self
             .indexer
             .add_leaf(
-                &self.provider,
+                provider,
                 &self.id(),
                 index_key,
                 TreeLeafNode::Resource(resource_id),
@@ -169,13 +157,14 @@ where
     /// will be returned.
     pub async fn replace_resource(
         &mut self,
+        provider: &Provider,
         index_key: &IndexKey,
         resource_id: ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
         let (tree_id, leaf_node) = self
             .indexer
             .replace_leaf(
-                &self.provider,
+                provider,
                 &self.id(),
                 index_key,
                 TreeLeafNode::Resource(resource_id),
@@ -204,10 +193,14 @@ where
     ///
     /// If the specified index key is invalid or the tree is corrupted, an error
     /// will be returned.
-    pub async fn remove_resource(&mut self, index_key: &IndexKey) -> Result<ResourceIdentifier> {
+    pub async fn remove_resource(
+        &mut self,
+        provider: &Provider,
+        index_key: &IndexKey,
+    ) -> Result<ResourceIdentifier> {
         let (tree_id, leaf_node) = self
             .indexer
-            .remove_leaf(&self.provider, &self.id(), index_key)
+            .remove_leaf(provider, &self.id(), index_key)
             .await?;
         self.set_id(tree_id);
 
@@ -228,9 +221,12 @@ where
     /// # Errors
     ///
     /// If the tree cannot be read, an error will be returned.
-    pub async fn enumerate_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
+    pub async fn enumerate_resources(
+        &self,
+        provider: &Provider,
+    ) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         self.indexer
-            .enumerate_leaves(&self.provider, &self.id())
+            .enumerate_leaves(provider, &self.id())
             .await?
             .map(|(key, leaf_res)| match leaf_res {
                 Ok(leaf) => match leaf {

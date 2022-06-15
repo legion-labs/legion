@@ -118,7 +118,7 @@ pub async fn build(
         };
 
         let manifest_id = manifest
-            .into_rt_manifest(data_content_provider, filter)
+            .into_rt_manifest(&data_content_provider, filter)
             .await;
 
         let mut file = OpenOptions::new()

@@ -53,7 +53,7 @@ impl CompilerStub for InProcessCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        provider: Arc<Provider>,
+        provider: &Provider,
         _source_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
@@ -63,9 +63,7 @@ impl CompilerStub for InProcessCompilerStub {
         let manifest = CompiledResources {
             compiled_resources: derived_deps.to_vec(),
         };
-        let manifest_id = manifest
-            .into_rt_manifest(Arc::clone(&provider), |_rpid| true)
-            .await;
+        let manifest_id = manifest.into_rt_manifest(provider, |_rpid| true).await;
         runtime_manifest_id.write(manifest_id);
 
         let result = self

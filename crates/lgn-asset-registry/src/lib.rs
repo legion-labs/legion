@@ -97,11 +97,10 @@ impl AssetRegistryPlugin {
         if load_all_assets_from_manifest {
             if let Ok(resources) = world.resource::<TokioAsyncRuntime>().block_on(async {
                 let manifest = ResourceIndex::new_shared_with_id(
-                    data_provider,
                     new_resource_type_and_id_indexer(),
                     manifest_id.clone(),
                 );
-                manifest.enumerate_resources().await
+                manifest.enumerate_resources(&data_provider).await
             }) {
                 let mut config = world.resource_mut::<AssetRegistrySettings>();
 

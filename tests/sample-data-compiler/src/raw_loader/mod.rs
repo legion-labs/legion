@@ -34,7 +34,6 @@ pub async fn build_offline(
     repository_name: &RepositoryName,
     branch_name: &str,
     source_control_content_provider: Arc<Provider>,
-    data_content_provider: Arc<Provider>,
     incremental: bool,
 ) -> Project {
     let raw_dir = {
@@ -53,7 +52,6 @@ pub async fn build_offline(
         repository_name,
         branch_name,
         source_control_content_provider,
-        data_content_provider,
     )
     .await;
 
@@ -215,7 +213,6 @@ async fn setup_project(
     repository_name: &RepositoryName,
     branch_name: &str,
     source_control_content_provider: Arc<Provider>,
-    data_content_provider: Arc<Provider>,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
     let project = Project::new(
@@ -223,7 +220,6 @@ async fn setup_project(
         repository_name,
         branch_name,
         source_control_content_provider,
-        data_content_provider,
     )
     .await
     .unwrap();
