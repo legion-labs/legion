@@ -837,9 +837,9 @@ impl RenderObjects {
     }
 
     pub fn sync_update(&mut self) {
-        for (_, primary_table) in self.primary_tables.iter_mut() {
-            primary_table.0.sync_update();
-            primary_table.1.sync_update();
+        for (_, (primary_table, command_queue)) in self.primary_tables.iter_mut() {
+            primary_table.sync_update();
+            command_queue.sync_update();
         }
     }
 
