@@ -130,7 +130,7 @@ impl ComponentInstaller for TextureInstaller {
 
 #[derive(Clone)]
 struct GpuTexture {
-    texture_data: Box<lgn_graphics_data::runtime::BinTexture>,
+    _texture_data: Box<lgn_graphics_data::runtime::BinTexture>,
 }
 lgn_data_runtime::implement_runtime_resource!(GpuTexture);
 
@@ -152,7 +152,9 @@ impl ResourceInstaller for TextureInstaller {
             texture_data.format
         );
 
-        let gpu_texture = Box::new(GpuTexture { texture_data });
+        let gpu_texture = Box::new(GpuTexture {
+            _texture_data: texture_data,
+        });
 
         Ok(gpu_texture)
 
