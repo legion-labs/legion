@@ -32,7 +32,8 @@ use lgn_editor_yaml::property_inspector::{
         ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
         UpdatePropertiesResponse, UpdatePropertySelectionRequest, UpdatePropertySelectionResponse,
     },
-    Api, ResourceDescription, ResourceDescriptionProperties, ResourceProperty,
+    Api, InsertPropertyArrayItem200Response, ResourceDescription, ResourceDescriptionProperties,
+    ResourceProperty,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_online::server::{Error, Result};
@@ -744,10 +745,10 @@ impl Api for Server {
 
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
-        let handle = ctx
-            .get_or_load(resource_id)
-            .await
-            .map_err(|err| Error::internal(err.to_string()))?;
+        let handle = match ctx.get_or_load(resource_id).await {
+            Ok(resource) => resource,
+            Err(_) => return Ok(GetPropertiesResponse::Status404),
+        };
 
         let mut property_bag = if let Some(reflection) = ctx
             .asset_registry
@@ -806,23 +807,231 @@ impl Api for Server {
 
     async fn update_properties(
         &self,
-        _request: UpdatePropertiesRequest,
+        request: UpdatePropertiesRequest,
     ) -> Result<UpdatePropertiesResponse> {
-        Err(Error::internal("unimplemented"))
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
+
+        {
+            let mut transaction = Transaction::new();
+
+            let mut updates = request.body.updates.clone();
+
+            // HACK!!!
+            // Pre-fill GlftLoader component
+            if let Some(mut property) = updates
+                .iter_mut()
+                .find(|update| update.name == "components.[Visual].renderable_geometry")
+            {
+                let result = {
+                    ResourcePathId::from_str(
+                        property
+                            .json_value
+                            .as_str()
+                            .trim_start_matches('"')
+                            .trim_end_matches('"'),
+                    )
+                    .ok()
+                };
+
+                if let Some(res_path_id) = result {
+                    let gltf_resource_id = res_path_id.source_resource();
+                    if gltf_resource_id.kind == GltfFile::TYPE {
+                        let mut transaction_manager = self.transaction_manager.lock().await;
+                        let mut ctx = LockContext::new(&transaction_manager).await;
+                        if let Ok(handle) = ctx.get_or_load(gltf_resource_id).await {
+                            let mut gltf_loader = GltfLoader::default();
+
+                            if let Some(gltf) = handle.get::<GltfFile>(&ctx.asset_registry) {
+                                let models = gltf.gather_models(gltf_resource_id);
+                                let materials = gltf.gather_materials(gltf_resource_id);
+
+                                for (model, name) in &models {
+                                    gltf_loader.models.push(
+                                        ResourcePathId::from(gltf_resource_id)
+                                            .push_named(
+                                                lgn_graphics_data::offline::Model::TYPE,
+                                                name,
+                                            )
+                                            .push(lgn_graphics_data::runtime::Model::TYPE),
+                                    );
+                                    gltf_loader.materials.extend(
+                                        model.meshes.iter().filter_map(|m| m.material.clone()),
+                                    );
+                                }
+
+                                for (material, _) in &materials {
+                                    if let Some(t) = &material.albedo {
+                                        gltf_loader.textures.push(t.clone());
+                                    }
+                                    if let Some(t) = &material.normal {
+                                        gltf_loader.textures.push(t.clone());
+                                    }
+                                    if let Some(t) = &material.roughness {
+                                        gltf_loader.textures.push(t.clone());
+                                    }
+                                    if let Some(t) = &material.metalness {
+                                        gltf_loader.textures.push(t.clone());
+                                    }
+                                }
+                            }
+
+                            // Fix up the edit if the model is invalid
+                            if !gltf_loader.models.is_empty()
+                                && !gltf_loader.models.contains(&res_path_id)
+                            {
+                                property.json_value =
+                                    serde_json::json!(gltf_loader.models.first().unwrap())
+                                        .to_string();
+                            }
+
+                            match ctx.get_or_load(resource_id).await {
+                                Ok(entity_handle) => {
+                                    if let Some(mut entity) = entity_handle
+                                        .instantiate::<sample_data::offline::Entity>(
+                                        &ctx.asset_registry,
+                                    ) {
+                                        entity
+                                            .components
+                                            .retain(|component| !component.is::<GltfLoader>());
+                                        entity.components.push(Box::new(gltf_loader));
+
+                                        entity_handle.apply(entity, &ctx.asset_registry);
+                                    }
+                                }
+                                Err(_) => {
+                                    return Ok(UpdatePropertiesResponse::Status404);
+                                }
+                            };
+
+                            if let Err(_err) = self
+                                .event_sender
+                                .send(EditorEvent::ResourceChanged(vec![resource_id]))
+                            {
+                            }
+                        }
+                    }
+                }
+            }
+
+            transaction = transaction.add_operation(UpdatePropertyOperation::new(
+                resource_id,
+                &updates
+                    .iter()
+                    .map(|update| (&update.name, &update.json_value))
+                    .collect::<Vec<_>>(),
+            ));
+
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            transaction_manager
+                .commit_transaction(transaction)
+                .await
+                .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+        }
+
+        Ok(UpdatePropertiesResponse::Status204)
     }
 
     async fn get_available_dyn_traits(
         &self,
-        _request: GetAvailableDynTraitsRequest,
+        request: GetAvailableDynTraitsRequest,
     ) -> Result<GetAvailableDynTraitsResponse> {
-        Err(Error::internal("unimplemented"))
+        let available_traits = match request.trait_name.as_str() {
+            "dyn Component" => {
+                let mut results = vec![];
+                for entry in inventory::iter::<lgn_data_runtime::ComponentFactory> {
+                    results.push(entry.name.into());
+                }
+                results.sort();
+                Some(results)
+            }
+            _ => None,
+        };
+
+        if let Some(available_traits) = available_traits {
+            Ok(GetAvailableDynTraitsResponse::Status200(available_traits))
+        } else {
+            Err(Error::internal(format!(
+                "Unknown factory '{}'",
+                request.trait_name
+            )))
+        }
     }
 
     async fn insert_property_array_item(
         &self,
-        _request: InsertPropertyArrayItemRequest,
+        request: InsertPropertyArrayItemRequest,
     ) -> Result<InsertPropertyArrayItemResponse> {
-        Err(Error::internal("unimplemented"))
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
+
+        let transaction = {
+            // Remove indices in reverse order to maintain indices
+            Transaction::new().add_operation(ArrayOperation::insert_element(
+                resource_id,
+                request.body.array_path.as_str(),
+                Some(request.body.index as usize),
+                request.body.json_value,
+            ))
+        };
+
+        self.transaction_manager
+            .lock()
+            .await
+            .commit_transaction(transaction)
+            .await
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+        let handle = match ctx.get_or_load(resource_id).await {
+            Ok(resource) => resource,
+            Err(_) => return Ok(InsertPropertyArrayItemResponse::Status404),
+        };
+
+        let reflection = ctx
+            .asset_registry
+            .get_resource_reflection(resource_id.kind, &handle)
+            .ok_or_else(|| {
+                Error::internal(format!("Invalid ResourceID format: {}", resource_id))
+            })?;
+
+        //let mut indexed_path = format!("{}[{}]", request.array_path, request.index);
+        let array_prop = find_property(reflection.as_reflect(), &request.body.array_path)
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+        if let TypeDefinition::Array(array_desc) = array_prop.type_def {
+            let mut base = array_prop.base;
+            let mut type_def = array_desc.inner_type;
+            base = (array_desc.get)(base, request.body.index as usize)
+                .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+            let array_subscript = if let TypeDefinition::BoxDyn(box_desc) = array_desc.inner_type {
+                type_def = (box_desc.get_inner_type)(base);
+                base = (box_desc.get_inner)(base);
+                format!("[{}]", type_def.get_type_name())
+            } else {
+                format!("[{}]", request.body.index)
+            };
+
+            let resource_property = ItemInfo {
+                base,
+                field_descriptor: None,
+                type_def,
+                suffix: Some(&array_subscript),
+                depth: 0,
+            }
+            .collect::<ResourcePropertyCollector>()
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+            Ok(InsertPropertyArrayItemResponse::Status200(
+                InsertPropertyArrayItem200Response {
+                    new_value: Some(resource_property),
+                },
+            ))
+        } else {
+            Err(Error::internal("Invalid Array Descriptor"))
+        }
     }
 
     async fn delete_properties_array_item(

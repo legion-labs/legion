@@ -3,8 +3,11 @@ use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{CreateResourceOperation, Transaction};
 use lgn_editor_proto::property_inspector::property_inspector_server::PropertyInspector;
 use lgn_editor_yaml::property_inspector::{
-    server::{GetPropertiesRequest, GetPropertiesResponse},
-    Api, ResourceDescriptionProperties, ResourceId,
+    server::{
+        GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
+        GetPropertiesResponse, InsertPropertyArrayItemRequest,
+    },
+    Api, InsertPropertyArrayItem, ResourceDescriptionProperties, ResourceId,
 };
 use lgn_governance::api::{space::SpaceId, workspace::WorkspaceId};
 use tokio::sync::broadcast;
@@ -137,33 +140,49 @@ async fn test_property_inspector() -> anyhow::Result<()> {
             new_id
         };
 
-        // TODO: Fix when the method is implemented
         // Try to create all the register Components
-        // {
-        //     let response = property_inspector
-        //         .get_available_dyn_traits(Request::new(GetAvailableDynTraitsRequest {
-        //             trait_name: "dyn Component".into(),
-        //         }))
-        //         .await?
-        //         .into_inner();
+        {
+            let (parts, _) = http::Request::new("").into_parts();
 
-        //     print!("creating {} components: ", response.available_traits.len());
-        //     for component_type in response.available_traits {
-        //         print!("{}, ", component_type);
-        //         property_inspector
-        //             .insert_new_array_element(Request::new(InsertNewArrayElementRequest {
-        //                 resource_id: new_id.to_string(),
-        //                 array_path: "components".into(),
-        //                 index: 0,
-        //                 json_value: Some(
-        //                     serde_json::json!({
-        //                     component_type : {} })
-        //                     .to_string(),
-        //                 ),
-        //             }))
-        //             .await?;
-        //     }
-        // }
+            let response = property_inspector
+                .get_available_dyn_traits(GetAvailableDynTraitsRequest {
+                    space_id: SpaceId("0".to_string()),
+                    workspace_id: WorkspaceId("0".to_string()),
+                    trait_name: "dyn Component".into(),
+                    parts,
+                })
+                .await?;
+
+            if let GetAvailableDynTraitsResponse::Status200(available_traits) = response {
+                print!("creating {} components: ", available_traits.len());
+                for component_type in available_traits {
+                    print!("{}, ", component_type);
+
+                    let (parts, body) = http::Request::new(InsertPropertyArrayItem {
+                        array_path: "components".into(),
+                        index: 0,
+                        json_value: Some(
+                            serde_json::json!({
+                        component_type : {} })
+                            .to_string(),
+                        ),
+                    })
+                    .into_parts();
+
+                    property_inspector
+                        .insert_property_array_item(InsertPropertyArrayItemRequest {
+                            space_id: SpaceId("0".to_string()),
+                            workspace_id: WorkspaceId("0".to_string()),
+                            resource_id: ResourceId(new_id.to_string()),
+                            body,
+                            parts,
+                        })
+                        .await?;
+                }
+            } else {
+                return Err(anyhow::anyhow!("invalid response received: {:?}", response));
+            }
+        }
 
         // Get properties for the newly create Resource
         {

@@ -24,13 +24,15 @@ paths:
     put:
       description: Update a set of properties.
       operationId: updateProperties
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropertyUpdates"
       responses:
-        "200":
-          description: The updated properties
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PropertyUpdates"
+        "204":
+          description: Resource properties updated
         "404":
           description: Resource not found
 
@@ -50,7 +52,7 @@ paths:
               $ref: "#/components/schemas/InsertPropertyArrayItem"
       responses:
         "200":
-          description: Item inserted
+          description: Inserted item property
           content:
             application/json:
               schema:
@@ -117,7 +119,7 @@ paths:
       description: Get all the available dynamic traits.
       operationId: getAvailableDynTraits
       parameters:
-        - name: search
+        - name: trait_name
           in: query
           description: Filter the dynamic traits by name.
           required: true
@@ -132,8 +134,6 @@ paths:
                 type: array
                 items:
                   type: string
-        "404":
-          description: Resource not found
 
 components:
   parameters:
@@ -209,6 +209,9 @@ components:
           type: string
         json_value:
           type: string
+      required:
+        - name
+        - json_value
     PropertyUpdates:
       description: A set of property updates
       type: object
