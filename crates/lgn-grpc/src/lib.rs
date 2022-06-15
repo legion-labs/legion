@@ -16,7 +16,7 @@ use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
 use lgn_online::grpc::{
     multiplexer_service::{MultiplexableService, MultiplexerService, MultiplexerServiceBuilder},
-    HybridServer, Server,
+    HybridServer, RestServer, Server,
 };
 use lgn_tracing::warn;
 use tonic::transport::NamedService;
@@ -28,25 +28,33 @@ pub enum GRPCPluginScheduling {
 }
 
 pub struct GRPCPluginSettings {
-    pub grpc_server_addr: SocketAddr,
+    pub grpc_server_addr: Option<SocketAddr>,
     pub rest_server_addr: Option<SocketAddr>,
-    multiplexer_service_builder: MultiplexerServiceBuilder,
+    multiplexer_service_builder: Option<MultiplexerServiceBuilder>,
 }
 
 impl GRPCPluginSettings {
     pub fn new(grpc_server_addr: SocketAddr) -> Self {
         Self {
-            grpc_server_addr,
+            grpc_server_addr: Some(grpc_server_addr),
             rest_server_addr: None,
-            multiplexer_service_builder: MultiplexerService::builder(),
+            multiplexer_service_builder: Some(MultiplexerService::builder()),
         }
     }
 
     pub fn hybrid(grpc_server_addr: SocketAddr, rest_server_addr: SocketAddr) -> Self {
         Self {
-            grpc_server_addr,
+            grpc_server_addr: Some(grpc_server_addr),
             rest_server_addr: Some(rest_server_addr),
-            multiplexer_service_builder: MultiplexerService::builder(),
+            multiplexer_service_builder: Some(MultiplexerService::builder()),
+        }
+    }
+
+    pub fn rest(rest_server_addr: SocketAddr) -> Self {
+        Self {
+            grpc_server_addr: None,
+            rest_server_addr: Some(rest_server_addr),
+            multiplexer_service_builder: None,
         }
     }
 
@@ -54,7 +62,10 @@ impl GRPCPluginSettings {
     where
         S: MultiplexableService + NamedService + Send + Sync + 'static,
     {
-        self.multiplexer_service_builder.add_service(s);
+        self.multiplexer_service_builder
+            .as_mut()
+            .unwrap()
+            .add_service(s);
 
         self
     }
@@ -90,26 +101,42 @@ impl Default for SharedRouter {
     }
 }
 
+#[derive(PartialEq)]
+pub enum GRPCPluginType {
+    GRPC,
+    Rest,
+    Hybrid,
+}
+
 // Provides gRPC server capabilities to the engine.
-#[derive(Default)]
 pub struct GRPCPlugin {
-    hybrid: bool,
+    plugin_type: GRPCPluginType,
+}
+
+impl Default for GRPCPlugin {
+    fn default() -> Self {
+        Self {
+            plugin_type: GRPCPluginType::GRPC,
+        }
+    }
 }
 
 impl Plugin for GRPCPlugin {
     fn build(&self, app: &mut App) {
-        if self.hybrid {
+        if self.plugin_type == GRPCPluginType::Hybrid || self.plugin_type == GRPCPluginType::Rest {
             app.init_resource::<SharedRouter>();
         }
 
-        let system = if self.hybrid {
-            Self::start_hybrid_server
+        let system = match self.plugin_type {
+            GRPCPluginType::GRPC => Self::start_grpc_server
                 .exclusive_system()
-                .label(GRPCPluginScheduling::StartRpcServer)
-        } else {
-            Self::start_grpc_server
+                .label(GRPCPluginScheduling::StartRpcServer),
+            GRPCPluginType::Hybrid => Self::start_hybrid_server
                 .exclusive_system()
-                .label(GRPCPluginScheduling::StartRpcServer)
+                .label(GRPCPluginScheduling::StartRpcServer),
+            GRPCPluginType::Rest => Self::start_rest_server
+                .exclusive_system()
+                .label(GRPCPluginScheduling::StartRpcServer),
         };
 
         app.init_resource::<GRPCPluginSettings>()
@@ -119,7 +146,14 @@ impl Plugin for GRPCPlugin {
 
 impl GRPCPlugin {
     pub fn hybrid() -> Self {
-        Self { hybrid: true }
+        Self {
+            plugin_type: GRPCPluginType::Hybrid,
+        }
+    }
+    pub fn rest_only() -> Self {
+        Self {
+            plugin_type: GRPCPluginType::Rest,
+        }
     }
 
     #[allow(clippy::needless_pass_by_value)]
@@ -127,8 +161,13 @@ impl GRPCPlugin {
         settings: Res<'_, GRPCPluginSettings>,
         rt: ResMut<'_, lgn_async::TokioAsyncRuntime>,
     ) {
-        if let Some(service) = settings.multiplexer_service_builder.build() {
-            let server = Server::default().set_listen_address(settings.grpc_server_addr);
+        if let Some(service) = settings
+            .multiplexer_service_builder
+            .as_ref()
+            .unwrap()
+            .build()
+        {
+            let server = Server::default().set_listen_address(settings.grpc_server_addr.unwrap());
 
             rt.start_detached(async move {
                 match server.run(service).await {
@@ -151,9 +190,14 @@ impl GRPCPlugin {
         rt: ResMut<'_, lgn_async::TokioAsyncRuntime>,
         router: Res<'_, SharedRouter>,
     ) {
-        if let Some(service) = settings.multiplexer_service_builder.build() {
+        if let Some(service) = settings
+            .multiplexer_service_builder
+            .as_ref()
+            .unwrap()
+            .build()
+        {
             let mut server =
-                HybridServer::default().set_grpc_listen_address(settings.grpc_server_addr);
+                HybridServer::default().set_grpc_listen_address(settings.grpc_server_addr.unwrap());
 
             if let Some(rest_server_addr) = settings.rest_server_addr {
                 server = server.set_rest_listen_address(rest_server_addr);
@@ -177,5 +221,28 @@ impl GRPCPlugin {
         } else {
             warn!("not starting hybrid server as no service was registered");
         }
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    fn start_rest_server(
+        settings: Res<'_, GRPCPluginSettings>,
+        rt: ResMut<'_, lgn_async::TokioAsyncRuntime>,
+        router: Res<'_, SharedRouter>,
+    ) {
+        let rest_server_addr = settings.rest_server_addr.unwrap();
+        let server = RestServer::default().set_rest_listen_address(rest_server_addr);
+
+        let router = Arc::clone(&router.0);
+
+        rt.start_detached(async move {
+            match server.run(router).await {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    warn!("Rest server stopped and no longer listening ({})", e);
+
+                    Err(e)
+                }
+            }
+        });
     }
 }
