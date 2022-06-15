@@ -30,6 +30,104 @@ paths:
         "404":
           description: Resource not found
 
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/{resource-id}/properties/array/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/resource_id"
+    post:
+      description: Insert new item in a properties' array.
+      operationId: insertPropertyArrayItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InsertPropertyArrayItem"
+      responses:
+        "200":
+          description: Item inserted
+          schemas:
+            type: object
+            properties:
+              new_value:
+                type:
+                  $ref: "#/components/schemas/ResourceProperty"
+        "404":
+          description: Resource not found
+    delete:
+      description: Delete an item in a properties' array.
+      operationId: deletePropertiesArrayItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeletePropertyArrayItem"
+      responses:
+        "204":
+          description: Item deleted
+        "404":
+          description: Resource not found
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/{resource-id}/properties/array/reorder/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/resource_id"
+    post:
+      description: Reorder a properties' array.
+      operationId: reorderPropertyArray
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReorderPropertyArray"
+      responses:
+        "204":
+          description: Item reordered
+        "404":
+          description: Resource not found
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/{resource-id}/properties/selection-update/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/resource_id"
+    post:
+      description: Update the selection.
+      operationId: updatePropertySelection
+      responses:
+        "204":
+          description: Selection updated
+        "404":
+          description: Resource not found
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/properties/dynamic-traits:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    get:
+      description: Get all the available dynamic traits.
+      operationId: getAvailableDynTraits
+      parameters:
+        - name: search
+          in: query
+          description: Filter the dynamic traits by name.
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The dynamic traits
+          schemas:
+            type: array
+            items:
+              type: string
+        "404":
+          description: Resource not found
+
 components:
   parameters:
     resource_id:
@@ -61,7 +159,7 @@ components:
         - path
         - version
         - type
-    ResourceProperties:
+    ResourceProperty:
       type: object
       properties:
         name:
@@ -73,16 +171,15 @@ components:
         sub_properties:
           type: array
           items:
-            $ref: "#/components/schemas/ResourceProperties"
-        # additional properties don't work yet
-        # attributes:
-        #   type: object
-        #   additionalProperties:
-        #     type: string
+            $ref: "#/components/schemas/ResourceProperty"
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
       required:
         - name
         - ptype
-        # - attributes
+        - attributes
     ResourceDescriptionProperties:
       description: A resources with all its properties
       type: object
@@ -92,7 +189,7 @@ components:
         properties:
           type: array
           items:
-            $ref: "#/components/schemas/ResourceProperties"
+            $ref: "#/components/schemas/ResourceProperty"
       required:
         - description
         - properties
@@ -121,3 +218,40 @@ components:
         - id
         - version
         - updates
+    DeletePropertyArrayItem:
+      type: object
+      properties:
+        array_path:
+          type: string
+        indices:
+          type: array
+          items:
+            type: integer
+            format: uint64
+      required:
+        - array_path
+        - indeces
+    InsertPropertyArrayItem:
+      type: object
+      properties:
+        array_path:
+          type: string
+        index:
+          type: integer
+          format: uint64
+        json_value:
+          type: string
+      required:
+        - array_path
+        - index
+    ReorderPropertyArray:
+      type: object
+      properties:
+        array_path:
+          type: string
+        old_index:
+          type: integer
+          format: uint64
+        new_index:
+          type: integer
+          format: uint64
