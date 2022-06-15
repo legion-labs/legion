@@ -199,6 +199,42 @@ paths:
         "204":
           description: Ok.
 
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/assets:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: List assets by type
+      operationId: listAssets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                asset_types:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - asset_types
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Asset"
+                required:
+                  - assets
+
 components:
   parameters:
     token:
@@ -267,3 +303,14 @@ components:
       required:
         - property_path
         - json_value
+    Asset:
+      description: A filtered asset information
+      type: object
+      properties:
+        id:
+          type: string
+        asset_name:
+          type: string
+      required:
+        - id
+        - asset_name

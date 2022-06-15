@@ -19,11 +19,11 @@ use lgn_editor_yaml::resource_browser::{
     server::{
         CloneResourceRequest, CloneResourceResponse, CreateResourceRequest, CreateResourceResponse,
         DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
-        GetResourceTypeNamesResponse, RenameResourceRequest, RenameResourceResponse,
-        ReparentResourceRequest, ReparentResourceResponse,
+        GetResourceTypeNamesResponse, ListAssetsRequest, ListAssetsResponse, RenameResourceRequest,
+        RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
     },
     Api, CloneResourceBody, CreateResourceBody, DeleteResourceBody, InitPropertyValue,
-    RenameResourceBody, ReparentResourceBody,
+    ListAssetsBody, RenameResourceBody, ReparentResourceBody,
 };
 use lgn_math::Vec3;
 use lgn_scene_plugin::SceneMessage;
@@ -205,6 +205,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         };
 
         let root_entity_id = ResourceTypeAndId::from_str(&root_entity_id).unwrap();
+
         // Rename the created resource
 
         let (parts, body) = http::Request::new(RenameResourceBody {
@@ -453,10 +454,29 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         }
 
         // Delete Clone
-
         {
             let mut guard = transaction_manager.lock().await;
             guard.undo_transaction().await?; // Undo delete
+        }
+
+        // List entities
+        let (parts, body) = http::Request::new(ListAssetsBody {
+            asset_types: vec![sample_data::offline::Entity::TYPE.to_string()],
+        })
+        .into_parts();
+
+        if let ListAssetsResponse::Status200(_response) = resource_browser_server
+            .list_assets(ListAssetsRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("List assets failed")
         }
     }
     Ok(())

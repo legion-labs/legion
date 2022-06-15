@@ -23,23 +23,24 @@ use lgn_ecs::prelude::*;
 use lgn_editor_proto::{
     property_inspector::UpdateResourcePropertiesRequest,
     resource_browser::{
-        Asset, GetActiveScenesRequest, GetActiveScenesResponse, GetRuntimeSceneInfoRequest,
-        GetRuntimeSceneInfoResponse, ListAssetsRequest, ListAssetsResponse,
+        GetActiveScenesRequest, GetActiveScenesResponse, GetRuntimeSceneInfoRequest,
+        GetRuntimeSceneInfoResponse,
     },
 };
 
 use lgn_editor_yaml::resource_browser::server::{
     CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
     CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, OpenSceneRequest, OpenSceneResponse,
-    RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
-    ReparentResourceResponse, SearchResourcesRequest, SearchResourcesResponse,
+    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, ListAssetsRequest,
+    ListAssetsResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
+    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
+    SearchResourcesRequest, SearchResourcesResponse,
 };
 use lgn_online::server::{Error, Result};
 
 use lgn_editor_yaml::resource_browser::{
-    Api, CloneResource200Response, CreateResource200Response, GetResourceTypeNames200Response,
-    NextSearchToken, ResourceDescription,
+    Api, Asset, CloneResource200Response, CreateResource200Response,
+    GetResourceTypeNames200Response, ListAssets200Response, NextSearchToken, ResourceDescription,
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -601,6 +602,38 @@ impl Api for Server {
         Ok(RenameResourceResponse::Status204)
     }
 
+    async fn list_assets(&self, request: ListAssetsRequest) -> Result<ListAssetsResponse> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let mut asset_types = Vec::new();
+        for asset_type in &request.body.asset_types {
+            asset_types.push(
+                ResourceType::from_str(asset_type.as_str())
+                    .map_err(|err| Error::internal(format!("list assets failed: {}", err)))?,
+            );
+        }
+        let resources = ctx.project.resource_list().await;
+        let mut assets = Vec::new();
+        for resource_id in resources {
+            if asset_types.contains(&resource_id.kind) {
+                let path: String = ctx
+                    .project
+                    .resource_name(resource_id)
+                    .await
+                    .unwrap_or_else(|_err| "".into())
+                    .to_string();
+                assets.push(Asset {
+                    id: ResourceTypeAndId::to_string(&resource_id),
+                    asset_name: path,
+                });
+            }
+        }
+
+        Ok(ListAssetsResponse::Status200(ListAssets200Response {
+            assets,
+        }))
+    }
+
     /// Clone a Resource
     async fn clone_resource(&self, request: CloneResourceRequest) -> Result<CloneResourceResponse> {
         let source_resource_id = parse_resource_id(request.body.source_id.as_str())
@@ -889,39 +922,5 @@ impl ResourceBrowser for ResourceBrowserRPC {
             manifest_id: manifest_id.to_string(),
             asset_id: asset_id.to_string(),
         }))
-    }
-
-    async fn list_assets(
-        &self,
-        request: Request<ListAssetsRequest>,
-    ) -> Result<Response<ListAssetsResponse>, Status> {
-        let transaction_manager = self.transaction_manager.lock().await;
-        let ctx = LockContext::new(&transaction_manager).await;
-        let request = request.get_ref();
-        let mut asset_types = Vec::new();
-        for asset_type in &request.asset_types {
-            asset_types.push(
-                ResourceType::from_str(asset_type.as_str())
-                    .map_err(|err| Status::internal(err.to_string()))?,
-            );
-        }
-        let resources = ctx.project.resource_list().await;
-        let mut assets = Vec::new();
-        for resource_id in resources {
-            if asset_types.contains(&resource_id.kind) {
-                let path: String = ctx
-                    .project
-                    .resource_name(resource_id)
-                    .await
-                    .unwrap_or_else(|_err| "".into())
-                    .to_string();
-                assets.push(Asset {
-                    id: ResourceTypeAndId::to_string(&resource_id),
-                    asset_name: path,
-                });
-            }
-        }
-
-        Ok(Response::new(ListAssetsResponse { assets }))
     }
 }
