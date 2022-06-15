@@ -110,14 +110,14 @@ pub fn as_render_object(viewport: &Viewport) -> RenderViewport {
     RenderViewport::new(viewport.offset, viewport.extents, viewport.camera_id)
 }
 
-pub struct RenderViewportPrivateData {
+pub struct RenderViewportRendererData {
     view_target: Texture,
     view_target_srv: TextureView,
     hzb: [Texture; 2],
     hzb_cleared: bool,
 }
 
-impl RenderViewportPrivateData {
+impl RenderViewportRendererData {
     pub fn new(render_viewport: &RenderViewport, device_context: &DeviceContext) -> Self {
         let extents_3d = render_viewport.extents().to_3d(1);
 
@@ -296,17 +296,17 @@ pub struct RenderViewportPrivateDataHandler {
     device_context: DeviceContext,
 }
 
-impl SecondaryTableHandler<RenderViewport, RenderViewportPrivateData>
+impl SecondaryTableHandler<RenderViewport, RenderViewportRendererData>
     for RenderViewportPrivateDataHandler
 {
-    fn create(&self, render_viewport: &RenderViewport) -> RenderViewportPrivateData {
-        RenderViewportPrivateData::new(render_viewport, &self.device_context)
+    fn insert(&self, render_viewport: &RenderViewport) -> RenderViewportRendererData {
+        RenderViewportRendererData::new(render_viewport, &self.device_context)
     }
 
     fn update(
         &self,
         render_viewport: &RenderViewport,
-        render_viewport_private_data: &mut RenderViewportPrivateData,
+        render_viewport_private_data: &mut RenderViewportRendererData,
     ) {
         let viewport_extents = render_viewport.extents.to_3d(1);
         if viewport_extents
@@ -319,10 +319,10 @@ impl SecondaryTableHandler<RenderViewport, RenderViewportPrivateData>
         }
     }
 
-    fn destroy(
+    fn remove(
         &self,
         _render_viewport: &RenderViewport,
-        _render_viewport_private_data: &mut RenderViewportPrivateData,
+        _render_viewport_private_data: &mut RenderViewportRendererData,
     ) {
     }
 }

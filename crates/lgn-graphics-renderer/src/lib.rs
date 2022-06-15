@@ -20,7 +20,7 @@ use crate::components::{
 use crate::core::{
     RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
     RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, RenderViewport,
-    RenderViewportPrivateData, RenderViewportPrivateDataHandler, Viewport, RENDER_LAYER_DEPTH,
+    RenderViewportPrivateDataHandler, RenderViewportRendererData, Viewport, RENDER_LAYER_DEPTH,
     RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
 use crate::features::{ModelFeature, RenderVisual};
@@ -248,7 +248,7 @@ impl Plugin for RendererPlugin {
             .add_secondary_table::<RenderLight, RenderLightTestData>()
             // Viewports
             .add_primary_table::<RenderViewport>()
-            .add_secondary_table_with_handler::<RenderViewport, RenderViewportPrivateData>(
+            .add_secondary_table_with_handler::<RenderViewport, RenderViewportRendererData>(
                 Box::new(RenderViewportPrivateDataHandler::new(
                     device_context.clone(),
                 )),

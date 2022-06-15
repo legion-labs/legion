@@ -3,9 +3,11 @@ use bit_set::BitSet;
 
 use lgn_utils::HashMap;
 
+#[cfg(debug_assertions)]
+use std::any::type_name;
 use std::{
     alloc::Layout,
-    any::{type_name, TypeId},
+    any::TypeId,
     cell::{Cell, RefCell},
     intrinsics::transmute,
     marker::PhantomData,
@@ -398,25 +400,25 @@ impl RenderObjectsBuilder {
         P: RenderObject,
         S: RenderObject,
     {
-        unsafe fn create<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+        unsafe fn insert_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
             let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
             let primary_ref = &*p.cast::<P>();
-            let result = handler.create(primary_ref);
+            let result = handler.insert(primary_ref);
             s.cast::<S>().write(result);
         }
 
-        unsafe fn update<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+        unsafe fn update_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
             let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
             let primary_ref = &*p.cast::<P>();
             let secondary_ref = &mut *s.cast::<S>();
             handler.update(primary_ref, secondary_ref);
         }
 
-        unsafe fn destroy<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+        unsafe fn remove_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
             let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
             let primary_ref = &*p.cast::<P>();
             let secondary_ref = &mut *s.cast::<S>();
-            handler.destroy(primary_ref, secondary_ref);
+            handler.remove(primary_ref, secondary_ref);
         }
 
         unsafe fn storage_drop_func<T>(x: *mut u8) {
@@ -435,10 +437,10 @@ impl RenderObjectsBuilder {
                 primary_key,
                 storage: RenderObjectStorage::new(Layout::new::<S>(), storage_drop_func::<S>, 256),
                 handler_fat_ptr: get_fat_ptr(handler),
-                create: create::<P, S>,
-                update: update::<P, S>,
-                destroy: destroy::<P, S>,
-                drop: drop_fat_ptr::<P, S>,
+                insert_fn: insert_fn::<P, S>,
+                update_fn: update_fn::<P, S>,
+                remove_fn: remove_fn::<P, S>,
+                drop_fn: drop_fat_ptr::<P, S>,
             }),
         );
 
@@ -616,10 +618,10 @@ impl<'a, R: RenderObject> PrimaryTableWriter<'a, R> {
     }
 }
 
-pub trait SecondaryTableHandler<R, PD> {
-    fn create(&self, render_object: &R) -> PD;
-    fn update(&self, render_object: &R, render_object_private_data: &mut PD);
-    fn destroy(&self, render_object: &R, render_object_private_data: &mut PD);
+pub trait SecondaryTableHandler<P, S> {
+    fn insert(&self, render_object: &P) -> S;
+    fn update(&self, render_object: &P, render_object_private_data: &mut S);
+    fn remove(&self, render_object: &P, render_object_private_data: &mut S);
 }
 
 pub struct DefaultSecondaryTableHandler<P, S> {
@@ -639,11 +641,11 @@ where
     P: RenderObject,
     S: RenderObject + Default,
 {
-    fn create(&self, _render_object: &P) -> S {
+    fn insert(&self, _render_object: &P) -> S {
         S::default()
     }
     fn update(&self, _render_object: &P, _render_object_private_data: &mut S) {}
-    fn destroy(&self, _render_object: &P, _render_object_private_data: &mut S) {}
+    fn remove(&self, _render_object: &P, _render_object_private_data: &mut S) {}
 }
 
 //
@@ -655,16 +657,16 @@ pub struct SecondaryTable {
     primary_key: RenderObjectKey,
     storage: RenderObjectStorage,
     handler_fat_ptr: FatPtr,
-    create: unsafe fn(FatPtr, *const u8, *mut u8),
-    update: unsafe fn(FatPtr, *const u8, *mut u8),
-    destroy: unsafe fn(FatPtr, *const u8, *mut u8),
-    drop: unsafe fn(FatPtr),
+    insert_fn: unsafe fn(FatPtr, *const u8, *mut u8),
+    update_fn: unsafe fn(FatPtr, *const u8, *mut u8),
+    remove_fn: unsafe fn(FatPtr, *const u8, *mut u8),
+    drop_fn: unsafe fn(FatPtr),
 }
 
 #[allow(unsafe_code)]
 impl Drop for SecondaryTable {
     fn drop(&mut self) {
-        let drop_fn = self.drop;
+        let drop_fn = self.drop_fn;
         unsafe {
             drop_fn(self.handler_fat_ptr);
         }
@@ -786,12 +788,12 @@ impl RenderObjects {
             let handler_fat_ptr = secondary_table.handler_fat_ptr;
 
             for removed_index in primary_table_set.removed.iter() {
-                let destroy_fn = secondary_table.destroy;
+                let remove_fn = secondary_table.remove_fn;
                 let primary_ref = primary_table_set.storage.get_value(removed_index);
                 let secondary_ref = secondary_table.storage.get_value_mut(removed_index);
                 #[allow(unsafe_code)]
                 unsafe {
-                    destroy_fn(handler_fat_ptr, primary_ref, secondary_ref);
+                    remove_fn(handler_fat_ptr, primary_ref, secondary_ref);
                 }
                 secondary_table.storage.remove_value(removed_index);
             }
@@ -815,17 +817,17 @@ impl RenderObjects {
             let handler_fat_ptr = secondary_table.handler_fat_ptr;
 
             for inserted_index in primary_table_set.inserted.iter() {
-                let create_fn = secondary_table.create;
+                let insert_fn = secondary_table.insert_fn;
                 let primary_ref = primary_table_set.storage.get_value(inserted_index);
                 let secondary_ref = secondary_table.storage.get_value_mut(inserted_index);
                 #[allow(unsafe_code)]
                 unsafe {
-                    create_fn(handler_fat_ptr, primary_ref, secondary_ref);
+                    insert_fn(handler_fat_ptr, primary_ref, secondary_ref);
                 }
             }
 
             for updated_index in primary_table_set.updated.iter() {
-                let update_fn = secondary_table.update;
+                let update_fn = secondary_table.update_fn;
                 let primary_ref = primary_table_set.storage.get_value(updated_index);
                 let secondary_ref = secondary_table.storage.get_value_mut(updated_index);
                 #[allow(unsafe_code)]
@@ -837,9 +839,9 @@ impl RenderObjects {
     }
 
     pub fn sync_update(&mut self) {
-        for (_, primary_table) in self.primary_tables.iter_mut() {
-            primary_table.0.sync_update();
-            primary_table.1.sync_update();
+        for (_, (primary_table, command_queue)) in self.primary_tables.iter_mut() {
+            primary_table.sync_update();
+            command_queue.sync_update();
         }
     }
 
