@@ -57,7 +57,7 @@ impl PresenterWindow {
 
         cmd_buffer.begin();
 
-        let final_target = render_surface.view_target();
+        let final_target = render_surface.final_target();
 
         assert_eq!(
             final_target.definition().extents,
@@ -74,7 +74,7 @@ impl PresenterWindow {
                 ),
                 TextureBarrier::state_transition(
                     final_target,
-                    ResourceState::RENDER_TARGET,
+                    ResourceState::SHADER_RESOURCE,
                     ResourceState::COPY_SRC,
                 ),
             ],
@@ -109,7 +109,7 @@ impl PresenterWindow {
                 TextureBarrier::state_transition(
                     final_target,
                     ResourceState::COPY_SRC,
-                    ResourceState::RENDER_TARGET,
+                    ResourceState::SHADER_RESOURCE,
                 ),
             ],
         );

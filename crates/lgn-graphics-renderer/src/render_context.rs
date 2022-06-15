@@ -1,8 +1,15 @@
+use bumpalo::Bump;
+use bumpalo_herd::Herd;
 use lgn_graphics_api::{
     CommandBuffer, DescriptorRef, DescriptorSetHandle, DescriptorSetLayout, DeviceContext,
 };
+use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
+    components::{ManipulatorComponent, VisualComponent},
+    debug_display::DebugDisplay,
+    egui::Egui,
+    picking::PickingManager,
     resources::{
         DescriptorPoolHandle, PipelineManager, TransientBufferAllocator,
         TransientCommandBufferAllocator, UnifiedStaticBuffer,
@@ -18,6 +25,13 @@ pub struct RenderContext<'frame> {
     pub transient_commandbuffer_allocator: &'frame mut TransientCommandBufferAllocator,
     pub transient_buffer_allocator: &'frame mut TransientBufferAllocator,
     pub static_buffer: &'frame UnifiedStaticBuffer,
+    pub herd: &'frame Herd,
+    pub bump: &'frame Bump,
+    pub picking_manager: &'frame PickingManager,
+    pub debug_display: &'frame DebugDisplay,
+    pub picked_drawables: &'frame [(&'frame VisualComponent, &'frame GlobalTransform)],
+    pub manipulator_drawables: &'frame [(&'frame GlobalTransform, &'frame ManipulatorComponent)],
+    pub egui: &'frame Egui,
     // tmp
     persistent_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
     frame_descriptor_set: Option<(&'frame DescriptorSetLayout, DescriptorSetHandle)>,
@@ -25,6 +39,7 @@ pub struct RenderContext<'frame> {
 }
 
 impl<'frame> RenderContext<'frame> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         device_context: &'frame DeviceContext,
         graphics_queue: &'frame GraphicsQueue,
@@ -33,6 +48,13 @@ impl<'frame> RenderContext<'frame> {
         transient_commandbuffer_allocator: &'frame mut TransientCommandBufferAllocator,
         transient_buffer_allocator: &'frame mut TransientBufferAllocator,
         static_buffer: &'frame UnifiedStaticBuffer,
+        herd: &'frame Herd,
+        bump: &'frame Bump,
+        picking_manager: &'frame PickingManager,
+        debug_display: &'frame DebugDisplay,
+        picked_drawables: &'frame [(&'frame VisualComponent, &'frame GlobalTransform)],
+        manipulator_drawables: &'frame [(&'frame GlobalTransform, &'frame ManipulatorComponent)],
+        egui: &'frame Egui,
     ) -> Self {
         Self {
             device_context,
@@ -42,6 +64,13 @@ impl<'frame> RenderContext<'frame> {
             transient_commandbuffer_allocator,
             transient_buffer_allocator,
             static_buffer,
+            herd,
+            bump,
+            picking_manager,
+            debug_display,
+            picked_drawables,
+            manipulator_drawables,
+            egui,
             persistent_descriptor_set: None,
             frame_descriptor_set: None,
             view_descriptor_set: None,

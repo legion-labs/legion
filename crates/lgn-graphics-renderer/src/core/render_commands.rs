@@ -34,7 +34,7 @@ impl<CTX> CommandQueuePoolInner<CTX> {
 impl<CTX> Drop for CommandQueuePoolInner<CTX> {
     fn drop(&mut self) {
         assert_eq!(self.acquired_count.load(Ordering::SeqCst), 0);
-        assert!(self.exec_pool.borrow().is_empty());
+        self.exec_pool.borrow_mut().clear();
         let mut gamesim_pool = self.gamesim_pool.write();
         gamesim_pool.drain(..).for_each(|mut x| {
             x.take();
