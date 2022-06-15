@@ -26,20 +26,19 @@ use lgn_editor_proto::{
         Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
         GetActiveScenesRequest, GetActiveScenesResponse, GetRuntimeSceneInfoRequest,
         GetRuntimeSceneInfoResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
-        OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
-        ReparentResourceResponse,
+        OpenSceneResponse, ReparentResourceRequest, ReparentResourceResponse,
     },
 };
 
 use lgn_editor_yaml::resource_browser::server::{
     CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, SearchResourcesRequest,
-    SearchResourcesResponse,
+    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, RenameResourceRequest,
+    RenameResourceResponse, SearchResourcesRequest, SearchResourcesResponse,
 };
 use lgn_online::server::{Error, Result};
 
 use lgn_editor_yaml::resource_browser::{
-    Api, CreateResource204Response, GetResourceTypeNames204Response, NextSearchToken,
+    Api, CreateResource200Response, GetResourceTypeNames200Response, NextSearchToken,
     ResourceDescription,
 };
 
@@ -394,7 +393,7 @@ impl Api for Server {
             resource_description: descriptors,
         };
 
-        Ok(SearchResourcesResponse::Status204(next_search_token))
+        Ok(SearchResourcesResponse::Status200(next_search_token))
     }
 
     /// Create a new resource
@@ -485,8 +484,8 @@ impl Api for Server {
                 .map_err(|err| Error::internal(format!("failed to remove dir: {}", err)))?;
         }
 
-        Ok(CreateResourceResponse::Status204(
-            CreateResource204Response {
+        Ok(CreateResourceResponse::Status200(
+            CreateResource200Response {
                 new_id: new_resource_id.to_string(),
             },
         ))
@@ -501,8 +500,8 @@ impl Api for Server {
         let ctx = LockContext::new(&transaction_manager).await;
         let res_types = ctx.asset_registry.get_resource_types();
 
-        Ok(GetResourceTypeNamesResponse::Status204(
-            GetResourceTypeNames204Response {
+        Ok(GetResourceTypeNamesResponse::Status200(
+            GetResourceTypeNames200Response {
                 resource_types: res_types
                     .into_iter()
                     .map(|(_k, v)| String::from(v))
@@ -577,32 +576,33 @@ impl Api for Server {
 
         Ok(DeleteResourceResponse::Status204)
     }
-}
 
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
     /// Rename a Resource
     async fn rename_resource(
         &self,
-        request: Request<RenameResourceRequest>,
-    ) -> Result<Response<RenameResourceResponse>, Status> {
-        let request = request.get_ref();
-        let resource_id = parse_resource_id(request.id.as_str())?;
+        request: RenameResourceRequest,
+    ) -> Result<RenameResourceResponse> {
+        let resource_id = parse_resource_id(request.body.id.as_str())
+            .map_err(|err| Error::bad_request(format!("failed to parse resource_id: {}", err)))?;
+
         let mut transaction = Transaction::new().add_operation(RenameResourceOperation::new(
             resource_id,
-            ResourcePathName::new(request.new_path.as_str()),
+            ResourcePathName::new(request.body.new_path.as_str()),
         ));
         {
             let mut transaction_manager = self.transaction_manager.lock().await;
             transaction_manager
                 .commit_transaction(transaction)
                 .await
-                .map_err(|err| Status::internal(err.to_string()))?;
+                .map_err(|err| Error::internal(format!("rename transaction failed: {}", err)))?;
         }
 
-        Ok(Response::new(RenameResourceResponse {}))
+        Ok(RenameResourceResponse::Status204)
     }
+}
 
+#[tonic::async_trait]
+impl ResourceBrowser for ResourceBrowserRPC {
     /// Clone a Resource
     async fn clone_resource(
         &self,

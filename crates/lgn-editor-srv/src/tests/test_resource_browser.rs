@@ -16,15 +16,15 @@ use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
 use lgn_editor_proto::resource_browser::{
-    resource_browser_server::ResourceBrowser, CloneResourceRequest, RenameResourceRequest,
-    ReparentResourceRequest,
+    resource_browser_server::ResourceBrowser, CloneResourceRequest, ReparentResourceRequest,
 };
 use lgn_editor_yaml::resource_browser::{
     server::{
         CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest,
         DeleteResourceResponse, GetResourceTypeNamesRequest, GetResourceTypeNamesResponse,
+        RenameResourceRequest, RenameResourceResponse,
     },
-    Api, CreateResourceBody, DeleteResourceBody,
+    Api, CreateResourceBody, DeleteResourceBody, RenameResourceBody,
 };
 use lgn_math::Vec3;
 use lgn_scene_plugin::SceneMessage;
@@ -158,7 +158,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         // Read all Resource Type registered
         let (parts, _) = http::Request::new("").into_parts();
 
-        let resource_types = if let GetResourceTypeNamesResponse::Status204(data) =
+        let resource_types = if let GetResourceTypeNamesResponse::Status200(data) =
             resource_browser_server
                 .get_resource_type_names(GetResourceTypeNamesRequest {
                     space_id: SpaceId("0".to_string()),
@@ -194,7 +194,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         .into_parts();
 
         // Create new resource
-        let root_entity_id = if let CreateResourceResponse::Status204(data) =
+        let root_entity_id = if let CreateResourceResponse::Status200(data) =
             resource_browser_server
                 .create_resource(CreateResourceRequest {
                     space_id: SpaceId("0".to_string()),
@@ -211,12 +211,26 @@ async fn test_resource_browser() -> anyhow::Result<()> {
 
         let root_entity_id = ResourceTypeAndId::from_str(&root_entity_id).unwrap();
         // Rename the created resource
-        resource_browser
-            .rename_resource(Request::new(RenameResourceRequest {
-                id: root_entity_id.to_string(),
-                new_path: "root_entity".into(),
-            }))
-            .await?;
+
+        let (parts, body) = http::Request::new(RenameResourceBody {
+            id: root_entity_id.to_string(),
+            new_path: "root_entity".into(),
+        })
+        .into_parts();
+
+        if let RenameResourceResponse::Status204 = resource_browser_server
+            .rename_resource(RenameResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("Resource creation failed")
+        }
 
         // Add Script + ScriptComponent
         /*{
@@ -253,7 +267,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 })
                 .into_parts();
 
-                let child_id = if let CreateResourceResponse::Status204(data) =
+                let child_id = if let CreateResourceResponse::Status200(data) =
                     resource_browser_server
                         .create_resource(CreateResourceRequest {
                             space_id: SpaceId("0".to_string()),
@@ -271,12 +285,25 @@ async fn test_resource_browser() -> anyhow::Result<()> {
 
                 // Test Renaming the child
                 if i == 0 {
-                    resource_browser
-                        .rename_resource(Request::new(RenameResourceRequest {
-                            id: child_id.clone(),
-                            new_path: "renamed_child".into(),
-                        }))
-                        .await?;
+                    let (parts, body) = http::Request::new(RenameResourceBody {
+                        id: child_id.clone(),
+                        new_path: "renamed_child".into(),
+                    })
+                    .into_parts();
+
+                    if let RenameResourceResponse::Status204 = resource_browser_server
+                        .rename_resource(RenameResourceRequest {
+                            space_id: SpaceId("0".to_string()),
+                            workspace_id: WorkspaceId("0".to_string()),
+                            body,
+                            parts,
+                        })
+                        .await
+                        .unwrap()
+                    {
+                    } else {
+                        panic!("Resource creation failed")
+                    }
                 }
 
                 let (parts, body) = http::Request::new(CreateResourceBody {
@@ -288,7 +315,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 })
                 .into_parts();
 
-                let sub_child_id = if let CreateResourceResponse::Status204(data) =
+                let sub_child_id = if let CreateResourceResponse::Status200(data) =
                     resource_browser_server
                         .create_resource(CreateResourceRequest {
                             space_id: SpaceId("0".to_string()),

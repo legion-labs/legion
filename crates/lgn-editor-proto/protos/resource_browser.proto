@@ -2,8 +2,6 @@ syntax = "proto3";
 package resource_browser;
 
 service ResourceBrowser {
-  rpc RenameResource(RenameResourceRequest) returns (RenameResourceResponse);
-
   rpc CloneResource(CloneResourceRequest) returns (CloneResourceResponse);
 
   rpc ReparentResource(ReparentResourceRequest) returns (ReparentResourceResponse);
@@ -30,12 +28,6 @@ message InitPropertyValue {
   string property_path = 1;
   string json_value = 2;
 }
-
-message RenameResourceRequest {
-  string id = 1;
-  string new_path = 2;
-}
-message RenameResourceResponse {}
 
 message CloneResourceRequest {
   string source_id = 1;

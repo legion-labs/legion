@@ -13,17 +13,34 @@ paths:
       description: Search Resources
       operationId: SearchResources
       responses:
-        "204":
+        "200":
           description: Ok.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/NextSearchToken"
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/create:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
-    put:
+    get:
+      description: Get the list of all the resources types available (for creation dialog)
+      operationId: GetResourceTypeNames
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resource_types:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - resource_types
+    post:
       description: Create a resource
       operationId: CreateResource
       requestBody:
@@ -49,7 +66,7 @@ paths:
                 - resource_type
                 - init_values
       responses:
-        "204":
+        "200":
           description: Ok.
           content:
             application/json:
@@ -60,34 +77,7 @@ paths:
                     type: string
                 required:
                   - new_id
-
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/type-names:
-    parameters:
-      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
-      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
-    get:
-      description: Get the list of all the resources types available (for creation dialog)
-      operationId: GetResourceTypeNames
-      responses:
-        "204":
-          description: Ok.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  resource_types:
-                    type: array
-                    items:
-                      type: string
-                required:
-                  - resource_types
-
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/delete:
-    parameters:
-      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
-      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
-    put:
+    delete:
       description: Delete a resource
       operationId: DeleteResource
       requestBody:
@@ -101,6 +91,26 @@ paths:
                   type: string
               required:
                 - id
+      responses:
+        "204":
+          description: Ok.
+    put:
+      description: Rename a resource
+      operationId: RenameResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                new_path:
+                  type: string
+              required:
+                - id
+                - new_path
       responses:
         "204":
           description: Ok.
