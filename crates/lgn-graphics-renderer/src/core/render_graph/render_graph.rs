@@ -1,4 +1,5 @@
 use parking_lot::RwLock;
+use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
@@ -770,6 +771,8 @@ struct ResourceBarrier {
     next_state: ResourceState,
 }
 
+const BARRIER_COUNT: usize = 32;
+
 impl RenderGraph {
     pub fn builder<'a>(
         render_resources: &'a RenderResources,
@@ -936,7 +939,7 @@ impl RenderGraph {
         texture: &'a Texture,
         prev_state: ResourceState,
         next_state: ResourceState,
-        texture_barriers: &mut Vec<TextureBarrier<'a>>,
+        texture_barriers: &mut SmallVec<[TextureBarrier<'a>; BARRIER_COUNT]>,
     ) {
         // println!(
         //     "  Transition texture {} mip {} from {:?} to {:?}",
@@ -961,7 +964,7 @@ impl RenderGraph {
         buffer: &'a Buffer,
         prev_state: ResourceState,
         next_state: ResourceState,
-        buffer_barriers: &mut Vec<BufferBarrier<'a>>,
+        buffer_barriers: &mut SmallVec<[BufferBarrier<'a>; BARRIER_COUNT]>,
     ) {
         // println!(
         //     "  Transition buffer {} from {:?} to {:?}",
@@ -984,7 +987,7 @@ impl RenderGraph {
         texture_view_def: &RenderGraphTextureViewDef,
         context: &mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         let resource_id = texture_view_def.resource_id;
         let res_idx = texture_view_def.resource_id as usize;
@@ -1041,7 +1044,7 @@ impl RenderGraph {
         buffer_view_def: &RenderGraphBufferViewDef,
         context: &mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         let resource_id = buffer_view_def.resource_id;
         let res_idx = buffer_view_def.resource_id as usize;
@@ -1093,7 +1096,7 @@ impl RenderGraph {
         view_id: RenderGraphViewId,
         context: &'a mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         let view_idx = view_id as usize;
 
@@ -1125,7 +1128,7 @@ impl RenderGraph {
         context: &mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         for read_res in &node.read_resources {
             self.gather_resource_transitions(read_res.key, context, execute_context, barriers);
@@ -1137,7 +1140,7 @@ impl RenderGraph {
         context: &'a mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         for write_res in &node.write_resources {
             self.gather_resource_transitions(write_res.key, context, execute_context, barriers);
@@ -1149,7 +1152,7 @@ impl RenderGraph {
         context: &'a mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         for rt_res in node.render_targets.iter().flatten() {
             self.gather_resource_transitions(rt_res.key, context, execute_context, barriers);
@@ -1161,7 +1164,7 @@ impl RenderGraph {
         context: &'a mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         if let Some(depth_stencil_res) = &node.depth_stencil {
             self.gather_resource_transitions(
@@ -1180,8 +1183,11 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("do_resource_transitions");
+
         // Gather barriers into a container.
-        let mut barriers: Vec<ResourceBarrier> = Vec::with_capacity(32);
+        let mut barriers =
+            SmallVec::<[ResourceBarrier; BARRIER_COUNT]>::with_capacity(BARRIER_COUNT);
 
         self.gather_read_resource_transitions(context, execute_context, node, &mut barriers);
 
@@ -1197,8 +1203,10 @@ impl RenderGraph {
         );
 
         // Create the actual barriers
-        let mut buffer_barriers: Vec<BufferBarrier<'_>> = Vec::with_capacity(32);
-        let mut texture_barriers: Vec<TextureBarrier<'_>> = Vec::with_capacity(32);
+        let mut buffer_barriers =
+            SmallVec::<[BufferBarrier<'_>; BARRIER_COUNT]>::with_capacity(BARRIER_COUNT);
+        let mut texture_barriers =
+            SmallVec::<[TextureBarrier<'_>; BARRIER_COUNT]>::with_capacity(BARRIER_COUNT);
 
         for barrier in &barriers {
             let view_idx = barrier.view_id as usize;
@@ -1255,9 +1263,12 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("do_begin_render_pass");
+
         if self.need_begin_end_render_pass(node) {
-            let mut color_targets: Vec<ColorRenderTargetBinding<'_>> =
-                Vec::with_capacity(node.render_targets.len());
+            let mut color_targets = SmallVec::<
+                [ColorRenderTargetBinding<'_>; MAX_RENDER_TARGET_ATTACHMENTS],
+            >::with_capacity(node.render_targets.len());
             let mut depth_target: Option<DepthStencilRenderTargetBinding<'_>> = None;
 
             for resource_data in node.render_targets.iter().flatten() {
@@ -1396,6 +1407,8 @@ impl RenderGraph {
         execute_context: &mut RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
     ) {
+        span_scope!("create_views");
+
         for resource_data in node.render_targets.iter().flatten() {
             self.create_view(
                 context,
@@ -1486,6 +1499,8 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("clear_write_targets");
+
         for resource_data in &node.write_resources {
             let view_id = resource_data.key;
             let view_def = self.get_view_def(view_id);
@@ -1496,6 +1511,7 @@ impl RenderGraph {
                     //println!("  !! Clear {} ", self.get_resource_name(resource_id));
                     match view_def {
                         RenderGraphViewDef::Texture(_) => {
+                            span_scope!("clear_texture");
                             let texture = context.get_texture(resource_id);
                             let data = vec![value; texture.vk_alloc_size() as usize / 4];
                             Self::upload_texture_data(
@@ -1507,6 +1523,7 @@ impl RenderGraph {
                             );
                         }
                         RenderGraphViewDef::Buffer(_) => {
+                            span_scope!("clear_buffer");
                             let buffer = context.get_buffer(resource_id);
                             cmd_buffer.cmd_fill_buffer(buffer, 0, buffer.definition().size, value);
                         }
@@ -1536,6 +1553,8 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("begin_execute");
+
         // Batch up and execute resource transitions.
         self.do_resource_transitions(context, execute_context, node, cmd_buffer);
 
@@ -1703,7 +1722,10 @@ impl RenderGraph {
         cmd_buffer.with_label(&node.name, |cmd_buffer| {
             if let Some(execute_fn) = &node.execute_fn {
                 self.begin_execute(context, execute_context, node, cmd_buffer);
-                (execute_fn)(context, execute_context, cmd_buffer);
+                {
+                    span_scope!("execute_fn");
+                    (execute_fn)(context, execute_context, cmd_buffer);
+                }
                 self.end_execute(context, node, cmd_buffer);
             }
 
