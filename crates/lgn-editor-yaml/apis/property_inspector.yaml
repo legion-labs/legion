@@ -241,7 +241,7 @@ components:
             format: uint64
       required:
         - array_path
-        - indeces
+        - indices
     InsertPropertyArrayItem:
       type: object
       properties:
@@ -266,3 +266,7 @@ components:
         new_index:
           type: integer
           format: uint64
+      required:
+        - array_path
+        - old_index
+        - new_index

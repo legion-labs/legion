@@ -739,7 +739,7 @@ impl Api for Server {
         let new_parent = index_snapshot.name_to_entity.get(&new_path).copied();
         if let Some(new_parent) = new_parent {
             if new_parent == resource_id {
-                return Err(Error::bad_request(format!("cannot parent to itself")));
+                return Err(Error::bad_request("cannot parent to itself".to_string()));
             }
             new_path = ResourcePathName::new(format!("/!{}", new_parent));
         }

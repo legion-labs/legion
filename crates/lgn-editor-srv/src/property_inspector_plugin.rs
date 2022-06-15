@@ -1036,22 +1036,88 @@ impl Api for Server {
 
     async fn delete_properties_array_item(
         &self,
-        _request: DeletePropertiesArrayItemRequest,
+        mut request: DeletePropertiesArrayItemRequest,
     ) -> Result<DeletePropertiesArrayItemResponse> {
-        Err(Error::internal("unimplemented"))
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
+
+        let transaction = {
+            // Remove indices in reverse order to maintain indices
+            request.body.indices.sort_unstable();
+            let mut transaction = Transaction::new();
+            for index in request.body.indices.iter().rev() {
+                transaction = transaction.add_operation(ArrayOperation::delete_element(
+                    resource_id,
+                    request.body.array_path.as_str(),
+                    *index as usize,
+                ));
+            }
+            transaction
+        };
+
+        self.transaction_manager
+            .lock()
+            .await
+            .commit_transaction(transaction)
+            .await
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+        Ok(DeletePropertiesArrayItemResponse::Status204)
     }
 
     async fn reorder_property_array(
         &self,
-        _request: ReorderPropertyArrayRequest,
+        request: ReorderPropertyArrayRequest,
     ) -> Result<ReorderPropertyArrayResponse> {
-        Err(Error::internal("unimplemented"))
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
+
+        let transaction = {
+            Transaction::new().add_operation(ArrayOperation::reorder_element(
+                resource_id,
+                request.body.array_path.as_str(),
+                request.body.old_index as usize,
+                request.body.new_index as usize,
+            ))
+        };
+
+        self.transaction_manager
+            .lock()
+            .await
+            .commit_transaction(transaction)
+            .await
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+        Ok(ReorderPropertyArrayResponse::Status204)
     }
 
     async fn update_property_selection(
         &self,
-        _request: UpdatePropertySelectionRequest,
+        request: UpdatePropertySelectionRequest,
     ) -> Result<UpdatePropertySelectionResponse> {
-        Err(Error::internal("unimplemented"))
+        let resource_id = request
+            .resource_id
+            .0
+            .parse::<ResourceTypeAndId>()
+            .map_err(|_err| {
+                Error::bad_request(format!(
+                    "Invalid ResourceID format: {}",
+                    request.resource_id.0
+                ))
+            })?;
+
+        let transaction = Transaction::new().add_operation(
+            lgn_data_transaction::SelectionOperation::set_selection(&[resource_id]),
+        );
+
+        {
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            transaction_manager
+                .commit_transaction(transaction)
+                .await
+                .map_err(|err| Error::internal(err.to_string()))?;
+        };
+
+        Ok(UpdatePropertySelectionResponse::Status204)
     }
 }
