@@ -238,7 +238,7 @@ where
         Indexer: BasicIndexer + Sync,
         F: Fn(&IndexKey) -> String,
     {
-        if let Ok(contents) = index.enumerate_resources(&self.transaction).await {
+        if let Ok(contents) = index.enumerate_resources().await {
             match resource_id {
                 Some(resource_id) => {
                     if let Some((index_key, resource_id)) = contents
