@@ -3,9 +3,11 @@ use bit_set::BitSet;
 
 use lgn_utils::HashMap;
 
+#[cfg(debug_assertions)]
+use std::any::type_name;
 use std::{
     alloc::Layout,
-    any::{type_name, TypeId},
+    any::TypeId,
     cell::{Cell, RefCell},
     intrinsics::transmute,
     marker::PhantomData,

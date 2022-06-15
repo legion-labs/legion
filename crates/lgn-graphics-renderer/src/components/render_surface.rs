@@ -15,7 +15,7 @@ use uuid::Uuid;
 
 use crate::core::{
     as_render_object, InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
-    RemoveRenderObjectCommand, RenderObjectId, RenderViewport, RenderViewportPrivateData,
+    RemoveRenderObjectCommand, RenderObjectId, RenderViewport, RenderViewportRendererData,
     UpdateRenderObjectCommand, Viewport, ViewportId,
 };
 use crate::render_pass::PickingRenderPass;
@@ -373,7 +373,7 @@ impl RenderSurface {
     pub fn composite_viewports(
         &self,
         render_viewports: &[&RenderViewport],
-        render_viewports_private_data: &[&RenderViewportPrivateData],
+        render_viewports_private_data: &[&RenderViewportRendererData],
         cmd_buffer: &mut CommandBuffer,
     ) {
         for (i, render_viewport_private_data) in render_viewports_private_data.iter().enumerate() {

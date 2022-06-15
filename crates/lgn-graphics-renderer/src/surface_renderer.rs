@@ -4,7 +4,7 @@ use lgn_math::Vec2;
 use crate::cgen::cgen_type;
 use crate::core::{
     DebugStuff, PrepareRenderContext, RenderCamera, RenderFeatures, RenderLayers, RenderObjects,
-    RenderViewport, RenderViewportPrivateData, VisibilityContext,
+    RenderViewport, RenderViewportRendererData, VisibilityContext,
 };
 use crate::gpu_renderer::GpuInstanceManager;
 use crate::lighting::LightingManager;
@@ -77,7 +77,7 @@ impl SurfaceRenderer {
             let render_objects = render_resources.get::<RenderObjects>();
             let primary_table = render_objects.primary_table::<RenderViewport>();
             let mut secondary_table =
-                render_objects.secondary_table_mut::<RenderViewportPrivateData>();
+                render_objects.secondary_table_mut::<RenderViewportRendererData>();
             let camera_primary_table = render_objects.primary_table::<RenderCamera>();
 
             for viewport in viewports {
@@ -89,7 +89,7 @@ impl SurfaceRenderer {
 
                 let render_viewport = primary_table.get::<RenderViewport>(render_object_id);
                 let render_viewport_private_data =
-                    secondary_table.get_mut::<RenderViewportPrivateData>(render_object_id);
+                    secondary_table.get_mut::<RenderViewportRendererData>(render_object_id);
 
                 //
                 // Visibility
@@ -277,7 +277,7 @@ impl SurfaceRenderer {
                 if let Some(render_object_id) = viewport.render_object_id() {
                     let render_viewport = primary_table.get::<RenderViewport>(render_object_id);
                     let render_viewport_private_data =
-                        secondary_table.get::<RenderViewportPrivateData>(render_object_id);
+                        secondary_table.get::<RenderViewportRendererData>(render_object_id);
 
                     render_viewports.push(render_viewport);
                     render_viewports_private_data.push(render_viewport_private_data);
