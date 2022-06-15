@@ -47,6 +47,7 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -95,6 +96,7 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");

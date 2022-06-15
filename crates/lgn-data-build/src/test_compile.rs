@@ -122,6 +122,7 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -264,11 +265,15 @@ mod tests {
     async fn setup_project(
         project_dir: impl AsRef<Path>,
         source_control_content_provider: Arc<Provider>,
+        data_content_provider: Arc<Provider>,
     ) -> (Project, [ResourceTypeAndId; 5]) {
-        let mut project =
-            Project::new_with_remote_mock(project_dir.as_ref(), source_control_content_provider)
-                .await
-                .expect("failed to create a project");
+        let mut project = Project::new_with_remote_mock(
+            project_dir.as_ref(),
+            source_control_content_provider,
+            data_content_provider,
+        )
+        .await
+        .expect("failed to create a project");
 
         let resources = setup_registry().await;
 
@@ -321,6 +326,7 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -433,8 +439,12 @@ mod tests {
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
             setup_dir(&work_dir);
 
-        let (mut project, resource_list) =
-            setup_project(&project_dir, Arc::clone(&source_control_content_provider)).await;
+        let (mut project, resource_list) = setup_project(
+            &project_dir,
+            Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
+        )
+        .await;
         let root_resource = resource_list[0];
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -545,6 +555,7 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -808,6 +819,7 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");
@@ -921,6 +933,7 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");

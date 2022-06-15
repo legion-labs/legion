@@ -468,18 +468,19 @@ mod tests {
     #[tokio::test]
     async fn source_index_cache() {
         let work_dir = tempfile::tempdir().unwrap();
-        let source_control_content_provider = Arc::new(Provider::new_in_memory());
-
-        let mut project =
-            Project::new_with_remote_mock(&work_dir.path(), source_control_content_provider)
-                .await
-                .expect("failed to create a project");
-
         let data_provider = Arc::new(Provider::new_in_memory());
+
+        let mut project = Project::new_with_remote_mock(
+            &work_dir.path(),
+            Arc::new(Provider::new_in_memory()),
+            Arc::clone(&data_provider),
+        )
+        .await
+        .expect("failed to create a project");
 
         let version = "0.0.1";
 
-        let mut source_index = SourceIndex::new(data_provider);
+        let mut source_index = SourceIndex::new(Arc::clone(&data_provider));
 
         let _first_entry_checksum = {
             source_index.source_pull(&project, version).await.unwrap();

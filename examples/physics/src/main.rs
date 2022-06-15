@@ -87,6 +87,7 @@ async fn main() -> anyhow::Result<()> {
         &repository_name,
         "main",
         Arc::clone(&source_control_content_provider),
+        Arc::clone(&data_content_provider),
     )
     .await
     .expect("failed to create a project");

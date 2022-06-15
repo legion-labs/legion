@@ -57,6 +57,7 @@ mod tests {
             &repository_name,
             branch_name,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await;
 
@@ -81,14 +82,14 @@ mod tests {
             project_dir,
             output_dir,
             _repository_index,
-            _source_control_content_provider,
+            source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
-        let source_control_content_provider = Arc::new(Provider::new_in_memory());
         let project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
