@@ -1,11 +1,12 @@
 use lgn_ecs::prelude::{Commands, Entity, Res};
 use lgn_graphics_data::Color;
 use lgn_input::keyboard::KeyCode;
-use lgn_math::{Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
+use lgn_math::{Mat4, Quat, Vec2, Vec3, Vec4, Vec4Swizzles};
 use lgn_transform::prelude::{GlobalTransform, Transform};
 
 use crate::{
-    components::{CameraComponent, ManipulatorComponent, RenderSurfaceExtents},
+    components::{CameraComponent, ManipulatorComponent},
+    core::{build_projection, view_transform},
     resources::DefaultMeshType,
 };
 
@@ -122,11 +123,16 @@ pub(super) fn new_world_point_for_cursor(
     let screen_offset = 2.0 * (cursor_pos / screen_size) - 1.0;
     let screen_pos = Vec4::new(screen_offset.x, screen_offset.y, 0.5, 1.0);
 
-    let projection_matrix = camera.build_projection(screen_size.x as f32, screen_size.y as f32);
+    let projection_matrix = build_projection(
+        screen_size.x as f32,
+        screen_size.y as f32,
+        camera.fov_y(),
+        camera.z_near(),
+    );
     let mut view_pos = projection_matrix.inverse().mul_vec4(screen_pos);
     view_pos /= view_pos.w;
 
-    let view_matrix = camera.view_transform().compute_matrix();
+    let view_matrix = view_transform(&camera.final_transform()).compute_matrix();
     let world_pos = view_matrix.inverse().mul_vec4(view_pos);
 
     let ray_dir = (world_pos.xyz() - camera_pos).normalize();
@@ -332,17 +338,10 @@ impl ManipulatorManager {
     pub fn scale_manipulator_for_viewport(
         entity_transform: &GlobalTransform,
         manipulator_transform: &Transform,
-        render_surface_extents: RenderSurfaceExtents,
-        camera: &CameraComponent,
+        projection_matrix: Mat4,
+        camera_transform: &GlobalTransform,
     ) -> GlobalTransform {
-        let projection_matrix = camera.build_projection(
-            render_surface_extents.width() as f32,
-            render_surface_extents.height() as f32,
-        );
-
-        let view_pos = camera
-            .view_transform()
-            .mul_vec3(entity_transform.translation);
+        let view_pos = camera_transform.mul_vec3(entity_transform.translation);
         let x_offset = view_pos + Vec3::new(0.5, 0.0, 0.0);
         let y_offset = view_pos + Vec3::new(0.0, 0.5, 0.0);
 
