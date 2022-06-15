@@ -9,6 +9,7 @@
 
 use std::{net::SocketAddr, path::PathBuf};
 
+#[cfg(not(feature = "standalone"))]
 use crate::server::{RuntimeServerCommand, Server};
 
 use clap::Parser;
@@ -29,6 +30,7 @@ use lgn_ecs::prelude::{
 };
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
+#[cfg(not(feature = "standalone"))]
 use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;

@@ -103,9 +103,9 @@ impl Default for SharedRouter {
 
 #[derive(PartialEq)]
 pub enum GRPCPluginType {
-    GRPC,
+    Grpc,
     Rest,
-    Hybrid,
+    Hybrid, // both Grpc and Rest
 }
 
 // Provides gRPC server capabilities to the engine.
@@ -116,7 +116,7 @@ pub struct GRPCPlugin {
 impl Default for GRPCPlugin {
     fn default() -> Self {
         Self {
-            plugin_type: GRPCPluginType::GRPC,
+            plugin_type: GRPCPluginType::Grpc,
         }
     }
 }
@@ -128,7 +128,7 @@ impl Plugin for GRPCPlugin {
         }
 
         let system = match self.plugin_type {
-            GRPCPluginType::GRPC => Self::start_grpc_server
+            GRPCPluginType::Grpc => Self::start_grpc_server
                 .exclusive_system()
                 .label(GRPCPluginScheduling::StartRpcServer),
             GRPCPluginType::Hybrid => Self::start_hybrid_server
