@@ -15,8 +15,10 @@ paths:
       responses:
         "200":
           description: The properties
-          schemas:
-            $ref: "#/components/schemas/ResourceDescriptionProperties"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceDescriptionProperties"
         "404":
           description: Resource not found
     put:
@@ -25,8 +27,10 @@ paths:
       responses:
         "200":
           description: The updated properties
-          schemas:
-            $ref: "#/components/schemas/PropertyUpdates"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyUpdates"
         "404":
           description: Resource not found
 
@@ -47,12 +51,13 @@ paths:
       responses:
         "200":
           description: Item inserted
-          schemas:
-            type: object
-            properties:
-              new_value:
-                type:
-                  $ref: "#/components/schemas/ResourceProperty"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_value:
+                    $ref: "#/components/schemas/ResourceProperty"
         "404":
           description: Resource not found
     delete:
@@ -121,10 +126,12 @@ paths:
       responses:
         "200":
           description: The dynamic traits
-          schemas:
-            type: array
-            items:
-              type: string
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
         "404":
           description: Resource not found
 

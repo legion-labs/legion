@@ -2,23 +2,33 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
+use async_trait::async_trait;
+use lgn_app::prelude::*;
+use lgn_editor_proto::property_inspector::{
+    property_inspector_server::{PropertyInspector, PropertyInspectorServer},
+    DeleteArrayElementRequest, DeleteArrayElementResponse, GetResourcePropertiesRequest,
+    GetResourcePropertiesResponse, InsertNewArrayElementRequest, InsertNewArrayElementResponse,
+    ReorderArrayElementRequest, ReorderArrayElementResponse, ResourceDescription, ResourceProperty,
+    ResourcePropertyUpdate, UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse,
+    UpdateSelectionRequest, UpdateSelectionResponse,
+};
+use lgn_editor_yaml::property_inspector::{
+    server::{
+        DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
+        GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
+        GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
+        ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
+        UpdatePropertiesResponse, UpdatePropertySelectionRequest, UpdatePropertySelectionResponse,
+    },
+    Api,
+};
 use lgn_graphics_data::offline_gltf::GltfFile;
+use lgn_online::server::{Error, Result};
 use lgn_scene_plugin::SceneMessage;
 use sample_data::offline::GltfLoader;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use tokio::sync::{broadcast, Mutex};
 use tonic::{codegen::http::status, Request, Response, Status};
-
-use lgn_app::prelude::*;
-use lgn_editor_proto::property_inspector::{
-    property_inspector_server::{PropertyInspector, PropertyInspectorServer},
-    DeleteArrayElementRequest, DeleteArrayElementResponse, GetAvailableDynTraitsRequest,
-    GetAvailableDynTraitsResponse, GetResourcePropertiesRequest, GetResourcePropertiesResponse,
-    InsertNewArrayElementRequest, InsertNewArrayElementResponse, ReorderArrayElementRequest,
-    ReorderArrayElementResponse, ResourceDescription, ResourceProperty, ResourcePropertyUpdate,
-    UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse, UpdateSelectionRequest,
-    UpdateSelectionResponse,
-};
 
 use lgn_data_model::{
     collector::{collect_properties, ItemInfo, PropertyCollector},
@@ -542,8 +552,9 @@ impl PropertyInspector for PropertyInspectorRPC {
 
     async fn get_available_dyn_traits(
         &self,
-        request: Request<GetAvailableDynTraitsRequest>,
-    ) -> Result<Response<GetAvailableDynTraitsResponse>, Status> {
+        request: Request<lgn_editor_proto::property_inspector::GetAvailableDynTraitsRequest>,
+    ) -> Result<Response<lgn_editor_proto::property_inspector::GetAvailableDynTraitsResponse>, Status>
+    {
         let request = request.get_ref();
 
         let available_traits = match request.trait_name.as_str() {
@@ -559,14 +570,132 @@ impl PropertyInspector for PropertyInspectorRPC {
         };
 
         if let Some(available_traits) = available_traits {
-            Ok(Response::new(GetAvailableDynTraitsResponse {
-                available_traits,
-            }))
+            Ok(Response::new(
+                lgn_editor_proto::property_inspector::GetAvailableDynTraitsResponse {
+                    available_traits,
+                },
+            ))
         } else {
             Err(Status::internal(format!(
                 "Unknown factory '{}'",
                 request.trait_name
             )))
         }
+    }
+}
+
+pub(crate) struct Server {
+    pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
+    pub(crate) event_sender: broadcast::Sender<EditorEvent>,
+}
+
+#[async_trait]
+impl Api for Server {
+    async fn get_properties(&self, request: GetPropertiesRequest) -> Result<GetPropertiesResponse> {
+        let resource_id = parse_resource_id(&request.resource_id.0)
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
+
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+        let handle = ctx
+            .get_or_load(resource_id)
+            .await
+            .map_err(|err| Error::internal(err.to_string()))?;
+
+        let mut property_bag = if let Some(reflection) = ctx
+            .asset_registry
+            .get_resource_reflection(resource_id.kind, &handle)
+        {
+            collect_properties::<ResourcePropertyCollector>(reflection.as_reflect())
+                .map_err(|err| Error::internal(err.to_string()))?
+        } else {
+            // Return a default bag if there's no reflection
+            ResourceProperty {
+                name: "".into(),
+                ptype: resource_id.kind.as_pretty().into(),
+                json_value: None,
+                attributes: HashMap::new(),
+                sub_properties: Vec::new(),
+            }
+        };
+
+        // Add Id property
+        property_bag.sub_properties.insert(
+            0,
+            ResourceProperty {
+                name: "id".into(),
+                ptype: "String".into(),
+                sub_properties: Vec::new(),
+                json_value: Some(serde_json::json!(resource_id.id.to_string()).to_string()),
+                attributes: {
+                    let mut attr = HashMap::new();
+                    attr.insert("readonly".into(), "true".into());
+                    attr
+                },
+            },
+        );
+
+        unimplemented!()
+
+        // Ok(GetPropertiesResponse::Status200 {
+        //     description: Some(ResourceDescription {
+        //         id: ResourceTypeAndId::to_string(&resource_id),
+        //         path: ctx
+        //             .project
+        //             .resource_name(resource_id)
+        //             .await
+        //             .unwrap_or_else(|_err| "".into())
+        //             .to_string(),
+        //         version: 1,
+        //         r#type: resource_id
+        //             .kind
+        //             .as_pretty()
+        //             .trim_start_matches("offline_")
+        //             .into(),
+        //     }),
+        //     properties: vec![property_bag],
+        // })
+    }
+
+    async fn update_properties(
+        &self,
+        _request: UpdatePropertiesRequest,
+    ) -> Result<UpdatePropertiesResponse> {
+        unimplemented!()
+    }
+
+    async fn get_available_dyn_traits(
+        &self,
+        _request: GetAvailableDynTraitsRequest,
+    ) -> Result<GetAvailableDynTraitsResponse> {
+        unimplemented!()
+    }
+
+    async fn insert_property_array_item(
+        &self,
+        _request: InsertPropertyArrayItemRequest,
+    ) -> Result<InsertPropertyArrayItemResponse> {
+        unimplemented!()
+    }
+
+    async fn delete_properties_array_item(
+        &self,
+        _request: DeletePropertiesArrayItemRequest,
+    ) -> Result<DeletePropertiesArrayItemResponse> {
+        unimplemented!()
+    }
+
+    async fn reorder_property_array(
+        &self,
+        _request: ReorderPropertyArrayRequest,
+    ) -> Result<ReorderPropertyArrayResponse> {
+        unimplemented!()
+    }
+
+    async fn update_property_selection(
+        &self,
+        _request: UpdatePropertySelectionRequest,
+    ) -> Result<UpdatePropertySelectionResponse> {
+        unimplemented!()
     }
 }
