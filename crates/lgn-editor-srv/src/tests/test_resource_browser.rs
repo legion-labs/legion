@@ -16,15 +16,15 @@ use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
 use lgn_editor_proto::resource_browser::{
-    resource_browser_server::ResourceBrowser, CloneResourceRequest, DeleteResourceRequest,
-    RenameResourceRequest, ReparentResourceRequest,
+    resource_browser_server::ResourceBrowser, CloneResourceRequest, RenameResourceRequest,
+    ReparentResourceRequest,
 };
 use lgn_editor_yaml::resource_browser::{
     server::{
-        CreateResourceRequest, CreateResourceResponse, GetResourceTypeNamesRequest,
-        GetResourceTypeNamesResponse,
+        CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest,
+        DeleteResourceResponse, GetResourceTypeNamesRequest, GetResourceTypeNamesResponse,
     },
-    Api, CreateResourceBody,
+    Api, CreateResourceBody, DeleteResourceBody,
 };
 use lgn_math::Vec3;
 use lgn_scene_plugin::SceneMessage;
@@ -375,10 +375,23 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             }))
             .await?;
 
+        let (parts, body) = http::Request::new(DeleteResourceBody { id: clone_id }).into_parts();
+
+        if let DeleteResourceResponse::Status204 = resource_browser_server
+            .delete_resource(DeleteResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("Resource creation failed")
+        }
+
         // Delete Clone
-        resource_browser
-            .delete_resource(Request::new(DeleteResourceRequest { id: clone_id }))
-            .await?;
 
         {
             let mut guard = transaction_manager.lock().await;

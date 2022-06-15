@@ -24,18 +24,17 @@ use lgn_editor_proto::{
     property_inspector::UpdateResourcePropertiesRequest,
     resource_browser::{
         Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
-        DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest,
-        GetActiveScenesResponse, GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse,
-        ImportResourceRequest, ImportResourceResponse, ListAssetsRequest, ListAssetsResponse,
-        OpenSceneRequest, OpenSceneResponse, RenameResourceRequest, RenameResourceResponse,
-        ReparentResourceRequest, ReparentResourceResponse,
+        GetActiveScenesRequest, GetActiveScenesResponse, GetRuntimeSceneInfoRequest,
+        GetRuntimeSceneInfoResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
+        OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+        ReparentResourceResponse,
     },
 };
 
-use lgn_editor_yaml::resource_browser::server::SearchResourcesResponse;
 use lgn_editor_yaml::resource_browser::server::{
-    CreateResourceRequest, CreateResourceResponse, GetResourceTypeNamesRequest,
-    GetResourceTypeNamesResponse, SearchResourcesRequest,
+    CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
+    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, SearchResourcesRequest,
+    SearchResourcesResponse,
 };
 use lgn_online::server::{Error, Result};
 
@@ -511,25 +510,14 @@ impl Api for Server {
             },
         ))
     }
-}
-
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
-    /// Import a new resource from an existing local file
-    async fn import_resource(
-        &self,
-        _request: Request<ImportResourceRequest>,
-    ) -> Result<Response<ImportResourceResponse>, Status> {
-        Err(Status::internal(""))
-    }
 
     /// Delete a Resource
     async fn delete_resource(
         &self,
-        request: Request<DeleteResourceRequest>,
-    ) -> Result<Response<DeleteResourceResponse>, Status> {
-        let request = request.get_ref();
-        let resource_id = parse_resource_id(request.id.as_str())?;
+        request: DeleteResourceRequest,
+    ) -> Result<DeleteResourceResponse> {
+        let resource_id = parse_resource_id(request.body.id.as_str())
+            .map_err(|err| Error::bad_request(format!("failed to parse resource_id: {}", err)))?;
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
@@ -585,11 +573,14 @@ impl ResourceBrowser for ResourceBrowserRPC {
         transaction_manager
             .commit_transaction(transaction)
             .await
-            .map_err(|err| Status::internal(err.to_string()))?;
+            .map_err(|err| Error::internal(format!("delete transaction failed: {}", err)))?;
 
-        Ok(Response::new(DeleteResourceResponse {}))
+        Ok(DeleteResourceResponse::Status204)
     }
+}
 
+#[tonic::async_trait]
+impl ResourceBrowser for ResourceBrowserRPC {
     /// Rename a Resource
     async fn rename_resource(
         &self,

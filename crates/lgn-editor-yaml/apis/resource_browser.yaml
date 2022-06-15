@@ -83,6 +83,28 @@ paths:
                 required:
                   - resource_types
 
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/delete:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    put:
+      description: Delete a resource
+      operationId: DeleteResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+              required:
+                - id
+      responses:
+        "204":
+          description: Ok.
+
 components:
   parameters:
     token:
