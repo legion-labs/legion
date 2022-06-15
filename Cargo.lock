@@ -4907,6 +4907,7 @@ dependencies = [
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",
+ "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-embedded-fs",

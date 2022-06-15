@@ -81,14 +81,13 @@ impl ResourceInstaller for MaterialInstaller {
     async fn install_from_stream(
         &self,
         resource_id: ResourceTypeAndId,
-        request: &mut LoadRequest,
+        _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
-    ) -> Result<HandleUntyped, AssetRegistryError> {
+    ) -> Result<Box<dyn Resource>, AssetRegistryError> {
         let material = from_binary_reader::<lgn_graphics_data::runtime::Material>(reader).await?;
         lgn_tracing::info!("Material {}", resource_id.id,);
 
-        let handle = request.asset_registry.set_resource(resource_id, material)?;
-        Ok(handle)
+        Ok(material)
 
         /*let mut entity = if let Some(entity) = asset_to_entity_map.get(asset_handle.id()) {
             commands.entity(entity)

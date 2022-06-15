@@ -34,11 +34,15 @@ impl AssetLoaderIO {
             AssetRegistryError::ResourceInstallerNotFound(resource_id.kind),
         )?;
 
-        let new_handle = installer
+        let new_resource = installer
             .install_from_stream(resource_id, request, &mut reader)
             .await?;
 
-        Ok(new_handle)
+        let handle = request
+            .asset_registry
+            .set_resource(resource_id, new_resource)?;
+
+        Ok(handle)
     }
 
     /// Load a resource using async framework

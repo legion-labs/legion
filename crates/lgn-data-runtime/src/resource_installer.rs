@@ -33,14 +33,15 @@ impl<'de, T: Resource + Default + serde::Deserialize<'de>> ResourceInstaller
         resource_id: ResourceTypeAndId,
         request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
-    ) -> Result<HandleUntyped, AssetRegistryError> {
+    ) -> Result<Box<dyn Resource>, AssetRegistryError> {
         let mut new_resource: Box<dyn crate::Resource> = from_binary_reader::<T>(reader).await?;
-        let resource = new_resource.as_mut();
-        activate_reference(resource_id, resource, request.asset_registry.clone()).await;
-        let handle = request
-            .asset_registry
-            .set_resource(resource_id, new_resource)?;
-        Ok(handle)
+        activate_reference(
+            resource_id,
+            new_resource.as_mut(),
+            request.asset_registry.clone(),
+        )
+        .await;
+        Ok(new_resource)
     }
 }
 
@@ -53,7 +54,7 @@ pub trait ResourceInstaller: Send + Sync {
         _resource_id: ResourceTypeAndId,
         _request: &mut LoadRequest,
         _reader: &mut AssetRegistryReader,
-    ) -> Result<HandleUntyped, AssetRegistryError>;
+    ) -> Result<Box<dyn Resource>, AssetRegistryError>;
 }
 
 type DependentLoadJob = Vec<(

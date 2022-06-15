@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use lgn_data_model::{ReflectionError, TypeDefinition};
+use lgn_data_model::{ReflectionError, TypeDefinition, TypeReflection};
 use lgn_data_runtime::{extract_resource_dependencies, prelude::*};
 
 /// Implement a default `ResourceInstaller` using `from_json_reader` interface
@@ -21,15 +21,12 @@ impl<T: Resource + Default> JsonInstaller<T> {
 impl<T: Resource + Default> ResourceInstaller for JsonInstaller<T> {
     async fn install_from_stream(
         &self,
-        resource_id: ResourceTypeAndId,
-        request: &mut LoadRequest,
+        _resource_id: ResourceTypeAndId,
+        _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
-    ) -> Result<HandleUntyped, AssetRegistryError> {
+    ) -> Result<Box<dyn Resource>, AssetRegistryError> {
         let new_resource = from_json_reader::<T>(reader).await?;
-        let handle = request
-            .asset_registry
-            .set_resource(resource_id, new_resource)?;
-        Ok(handle)
+        Ok(new_resource)
     }
 }
 

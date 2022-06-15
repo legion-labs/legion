@@ -62,7 +62,6 @@ pub(crate) fn generate(struct_info: &StructMetaInfo) -> TokenStream {
             const TYPENAME: &'static str = #runtime_name;
         }
 
-        #[async_trait::async_trait]
         impl lgn_data_runtime::Resource for #runtime_identifier {
             fn as_reflect(&self) -> &dyn lgn_data_model::TypeReflection {
                 self

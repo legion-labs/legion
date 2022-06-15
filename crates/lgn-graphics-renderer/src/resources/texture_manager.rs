@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use lgn_app::App;
 use lgn_data_runtime::{
     from_binary_reader, AssetRegistryError, AssetRegistryReader, ComponentInstaller, LoadRequest,
-    ResourceInstaller, ResourceTypeAndId,
+    Resource, ResourceInstaller, ResourceTypeAndId,
 };
 use lgn_ecs::{prelude::*, schedule::SystemLabel, system::EntityCommands};
 use lgn_graphics_api::{
@@ -92,6 +92,7 @@ impl ComponentInstaller for TextureInstaller {
         entity_command: &mut EntityCommands<'_, '_, '_>,
     ) -> Result<(), AssetRegistryError> {
         // Visual Test
+
         if let Some(visual) = component.downcast_ref::<lgn_graphics_data::runtime::Visual>() {
             entity_command.insert(VisualComponent::new(
                 visual.renderable_geometry.as_ref().map(|r| r.id()),
@@ -127,25 +128,33 @@ impl ComponentInstaller for TextureInstaller {
     }
 }
 
+#[derive(Clone)]
+struct GpuTexture {
+    texture_data: Box<lgn_graphics_data::runtime::BinTexture>,
+}
+lgn_data_runtime::implement_runtime_resource!(GpuTexture);
+
 #[async_trait]
 impl ResourceInstaller for TextureInstaller {
     async fn install_from_stream(
         &self,
         resource_id: ResourceTypeAndId,
-        request: &mut LoadRequest,
+        _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
-    ) -> Result<lgn_data_runtime::HandleUntyped, AssetRegistryError> {
-        let texture = from_binary_reader::<lgn_graphics_data::runtime::BinTexture>(reader).await?;
+    ) -> Result<Box<dyn Resource>, AssetRegistryError> {
+        let texture_data =
+            from_binary_reader::<lgn_graphics_data::runtime::BinTexture>(reader).await?;
         lgn_tracing::info!(
             "Texture {} | width: {}, height: {}, format: {:?}",
             resource_id.id,
-            texture.width,
-            texture.height,
-            texture.format
+            texture_data.width,
+            texture_data.height,
+            texture_data.format
         );
-        let handle = request.asset_registry.set_resource(resource_id, texture)?;
 
-        Ok(handle)
+        let gpu_texture = Box::new(GpuTexture { texture_data });
+
+        Ok(gpu_texture)
 
         /*let mut entity = if let Some(entity) = asset_to_entity_map.get(resource.id()) {
             commands.entity(entity)
