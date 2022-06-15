@@ -515,6 +515,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone())
                     .add_device_source_cas(
                         Arc::clone(&source_provider),
+                        Arc::clone(&data_provider),
                         source_manifest_id.clone(),
                     ); // todo: filter dependencies only
 

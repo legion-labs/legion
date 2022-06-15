@@ -91,6 +91,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
         )
         .add_device_source_cas(
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
             project.source_manifest_id(),
         );
     sample_data::offline::add_loaders(&mut asset_registry);

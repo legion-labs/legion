@@ -168,6 +168,7 @@ impl DataBuild {
                     )
                     .add_device_source_cas(
                         Arc::clone(&config.source_control_content_provider),
+                        Arc::clone(&config.data_content_provider),
                         project.source_manifest_id(),
                     );
 
