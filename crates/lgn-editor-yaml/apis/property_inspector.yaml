@@ -19,6 +19,16 @@ paths:
             $ref: "#/components/schemas/ResourceDescriptionProperties"
         "404":
           description: Resource not found
+    put:
+      description: Update a set of properties.
+      operationId: updateProperties
+      responses:
+        "200":
+          description: The updated properties
+          schemas:
+            $ref: "#/components/schemas/PropertyUpdates"
+        "404":
+          description: Resource not found
 
 components:
   parameters:
@@ -88,3 +98,28 @@ components:
       required:
         - description
         - properties
+    PropertyUpdate:
+      description: A property update
+      type: object
+      properties:
+        name:
+          type: string
+        json_value:
+          type: string
+    PropertyUpdates:
+      description: A set of property updates
+      type: object
+      properties:
+        id:
+          type: string
+        version:
+          type: integer
+          format: uint32
+        updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyUpdate"
+      required:
+        - id
+        - version
+        - updates
