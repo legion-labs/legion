@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: "Runtime API"
+  description: "The OpenAPI specification for the Legion Labs runtime."
+  version: 1.0.0
+paths:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/runtime/manifest/reload:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Requests the runtime to reload a new manifest
+      operationId: loadManifest
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              description: The manifest ID
+              type: string
+              format: binary
+      responses:
+        "204":
+          description: Successful operation
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/runtime/root_asset/reload:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Requests the runtime to reload its root asset
+      operationId: loadRootAsset
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              description: The asset ID
+              type: string
+              format: binary
+      responses:
+        "204":
+          description: Successful operation
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/runtime/pause:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Toggle pause/unpause the runtime
+      operationId: pause
+      responses:
+        "204":
+          description: Successful operation

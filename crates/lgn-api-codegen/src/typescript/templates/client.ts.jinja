@@ -60,7 +60,7 @@ export class Client extends ApiClient implements Api {
                                 {% endif %}
                             ); 
                         {% else %}
-                            if ("{{ parameter.name }}" in input.headers) {
+                            if (input.headers["{{ parameter.name }}"]) {
                                 headers.set(
                                     "{{ parameter.name }}",
                                     {% if parameter.type_ == Type::String %}

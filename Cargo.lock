@@ -5231,17 +5231,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-runtime-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
 name = "lgn-scene-plugin"
 version = "0.1.0"
 dependencies = [
@@ -7656,11 +7645,16 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "axum",
  "clap 3.1.18",
  "crossbeam-channel",
  "generic-data",
+ "http",
+ "hyper",
  "instant",
  "lgn-animation",
+ "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -7670,6 +7664,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-gilrs",
+ "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-grpc",
@@ -7679,7 +7674,6 @@ dependencies = [
  "lgn-online",
  "lgn-physics",
  "lgn-presenter-window",
- "lgn-runtime-proto",
  "lgn-scene-plugin",
  "lgn-scripting",
  "lgn-scripting-data",
@@ -7692,8 +7686,8 @@ dependencies = [
  "lgn-winit",
  "sample-data",
  "serde",
+ "serde_qs",
  "tokio",
- "tonic",
 ]
 
 [[package]]

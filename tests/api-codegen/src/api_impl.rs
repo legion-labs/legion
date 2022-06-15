@@ -1,13 +1,24 @@
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    net::SocketAddr,
+    sync::Arc,
+};
 
 use crate::api::cars::{
     self,
     server::{
         CreateCarRequest, CreateCarResponse, DeleteCarRequest, DeleteCarResponse, GetCarRequest,
-        GetCarResponse, GetCarsRequest, GetCarsResponse, TestBinaryRequest, TestBinaryResponse,
+        GetCarResponse, GetCarsRequest, GetCarsResponse, TestAdditionalPropertiesAnyRequest,
+        TestAdditionalPropertiesAnyResponse, TestAdditionalPropertiesCompositeAnyRequest,
+        TestAdditionalPropertiesCompositeAnyResponse,
+        TestAdditionalPropertiesCompositeSchemaRequest,
+        TestAdditionalPropertiesCompositeSchemaResponse, TestAdditionalPropertiesSchemaRequest,
+        TestAdditionalPropertiesSchemaResponse, TestAdditionalPropertiesStringRequest,
+        TestAdditionalPropertiesStringResponse, TestBinaryRequest, TestBinaryResponse,
         TestHeadersRequest, TestHeadersResponse, TestOneOfRequest, TestOneOfResponse,
     },
-    Api,
+    Api, TestAdditionalPropertiesCompositeAny200Response,
+    TestAdditionalPropertiesCompositeSchema200Response,
 };
 use crate::api::components;
 use axum::extract::ConnectInfo;
@@ -86,5 +97,74 @@ impl Api for ApiImpl {
                 resp
             },
         )
+    }
+
+    async fn test_additional_properties_any(
+        &self,
+        _request: TestAdditionalPropertiesAnyRequest,
+    ) -> Result<TestAdditionalPropertiesAnyResponse> {
+        Ok(TestAdditionalPropertiesAnyResponse::Status200(
+            HashMap::from([(
+                "foo".to_string(),
+                serde_json::Value::String("bar".to_string()),
+            )]),
+        ))
+    }
+
+    async fn test_additional_properties_schema(
+        &self,
+        _request: TestAdditionalPropertiesSchemaRequest,
+    ) -> Result<TestAdditionalPropertiesSchemaResponse> {
+        Ok(TestAdditionalPropertiesSchemaResponse::Status200(
+            HashMap::from([(
+                "foo".to_string(),
+                components::Pet {
+                    name: Some("Cat".to_string()),
+                },
+            )]),
+        ))
+    }
+
+    async fn test_additional_properties_string(
+        &self,
+        _request: TestAdditionalPropertiesStringRequest,
+    ) -> Result<TestAdditionalPropertiesStringResponse> {
+        Ok(TestAdditionalPropertiesStringResponse::Status200(
+            HashMap::from([("foo".to_string(), "bar".to_string())]),
+        ))
+    }
+
+    async fn test_additional_properties_composite_any(
+        &self,
+        _request: TestAdditionalPropertiesCompositeAnyRequest,
+    ) -> Result<TestAdditionalPropertiesCompositeAnyResponse> {
+        Ok(TestAdditionalPropertiesCompositeAnyResponse::Status200(
+            TestAdditionalPropertiesCompositeAny200Response {
+                name: Some("foo".to_string()),
+                time: Some(42),
+                __additional_properties: BTreeMap::from([(
+                    "foo".to_string(),
+                    serde_json::Value::String("bar".to_string()),
+                )]),
+            },
+        ))
+    }
+
+    async fn test_additional_properties_composite_schema(
+        &self,
+        _request: TestAdditionalPropertiesCompositeSchemaRequest,
+    ) -> Result<TestAdditionalPropertiesCompositeSchemaResponse> {
+        Ok(TestAdditionalPropertiesCompositeSchemaResponse::Status200(
+            TestAdditionalPropertiesCompositeSchema200Response {
+                name: Some("foo".to_string()),
+                time: Some(42),
+                __additional_properties: BTreeMap::from([(
+                    "foo".to_string(),
+                    components::Pet {
+                        name: Some("Cat".to_string()),
+                    },
+                )]),
+            },
+        ))
     }
 }

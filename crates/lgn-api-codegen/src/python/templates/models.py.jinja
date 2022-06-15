@@ -3,6 +3,7 @@ from json import JSONEncoder
 
 #used by fmt_type
 from datetime import datetime, date
+from typing import Any
 
 # TODO(kdaibov): starting with Python 3.11 we could use StrEnum
 # in that case we could remove the ModelEncoder
@@ -49,17 +50,25 @@ class {{ model_name }}:
         return "{{ model_name }} ( value: {} )".format(self.value)
 
                 
-{% when Type::Struct with { fields } %}
+{% when Type::Struct with { fields, map } %}
 class {{ model_name }}:
     def __init__(
         self,
         {%- for field in fields.values() %}
         {{ field.name }}, # : {{ field.type_|fmt_type(ctx) }} {% if let Some(description) = field.description -%} # {{ description }}{%- endif %}
         {%- endfor %}
+        {% match map %}
+        {% when Some with (map) %}
+        additional_properties: dict[str, {{ map|fmt_type(ctx) }}]
+        {% when None %}
+        {% endmatch %}
     ):
     {%- for field in fields.values() %}
         self.{{ field.name }} = {{ field.name }}
     {%- endfor %}
+    {% if map.is_some() %}
+        self.additional_properties = additional_properties
+    {% endif %}
 
     def to_json(self):
         return ModelEncoder().encode(self)
@@ -99,7 +108,7 @@ class {{ model_name }}:
             self.{{ field.name }},
         {%- endfor %}
         )
-    
+
 {%- when t %}
 class {{ model_name }}:
     def __init__(
@@ -116,6 +125,6 @@ class {{ model_name }}:
 
     def __str__(self):
         return "{{ model_name }} ( value: {} )".format(self.value)
-   
+
 {% endmatch %}
 {% endfor %}
