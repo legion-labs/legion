@@ -301,6 +301,16 @@ impl RenderObjectSet {
     }
 }
 
+impl Drop for RenderObjectSet {
+    fn drop(&mut self) {
+        for slot_index in 0..self.len {
+            if self.allocated.contains(slot_index) {
+                self.storage.remove_value(slot_index);
+            }
+        }
+    }
+}
+
 //
 // RenderObjectsBuilder
 //
@@ -315,7 +325,19 @@ struct FatPtr {
 #[allow(unsafe_code)]
 fn get_fat_ptr<P, S>(data: Box<dyn SecondaryTableHandler<P, S>>) -> FatPtr {
     // Make a FatPtr from the Box. Implicitly forgotten, must be properly dropped in the SecondaryTable drop impl.
-    unsafe { transmute::<_, FatPtr>(Box::into_raw(data)) }
+    unsafe {
+        let p = Box::into_raw(data);
+        transmute::<_, FatPtr>(p)
+    }
+}
+
+#[allow(unsafe_code)]
+fn drop_fat_ptr<P, S>(fat_ptr: FatPtr) {
+    // Convert back from FatPtr to the actual type, and re-box it so it will be dropped properly.
+    unsafe {
+        let handler: *mut dyn SecondaryTableHandler<P, S> = transmute(fat_ptr);
+        Box::from_raw(handler);
+    }
 }
 
 #[derive(Default)]
@@ -397,7 +419,7 @@ impl RenderObjectsBuilder {
             handler.destroy(primary_ref, secondary_ref);
         }
 
-        unsafe fn drop_func<T>(x: *mut u8) {
+        unsafe fn storage_drop_func<T>(x: *mut u8) {
             x.cast::<T>().drop_in_place();
         }
 
@@ -411,11 +433,12 @@ impl RenderObjectsBuilder {
             AtomicRefCell::new(SecondaryTable {
                 _key: secondary_key,
                 primary_key,
-                storage: RenderObjectStorage::new(Layout::new::<S>(), drop_func::<S>, 256),
+                storage: RenderObjectStorage::new(Layout::new::<S>(), storage_drop_func::<S>, 256),
                 handler_fat_ptr: get_fat_ptr(handler),
                 create: create::<P, S>,
                 update: update::<P, S>,
                 destroy: destroy::<P, S>,
+                drop: drop_fat_ptr::<P, S>,
             }),
         );
 
@@ -635,14 +658,15 @@ pub struct SecondaryTable {
     create: unsafe fn(FatPtr, *const u8, *mut u8),
     update: unsafe fn(FatPtr, *const u8, *mut u8),
     destroy: unsafe fn(FatPtr, *const u8, *mut u8),
+    drop: unsafe fn(FatPtr),
 }
 
 #[allow(unsafe_code)]
 impl Drop for SecondaryTable {
     fn drop(&mut self) {
+        let drop_fn = self.drop;
         unsafe {
-            // Make a new box from the fat_ptr, which will then be dropped properly.
-            Box::from_raw(&mut self.handler_fat_ptr);
+            drop_fn(self.handler_fat_ptr);
         }
     }
 }
@@ -751,25 +775,48 @@ pub struct RenderObjects {
 
 impl RenderObjects {
     pub fn begin_frame(&self) {
-        for (_, primary_table) in self.primary_tables.iter() {
-            primary_table.0.begin_frame();
-            primary_table.1.apply(&primary_table.0);
-        }
-
+        // Remove private data for RenderObjects removed last frame, before clearing the removed items (in begin_frame below).
         for secondary_table in self.secondary_tables.values() {
-            let primary_table_key = secondary_table.borrow().primary_key;
-            let primary_table = &self.primary_tables.get(&primary_table_key).unwrap().0;
-
             let mut secondary_table = secondary_table.borrow_mut();
-            secondary_table
-                .storage
-                .resize(primary_table.set.borrow().len());
+
+            let primary_table_key = secondary_table.primary_key;
+            let primary_table = &self.primary_tables.get(&primary_table_key).unwrap().0;
+            let primary_table_set = primary_table.set.borrow();
 
             let handler_fat_ptr = secondary_table.handler_fat_ptr;
 
-            for inserted_index in primary_table.set.borrow().inserted.iter() {
+            for removed_index in primary_table_set.removed.iter() {
+                let destroy_fn = secondary_table.destroy;
+                let primary_ref = primary_table_set.storage.get_value(removed_index);
+                let secondary_ref = secondary_table.storage.get_value_mut(removed_index);
+                #[allow(unsafe_code)]
+                unsafe {
+                    destroy_fn(handler_fat_ptr, primary_ref, secondary_ref);
+                }
+                secondary_table.storage.remove_value(removed_index);
+            }
+        }
+
+        for (_, (primary_table, command_queue)) in self.primary_tables.iter() {
+            primary_table.begin_frame();
+            command_queue.apply(primary_table);
+        }
+
+        // Add / update private data for RenderObjects which were added / updated this frame.
+        for secondary_table in self.secondary_tables.values() {
+            let mut secondary_table = secondary_table.borrow_mut();
+
+            let primary_table_key = secondary_table.primary_key;
+            let primary_table = &self.primary_tables.get(&primary_table_key).unwrap().0;
+            let primary_table_set = primary_table.set.borrow();
+
+            secondary_table.storage.resize(primary_table_set.len());
+
+            let handler_fat_ptr = secondary_table.handler_fat_ptr;
+
+            for inserted_index in primary_table_set.inserted.iter() {
                 let create_fn = secondary_table.create;
-                let primary_ref = primary_table.set.borrow().storage.get_value(inserted_index);
+                let primary_ref = primary_table_set.storage.get_value(inserted_index);
                 let secondary_ref = secondary_table.storage.get_value_mut(inserted_index);
                 #[allow(unsafe_code)]
                 unsafe {
@@ -777,23 +824,13 @@ impl RenderObjects {
                 }
             }
 
-            for updated_index in primary_table.set.borrow().updated.iter() {
+            for updated_index in primary_table_set.updated.iter() {
                 let update_fn = secondary_table.update;
-                let primary_ref = primary_table.set.borrow().storage.get_value(updated_index);
+                let primary_ref = primary_table_set.storage.get_value(updated_index);
                 let secondary_ref = secondary_table.storage.get_value_mut(updated_index);
                 #[allow(unsafe_code)]
                 unsafe {
                     update_fn(handler_fat_ptr, primary_ref, secondary_ref);
-                }
-            }
-
-            for removed_index in primary_table.set.borrow().removed.iter() {
-                let destroy_fn = secondary_table.destroy;
-                let primary_ref = primary_table.set.borrow().storage.get_value(removed_index);
-                let secondary_ref = secondary_table.storage.get_value_mut(removed_index);
-                #[allow(unsafe_code)]
-                unsafe {
-                    destroy_fn(handler_fat_ptr, primary_ref, secondary_ref);
                 }
             }
         }
