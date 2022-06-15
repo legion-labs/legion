@@ -4,6 +4,7 @@
 use std::{path::PathBuf, sync::Arc};
 
 use clap::{Parser, Subcommand};
+use lgn_content_store::indexing::TreeIdentifier;
 use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale,
@@ -46,6 +47,9 @@ enum Commands {
         /// Name of the source control branch.
         #[clap(long)]
         branch_name: String,
+        /// Source manifest id
+        #[clap(long)]
+        source_manifest_id: TreeIdentifier,
         /// Build index file.
         #[clap(long = "output")]
         build_output: String,
@@ -122,6 +126,7 @@ async fn main() -> Result<(), String> {
             resource,
             repository_name,
             branch_name,
+            source_manifest_id,
             build_output,
             runtime_flag,
             target,
@@ -160,6 +165,9 @@ async fn main() -> Result<(), String> {
             )
             .await
             .map_err(|e| e.to_string())?;
+
+            // update source manifest read from last commit, with latest pending changes
+            project.source_manifest_id().write(source_manifest_id);
 
             let mut build = DataBuildOptions::new(
                 DataBuildOptions::output_db_path(&build_output, &cwd, DataBuild::version()),
