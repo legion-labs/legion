@@ -388,10 +388,10 @@ impl Visitor {
             type_: self.resolve_type_from_schema(schema, visited_refs)?,
         };
 
-        self.register_model(model)
+        Ok(self.register_model(model))
     }
 
-    fn register_model(&mut self, model: Model) -> Result<Type> {
+    fn register_model(&mut self, model: Model) -> Type {
         let type_ = model.to_named_type();
 
         let models = &mut self
@@ -405,7 +405,7 @@ impl Visitor {
             models.insert(model.ref_.json_pointer().clone(), model);
         }
 
-        Ok(type_)
+        type_
     }
 
     fn resolve_integer(integer_type: &OpenApiElement<'_, openapiv3::IntegerType>) -> Result<Type> {
