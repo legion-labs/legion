@@ -299,7 +299,7 @@ pub struct RenderViewportPrivateDataHandler {
 impl SecondaryTableHandler<RenderViewport, RenderViewportPrivateData>
     for RenderViewportPrivateDataHandler
 {
-    fn create(&self, render_viewport: &RenderViewport) -> RenderViewportPrivateData {
+    fn insert(&self, render_viewport: &RenderViewport) -> RenderViewportPrivateData {
         RenderViewportPrivateData::new(render_viewport, &self.device_context)
     }
 
@@ -319,7 +319,7 @@ impl SecondaryTableHandler<RenderViewport, RenderViewportPrivateData>
         }
     }
 
-    fn destroy(
+    fn remove(
         &self,
         _render_viewport: &RenderViewport,
         _render_viewport_private_data: &mut RenderViewportPrivateData,
