@@ -17,10 +17,13 @@ use lgn_data_transaction::{
 };
 use lgn_editor_proto::resource_browser::{
     resource_browser_server::ResourceBrowser, CloneResourceRequest, DeleteResourceRequest,
-    GetResourceTypeNamesRequest, RenameResourceRequest, ReparentResourceRequest,
+    RenameResourceRequest, ReparentResourceRequest,
 };
 use lgn_editor_yaml::resource_browser::{
-    server::{CreateResourceRequest, CreateResourceResponse},
+    server::{
+        CreateResourceRequest, CreateResourceResponse, GetResourceTypeNamesRequest,
+        GetResourceTypeNamesResponse,
+    },
     Api, CreateResourceBody,
 };
 use lgn_math::Vec3;
@@ -150,15 +153,25 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         };
 
         // Read all Resource Type registered
-        let response = resource_browser
-            .get_resource_type_names(Request::new(GetResourceTypeNamesRequest {}))
-            .await?
-            .into_inner();
+        let (parts, _) = http::Request::new("").into_parts();
+
+        let resource_types = if let GetResourceTypeNamesResponse::Status204(data) =
+            resource_browser_server
+                .get_resource_type_names(GetResourceTypeNamesRequest {
+                    space_id: SpaceId("0".to_string()),
+                    workspace_id: WorkspaceId("0".to_string()),
+                    parts,
+                })
+                .await?
+        {
+            data.resource_types
+        } else {
+            panic!("Could not retrieve list of resource type names");
+        };
 
         // Validate that sceneEntity should be in the list
         assert!(
-            response
-                .resource_types
+            resource_types
                 .iter()
                 .filter(|res_type| res_type.as_str() == sample_data::offline::Entity::TYPENAME)
                 .count()

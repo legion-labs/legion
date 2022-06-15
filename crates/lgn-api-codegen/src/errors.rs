@@ -2,10 +2,7 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-use crate::{
-    api_types::Model,
-    openapi_loader::{OpenApiRef, OpenApiRefLocation},
-};
+use crate::openapi_loader::{OpenApiRef, OpenApiRefLocation};
 
 #[derive(Error, Debug)]
 pub enum Error {

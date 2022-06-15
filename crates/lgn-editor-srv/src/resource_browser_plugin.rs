@@ -25,22 +25,23 @@ use lgn_editor_proto::{
     resource_browser::{
         Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
         DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest,
-        GetActiveScenesResponse, GetResourceTypeNamesRequest, GetResourceTypeNamesResponse,
-        GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse, ImportResourceRequest,
-        ImportResourceResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
-        OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
-        ReparentResourceResponse,
+        GetActiveScenesResponse, GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse,
+        ImportResourceRequest, ImportResourceResponse, ListAssetsRequest, ListAssetsResponse,
+        OpenSceneRequest, OpenSceneResponse, RenameResourceRequest, RenameResourceResponse,
+        ReparentResourceRequest, ReparentResourceResponse,
     },
 };
 
 use lgn_editor_yaml::resource_browser::server::SearchResourcesResponse;
 use lgn_editor_yaml::resource_browser::server::{
-    CreateResourceRequest, CreateResourceResponse, SearchResourcesRequest,
+    CreateResourceRequest, CreateResourceResponse, GetResourceTypeNamesRequest,
+    GetResourceTypeNamesResponse, SearchResourcesRequest,
 };
 use lgn_online::server::{Error, Result};
 
 use lgn_editor_yaml::resource_browser::{
-    Api, CreateResource204Response, NextSearchToken, ResourceDescription,
+    Api, CreateResource204Response, GetResourceTypeNames204Response, NextSearchToken,
+    ResourceDescription,
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -390,7 +391,7 @@ impl Api for Server {
 
         let next_search_token = NextSearchToken {
             next_search_token: "".to_string(),
-            total: descriptors.len() as i32,
+            total: i32::try_from(descriptors.len()).unwrap(),
             resource_description: descriptors,
         };
 
@@ -491,26 +492,29 @@ impl Api for Server {
             },
         ))
     }
+
+    /// Get the list of all the resources types available (for creation dialog)
+    async fn get_resource_type_names(
+        &self,
+        _request: GetResourceTypeNamesRequest,
+    ) -> Result<GetResourceTypeNamesResponse> {
+        let mut transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let res_types = ctx.asset_registry.get_resource_types();
+
+        Ok(GetResourceTypeNamesResponse::Status204(
+            GetResourceTypeNames204Response {
+                resource_types: res_types
+                    .into_iter()
+                    .map(|(_k, v)| String::from(v))
+                    .collect(),
+            },
+        ))
+    }
 }
 
 #[tonic::async_trait]
 impl ResourceBrowser for ResourceBrowserRPC {
-    /// Get the list of all the resources types available (for creation dialog)
-    async fn get_resource_type_names(
-        &self,
-        _request: Request<GetResourceTypeNamesRequest>,
-    ) -> Result<Response<GetResourceTypeNamesResponse>, Status> {
-        let mut transaction_manager = self.transaction_manager.lock().await;
-        let ctx = LockContext::new(&transaction_manager).await;
-        let res_types = ctx.asset_registry.get_resource_types();
-        Ok(Response::new(GetResourceTypeNamesResponse {
-            resource_types: res_types
-                .into_iter()
-                .map(|(_k, v)| String::from(v))
-                .collect(),
-        }))
-    }
-
     /// Import a new resource from an existing local file
     async fn import_resource(
         &self,

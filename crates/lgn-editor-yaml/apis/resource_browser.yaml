@@ -60,6 +60,29 @@ paths:
                     type: string
                 required:
                   - new_id
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/type-names:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    get:
+      description: Get the list of all the resources types available (for creation dialog)
+      operationId: GetResourceTypeNames
+      responses:
+        "204":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resource_types:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - resource_types
+
 components:
   parameters:
     token:
@@ -81,6 +104,7 @@ components:
           type: string
         total:
           type: integer
+          format: uint32
         resource_description:
           type: array
           items:

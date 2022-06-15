@@ -2,8 +2,6 @@ syntax = "proto3";
 package resource_browser;
 
 service ResourceBrowser {
-  rpc GetResourceTypeNames(GetResourceTypeNamesRequest) returns (GetResourceTypeNamesResponse);
-
   rpc ImportResource(ImportResourceRequest) returns (ImportResourceResponse);
 
   rpc DeleteResource(DeleteResourceRequest) returns (DeleteResourceResponse);
@@ -30,11 +28,6 @@ message ResourceDescription {
   string path = 2;
   uint32 version = 3;
   string type = 4;
-}
-
-message GetResourceTypeNamesRequest {}
-message GetResourceTypeNamesResponse {
-  repeated string resource_types = 1;
 }
 
 message InitPropertyValue {
