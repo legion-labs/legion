@@ -38,7 +38,8 @@ impl BuildDevice {
         force_recompile: bool,
     ) -> Self {
         let mut manifest =
-            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &provider).await;
+            ResourceIndex::new_exclusive(Arc::clone(&provider), new_resource_type_and_id_indexer())
+                .await;
         if let Some(manifest_id) = manifest_id {
             manifest.set_id(manifest_id);
         }
@@ -54,11 +55,7 @@ impl BuildDevice {
     }
 
     async fn load_internal(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        if let Ok(Some(resource_id)) = self
-            .manifest
-            .get_identifier(&self.provider, &type_id.into())
-            .await
-        {
+        if let Ok(Some(resource_id)) = self.manifest.get_identifier(&type_id.into()).await {
             if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&resource_id).await {
                 return Some(resource_bytes);
             }

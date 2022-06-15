@@ -75,12 +75,14 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
     std::fs::create_dir_all(&build_dir).unwrap();
 
     let source_control_content_provider = Arc::new(Provider::new_in_memory());
-    let project =
-        Project::new_with_remote_mock(&project_dir, Arc::clone(&source_control_content_provider))
-            .await
-            .expect("failed to create a project");
-
     let data_content_provider = Arc::new(Provider::new_in_memory());
+    let project = Project::new_with_remote_mock(
+        &project_dir,
+        Arc::clone(&source_control_content_provider),
+        Arc::clone(&data_content_provider),
+    )
+    .await
+    .expect("failed to create a project");
 
     let runtime_manifest_id =
         SharedTreeIdentifier::new(empty_tree_id(&data_content_provider).await.unwrap());
@@ -91,6 +93,7 @@ pub(crate) async fn setup_project(project_dir: impl AsRef<Path>) -> Arc<Mutex<Tr
         )
         .add_device_source_cas(
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
             project.source_manifest_id(),
         );
     sample_data::offline::add_loaders(&mut asset_registry);
