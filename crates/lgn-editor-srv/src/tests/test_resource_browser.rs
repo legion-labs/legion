@@ -4,6 +4,10 @@ use lgn_content_store::{
     indexing::{empty_tree_id, SharedTreeIdentifier},
     Provider,
 };
+
+use lgn_governance::api::space::SpaceId;
+use lgn_governance::api::workspace::WorkspaceId;
+
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
@@ -12,9 +16,12 @@ use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
 use lgn_editor_proto::resource_browser::{
-    resource_browser_server::ResourceBrowser, CloneResourceRequest, CreateResourceRequest,
-    DeleteResourceRequest, GetResourceTypeNamesRequest, InitPropertyValue, RenameResourceRequest,
-    ReparentResourceRequest,
+    resource_browser_server::ResourceBrowser, CloneResourceRequest, DeleteResourceRequest,
+    GetResourceTypeNamesRequest, RenameResourceRequest, ReparentResourceRequest,
+};
+use lgn_editor_yaml::resource_browser::{
+    server::{CreateResourceRequest, CreateResourceResponse},
+    Api, CreateResourceBody,
 };
 use lgn_math::Vec3;
 use lgn_scene_plugin::SceneMessage;
@@ -137,6 +144,11 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             scene_events_tx,
         };
 
+        let resource_browser_server = crate::resource_browser_plugin::Server {
+            transaction_manager: transaction_manager.clone(),
+            uploads_folder: "".into(),
+        };
+
         // Read all Resource Type registered
         let response = resource_browser
             .get_resource_type_names(Request::new(GetResourceTypeNamesRequest {}))
@@ -153,21 +165,33 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                 == 1
         );
 
+        let (parts, body) = http::Request::new(CreateResourceBody {
+            resource_type: sample_data::offline::Entity::TYPENAME.into(),
+            resource_name: Some("root_entity_".into()),
+            parent_resource_id: None,
+            init_values: vec![lgn_editor_yaml::resource_browser::InitPropertyValue {
+                property_path: "components[Transform].position".into(),
+                json_value: json!(Vec3::ZERO).to_string(),
+            }],
+            upload_id: None,
+        })
+        .into_parts();
+
         // Create new resource
-        let root_entity_id = resource_browser
-            .create_resource(Request::new(CreateResourceRequest {
-                resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                resource_name: Some("root_entity_".into()),
-                parent_resource_id: None,
-                init_values: vec![InitPropertyValue {
-                    property_path: "components[Transform].position".into(),
-                    json_value: json!(Vec3::ZERO).to_string(),
-                }],
-                upload_id: None,
-            }))
-            .await?
-            .into_inner()
-            .new_id;
+        let root_entity_id = if let CreateResourceResponse::Status204(data) =
+            resource_browser_server
+                .create_resource(CreateResourceRequest {
+                    space_id: SpaceId("0".to_string()),
+                    workspace_id: WorkspaceId("0".to_string()),
+                    body,
+                    parts,
+                })
+                .await?
+        {
+            data.new_id
+        } else {
+            panic!("Resource creation failed");
+        };
 
         let root_entity_id = ResourceTypeAndId::from_str(&root_entity_id).unwrap();
         // Rename the created resource
@@ -201,22 +225,33 @@ async fn test_resource_browser() -> anyhow::Result<()> {
 
             #[allow(clippy::needless_range_loop)]
             for i in 0..3u16 {
-                let child_id = resource_browser
-                    .create_resource(Request::new(CreateResourceRequest {
-                        resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                        resource_name: Some("child".into()),
-                        parent_resource_id: Some(root_entity_id.to_string()),
-                        init_values: vec![InitPropertyValue {
-                            property_path: "components[Transform].position".into(),
-                            json_value: json!(Vec3::new(offsets[i as usize], 0.0, 0.0,))
-                                .to_string(),
-                        }],
-                        upload_id: None,
-                    }))
-                    .await
-                    .unwrap()
-                    .into_inner()
-                    .new_id;
+                let (parts, body) = http::Request::new(CreateResourceBody {
+                    resource_type: sample_data::offline::Entity::TYPENAME.into(),
+                    resource_name: Some("child".into()),
+                    parent_resource_id: Some(root_entity_id.to_string()),
+                    init_values: vec![lgn_editor_yaml::resource_browser::InitPropertyValue {
+                        property_path: "components[Transform].position".into(),
+                        json_value: json!(Vec3::new(offsets[i as usize], 0.0, 0.0,)).to_string(),
+                    }],
+                    upload_id: None,
+                })
+                .into_parts();
+
+                let child_id = if let CreateResourceResponse::Status204(data) =
+                    resource_browser_server
+                        .create_resource(CreateResourceRequest {
+                            space_id: SpaceId("0".to_string()),
+                            workspace_id: WorkspaceId("0".to_string()),
+                            body,
+                            parts,
+                        })
+                        .await
+                        .unwrap()
+                {
+                    data.new_id
+                } else {
+                    panic!("Resource creation failed");
+                };
 
                 // Test Renaming the child
                 if i == 0 {
@@ -228,18 +263,30 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         .await?;
                 }
 
-                let sub_child_id = resource_browser
-                    .create_resource(Request::new(CreateResourceRequest {
-                        resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                        resource_name: Some("subchild".into()),
-                        parent_resource_id: Some(child_id.clone()),
-                        init_values: Vec::new(),
-                        upload_id: None,
-                    }))
-                    .await
-                    .unwrap()
-                    .into_inner()
-                    .new_id;
+                let (parts, body) = http::Request::new(CreateResourceBody {
+                    resource_type: sample_data::offline::Entity::TYPENAME.into(),
+                    resource_name: Some("subchild".into()),
+                    parent_resource_id: Some(child_id.clone()),
+                    init_values: Vec::new(),
+                    upload_id: None,
+                })
+                .into_parts();
+
+                let sub_child_id = if let CreateResourceResponse::Status204(data) =
+                    resource_browser_server
+                        .create_resource(CreateResourceRequest {
+                            space_id: SpaceId("0".to_string()),
+                            workspace_id: WorkspaceId("0".to_string()),
+                            body,
+                            parts,
+                        })
+                        .await
+                        .unwrap()
+                {
+                    data.new_id
+                } else {
+                    panic!("Resource creation failed");
+                };
 
                 let sub_child_id = ResourceTypeAndId::from_str(&sub_child_id).unwrap();
                 let transaction = Transaction::new()
@@ -278,7 +325,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             .clone_resource(Request::new(CloneResourceRequest {
                 source_id: root_entity_id.to_string(),
                 target_parent_id: None, // Same Parent
-                init_values: vec![InitPropertyValue {
+                init_values: vec![lgn_editor_proto::resource_browser::InitPropertyValue {
                     property_path: "components[Transform].position".into(),
                     json_value: json!(Vec3::new(0.0, 0.0, 2.0,)).to_string(),
                 }],

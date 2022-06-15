@@ -2,8 +2,6 @@ syntax = "proto3";
 package resource_browser;
 
 service ResourceBrowser {
-  rpc CreateResource(CreateResourceRequest) returns (CreateResourceResponse);
-
   rpc GetResourceTypeNames(GetResourceTypeNamesRequest) returns (GetResourceTypeNamesResponse);
 
   rpc ImportResource(ImportResourceRequest) returns (ImportResourceResponse);
@@ -39,21 +37,9 @@ message GetResourceTypeNamesResponse {
   repeated string resource_types = 1;
 }
 
-message CreateResourceRequest {
-  string resource_type = 1;
-  optional string resource_name = 2;
-  optional string parent_resource_id = 3;
-  repeated InitPropertyValue init_values = 4;
-  optional string upload_id = 5;
-}
-
 message InitPropertyValue {
   string property_path = 1;
   string json_value = 2;
-}
-
-message CreateResourceResponse {
-  string new_id = 1;
 }
 
 message ImportResourceRequest {

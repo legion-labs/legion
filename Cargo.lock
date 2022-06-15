@@ -2470,6 +2470,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-editor-proto",
  "lgn-editor-yaml",
+ "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-grpc",

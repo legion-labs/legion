@@ -21,6 +21,7 @@ lgn-editor-yaml = { path = "../lgn-editor-yaml", version = "0.1.0" }
 lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
 lgn-mp4 = { path = "../lgn-mp4", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
+lgn-governance = { path = "../lgn-governance", version = "0.1.0" }
 lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-log = { path = "../lgn-log", version = "0.1.0" }

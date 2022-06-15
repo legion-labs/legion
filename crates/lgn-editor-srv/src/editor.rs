@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 pub(crate) struct Server {
     transaction_manager: Arc<Mutex<TransactionManager>>,
 }
-
+/*
 impl Server {
     pub(crate) fn new(transaction_manager: Arc<Mutex<TransactionManager>>) -> Self {
         Self {
@@ -21,6 +21,7 @@ impl Server {
         }
     }
 }
+*/
 
 #[async_trait]
 impl Api for Server {

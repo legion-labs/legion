@@ -33,11 +33,15 @@ use lgn_editor_proto::{
     },
 };
 
-use lgn_editor_yaml::resource_browser::server::SearchResourcesRequest;
 use lgn_editor_yaml::resource_browser::server::SearchResourcesResponse;
-use lgn_online::server::Result;
+use lgn_editor_yaml::resource_browser::server::{
+    CreateResourceRequest, CreateResourceResponse, SearchResourcesRequest,
+};
+use lgn_online::server::{Error, Result};
 
-use lgn_editor_yaml::resource_browser::{Api, NextSearchToken, ResourceDescription};
+use lgn_editor_yaml::resource_browser::{
+    Api, CreateResource204Response, NextSearchToken, ResourceDescription,
+};
 
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_resource_registry::ResourceRegistrySettings;
@@ -127,9 +131,8 @@ impl IndexSnapshot {
     }
 }
 
-use lgn_editor_proto::resource_browser::{
-    resource_browser_server::{ResourceBrowser, ResourceBrowserServer},
-    CreateResourceRequest, CreateResourceResponse,
+use lgn_editor_proto::resource_browser::resource_browser_server::{
+    ResourceBrowser, ResourceBrowserServer,
 };
 
 impl Plugin for ResourceBrowserPlugin {
@@ -346,6 +349,7 @@ fn create_gltf_resource(gltf_path: &Path) -> Result<PathBuf, Status> {
 
 pub(crate) struct Server {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
+    pub(crate) uploads_folder: PathBuf,
 }
 
 #[async_trait]
@@ -392,18 +396,13 @@ impl Api for Server {
 
         Ok(SearchResourcesResponse::Status204(next_search_token))
     }
-}
 
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
     /// Create a new resource
     async fn create_resource(
         &self,
-        request: Request<CreateResourceRequest>,
-    ) -> Result<Response<CreateResourceResponse>, Status> {
-        let request = request.into_inner();
-
-        let resource_type = request.resource_type.as_str();
+        request: CreateResourceRequest,
+    ) -> Result<CreateResourceResponse> {
+        let resource_type = request.body.resource_type.as_str();
 
         let new_resource_id = ResourceTypeAndId {
             kind: ResourceType::new(
@@ -417,14 +416,17 @@ impl ResourceBrowser for ResourceBrowserRPC {
             id: ResourceId::new(),
         };
 
-        let name = request.resource_name.as_ref().map_or(
-            request.resource_type.trim_start_matches("offline_"),
+        let name = request.body.resource_name.as_ref().map_or(
+            request.body.resource_type.trim_start_matches("offline_"),
             String::as_str,
         );
 
         let mut parent_id: Option<ResourceTypeAndId> = None;
-        let mut resource_path = if let Some(parent_id_str) = &request.parent_resource_id {
-            parent_id = Some(parse_resource_id(parent_id_str)?);
+        let mut resource_path = if let Some(parent_id_str) = &request.body.parent_resource_id {
+            parent_id = Some(parse_resource_id(parent_id_str).map_err(|err| {
+                Error::bad_request(format!("failed to parse resource_id: {}", err))
+            })?);
+
             let mut res_name = ResourcePathName::new(format!("!{}", parent_id.unwrap()));
             res_name.push(name);
             res_name
@@ -433,6 +435,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         };
 
         let mut content_path = request
+            .body
             .upload_id
             .as_ref()
             .map(|upload_id| self.uploads_folder.join(upload_id).join(name));
@@ -440,7 +443,10 @@ impl ResourceBrowser for ResourceBrowserRPC {
         match resource_type {
             "gltf" | "glb" => {
                 if let Some(tmp_content_path) = content_path {
-                    content_path = Some(create_gltf_resource(&tmp_content_path)?);
+                    content_path =
+                        Some(create_gltf_resource(&tmp_content_path).map_err(|err| {
+                            Error::internal(format!("failed to create gltf resource: {}", err))
+                        })?);
                 }
             }
             _ => (),
@@ -460,7 +466,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         }
 
         // Add Init Values
-        for init_value in request.init_values {
+        for init_value in request.body.init_values {
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 new_resource_id,
                 &[(init_value.property_path, init_value.json_value)],
@@ -471,29 +477,24 @@ impl ResourceBrowser for ResourceBrowserRPC {
         transaction_manager
             .commit_transaction(transaction)
             .await
-            .map_err(|err| {
-                error!(
-                    "Failed to create new resource type '{}': {}",
-                    resource_type, err
-                );
-                Status::internal(err.to_string())
-            })?;
+            .map_err(|err| Error::internal(format!("failed to commit transaction: {}", err)))?;
 
         // Remove uploads folder after successful upload
-        if let Some(upload_id) = &request.upload_id {
-            if let Err(err) = std::fs::remove_dir_all(self.uploads_folder.join(upload_id)) {
-                error!(
-                    "Failed to clean-up folder for upload_id '{}': {}",
-                    upload_id, err
-                );
-            }
+        if let Some(upload_id) = &request.body.upload_id {
+            std::fs::remove_dir_all(self.uploads_folder.join(upload_id))
+                .map_err(|err| Error::internal(format!("failed to remove dir: {}", err)))?;
         }
 
-        Ok(Response::new(CreateResourceResponse {
-            new_id: new_resource_id.to_string(),
-        }))
+        Ok(CreateResourceResponse::Status204(
+            CreateResource204Response {
+                new_id: new_resource_id.to_string(),
+            },
+        ))
     }
+}
 
+#[tonic::async_trait]
+impl ResourceBrowser for ResourceBrowserRPC {
     /// Get the list of all the resources types available (for creation dialog)
     async fn get_resource_type_names(
         &self,

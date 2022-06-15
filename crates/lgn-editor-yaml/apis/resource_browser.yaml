@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
   title: "Resource Browser API"
   description: "The OpenAPI specification for the Legion Labs resource browser."
@@ -19,6 +19,47 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NextSearchToken"
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/create:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    put:
+      description: Create a resource
+      operationId: CreateResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resource_type:
+                  type: string
+                resource_name:
+                  type: string
+                parent_resource_id:
+                  type: string
+                init_values:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/InitPropertyValue"
+                upload_id:
+                  type: string
+              required:
+                - resource_type
+                - init_values
+      responses:
+        "204":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_id:
+                    type: string
+                required:
+                  - new_id
 components:
   parameters:
     token:
@@ -41,9 +82,9 @@ components:
         total:
           type: integer
         resource_description:
-            type: array
-            items:
-              $ref: "#/components/schemas/ResourceDescription"
+          type: array
+          items:
+            $ref: "#/components/schemas/ResourceDescription"
       required:
         - next_search_token
         - total
@@ -65,3 +106,14 @@ components:
         - path
         - version
         - type
+    InitPropertyValue:
+      description: Init Property value
+      type: object
+      properties:
+        property_path:
+          type: string
+        json_value:
+          type: string
+      required:
+        - property_path
+        - json_value
