@@ -104,7 +104,7 @@ impl Api for ApiImpl {
         _request: TestAdditionalPropertiesAnyRequest,
     ) -> Result<TestAdditionalPropertiesAnyResponse> {
         Ok(TestAdditionalPropertiesAnyResponse::Status200(
-            HashMap::from([(
+            BTreeMap::from([(
                 "foo".to_string(),
                 serde_json::Value::String("bar".to_string()),
             )]),
@@ -116,7 +116,7 @@ impl Api for ApiImpl {
         _request: TestAdditionalPropertiesSchemaRequest,
     ) -> Result<TestAdditionalPropertiesSchemaResponse> {
         Ok(TestAdditionalPropertiesSchemaResponse::Status200(
-            HashMap::from([(
+            BTreeMap::from([(
                 "foo".to_string(),
                 components::Pet {
                     name: Some("Cat".to_string()),
@@ -130,7 +130,7 @@ impl Api for ApiImpl {
         _request: TestAdditionalPropertiesStringRequest,
     ) -> Result<TestAdditionalPropertiesStringResponse> {
         Ok(TestAdditionalPropertiesStringResponse::Status200(
-            HashMap::from([("foo".to_string(), "bar".to_string())]),
+            BTreeMap::from([("foo".to_string(), "bar".to_string())]),
         ))
     }
 
