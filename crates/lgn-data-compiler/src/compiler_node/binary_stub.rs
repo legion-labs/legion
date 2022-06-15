@@ -49,7 +49,7 @@ impl CompilerStub for BinCompilerStub {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         _registry: Arc<AssetRegistry>,
-        _provider: &Provider,
+        _provider: Arc<Provider>,
         source_manifest_id: &SharedTreeIdentifier,
         _runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,

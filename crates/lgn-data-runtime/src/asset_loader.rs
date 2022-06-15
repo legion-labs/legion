@@ -696,8 +696,11 @@ mod tests {
 
     async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest =
-            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
+        let mut manifest = ResourceIndex::new_exclusive(
+            Arc::clone(&data_provider),
+            new_resource_type_and_id_indexer(),
+        )
+        .await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -710,7 +713,7 @@ mod tests {
                 .unwrap();
 
             manifest
-                .add_resource(&data_provider, &type_id.into(), provider_id)
+                .add_resource(&type_id.into(), provider_id)
                 .await
                 .unwrap();
 
@@ -718,7 +721,7 @@ mod tests {
         };
 
         let (loader, mut io) = create_loader(vec![Box::new(vfs::CasDevice::new(
-            Arc::clone(&data_provider),
+            data_provider,
             SharedTreeIdentifier::new(manifest.id()),
         ))]);
         io.register_loader(
@@ -779,8 +782,11 @@ mod tests {
     #[tokio::test]
     async fn load_no_dependencies() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest =
-            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
+        let mut manifest = ResourceIndex::new_exclusive(
+            Arc::clone(&data_provider),
+            new_resource_type_and_id_indexer(),
+        )
+        .await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -792,7 +798,7 @@ mod tests {
                 .await
                 .unwrap();
             manifest
-                .add_resource(&data_provider, &type_id.into(), provider_id)
+                .add_resource(&type_id.into(), provider_id)
                 .await
                 .unwrap();
             type_id
@@ -850,8 +856,11 @@ mod tests {
     #[tokio::test]
     async fn load_failed_dependency() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest =
-            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
+        let mut manifest = ResourceIndex::new_exclusive(
+            Arc::clone(&data_provider),
+            new_resource_type_and_id_indexer(),
+        )
+        .await;
 
         let parent_id = ResourceTypeAndId {
             kind: test_asset::TestAsset::TYPE,
@@ -864,7 +873,7 @@ mod tests {
                 .await
                 .unwrap();
             manifest
-                .add_resource(&data_provider, &parent_id.into(), provider_id)
+                .add_resource(&parent_id.into(), provider_id)
                 .await
                 .unwrap();
             parent_id
@@ -910,8 +919,11 @@ mod tests {
     #[tokio::test]
     async fn load_with_dependency() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest =
-            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
+        let mut manifest = ResourceIndex::new_exclusive(
+            Arc::clone(&data_provider),
+            new_resource_type_and_id_indexer(),
+        )
+        .await;
 
         let parent_content = "parent";
 
@@ -927,7 +939,6 @@ mod tests {
         let asset_id = {
             manifest
                 .add_resource(
-                    &data_provider,
                     &child_id.into(),
                     data_provider
                         .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
@@ -941,7 +952,7 @@ mod tests {
                 .await
                 .unwrap();
             manifest
-                .add_resource(&data_provider, &parent_id.into(), provider_id)
+                .add_resource(&parent_id.into(), provider_id)
                 .await
                 .unwrap();
 
@@ -1027,8 +1038,11 @@ mod tests {
     #[tokio::test]
     async fn reload_no_dependencies() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest =
-            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
+        let mut manifest = ResourceIndex::new_exclusive(
+            Arc::clone(&data_provider),
+            new_resource_type_and_id_indexer(),
+        )
+        .await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -1040,7 +1054,7 @@ mod tests {
                 .await
                 .unwrap();
             manifest
-                .add_resource(&data_provider, &type_id.into(), provider_id)
+                .add_resource(&type_id.into(), provider_id)
                 .await
                 .unwrap();
             type_id
