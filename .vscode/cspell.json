@@ -82,6 +82,7 @@
     "serde",
     "SFLOAT",
     "skippable",
+    "smallvec",
     "SNORM",
     "sqlx",
     "SSAO",

@@ -204,6 +204,8 @@ fn presenter_snapshot_system(
             ),
         );
 
+        render_surface.add_default_viewport();
+
         let device_context = renderer.device_context();
 
         render_surface.register_presenter(|| {

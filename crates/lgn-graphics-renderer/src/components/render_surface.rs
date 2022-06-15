@@ -293,7 +293,14 @@ impl RenderSurface {
         &mut self.viewports
     }
 
-    pub fn add_viewport(&mut self, viewport: Viewport) {
+    pub fn add_default_viewport(&mut self) {
+        // TODO(jsg): Only one viewport for now.
+        let viewport_offset = Offset2D { x: 0, y: 0 };
+        let viewport_extents = Extents2D {
+            width: self.extents.width(),
+            height: self.extents.height(),
+        };
+        let viewport = Viewport::new(viewport_offset, viewport_extents);
         self.viewports.push(viewport);
     }
 
@@ -376,6 +383,15 @@ impl RenderSurface {
         render_viewports_private_data: &[&RenderViewportRendererData],
         cmd_buffer: &mut CommandBuffer,
     ) {
+        cmd_buffer.cmd_resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                &self.final_target,
+                ResourceState::SHADER_RESOURCE,
+                ResourceState::COPY_DST,
+            )],
+        );
+
         for (i, render_viewport_private_data) in render_viewports_private_data.iter().enumerate() {
             let render_viewport = render_viewports[i];
 
@@ -383,18 +399,11 @@ impl RenderSurface {
 
             cmd_buffer.cmd_resource_barrier(
                 &[],
-                &[
-                    TextureBarrier::state_transition(
-                        &self.final_target,
-                        ResourceState::SHADER_RESOURCE,
-                        ResourceState::COPY_DST,
-                    ),
-                    TextureBarrier::state_transition(
-                        view_target,
-                        ResourceState::RENDER_TARGET,
-                        ResourceState::COPY_SRC,
-                    ),
-                ],
+                &[TextureBarrier::state_transition(
+                    view_target,
+                    ResourceState::RENDER_TARGET,
+                    ResourceState::COPY_SRC,
+                )],
             );
 
             cmd_buffer.cmd_copy_image(
@@ -417,20 +426,22 @@ impl RenderSurface {
 
             cmd_buffer.cmd_resource_barrier(
                 &[],
-                &[
-                    TextureBarrier::state_transition(
-                        &self.final_target,
-                        ResourceState::COPY_DST,
-                        ResourceState::SHADER_RESOURCE,
-                    ),
-                    TextureBarrier::state_transition(
-                        view_target,
-                        ResourceState::COPY_SRC,
-                        ResourceState::RENDER_TARGET,
-                    ),
-                ],
+                &[TextureBarrier::state_transition(
+                    view_target,
+                    ResourceState::COPY_SRC,
+                    ResourceState::RENDER_TARGET,
+                )],
             );
         }
+
+        cmd_buffer.cmd_resource_barrier(
+            &[],
+            &[TextureBarrier::state_transition(
+                &self.final_target,
+                ResourceState::COPY_DST,
+                ResourceState::SHADER_RESOURCE,
+            )],
+        );
     }
 
     pub fn register_presenter<T: 'static + Presenter>(&mut self, create_fn: impl FnOnce() -> T) {

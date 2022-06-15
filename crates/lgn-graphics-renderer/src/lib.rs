@@ -20,7 +20,7 @@ use crate::components::{
 use crate::core::{
     RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
     RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, RenderViewport,
-    RenderViewportPrivateDataHandler, RenderViewportRendererData, Viewport, RENDER_LAYER_DEPTH,
+    RenderViewportPrivateDataHandler, RenderViewportRendererData, RENDER_LAYER_DEPTH,
     RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
 use crate::features::{ModelFeature, RenderVisual};
@@ -45,8 +45,7 @@ mod asset_to_ecs;
 mod renderer;
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
-    ApiDef, DescriptorHeapDef, DeviceContext, Extents2D, Offset2D, Queue, QueueType,
-    BACKBUFFER_COUNT,
+    ApiDef, DescriptorHeapDef, DeviceContext, Queue, QueueType, BACKBUFFER_COUNT,
 };
 use lgn_graphics_cgen_runtime::CGenRegistryList;
 use lgn_input::keyboard::{KeyCode, KeyboardInput};
@@ -460,14 +459,7 @@ fn on_window_created(
         let extents = RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height());
         let mut render_surface = RenderSurface::new(wnd.id(), &renderer, extents);
 
-        // TODO(jsg): Only one viewport for now.
-        let viewport_offset = Offset2D { x: 0, y: 0 };
-        let viewport_extents = Extents2D {
-            width: extents.width(),
-            height: extents.height(),
-        };
-        let viewport = Viewport::new(viewport_offset, viewport_extents);
-        render_surface.add_viewport(viewport);
+        render_surface.add_default_viewport();
 
         render_surfaces.insert(render_surface);
 
