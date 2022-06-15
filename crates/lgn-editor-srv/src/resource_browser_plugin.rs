@@ -26,7 +26,6 @@ use lgn_editor_proto::{
         Asset, CloseSceneRequest, CloseSceneResponse, GetActiveScenesRequest,
         GetActiveScenesResponse, GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse,
         ListAssetsRequest, ListAssetsResponse, OpenSceneRequest, OpenSceneResponse,
-        ReparentResourceRequest, ReparentResourceResponse,
     },
 };
 
@@ -34,7 +33,8 @@ use lgn_editor_yaml::resource_browser::server::{
     CloneResourceRequest, CloneResourceResponse, CreateResourceRequest, CreateResourceResponse,
     DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
     GetResourceTypeNamesResponse, RenameResourceRequest, RenameResourceResponse,
-    SearchResourcesRequest, SearchResourcesResponse,
+    ReparentResourceRequest, ReparentResourceResponse, SearchResourcesRequest,
+    SearchResourcesResponse,
 };
 use lgn_online::server::{Error, Result};
 
@@ -720,18 +720,16 @@ impl Api for Server {
             },
         }))
     }
-}
 
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
     /// Reparent a Resource
     async fn reparent_resource(
         &self,
-        request: Request<ReparentResourceRequest>,
-    ) -> Result<Response<ReparentResourceResponse>, Status> {
-        let request = request.get_ref();
-        let resource_id = parse_resource_id(request.id.as_str())?;
-        let mut new_path = ResourcePathName::new(&request.new_path);
+        request: ReparentResourceRequest,
+    ) -> Result<ReparentResourceResponse> {
+        let resource_id = parse_resource_id(request.body.id.as_str())
+            .map_err(|err| Error::bad_request(format!("failed to parse resource_id: {}", err)))?;
+
+        let mut new_path = ResourcePathName::new(&request.body.new_path);
 
         let index_snapshot = {
             let transaction_manager = self.transaction_manager.lock().await;
@@ -741,7 +739,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let new_parent = index_snapshot.name_to_entity.get(&new_path).copied();
         if let Some(new_parent) = new_parent {
             if new_parent == resource_id {
-                return Err(Status::internal("cannot parent to itself"));
+                return Err(Error::bad_request(format!("cannot parent to itself")));
             }
             new_path = ResourcePathName::new(format!("/!{}", new_parent));
         }
@@ -754,7 +752,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
 
         // Ignore same reparenting
         if old_parent == new_parent {
-            return Ok(Response::new(ReparentResourceResponse {}));
+            return Ok(ReparentResourceResponse::Status204);
         }
 
         let mut transaction = Transaction::new().add_operation(ReparentResourceOperation::new(
@@ -770,12 +768,15 @@ impl ResourceBrowser for ResourceBrowserRPC {
             transaction_manager
                 .commit_transaction(transaction)
                 .await
-                .map_err(|err| Status::internal(err.to_string()))?;
+                .map_err(|err| Error::internal(format!("reparent transaction failed: {}", err)))?;
         }
 
-        Ok(Response::new(ReparentResourceResponse {}))
+        Ok(ReparentResourceResponse::Status204)
     }
+}
 
+#[tonic::async_trait]
+impl ResourceBrowser for ResourceBrowserRPC {
     /// Open a Scene
     async fn open_scene(
         &self,

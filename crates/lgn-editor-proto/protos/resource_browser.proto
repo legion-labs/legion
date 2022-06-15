@@ -2,8 +2,6 @@ syntax = "proto3";
 package resource_browser;
 
 service ResourceBrowser {
-  rpc ReparentResource(ReparentResourceRequest) returns (ReparentResourceResponse);
-
   rpc OpenScene(OpenSceneRequest) returns (OpenSceneResponse);
 
   rpc CloseScene(CloseSceneRequest) returns (CloseSceneResponse);
@@ -14,12 +12,6 @@ service ResourceBrowser {
 
   rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
 }
-
-message ReparentResourceRequest {
-  string id = 1;
-  string new_path = 2;
-}
-message ReparentResourceResponse {}
 
 message OpenSceneRequest {
   string id = 1;

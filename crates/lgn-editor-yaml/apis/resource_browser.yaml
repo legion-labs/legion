@@ -151,6 +151,30 @@ paths:
                     $ref: "#/components/schemas/ResourceDescription"
                 required:
                   - new_resource
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/reparent:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Reparent a resource
+      operationId: ReparentResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                new_path:
+                  type: string
+              required:
+                - id
+                - new_path
+      responses:
+        "204":
+          description: Ok.
 
 components:
   parameters:

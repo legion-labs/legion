@@ -15,23 +15,19 @@ use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceTypeAnd
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
-use lgn_editor_proto::resource_browser::{
-    resource_browser_server::ResourceBrowser, ReparentResourceRequest,
-};
 use lgn_editor_yaml::resource_browser::{
     server::{
         CloneResourceRequest, CloneResourceResponse, CreateResourceRequest, CreateResourceResponse,
         DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
         GetResourceTypeNamesResponse, RenameResourceRequest, RenameResourceResponse,
+        ReparentResourceRequest, ReparentResourceResponse,
     },
     Api, CloneResourceBody, CreateResourceBody, DeleteResourceBody, InitPropertyValue,
-    RenameResourceBody,
+    RenameResourceBody, ReparentResourceBody,
 };
 use lgn_math::Vec3;
-use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;
-use tonic::Request;
 
 /*fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
     let script_id = ResourceTypeAndId {
@@ -143,13 +139,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
     let project_dir = tempfile::tempdir().unwrap();
 
     {
-        let (scene_events_tx, _rx) = crossbeam_channel::unbounded::<SceneMessage>();
         let transaction_manager = setup_project(&project_dir).await;
-        let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
-            transaction_manager: transaction_manager.clone(),
-            uploads_folder: "".into(),
-            scene_events_tx,
-        };
 
         let resource_browser_server = crate::resource_browser_plugin::Server {
             transaction_manager: transaction_manager.clone(),
@@ -303,7 +293,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                         .unwrap()
                     {
                     } else {
-                        panic!("Resource creation failed")
+                        panic!("Rename resource failed");
                     }
                 }
 
@@ -387,16 +377,29 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         {
             data.new_resource.id
         } else {
-            panic!("Resource creation failed");
+            panic!("Clone resource failed");
         };
 
         // Reparent under entity
-        resource_browser
-            .reparent_resource(Request::new(ReparentResourceRequest {
-                id: clone_id.clone(),
-                new_path: "/root_entity".into(),
-            }))
-            .await?;
+        let (parts, body) = http::Request::new(ReparentResourceBody {
+            id: clone_id.clone(),
+            new_path: "/root_entity".into(),
+        })
+        .into_parts();
+
+        if let ReparentResourceResponse::Status204 = resource_browser_server
+            .reparent_resource(ReparentResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("Reparent resource failed")
+        }
 
         /*
         // Reparent under folder entity
@@ -409,12 +412,25 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         */
 
         // Reparent under root
-        resource_browser
-            .reparent_resource(Request::new(ReparentResourceRequest {
-                id: clone_id.clone(),
-                new_path: "/".into(),
-            }))
-            .await?;
+        let (parts, body) = http::Request::new(ReparentResourceBody {
+            id: clone_id.clone(),
+            new_path: "/".into(),
+        })
+        .into_parts();
+
+        if let ReparentResourceResponse::Status204 = resource_browser_server
+            .reparent_resource(ReparentResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("Reparent resource failed")
+        }
 
         let (parts, body) = http::Request::new(DeleteResourceBody { id: clone_id }).into_parts();
 
