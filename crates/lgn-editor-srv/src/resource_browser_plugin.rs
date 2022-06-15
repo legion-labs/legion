@@ -23,23 +23,24 @@ use lgn_ecs::prelude::*;
 use lgn_editor_proto::{
     property_inspector::UpdateResourcePropertiesRequest,
     resource_browser::{
-        Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
-        GetActiveScenesRequest, GetActiveScenesResponse, GetRuntimeSceneInfoRequest,
-        GetRuntimeSceneInfoResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
-        OpenSceneResponse, ReparentResourceRequest, ReparentResourceResponse,
+        Asset, CloseSceneRequest, CloseSceneResponse, GetActiveScenesRequest,
+        GetActiveScenesResponse, GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse,
+        ListAssetsRequest, ListAssetsResponse, OpenSceneRequest, OpenSceneResponse,
+        ReparentResourceRequest, ReparentResourceResponse,
     },
 };
 
 use lgn_editor_yaml::resource_browser::server::{
-    CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, RenameResourceRequest,
-    RenameResourceResponse, SearchResourcesRequest, SearchResourcesResponse,
+    CloneResourceRequest, CloneResourceResponse, CreateResourceRequest, CreateResourceResponse,
+    DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
+    GetResourceTypeNamesResponse, RenameResourceRequest, RenameResourceResponse,
+    SearchResourcesRequest, SearchResourcesResponse,
 };
 use lgn_online::server::{Error, Result};
 
 use lgn_editor_yaml::resource_browser::{
-    Api, CreateResource200Response, GetResourceTypeNames200Response, NextSearchToken,
-    ResourceDescription,
+    Api, CloneResource200Response, CreateResource200Response, GetResourceTypeNames200Response,
+    NextSearchToken, ResourceDescription,
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -599,17 +600,11 @@ impl Api for Server {
 
         Ok(RenameResourceResponse::Status204)
     }
-}
 
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
     /// Clone a Resource
-    async fn clone_resource(
-        &self,
-        request: Request<CloneResourceRequest>,
-    ) -> Result<Response<CloneResourceResponse>, Status> {
-        let request = request.into_inner();
-        let source_resource_id = parse_resource_id(request.source_id.as_str())?;
+    async fn clone_resource(&self, request: CloneResourceRequest) -> Result<CloneResourceResponse> {
+        let source_resource_id = parse_resource_id(request.body.source_id.as_str())
+            .map_err(|err| Error::bad_request(format!("failed to parse resource_id: {}", err)))?;
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
@@ -620,8 +615,10 @@ impl ResourceBrowser for ResourceBrowserRPC {
 
         // Are we cloning into another target
         let target_parent_id: Option<ResourceTypeAndId> =
-            if let Some(target) = &request.target_parent_id {
-                Some(parse_resource_id(target.as_str())?)
+            if let Some(target) = &request.body.target_parent_id {
+                Some(parse_resource_id(target).map_err(|err| {
+                    Error::bad_request(format!("failed to parse resource_id: {}", err))
+                })?)
             } else {
                 None
             };
@@ -686,7 +683,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let clone_id = clone_mapping.get(&source_resource_id).unwrap();
 
         // Add Init Values
-        for init_value in request.init_values {
+        for init_value in request.body.init_values {
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 *clone_id,
                 &[(init_value.property_path, init_value.json_value)],
@@ -698,32 +695,35 @@ impl ResourceBrowser for ResourceBrowserRPC {
             transaction_manager
                 .commit_transaction(transaction)
                 .await
-                .map_err(|err| Status::internal(err.to_string()))?;
+                .map_err(|err| Error::internal(format!("clone transaction failed: {}", err)))?;
 
             let guard = LockContext::new(&transaction_manager).await;
             guard
                 .project
                 .resource_name(*clone_id)
                 .await
-                .map_err(|err| Status::internal(err.to_string()))?
+                .map_err(|err| Error::internal(format!("clone transaction failed: {}", err)))?
                 .as_str()
                 .to_string()
         };
 
-        Ok(Response::new(CloneResourceResponse {
-            new_resource: Some(lgn_editor_proto::resource_browser::ResourceDescription {
+        Ok(CloneResourceResponse::Status200(CloneResource200Response {
+            new_resource: ResourceDescription {
                 id: clone_id.to_string(),
                 path,
-                r#type: clone_id
+                type_: clone_id
                     .kind
                     .as_pretty()
                     .trim_start_matches("offline_")
                     .into(),
                 version: 1,
-            }),
+            },
         }))
     }
+}
 
+#[tonic::async_trait]
+impl ResourceBrowser for ResourceBrowserRPC {
     /// Reparent a Resource
     async fn reparent_resource(
         &self,

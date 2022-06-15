@@ -16,15 +16,16 @@ use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
 use lgn_editor_proto::resource_browser::{
-    resource_browser_server::ResourceBrowser, CloneResourceRequest, ReparentResourceRequest,
+    resource_browser_server::ResourceBrowser, ReparentResourceRequest,
 };
 use lgn_editor_yaml::resource_browser::{
     server::{
-        CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest,
-        DeleteResourceResponse, GetResourceTypeNamesRequest, GetResourceTypeNamesResponse,
-        RenameResourceRequest, RenameResourceResponse,
+        CloneResourceRequest, CloneResourceResponse, CreateResourceRequest, CreateResourceResponse,
+        DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
+        GetResourceTypeNamesResponse, RenameResourceRequest, RenameResourceResponse,
     },
-    Api, CreateResourceBody, DeleteResourceBody, RenameResourceBody,
+    Api, CloneResourceBody, CreateResourceBody, DeleteResourceBody, InitPropertyValue,
+    RenameResourceBody,
 };
 use lgn_math::Vec3;
 use lgn_scene_plugin::SceneMessage;
@@ -185,7 +186,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
             resource_type: sample_data::offline::Entity::TYPENAME.into(),
             resource_name: Some("root_entity_".into()),
             parent_resource_id: None,
-            init_values: vec![lgn_editor_yaml::resource_browser::InitPropertyValue {
+            init_values: vec![InitPropertyValue {
                 property_path: "components[Transform].position".into(),
                 json_value: json!(Vec3::ZERO).to_string(),
             }],
@@ -259,7 +260,7 @@ async fn test_resource_browser() -> anyhow::Result<()> {
                     resource_type: sample_data::offline::Entity::TYPENAME.into(),
                     resource_name: Some("child".into()),
                     parent_resource_id: Some(root_entity_id.to_string()),
-                    init_values: vec![lgn_editor_yaml::resource_browser::InitPropertyValue {
+                    init_values: vec![InitPropertyValue {
                         property_path: "components[Transform].position".into(),
                         json_value: json!(Vec3::new(offsets[i as usize], 0.0, 0.0,)).to_string(),
                     }],
@@ -364,20 +365,30 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         }
 
         // Clone Hierarchy
-        let clone_id = resource_browser
-            .clone_resource(Request::new(CloneResourceRequest {
-                source_id: root_entity_id.to_string(),
-                target_parent_id: None, // Same Parent
-                init_values: vec![lgn_editor_proto::resource_browser::InitPropertyValue {
-                    property_path: "components[Transform].position".into(),
-                    json_value: json!(Vec3::new(0.0, 0.0, 2.0,)).to_string(),
-                }],
-            }))
-            .await?
-            .into_inner()
-            .new_resource
+        let (parts, body) = http::Request::new(CloneResourceBody {
+            source_id: root_entity_id.to_string(),
+            target_parent_id: None, // Same Parent
+            init_values: vec![InitPropertyValue {
+                property_path: "components[Transform].position".into(),
+                json_value: json!(Vec3::new(0.0, 0.0, 2.0,)).to_string(),
+            }],
+        })
+        .into_parts();
+
+        let clone_id = if let CloneResourceResponse::Status200(data) = resource_browser_server
+            .clone_resource(CloneResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
             .unwrap()
-            .id;
+        {
+            data.new_resource.id
+        } else {
+            panic!("Resource creation failed");
+        };
 
         // Reparent under entity
         resource_browser
