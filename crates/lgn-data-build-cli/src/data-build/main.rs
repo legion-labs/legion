@@ -99,7 +99,6 @@ async fn main() -> Result<(), String> {
                 &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
-                Arc::clone(&data_content_provider),
             )
             .await
             .map_err(|e| format!("failed to open project {}", e))?;
@@ -156,7 +155,6 @@ async fn main() -> Result<(), String> {
                 &repository_name,
                 &branch_name,
                 Arc::clone(&source_control_content_provider),
-                Arc::clone(&data_content_provider),
             )
             .await
             .map_err(|e| e.to_string())?;
@@ -218,7 +216,7 @@ async fn main() -> Result<(), String> {
 
             if runtime_flag {
                 let manifest_id = output
-                    .into_rt_manifest(data_content_provider, |_| true)
+                    .into_rt_manifest(&data_content_provider, |_| true)
                     .await;
                 println!("{}", manifest_id);
             } else {

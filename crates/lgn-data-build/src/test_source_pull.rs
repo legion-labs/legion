@@ -47,7 +47,6 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -64,6 +63,7 @@ mod tests {
                 )
                 .await
                 .unwrap();
+            project.commit("add resource").await.unwrap();
             resource_id
         });
 
@@ -95,7 +95,6 @@ mod tests {
         let mut project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");
@@ -133,6 +132,8 @@ mod tests {
                 )
                 .await
                 .unwrap();
+
+            project.commit("added parent and child").await.unwrap();
 
             (
                 ResourcePathId::from(child_id),
