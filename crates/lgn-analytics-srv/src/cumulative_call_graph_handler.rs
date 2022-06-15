@@ -2,36 +2,32 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, FixedOffset};
 use std::sync::Arc;
 
-use lgn_analytics::{
-    find_block_stream, find_process, find_process_thread_streams, find_stream_blocks_in_range,
-    prelude::get_process_tick_length_ms, time::ConvertTicks,
-};
+use lgn_analytics::prelude::*;
 use lgn_telemetry_proto::{
     analytics::{
-        CallTreeNode, CumulativeCallGraphBlockDesc, CumulativeCallGraphComputedBlock,
-        CumulativeCallGraphManifest,
+        CumulativeCallGraphBlockDesc, CumulativeCallGraphComputedBlock, CumulativeCallGraphManifest,
     },
     telemetry::Process,
 };
 use lgn_tracing::span_fn;
 
 use crate::{
-    call_tree_store::CallTreeStore,
-    cumulative_call_graph::tree_overlaps,
+    cumulative_call_graph::span_overlaps,
     cumulative_call_graph_node::{CallGraphNode, CallNodeHashMap},
-    scope::{compute_scope_hash, ScopeHashMap},
+    lakehouse::{jit_lakehouse::JitLakehouse, span_table::TabularSpanTree},
+    scope::compute_scope_hash,
 };
 
 pub struct CumulativeCallGraphHandler {
     pool: sqlx::any::AnyPool,
-    call_tree_store: Arc<CallTreeStore>,
+    jit_lakehouse: Arc<dyn JitLakehouse>,
 }
 
 impl CumulativeCallGraphHandler {
-    pub fn new(pool: sqlx::any::AnyPool, call_tree_store: Arc<CallTreeStore>) -> Self {
+    pub fn new(pool: sqlx::any::AnyPool, jit_lakehouse: Arc<dyn JitLakehouse>) -> Self {
         Self {
             pool,
-            call_tree_store,
+            jit_lakehouse,
         }
     }
 
@@ -82,64 +78,69 @@ impl CumulativeCallGraphHandler {
     pub(crate) async fn get_call_graph_computed_block(
         &self,
         block_id: String,
-        start_ticks: i64,
-        tsc_frequency: u64,
+        _start_ticks: i64,
+        _tsc_frequency: u64,
         begin_ms: f64,
         end_ms: f64,
     ) -> Result<CumulativeCallGraphComputedBlock> {
         let mut connection = self.pool.acquire().await?;
         let stream = find_block_stream(&mut connection, &block_id).await?;
-        let convert_ticks = ConvertTicks::from_meta_data(start_ticks, tsc_frequency);
-        let tree = self
-            .call_tree_store
-            .get_call_tree(convert_ticks, &stream, &block_id)
+        let thread_name = stream
+            .properties
+            .get("thread-name")
+            .map_or_else(|| String::from("Unknown"), std::borrow::ToOwned::to_owned);
+
+        let process = find_block_process(&mut connection, &block_id).await?;
+        let (scopes, tree) = self
+            .jit_lakehouse
+            .get_call_tree(&process, &stream, &block_id)
             .await?;
 
-        let mut scopes = ScopeHashMap::new();
         let mut result = CallNodeHashMap::new();
-        let mut full = true;
-        if let Some(root) = tree.root {
-            scopes = tree.scopes;
-            full = root.begin_ms >= begin_ms && root.end_ms <= end_ms;
-            build_graph(&root, begin_ms, end_ms, &mut result, None);
+        let full = tree.get_begin() >= begin_ms && tree.get_end() <= end_ms;
+        for root_id in tree.get_roots() {
+            build_graph(&tree, *root_id, begin_ms, end_ms, &mut result)?;
         }
+
+        let nodes = result
+            .iter()
+            .map(|(_, node)| node.to_proto_node())
+            .collect();
 
         Ok(CumulativeCallGraphComputedBlock {
             full,
             scopes,
-            nodes: result
-                .iter()
-                .map(|(_, node)| node.to_proto_node())
-                .collect(),
+            nodes,
             stream_hash: compute_scope_hash(&stream.stream_id),
-            stream_name: match stream.properties.get("thread-name") {
-                Some(x) => x.to_string(),
-                None => String::from("Unknown"),
-            },
+            stream_name: thread_name,
         })
     }
 }
 
 #[span_fn]
 fn build_graph(
-    tree: &CallTreeNode,
+    tree: &TabularSpanTree,
+    spanid: i64,
     begin_ms: f64,
     end_ms: f64,
     result: &mut CallNodeHashMap,
-    parent: Option<&CallTreeNode>,
-) {
-    if !tree_overlaps(tree, begin_ms, end_ms) {
-        return;
+) -> Result<()> {
+    let row = tree.get_span(spanid)?;
+    if !span_overlaps(row, begin_ms, end_ms) {
+        return Ok(());
     }
 
     let node = result
-        .entry(tree.hash)
-        .or_insert_with(|| CallGraphNode::new(tree.hash, begin_ms, end_ms));
-    node.add_call(tree, parent);
+        .entry(row.hash)
+        .or_insert_with(|| CallGraphNode::new(row.hash, begin_ms, end_ms));
+    node.add_call(tree, row)?;
 
-    for child in &tree.children {
-        build_graph(child, begin_ms, end_ms, result, Some(tree));
+    if let Some(children) = tree.span_children.get(&spanid) {
+        for childid in children {
+            build_graph(tree, *childid, begin_ms, end_ms, result)?;
+        }
     }
+    Ok(())
 }
 
 #[span_fn]

@@ -1,20 +1,21 @@
+use std::path::Path;
 use std::{path::PathBuf, sync::Arc};
 
 #[cfg(feature = "deltalake-proto")]
 use super::span_delta_table::update_spans_delta_table;
 
-use super::span_table::{make_rows_from_tree, read_spans, write_spans_parquet, SpanRowGroup};
+use super::span_table::{
+    build_span_tree, build_spans_lod0, lod0_from_span_tree, make_rows_from_tree,
+    write_spans_parquet, SpanRowGroup, TabularSpanTree,
+};
 use crate::lakehouse::bytes_chunk_reader::BytesChunkReader;
 use crate::scope::ScopeHashMap;
-use crate::{
-    call_tree::{compute_block_spans, process_thread_block},
-    lakehouse::jit_lakehouse::JitLakehouse,
-};
+use crate::{call_tree::process_thread_block, lakehouse::jit_lakehouse::JitLakehouse};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::{BlockSpansReply, CallTree, ScopeDesc, SpanBlockLod};
+use lgn_telemetry_proto::analytics::{BlockSpansReply, ScopeDesc, SpanBlockLod};
 use lgn_tracing::prelude::*;
 use parquet::file::reader::FileReader;
 use parquet::file::serialized_reader::SerializedFileReader;
@@ -42,14 +43,14 @@ impl LocalJitLakehouse {
         }
     }
 
-    async fn write_thread_block(
+    async fn write_call_tree(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
         spans_file_path: PathBuf,
         scopes_file_path: PathBuf,
-    ) -> Result<BlockSpansReply> {
+    ) -> Result<(ScopeHashMap, TabularSpanTree)> {
         info!("writing thread block {}", block_id);
         if let Some(parent) = spans_file_path.parent() {
             tokio::fs::create_dir_all(&parent)
@@ -72,16 +73,7 @@ impl LocalJitLakehouse {
         )
         .await?;
         if processed.call_tree_root.is_none() {
-            return Ok(BlockSpansReply {
-                scopes: ScopeHashMap::new(),
-                lod: Some(SpanBlockLod {
-                    lod_id: 0,
-                    tracks: vec![],
-                }),
-                block_id: block_id.to_owned(),
-                begin_ms: f64::MAX,
-                end_ms: f64::MIN,
-            });
+            return Ok((ScopeHashMap::new(), TabularSpanTree::new()));
         }
         let root = processed
             .call_tree_root
@@ -92,28 +84,23 @@ impl LocalJitLakehouse {
         write_spans_parquet(&rows, &spans_file_path).await?;
         write_scopes_parquet(&processed.scopes, &scopes_file_path).await?;
 
-        //todo: do not iterate twice
-        let tree = CallTree {
-            scopes: processed.scopes,
-            root: Some(root),
-        };
-        Ok(compute_block_spans(tree, block_id))
+        Ok((processed.scopes, TabularSpanTree::from_rows(&rows)?))
     }
 
-    async fn read_spans_lod0(&self, spans_file_uri: &str) -> Result<SpanBlockLod> {
+    async fn read_spans_lod0(&self, spans_file_path: &Path) -> Result<SpanBlockLod> {
         let mut buffer: Vec<u8> = Vec::new();
-        let mut file = tokio::fs::File::open(spans_file_uri).await?;
+        let mut file = tokio::fs::File::open(spans_file_path).await?;
         file.read_to_end(&mut buffer).await?;
         let bytes = BytesChunkReader {
             bytes: bytes::Bytes::from(buffer),
         };
         let file_reader = SerializedFileReader::new(bytes)?;
-        read_spans(&file_reader)
+        build_spans_lod0(&file_reader)
     }
 
-    async fn read_scopes(&self, spans_file_uri: &str) -> Result<ScopeHashMap> {
+    async fn read_scopes(&self, spans_file_path: &Path) -> Result<ScopeHashMap> {
         let mut buffer: Vec<u8> = Vec::new();
-        let mut file = tokio::fs::File::open(spans_file_uri).await?;
+        let mut file = tokio::fs::File::open(spans_file_path).await?;
         file.read_to_end(&mut buffer).await?;
         let bytes = BytesChunkReader {
             bytes: bytes::Bytes::from(buffer),
@@ -141,11 +128,11 @@ impl LocalJitLakehouse {
     async fn read_thread_block(
         &self,
         block_id: &str,
-        spans_file_uri: &str,
-        scopes_file_uri: &str,
+        spans_file_path: &Path,
+        scopes_file_path: &Path,
     ) -> Result<BlockSpansReply> {
-        let lod = self.read_spans_lod0(spans_file_uri).await?;
-        let scopes = self.read_scopes(scopes_file_uri).await?;
+        let lod = self.read_spans_lod0(spans_file_path).await?;
+        let scopes = self.read_scopes(scopes_file_path).await?;
         let (min_begin, max_end) = if !lod.tracks.is_empty() && !lod.tracks[0].spans.is_empty() {
             (
                 lod.tracks[0].spans[0].begin_ms,
@@ -161,6 +148,48 @@ impl LocalJitLakehouse {
             begin_ms: min_begin,
             end_ms: max_end,
         })
+    }
+
+    async fn read_tree_from_parquet(&self, spans_file_path: &Path) -> Result<TabularSpanTree> {
+        let mut buffer: Vec<u8> = Vec::new();
+        let mut file = tokio::fs::File::open(spans_file_path).await?;
+        file.read_to_end(&mut buffer).await?;
+        let bytes = BytesChunkReader {
+            bytes: bytes::Bytes::from(buffer),
+        };
+        let file_reader = SerializedFileReader::new(bytes)?;
+        build_span_tree(&file_reader)
+    }
+
+    async fn read_call_tree(
+        &self,
+        spans_file_path: &Path,
+        scopes_file_path: &Path,
+    ) -> Result<(ScopeHashMap, TabularSpanTree)> {
+        let scopes = self.read_scopes(scopes_file_path).await?;
+        let tree = self.read_tree_from_parquet(spans_file_path).await?;
+        Ok((scopes, tree))
+    }
+
+    fn get_table_files(
+        &self,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        block_id: &str,
+    ) -> (PathBuf, PathBuf) {
+        let spans_file_path = self
+            .tables_path
+            .join("spans")
+            .join(format!("process_id={}", &process.process_id))
+            .join(format!("block_id={}", block_id))
+            .join("spans.parquet");
+
+        let scopes_file_path = self
+            .tables_path
+            .join("scopes")
+            .join(format!("process_id={}", &process.process_id))
+            .join(format!("block_id={}", block_id))
+            .join("scopes.parquet");
+        (spans_file_path, scopes_file_path)
     }
 }
 
@@ -197,31 +226,52 @@ impl JitLakehouse for LocalJitLakehouse {
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply> {
-        let spans_file_path = self
-            .tables_path
-            .join("spans")
-            .join(format!("process_id={}", &process.process_id))
-            .join(format!("block_id={}", block_id))
-            .join("spans.parquet");
+        let (spans_file_path, scopes_file_path) = self.get_table_files(process, block_id);
+        if !spans_file_path.exists() || !scopes_file_path.exists() {
+            let (scopes, tree) = self
+                .write_call_tree(process, stream, block_id, spans_file_path, scopes_file_path)
+                .await?;
+            if tree.is_empty() {
+                return Ok(BlockSpansReply {
+                    scopes: ScopeHashMap::new(),
+                    lod: Some(SpanBlockLod {
+                        lod_id: 0,
+                        tracks: vec![],
+                    }),
+                    block_id: block_id.to_owned(),
+                    begin_ms: f64::MAX,
+                    end_ms: f64::MIN,
+                });
+            }
+            let lod = lod0_from_span_tree(&tree)?;
+            let root_span = tree.get_row(0)?;
+            return Ok(BlockSpansReply {
+                scopes,
+                lod: Some(lod),
+                block_id: block_id.to_owned(),
+                begin_ms: root_span.begin_ms,
+                end_ms: root_span.end_ms,
+            });
+        }
 
-        let scopes_file_path = self
-            .tables_path
-            .join("scopes")
-            .join(format!("process_id={}", &process.process_id))
-            .join(format!("block_id={}", block_id))
-            .join("scopes.parquet");
+        self.read_thread_block(block_id, &spans_file_path, &scopes_file_path)
+            .await
+    }
 
+    async fn get_call_tree(
+        &self,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        stream: &lgn_telemetry_sink::StreamInfo,
+        block_id: &str,
+    ) -> Result<(ScopeHashMap, TabularSpanTree)> {
+        let (spans_file_path, scopes_file_path) = self.get_table_files(process, block_id);
         if !spans_file_path.exists() || !scopes_file_path.exists() {
             return self
-                .write_thread_block(process, stream, block_id, spans_file_path, scopes_file_path)
+                .write_call_tree(process, stream, block_id, spans_file_path, scopes_file_path)
                 .await;
         }
 
-        self.read_thread_block(
-            block_id,
-            &spans_file_path.to_string_lossy(),
-            &scopes_file_path.to_string_lossy(),
-        )
-        .await
+        self.read_call_tree(&spans_file_path, &scopes_file_path)
+            .await
     }
 }

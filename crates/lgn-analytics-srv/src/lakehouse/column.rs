@@ -20,6 +20,22 @@ impl<T> Column<T> {
     pub fn append(&mut self, v: T) {
         self.values.push(v);
     }
+
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn get(&self, i: usize) -> Result<&T> {
+        self.values
+            .get(i)
+            .with_context(|| "out of bounds reading column")
+    }
+}
+
+impl<T> Default for Column<T> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TableColumn for Column<i32> {

@@ -23,7 +23,6 @@ message CumulativeCallGraphBlockDesc {
   bool full = 2;
 }
 
-// Old : client side block streaming
 message CumulativeCallGraphBlockRequest {
   string block_id = 1;
   double begin_ms = 2;
@@ -32,7 +31,6 @@ message CumulativeCallGraphBlockRequest {
   int64 start_ticks = 5;
 }
 
-// New : client side accumulated blocks
 message CumulativeCallGraphComputedBlock {
   map<uint32, ScopeDesc> scopes = 1;
   repeated CumulativeComputedCallGraphNode nodes = 2;
@@ -42,13 +40,13 @@ message CumulativeCallGraphComputedBlock {
 }
 
 message CumulativeComputedCallGraphNode {
-  CumulativeCallGraphEdge node = 1;
-  repeated CumulativeCallGraphEdge callers = 3;
-  repeated CumulativeCallGraphEdge callees = 4;
+  CumulativeStats stats = 1;
+  repeated CumulativeStats callers = 3;
+  repeated CumulativeStats callees = 4;
 }
 
-message CumulativeCallGraphEdge {
-  uint32 hash = 1;
+message CumulativeStats {
+  uint32 hash = 1;  // not a stat, but avoids using a map in callers/callees
   double sum = 2;
   double sum_sqr = 3;
   double min = 4;

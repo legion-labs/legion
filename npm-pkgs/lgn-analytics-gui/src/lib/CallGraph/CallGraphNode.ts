@@ -1,5 +1,5 @@
 import type {
-  CumulativeCallGraphEdge,
+  CumulativeStats,
   CumulativeComputedCallGraphNode,
 } from "@lgn/proto-telemetry/dist/callgraph";
 
@@ -10,15 +10,15 @@ export class CallGraphNode {
   parents: Map<number, CallGraphNodeValue> = new Map();
   value: CallGraphNodeValue;
   hash: number;
-  constructor(node: CumulativeComputedCallGraphNode, isRootNode: boolean) {
-    this.value = new CallGraphNodeValue(null, isRootNode);
-    this.hash = node.node?.hash ?? 0;
+  constructor(node: CumulativeComputedCallGraphNode) {
+    this.value = new CallGraphNodeValue(null);
+    this.hash = node.stats!.hash;
     this.ingest(node);
   }
 
   ingest(input: CumulativeComputedCallGraphNode) {
-    if (input.node) {
-      this.value.accumulateEdge(input.node);
+    if (input.stats) {
+      this.value.accumulateStats(input.stats);
     }
     this.children = this.collectionIngest(this.children, input.callees, (e) =>
       e.sort((a, b) => b[1].acc - a[1].acc)
@@ -30,7 +30,7 @@ export class CallGraphNode {
 
   private collectionIngest(
     map: Map<number, CallGraphNodeValue>,
-    edges: CumulativeCallGraphEdge[],
+    edges: CumulativeStats[],
     sort: (
       map: [number, CallGraphNodeValue][]
     ) => [number, CallGraphNodeValue][]
@@ -38,9 +38,9 @@ export class CallGraphNode {
     for (const edge of edges) {
       const item = map.get(edge.hash);
       if (item) {
-        item.accumulateEdge(edge);
+        item.accumulateStats(edge);
       } else {
-        map.set(edge.hash, new CallGraphNodeValue(edge, false));
+        map.set(edge.hash, new CallGraphNodeValue(edge));
       }
     }
     return new Map(sort([...map]));

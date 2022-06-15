@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use super::{
     scope_table::{make_scopes_table_writer, ScopeRowGroup},
-    span_table::{make_spans_table_writer, read_spans, SpanRowGroup},
+    span_table::{build_spans_lod0, make_spans_table_writer, SpanRowGroup, TabularSpanTree},
 };
 
 pub struct RemoteJitLakehouse {
@@ -57,7 +57,7 @@ impl RemoteJitLakehouse {
             bytes: get_obj_output.body.collect().await?.into_bytes(),
         };
         let file_reader = SerializedFileReader::new(bytes)?;
-        read_spans(&file_reader)
+        build_spans_lod0(&file_reader)
     }
 
     async fn read_scopes(&self, scopes_key: String) -> Result<ScopeHashMap> {
@@ -256,5 +256,14 @@ impl JitLakehouse for RemoteJitLakehouse {
 
         self.read_thread_block(block_id, spans_key, scopes_key)
             .await
+    }
+
+    async fn get_call_tree(
+        &self,
+        _process: &lgn_telemetry_sink::ProcessInfo,
+        _stream: &lgn_telemetry_sink::StreamInfo,
+        _block_id: &str,
+    ) -> Result<(ScopeHashMap, TabularSpanTree)> {
+        anyhow::bail!("get_call_tree not implemented");
     }
 }

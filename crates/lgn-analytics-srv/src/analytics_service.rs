@@ -564,7 +564,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         let handler =
-            CumulativeCallGraphHandler::new(self.pool.clone(), Arc::clone(&self.call_trees));
+            CumulativeCallGraphHandler::new(self.pool.clone(), self.jit_lakehouse.clone());
         match handler
             .get_process_call_graph_manifest(
                 inner_request.process_id,
@@ -593,7 +593,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         let handler =
-            CumulativeCallGraphHandler::new(self.pool.clone(), Arc::clone(&self.call_trees));
+            CumulativeCallGraphHandler::new(self.pool.clone(), self.jit_lakehouse.clone());
         match handler
             .get_call_graph_computed_block(
                 inner_request.block_id,
