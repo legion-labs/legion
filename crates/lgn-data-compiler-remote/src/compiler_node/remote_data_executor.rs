@@ -20,7 +20,7 @@ pub struct CompileMessage {
 
 #[allow(dead_code)]
 async fn deploy_remotely(
-    provider: Arc<Provider>,
+    provider: &Provider,
     full_file_path: &Path,
     strip_prefix: &Path,
     files_to_package: Arc<RwLock<Vec<(String, Identifier)>>>,
@@ -40,7 +40,7 @@ async fn deploy_remotely(
 pub(crate) async fn collect_local_resources(
     executable: &Path,
     build_script: &CompilerCompileCmd,
-    data_provider: Arc<Provider>,
+    data_provider: &Provider,
 ) -> Result<String, CompilerError> {
     let files_to_package: Arc<RwLock<Vec<(String, Identifier)>>> =
         Arc::new(RwLock::new(Vec::new()));

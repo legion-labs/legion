@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use lgn_content_store::indexing::{ResourceIndex, ResourceWriter, SharedTreeIdentifier};
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
@@ -70,15 +68,11 @@ impl BuildManager {
 
         let derived_id = Self::get_derived_id(resource_id);
 
-        let data_provider = Arc::clone(self.build.get_provider());
         let indexer = new_resource_type_and_id_indexer();
-        let start_manifest = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(&data_provider),
-            indexer.clone(),
-            self.runtime_manifest_id.read(),
-        )
-        .enumerate_resources()
-        .await?;
+        let start_manifest =
+            ResourceIndex::new_exclusive_with_id(indexer.clone(), self.runtime_manifest_id.read())
+                .enumerate_resources(self.build.get_provider())
+                .await?;
 
         self.build.source_pull(project).await?;
         match self
@@ -87,16 +81,13 @@ impl BuildManager {
             .await
         {
             Ok(output) => {
-                let runtime_manifest_id = output
-                    .into_rt_manifest(Arc::clone(&data_provider), |_rpid| true)
-                    .await;
-                let runtime_manifest = ResourceIndex::new_exclusive_with_id(
-                    Arc::clone(&data_provider),
-                    indexer.clone(),
-                    runtime_manifest_id,
-                )
-                .enumerate_resources()
-                .await?;
+                let data_provider = self.build.get_provider();
+                let runtime_manifest_id =
+                    output.into_rt_manifest(data_provider, |_rpid| true).await;
+                let runtime_manifest =
+                    ResourceIndex::new_exclusive_with_id(indexer.clone(), runtime_manifest_id)
+                        .enumerate_resources(data_provider)
+                        .await?;
 
                 let mut added_resources = Vec::new();
                 let mut changed_resources = Vec::new();
@@ -124,18 +115,17 @@ impl BuildManager {
                 );
 
                 let mut runtime_manifest = ResourceIndex::new_exclusive_with_id(
-                    Arc::clone(&data_provider),
                     indexer.clone(),
                     self.runtime_manifest_id.read(),
                 );
                 for (index_key, resource_id) in added_resources {
                     runtime_manifest
-                        .add_resource(&index_key, resource_id)
+                        .add_resource(data_provider, &index_key, resource_id)
                         .await?;
                 }
                 for (index_key, resource_id, old_resource_id) in &changed_resources {
                     let replaced_id = runtime_manifest
-                        .replace_resource(index_key, resource_id.clone())
+                        .replace_resource(data_provider, index_key, resource_id.clone())
                         .await?;
                     assert_eq!(&replaced_id, old_resource_id);
 

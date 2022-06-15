@@ -200,7 +200,7 @@ mod tests {
                     &[],
                     &[],
                     registry,
-                    data_content_provider,
+                    &data_content_provider,
                     &source_manifest_id,
                     &runtime_manifest_id,
                     &env,

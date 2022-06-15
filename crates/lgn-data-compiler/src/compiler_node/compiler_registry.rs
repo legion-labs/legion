@@ -42,7 +42,7 @@ pub trait CompilerStub: Send + Sync {
         dependencies: &[ResourcePathId],
         derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        provider: Arc<Provider>,
+        provider: &Provider,
         source_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         env: &CompilationEnv,
