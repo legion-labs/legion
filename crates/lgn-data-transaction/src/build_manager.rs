@@ -70,9 +70,10 @@ impl BuildManager {
 
         let derived_id = Self::get_derived_id(resource_id);
 
+        let data_provider = Arc::clone(self.build.get_provider());
         let indexer = new_resource_type_and_id_indexer();
         let start_manifest = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(self.build.get_provider()),
+            Arc::clone(&data_provider),
             indexer.clone(),
             self.runtime_manifest_id.read(),
         )
@@ -86,7 +87,6 @@ impl BuildManager {
             .await
         {
             Ok(output) => {
-                let data_provider = Arc::clone(self.build.get_provider());
                 let runtime_manifest_id = output
                     .into_rt_manifest(Arc::clone(&data_provider), |_rpid| true)
                     .await;

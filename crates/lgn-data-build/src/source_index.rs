@@ -480,7 +480,7 @@ mod tests {
 
         let version = "0.0.1";
 
-        let mut source_index = SourceIndex::new(Arc::clone(&data_provider));
+        let mut source_index = SourceIndex::new(data_provider);
 
         let _first_entry_checksum = {
             source_index.source_pull(&project, version).await.unwrap();

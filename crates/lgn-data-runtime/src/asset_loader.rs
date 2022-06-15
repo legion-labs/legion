@@ -721,7 +721,7 @@ mod tests {
         };
 
         let (loader, mut io) = create_loader(vec![Box::new(vfs::CasDevice::new(
-            Arc::clone(&data_provider),
+            data_provider,
             SharedTreeIdentifier::new(manifest.id()),
         ))]);
         io.register_loader(

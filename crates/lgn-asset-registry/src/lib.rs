@@ -97,7 +97,7 @@ impl AssetRegistryPlugin {
         if load_all_assets_from_manifest {
             if let Ok(resources) = world.resource::<TokioAsyncRuntime>().block_on(async {
                 let manifest = ResourceIndex::new_shared_with_id(
-                    Arc::clone(&data_provider),
+                    data_provider,
                     new_resource_type_and_id_indexer(),
                     manifest_id.clone(),
                 );
