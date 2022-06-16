@@ -1,0 +1,23 @@
+[package]
+name = "compiler"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["dylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+service = { path = "../service" }
+# Do not add a dependency on the exe. exe depends on the compiler. 
+tokio = { version = "1.18", features = ["full"] }
+async-trait = "0.1"
+petgraph = { version = "0.6" }
+strum = "0.24"
+strum_macros = "0.24"
+thiserror = "1.0"
+futures = "0.3"
+dashmap = "5.3"
+waitmap = "1.1"
+async-ffi = "0.4"
