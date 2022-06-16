@@ -100,7 +100,11 @@
               {#each Array.from($store.threads) as [hash, thread] (hash)}
                 {#if thread.data}
                   {#each Array.from(thread.data).filter((obj) => obj[1].parents.size === 0) as [key, node] (key)}
-                    <CallGraphLine {node} {store} threadId={thread.streamHash} />
+                    <CallGraphLine
+                      {node}
+                      {store}
+                      threadId={thread.streamHash}
+                    />
                   {/each}
                 {/if}
               {/each}

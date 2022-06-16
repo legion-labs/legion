@@ -1,6 +1,6 @@
 import type {
-  CumulativeStats,
   CumulativeComputedCallGraphNode,
+  CumulativeStats,
 } from "@lgn/proto-telemetry/dist/callgraph";
 
 import { CallGraphNodeValue } from "./CallGraphNodeValue";
@@ -12,7 +12,7 @@ export class CallGraphNode {
   hash: number;
   constructor(node: CumulativeComputedCallGraphNode) {
     this.value = new CallGraphNodeValue(null);
-    this.hash = node.stats!.hash;
+    this.hash = node.stats?.hash ?? 0;
     this.ingest(node);
   }
 
