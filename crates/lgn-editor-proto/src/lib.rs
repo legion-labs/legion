@@ -12,11 +12,3 @@
 pub mod editor {
     tonic::include_proto!("editor");
 }
-
-pub mod property_inspector {
-    tonic::include_proto!("property_inspector");
-}
-
-pub mod source_control {
-    tonic::include_proto!("source_control");
-}
