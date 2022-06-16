@@ -16,9 +16,7 @@ pub enum RenderStage {
 //
 #[derive(Debug, SystemLabel, PartialEq, Eq, Clone, Copy, Hash)]
 pub(crate) enum ResourceStageLabel {
-    Texture,
     Material,
-    //Sampler,
     Model,
 }
 

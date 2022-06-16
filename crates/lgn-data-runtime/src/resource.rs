@@ -100,10 +100,10 @@ pub trait Resource: TypeReflection + Any + Send + Sync {
     /// Return a shallow clone of the Resource
     fn clone_dyn(&self) -> Box<dyn Resource>;
 
-    /// Return the ResourceType of a Resource
+    /// Return the `ResourceType` of a Resource
     fn get_resource_type(&self) -> ResourceType;
 
-    /// Registry the ResourceType
+    /// Registry the `ResourceType`
     fn register_resource_type()
     where
         Self: Sized + ResourceDescriptor + Default,

@@ -45,7 +45,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
     pub fn alloc_gpu_data(&mut self, key: &K) -> GpuDataAllocation {
         assert!(!self.data_map.contains_key(key));
 
-        let gpu_data_id = self.index_allocator.acquire_index();
+        let gpu_data_id = self.index_allocator.allocate();
         let gpu_data_va = self.gpu_data.ensure_index_allocated(gpu_data_id);
         let gpu_data_allocation = GpuDataAllocation {
             index: gpu_data_id,
@@ -82,7 +82,6 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         assert!(self.data_map.contains_key(key));
 
         let gpu_data_allocation = self.data_map.remove(key).unwrap();
-        let index_slice = std::slice::from_ref(&gpu_data_allocation.index);
-        self.index_allocator.release_indexes(index_slice);
+        self.index_allocator.free(gpu_data_allocation.index);
     }
 }

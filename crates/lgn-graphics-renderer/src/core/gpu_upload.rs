@@ -1,8 +1,7 @@
 use lgn_graphics_api::prelude::*;
 
 use crate::{
-    components::TextureData,
-    resources::{TransientBufferAllocator, TransientCommandBufferAllocator},
+    resources::{TextureData, TransientBufferAllocator, TransientCommandBufferAllocator},
     GraphicsQueue,
 };
 
