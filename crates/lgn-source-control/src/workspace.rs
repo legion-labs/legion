@@ -97,8 +97,11 @@ where
         })
     }
 
-    async fn commit_and_reopen_transaction(&mut self) {
-        //let x = self.transaction.commit_transaction().await;
+    async fn commit_and_restart_transaction(&mut self) -> Result<()> {
+        self.transaction
+            .commit_and_restart_transaction()
+            .await
+            .map_err(Error::ContentStore)
     }
 
     /// Return the repository name of the workspace.
@@ -338,6 +341,8 @@ where
             self.dump_all_indices(Some(&resource_identifier)).await;
         }
 
+        self.commit_and_restart_transaction().await?;
+
         Ok(resource_identifier)
     }
 
@@ -386,6 +391,8 @@ where
                 );
                 self.dump_all_indices(Some(&resource_identifier)).await;
             }
+
+            self.commit_and_restart_transaction().await?;
         }
 
         Ok(resource_identifier)
@@ -441,6 +448,8 @@ where
                 );
                 self.dump_all_indices(Some(&resource_identifier)).await;
             }
+
+            self.commit_and_restart_transaction().await?;
         }
 
         Ok(resource_identifier)
@@ -474,6 +483,8 @@ where
             );
             self.dump_all_indices(Some(&resource_id)).await;
         }
+
+        self.commit_and_restart_transaction().await?;
 
         Ok(resource_id)
     }
@@ -632,6 +643,8 @@ where
     ///
     /// The commit id.
     pub async fn commit(&mut self, message: &str, behavior: CommitMode) -> Result<Commit> {
+        assert!(!self.transaction.has_references().await);
+
         let current_branch = self.get_current_branch().await?;
         let mut branch = self.index.get_branch(&current_branch.name).await?;
         let commit = self
