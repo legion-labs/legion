@@ -1,227 +1,320 @@
 use anyhow::{Context, Result};
-use futures::TryStreamExt;
-use lgn_analytics::prelude::*;
-use lgn_analytics::time::ConvertTicks;
-use lgn_blob_storage::BlobStorage;
-use lgn_tracing::prelude::*;
-use prost::Message;
-use sqlx::Row;
-use std::sync::mpsc::channel;
-use std::sync::Arc;
-use std::{collections::HashMap, path::PathBuf};
+use lgn_telemetry_proto::analytics::CallTreeNode;
+use lgn_telemetry_proto::analytics::Span;
+use lgn_telemetry_proto::analytics::SpanBlockLod;
+use lgn_telemetry_proto::analytics::SpanTrack;
+use parquet::file::reader::ChunkReader;
+use parquet::file::reader::FileReader;
+use parquet::file::serialized_reader::SerializedFileReader;
+use parquet::record::RowAccessor;
+use std::collections::HashMap;
+use std::path::Path;
 
-use deltalake::{
-    action::Protocol, DeltaTable, DeltaTableMetaData, Schema, SchemaDataType, SchemaField,
-};
+use super::column::Column;
+use super::column::TableColumn;
+use super::parquet_buffer::write_to_file;
+use super::parquet_buffer::ParquetBufferWriter;
 
-use crate::lakehouse::span_table_partition::write_local_partition;
-
-#[span_fn]
-fn get_delta_schema() -> Schema {
-    Schema::new(vec![
-        SchemaField::new(
-            "block_id".to_string(),
-            SchemaDataType::primitive("string".to_string()),
-            false,
-            HashMap::new(),
-        ),
-        SchemaField::new(
-            "thread_id".to_string(),
-            SchemaDataType::primitive("string".to_string()),
-            false,
-            HashMap::new(),
-        ),
-        SchemaField::new(
-            "hash".to_string(),
-            SchemaDataType::primitive("integer".to_string()),
-            false,
-            HashMap::new(),
-        ),
-        SchemaField::new(
-            "depth".to_string(),
-            SchemaDataType::primitive("integer".to_string()),
-            false,
-            HashMap::new(),
-        ),
-        SchemaField::new(
-            "begin_ms".to_string(),
-            SchemaDataType::primitive("double".to_string()),
-            false,
-            HashMap::new(),
-        ),
-        SchemaField::new(
-            "end_ms".to_string(),
-            SchemaDataType::primitive("double".to_string()),
-            false,
-            HashMap::new(),
-        ),
-        SchemaField::new(
-            "id".to_string(),
-            SchemaDataType::primitive("long".to_string()),
-            false,
-            HashMap::new(),
-        ),
-        SchemaField::new(
-            "parent".to_string(),
-            SchemaDataType::primitive("long".to_string()),
-            false,
-            HashMap::new(),
-        ),
-    ])
+pub fn make_spans_table_writer() -> Result<ParquetBufferWriter> {
+    let schema = "message schema {
+    REQUIRED INT32 hash;
+    REQUIRED INT32 depth;
+    REQUIRED DOUBLE begin_ms;
+    REQUIRED DOUBLE end_ms;
+    REQUIRED INT64 id;
+    REQUIRED INT64 parent;
+  }
+";
+    ParquetBufferWriter::create(schema)
 }
 
-#[span_fn]
-async fn create_empty_delta_table(table_uri: &str) -> Result<DeltaTable> {
-    info!("creating table {}", table_uri);
-    let storage = deltalake::storage::get_backend_for_uri(table_uri)?;
-    let mut table = deltalake::DeltaTable::new(
-        table_uri,
-        storage,
-        deltalake::DeltaTableConfig {
-            require_tombstones: false,
-            require_files: false,
-        },
-    )?;
-    let table_schema = get_delta_schema();
-    let mut commit_info = serde_json::Map::<String, serde_json::Value>::new();
-    commit_info.insert(
-        "operation".to_string(),
-        serde_json::Value::String("CREATE TABLE".to_string()),
-    );
-    let protocol = Protocol {
-        min_reader_version: 1,
-        min_writer_version: 1,
-    };
-    let metadata = DeltaTableMetaData::new(None, None, None, table_schema, vec![], HashMap::new());
-    table
-        .create(metadata, protocol, Some(commit_info), None)
-        .await?;
-    Ok(table)
-}
-
-#[span_fn]
-async fn open_or_create_table(table_uri: &str) -> Result<DeltaTable> {
-    match deltalake::open_table(table_uri).await {
-        Ok(table) => Ok(table),
-        Err(e) => {
-            info!(
-                "Error opening table {}: {:?}. Will try to create.",
-                table_uri, e
-            );
-            create_empty_delta_table(table_uri).await
-        }
-    }
-}
-
-#[span_fn]
-async fn read_block_payload(
-    block_id: &str,
-    buffer_from_db: Option<Vec<u8>>,
-    blob_storage: Arc<dyn BlobStorage>,
-) -> Result<lgn_telemetry_proto::telemetry::BlockPayload> {
-    let buffer: Vec<u8> = if let Some(buffer) = buffer_from_db {
-        buffer
-    } else {
-        blob_storage
-            .read_blob(block_id)
-            .await
-            .with_context(|| "reading block payload from blob storage")?
-    };
-
-    {
-        span_scope!("decode");
-        let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
-            .with_context(|| format!("reading payload {}", &block_id))?;
-        Ok(payload)
-    }
-}
-
-#[span_fn]
-pub async fn update_spans_delta_table(
-    pool: sqlx::any::AnyPool,
-    blob_storage: Arc<dyn BlobStorage>,
-    process_id: &str,
-    convert_ticks: &ConvertTicks,
-    spans_table_path: std::path::PathBuf,
-) -> Result<()> {
-    let storage_uri = format!("{}", spans_table_path.display());
-    let mut table = open_or_create_table(&storage_uri).await?;
-    let files_already_in_table = table.get_file_set();
-    let mut partition_index: u32 = files_already_in_table.len() as u32;
-
-    let mut handles = vec![];
-
-    let (sender, receiver) = channel();
-
-    let mut connection = pool.acquire().await?;
-    let streams = find_process_thread_streams(&mut connection, process_id).await?;
-    for stream in streams {
-        //todo: do not fetch block info for blocks in files_already_in_table
-        let mut block_rows = sqlx::query(
-            "SELECT blocks.block_id, blocks.stream_id, blocks.begin_time, blocks.begin_ticks, blocks.end_time, blocks.end_ticks, blocks.nb_objects, blocks.payload_size, payloads.payload
-             FROM blocks
-             LEFT OUTER JOIN payloads ON blocks.block_id = payloads.block_id
-             WHERE stream_id = ?
-             ORDER BY begin_time;",
-        )
-            .bind(&stream.stream_id)
-            .fetch( &mut connection );
-        while let Some(block_row) = block_rows.try_next().await? {
-            partition_index += 1;
-            let mut partition_starting_span_id = i64::from(partition_index)
-                .checked_shl(31)
-                .with_context(|| "building partition starting span id")?;
-            let convert_ticks = convert_ticks.clone();
-            let blob_storage = blob_storage.clone();
-            let stream = stream.clone();
-            let spans_table_path = spans_table_path.clone();
-            let sender = sender.clone();
-            let block = lgn_analytics::map_row_block(&block_row)?;
-            let payload_buffer = block_row.try_get("payload")?;
-            let partition_folder = PathBuf::from(format!("block_id={}", &block.block_id));
-            let filename = partition_folder.join("spans.parquet");
-            let filename_string = filename
-                .to_str()
-                .with_context(|| "converting path to string")?
-                .to_string();
-            if !files_already_in_table.contains(&*filename_string) {
-                let parquet_full_path = spans_table_path.join(&filename);
-                handles.push(tokio::spawn(async move {
-                    let payload =
-                        read_block_payload(&block.block_id, payload_buffer, blob_storage.clone())
-                            .await?;
-                    let opt_action = write_local_partition(
-                        &payload,
-                        &stream,
-                        &block,
-                        convert_ticks,
-                        &mut partition_starting_span_id,
-                        filename_string,
-                        &parquet_full_path,
-                    )
-                    .await
-                    .with_context(|| "writing local partition")?;
-                    if let Some(action) = opt_action {
-                        sender.send(action)?;
-                    }
-                    Ok(()) as Result<()>
-                }));
-            }
-        }
-    }
-    drop(sender);
-    for h in handles {
-        h.await??;
-    }
-
-    let actions: Vec<deltalake::action::Action> = receiver.iter().collect();
-    if !actions.is_empty() {
-        let mut transaction = table.create_transaction(None);
-        transaction.add_actions(actions);
-        transaction
-            .commit(None, None)
-            .await
-            .with_context(|| "committing transaction")?;
-    }
+pub async fn write_spans_parquet(rows: &SpanRowGroup, parquet_full_path: &Path) -> Result<()> {
+    let mut writer = make_spans_table_writer()?;
+    writer.write_row_group(&rows.get_columns())?;
+    write_to_file(writer, parquet_full_path).await?;
     Ok(())
+}
+
+#[derive(Debug)]
+pub struct SpanRowGroup {
+    //todo: unify with TabularSpanTree, represent using arrow arrays
+    pub hashes: Column<i32>,
+    pub depths: Column<i32>,
+    pub begins: Column<f64>,
+    pub ends: Column<f64>,
+    pub ids: Column<i64>,
+    pub parents: Column<i64>,
+}
+
+impl Default for SpanRowGroup {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SpanRowGroup {
+    pub fn new() -> Self {
+        Self {
+            hashes: Column::new(),
+            depths: Column::new(),
+            begins: Column::new(),
+            ends: Column::new(),
+            ids: Column::new(),
+            parents: Column::new(),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.hashes.len()
+    }
+
+    pub fn get(&self, i: usize) -> Result<SpanRow> {
+        Ok(SpanRow {
+            hash: *self.hashes.get(i)? as u32,
+            depth: *self.depths.get(i)? as u32,
+            begin_ms: *self.begins.get(i)?,
+            end_ms: *self.ends.get(i)?,
+            id: *self.ids.get(i)?,
+            parent: *self.parents.get(i)?,
+        })
+    }
+
+    #[allow(clippy::cast_possible_wrap)]
+    pub fn append(&mut self, row: &SpanRow) {
+        self.hashes.append(row.hash as i32);
+        self.depths.append(row.depth as i32);
+        self.begins.append(row.begin_ms);
+        self.ends.append(row.end_ms);
+        self.ids.append(row.id as i64);
+        self.parents.append(row.parent as i64);
+    }
+
+    pub fn get_columns(&self) -> Vec<&dyn TableColumn> {
+        vec![
+            &self.hashes,
+            &self.depths,
+            &self.begins,
+            &self.ends,
+            &self.ids,
+            &self.parents,
+        ]
+    }
+}
+
+#[derive(Debug)]
+pub struct SpanRow {
+    pub hash: u32,
+    pub depth: u32,
+    pub begin_ms: f64,
+    pub end_ms: f64,
+    pub id: i64,
+    pub parent: i64,
+}
+
+fn make_rows_from_tree_impl<RowFun>(
+    tree: &CallTreeNode,
+    parent: i64,
+    depth: u32,
+    next_id: &mut i64,
+    process_row: &mut RowFun,
+) where
+    RowFun: FnMut(SpanRow),
+{
+    assert!(tree.hash != 0);
+    let span_id = *next_id;
+    *next_id += 1;
+    let span = SpanRow {
+        hash: tree.hash,
+        depth,
+        begin_ms: tree.begin_ms,
+        end_ms: tree.end_ms,
+        id: span_id,
+        parent,
+    };
+    process_row(span);
+    for child in &tree.children {
+        make_rows_from_tree_impl(child, span_id, depth + 1, next_id, process_row);
+    }
+}
+
+pub fn make_rows_from_tree(tree: &CallTreeNode, next_id: &mut i64, table: &mut SpanRowGroup) {
+    if tree.hash == 0 {
+        for child in &tree.children {
+            make_rows_from_tree_impl(child, 0, 0, next_id, &mut |row| table.append(&row));
+        }
+    } else {
+        make_rows_from_tree_impl(tree, 0, 0, next_id, &mut |row| table.append(&row));
+    }
+}
+
+//todo: delete this version
+pub fn build_spans_lod0<R: 'static + ChunkReader>(
+    file_reader: &SerializedFileReader<R>,
+) -> Result<SpanBlockLod> {
+    let mut lod = SpanBlockLod {
+        lod_id: 0,
+        tracks: vec![],
+    };
+    for row in file_reader.get_row_iter(None)? {
+        let hash = row.get_int(0)?;
+        let depth = row.get_int(1)?;
+        let begin = row.get_double(2)?;
+        let end = row.get_double(3)?;
+        if lod.tracks.len() <= depth as usize {
+            lod.tracks.push(SpanTrack { spans: vec![] });
+        }
+        let span = Span {
+            scope_hash: hash as u32,
+            begin_ms: begin,
+            end_ms: end,
+            alpha: 255,
+        };
+        lod.tracks[depth as usize].spans.push(span);
+    }
+    Ok(lod)
+}
+
+// really need to cleanup those variations and unify the data structures
+pub fn lod0_from_span_tree(tree: &TabularSpanTree) -> Result<SpanBlockLod> {
+    let mut lod = SpanBlockLod {
+        lod_id: 0,
+        tracks: vec![],
+    };
+    for index in 0..tree.len() {
+        let row = tree.get_row(index)?;
+        let hash = row.hash;
+        let depth = row.depth;
+        let begin = row.begin_ms;
+        let end = row.end_ms;
+        if lod.tracks.len() <= depth as usize {
+            lod.tracks.push(SpanTrack { spans: vec![] });
+        }
+        let span = Span {
+            scope_hash: hash as u32,
+            begin_ms: begin,
+            end_ms: end,
+            alpha: 255,
+        };
+        lod.tracks[depth as usize].spans.push(span);
+    }
+    Ok(lod)
+}
+
+#[derive(Debug)]
+pub struct TabularSpanTree {
+    //todo: represent using arrow arrays
+    pub span_rows: HashMap<i64, SpanRow>,
+    pub span_children: HashMap<i64, Vec<i64>>,
+    roots: Vec<i64>,
+    ids: Vec<i64>,
+    begin_ms: f64,
+    end_ms: f64,
+}
+
+impl Default for TabularSpanTree {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl TabularSpanTree {
+    pub fn new() -> Self {
+        Self {
+            span_rows: HashMap::new(),
+            span_children: HashMap::new(),
+            roots: Vec::new(),
+            ids: Vec::new(),
+            begin_ms: f64::MAX,
+            end_ms: f64::MIN,
+        }
+    }
+
+    pub fn get_begin(&self) -> f64 {
+        self.begin_ms
+    }
+
+    pub fn get_end(&self) -> f64 {
+        self.end_ms
+    }
+
+    pub fn get_roots(&self) -> &Vec<i64> {
+        &self.roots
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ids.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.ids.len()
+    }
+
+    pub fn get_row(&self, index: usize) -> Result<&SpanRow> {
+        let id = self
+            .ids
+            .get(index)
+            .with_context(|| "out of bounds reading id in TabularSpanTree")?;
+        self.get_span(*id)
+    }
+
+    pub fn get_span(&self, id: i64) -> Result<&SpanRow> {
+        self.span_rows
+            .get(&id)
+            .with_context(|| "accessing span in TabularSpanTree")
+    }
+
+    pub fn from_rows(rows: &SpanRowGroup) -> Result<Self> {
+        let mut tree = Self::new();
+        for i in 0..rows.len() {
+            let row = rows.get(i)?;
+            let id = row.id;
+            let parent = row.parent;
+            let depth = row.depth;
+            let row = SpanRow {
+                hash: row.hash,
+                depth,
+                begin_ms: row.begin_ms,
+                end_ms: row.end_ms,
+                id,
+                parent,
+            };
+            tree.begin_ms = tree.begin_ms.min(row.begin_ms);
+            tree.end_ms = tree.begin_ms.max(row.end_ms);
+            if depth == 0 {
+                tree.roots.push(id);
+            }
+            tree.span_rows.insert(id, row);
+            tree.span_children.entry(parent).or_default().push(id);
+            tree.ids.push(id);
+        }
+        Ok(tree)
+    }
+}
+
+pub fn build_span_tree<R: 'static + ChunkReader>(
+    file_reader: &SerializedFileReader<R>,
+) -> Result<TabularSpanTree> {
+    let mut tree = TabularSpanTree::new();
+    for row in file_reader.get_row_iter(None)? {
+        let id = row.get_long(4)?;
+        let parent = row.get_long(5)?;
+        let depth = row.get_int(1)? as u32;
+        let row = SpanRow {
+            hash: row.get_int(0)? as u32,
+            depth,
+            begin_ms: row.get_double(2)?,
+            end_ms: row.get_double(3)?,
+            id,
+            parent,
+        };
+        tree.begin_ms = tree.begin_ms.min(row.begin_ms);
+        tree.end_ms = tree.begin_ms.max(row.end_ms);
+        if depth == 0 {
+            tree.roots.push(id);
+        }
+        tree.span_rows.insert(id, row);
+        tree.span_children.entry(parent).or_default().push(id);
+        tree.ids.push(id);
+    }
+    Ok(tree)
 }
