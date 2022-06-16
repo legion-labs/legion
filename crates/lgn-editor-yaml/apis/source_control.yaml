@@ -1,0 +1,116 @@
+openapi: 3.0.3
+info:
+  title: "Source Control API"
+  description: "The OpenAPI specification for the Legion Labs source control API."
+  version: 1.0.0
+
+paths:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/contents/upload/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Initialize the upload of any content.
+      operationId: contentUploadInit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentUploadInit"
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentUploadInitSucceeded"
+        "400":
+          description: Upload init failed because the content size is bigger than the accepted size
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/contents/upload/{transaction-id}:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/transaction_id"
+    put:
+      description: Upload chunks of content.
+      operationId: contentUpload
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Upload progress.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentUploadSucceeded"
+        "400":
+          description: Sent chunk is too big
+        "404":
+          description: Transaction id not found
+    delete:
+      description: Cancel content upload.
+      operationId: contentUploadCancel
+      responses:
+        "204":
+          description: Upload canceled.
+        "404":
+          description: Transaction id not found
+
+components:
+  parameters:
+    transaction_id:
+      name: transaction-id
+      in: path
+      description: A content upload transaction id.
+      required: true
+      schema:
+        $ref: "#/components/schemas/TransactionId"
+  schemas:
+    TransactionId:
+      type: string
+    ContentUploadInit:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+        - name
+        - size
+    ContentUploadInitSucceeded:
+      type: object
+      properties:
+        id:
+          description: The Id of the upload transaction.
+          type: string
+      required:
+        - id
+    ContentUploadSucceeded:
+      type: object
+      properties:
+        id:
+          description: The Id of the upload transaction.
+          type: string
+        status:
+          type: string
+          enum:
+            - InProgress
+            - Done
+        completion:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+        - id
+        - status
+        - completion

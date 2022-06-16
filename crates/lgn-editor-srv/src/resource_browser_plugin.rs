@@ -388,7 +388,7 @@ impl Api for Server {
 
         let next_search_token = NextSearchToken {
             next_search_token: "".to_string(),
-            total: i32::try_from(descriptors.len()).unwrap(),
+            total: u32::try_from(descriptors.len()).unwrap(),
             resource_description: descriptors,
         };
 

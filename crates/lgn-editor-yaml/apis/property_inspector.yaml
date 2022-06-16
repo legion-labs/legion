@@ -111,7 +111,7 @@ paths:
         "404":
           description: Resource not found
 
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/properties/dynamic-traits:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/properties/dynamic-traits/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -158,7 +158,8 @@ components:
           type: string
         version:
           type: integer
-          format: uint32
+          format: int32
+          minimum: 0
         type:
           type: string
       required:
@@ -220,7 +221,8 @@ components:
           type: string
         version:
           type: integer
-          format: uint32
+          format: int32
+          minimum: 0
         updates:
           type: array
           items:
@@ -238,7 +240,8 @@ components:
           type: array
           items:
             type: integer
-            format: uint64
+            format: int64
+            minimum: 0
       required:
         - array_path
         - indices
@@ -249,7 +252,8 @@ components:
           type: string
         index:
           type: integer
-          format: uint64
+          format: int64
+          minimum: 0
         json_value:
           type: string
       required:
@@ -262,10 +266,12 @@ components:
           type: string
         old_index:
           type: integer
-          format: uint64
+          format: int64
+          minimum: 0
         new_index:
           type: integer
-          format: uint64
+          format: int64
+          minimum: 0
       required:
         - array_path
         - old_index

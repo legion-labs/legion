@@ -8,6 +8,7 @@ use std::{
     sync::Arc,
 };
 
+use async_trait::async_trait;
 use bytes::BytesMut;
 use lgn_app::prelude::*;
 use lgn_data_offline::resource::ChangeType;
@@ -17,18 +18,17 @@ use lgn_ecs::{
     prelude::{IntoExclusiveSystem, Res, ResMut},
     schedule::ExclusiveSystemDescriptorCoercion,
 };
-use lgn_editor_proto::source_control::{
-    source_control_server::{SourceControl, SourceControlServer},
-    staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
-    CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
-    GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
-    InitUploadRawFileResponse, PullAssetRequest, PullAssetResponse, ResourceDescription,
-    RevertResourcesRequest, RevertResourcesResponse, StagedResource, SyncLatestResponse,
-    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
-    UploadStatus,
+use lgn_editor_yaml::source_control::{
+    server::{
+        register_routes, ContentUploadCancelRequest, ContentUploadCancelResponse,
+        ContentUploadInitRequest, ContentUploadInitResponse, ContentUploadRequest,
+        ContentUploadResponse,
+    },
+    Api, ContentUploadInitSucceeded, ContentUploadSucceeded, ContentUploadSucceededStatus,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
-use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
+use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings, SharedRouter};
+use lgn_online::server::{Error, Result};
 use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
 use lgn_tracing::error;
 use thiserror::Error;
@@ -286,7 +286,7 @@ impl RawFilesStreamer {
         let content_len = content.len();
         let max_chunk_size = self.max_chunk_size() as usize;
 
-        if content_len > max_chunk_size as usize {
+        if content_len > max_chunk_size {
             return Err(SourceControlError::ContentSize {
                 content_len,
                 max_chunk_size,
@@ -387,7 +387,7 @@ impl SharedRawFilesStreamer {
                                 .await
                                 .map_err(|error| {
                                     format!(
-                                        "Couldn't send file upload stream error message: {}",
+                                        "couldn't send file upload stream error message: {}",
                                         error
                                     )
                                 })
@@ -437,11 +437,14 @@ impl SourceControlPlugin {
         streamer: Res<'_, SharedRawFilesStreamer>,
         mut grpc_settings: ResMut<'_, GRPCPluginSettings>,
     ) {
-        let property_inspector = SourceControlServer::new(SourceControlRPC {
-            streamer: streamer.clone(),
-            uploads_folder: settings.root_folder().join("uploads"),
-            transaction_manager: transaction_manager.clone(),
-        });
+        let property_inspector =
+            lgn_editor_proto::source_control::source_control_server::SourceControlServer::new(
+                SourceControlRPC {
+                    streamer: streamer.clone(),
+                    uploads_folder: settings.root_folder().join("uploads"),
+                    transaction_manager: transaction_manager.clone(),
+                },
+            );
 
         grpc_settings.register_service(property_inspector);
     }
@@ -449,6 +452,23 @@ impl SourceControlPlugin {
 
 impl Plugin for SourceControlPlugin {
     fn build(&self, app: &mut App) {
+        let transaction_manager = app
+            .world
+            .resource::<Arc<Mutex<TransactionManager>>>()
+            .clone();
+        let settings = app
+            .world
+            .resource::<ResourceRegistrySettings>()
+            .root_folder()
+            .join("uploads");
+        let streamer = app.world.resource::<SharedRawFilesStreamer>().clone();
+
+        let mut router = app.world.resource_mut::<SharedRouter>();
+
+        let server = Arc::new(Server::new(streamer, settings, transaction_manager));
+
+        router.register_routes(register_routes, server);
+
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
             Self::setup
@@ -460,20 +480,22 @@ impl Plugin for SourceControlPlugin {
 }
 
 #[tonic::async_trait]
-impl SourceControl for SourceControlRPC {
+impl lgn_editor_proto::source_control::source_control_server::SourceControl for SourceControlRPC {
     async fn init_upload_raw_file(
         &self,
-        request: Request<InitUploadRawFileRequest>,
-    ) -> Result<Response<InitUploadRawFileResponse>, Status> {
+        request: Request<lgn_editor_proto::source_control::InitUploadRawFileRequest>,
+    ) -> Result<Response<lgn_editor_proto::source_control::InitUploadRawFileResponse>, Status> {
         let message = request.into_inner();
 
         let size = message.size;
 
         if size > self.streamer.max_size().await {
-            return Ok(Response::new(InitUploadRawFileResponse {
-                status: UploadStatus::Rejected as i32,
-                id: None,
-            }));
+            return Ok(Response::new(
+                lgn_editor_proto::source_control::InitUploadRawFileResponse {
+                    status: lgn_editor_proto::source_control::UploadStatus::Rejected as i32,
+                    id: None,
+                },
+            ));
         }
 
         let file_id = self
@@ -484,17 +506,20 @@ impl SourceControl for SourceControlRPC {
                 Status::internal(format!("Couldn't create file for {}", message.name))
             })?;
 
-        Ok(Response::new(InitUploadRawFileResponse {
-            status: UploadStatus::Queued as i32,
-            id: Some(file_id.into()),
-        }))
+        Ok(Response::new(
+            lgn_editor_proto::source_control::InitUploadRawFileResponse {
+                status: lgn_editor_proto::source_control::UploadStatus::Queued as i32,
+                id: Some(file_id.into()),
+            },
+        ))
     }
 
-    type UploadRawFileStream = ReceiverStream<Result<UploadRawFileResponse, Status>>;
+    type UploadRawFileStream =
+        ReceiverStream<Result<lgn_editor_proto::source_control::UploadRawFileResponse, Status>>;
 
     async fn upload_raw_file(
         &self,
-        request: Request<UploadRawFileRequest>,
+        request: Request<lgn_editor_proto::source_control::UploadRawFileRequest>,
     ) -> Result<Response<Self::UploadRawFileStream>, Status> {
         let message = request.into_inner();
 
@@ -513,29 +538,36 @@ impl SourceControl for SourceControlRPC {
 
             while let Some(status) = stream.next().await {
                 let response = match status {
-                    RawFileStatus::Done => Ok(UploadRawFileResponse {
-                        response: Some(upload_raw_file_response::Response::Progress(
-                            UploadRawFileProgress {
-                                id: message.id.clone(),
-                                completion: None,
-                                status: UploadStatus::Done as i32,
-                            },
-                        )),
-                    }),
-                    RawFileStatus::InProgress { completion } => Ok(UploadRawFileResponse {
-                        response: Some(upload_raw_file_response::Response::Progress(
-                            UploadRawFileProgress {
-                                id: message.id.clone(),
-                                completion: Some(completion),
-                                status: UploadStatus::Started as i32,
-                            },
-                        )),
-                    }),
-                    RawFileStatus::Error { error } => Ok(UploadRawFileResponse {
-                        response: Some(upload_raw_file_response::Response::Error(
-                            error.to_string(),
-                        )),
-                    }),
+                    RawFileStatus::Done => {
+                        Ok(lgn_editor_proto::source_control::UploadRawFileResponse {
+                            response: Some(lgn_editor_proto::source_control::upload_raw_file_response::Response::Progress(
+                                lgn_editor_proto::source_control::UploadRawFileProgress {
+                                    id: message.id.clone(),
+                                    completion: None,
+                                    status: lgn_editor_proto::source_control::UploadStatus::Done as i32,
+                                },
+                            )),
+                        })
+                    }
+                    RawFileStatus::InProgress { completion, .. }=> {
+                        Ok(lgn_editor_proto::source_control::UploadRawFileResponse {
+                            response: Some(lgn_editor_proto::source_control::upload_raw_file_response::Response::Progress(
+                                lgn_editor_proto::source_control::UploadRawFileProgress {
+                                    id: message.id.clone(),
+                                    completion: Some(completion),
+                                    status: lgn_editor_proto::source_control::UploadStatus::Started
+                                        as i32,
+                                },
+                            )),
+                        })
+                    }
+                    RawFileStatus::Error { error } => {
+                        Ok(lgn_editor_proto::source_control::UploadRawFileResponse {
+                            response: Some(lgn_editor_proto::source_control::upload_raw_file_response::Response::Error(
+                                error.to_string(),
+                            )),
+                        })
+                    }
                 };
 
                 tx.send(response).await.unwrap();
@@ -547,19 +579,23 @@ impl SourceControl for SourceControlRPC {
 
     async fn cancel_upload_raw_file(
         &self,
-        request: Request<CancelUploadRawFileRequest>,
-    ) -> Result<Response<CancelUploadRawFileResponse>, Status> {
+        request: Request<lgn_editor_proto::source_control::CancelUploadRawFileRequest>,
+    ) -> Result<Response<lgn_editor_proto::source_control::CancelUploadRawFileResponse>, Status>
+    {
         let message = request.into_inner();
 
         let canceled = self.streamer.cancel(&message.id.into()).await;
 
-        Ok(Response::new(CancelUploadRawFileResponse { ok: canceled }))
+        Ok(Response::new(
+            lgn_editor_proto::source_control::CancelUploadRawFileResponse { ok: canceled },
+        ))
     }
 
     async fn commit_staged_resources(
         &self,
-        request: Request<CommitStagedResourcesRequest>,
-    ) -> Result<Response<CommitStagedResourcesResponse>, Status> {
+        request: Request<lgn_editor_proto::source_control::CommitStagedResourcesRequest>,
+    ) -> Result<Response<lgn_editor_proto::source_control::CommitStagedResourcesResponse>, Status>
+    {
         let request = request.into_inner();
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
@@ -567,13 +603,15 @@ impl SourceControl for SourceControlRPC {
             .commit(&request.message)
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
-        Ok(Response::new(CommitStagedResourcesResponse {}))
+        Ok(Response::new(
+            lgn_editor_proto::source_control::CommitStagedResourcesResponse {},
+        ))
     }
 
     async fn sync_latest(
         &self,
-        request: Request<SyncLatestResquest>,
-    ) -> Result<Response<SyncLatestResponse>, Status> {
+        request: Request<lgn_editor_proto::source_control::SyncLatestResquest>,
+    ) -> Result<Response<lgn_editor_proto::source_control::SyncLatestResponse>, Status> {
         let _request = request.into_inner();
 
         let (resource_to_build, resource_to_unload) = {
@@ -620,13 +658,16 @@ impl SourceControl for SourceControlRPC {
             ctx.unload(resource_id).await;
         }
 
-        Ok(Response::new(SyncLatestResponse {}))
+        Ok(Response::new(
+            lgn_editor_proto::source_control::SyncLatestResponse {},
+        ))
     }
 
     async fn get_staged_resources(
         &self,
-        _request: Request<GetStagedResourcesRequest>,
-    ) -> Result<Response<GetStagedResourcesResponse>, Status> {
+        _request: Request<lgn_editor_proto::source_control::GetStagedResourcesRequest>,
+    ) -> Result<Response<lgn_editor_proto::source_control::GetStagedResourcesResponse>, Status>
+    {
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
         let changes = ctx
@@ -635,7 +676,7 @@ impl SourceControl for SourceControlRPC {
             .await
             .map_err(|err| Status::internal(err.to_string()))?;
 
-        let mut entries = Vec::<StagedResource>::new();
+        let mut entries = Vec::<lgn_editor_proto::source_control::StagedResource>::new();
         for (resource_type_id, change_type) in changes {
             let path = if let ChangeType::Delete = change_type {
                 ctx.project
@@ -649,8 +690,8 @@ impl SourceControl for SourceControlRPC {
                     .unwrap_or_else(|_err| "(error)".into())
             };
 
-            entries.push(StagedResource {
-                info: Some(ResourceDescription {
+            entries.push(lgn_editor_proto::source_control::StagedResource {
+                info: Some(lgn_editor_proto::source_control::ResourceDescription {
                     id: ResourceTypeAndId::to_string(&resource_type_id),
                     path: path.to_string(),
                     r#type: resource_type_id
@@ -661,20 +702,28 @@ impl SourceControl for SourceControlRPC {
                     version: 1,
                 }),
                 change_type: match change_type {
-                    ChangeType::Add => staged_resource::ChangeType::Add as i32,
-                    ChangeType::Edit => staged_resource::ChangeType::Edit as i32,
-                    ChangeType::Delete => staged_resource::ChangeType::Delete as i32,
+                    ChangeType::Add => {
+                        lgn_editor_proto::source_control::staged_resource::ChangeType::Add as i32
+                    }
+                    ChangeType::Edit => {
+                        lgn_editor_proto::source_control::staged_resource::ChangeType::Edit as i32
+                    }
+                    ChangeType::Delete => {
+                        lgn_editor_proto::source_control::staged_resource::ChangeType::Delete as i32
+                    }
                 },
             });
         }
 
-        Ok(Response::new(GetStagedResourcesResponse { entries }))
+        Ok(Response::new(
+            lgn_editor_proto::source_control::GetStagedResourcesResponse { entries },
+        ))
     }
 
     async fn revert_resources(
         &self,
-        request: Request<RevertResourcesRequest>,
-    ) -> Result<Response<RevertResourcesResponse>, Status> {
+        request: Request<lgn_editor_proto::source_control::RevertResourcesRequest>,
+    ) -> Result<Response<lgn_editor_proto::source_control::RevertResourcesResponse>, Status> {
         let request = request.into_inner();
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
@@ -702,13 +751,15 @@ impl SourceControl for SourceControlRPC {
             }
         }
 
-        Ok(Response::new(RevertResourcesResponse {}))
+        Ok(Response::new(
+            lgn_editor_proto::source_control::RevertResourcesResponse {},
+        ))
     }
 
     async fn pull_asset(
         &self,
-        request: Request<PullAssetRequest>,
-    ) -> Result<Response<PullAssetResponse>, Status> {
+        request: Request<lgn_editor_proto::source_control::PullAssetRequest>,
+    ) -> Result<Response<lgn_editor_proto::source_control::PullAssetResponse>, Status> {
         let message = request.into_inner();
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
@@ -720,11 +771,128 @@ impl SourceControl for SourceControlRPC {
         }
         let resource = ctx.asset_registry.load_sync::<GltfFile>(id);
         if let Some(gltf_file) = resource.get(&ctx.asset_registry) {
-            return Ok(Response::new(PullAssetResponse {
-                size: gltf_file.bytes().len() as u32,
-                content: gltf_file.bytes().to_vec(),
-            }));
+            return Ok(Response::new(
+                lgn_editor_proto::source_control::PullAssetResponse {
+                    size: gltf_file.bytes().len() as u32,
+                    content: gltf_file.bytes().to_vec(),
+                },
+            ));
         }
         return Err(Status::internal(format!("Failed to get an asset {}", id)));
+    }
+}
+
+pub(crate) struct Server {
+    streamer: SharedRawFilesStreamer,
+    uploads_folder: PathBuf,
+    #[allow(dead_code)]
+    transaction_manager: Arc<Mutex<TransactionManager>>,
+}
+
+impl Server {
+    pub(crate) fn new(
+        streamer: SharedRawFilesStreamer,
+        uploads_folder: PathBuf,
+        transaction_manager: Arc<Mutex<TransactionManager>>,
+    ) -> Self {
+        Self {
+            streamer,
+            uploads_folder,
+            transaction_manager,
+        }
+    }
+}
+
+#[async_trait]
+impl Api for Server {
+    async fn content_upload_init(
+        &self,
+        request: ContentUploadInitRequest,
+    ) -> Result<ContentUploadInitResponse> {
+        if request.body.size > self.streamer.max_size().await {
+            return Ok(ContentUploadInitResponse::Status400);
+        }
+
+        let file_id = self
+            .streamer
+            .insert(
+                self.uploads_folder.as_path(),
+                &request.body.name,
+                request.body.size,
+            )
+            .await
+            .map_err(|_error| {
+                Error::internal(format!("couldn't create file for {}", request.body.name))
+            })?;
+
+        Ok(ContentUploadInitResponse::Status200(
+            ContentUploadInitSucceeded { id: file_id.into() },
+        ))
+    }
+
+    async fn content_upload(&self, request: ContentUploadRequest) -> Result<ContentUploadResponse> {
+        let streamer = self.streamer.clone();
+
+        // Unfortunately it's not possible to have bidirectional streaming client -> server -> client
+        // so we do receive the whole file and then chunk it and save it progressively.
+        // When bidirectional streaming will be achievable we will receive only chunks of files.
+        let mut stream = streamer
+            .stream(request.transaction_id.0.clone().into(), request.body.0)
+            .await
+            .unwrap();
+
+        let mut last_status = None;
+
+        while let Some(status) = stream.next().await {
+            match status {
+                RawFileStatus::Error {
+                    error: SourceControlError::UnknownId(_),
+                } => {
+                    return Ok(ContentUploadResponse::Status404);
+                }
+                RawFileStatus::Error {
+                    error: SourceControlError::ContentSize { .. },
+                } => {
+                    return Ok(ContentUploadResponse::Status400);
+                }
+                RawFileStatus::Error { error } => {
+                    return Err(Error::internal(error.to_string()));
+                }
+                RawFileStatus::InProgress { completion } => {
+                    last_status = Some((
+                        ContentUploadSucceededStatus::InProgress,
+                        completion.round() as u32,
+                    ));
+                }
+                RawFileStatus::Done => {
+                    last_status = Some((ContentUploadSucceededStatus::Done, 100));
+                }
+            };
+        }
+
+        if let Some((status, completion)) = last_status {
+            Ok(ContentUploadResponse::Status200(ContentUploadSucceeded {
+                id: request.transaction_id.0,
+                status,
+                completion,
+            }))
+        } else {
+            Err(Error::internal(
+                "didn't receive any status from upload stream",
+            ))
+        }
+    }
+
+    async fn content_upload_cancel(
+        &self,
+        request: ContentUploadCancelRequest,
+    ) -> Result<ContentUploadCancelResponse> {
+        let canceled = self.streamer.cancel(&request.transaction_id.0.into()).await;
+
+        Ok(if canceled {
+            ContentUploadCancelResponse::Status204
+        } else {
+            ContentUploadCancelResponse::Status404
+        })
     }
 }

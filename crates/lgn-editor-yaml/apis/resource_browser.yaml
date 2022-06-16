@@ -287,7 +287,8 @@ components:
           type: string
         total:
           type: integer
-          format: uint32
+          format: int32
+          minimum: 0
         resource_description:
           type: array
           items:

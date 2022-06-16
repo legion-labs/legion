@@ -11,7 +11,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     lgn_api_codegen::generate!(
         lgn_api_codegen::Language::Rust(options),
         "apis",
-        ["editor", "property_inspector", "resource_browser"]
+        [
+            "editor",
+            "property_inspector",
+            "resource_browser",
+            "source_control"
+        ]
     );
 
     Ok(())

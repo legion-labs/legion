@@ -150,7 +150,8 @@ paths:
                     type: string
                   time:
                     type: integer
-                    format: uint32
+                    format: int32
+                    minimum: 0
                 additionalProperties: true
   /test-additional-properties-composite-schema:
     get:
@@ -167,7 +168,8 @@ paths:
                     type: string
                   time:
                     type: integer
-                    format: uint32
+                    format: int32
+                    minimum: 0
                 additionalProperties:
                   $ref: "./components.yaml#/schemas/Pet"
   /test-one-of:
