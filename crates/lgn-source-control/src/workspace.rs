@@ -391,9 +391,9 @@ where
                 );
                 self.dump_all_indices(Some(&resource_identifier)).await;
             }
-
-            self.commit_and_restart_transaction().await?;
         }
+
+        self.commit_and_restart_transaction().await?;
 
         Ok(resource_identifier)
     }
@@ -448,9 +448,9 @@ where
                 );
                 self.dump_all_indices(Some(&resource_identifier)).await;
             }
-
-            self.commit_and_restart_transaction().await?;
         }
+
+        self.commit_and_restart_transaction().await?;
 
         Ok(resource_identifier)
     }
