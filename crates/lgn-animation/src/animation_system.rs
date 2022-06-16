@@ -1,4 +1,4 @@
-use crate::components::GraphDefinition;
+use crate::components::GraphDefinition2;
 use lgn_core::Time;
 use lgn_ecs::prelude::{Query, Res};
 
@@ -18,5 +18,6 @@ pub(crate) fn graph_update(mut graphs: Query<'_, '_, &mut GraphDefinition>, time
 }
 
 pub(crate) fn clip_update(mut graphs: Query<'_, '_, &mut GraphDefinition2>, time: Res<'_, Time>) {
+    drop(graphs);
     drop(time);
 }

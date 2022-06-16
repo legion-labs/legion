@@ -1,6 +1,6 @@
 use lgn_transform::components::Transform;
 
-use crate::animation_graph_events::SampledEventRange;
+use crate::tmp::animation_graph_events::SampledEventRange;
 
 pub struct Settings {
     node_idx: i16,

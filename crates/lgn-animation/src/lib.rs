@@ -7,7 +7,6 @@
 // generated from def\animation.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
-mod animation_graph_events;
 mod animation_options;
 mod animation_pose;
 mod animation_skeleton;
@@ -37,7 +36,7 @@ impl Plugin for AnimationPlugin {
             SystemStage::parallel(),
         );
 
-        // Update animation graph
+        // Run animation clip
         app.add_system_to_stage(AnimationStage::Update, graph_update);
         // .add_system_to_stage(AnimationStage::Update, clip_update.after(graph_update));
 
@@ -47,6 +46,6 @@ impl Plugin for AnimationPlugin {
                 RenderStage::Prepare,
                 animation_options::ui_animation_options,
             )
-            .add_system_to_stage(RenderStage::Prepare, display_animation);
+            .add_system_to_stage(RenderStage::Prepare, display_animation_2);
     }
 }

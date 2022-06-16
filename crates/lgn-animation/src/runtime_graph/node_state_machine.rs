@@ -6,6 +6,18 @@ use crate::runtime_graph::{
 pub struct StateMachineNode {
     pub(crate) states: Vec<StateInfo>,
     pub(crate) active_state_idx: usize,
+    // settings: Settings,
+
+    // Transition
+    // transition_settings: TransitionSettings,
+    // transition_info: TransitionInfo,
+
+    // State
+    // state_settings: StateSettings,
+    // state_info: StateInfo,
+
+    // Current transition node
+    // active_transition: *mut TransitionNode,
 }
 
 impl Node for StateMachineNode {
@@ -33,6 +45,34 @@ impl Node for StateMachineNode {
 pub struct TransitionInfo {
     pub(crate) transition_node: TransitionNode,
     pub(crate) condition_node: Box<dyn BoolValueNode>,
+}
+
+impl StateMachineNode {
+    pub fn evaluate_transitions() {}
+    pub fn update_transition_stack() {}
+}
+
+// Todo! Add derivation from PoseNode::Settings
+pub struct Settings {
+    state_settings: Vec<StateSettings>,
+    // default_state_idx: i16,
+}
+
+impl Settings {
+    pub fn instantiate_node() {}
+}
+
+// Transition
+pub struct TransitionInfo {
+    pub transition_node: TransitionNode,
+    pub condition_node: Box<dyn BoolValueNode>,
+    // target_state_idx: i16,
+}
+
+pub struct TransitionSettings {
+    target_state_idx: i16,
+    condition_node_idx: i16,
+    transition_node_idx: i16,
 }
 
 // State
