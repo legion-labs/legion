@@ -22,24 +22,21 @@ use lgn_data_transaction::{
 use lgn_ecs::prelude::*;
 use lgn_editor_proto::{
     property_inspector::UpdateResourcePropertiesRequest,
-    resource_browser::{
-        GetActiveScenesRequest, GetActiveScenesResponse, GetRuntimeSceneInfoRequest,
-        GetRuntimeSceneInfoResponse,
-    },
+    resource_browser::{GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse},
 };
 
 use lgn_editor_yaml::resource_browser::server::{
     CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
     CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
-    GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, ListAssetsRequest,
-    ListAssetsResponse, OpenSceneRequest, OpenSceneResponse, RenameResourceRequest,
-    RenameResourceResponse, ReparentResourceRequest, ReparentResourceResponse,
-    SearchResourcesRequest, SearchResourcesResponse,
+    GetActiveScenesRequest, GetActiveScenesResponse, GetResourceTypeNamesRequest,
+    GetResourceTypeNamesResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
+    OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+    ReparentResourceResponse, SearchResourcesRequest, SearchResourcesResponse,
 };
 use lgn_online::server::{Error, Result};
 
 use lgn_editor_yaml::resource_browser::{
-    Api, Asset, CloneResource200Response, CreateResource200Response,
+    Api, Asset, CloneResource200Response, CreateResource200Response, GetActiveScenes200Response,
     GetResourceTypeNames200Response, ListAssets200Response, NextSearchToken, ResourceDescription,
 };
 
@@ -866,26 +863,28 @@ impl Api for Server {
         }
         Ok(CloseSceneResponse::Status204)
     }
+
+    /// Get active scenes
+    async fn get_active_scenes(
+        &self,
+        _request: GetActiveScenesRequest,
+    ) -> Result<GetActiveScenesResponse> {
+        let transaction_manager = self.transaction_manager.lock().await;
+
+        Ok(GetActiveScenesResponse::Status200(
+            GetActiveScenes200Response {
+                scene_ids: transaction_manager
+                    .get_active_scenes()
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect(),
+            },
+        ))
+    }
 }
 
 #[tonic::async_trait]
 impl ResourceBrowser for ResourceBrowserRPC {
-    /// Get active scenes
-    async fn get_active_scenes(
-        &self,
-        _request: Request<GetActiveScenesRequest>,
-    ) -> Result<Response<GetActiveScenesResponse>, Status> {
-        let transaction_manager = self.transaction_manager.lock().await;
-
-        Ok(Response::new(GetActiveScenesResponse {
-            scene_ids: transaction_manager
-                .get_active_scenes()
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect(),
-        }))
-    }
-
     async fn get_runtime_scene_info(
         &self,
         request: Request<GetRuntimeSceneInfoRequest>,

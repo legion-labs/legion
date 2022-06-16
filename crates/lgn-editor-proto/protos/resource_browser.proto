@@ -2,14 +2,7 @@ syntax = "proto3";
 package resource_browser;
 
 service ResourceBrowser {
-  rpc GetActiveScenes(GetActiveScenesRequest) returns (GetActiveScenesResponse);
-
   rpc GetRuntimeSceneInfo(GetRuntimeSceneInfoRequest) returns (GetRuntimeSceneInfoResponse);
-}
-
-message GetActiveScenesRequest {}
-message GetActiveScenesResponse {
-  repeated string scene_ids = 1;
 }
 
 message GetRuntimeSceneInfoRequest {

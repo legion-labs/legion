@@ -181,7 +181,7 @@ paths:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
       - $ref: "#/components/parameters/scene_id"
-    get:
+    post:
       description: Open a Scene
       operationId: OpenScene
       responses:
@@ -192,13 +192,34 @@ paths:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
       - $ref: "#/components/parameters/scene_id"
-    get:
+    post:
       description: Close a Scene
       operationId: CloseScene
       responses:
         "204":
           description: Ok.
 
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    get:
+      description: Get active scenes
+      operationId: GetActiveScenes
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scene_ids:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - scene_ids
 
   /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/assets:
     parameters:
