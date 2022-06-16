@@ -54,6 +54,7 @@ async fn build_device() {
         &repository_name,
         branch_name,
         Arc::clone(&source_control_content_provider),
+        Arc::clone(&data_content_provider),
     )
     .await
     .expect("new project");
@@ -73,7 +74,7 @@ async fn build_device() {
         edit.content = initial_content.to_string();
         resource.apply(edit, &resources);
 
-        let source_id = project
+        project
             .add_resource(
                 ResourcePathName::new("test_source"),
                 refs_resource::TestResource::TYPE,
@@ -81,11 +82,7 @@ async fn build_device() {
                 &resources,
             )
             .await
-            .expect("adding the resource");
-
-        project.commit("add resource").await.expect("committing");
-
-        source_id
+            .expect("adding the resource")
     };
 
     let target_dir = {
@@ -147,6 +144,7 @@ async fn build_device() {
         .add_loader::<refs_asset::RefsAsset>()
         .add_device_build(
             Arc::clone(&data_content_provider),
+            project.source_manifest_id(),
             None,
             DATABUILD_EXE,
             &DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
@@ -196,8 +194,6 @@ async fn build_device() {
             .save_resource(source_id, resource, &resources)
             .await
             .expect("successful save");
-
-        project.commit("save resource").await.expect("committing");
     }
 
     registry.update();
@@ -248,12 +244,13 @@ async fn no_intermediate_resource() {
     );
 
     // create project that contains test resource.
-    let resource_id = {
+    let (resource_id, source_manifest_id) = {
         let mut project = Project::new(
             &repository_index,
             &repository_name,
             branch_name,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");
@@ -268,7 +265,7 @@ async fn no_intermediate_resource() {
                 .new_resource(refs_resource::TestResource::TYPE)
                 .expect("new resource");
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     refs_resource::TestResource::TYPE,
@@ -276,11 +273,7 @@ async fn no_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource");
-
-            project.commit("add resource").await.expect("committing");
-
-            resource_id
+                .expect("adding the resource")
         };
 
         let mut build = DataBuildOptions::new(
@@ -294,7 +287,7 @@ async fn no_intermediate_resource() {
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
 
-        resource_id
+        (resource_id, project.source_manifest_id())
     };
 
     let compile_path = ResourcePathId::from(resource_id).push(refs_asset::RefsAsset::TYPE);
@@ -312,6 +305,7 @@ async fn no_intermediate_resource() {
         command.arg(format!("--output={}", output_dir.to_str().unwrap()));
         command.arg(format!("--repository-name={}", repository_name));
         command.arg(format!("--branch-name={}", branch_name));
+        command.arg(format!("--source-manifest-id={}", source_manifest_id));
         command
     };
 
@@ -368,12 +362,13 @@ async fn with_intermediate_resource() {
     );
 
     // create project that contains test resource.
-    let resource_id = {
+    let (resource_id, source_manifest_id) = {
         let mut project = Project::new(
             &repository_index,
             &repository_name,
             branch_name,
             Arc::clone(&source_control_content_provider),
+            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");
@@ -388,7 +383,7 @@ async fn with_intermediate_resource() {
                 .new_resource(text_resource::TextResource::TYPE)
                 .expect("new resource");
 
-            let resource_id = project
+            project
                 .add_resource(
                     ResourcePathName::new("test_source"),
                     text_resource::TextResource::TYPE,
@@ -396,11 +391,7 @@ async fn with_intermediate_resource() {
                     &resources,
                 )
                 .await
-                .expect("adding the resource");
-
-            project.commit("add resource").await.expect("committing");
-
-            resource_id
+                .expect("adding the resource")
         };
 
         let mut build = DataBuildOptions::new_with_sqlite_output(
@@ -414,7 +405,7 @@ async fn with_intermediate_resource() {
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
 
-        resource_id
+        (resource_id, project.source_manifest_id())
     };
 
     let compile_path = ResourcePathId::from(resource_id)
@@ -435,6 +426,7 @@ async fn with_intermediate_resource() {
         command.arg(format!("--output={}", output_dir.to_str().unwrap()));
         command.arg(format!("--repository-name={}", repository_name));
         command.arg(format!("--branch-name={}", branch_name));
+        command.arg(format!("--source-manifest-id={}", source_manifest_id));
         command
     };
 
