@@ -15,9 +15,12 @@ use std::{
 use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::Provider;
 use lgn_data_offline::{Project, ResourcePathName, SourceResource};
-use lgn_data_runtime::prelude::*;
-use lgn_graphics_data::{offline::Gltf, offline::Png, offline::Psd};
-use lgn_source_control::{RepositoryIndex, RepositoryName};
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId, ResourceType,
+    ResourceTypeAndId,
+};
+use lgn_graphics_data::offline::{Gltf, Png, Psd};
+use lgn_source_control::{BranchName, RepositoryIndex, RepositoryName};
 use lgn_tracing::{error, info};
 use lgn_utils::DefaultHasher;
 use sample_data::offline as offline_data;
@@ -29,7 +32,7 @@ pub async fn build_offline(
     root_folder: impl AsRef<Path>,
     repository_index: impl RepositoryIndex,
     repository_name: &RepositoryName,
-    branch_name: &str,
+    branch_name: &BranchName,
     source_control_content_provider: Arc<Provider>,
     incremental: bool,
 ) -> Project {
@@ -227,7 +230,7 @@ pub async fn build_offline(
 async fn setup_project(
     repository_index: impl RepositoryIndex,
     repository_name: &RepositoryName,
-    branch_name: &str,
+    branch_name: &BranchName,
     source_control_content_provider: Arc<Provider>,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project

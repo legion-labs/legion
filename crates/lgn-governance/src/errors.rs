@@ -5,6 +5,10 @@ use thiserror::Error;
 pub enum Error {
     #[error("types: {0}")]
     Types(#[from] crate::types::Error),
+    #[error("config: {0}")]
+    Config(#[from] lgn_config::Error),
+    #[error("online: {0}")]
+    Online(#[from] lgn_online::Error),
 }
 
 /// A result type.

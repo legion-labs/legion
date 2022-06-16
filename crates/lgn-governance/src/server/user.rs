@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use lgn_tracing::{debug, info, warn};
 
 use crate::{
-    api::user::{requests, responses, Api},
+    api::user::{server, Api},
     types::{PermissionId, UserId},
 };
 
@@ -12,10 +12,9 @@ use super::Server;
 impl Api for Server {
     async fn init_stack(
         &self,
-        parts: http::request::Parts,
-        request: requests::InitStackRequest,
-    ) -> lgn_online::server::Result<responses::InitStackResponse> {
-        let caller_user_id = Self::get_caller_user_id_from_parts(&parts)?;
+        request: server::InitStackRequest,
+    ) -> lgn_online::server::Result<server::InitStackResponse> {
+        let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
 
         if request.x_init_key != self.init_key {
             warn!(
@@ -23,7 +22,7 @@ impl Api for Server {
                 caller_user_id
             );
 
-            Ok(responses::InitStackResponse::Status403)
+            Ok(server::InitStackResponse::Status403)
         } else if self.mysql_dal.init_stack(&caller_user_id).await? {
             info!(
                 "{} initialized the stack and has now superadmin privileges",
@@ -32,22 +31,21 @@ impl Api for Server {
 
             self.permissions_cache.clear().await;
 
-            Ok(responses::InitStackResponse::Status200)
+            Ok(server::InitStackResponse::Status200)
         } else {
             warn!(
                 "{} attempted to initialize the stack but it was already initialized",
                 caller_user_id
             );
-            Ok(responses::InitStackResponse::Status409)
+            Ok(server::InitStackResponse::Status409)
         }
     }
 
     async fn get_user_info(
         &self,
-        parts: http::request::Parts,
-        request: requests::GetUserInfoRequest,
-    ) -> lgn_online::server::Result<responses::GetUserInfoResponse> {
-        let caller_user_id = Self::get_caller_user_id_from_parts(&parts)?;
+        request: server::GetUserInfoRequest,
+    ) -> lgn_online::server::Result<server::GetUserInfoResponse> {
+        let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
 
         let user_id: UserId = {
             if request.user_id.0 == "@me" {
@@ -81,15 +79,14 @@ impl Api for Server {
             .get_user_info(&user_id.to_string())
             .await?;
 
-        Ok(responses::GetUserInfoResponse::Status200(user_info.into()))
+        Ok(server::GetUserInfoResponse::Status200(user_info.into()))
     }
 
     async fn list_current_user_spaces(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::ListCurrentUserSpacesRequest,
-    ) -> lgn_online::server::Result<responses::ListCurrentUserSpacesResponse> {
-        Ok(responses::ListCurrentUserSpacesResponse::Status200(
+        _request: server::ListCurrentUserSpacesRequest,
+    ) -> lgn_online::server::Result<server::ListCurrentUserSpacesResponse> {
+        Ok(server::ListCurrentUserSpacesResponse::Status200(
             vec![].into(),
         ))
     }

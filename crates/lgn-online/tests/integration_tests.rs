@@ -37,7 +37,8 @@ use lgn_auth::{
 };
 use lgn_online::{
     self,
-    grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
+    client::AuthenticatedClient,
+    grpc::{GrpcClient, GrpcWebClient},
 };
 use lgn_tracing::{error, info};
 use serde::Deserialize;

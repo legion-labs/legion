@@ -45,6 +45,11 @@ impl From<(&GlobalTransform, &LightComponent)> for RenderLight {
     }
 }
 
+#[derive(Default)]
+pub struct RenderLightTestData {
+    //foo: u32,
+}
+
 pub struct LightingManager {
     pub default_ambient_color: Color,
     pub default_ambient_intensity: f32,

@@ -3,7 +3,7 @@ use lgn_config::RichPathBuf;
 use serde::{Deserialize, Deserializer};
 
 use crate::{
-    GrpcRepositoryIndex, LocalRepositoryIndex, RepositoryIndex, Result, SqlRepositoryIndex,
+    ApiRepositoryIndex, LocalRepositoryIndex, RepositoryIndex, Result, SqlRepositoryIndex,
 };
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -15,18 +15,18 @@ pub struct Config {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RepositoryIndexConfig {
-    Grpc(GrpcConfig),
+    Api(ApiConfig),
     Sql(SqlConfig),
     Local(LocalConfig),
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
-pub struct GrpcConfig {
-    /// The Web API URL to use for requests.
+pub struct ApiConfig {
+    /// The API URL to use for requests.
     ///
-    /// If not specified, the global `online.web_api_base_url` will be used.
-    #[serde(default, deserialize_with = "GrpcConfig::deserialize_web_api_url")]
-    pub web_api_url: Option<Uri>,
+    /// If not specified, the global `online.api_base_url` will be used.
+    #[serde(default, deserialize_with = "ApiConfig::deserialize_web_api_url")]
+    pub base_url: Option<Uri>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -66,7 +66,7 @@ impl Config {
 
 impl Default for RepositoryIndexConfig {
     fn default() -> Self {
-        Self::Grpc(GrpcConfig::default())
+        Self::Api(ApiConfig::default())
     }
 }
 
@@ -79,7 +79,7 @@ impl RepositoryIndexConfig {
     /// If no default repository name is specified, "default" will be used.
     pub async fn instantiate(&self) -> Result<Box<dyn RepositoryIndex>> {
         match self {
-            Self::Grpc(grpc_config) => grpc_config.instantiate().await,
+            Self::Api(api_config) => api_config.instantiate().await,
             Self::Sql(sql_config) => {
                 let index = sql_config.instantiate().await?;
                 Ok(Box::new(index))
@@ -92,16 +92,22 @@ impl RepositoryIndexConfig {
     }
 }
 
-impl GrpcConfig {
+impl ApiConfig {
     pub async fn instantiate(&self) -> Result<Box<dyn RepositoryIndex>> {
-        let online_config = lgn_online::Config::load()?;
-        let client = online_config
-            .instantiate_web_grpc_client_with_url(self.web_api_url.as_ref(), &[])
+        let base_url = self
+            .base_url
+            .clone()
+            .unwrap_or(lgn_online::Config::load()?.api_base_url);
+
+        let client = lgn_online::Config::load()?
+            .instantiate_api_client(&[])
             .await?;
 
-        let index = GrpcRepositoryIndex::new(client);
-
-        Ok(Box::new(index))
+        // TODO: We use a temporary space for now.
+        let space_id = "default".parse().unwrap();
+        Ok(Box::new(ApiRepositoryIndex::new(
+            client, base_url, space_id,
+        )))
     }
 }
 
@@ -117,7 +123,7 @@ impl LocalConfig {
     }
 }
 
-impl GrpcConfig {
+impl ApiConfig {
     fn deserialize_web_api_url<'de, D>(deserializer: D) -> Result<Option<Uri>, D::Error>
     where
         D: Deserializer<'de>,

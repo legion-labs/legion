@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use lgn_online::server::{ErrorExt, Result};
 
-use crate::api::permission::{self, requests, responses, Api};
+use crate::api::permission::{self, server, Api};
 
 use super::Server;
 
@@ -10,24 +10,24 @@ use super::Server;
 impl Api for Server {
     async fn list_permissions(
         &self,
-        _parts: http::request::Parts,
-    ) -> Result<responses::ListPermissionsResponse> {
+        _request: server::ListPermissionsRequest,
+    ) -> Result<server::ListPermissionsResponse> {
         let permissions = self
             .mysql_dal
             .list_permissions()
             .await
             .into_internal_server_error()?;
 
-        Ok(responses::ListPermissionsResponse::Status200(
+        Ok(server::ListPermissionsResponse::Status200(
             permissions.into(),
         ))
     }
 
     async fn create_permission(
         &self,
-        _parts: http::request::Parts,
-    ) -> Result<responses::CreatePermissionResponse> {
-        Ok(responses::CreatePermissionResponse::Status201(
+        _request: server::CreatePermissionRequest,
+    ) -> Result<server::CreatePermissionResponse> {
+        Ok(server::CreatePermissionResponse::Status201(
             permission::Permission {
                 id: "lol".to_string().into(),
                 parent_id: None,
@@ -41,10 +41,9 @@ impl Api for Server {
 
     async fn update_permission(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::UpdatePermissionRequest,
-    ) -> Result<responses::UpdatePermissionResponse> {
-        Ok(responses::UpdatePermissionResponse::Status200(
+        _request: server::UpdatePermissionRequest,
+    ) -> Result<server::UpdatePermissionResponse> {
+        Ok(server::UpdatePermissionResponse::Status200(
             permission::Permission {
                 id: "lol".to_string().into(),
                 parent_id: None,
@@ -58,9 +57,8 @@ impl Api for Server {
 
     async fn delete_permission(
         &self,
-        _parts: http::request::Parts,
-        _request: requests::DeletePermissionRequest,
-    ) -> Result<responses::DeletePermissionResponse> {
-        Ok(responses::DeletePermissionResponse::Status204)
+        _request: server::DeletePermissionRequest,
+    ) -> Result<server::DeletePermissionResponse> {
+        Ok(server::DeletePermissionResponse::Status204)
     }
 }

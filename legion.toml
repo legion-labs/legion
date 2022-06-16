@@ -112,6 +112,7 @@ log_operation = false
 #webrtc = "WARN"
 
 [online]
+base_url = "https://api.live.playground.legionlabs.com"
 api_base_url = "https://api.live.playground.legionlabs.com"
 web_api_base_url = "https://web-api.live.playground.legionlabs.com"
 
@@ -136,14 +137,12 @@ path = "$(git-root)/target/source-control"
 [content_store.persistent.content_provider]
 #type = "api"
 #data_space = "persistent"
-#space_id = "default"
 type = "local"
 path = "$(git-root)/target/content-store/persistent/content"
 
 [content_store.persistent.alias_provider]
 #type = "api"
 #data_space = "persistent"
-#space_id = "default"
 type = "local"
 path = "$(git-root)/target/content-store/persistent/aliases"
 
@@ -158,14 +157,12 @@ size = 250
 [content_store.volatile.content_provider]
 #type = "api"
 #data_space = "volatile"
-#space_id = "default"
 type = "local"
 path = "$(git-root)/target/content-store/volatile/content"
 
 [content_store.volatile.alias_provider]
 #type = "api"
 #data_space = "volatile"
-#space_id = "default"
 type = "local"
 path = "$(git-root)/target/content-store/volatile/aliases"
 
@@ -190,6 +187,4 @@ type = "local"
 path = "$(git-root)/target/content-store/volatile/content"
 
 [source_control.server.database]
-host = "localhost"
-username = "root"
-password = "password"
+connection_string = "mysql://root:pw@localhost:3306/lgn_source_control"

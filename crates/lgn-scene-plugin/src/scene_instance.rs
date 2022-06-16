@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use lgn_data_runtime::prelude::*;
+use lgn_data_runtime::{AssetRegistry, Handle, ResourceDescriptor, ResourceTypeAndId};
 use lgn_ecs::prelude::Commands;
 use lgn_hierarchy::prelude::{BuildChildren, Parent};
 use lgn_tracing::warn;
@@ -189,6 +189,54 @@ impl SceneInstance {
                     component.downcast_ref::<runtime_data::GltfLoader>()
                 {
                     // nothing to do
+                } else if let Some(physics) =
+                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidBox>()
+                {
+                    entity.insert(physics.clone());
+                } else if let Some(physics) =
+                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidCapsule>()
+                {
+                    entity.insert(physics.clone());
+                } else if let Some(physics) =
+                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidConvexMesh>()
+                {
+                    entity.insert(physics.clone());
+                } else if let Some(physics) =
+                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidHeightField>()
+                {
+                    entity.insert(physics.clone());
+                } else if let Some(physics) =
+                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidPlane>()
+                {
+                    entity.insert(physics.clone());
+                } else if let Some(physics) =
+                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidSphere>()
+                {
+                    entity.insert(physics.clone());
+                } else if let Some(physics) =
+                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidTriangleMesh>()
+                {
+                    entity.insert(physics.clone());
+                } else if let Some(physics_settings) =
+                    component.downcast_ref::<lgn_physics::runtime::PhysicsSceneSettings>()
+                {
+                    entity.insert(physics_settings.clone());
+                } else if let Some(camera_setup) =
+                    component.downcast_ref::<lgn_graphics_data::runtime::CameraSetup>()
+                {
+                    entity.insert(camera_setup.clone());
+                } else if let Some(animation_data) =
+                    component.downcast_ref::<lgn_animation::runtime::AnimationTrack>()
+                {
+                    let runtime_animation_data = RuntimeAnimationClip::new(animation_data);
+                    entity.insert(runtime_animation_data);
+                } else {
+                    error!(
+                        "Unhandle component type {} in entity {}",
+                        component.get_type().get_type_name(),
+                        resource_id,
+                    );
+                }
             }
 
             }*/

@@ -18,7 +18,7 @@ required-features = ["server"]
 [features]
 default = ["cli", "server"]
 cli = ["lgn-telemetry-sink", "atty", "clap", "termcolor"]
-server = ["lgn-telemetry-sink", "clap", "tonic-web", "tower", "tower-http"]
+server = ["lgn-telemetry-sink", "clap", "tower", "tower-http"]
 verbose = []
 
 [dependencies]
@@ -39,8 +39,9 @@ lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-content-store = { path = "../lgn-content-store", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0", optional = true }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-lgn-source-control-proto = { path = "../lgn-source-control-proto", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
+lgn-governance = { path = "../lgn-governance", version = "0.1.0" }
+lgn-cli-utils = { path = "../lgn-cli-utils", version = "0.1.0" }
 lz4 = "1.23"
 path-clean = "0.1"
 path-slash = "0.1"
@@ -59,19 +60,23 @@ tempfile = "3.2"
 termcolor = { version = "1.1.2", optional = true }
 thiserror = "1"
 tokio = { version = "1.13", features = ["full", "tracing"] }
+tokio-stream = "0.1.8"
 tokio-util = { version = "0.6.9", features = ["full"] }
-tonic = "0.6.2"
-tonic-web = { version = "0.2", optional = true }
 tower = { version = "0.4", optional = true }
 tower-http = { version = "0.3", features = ["cors"], optional = true }
 pathdiff = "0.2"
 urlencoding = "2.1.0"
 uuid = { version = "1.0", features = ["serde", "v4"] }
 whoami = "1.2"
+axum = "0.5"
+hyper = { version = "0.14", features = ["full"] }
+serde_qs = { version = "0.9", features = ["axum"] }
 
 [dev-dependencies]
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 
+[build-dependencies]
+lgn-api-codegen = { path = "../lgn-api-codegen", version = "0.1.0" }
 
 [package.metadata.cargo-udeps.ignore]
 normal = ["atty", "clap", "lgn-telemetry-sink", "lz4", "termcolor"]

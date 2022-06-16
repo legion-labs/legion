@@ -5,7 +5,7 @@ mod tests {
     use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
     use lgn_data_offline::Project;
-    use lgn_source_control::{LocalRepositoryIndex, RepositoryName};
+    use lgn_source_control::{BranchName, LocalRepositoryIndex, RepositoryName};
     use tempfile::TempDir;
 
     use crate::{databuild::DataBuild, output_index::OutputIndex, DataBuildOptions};
@@ -50,12 +50,12 @@ mod tests {
         ) = setup_dir(&work_dir).await;
 
         let repository_name: RepositoryName = "default".parse().unwrap();
-        let branch_name = "main";
+        let branch_name: BranchName = "main".parse().unwrap();
 
         let project = Project::new(
             repository_index,
             &repository_name,
-            branch_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
         )
         .await;
@@ -81,11 +81,10 @@ mod tests {
             project_dir,
             output_dir,
             _repository_index,
-            _source_control_content_provider,
+            source_control_content_provider,
             data_content_provider,
         ) = setup_dir(&work_dir).await;
 
-        let source_control_content_provider = Arc::new(Provider::new_in_memory());
         let project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),

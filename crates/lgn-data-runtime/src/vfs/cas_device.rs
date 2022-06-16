@@ -15,18 +15,23 @@ use crate::{
 /// Content addressable storage device. Resources are accessed through a
 /// manifest access table.
 pub(crate) struct CasDevice {
-    provider: Arc<Provider>,
-    manifest: ResourceIndex<ResourceTypeAndIdIndexer>,
+    volatile_provider: Arc<Provider>,
+    runtime_manifest: ResourceIndex<ResourceTypeAndIdIndexer>,
 }
 
 impl CasDevice {
-    pub(crate) fn new(provider: Arc<Provider>, manifest_id: SharedTreeIdentifier) -> Self {
+    pub(crate) fn new(
+        volatile_provider: Arc<Provider>,
+        runtime_manifest_id: SharedTreeIdentifier,
+    ) -> Self {
+        let runtime_manifest = ResourceIndex::new_shared_with_id(
+            Arc::clone(&volatile_provider),
+            new_resource_type_and_id_indexer(),
+            runtime_manifest_id,
+        );
         Self {
-            provider,
-            manifest: ResourceIndex::new_shared_with_id(
-                new_resource_type_and_id_indexer(),
-                manifest_id,
-            ),
+            volatile_provider,
+            runtime_manifest,
         }
     }
 }
@@ -34,12 +39,12 @@ impl CasDevice {
 #[async_trait]
 impl Device for CasDevice {
     async fn load(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        if let Ok(Some(resource_id)) = self
-            .manifest
-            .get_identifier(&self.provider, &type_id.into())
-            .await
-        {
-            if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&resource_id).await {
+        if let Ok(Some(resource_id)) = self.runtime_manifest.get_identifier(&type_id.into()).await {
+            if let Ok(resource_bytes) = self
+                .volatile_provider
+                .read_resource_as_bytes(&resource_id)
+                .await
+            {
                 return Some(resource_bytes);
             }
         }
@@ -47,12 +52,12 @@ impl Device for CasDevice {
     }
 
     async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader> {
-        if let Ok(Some(resource_id)) = self
-            .manifest
-            .get_identifier(&self.provider, &type_id.into())
-            .await
-        {
-            if let Ok(reader) = self.provider.get_reader(resource_id.as_identifier()).await {
+        if let Ok(Some(resource_id)) = self.runtime_manifest.get_identifier(&type_id.into()).await {
+            if let Ok(reader) = self
+                .volatile_provider
+                .get_reader(resource_id.as_identifier())
+                .await
+            {
                 return Some(Box::pin(reader) as AssetRegistryReader);
             }
         }

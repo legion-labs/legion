@@ -501,10 +501,13 @@ pub struct Api {
     pub paths: BTreeMap<Path, Vec<Route>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Type {
+    Any,
     Int32,
     Int64,
+    UInt32,
+    UInt64,
     String,
     Boolean,
     Float32,
@@ -515,10 +518,19 @@ pub enum Type {
     Binary,
     Array(Box<Self>),
     HashSet(Box<Self>),
+    Map(Box<Self>),
     Named(OpenApiRef),
-    Enum { variants: Vec<String> },
-    Struct { fields: BTreeMap<String, Field> },
-    OneOf { types: Vec<Self> },
+    Enum {
+        variants: Vec<String>,
+    },
+    Struct {
+        fields: BTreeMap<String, Field>,
+        map: Option<Box<Self>>,
+    },
+    OneOf {
+        types: Vec<Self>,
+    },
+    Box(Box<Self>),
 }
 
 impl Type {
@@ -559,7 +571,7 @@ impl Model {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Field {
     pub name: String,
     pub description: Option<String>,

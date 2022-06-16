@@ -13,8 +13,12 @@
                     | { type: "option{{loop.index}}", value: {{ type_|fmt_type(ctx, module_path) }} }
                 {%- endfor -%}
             );
-        {% when Type::Struct with { fields } %}
-            export type {{ model|fmt_model_name(ctx) }} = {
+        {% when Type::Struct with { fields, map } %}
+            export type {{ model|fmt_model_name(ctx) }} =
+                {% match map %}
+                {% when Some with (map) %}{ [key: string]: {{ map|fmt_type(ctx, module_path) }} } &
+                {% when None %}
+                {% endmatch %} {
                 {% for field in fields.values() %}
                     {% if let Some(description) = field.description -%}/** {{ description }} */{%- endif %}
                     {%- if field.required -%}

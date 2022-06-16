@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use egui::{Event, Key, RawInput};
 use lgn_app::prelude::*;
 use lgn_ecs::prelude::*;
+use lgn_graphics_api::{Texture, TextureView};
 use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButton, MouseButtonInput, MouseWheel},
@@ -16,44 +17,62 @@ use lgn_window::{
 use crate::labels::RenderStage;
 
 #[derive(Default)]
-pub struct Egui {
+struct Inner {
     enabled: bool,
     context: egui::Context,
     output: egui::PlatformOutput,
     needs_repaint: bool,
-    textures_delta: Mutex<egui::TexturesDelta>,
+    textures_delta: egui::TexturesDelta,
     shapes: Vec<egui::epaint::ClippedShape>,
-    windows: Mutex<HashMap<String, bool>>,
+    windows: HashMap<String, bool>,
+    font_texture: Option<(Texture, TextureView)>,
+}
+
+#[derive(Default)]
+pub struct Egui {
+    inner: Mutex<Inner>,
 }
 
 impl Egui {
     pub fn is_enabled(&self) -> bool {
-        self.enabled
+        self.inner.lock().unwrap().enabled
     }
 
-    pub fn context(&self) -> &egui::Context {
-        &self.context
+    pub fn pixels_per_point(&self) -> f32 {
+        self.inner.lock().unwrap().context.pixels_per_point()
     }
 
     pub fn tessellate(&self) -> Vec<egui::ClippedPrimitive> {
-        self.context.tessellate(self.shapes.clone())
+        let inner = self.inner.lock().unwrap();
+        inner.context.tessellate(inner.shapes.clone())
     }
 
     pub fn window<F: FnOnce(&mut egui::Ui)>(&self, label: &str, f: F) {
-        let mut windows = self.windows.lock().unwrap();
+        let mut inner = self.inner.lock().unwrap();
         let label = String::from(label);
-        if !windows.contains_key(&label) {
-            windows.insert(label.clone(), false);
+        if !inner.windows.contains_key(&label) {
+            inner.windows.insert(label.clone(), false);
         }
-        if *windows.get(&label).unwrap() {
-            egui::Window::new(label).show(&self.context, |ui| {
+        if *inner.windows.get(&label).unwrap() {
+            egui::Window::new(label).show(&inner.context, |ui| {
                 f(ui);
             });
         }
     }
 
-    pub fn textures_delta(&self) -> &Mutex<egui::TexturesDelta> {
-        &self.textures_delta
+    pub fn textures_delta(&self) -> egui::TexturesDelta {
+        let mut inner = self.inner.lock().unwrap();
+        let textures_delta = inner.textures_delta.clone();
+        inner.textures_delta.clear();
+        textures_delta
+    }
+
+    pub fn font_texture(&self) -> Option<(Texture, TextureView)> {
+        self.inner.lock().unwrap().font_texture.clone()
+    }
+
+    pub fn set_font_texture(&self, texture: Texture, view: TextureView) {
+        self.inner.lock().unwrap().font_texture = Some((texture, view));
     }
 }
 
@@ -75,7 +94,7 @@ impl Plugin for EguiPlugin {
 
 #[allow(clippy::needless_pass_by_value)]
 fn on_window_created(
-    mut egui: ResMut<'_, Egui>,
+    egui: Res<'_, Egui>,
     mut ev_wnd_created: EventReader<'_, '_, WindowCreated>,
     wnd_list: Res<'_, Windows>,
 ) {
@@ -90,7 +109,8 @@ fn on_window_created(
         pixels_per_point = wnd.scale_factor();
     }
     // We need to run begin_frame at least once so we have the font texture content
-    egui.context.begin_frame(RawInput {
+    let mut inner = egui.inner.lock().unwrap();
+    inner.context.begin_frame(RawInput {
         screen_rect: Some(egui::Rect::from_min_size(egui::pos2(0.0, 0.0), size)),
         pixels_per_point: Some(pixels_per_point as f32),
         max_texture_side: Some(16384),
@@ -98,26 +118,21 @@ fn on_window_created(
     });
     #[allow(unused_must_use)]
     {
-        let output = egui.context.end_frame();
-        (*egui).output = output.platform_output;
-        (*egui).needs_repaint = output.needs_repaint;
-        (*egui)
-            .textures_delta
-            .lock()
-            .unwrap()
-            .append(output.textures_delta);
-        (*egui).shapes = output.shapes;
+        let output = inner.context.end_frame();
+        inner.output = output.platform_output;
+        inner.needs_repaint = output.needs_repaint;
+        inner.textures_delta.append(output.textures_delta);
+        inner.shapes = output.shapes;
     }
 }
 
-fn update_egui(
-    mut egui: ResMut<'_, Egui>,
-    mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>,
-) {
+#[allow(clippy::needless_pass_by_value)]
+fn update_egui(egui: Res<'_, Egui>, mut keyboard_input_events: EventReader<'_, '_, KeyboardInput>) {
     for keyboard_input_event in keyboard_input_events.iter() {
         if let Some(key_code) = keyboard_input_event.key_code {
             if key_code == KeyCode::M && keyboard_input_event.state.is_pressed() {
-                egui.enabled = !egui.enabled;
+                let mut inner = egui.inner.lock().unwrap();
+                inner.enabled = !inner.enabled;
             }
         }
     }
@@ -215,24 +230,24 @@ fn gather_input(
 
 #[allow(clippy::needless_pass_by_value)]
 fn begin_frame(egui: Res<'_, Egui>, raw_input: Res<'_, RawInput>) {
-    if !egui.enabled {
-        egui.context.begin_frame(RawInput::default());
+    let inner = egui.inner.lock().unwrap();
+
+    if !inner.enabled {
+        inner.context.begin_frame(RawInput::default());
         return;
     }
-    egui.context.begin_frame(raw_input.to_owned());
+    inner.context.begin_frame(raw_input.to_owned());
 }
 
 #[span_fn]
 pub fn end_frame(egui: &mut ResMut<'_, Egui>) {
-    let output = egui.context.end_frame();
-    (*egui).output = output.platform_output;
-    (*egui).needs_repaint = output.needs_repaint;
-    (*egui)
-        .textures_delta
-        .lock()
-        .unwrap()
-        .append(output.textures_delta);
-    (*egui).shapes = output.shapes;
+    let mut inner = egui.inner.lock().unwrap();
+
+    let output = inner.context.end_frame();
+    inner.output = output.platform_output;
+    inner.needs_repaint = output.needs_repaint;
+    inner.textures_delta.append(output.textures_delta);
+    inner.shapes = output.shapes;
 }
 
 fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerButton {
@@ -246,18 +261,24 @@ fn pointer_button_from_mouse_button(mouse_button: MouseButton) -> egui::PointerB
 #[allow(clippy::needless_pass_by_value)]
 fn ui_egui(egui: Res<'_, Egui>) {
     egui.window("Egui", |ui| {
-        egui.context.settings_ui(ui);
+        let inner = egui.inner.lock().unwrap();
+        inner.context.settings_ui(ui);
     });
 
-    egui::TopBottomPanel::top("egui_top_panel").show(&egui.context, |ui| {
+    let mut inner = egui.inner.lock().unwrap();
+    let mut windows = inner.windows.clone();
+
+    egui::TopBottomPanel::top("egui_top_panel").show(&inner.context, |ui| {
         ui.horizontal(|ui| {
-            for (label, show) in egui.windows.lock().unwrap().iter_mut() {
+            for (label, show) in windows.iter_mut() {
                 if ui.button(label).clicked() {
                     *show = !*show;
                 }
             }
         });
     });
+
+    inner.windows = windows;
 }
 
 fn key_from_key_code(key: KeyCode) -> Option<Key> {

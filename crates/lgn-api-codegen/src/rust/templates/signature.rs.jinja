@@ -1,5 +1,4 @@
 async fn {{ route.name|snake_case }}(
     &self,
-    parts: http::request::Parts,
-    {% if !route.has_empty_request() %}request: requests::{{ route.name|pascal_case }}Request{% endif %}
-) -> Result<responses::{{ route.name|pascal_case }}Response>
+    request: server::{{ route.name|pascal_case }}Request
+) -> Result<server::{{ route.name|pascal_case }}Response>

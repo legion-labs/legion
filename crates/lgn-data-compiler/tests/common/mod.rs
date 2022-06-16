@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, sync::Arc};
 
 use lgn_content_store::{
     indexing::{ResourceIndex, ResourceWriter, TreeIdentifier},
@@ -34,21 +34,21 @@ pub fn test_env() -> CompilationEnv {
 
 pub async fn write_resource(
     id: ResourceTypeAndId,
-    provider: &Provider,
+    persistent_provider: Arc<Provider>,
     resource: &dyn Resource,
 ) -> TreeIdentifier {
     let mut bytes = Vec::<u8>::new();
     lgn_data_offline::to_json_writer(resource, &mut bytes).unwrap();
 
-    let resource_id = provider
+    let resource_id = persistent_provider
         .write_resource_from_bytes(&bytes)
         .await
         .expect("write to content-store");
 
     let mut source_manifest =
-        ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), provider).await;
+        ResourceIndex::new_exclusive(persistent_provider, new_resource_type_and_id_indexer()).await;
     source_manifest
-        .add_resource(provider, &id.into(), resource_id)
+        .add_resource(&id.into(), resource_id)
         .await
         .expect("write manifest to content-store");
     source_manifest.id()

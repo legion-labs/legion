@@ -171,7 +171,10 @@ dependencies = [
  "anyhow",
  "async-recursion",
  "async-trait",
+ "aws-config",
+ "aws-sdk-s3",
  "blake3",
+ "bytes",
  "chrono",
  "clap 3.1.18",
  "datafusion",
@@ -4793,11 +4796,13 @@ dependencies = [
  "chrono",
  "clap 3.1.18",
  "http",
+ "http-serde",
  "hyper",
  "lazy_static",
  "lgn-api-codegen",
  "lgn-auth",
  "lgn-cli-utils",
+ "lgn-config",
  "lgn-online",
  "lgn-telemetry-sink",
  "lgn-tracing",
@@ -5201,17 +5206,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-runtime-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
-]
-
-[[package]]
 name = "lgn-scene-plugin"
 version = "0.1.0"
 dependencies = [
@@ -5304,17 +5298,21 @@ dependencies = [
  "atty",
  "aws-config",
  "aws-sdk-s3",
+ "axum",
  "bytes",
  "chrono",
  "clap 3.1.18",
  "futures",
  "http",
+ "hyper",
  "itertools",
+ "lgn-api-codegen",
  "lgn-auth",
+ "lgn-cli-utils",
  "lgn-config",
  "lgn-content-store",
+ "lgn-governance",
  "lgn-online",
- "lgn-source-control-proto",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lz4",
@@ -5325,15 +5323,15 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "serde_qs",
  "sha2 0.10.2",
  "sqlx",
  "tempfile",
  "termcolor",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tokio-util 0.6.10",
- "tonic",
- "tonic-web",
  "tower",
  "tower-http",
  "urlencoding",
@@ -5356,18 +5354,6 @@ dependencies = [
  "libc",
  "tokio",
  "users",
-]
-
-[[package]]
-name = "lgn-source-control-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "prost-types",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -7606,11 +7592,16 @@ dependencies = [
 name = "runtime-srv"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "axum",
  "clap 3.1.18",
  "crossbeam-channel",
  "generic-data",
+ "http",
+ "hyper",
  "instant",
  "lgn-animation",
+ "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -7620,6 +7611,7 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-gilrs",
+ "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-grpc",
@@ -7629,7 +7621,6 @@ dependencies = [
  "lgn-online",
  "lgn-physics",
  "lgn-presenter-window",
- "lgn-runtime-proto",
  "lgn-scene-plugin",
  "lgn-scripting",
  "lgn-scripting-data",
@@ -7642,8 +7633,8 @@ dependencies = [
  "lgn-winit",
  "sample-data",
  "serde",
+ "serde_qs",
  "tokio",
- "tonic",
 ]
 
 [[package]]

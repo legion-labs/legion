@@ -22,7 +22,7 @@ use lgn_resource_registry::{
 };
 use lgn_scene_plugin::ScenePlugin;
 use lgn_scripting_data::ScriptingDataPlugin;
-use lgn_source_control::RepositoryName;
+use lgn_source_control::{BranchName, RepositoryName};
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{debug, info, warn, LevelFilter};
@@ -71,7 +71,7 @@ struct Args {
     repository_name: RepositoryName,
     /// The name of the source control branch to load within the repository.
     #[clap(long, default_value = "main")]
-    branch_name: String,
+    branch_name: BranchName,
     /// Path to default scene (root asset) to load
     #[clap(long)]
     scene: Option<String>,

@@ -15,7 +15,7 @@ use std::{
 
 use clap::Parser;
 use lgn_data_offline::ResourcePathName;
-use lgn_source_control::RepositoryName;
+use lgn_source_control::{BranchName, RepositoryName};
 use sample_data_compiler::{offline_compiler, raw_loader};
 
 fn target_dir() -> PathBuf {
@@ -84,7 +84,7 @@ async fn main() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "sample-data".parse().unwrap();
-    let branch_name = "main";
+    let branch_name: BranchName = "main".parse().unwrap();
 
     // Ensure the repository exists.
     let _index = repository_index.ensure_repository(&repository_name).await;
@@ -105,7 +105,7 @@ async fn main() {
         &absolute_root,
         &repository_index,
         &repository_name,
-        branch_name,
+        &branch_name,
         Arc::clone(&source_control_content_provider),
         true,
     )

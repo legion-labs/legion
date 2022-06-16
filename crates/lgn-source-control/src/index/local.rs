@@ -4,9 +4,9 @@ use async_trait::async_trait;
 use lgn_tracing::prelude::*;
 
 use crate::{
-    Branch, CanonicalPath, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
-    ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result,
-    SqlRepositoryIndex,
+    Branch, BranchName, CanonicalPath, Commit, Error, Index, ListBranchesQuery, ListCommitsQuery,
+    ListLocksQuery, Lock, MapOtherError, NewBranch, NewCommit, RepositoryIndex, RepositoryName,
+    Result, SqlRepositoryIndex, UpdateBranch,
 };
 
 #[derive(Debug, Clone)]
@@ -108,7 +108,7 @@ impl Index for LocalIndex {
         self.inner_index.repository_name()
     }
 
-    async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
+    async fn get_branch(&self, branch_name: &BranchName) -> Result<Branch> {
         async_span_scope!("LocalIndexBackend::get_branch");
         self.inner_index.get_branch(branch_name).await
     }
@@ -118,14 +118,20 @@ impl Index for LocalIndex {
         self.inner_index.list_branches(query).await
     }
 
-    async fn insert_branch(&self, branch: &Branch) -> Result<()> {
+    async fn insert_branch(&self, new_branch: NewBranch) -> Result<Branch> {
         async_span_scope!("LocalIndexBackend::insert_branch");
-        self.inner_index.insert_branch(branch).await
+        self.inner_index.insert_branch(new_branch).await
     }
 
-    async fn update_branch(&self, branch: &Branch) -> Result<()> {
+    async fn update_branch(
+        &self,
+        branch_name: &BranchName,
+        update_branch: UpdateBranch,
+    ) -> Result<Branch> {
         async_span_scope!("LocalIndexBackend::update_branch");
-        self.inner_index.update_branch(branch).await
+        self.inner_index
+            .update_branch(branch_name, update_branch)
+            .await
     }
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
@@ -133,9 +139,15 @@ impl Index for LocalIndex {
         self.inner_index.list_commits(query).await
     }
 
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
+    async fn commit_to_branch(
+        &self,
+        branch_name: &BranchName,
+        new_commit: NewCommit,
+    ) -> Result<Commit> {
         async_span_scope!("LocalIndexBackend::commit_to_branch");
-        self.inner_index.commit_to_branch(commit, branch).await
+        self.inner_index
+            .commit_to_branch(branch_name, new_commit)
+            .await
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {

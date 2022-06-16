@@ -5,7 +5,10 @@ use lgn_online::server::{Error, Result};
 use lgn_tracing::{debug, info};
 
 use crate::{
-    api::streaming::{requests::InitializeStreamRequest, responses::InitializeStreamResponse, Api},
+    api::streaming::{
+        server::{InitializeStreamRequest, InitializeStreamResponse},
+        Api,
+    },
     streamer::StreamEvent,
     webrtc::WebRTCServer,
 };
@@ -35,7 +38,6 @@ impl Server {
 impl Api for Server {
     async fn initialize_stream(
         &self,
-        _parts: http::request::Parts,
         request: InitializeStreamRequest,
     ) -> Result<InitializeStreamResponse> {
         debug!("Initializing a new WebRTC stream connection...");
@@ -44,7 +46,7 @@ impl Api for Server {
             .webrtc_server
             .initialize_stream_connection(request.body.0, Arc::clone(&self.stream_events_sender))
             .await
-            .map_err(|err| Error::Internal(err.to_string()))?;
+            .map_err(|err| Error::internal(err.to_string()))?;
 
         info!("New WebRTC stream connection initialized.");
 

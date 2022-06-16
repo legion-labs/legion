@@ -37,7 +37,8 @@ pub fn fmt_model_name(model: &Model, ctx: &GenerationContext) -> ::askama::Resul
 #[allow(clippy::unnecessary_wraps)]
 pub fn fmt_type(type_: &Type, ctx: &GenerationContext) -> ::askama::Result<String> {
     Ok(match type_ {
-        Type::Int32 | Type::Int64 => "int".to_string(),
+        Type::Any => "Any".to_string(),
+        Type::Int32 | Type::Int64 | Type::UInt32 | Type::UInt64 => "int".to_string(),
         Type::String | Type::Bytes | Type::Binary => "str".to_string(), // at the moment the binary is passed as string
         Type::Boolean => "bool".to_string(),
         Type::Float32 | Type::Float64 => "float".to_string(),
@@ -46,12 +47,14 @@ pub fn fmt_type(type_: &Type, ctx: &GenerationContext) -> ::askama::Result<Strin
         Type::Array(inner) | Type::HashSet(inner) => {
             format!("list[{}]", fmt_type(inner, ctx).unwrap())
         }
+        Type::Map(inner) => format!("dict[string, {}]", fmt_type(inner, ctx).unwrap()),
         Type::Named(ref_) => fmt_model_name(ctx.get_model(ref_)?, ctx)?,
         Type::Enum { .. } | Type::Struct { .. } | Type::OneOf { .. } => {
             return Err(askama::Error::Custom(Box::new(Error::UnsupportedType(
                 "complex types cannot be formatted".to_string(),
             ))))
         }
+        Type::Box(inner) => fmt_type(inner.as_ref(), ctx)?,
     })
 }
 

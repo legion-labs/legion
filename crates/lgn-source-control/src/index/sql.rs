@@ -11,14 +11,14 @@ use sqlx::{
 use std::collections::{BTreeSet, VecDeque};
 
 use crate::{
-    Branch, CanonicalPath, Change, ChangeType, Commit, CommitId, Error, Index, ListBranchesQuery,
-    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, RepositoryIndex, RepositoryName, Result,
+    Branch, BranchName, CanonicalPath, Commit, CommitId, Error, Index, ListBranchesQuery,
+    ListCommitsQuery, ListLocksQuery, Lock, MapOtherError, NewBranch, NewCommit, RepositoryIndex,
+    RepositoryName, Result, UpdateBranch,
 };
 
 const TABLE_REPOSITORIES: &str = "repositories";
 const TABLE_COMMITS: &str = "commits";
 const TABLE_COMMIT_PARENTS: &str = "commit_parents";
-const TABLE_COMMIT_CHANGES: &str = "commit_changes";
 const TABLE_BRANCHES: &str = "branches";
 const TABLE_LOCKS: &str = "locks";
 
@@ -193,18 +193,13 @@ impl SqlRepositoryIndex {
         "CREATE TABLE `{}` (repository_id INTEGER NOT NULL, id INTEGER NOT NULL {} PRIMARY KEY, owner VARCHAR(255), message TEXT, main_index_tree_id CHAR(64), path_index_tree_id CHAR(64), date_time_utc VARCHAR(255), FOREIGN KEY (repository_id) REFERENCES `{}`(id) ON DELETE CASCADE);
          CREATE INDEX repository_id_commit on `{}`(repository_id, id);
          CREATE TABLE `{}` (id INTEGER NOT NULL, parent_id INTEGER NOT NULL);
-         CREATE INDEX commit_parents_id on `{}`(id);
-         CREATE TABLE `{}` (commit_id INTEGER NOT NULL, canonical_path TEXT NOT NULL, old_cs_id VARCHAR(255), new_cs_id VARCHAR(255), FOREIGN KEY (commit_id) REFERENCES `{}`(id) ON DELETE CASCADE);
-         CREATE INDEX commit_changes_commit on `{}`(commit_id);",
+         CREATE INDEX commit_parents_id on `{}`(id);",
          TABLE_COMMITS,
          driver.auto_increment(),
          TABLE_REPOSITORIES,
          TABLE_COMMITS,
          TABLE_COMMIT_PARENTS,
          TABLE_COMMIT_PARENTS,
-         TABLE_COMMIT_CHANGES,
-         TABLE_COMMITS,
-         TABLE_COMMIT_CHANGES
         );
 
         conn.execute(sql)
@@ -394,22 +389,21 @@ impl SqlIndex {
             empty_tree_id(&provider).await.unwrap()
         };
 
-        let initial_commit = Commit::new_unique_now(
+        let initial_commit = NewCommit::new_unique_now(
             whoami::username(),
             String::from("initial commit"),
-            BTreeSet::new(),
             empty_tree_id.clone(),
             empty_tree_id,
             BTreeSet::new(),
         );
 
-        let commit_id =
-            Self::insert_commit_transactional(&mut transaction, repository_id, &initial_commit)
+        let commit =
+            Self::insert_commit_transactional(&mut transaction, repository_id, initial_commit)
                 .await?;
 
-        let main_branch = Branch::new(String::from("main"), commit_id);
+        let main_branch = NewBranch::new("main".parse().unwrap(), commit.id);
 
-        Self::insert_branch_transactional(&mut transaction, repository_id, &main_branch).await?;
+        Self::insert_branch_transactional(&mut transaction, repository_id, main_branch).await?;
 
         transaction.commit().await.map_other_err(format!(
             "failed to commit transaction when creating repository `{}`",
@@ -436,7 +430,7 @@ impl SqlIndex {
     async fn read_branch_for_update<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         &self,
         executor: E,
-        name: &str,
+        branch_name: &BranchName,
     ) -> Result<Branch> {
         let query = match &self.driver {
             SqlDatabaseDriver::Sqlite(_) => format!(
@@ -458,7 +452,7 @@ impl SqlIndex {
 
         let row = sqlx::query(&query)
             .bind(self.repository_id)
-            .bind(name)
+            .bind(branch_name.as_str())
             .fetch_one(executor)
             .await
             .map_other_err(format!(
@@ -467,7 +461,7 @@ impl SqlIndex {
             ))?;
 
         Ok(Branch {
-            name: name.to_string(),
+            name: branch_name.clone(),
             head: CommitId(
                 row.get::<i64, _>("head")
                     .try_into()
@@ -551,7 +545,7 @@ impl SqlIndex {
         {
             Ok(row) => Ok(row.get::<i64, _>("id")),
             Err(sqlx::Error::RowNotFound) => {
-                Err(Error::repository_does_not_exist(repository_name.clone()))
+                Err(Error::repository_not_found(repository_name.clone()))
             }
             Err(err) => {
                 Err(err).map_other_err(format!("failed to fetch repository `{}`", repository_name))
@@ -563,9 +557,9 @@ impl SqlIndex {
     async fn insert_branch_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
-        branch: &Branch,
-    ) -> Result<()> {
-        let head: i64 = branch
+        new_branch: NewBranch,
+    ) -> Result<Branch> {
+        let head: i64 = new_branch
             .head
             .0
             .try_into()
@@ -576,16 +570,17 @@ impl SqlIndex {
             TABLE_BRANCHES
         ))
         .bind(repository_id)
-        .bind(&branch.name)
+        .bind(new_branch.name.as_str())
         .bind(head)
-        .bind(&branch.lock_domain_id)
+        .bind(&new_branch.lock_domain_id)
         .execute(transaction)
         .await
         .map_other_err(&format!(
             "failed to insert the branch `{}` in repository {}",
-            &branch.name, repository_id
-        ))
-        .map(|_| ())
+            &new_branch.name, repository_id
+        ))?;
+
+        Ok(new_branch.clone().into_branch())
     }
 
     #[span_fn]
@@ -621,57 +616,6 @@ impl SqlIndex {
                 *depth -= 1;
             }
 
-            let changes = sqlx::query(&format!(
-                "SELECT canonical_path, old_cs_id, new_cs_id
-             FROM `{}`
-             WHERE commit_id=?;",
-                TABLE_COMMIT_CHANGES,
-            ))
-            .bind(&commit_id)
-            .fetch_all(&mut *transaction)
-            .await
-            .map_other_err(format!(
-                "failed to fetch commit changes for commit `{}`",
-                &commit_id
-            ))?
-            .into_iter()
-            .filter_map(|row| {
-                if let Ok(canonical_path) = CanonicalPath::new(row.get("canonical_path")) {
-                    let old_cs_id: String = row.get("old_cs_id");
-
-                    let old_cs_id = if !old_cs_id.is_empty() {
-                        match old_cs_id
-                            .parse()
-                            .map_other_err("failed to parse the old chunk id")
-                        {
-                            Ok(id) => Some(id),
-                            Err(err) => return Some(Err(err)),
-                        }
-                    } else {
-                        None
-                    };
-
-                    let new_cs_id: String = row.get("new_cs_id");
-                    let new_cs_id = if !new_cs_id.is_empty() {
-                        match new_cs_id
-                            .parse()
-                            .map_other_err("failed to parse the new chunk id")
-                        {
-                            Ok(id) => Some(id),
-                            Err(err) => return Some(Err(err)),
-                        }
-                    } else {
-                        None
-                    };
-
-                    ChangeType::new(old_cs_id, new_cs_id)
-                        .map(|change_type| Ok(Change::new(canonical_path, change_type)))
-                } else {
-                    None
-                }
-            })
-            .collect::<Result<BTreeSet<_>>>()?;
-
             let parents: BTreeSet<i64> = sqlx::query(&format!(
                 "SELECT parent_id
                 FROM `{}`
@@ -693,7 +637,7 @@ impl SqlIndex {
 
             result.push(
                 match sqlx::query(&format!(
-                    "SELECT owner, message, main_index_tree_id, path_index_tree_id, date_time_utc 
+                    "SELECT owner, message, main_index_tree_id, path_index_tree_id, date_time_utc
              FROM `{}`
              WHERE repository_id=?
              AND id=?;",
@@ -726,7 +670,6 @@ impl SqlIndex {
                             ),
                             row.get("owner"),
                             row.get("message"),
-                            changes,
                             row.get::<String, &str>("main_index_tree_id")
                                 .parse()
                                 .unwrap(),
@@ -757,18 +700,18 @@ impl SqlIndex {
     async fn insert_commit_transactional(
         transaction: &mut sqlx::Transaction<'_, sqlx::Any>,
         repository_id: i64,
-        commit: &Commit,
-    ) -> Result<CommitId> {
+        new_commit: NewCommit,
+    ) -> Result<Commit> {
         let result = sqlx::query(&format!(
             "INSERT INTO `{}` VALUES(?, NULL, ?, ?, ?, ?, ?);",
             TABLE_COMMITS
         ))
         .bind(repository_id)
-        .bind(commit.owner.clone())
-        .bind(commit.message.clone())
-        .bind(commit.main_index_tree_id.to_string())
-        .bind(commit.path_index_tree_id.to_string())
-        .bind(commit.timestamp.to_rfc3339())
+        .bind(new_commit.owner.clone())
+        .bind(new_commit.message.clone())
+        .bind(new_commit.main_index_tree_id.to_string())
+        .bind(new_commit.path_index_tree_id.to_string())
+        .bind(new_commit.timestamp.to_rfc3339())
         .execute(&mut *transaction)
         .await
         .map_other_err(format!(
@@ -778,7 +721,7 @@ impl SqlIndex {
 
         let commit_id = result.last_insert_id().unwrap();
 
-        for parent_id in &commit.parents {
+        for parent_id in &new_commit.parents {
             let parent_id: i64 = parent_id
                 .0
                 .try_into()
@@ -793,53 +736,27 @@ impl SqlIndex {
             .execute(&mut *transaction)
             .await
             .map_other_err(format!(
-                "failed to insert the commit parent `{}` for commit `{}`",
-                parent_id, &commit.id
+                "failed to insert the commit parent `{}` for commit `{:?}`",
+                parent_id, &new_commit
             ))?;
         }
 
-        for change in &commit.changes {
-            sqlx::query(&format!(
-                "INSERT INTO `{}` VALUES(?, ?, ?, ?);",
-                TABLE_COMMIT_CHANGES
-            ))
-            .bind(commit_id)
-            .bind(change.canonical_path().to_string())
-            .bind(
-                change
-                    .change_type()
-                    .old_id()
-                    .map(std::string::ToString::to_string)
-                    .unwrap_or_default(),
-            )
-            .bind(
-                change
-                    .change_type()
-                    .new_id()
-                    .map(std::string::ToString::to_string)
-                    .unwrap_or_default(),
-            )
-            .execute(&mut *transaction)
-            .await
-            .map_other_err(format!(
-                "failed to insert the commit change for commit `{}`",
-                &commit.id
-            ))?;
-        }
-
-        Ok(CommitId(
+        let commit_id = CommitId(
             commit_id
                 .try_into()
                 .map_other_err("failed to convert commit id")?,
-        ))
+        );
+
+        Ok(new_commit.into_commit(commit_id))
     }
 
     async fn update_branch_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
         executor: E,
         repository_id: i64,
-        branch: &Branch,
-    ) -> Result<()> {
-        let head: i64 = branch
+        branch_name: &BranchName,
+        update_branch: UpdateBranch,
+    ) -> Result<Branch> {
+        let head: i64 = update_branch
             .head
             .0
             .try_into()
@@ -850,17 +767,17 @@ impl SqlIndex {
             TABLE_BRANCHES
         ))
         .bind(head)
-        .bind(branch.lock_domain_id.clone())
+        .bind(update_branch.lock_domain_id.as_str())
         .bind(repository_id)
-        .bind(branch.name.clone())
+        .bind(branch_name.as_str())
         .execute(executor)
         .await
         .map_other_err(format!(
             "failed to update the `{}` branch in repository {}",
-            &branch.name, repository_id
+            branch_name, repository_id
         ))?;
 
-        Ok(())
+        Ok(update_branch.into_branch(branch_name.clone()))
     }
 
     async fn get_lock_transactional<'e, E: sqlx::Executor<'e, Database = sqlx::Any>>(
@@ -911,58 +828,66 @@ impl Index for SqlIndex {
         &self.repository_name
     }
 
-    async fn insert_branch(&self, branch: &Branch) -> Result<()> {
+    async fn insert_branch(&self, new_branch: NewBranch) -> Result<Branch> {
         async_span_scope!("SqlIndex::insert_branch");
         let mut transaction = self.get_transaction().await?;
 
-        Self::insert_branch_transactional(&mut transaction, self.repository_id, branch).await?;
+        let branch =
+            Self::insert_branch_transactional(&mut transaction, self.repository_id, new_branch)
+                .await?;
 
-        transaction
-            .commit()
-            .await
-            .map_other_err(format!(
-                "failed to commit transaction when inserting branch `{}`",
-                branch.name
-            ))
-            .map(|_| ())
+        transaction.commit().await.map_other_err(format!(
+            "failed to commit transaction when inserting branch `{}`",
+            branch.name
+        ))?;
+
+        Ok(branch)
     }
 
-    async fn update_branch(&self, branch: &Branch) -> Result<()> {
+    async fn update_branch(
+        &self,
+        branch_name: &BranchName,
+        update_branch: UpdateBranch,
+    ) -> Result<Branch> {
         async_span_scope!("SqlIndex::update_branch");
         let mut transaction = self.get_transaction().await?;
 
-        Self::update_branch_transactional(&mut transaction, self.repository_id, branch).await?;
+        let branch = Self::update_branch_transactional(
+            &mut transaction,
+            self.repository_id,
+            branch_name,
+            update_branch,
+        )
+        .await?;
 
-        transaction
-            .commit()
-            .await
-            .map_other_err(&format!(
-                "failed to commit transaction while updating branch `{}`",
-                &branch.name
-            ))
-            .map(|_| ())
+        transaction.commit().await.map_other_err(&format!(
+            "failed to commit transaction while updating branch `{}`",
+            branch_name
+        ))?;
+
+        Ok(branch)
     }
 
-    async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
+    async fn get_branch(&self, branch_name: &BranchName) -> Result<Branch> {
         async_span_scope!("SqlIndex::get_branch");
         let mut conn = self.get_conn().await?;
 
         match sqlx::query(&format!(
-            "SELECT head, lock_domain_id 
+            "SELECT head, lock_domain_id
              FROM `{}`
              WHERE repository_id=?
              AND name = ?;",
             TABLE_BRANCHES
         ))
         .bind(self.repository_id)
-        .bind(branch_name)
+        .bind(branch_name.as_str())
         .fetch_optional(&mut conn)
         .await
         .map_other_err(format!("error fetching branch `{}`", branch_name))?
         {
-            None => Err(Error::branch_not_found(branch_name.to_string())),
+            None => Err(Error::branch_not_found(branch_name.clone())),
             Some(row) => Ok(Branch {
-                name: branch_name.to_string(),
+                name: branch_name.clone(),
                 head: CommitId(
                     row.get::<i64, _>("head")
                         .try_into()
@@ -979,7 +904,7 @@ impl Index for SqlIndex {
 
         match query.lock_domain_id {
             Some(lock_domain_id) => sqlx::query(&format!(
-                "SELECT name, head 
+                "SELECT name, head
              FROM `{}`
              WHERE repository_id=?
              AND lock_domain_id=?;",
@@ -996,7 +921,7 @@ impl Index for SqlIndex {
             .into_iter()
             .map(|row| {
                 Ok(Branch {
-                    name: row.get("name"),
+                    name: row.get::<String, _>("name").parse()?,
                     head: CommitId(
                         row.get::<i64, _>("head")
                             .try_into()
@@ -1007,7 +932,7 @@ impl Index for SqlIndex {
             })
             .collect(),
             None => sqlx::query(&format!(
-                "SELECT name, head, lock_domain_id 
+                "SELECT name, head, lock_domain_id
              FROM `{}`
              WHERE repository_id=?;",
                 TABLE_BRANCHES
@@ -1019,7 +944,7 @@ impl Index for SqlIndex {
             .into_iter()
             .map(|row| {
                 Ok(Branch {
-                    name: row.get("name"),
+                    name: row.get::<String, _>("name").parse()?,
                     head: CommitId(
                         row.get::<i64, _>("head")
                             .try_into()
@@ -1047,31 +972,46 @@ impl Index for SqlIndex {
         Ok(result)
     }
 
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
+    async fn commit_to_branch(
+        &self,
+        branch_name: &BranchName,
+        new_commit: NewCommit,
+    ) -> Result<Commit> {
         async_span_scope!("SqlIndex::commit_to_branch");
         let mut transaction = self.get_transaction().await?;
 
         let stored_branch = self
-            .read_branch_for_update(&mut transaction, &branch.name)
+            .read_branch_for_update(&mut transaction, branch_name)
             .await?;
 
-        if &stored_branch != branch {
+        // We consider the branch staled if *all* the parent commit ids differ from the current branch head.
+        if new_commit
+            .parents
+            .iter()
+            .all(|parent| stored_branch.head != *parent)
+        {
             return Err(Error::stale_branch(stored_branch));
         }
 
-        let new_branch = branch.advance(
-            Self::insert_commit_transactional(&mut transaction, self.repository_id, commit).await?,
-        );
+        let commit =
+            Self::insert_commit_transactional(&mut transaction, self.repository_id, new_commit)
+                .await?;
 
-        Self::update_branch_transactional(&mut transaction, self.repository_id, &new_branch)
-            .await?;
+        let update_branch = stored_branch.advance(commit.id);
+        Self::update_branch_transactional(
+            &mut transaction,
+            self.repository_id,
+            branch_name,
+            update_branch,
+        )
+        .await?;
 
         transaction.commit().await.map_other_err(&format!(
-            "failed to commit transaction while committing commit `{}` to branch `{}`",
-            &commit.id, &branch.name
+            "failed to commit transaction while committing commit `{:?}` to branch `{}`",
+            &commit, branch_name
         ))?;
 
-        Ok(new_branch.head)
+        Ok(commit)
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {
@@ -1093,8 +1033,8 @@ impl Index for SqlIndex {
                     TABLE_LOCKS
                 ))
                 .bind(self.repository_id)
-                .bind(lock.canonical_path.to_string())
                 .bind(lock.lock_domain_id.clone())
+                .bind(lock.canonical_path.to_string())
                 .bind(lock.workspace_id.clone())
                 .bind(lock.branch_name.clone())
                 .execute(&mut transaction)

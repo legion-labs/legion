@@ -2,16 +2,17 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, ReferencedResources, ResourceIdentifier, ResourceIndex,
-        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeIdentifier,
+        BasicIndexer, IndexKey, IndexKeyDisplayFormat, ResourceIdentifier, ResourceIndex,
+        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
+        TreeIdentifier, TreeLeafNode,
     },
     ContentAsyncReadWithOriginAndSize, Provider,
 };
-use lgn_tracing::error;
+use tokio_stream::StreamExt;
 
 use crate::{
-    Branch, Change, Commit, CommitId, Error, Index, ListBranchesQuery, ListCommitsQuery,
-    RepositoryIndex, RepositoryName, Result,
+    Branch, BranchName, ChangeType, Commit, Error, Index, ListBranchesQuery, ListCommitsQuery,
+    NewCommit, RepositoryIndex, RepositoryName, Result,
 };
 
 /// Represents a workspace.
@@ -20,8 +21,8 @@ where
     MainIndexer: BasicIndexer + Clone + Sync,
 {
     index: Box<dyn Index>,
-    transaction: Provider,
-    branch_name: String,
+    persistent_provider: Arc<Provider>,
+    branch_name: BranchName,
     main_index: ResourceIndex<MainIndexer>,
     path_index: ResourceIndex<StringPathIndexer>,
 }
@@ -69,26 +70,29 @@ where
     pub async fn new(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        branch_name: &str,
-        provider: Arc<Provider>,
+        branch_name: &BranchName,
+        persistent_provider: Arc<Provider>,
         main_indexer: MainIndexer,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
         let branch = index.get_branch(branch_name).await?;
-        let commit = index.get_commit(branch.head).await?;
-
+        let commit = index.get_commit(branch_name, branch.head).await?;
+        let main_index = ResourceIndex::new_shared_with_raw_id(
+            Arc::clone(&persistent_provider),
+            main_indexer,
+            commit.main_index_tree_id,
+        );
+        let path_index = ResourceIndex::new_exclusive_with_id(
+            Arc::clone(&persistent_provider),
+            StringPathIndexer::default(),
+            commit.path_index_tree_id,
+        );
         Ok(Self {
             index,
-            transaction: provider.begin_transaction_in_memory(),
-            branch_name: branch_name.to_owned(),
-            main_index: ResourceIndex::new_shared_with_raw_id(
-                main_indexer,
-                commit.main_index_tree_id,
-            ),
-            path_index: ResourceIndex::new_exclusive_with_id(
-                StringPathIndexer::default(),
-                commit.path_index_tree_id,
-            ),
+            persistent_provider,
+            branch_name: branch_name.clone(),
+            main_index,
+            path_index,
         })
     }
 
@@ -115,19 +119,16 @@ where
     async fn get_current_commit(&self) -> Result<Commit> {
         let current_branch = self.get_current_branch().await?;
 
-        self.index.get_commit(current_branch.head).await
-    }
-
-    /// Get the current transaction/provider
-    pub fn get_provider(&self) -> &Provider {
-        &self.transaction
+        self.index
+            .get_commit(&current_branch.name, current_branch.head)
+            .await
     }
 
     pub async fn get_resource_identifier(
         &self,
         id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>> {
-        self.get_resource_identifier_from_index(&self.main_index, id)
+        self.get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
             .await
     }
 
@@ -136,28 +137,54 @@ where
         path: &str,
     ) -> Result<Option<ResourceIdentifier>> {
         if path.len() > 1 {
-            self.get_resource_identifier_from_index(&self.path_index, &path.into())
-                .await
+            self.get_resource_identifier_from_index(
+                &self.path_index,
+                &path.into(),
+                IndexKeyDisplayFormat::Utf8,
+            )
+            .await
         } else {
             // path is invalid, too short
-            Err(Error::InvalidPath {
-                path: path.to_owned(),
-            })
+            Err(Error::invalid_path(path))
         }
     }
 
+    #[allow(unused_variables)]
     async fn get_resource_identifier_from_index<Indexer>(
         &self,
         index: &ResourceIndex<Indexer>,
         id: &IndexKey,
+        format: IndexKeyDisplayFormat,
     ) -> Result<Option<ResourceIdentifier>>
     where
         Indexer: BasicIndexer + Sync,
     {
-        index
-            .get_identifier(&self.transaction, id)
+        let result = index
+            .get_identifier(id)
             .await
-            .map_err(Error::ContentStoreIndexing)
+            .map_err(Error::ContentStoreIndexing);
+
+        #[cfg(feature = "verbose")]
+        {
+            print!(
+                "\nlookup resource '{}' in index {}",
+                id.format(format),
+                index.id()
+            );
+            match &result {
+                Ok(Some(resource_id)) => {
+                    println!(" -> {}", resource_id);
+                }
+                Ok(None) => {
+                    println!(" -> not found",);
+                }
+                Err(err) => {
+                    println!(": FAILED, {}", err);
+                }
+            }
+        }
+
+        result
     }
 
     pub async fn resource_exists(&self, id: &IndexKey) -> Result<bool> {
@@ -172,15 +199,19 @@ where
 
     pub async fn load_resource(&self, id: &IndexKey) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.main_index, id)
+            .get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
             #[cfg(feature = "verbose")]
-            println!("reading resource '{}' -> {}", id.to_hex(), resource_id);
+            println!(
+                "\nreading resource '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
+                resource_id
+            );
             Ok((resource_bytes, resource_id))
         } else {
-            Err(Error::ResourceNotFoundById { id: id.clone() })
+            Err(Error::resource_not_found_by_id(id.clone()))
         }
     }
 
@@ -189,11 +220,11 @@ where
         id: &IndexKey,
     ) -> Result<(ContentAsyncReadWithOriginAndSize, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.main_index, id)
+            .get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
             .await?
         {
             if let Ok(reader) = self
-                .transaction
+                .persistent_provider
                 .get_reader(resource_id.as_identifier())
                 .await
             {
@@ -205,50 +236,45 @@ where
 
     pub async fn load_resource_by_path(&self, path: &str) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.path_index, &path.into())
+            .get_resource_identifier_from_index(
+                &self.path_index,
+                &path.into(),
+                IndexKeyDisplayFormat::Utf8,
+            )
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
             #[cfg(feature = "verbose")]
-            println!("reading resource '{}' -> {}", path, resource_id);
+            println!("\nreading resource '{}' -> {}", path, resource_id);
             Ok((resource_bytes, resource_id))
         } else {
-            Err(Error::ResourceNotFoundByPath {
-                path: path.to_owned(),
-            })
+            Err(Error::resource_not_found_by_path(path))
         }
     }
 
     pub async fn load_resource_by_id(&self, resource_id: &ResourceIdentifier) -> Result<Vec<u8>> {
-        match self.transaction.read_resource_as_bytes(resource_id).await {
-            Ok(resource_bytes) => Ok(resource_bytes),
-            Err(e) => {
-                #[cfg(feature = "verbose")]
-                {
-                    eprintln!("failed to read resource '{}': {}", resource_id, e,);
-                    self.dump_all_indices(Some(resource_id)).await;
-                }
-
-                Err(Error::ContentStoreIndexing(e))
-            }
-        }
+        Ok(self
+            .persistent_provider
+            .read_resource_as_bytes(resource_id)
+            .await?)
     }
 
     pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         let commit = self.get_current_commit().await?;
         let commit_manifest = ResourceIndex::new_exclusive_with_id(
+            Arc::clone(self.main_index.provider()),
             self.main_index.indexer().clone(),
             commit.main_index_tree_id,
         );
         commit_manifest
-            .enumerate_resources(&self.transaction)
+            .enumerate_resources()
             .await
             .map_err(Error::ContentStoreIndexing)
     }
 
     pub async fn get_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         self.main_index
-            .enumerate_resources(&self.transaction)
+            .enumerate_resources()
             .await
             .map_err(Error::ContentStoreIndexing)
     }
@@ -258,16 +284,15 @@ where
     }
 
     #[cfg(feature = "verbose")]
-    async fn dump_index<Indexer, F>(
+    async fn dump_index<Indexer>(
         &self,
         index: &ResourceIndex<Indexer>,
         resource_id: Option<&ResourceIdentifier>,
-        f: F,
+        format: IndexKeyDisplayFormat,
     ) where
         Indexer: BasicIndexer + Sync,
-        F: Fn(&IndexKey) -> String,
     {
-        if let Ok(contents) = index.enumerate_resources(&self.transaction).await {
+        if let Ok(contents) = index.enumerate_resources().await {
             match resource_id {
                 Some(resource_id) => {
                     if let Some((index_key, resource_id)) = contents
@@ -277,7 +302,7 @@ where
                         println!(
                             "index: {}, [{}] -> {}",
                             index.id(),
-                            f(index_key),
+                            index_key.format(format),
                             resource_id
                         );
                     }
@@ -285,7 +310,7 @@ where
                 None => {
                     println!("contents of index '{}'", index.id());
                     for (index_key, resource_id) in contents {
-                        println!("[{}] -> {}", f(&index_key), resource_id);
+                        println!("[{}] -> {}", index_key.format(format), resource_id);
                     }
                 }
             }
@@ -294,12 +319,10 @@ where
 
     #[cfg(feature = "verbose")]
     async fn dump_all_indices(&self, resource_id: Option<&ResourceIdentifier>) {
-        self.dump_index(&self.main_index, resource_id, IndexKey::to_hex)
+        self.dump_index(&self.main_index, resource_id, IndexKeyDisplayFormat::Hex)
             .await;
-        self.dump_index(&self.path_index, resource_id, |index_key| {
-            std::str::from_utf8(index_key.as_ref()).unwrap().to_owned()
-        })
-        .await;
+        self.dump_index(&self.path_index, resource_id, IndexKeyDisplayFormat::Utf8)
+            .await;
     }
 
     /// Add a resource to the local changes.
@@ -312,20 +335,23 @@ where
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
+        let resource_identifier = self
+            .persistent_provider
+            .write_resource_from_bytes(contents)
+            .await?;
 
         self.main_index
-            .add_resource(&self.transaction, id, resource_identifier.clone())
+            .add_resource(id, resource_identifier.clone())
             .await?;
         self.path_index
-            .add_resource(&self.transaction, &path.into(), resource_identifier.clone())
+            .add_resource(&path.into(), resource_identifier.clone())
             .await?;
 
         #[cfg(feature = "verbose")]
         {
             println!(
-                "adding resource '{}', path: '{}' -> {}",
-                id.to_hex(),
+                "\nadding resource '{}', path: '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
                 path,
                 resource_identifier,
             );
@@ -342,15 +368,18 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
+        let resource_identifier = self
+            .persistent_provider
+            .write_resource_from_bytes(contents)
+            .await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
             #[cfg(feature = "verbose")]
             {
                 println!(
-                    "updating resource '{}', path: '{}' -> {}...",
-                    id.to_hex(),
+                    "\nupdating resource '{}', path: '{}' -> {}...",
+                    id.format(IndexKeyDisplayFormat::Hex),
                     path,
                     old_identifier,
                 );
@@ -360,21 +389,23 @@ where
             // update indices
             let _replaced_id = self
                 .main_index
-                .replace_resource(&self.transaction, id, resource_identifier.clone())
+                .replace_resource(id, resource_identifier.clone())
                 .await?;
             let _replaced_id = self
                 .path_index
-                .replace_resource(&self.transaction, &path.into(), resource_identifier.clone())
+                .replace_resource(&path.into(), resource_identifier.clone())
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.transaction.unwrite_resource(old_identifier).await?;
+            self.persistent_provider
+                .unwrite_resource(old_identifier)
+                .await?;
 
             #[cfg(feature = "verbose")]
             {
                 println!(
                     "... to resource '{}', path: '{}' -> {}",
-                    id.to_hex(),
+                    id.format(IndexKeyDisplayFormat::Hex),
                     path,
                     resource_identifier,
                 );
@@ -393,15 +424,18 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
+        let resource_identifier = self
+            .persistent_provider
+            .write_resource_from_bytes(contents)
+            .await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
             #[cfg(feature = "verbose")]
             {
                 println!(
-                    "renaming resource '{}', path: '{}' -> {}...",
-                    id.to_hex(),
+                    "\nrenaming resource '{}', path: '{}' -> {}...",
+                    id.format(IndexKeyDisplayFormat::Hex),
                     old_path,
                     old_identifier,
                 );
@@ -411,32 +445,27 @@ where
             // update indices
             let replaced_id = self
                 .main_index
-                .replace_resource(&self.transaction, id, resource_identifier.clone())
+                .replace_resource(id, resource_identifier.clone())
                 .await?;
             assert_eq!(&replaced_id, old_identifier);
 
-            let removed_id = self
-                .path_index
-                .remove_resource(&self.transaction, &old_path.into())
-                .await?;
+            let removed_id = self.path_index.remove_resource(&old_path.into()).await?;
             assert_eq!(&removed_id, old_identifier);
 
             self.path_index
-                .add_resource(
-                    &self.transaction,
-                    &new_path.into(),
-                    resource_identifier.clone(),
-                )
+                .add_resource(&new_path.into(), resource_identifier.clone())
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.transaction.unwrite_resource(old_identifier).await?;
+            self.persistent_provider
+                .unwrite_resource(old_identifier)
+                .await?;
 
             #[cfg(feature = "verbose")]
             {
                 println!(
                     "... to resource '{}', path: '{}' -> {}",
-                    id.to_hex(),
+                    id.format(IndexKeyDisplayFormat::Hex),
                     new_path,
                     resource_identifier,
                 );
@@ -457,25 +486,21 @@ where
         path: &str,
     ) -> Result<ResourceIdentifier> {
         // remove from main index
-        let resource_id = self
-            .main_index
-            .remove_resource(&self.transaction, id)
-            .await?;
+        let resource_id = self.main_index.remove_resource(id).await?;
 
-        let removed_id = self
-            .path_index
-            .remove_resource(&self.transaction, &path.into())
-            .await?;
+        let removed_id = self.path_index.remove_resource(&path.into()).await?;
         assert_eq!(resource_id, removed_id);
 
         // unwrite resource from content-store
-        self.transaction.unwrite_resource(&resource_id).await?;
+        self.persistent_provider
+            .unwrite_resource(&resource_id)
+            .await?;
 
         #[cfg(feature = "verbose")]
         {
             println!(
-                "deleting resource '{}', path: '{}' -> {}",
-                id.to_hex(),
+                "\ndeleting resource '{}', path: '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
                 std::str::from_utf8(path.as_ref()).unwrap(),
                 resource_id,
             );
@@ -506,144 +531,131 @@ where
     }
     */
 
-    /*
-    /// Revert local changes to files and unstage them.
-    ///
-    /// The list of reverted files is returned. If none of the files had changes
-    /// - staged or not - an empty list is returned and call still succeeds.
-    pub async fn revert_files(
-        &self,
-        paths: impl IntoIterator<Item = &Path> + Clone,
-        staging: Staging,
-    ) -> Result<BTreeSet<CanonicalPath>> {
-        debug!(
-            "revert_files: {}",
-            paths
-                .clone()
-                .into_iter()
-                .map(std::path::Path::display)
-                .join(", ")
-        );
+    pub async fn revert_resource(&self, _id: &IndexKey, _path: &str) -> Result<ResourceIdentifier> {
+        Err(Error::Unspecified("todo: revert_resource".to_owned()))
+    }
 
-        let canonical_paths = self.to_canonical_paths(paths).await?;
+    pub async fn get_pending_changes(&self) -> Result<Vec<(IndexKey, ChangeType)>> {
+        let commit_index_id = self.get_current_commit().await?.main_index_tree_id;
+        let main_index_id = self.main_index.id();
 
-        let (staged_changes, mut unstaged_changes) = self.status(staging).await?;
+        let mut leaves = self
+            .main_index
+            .indexer()
+            .diff_leaves(self.main_index.provider(), &commit_index_id, &main_index_id)
+            .await?
+            .map(|(side, index_key, leaf)| match leaf {
+                Ok(leaf) => match leaf {
+                    TreeLeafNode::Resource(resource_id) => Ok((index_key, side, resource_id)),
+                    TreeLeafNode::TreeRoot(_) => {
+                        Err(lgn_content_store::indexing::Error::CorruptedTree(
+                            "found unexpected tree-root node".to_owned(),
+                        ))
+                    }
+                },
+                Err(err) => Err(err),
+            })
+            .collect::<Result<Vec<_>, lgn_content_store::indexing::Error>>()
+            .await?;
+        leaves.sort();
+        let mut leaves = leaves.into_iter();
 
-        let mut changes_to_clear = vec![];
-        let mut changes_to_ignore = vec![];
-        let mut changes_to_save = vec![];
-
-        let is_selected = |path| -> bool {
-            for p in &canonical_paths {
-                if p.contains(path) {
-                    return true;
-                }
+        let mut changes = Vec::new();
+        if let Some((mut previous_index_key, mut previous_side, mut previous_resource_id)) =
+            leaves.next()
+        {
+            if previous_side == TreeDiffSide::Right {
+                changes.push((
+                    previous_index_key.clone(),
+                    ChangeType::Add {
+                        new_id: previous_resource_id.clone(),
+                    },
+                ));
             }
 
-            false
-        };
+            for (index_key, side, resource_id) in leaves.by_ref() {
+                if side == TreeDiffSide::Right {
+                    if previous_side == TreeDiffSide::Left {
+                        // pattern: Left, Right -> Edit | (Delete, Add)
+                        if index_key == previous_index_key {
+                            // same index-key in both trees
+                            changes.push((
+                                previous_index_key.clone(),
+                                ChangeType::Edit {
+                                    old_id: previous_resource_id.clone(),
+                                    new_id: resource_id.clone(),
+                                },
+                            ));
+                        } else {
+                            // keys don't match, so left entry represents something deleted ...
+                            changes.push((
+                                previous_index_key.clone(),
+                                ChangeType::Delete {
+                                    old_id: previous_resource_id.clone(),
+                                },
+                            ));
+                            // ... and right entry something added
+                            changes.push((
+                                index_key.clone(),
+                                ChangeType::Add {
+                                    new_id: resource_id.clone(),
+                                },
+                            ));
+                        }
+                    } else {
+                        // pattern: Right, Right -> (Add | Edit), Add
+                        changes.push((
+                            index_key.clone(),
+                            ChangeType::Add {
+                                new_id: resource_id.clone(),
+                            },
+                        ));
+                    }
+                } else {
+                    // side == TreeDiffSide::Left
 
-        for (canonical_path, staged_change) in
-            staged_changes.iter().filter(|(path, _)| is_selected(path))
-        {
-            match staged_change.change_type() {
-                ChangeType::Add { .. } => {
-                    changes_to_clear.push(staged_change.clone());
-                }
-                ChangeType::Edit { old_id, new_id } => {
-                    // Only remove local changes if we are not reverting staged changes only.
-                    match staging {
-                        Staging::UnstagedOnly => {
-                            // We should never end-up here.
-                            unreachable!();
-                        }
-                        Staging::StagedOnly => {
-                            if new_id != old_id {
-                                changes_to_save.push(Change::new(
-                                    canonical_path.clone(),
-                                    ChangeType::Edit {
-                                        old_id: old_id.clone(),
-                                        new_id: old_id.clone(),
-                                    },
-                                ));
-                                changes_to_clear.push(staged_change.clone());
-                            }
-                        }
-                        Staging::StagedAndUnstaged => {
-                            self.download_file(old_id, canonical_path, Some(true))
-                                .await?;
-                            changes_to_clear.push(staged_change.clone());
-
-                            // Let's avoid reverting things twice.
-                            unstaged_changes.remove(canonical_path);
-                        }
+                    if previous_side == TreeDiffSide::Left {
+                        // pattern: Left, Left -> Delete, (Delete | Edit)
+                        changes.push((
+                            previous_index_key.clone(),
+                            ChangeType::Delete {
+                                old_id: previous_resource_id.clone(),
+                            },
+                        ));
+                    } else {
+                        // pattern: Right, Left -> (Add | Edit), (Delete | Edit)
+                        // do nothing, either was already handled, or will be handled next iteration
                     }
                 }
-                ChangeType::Delete { old_id } => {
-                    self.download_file(old_id, canonical_path, Some(true))
-                        .await?;
-                    changes_to_clear.push(staged_change.clone());
-                }
+
+                previous_index_key = index_key;
+                previous_side = side;
+                previous_resource_id = resource_id;
+            }
+
+            if previous_side == TreeDiffSide::Left {
+                // ended with left-side, so must be a deletion (since it can't be an edit without matching right side)
+                changes.push((
+                    previous_index_key,
+                    ChangeType::Delete {
+                        old_id: previous_resource_id,
+                    },
+                ));
             }
         }
 
-        for (canonical_path, unstaged_change) in unstaged_changes
-            .iter()
-            .filter(|(path, _)| is_selected(path))
+        #[cfg(feature = "verbose")]
         {
-            match unstaged_change.change_type() {
-                ChangeType::Add { .. } => {}
-                ChangeType::Edit { old_id, .. } | ChangeType::Delete { old_id } => {
-                    let read_only = match staging {
-                        Staging::StagedAndUnstaged => Some(true),
-                        Staging::StagedOnly => unreachable!(),
-                        Staging::UnstagedOnly => None,
-                    };
-
-                    self.download_file(old_id, canonical_path, read_only)
-                        .await?;
-                }
+            println!(
+                "\npending changes, comparing commit {} with {}",
+                commit_index_id, main_index_id
+            );
+            for (index_key, change_type) in &changes {
+                println!("{}, {}", index_key, change_type);
             }
-
-            changes_to_ignore.push(unstaged_change.clone());
-
-            //assert_not_locked(workspace, &abs_path).await?;
         }
 
-        self.backend.clear_staged_changes(&changes_to_clear).await?;
-        self.backend.save_staged_changes(&changes_to_save).await?;
-
-        Ok(changes_to_clear
-            .into_iter()
-            .chain(changes_to_ignore.into_iter())
-            .map(Into::into)
-            .collect())
-    }
-    */
-
-    /// Does the current transaction hold any changes that have not yet been committed?
-    pub async fn has_pending_changes(&self) -> bool {
-        self.transaction.has_references().await
-    }
-
-    pub async fn get_pending_changes(&self) -> Result<Vec<IndexKey>> {
-        let pending_resources = self.transaction.referenced_resources().await;
-        let indexed_resources = self.get_resources().await?;
-        Ok(pending_resources
-            .into_iter()
-            .filter_map(|resource_id| {
-                indexed_resources
-                    .iter()
-                    .find_map(|(index_key, matched_id)| {
-                        if matched_id == &resource_id {
-                            Some(index_key)
-                        } else {
-                            None
-                        }
-                    })
-            })
-            .cloned()
-            .collect())
+        Ok(changes)
     }
 
     /// Commit the changes in the workspace.
@@ -652,18 +664,12 @@ where
     ///
     /// The commit id.
     pub async fn commit(&mut self, message: &str, behavior: CommitMode) -> Result<Commit> {
-        let transaction = std::mem::replace(&mut self.transaction, Provider::new_in_memory());
-        let provider = match transaction.commit_transaction().await {
-            Ok(provider) => provider,
-            Err((provider, e)) => {
-                error!("failed to commit to content-store: {}", e);
-                provider
-            }
-        };
-
         let current_branch = self.get_current_branch().await?;
         let mut branch = self.index.get_branch(&current_branch.name).await?;
-        let commit = self.index.get_commit(current_branch.head).await?;
+        let commit = self
+            .index
+            .get_commit(&current_branch.name, current_branch.head)
+            .await?;
 
         // Early check in case we are out-of-date long before making the commit.
         if branch.head != current_branch.head {
@@ -678,16 +684,18 @@ where
         }
 
         let commit = if !empty_commit {
-            let mut commit = Commit::new_unique_now(
+            let new_commit = NewCommit::new_unique_now(
                 whoami::username(),
                 message,
-                commit.changes.clone(),
                 self.main_index.id(),
                 self.path_index.id(),
                 BTreeSet::from([commit.id]),
             );
 
-            commit.id = self.index.commit_to_branch(&commit, &branch).await?;
+            let commit = self
+                .index
+                .commit_to_branch(&branch.name, new_commit)
+                .await?;
 
             branch.head = commit.id;
 
@@ -695,8 +703,6 @@ where
         } else {
             commit
         };
-
-        self.transaction = provider.begin_transaction_in_memory();
 
         Ok(commit)
     }
@@ -769,26 +775,26 @@ where
 
     /// Get the current branch.
     pub async fn get_current_branch(&self) -> Result<Branch> {
-        self.index.get_branch(self.branch_name.as_str()).await
+        self.index.get_branch(&self.branch_name).await
     }
 
     /// Create a branch with the given name and the current commit as its head.
     ///
     /// The newly created branch will be a descendant of the current branch and
     /// share the same lock domain.
-    pub async fn create_branch(&mut self, branch_name: &str) -> Result<Branch> {
+    pub async fn create_branch(&mut self, branch_name: &BranchName) -> Result<Branch> {
         let current_branch = self.get_current_branch().await?;
 
-        if branch_name == current_branch.name {
+        if branch_name == &current_branch.name {
             return Err(Error::already_on_branch(current_branch.name));
         }
 
-        let new_branch = current_branch.branch_out(branch_name.to_owned());
+        let new_branch = current_branch.branch_out(branch_name.clone());
 
-        self.index.insert_branch(&new_branch).await?;
-        self.branch_name = new_branch.name.clone();
+        let branch = self.index.insert_branch(new_branch).await?;
+        self.branch_name = branch.name.clone();
 
-        Ok(new_branch)
+        Ok(branch)
     }
 
     /// Detach the current branch from its parent.
@@ -797,13 +803,12 @@ where
     ///
     /// The resulting branch is detached and now uses its own lock domain.
     pub async fn detach_branch(&self) -> Result<Branch> {
-        let mut current_branch = self.get_current_branch().await?;
+        let current_branch = self.get_current_branch().await?;
 
-        current_branch.detach();
+        let new_branch = current_branch.detach();
+        let branch = self.index.insert_branch(new_branch).await?;
 
-        self.index.insert_branch(&current_branch).await?;
-
-        Ok(current_branch)
+        Ok(branch)
     }
 
     /// Attach the current branch to the specified branch.
@@ -812,16 +817,15 @@ where
     ///
     /// The resulting branch is attached and now uses the same lock domain as
     /// its parent.
-    pub async fn attach_branch(&self, branch_name: &str) -> Result<Branch> {
-        let mut current_branch = self.get_current_branch().await?;
+    pub async fn attach_branch(&self, branch_name: &BranchName) -> Result<Branch> {
+        let current_branch = self.get_current_branch().await?;
         let parent_branch = self.index.get_branch(branch_name).await?;
 
-        current_branch.attach(&parent_branch);
-
-        self.index.insert_branch(&current_branch).await?;
+        let new_branch = current_branch.attach(&parent_branch);
+        let branch = self.index.insert_branch(new_branch).await?;
         // self.backend.set_current_branch(&current_branch).await?;
 
-        Ok(current_branch)
+        Ok(branch)
     }
 
     /// Get the branches in the repository.
@@ -834,11 +838,11 @@ where
             .collect())
     }
 
+    /*
     /// Switch to a different branch and updates the current files.
     ///
     /// Returns the commit id of the new branch as well as the changes.
-    pub async fn switch_branch(&self, _branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
-        /*
+    pub async fn switch_branch(&self, _branch_name: &BranchName) -> Result<(Branch, BTreeSet<Change>)> {
         let current_branch = self.get_current_branch().await?;
 
         if branch_name == current_branch.name {
@@ -856,10 +860,11 @@ where
         self.backend.set_current_branch(&branch).await?;
 
         Ok((branch, changes))
-        */
         Err(Error::Unspecified("todo".to_owned()))
     }
+    */
 
+    /*
     /// Sync the current branch to its latest commit.
     ///
     /// # Returns
@@ -872,7 +877,9 @@ where
 
         Ok((current_branch, changes))
     }
+    */
 
+    /*
     /// Sync the current branch with the specified commit.
     ///
     /// # Returns
@@ -901,6 +908,7 @@ where
         */
         Err(Error::Unspecified("todo".to_owned()))
     }
+    */
 
     /*
     async fn sync_tree(&self, from: &Tree, to: &Tree) -> Result<BTreeSet<Change>> {

@@ -25,6 +25,20 @@ pub struct CanonicalPath {
     parts: Vec<String>,
 }
 
+impl From<CanonicalPath> for crate::api::source_control::CanonicalPath {
+    fn from(path: CanonicalPath) -> Self {
+        Self(path.to_string())
+    }
+}
+
+impl TryFrom<crate::api::source_control::CanonicalPath> for CanonicalPath {
+    type Error = Error;
+
+    fn try_from(path: crate::api::source_control::CanonicalPath) -> Result<Self> {
+        Self::new(&path.0)
+    }
+}
+
 impl CanonicalPath {
     pub fn root() -> Self {
         Self { parts: vec![] }

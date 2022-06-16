@@ -65,13 +65,16 @@ impl Authenticator for StaticApiKey {
 }
 
 type AuthClientType = TelemetryIngestionClient<
-    lgn_online::grpc::AuthenticatedClient<lgn_online::grpc::GrpcClient, StaticApiKey>,
+    lgn_online::client::AuthenticatedClient<lgn_online::grpc::GrpcClient, StaticApiKey>,
 >;
 
 fn connect_grpc_client(uri: Uri) -> AuthClientType {
     let grpc_client = lgn_online::grpc::GrpcClient::new(uri);
-    let auth_client =
-        lgn_online::grpc::AuthenticatedClient::new(grpc_client, Some(StaticApiKey {}), &Vec::new());
+    let auth_client = lgn_online::client::AuthenticatedClient::new(
+        grpc_client,
+        Some(StaticApiKey {}),
+        &Vec::new(),
+    );
     TelemetryIngestionClient::new(auth_client)
 }
 
