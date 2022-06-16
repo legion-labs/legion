@@ -1,25 +1,11 @@
-import type { Observable } from "rxjs";
-
+import {
+  Editor,
+  PropertyInspector,
+  ResourceBrowser,
+  SourceControl,
+} from "@lgn/apis/editor";
 import { Log } from "@lgn/apis/log";
 import { Runtime } from "@lgn/apis/runtime";
-import {
-  EditorClientImpl,
-  GrpcWebImpl as EditorImpl,
-} from "@lgn/proto-editor/dist/editor";
-import {
-  GrpcWebImpl as EditorPropertyInspectorWebImpl,
-  PropertyInspectorClientImpl,
-} from "@lgn/proto-editor/dist/property_inspector";
-import {
-  GrpcWebImpl as EditorResourceBrowserWebImpl,
-  ResourceBrowserClientImpl,
-  ResourceDescription,
-} from "@lgn/proto-editor/dist/resource_browser";
-import {
-  GrpcWebImpl as EditorSourceControlWebImpl,
-  SourceControlClientImpl,
-  UploadRawFileResponse,
-} from "@lgn/proto-editor/dist/source_control";
 import { addAuthToClient } from "@lgn/web-client/src/lib/client";
 import log from "@lgn/web-client/src/lib/log";
 
@@ -29,18 +15,18 @@ import type {
   ResourceWithProperties,
 } from "../components/propertyGrid/lib/propertyGrid";
 
-const defaultGrpcEditorServerURL = "http://[::1]:50051";
+// const defaultGrpcEditorServerURL = "http://[::1]:50051";
 // const defaultGrpcRuntimeServerURL = "http://[::1]:50052";
 const defaultRestEditorServerURL = "http://[::1]:5051";
 const defaultRestRuntimeServerURL = "http://[::1]:5052";
 
-let resourceBrowserClient: ResourceBrowserClientImpl;
+let resourceBrowserClient: ResourceBrowser.Client;
 
-let propertyInspectorClient: PropertyInspectorClientImpl;
+let propertyInspectorClient: PropertyInspector.Client;
 
-let sourceControlClient: SourceControlClientImpl;
+let sourceControlClient: SourceControl.Client;
 
-let editorClient: EditorClientImpl;
+let editorClient: Editor.Client;
 
 let runtimeClient: Runtime.Client;
 
@@ -48,7 +34,7 @@ let editorLogStreamClient: Log.Client;
 let runtimeLogStreamClient: Log.Client;
 
 export function initApiClient({
-  grpcEditorServerUrl = defaultGrpcEditorServerURL,
+  // grpcEditorServerUrl = defaultGrpcEditorServerURL,
   // grpcRuntimeServerUrl = defaultGrpcRuntimeServerURL,
   restEditorServerUrl = defaultRestEditorServerURL,
   restRuntimeServerUrl = defaultRestRuntimeServerURL,
@@ -60,25 +46,21 @@ export function initApiClient({
   restRuntimeServerUrl?: string;
   accessTokenCookieName: string;
 }) {
-  resourceBrowserClient = new ResourceBrowserClientImpl(
-    new EditorResourceBrowserWebImpl(grpcEditorServerUrl, { debug: false })
-  );
+  resourceBrowserClient = new ResourceBrowser.Client({
+    baseUri: restEditorServerUrl,
+  });
 
-  propertyInspectorClient = new PropertyInspectorClientImpl(
-    new EditorPropertyInspectorWebImpl(grpcEditorServerUrl, { debug: false })
-  );
+  propertyInspectorClient = new PropertyInspector.Client({
+    baseUri: restEditorServerUrl,
+  });
 
-  sourceControlClient = new SourceControlClientImpl(
-    new EditorSourceControlWebImpl(grpcEditorServerUrl, {
-      debug: false,
-    })
-  );
+  sourceControlClient = new SourceControl.Client({
+    baseUri: restEditorServerUrl,
+  });
 
-  editorClient = new EditorClientImpl(
-    new EditorImpl(grpcEditorServerUrl, {
-      debug: false,
-    })
-  );
+  editorClient = new Editor.Client({
+    baseUri: restEditorServerUrl,
+  });
 
   runtimeClient = addAuthToClient(
     new Runtime.Client({ baseUri: restEditorServerUrl }),
@@ -101,19 +83,20 @@ export function initApiClient({
  * @returns All the resource descriptions
  */
 export async function getAllResources(searchToken = "") {
-  const resourceDescriptions: ResourceDescription[] = [];
+  const resourceDescriptions: ResourceBrowser.ResourceDescription[] = [];
 
   async function getMoreResources(
     searchToken: string
-  ): Promise<ResourceDescription[]> {
+  ): Promise<ResourceBrowser.ResourceDescription[]> {
     const response = await resourceBrowserClient.searchResources({
-      searchToken,
+      params: { "space-id": "0", "workspace-id": "0", token: searchToken },
+      query: {},
     });
 
-    resourceDescriptions.push(...response.resourceDescriptions);
+    resourceDescriptions.push(...response.value.resource_descriptions);
 
-    return response.nextSearchToken
-      ? getMoreResources(response.nextSearchToken)
+    return response.value.next_search_token
+      ? getMoreResources(response.value.next_search_token)
       : resourceDescriptions;
   }
 
@@ -126,19 +109,24 @@ export async function getAllResources(searchToken = "") {
 
 export async function getRootResource(
   id: string
-): Promise<ResourceDescription | null> {
+): Promise<ResourceBrowser.ResourceDescription | null> {
   const {
-    resourceDescriptions: [resourceDescription],
-  } = await resourceBrowserClient.searchResources({ rootResourceId: id });
+    value: {
+      resource_descriptions: [resourceDescription],
+    },
+  } = await resourceBrowserClient.searchResources({
+    params: { "space-id": "0", "workspace-id": "0", token: "" },
+    query: { "root-resource-id": id },
+  });
 
-  return resourceDescription || null;
+  return resourceDescription ?? null;
 }
 
 export async function getAllRootResources(ids: string[]) {
   const resources = await Promise.all(ids.map(getRootResource));
 
   return resources.filter(
-    (resource): resource is ResourceDescription => !!resource
+    (resource): resource is ResourceBrowser.ResourceDescription => !!resource
   );
 }
 
@@ -150,14 +138,17 @@ export async function getAllRootResources(ids: string[]) {
 export async function getResourceProperties(
   id: string
 ): Promise<ResourceWithProperties> {
-  const { description, properties } =
-    await propertyInspectorClient.getResourceProperties({
-      id,
-    });
+  const response = await propertyInspectorClient.getProperties({
+    params: { "resource-id": id, "space-id": "0", "workspace-id": "0" },
+  });
 
-  if (!description) {
-    throw new Error("Fetched resource didn't return any description");
+  if (response.type !== "200") {
+    throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
   }
+
+  const {
+    value: { description, properties },
+  } = response;
 
   return {
     id,
@@ -185,14 +176,21 @@ export async function updateResourceProperties(
   version: number,
   propertyUpdates: PropertyUpdate[]
 ) {
-  await propertyInspectorClient.updateResourceProperties({
-    id: resourceId,
-    version,
-    propertyUpdates: propertyUpdates.map(({ name, value }) => ({
-      name: name,
-      jsonValue: JSON.stringify(value),
-    })),
+  const response = await propertyInspectorClient.updateProperties({
+    params: { "resource-id": resourceId, "space-id": "0", "workspace-id": "0" },
+    body: {
+      version,
+      updates: propertyUpdates.map(({ name, value }) => ({
+        name: name,
+        // eslint-disable-next-line camelcase
+        json_value: JSON.stringify(value),
+      })),
+    },
   });
+
+  if (response.type !== "204") {
+    throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
+  }
 }
 
 /**
@@ -201,9 +199,13 @@ export async function updateResourceProperties(
  * @returns
  */
 export async function updateSelection(resourceId: string) {
-  await propertyInspectorClient.updateSelection({
-    resourceId: resourceId,
+  const response = await propertyInspectorClient.updatePropertySelection({
+    params: { "resource-id": resourceId, "space-id": "0", "workspace-id": "0" },
   });
+
+  if (response.type !== "204") {
+    throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
+  }
 }
 
 export type AddVectorSubProperty = {
@@ -216,14 +218,17 @@ export async function addPropertyInPropertyVector(
   resourceId: string,
   { path, index, jsonValue }: AddVectorSubProperty
 ) {
-  const result = await propertyInspectorClient.insertNewArrayElement({
-    resourceId,
-    arrayPath: path,
-    index,
-    jsonValue,
+  const response = await propertyInspectorClient.insertPropertyArrayItem({
+    params: { "resource-id": resourceId, "space-id": "0", "workspace-id": "0" },
+    // eslint-disable-next-line camelcase
+    body: { array_path: path, index: BigInt(index), json_value: jsonValue },
   });
 
-  const value = result.newValue;
+  if (response.type !== "200") {
+    throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
+  }
+
+  const value = response.value.new_value;
 
   if (value) {
     window.dispatchEvent(
@@ -243,21 +248,33 @@ export async function removeVectorSubProperty(
   resourceId: string,
   { path, indices }: RemoveVectorSubProperty
 ) {
-  await propertyInspectorClient.deleteArrayElement({
-    resourceId,
-    arrayPath: path,
-    indices,
+  const response = await propertyInspectorClient.deletePropertiesArrayItem({
+    params: { "resource-id": resourceId, "space-id": "0", "workspace-id": "0" },
+    // eslint-disable-next-line camelcase
+    body: { array_path: path, indices: indices.map(BigInt) },
   });
+
+  if (response.type !== "204") {
+    throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
+  }
 }
 
 export async function getResourceTypes() {
-  return resourceBrowserClient.getResourceTypeNames({});
+  const response = await resourceBrowserClient.getResourceTypeNames({
+    params: { "space-id": "0", "workspace-id": "0" },
+  });
+
+  return response.value;
 }
 
 export async function getAvailableComponentTypes() {
-  return propertyInspectorClient.getAvailableDynTraits({
-    traitName: "dyn Component",
+  const response = await propertyInspectorClient.getAvailableDynTraits({
+    params: { "space-id": "0", "workspace-id": "0" },
+    // eslint-disable-next-line camelcase
+    query: { trait_name: "dyn Component" },
   });
+
+  return response.value;
 }
 
 export async function createResource({
@@ -271,12 +288,24 @@ export async function createResource({
   parentResourceId: string | undefined;
   uploadId: string | undefined;
 }) {
-  return resourceBrowserClient.createResource({
-    resourceName,
-    resourceType,
-    parentResourceId,
-    uploadId,
+  const response = await resourceBrowserClient.createResource({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: {
+      // eslint-disable-next-line camelcase
+      resource_name: resourceName,
+      // eslint-disable-next-line camelcase
+      resource_type: resourceType,
+      // eslint-disable-next-line camelcase
+      // eslint-disable-next-line camelcase
+      upload_id: uploadId,
+      // eslint-disable-next-line camelcase
+      parent_resource_id: parentResourceId,
+      // eslint-disable-next-line camelcase
+      init_values: [],
+    },
   });
+
+  return response.value;
 }
 
 export async function renameResource({
@@ -286,14 +315,18 @@ export async function renameResource({
   id: string;
   newPath: string;
 }) {
-  return resourceBrowserClient.renameResource({
-    id,
-    newPath,
+  await resourceBrowserClient.renameResource({
+    params: { "space-id": "0", "workspace-id": "0" },
+    // eslint-disable-next-line camelcase
+    body: { new_path: newPath, id },
   });
 }
 
 export async function removeResource({ id }: { id: string }) {
-  return resourceBrowserClient.deleteResource({ id });
+  await resourceBrowserClient.deleteResource({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: { id },
+  });
 }
 
 export async function cloneResource({
@@ -303,11 +336,26 @@ export async function cloneResource({
   sourceId: string;
   targetParentId?: string;
 }) {
-  return resourceBrowserClient.cloneResource({ sourceId, targetParentId });
+  const response = await resourceBrowserClient.cloneResource({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: {
+      // eslint-disable-next-line camelcase
+      source_id: sourceId,
+      // eslint-disable-next-line camelcase
+      target_parent_id: targetParentId,
+      // eslint-disable-next-line camelcase
+      init_values: [],
+    },
+  });
+
+  return response.value;
 }
 
 export async function revertResources({ ids }: { ids: string[] }) {
-  return sourceControlClient.revertResources({ ids });
+  await sourceControlClient.revertResources({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: ids,
+  });
 }
 
 /**
@@ -326,67 +374,106 @@ export async function initFileUpload({
   name: string;
   size: number;
 }) {
-  return sourceControlClient.initUploadRawFile({ name, size });
+  const response = await sourceControlClient.contentUploadInit({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: { name, size: BigInt(size) },
+  });
+
+  if (response.type !== "200") {
+    throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
+  }
+
+  return response.value;
 }
 
-export function streamFileUpload({
+export async function streamFileUpload({
   id,
   content,
 }: {
   id: string;
-  content: Uint8Array;
-}): Observable<UploadRawFileResponse> {
-  return sourceControlClient.uploadRawFile({
-    id,
-    content,
+  content: Blob;
+}): Promise<SourceControl.ContentUploadSucceeded> {
+  const response = await sourceControlClient.contentUpload({
+    params: { "space-id": "0", "workspace-id": "0", "transaction-id": id },
+    body: content,
   });
+
+  if (response.type !== "200") {
+    throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
+  }
+
+  return response.value;
 }
 
 // FIXME: This function is known for being broken
 // the api is not fully over yet and it might change soon
-export function reparentResources({
+export async function reparentResources({
   id,
   newPath,
 }: {
   id: string;
   newPath: string;
 }) {
-  return resourceBrowserClient.reparentResource({
-    id,
-    newPath,
+  await resourceBrowserClient.reparentResource({
+    params: { "space-id": "0", "workspace-id": "0" },
+    // eslint-disable-next-line camelcase
+    body: { id, new_path: newPath },
   });
 }
 
-export function syncLatest() {
-  return sourceControlClient.syncLatest({});
-}
-
-export function commitStagedResources({ message }: { message: string }) {
-  return sourceControlClient.commitStagedResources({
-    message,
+export async function syncLatest() {
+  await sourceControlClient.syncLatest({
+    params: { "space-id": "0", "workspace-id": "0" },
   });
 }
 
-export function getStagedResources() {
-  return sourceControlClient.getStagedResources({});
+export async function commitStagedResources({ message }: { message: string }) {
+  await sourceControlClient.commitStagedResources({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: { message },
+  });
+}
+
+export async function getStagedResources() {
+  const response = await sourceControlClient.getStagedResources({
+    params: { "space-id": "0", "workspace-id": "0" },
+  });
+
+  return response.value;
 }
 
 export async function openScene({ id }: { id: string }) {
-  return resourceBrowserClient.openScene({ id });
+  await resourceBrowserClient.openScene({
+    // eslint-disable-next-line camelcase
+    params: { "space-id": "0", "workspace-id": "0", scene_id: id },
+  });
 }
 
 export async function closeScene({ id }: { id: string }) {
-  return resourceBrowserClient.closeScene({ id });
+  await resourceBrowserClient.closeScene({
+    // eslint-disable-next-line camelcase
+    params: { "space-id": "0", "workspace-id": "0", scene_id: id },
+  });
 }
 
 export async function getActiveSceneIds() {
-  const { sceneIds } = await resourceBrowserClient.getActiveScenes({});
+  const response = await resourceBrowserClient.getActiveScenes({
+    params: { "space-id": "0", "workspace-id": "0" },
+  });
 
-  return sceneIds;
+  return response.value.scene_ids;
 }
 
-export function getRuntimeSceneInfo({ resourceId }: { resourceId: string }) {
-  return resourceBrowserClient.getRuntimeSceneInfo({ resourceId });
+export async function getRuntimeSceneInfo({
+  resourceId,
+}: {
+  resourceId: string;
+}) {
+  const response = await resourceBrowserClient.getRuntimeSceneInfo({
+    params: { "space-id": "0", "workspace-id": "0", "resource-id": resourceId },
+  });
+
+  return response.value;
 }
 
 export async function getActiveScenes() {
@@ -405,8 +492,12 @@ export function getRuntimeTraceEvents() {
   });
 }
 
-export function initMessageStream() {
-  return editorClient.initMessageStream({});
+export async function getLastMessage() {
+  const response = await editorClient.getMessages({
+    params: { "space-id": "0", "workspace-id": "0" },
+  });
+
+  return response.type === "200" ? response.value : null;
 }
 
 export async function loadRuntimeManifest({

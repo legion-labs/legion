@@ -2469,7 +2469,6 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-ecs",
- "lgn-editor-proto",
  "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
@@ -4737,17 +4736,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "lgn-editor-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]

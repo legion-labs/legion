@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+  import type { SourceControl } from "@lgn/apis/editor";
 
   import statusStore from "../stores/statusBarData";
   import Button from "./Button.svelte";
@@ -9,7 +9,7 @@
    * An array containing all the staged resources (if any).
    * If the value is `null` the whole local storage section will be hidden.
    */
-  export let stagedResources: StagedResource[] | null = null;
+  export let stagedResources: SourceControl.StagedResource[] | null = null;
 
   export let syncFromMain: (() => void) | null = null;
 </script>

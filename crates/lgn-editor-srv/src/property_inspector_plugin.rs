@@ -43,7 +43,7 @@ use sample_data::offline::GltfLoader;
 use tokio::sync::{broadcast, Mutex};
 use tonic::{codegen::http::status, Request, Response, Status};
 
-use crate::grpc::EditorEvent;
+use crate::editor::EditorEvent;
 
 pub(crate) struct PropertyInspectorRPC {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,

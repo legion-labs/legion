@@ -383,7 +383,7 @@ impl Api for Server {
         let next_search_token = NextSearchToken {
             next_search_token: "".to_string(),
             total: u64::try_from(descriptors.len()).unwrap(),
-            resource_description: descriptors,
+            resource_descriptions: descriptors,
         };
 
         Ok(SearchResourcesResponse::Status200(next_search_token))
@@ -870,7 +870,7 @@ impl Api for Server {
         &self,
         request: GetRuntimeSceneInfoRequest,
     ) -> Result<GetRuntimeSceneInfoResponse> {
-        let resource_id = parse_resource_id(request.scene_id.0.as_str())?;
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())?;
 
         if resource_id.kind != sample_data::offline::Entity::TYPE {
             return Err(Error::internal(format!(

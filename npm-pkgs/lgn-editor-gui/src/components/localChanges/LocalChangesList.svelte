@@ -1,31 +1,14 @@
 <script lang="ts">
   import type { Writable } from "svelte/store";
 
-  import { StagedResource_ChangeType as ChangeType } from "@lgn/proto-editor/dist/source_control";
-  import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+  import type { SourceControl } from "@lgn/apis/editor";
 
   import contextMenu from "@/actions/contextMenu";
   import { fileName } from "@/lib/path";
   import { localChangesContextMenuId } from "@/stores/contextMenu";
 
-  export let stagedResources: StagedResource[];
-  export let selectedResource: Writable<StagedResource | null>;
-
-  function changeTypeLabel(changeType: ChangeType) {
-    switch (changeType) {
-      case ChangeType.Add: {
-        return "Add";
-      }
-
-      case ChangeType.Delete: {
-        return "Delete";
-      }
-
-      case ChangeType.Edit: {
-        return "Edit";
-      }
-    }
-  }
+  export let stagedResources: SourceControl.StagedResource[];
+  export let selectedResource: Writable<SourceControl.StagedResource | null>;
 </script>
 
 <div class="root">
@@ -47,10 +30,10 @@
         <div class="w-1/12 flex flex-row justify-center">
           <div
             class="w-4 h-4"
-            class:bg-green-600={resource.changeType === ChangeType.Add}
-            class:bg-orange-400={resource.changeType === ChangeType.Edit}
-            class:bg-red-500={resource.changeType === ChangeType.Delete}
-            title={changeTypeLabel(resource.changeType)}
+            class:bg-green-600={resource.change_type === "Add"}
+            class:bg-orange-400={resource.change_type === "Edit"}
+            class:bg-red-500={resource.change_type === "Delete"}
+            title={resource.change_type}
           />
         </div>
         <div class="w-2/12 flex flex-row justify-center">

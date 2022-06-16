@@ -1,8 +1,7 @@
 <script lang="ts">
   import type { Writable } from "svelte/store";
 
-  import { StagedResource_ChangeType as ChangeType } from "@lgn/proto-editor/dist/source_control";
-  import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+  import type { SourceControl } from "@lgn/apis/editor";
 
   import contextMenu from "@/actions/contextMenu";
   import { fileName } from "@/lib/path";
@@ -10,8 +9,8 @@
 
   import FileIcon from "../FileIcon.svelte";
 
-  export let stagedResources: StagedResource[];
-  export let selectedResource: Writable<StagedResource | null>;
+  export let stagedResources: SourceControl.StagedResource[];
+  export let selectedResource: Writable<SourceControl.StagedResource | null>;
 </script>
 
 <div class="root">
@@ -26,9 +25,9 @@
     >
       <div
         class="resource-icon"
-        class:border-green-600={resource.changeType === ChangeType.Add}
-        class:border-orange-400={resource.changeType === ChangeType.Edit}
-        class:border-red-500={resource.changeType === ChangeType.Delete}
+        class:border-green-600={resource.change_type === "Add"}
+        class:border-orange-400={resource.change_type === "Edit"}
+        class:border-red-500={resource.change_type === "Delete"}
       >
         <FileIcon
           class="h-20 w-20 text-white text-opacity-60"
@@ -38,9 +37,9 @@
       </div>
       <div
         class="resource-text"
-        class:bg-green-600={resource.changeType === ChangeType.Add}
-        class:bg-orange-400={resource.changeType === ChangeType.Edit}
-        class:bg-red-500={resource.changeType === ChangeType.Delete}
+        class:bg-green-600={resource.change_type === "Add"}
+        class:bg-orange-400={resource.change_type === "Edit"}
+        class:bg-red-500={resource.change_type === "Delete"}
         title={resource.info?.path}
       >
         <div class="truncate">{fileName(resource.info?.path || "")}</div>

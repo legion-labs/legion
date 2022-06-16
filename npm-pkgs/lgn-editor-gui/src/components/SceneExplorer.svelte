@@ -3,7 +3,7 @@
   import { onDestroy } from "svelte";
   import { readable } from "svelte/store";
 
-  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+  import type { ResourceBrowser } from "@lgn/apis/editor";
 
   import { resourceDragAndDropType } from "@/constants";
   import type { Entry } from "@/lib/hierarchyTree";
@@ -14,7 +14,7 @@
 
   import HierarchyTree from "./hierarchyTree/HierarchyTree.svelte";
 
-  export let activeScenes: ResourceDescription[];
+  export let activeScenes: ResourceBrowser.ResourceDescription[];
 
   $: sceneExplorerEntriesOrchestrator = deriveHierarchyTreeOrchestrator(
     readable(activeScenes)
@@ -31,7 +31,7 @@
 
   function selectResource({
     detail: resourceDescription,
-  }: CustomEvent<Entry<ResourceDescription>>) {
+  }: CustomEvent<Entry<ResourceBrowser.ResourceDescription>>) {
     if (resourceDescription) {
       fetchCurrentResourceDescription(resourceDescription.item.id).catch(() => {
         // TODO: Handle errors

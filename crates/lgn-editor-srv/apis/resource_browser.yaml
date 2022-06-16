@@ -4,11 +4,12 @@ info:
   description: "The OpenAPI specification for the Legion Labs resource browser."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/search/{token}:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/search/{token}/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
       - $ref: "#/components/parameters/token"
+      - $ref: "#/components/parameters/root_resource_id"
     get:
       description: Search Resources
       operationId: SearchResources
@@ -19,7 +20,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NextSearchToken"
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -114,7 +115,7 @@ paths:
       responses:
         "204":
           description: Ok.
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/clone:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/clone/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -151,7 +152,7 @@ paths:
                     $ref: "#/components/schemas/ResourceDescription"
                 required:
                   - new_resource
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/reparent:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/reparent/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -176,7 +177,7 @@ paths:
         "204":
           description: Ok.
 
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}/open:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}/open/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -187,7 +188,7 @@ paths:
       responses:
         "204":
           description: Ok.
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}/close:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}/close/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -199,7 +200,7 @@ paths:
         "204":
           description: Ok.
 
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -221,11 +222,11 @@ paths:
                 required:
                   - scene_ids
 
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/{resource-id}/scenes/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
-      - $ref: "#/components/parameters/scene_id"
+      - $ref: "#/components/parameters/resource_id"
     get:
       description: Get runtime scenes info
       operationId: GetRuntimeSceneInfo
@@ -245,7 +246,7 @@ paths:
                   - manifest_id
                   - asset_id
 
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/assets:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/assets/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -296,9 +297,25 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/SceneId"
+    resource_id:
+      name: resource-id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/RootResourceId"
+    root_resource_id:
+      name: root-resource-id
+      in: query
+      description: An optional root resource id
+      schema:
+        $ref: "#/components/schemas/ResourceId"
   schemas:
     Token:
       description: Token to search for
+      type: string
+    ResourceId:
+      type: string
+    RootResourceId:
       type: string
     SceneId:
       description: Scene ID
@@ -313,14 +330,14 @@ components:
           type: integer
           format: int64
           minimum: 0
-        resource_description:
+        resource_descriptions:
           type: array
           items:
             $ref: "#/components/schemas/ResourceDescription"
       required:
         - next_search_token
         - total
-        - resource_description
+        - resource_descriptions
     ResourceDescription:
       description: Description of a resource
       type: object

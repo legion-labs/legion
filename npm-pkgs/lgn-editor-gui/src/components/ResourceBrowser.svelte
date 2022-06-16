@@ -1,12 +1,10 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
 
-  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-  import { UploadStatus } from "@lgn/proto-editor/dist/source_control";
+  import type { ResourceBrowser } from "@lgn/apis/editor";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
   import Loader from "@lgn/web-client/src/components/Loader.svelte";
   import { displayError } from "@lgn/web-client/src/lib/errors";
-  import { readFile } from "@lgn/web-client/src/lib/files";
   import log from "@lgn/web-client/src/lib/log";
   import { createFilesStore } from "@lgn/web-client/src/stores/files";
   import { filterContextMenuEvents } from "@lgn/web-client/src/types/contextMenu";
@@ -70,7 +68,8 @@
 
   let uploadingFiles = false;
 
-  let resourceHierarchyTree: HierarchyTree<ResourceDescription> | null = null;
+  let resourceHierarchyTree: HierarchyTree<ResourceBrowser.ResourceDescription> | null =
+    null;
 
   let removePromptId: symbol | null = null;
 
@@ -98,7 +97,7 @@
   async function saveEditedResourceProperty({
     detail: { entry, newName },
   }: CustomEvent<{
-    entry: Entry<ResourceDescription>;
+    entry: Entry<ResourceBrowser.ResourceDescription>;
     newName: string;
   }>) {
     const pathComponents = components(entry.item.path);
@@ -144,8 +143,15 @@
           initFileUpload({
             name: file.name,
             size: file.size,
-          }).then(({ id, status }) => {
-            if (!id || status === UploadStatus.REJECTED) {
+          })
+            .then(({ id }) => {
+              if (!id) {
+                throw new Error("No id");
+              }
+
+              return { id, name: file.name, file };
+            })
+            .catch(() => {
               notifications.push(Symbol.for("file-upload"), {
                 type: "error",
                 payload: {
@@ -156,10 +162,7 @@
               });
 
               return null;
-            }
-
-            return { id, name: file.name, file };
-          })
+            })
         )
       );
 
@@ -170,22 +173,10 @@
 
         const { id, name, file } = fileWithId;
 
-        const promise = readFile(file).then(
-          (content) =>
-            new Promise<{ name: string; id: string }>((resolve, reject) => {
-              streamFileUpload({
-                id,
-                content: new Uint8Array(content),
-              }).subscribe({
-                error(error) {
-                  reject(error);
-                },
-                complete() {
-                  resolve({ name, id });
-                },
-              });
-            })
-        );
+        const promise = streamFileUpload({
+          id,
+          content: file,
+        }).then(() => ({ name, id }));
 
         return [...acc, promise];
       }, [] as Promise<{ name: string; id: string }>[]);
@@ -229,11 +220,9 @@
       if (newResource) {
         await fetchAllResources();
 
-        const newId = newResource.newId;
-
-        if (newId) {
+        if (newResource.new_id) {
           const entry = $resourceEntries.find(
-            (entry) => isEntry(entry) && entry.item.id === newId
+            (entry) => isEntry(entry) && entry.item.id === newResource.new_id
           );
 
           if (!entry || !isEntry(entry)) {
@@ -242,7 +231,7 @@
 
           $currentResourceDescriptionEntry = entry;
 
-          await fetchCurrentResourceDescription(newId);
+          await fetchCurrentResourceDescription(newResource.new_id);
         }
       }
     } catch (error) {
@@ -254,7 +243,7 @@
 
   function selectResource({
     detail: resourceDescription,
-  }: CustomEvent<Entry<ResourceDescription>>) {
+  }: CustomEvent<Entry<ResourceBrowser.ResourceDescription>>) {
     if (resourceDescription) {
       fetchCurrentResourceDescription(resourceDescription.item.id).catch(() => {
         // TODO: Handle errors
@@ -312,11 +301,11 @@
 
             try {
               await loadRuntimeManifest({
-                manifestId: response.manifestId,
+                manifestId: response.manifest_id,
               });
 
               await loadRuntimeRootAsset({
-                rootAssetId: response.assetId,
+                rootAssetId: response.asset_id,
               });
             } catch (error) {
               notifications.push(Symbol(), {
@@ -348,7 +337,7 @@
           break;
         }
 
-        const { newResource } = await cloneResource({
+        const { new_resource: newResource } = await cloneResource({
           sourceId: $currentResourceDescriptionEntry.item.id,
         });
 
@@ -462,18 +451,18 @@
       if (restOfPath === "") {
         const formatted = formatProperties([value])[0];
 
-        let found = base.subProperties.find(({ name }) => name === value.name);
+        let found = base.sub_properties.find(({ name }) => name === value.name);
 
         if (found) {
           found = formatted;
         } else {
-          base.subProperties.push(formatted);
+          base.sub_properties.push(formatted);
         }
 
         return true;
       }
 
-      for (const property of base.subProperties) {
+      for (const property of base.sub_properties) {
         if (restOfPath.startsWith(property.name)) {
           restOfPath = restOfPath.substring(property.name.length);
 
@@ -492,8 +481,8 @@
   async function moveEntry({
     detail: { draggedEntry, dropzoneEntry },
   }: CustomEvent<{
-    draggedEntry: Entry<ResourceDescription>;
-    dropzoneEntry: Entry<ResourceDescription>;
+    draggedEntry: Entry<ResourceBrowser.ResourceDescription>;
+    dropzoneEntry: Entry<ResourceBrowser.ResourceDescription>;
   }>) {
     const newPath = dropzoneEntry.item.path;
 

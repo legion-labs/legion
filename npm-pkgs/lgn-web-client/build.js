@@ -22,6 +22,21 @@ async function build() {
       },
       filename: "log",
     }).buildStart(),
+    apiCodegen({
+      path: "../../crates/lgn-editor-srv/apis",
+      apiNames: [
+        "editor",
+        "property_inspector",
+        "resource_browser",
+        "source_control",
+      ],
+      withPackageJson: true,
+      aliasMappings: {
+        "../../crates/lgn-governance/apis/space.yaml": "Space",
+        "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
+      },
+      filename: "editor",
+    }).buildStart(),
   ]);
 }
 

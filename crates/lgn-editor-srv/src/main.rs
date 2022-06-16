@@ -31,7 +31,6 @@ use sample_data::SampleDataPlugin;
 use serde::Deserialize;
 use tokio::sync::broadcast;
 
-mod grpc;
 mod plugin;
 mod property_inspector_plugin;
 use lgn_window::WindowPlugin;

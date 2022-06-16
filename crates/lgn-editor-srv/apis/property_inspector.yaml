@@ -217,8 +217,6 @@ components:
       description: A set of property updates
       type: object
       properties:
-        id:
-          type: string
         version:
           type: integer
           format: int32

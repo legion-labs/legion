@@ -4,9 +4,10 @@
 // This orchestrator doesn't own any stores.
 import { get } from "svelte/store";
 
-import { MessageType } from "@lgn/proto-editor/dist/editor";
+import { displayError } from "@lgn/web-client/src/lib/errors";
+import log from "@lgn/web-client/src/lib/log";
 
-import { initMessageStream as initMessageStreamApi } from "@/api";
+import { getLastMessage } from "@/api";
 import { isEntry } from "@/lib/hierarchyTree";
 import { fetchCurrentResourceDescription } from "@/orchestrators/currentResource";
 import { fetchStagedResources } from "@/stores/stagedResources";
@@ -17,63 +18,67 @@ import {
 } from "./resourceBrowserEntries";
 
 export function initMessageStream() {
-  const subscription = initMessageStreamApi().subscribe(
-    ({ lagging, message }) => {
-      if (typeof lagging === "number") {
-        // TODO: Handle lagging messages
+  async function rec(): Promise<void> {
+    const message = await getLastMessage();
 
-        return;
+    if (!message) {
+      return rec();
+    }
+
+    switch (message.msg_type) {
+      case "ResourceChanged": {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const resourceIds: string[] = JSON.parse(message.payload);
+
+        const currentEntryValue = get(currentResourceDescriptionEntry);
+
+        if (
+          currentEntryValue &&
+          resourceIds.indexOf(currentEntryValue.item.id) > -1
+        ) {
+          fetchCurrentResourceDescription(currentEntryValue.item.id, {
+            notifySelection: false,
+          }).catch(() => undefined); // TODO: Handle errors
+        }
+
+        fetchStagedResources().catch(() => undefined); // TODO: Handle errors
+        break;
       }
 
-      if (message) {
-        switch (message.msgType) {
-          case MessageType.ResourceChanged: {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const resourceIds: string[] = JSON.parse(message.payload);
+      case "SelectionChanged": {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const resourceIds: string[] = JSON.parse(message.payload);
 
-            const currentEntryValue = get(currentResourceDescriptionEntry);
+        // TODO: Catch error
+        // TODO: Support multi-select (remove slice)
+        if (!resourceIds.length) {
+          currentResourceDescriptionEntry.set(null);
 
-            if (
-              currentEntryValue &&
-              resourceIds.indexOf(currentEntryValue.item.id) > -1
-            ) {
-              fetchCurrentResourceDescription(currentEntryValue.item.id, {
-                notifySelection: false,
-              }).catch(() => undefined); // TODO: Handle errors
-            }
-
-            fetchStagedResources().catch(() => undefined); // TODO: Handle errors
-            break;
-          }
-
-          case MessageType.SelectionChanged: {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            const resourceIds: string[] = JSON.parse(message.payload);
-
-            // TODO: Catch error
-            // TODO: Support multi-select (remove slice)
-            if (!resourceIds.length) {
-              currentResourceDescriptionEntry.set(null);
-
-              return;
-            }
-
-            fetchCurrentResourceDescription(resourceIds[0], {
-              notifySelection: false,
-            })
-              // TODO: Handle errors
-              .catch(() => undefined);
-
-            const selectedEntry = get(resourceEntries).find(
-              (entry) => isEntry(entry) && resourceIds.includes(entry.item.id)
-            );
-
-            currentResourceDescriptionEntry.set(selectedEntry);
-          }
+          return;
         }
+
+        fetchCurrentResourceDescription(resourceIds[0], {
+          notifySelection: false,
+        })
+          // TODO: Handle errors
+          .catch(() => undefined);
+
+        const selectedEntry = get(resourceEntries).find(
+          (entry) => isEntry(entry) && resourceIds.includes(entry.item.id)
+        );
+
+        currentResourceDescriptionEntry.set(selectedEntry);
       }
     }
+
+    await rec();
+  }
+
+  rec().catch((error) =>
+    log.error("messages", `An error occured: ${displayError(error)}`)
   );
 
-  return () => subscription.unsubscribe();
+  return () => {
+    // No resources to clean (yet ?)
+  };
 }

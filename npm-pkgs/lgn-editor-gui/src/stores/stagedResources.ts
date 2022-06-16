@@ -1,21 +1,21 @@
 import type { Writable } from "svelte/store";
 import { get, writable } from "svelte/store";
 
-import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+import type { SourceControl } from "@lgn/apis/editor";
 import log from "@lgn/web-client/src/lib/log";
 
 import { commitStagedResources, getStagedResources, syncLatest } from "@/api";
 
 import { fetchAllResources } from "../orchestrators/allResources";
 
-export type StagedResourcesValue = StagedResource[] | null;
+export type StagedResourcesValue = SourceControl.StagedResource[] | null;
 
 export type StagedResourcesStore = Writable<StagedResourcesValue>;
 
 export const stagedResources: StagedResourcesStore = writable(null);
 
 export async function fetchStagedResources() {
-  const { entries } = await getStagedResources();
+  const entries = await getStagedResources();
 
   stagedResources.set(entries);
 
@@ -23,14 +23,14 @@ export async function fetchStagedResources() {
 }
 
 export async function initStagedResourcesStream(pollInternal = 2_000) {
-  const { entries } = await getStagedResources();
+  const entries = await getStagedResources();
 
   stagedResources.set(entries);
 
   // TODO: Have a stream on the backend?
   const intervalId = setInterval(() => {
     getStagedResources()
-      .then(({ entries }) => stagedResources.set(entries))
+      .then((entries) => stagedResources.set(entries))
       // TODO: Handle errors
       .catch(() => undefined);
   }, pollInternal);

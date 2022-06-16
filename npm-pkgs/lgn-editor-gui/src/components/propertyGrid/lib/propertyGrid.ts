@@ -1,19 +1,16 @@
-// TODO: Use the `ResourceDescription` from resource_property.proto instead (?)
-import type {
-  ResourceProperty as RawResourceProperty,
-  ResourceDescription,
-} from "@lgn/proto-editor/dist/property_inspector";
+/* eslint-disable camelcase */
+import type { PropertyInspector } from "@lgn/apis/editor";
 import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import { filterMap } from "@lgn/web-client/src/lib/array";
 
 import type { Entries } from "@/lib/hierarchyTree";
 
 type SafeRawResourceProperty = Omit<
-  RawResourceProperty,
-  "attributes" | "subProperties"
+  PropertyInspector.ResourceProperty,
+  "attributes" | "sub_properties"
 > & {
   attributes: Record<string, string | undefined>;
-  subProperties: SafeRawResourceProperty[];
+  sub_properties: SafeRawResourceProperty[];
 };
 
 /** Matches any `ptype` of format "Vec<subPType>" */
@@ -27,7 +24,7 @@ type ResourcePropertyBase<Type extends string = string> = {
   ptype: Type;
   name: string;
   attributes: Record<string, string | undefined>;
-  subProperties: ResourceProperty[];
+  sub_properties: ResourceProperty[];
 };
 
 export type GroupResourceProperty = ResourcePropertyBase<"group">;
@@ -372,7 +369,7 @@ export function buildOptionProperty<
     attributes: {},
     name,
     ptype: `Option<${subProperty.ptype}>`,
-    subProperties: [subProperty],
+    sub_properties: [subProperty],
   };
 }
 
@@ -387,20 +384,20 @@ export function buildOptionNoneProperty<
     attributes: {},
     name,
     ptype: `Option<${ptype}>`,
-    subProperties: [],
+    sub_properties: [],
   };
 }
 
 /** Builds a Vec property from a non empty array of properties */
 export function buildGroupProperty<SubProperty extends ResourceProperty>(
   name: string,
-  subProperties: SubProperty[]
+  sub_properties: SubProperty[]
 ): GroupResourceProperty {
   return {
     attributes: {},
     name,
     ptype: "group",
-    subProperties,
+    sub_properties,
   };
 }
 
@@ -409,13 +406,13 @@ export function buildVecProperty<
   SubProperty extends ResourcePropertyBase | ResourcePropertyWithValueBase
 >(
   name: string,
-  subProperties: NonEmptyArray<SubProperty>
+  sub_properties: NonEmptyArray<SubProperty>
 ): VecResourceProperty<SubProperty> {
   return {
     attributes: {},
     name,
-    ptype: `Vec<${subProperties[0].ptype}>`,
-    subProperties,
+    ptype: `Vec<${sub_properties[0].ptype}>`,
+    sub_properties,
   };
 }
 
@@ -430,7 +427,7 @@ export function buildDefaultPrimitiveProperty(
       ptype,
       name,
       attributes: {},
-      subProperties: [],
+      sub_properties: [],
       value: "",
     } as EnumProperty;
   }
@@ -441,7 +438,7 @@ export function buildDefaultPrimitiveProperty(
         ptype: "Color",
         name,
         attributes: {},
-        subProperties: [],
+        sub_properties: [],
         value: 0,
       };
     }
@@ -451,7 +448,7 @@ export function buildDefaultPrimitiveProperty(
         ptype: "Quat",
         name,
         attributes: {},
-        subProperties: [],
+        sub_properties: [],
         value: [0, 0, 0, 0],
       };
     }
@@ -461,7 +458,7 @@ export function buildDefaultPrimitiveProperty(
         ptype: "Speed",
         name,
         attributes: {},
-        subProperties: [],
+        sub_properties: [],
         value: 0,
       };
     }
@@ -471,7 +468,7 @@ export function buildDefaultPrimitiveProperty(
         ptype: "String",
         name,
         attributes: {},
-        subProperties: [],
+        sub_properties: [],
         value: "",
       };
     }
@@ -481,7 +478,7 @@ export function buildDefaultPrimitiveProperty(
         ptype: "ResourcePathId",
         name,
         attributes: {},
-        subProperties: [],
+        sub_properties: [],
         value: "",
       };
     }
@@ -491,7 +488,7 @@ export function buildDefaultPrimitiveProperty(
         ptype: "Vec3",
         name,
         attributes: {},
-        subProperties: [],
+        sub_properties: [],
         value: [0, 0, 0],
       };
     }
@@ -501,7 +498,7 @@ export function buildDefaultPrimitiveProperty(
         ptype: "bool",
         name,
         attributes: {},
-        subProperties: [],
+        sub_properties: [],
         value: false,
       };
     }
@@ -518,7 +515,7 @@ export function buildDefaultPrimitiveProperty(
         ptype,
         name,
         attributes: {},
-        subProperties: [],
+        sub_properties: [],
         value: 0,
       };
     }
@@ -529,7 +526,7 @@ export function buildDefaultPrimitiveProperty(
 
 export type ResourceWithProperties = {
   id: string;
-  description: ResourceDescription;
+  description: PropertyInspector.ResourceDescription;
   version: number;
   properties: ResourceProperty[];
 };
@@ -541,7 +538,7 @@ function formatOptionProperty(
     name: property.name,
     ptype: property.ptype as OptionResourceProperty["ptype"],
     attributes: property.attributes,
-    subProperties: formatProperties(property.subProperties),
+    sub_properties: formatProperties(property.sub_properties),
   };
 }
 
@@ -552,7 +549,7 @@ function formatVecProperty(
     name: property.name,
     ptype: property.ptype as VecResourceProperty["ptype"],
     attributes: property.attributes,
-    subProperties: formatProperties(property.subProperties),
+    sub_properties: formatProperties(property.sub_properties),
   };
 }
 
@@ -563,24 +560,24 @@ function formatGroupProperty(
     ptype: property.ptype === "_group_" ? "group" : property.ptype,
     name: property.name,
     attributes: property.attributes,
-    subProperties: formatProperties(property.subProperties),
+    sub_properties: formatProperties(property.sub_properties),
   };
 }
 
 function formatProperty(
   property: SafeRawResourceProperty
 ): PrimitiveResourceProperty | null {
-  if (!property.jsonValue) {
+  if (property.json_value === undefined) {
     return null;
   }
 
   return {
     name: property.name,
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    value: JSON.parse(property.jsonValue),
+    value: JSON.parse(property.json_value),
     ptype: property.ptype as PrimitiveResourceProperty["ptype"],
     attributes: property.attributes,
-    subProperties: formatProperties(property.subProperties),
+    sub_properties: formatProperties(property.sub_properties),
   };
 }
 
@@ -589,7 +586,7 @@ export function formatProperties(
   properties: SafeRawResourceProperty[]
 ): ResourceProperty[] {
   return filterMap(properties, (property): ResourceProperty | null => {
-    if (!property.jsonValue) {
+    if (property.json_value === undefined) {
       if (property.ptype.startsWith("Option")) {
         return formatOptionProperty(property);
       }
@@ -609,7 +606,7 @@ export function formatProperties(
 
 /** Retrieves the resource name from the resource `Entries` based on the provided value string */
 export function getResourceNameFromEntries(
-  resourceEntries: Entries<ResourceDescription>,
+  resourceEntries: Entries<PropertyInspector.ResourceDescription>,
   value: string
 ): string {
   const entry = resourceEntries.find((entry) =>

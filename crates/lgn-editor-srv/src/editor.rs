@@ -10,11 +10,19 @@ use editor_srv::editor::{
     },
     Message, MessageMsgType,
 };
+use lgn_async::receiver::SharedUnboundedReceiver;
+use lgn_data_runtime::ResourceTypeAndId;
 use lgn_data_transaction::TransactionManager;
 use lgn_online::server::{Error, Result};
 use tokio::{sync::broadcast::error::RecvError, sync::Mutex, time::sleep};
 
-use crate::grpc::{EditorEvent, EditorEventsReceiver};
+#[derive(Debug, Clone)]
+pub(crate) enum EditorEvent {
+    SelectionChanged(Vec<ResourceTypeAndId>),
+    ResourceChanged(Vec<ResourceTypeAndId>),
+}
+
+pub(crate) type EditorEventsReceiver = SharedUnboundedReceiver<EditorEvent>;
 
 pub(crate) struct Server {
     transaction_manager: Arc<Mutex<TransactionManager>>,

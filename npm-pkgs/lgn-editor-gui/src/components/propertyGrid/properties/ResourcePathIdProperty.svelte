@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from "svelte";
 
-  import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+  import type { ResourceBrowser } from "@lgn/apis/editor";
   import { dropzone } from "@lgn/web-client/src/actions/dnd";
 
   import { getResourceNameFromEntries } from "@/components/propertyGrid/lib/propertyGrid";
@@ -27,7 +27,7 @@
   function onDrop({
     detail: { item: draggedEntry },
   }: CustomEvent<{
-    item: Entry<ResourceDescription>;
+    item: Entry<ResourceBrowser.ResourceDescription>;
     originalEvent: DragEvent;
   }>) {
     if (resourceType) {

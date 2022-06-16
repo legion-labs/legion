@@ -1,7 +1,7 @@
 import { cleanup } from "@testing-library/svelte";
 import { render } from "@testing-library/svelte";
 
-import type { ResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
+import type { PropertyInspector } from "@lgn/apis/editor";
 
 import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
 import { formatProperties } from "@/components/propertyGrid/lib/propertyGrid";
@@ -38,7 +38,9 @@ describe("PropertyGrid", () => {
       },
       version: 1,
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      properties: formatProperties(properties as unknown as ResourceProperty[]),
+      properties: formatProperties(
+        properties as unknown as PropertyInspector.ResourceProperty[]
+      ),
     });
 
     const { container } = render(PropertyGrid);

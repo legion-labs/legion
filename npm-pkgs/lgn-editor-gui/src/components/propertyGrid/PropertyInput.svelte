@@ -84,7 +84,8 @@
       return;
     }
 
-    parentProperty.subProperties = parentProperty.subProperties
+    // eslint-disable-next-line camelcase
+    parentProperty.sub_properties = parentProperty.sub_properties
       .filter(({ name }) => property.name !== name)
       .map((property, index) => ({
         ...property,
@@ -135,7 +136,7 @@
           item: property.value,
           value: property.value,
         }}
-        options={property.subProperties.map((variant) => ({
+        options={property.sub_properties.map((variant) => ({
           item: variant.name,
           value: variant.name,
         }))}

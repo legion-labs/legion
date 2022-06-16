@@ -10,10 +10,6 @@ use std::{
 
 use async_trait::async_trait;
 use bytes::BytesMut;
-use lgn_app::prelude::*;
-use lgn_data_offline::resource::ChangeType;
-use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
-use lgn_data_transaction::{LockContext, TransactionManager};
 use editor_srv::source_control::{
     server::{
         register_routes, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
@@ -27,6 +23,10 @@ use editor_srv::source_control::{
     PullAssetsSucceeded, ResourceDescription, StagedResource, StagedResourceChangeType,
     StagedResources,
 };
+use lgn_app::prelude::*;
+use lgn_data_offline::resource::ChangeType;
+use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
+use lgn_data_transaction::{LockContext, TransactionManager};
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::SharedRouter;
 use lgn_online::server::{Error, Result};

@@ -25,7 +25,7 @@ use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::{broadcast, Mutex};
 
-use crate::grpc::{EditorEvent, EditorEventsReceiver};
+use crate::editor::{EditorEvent, EditorEventsReceiver};
 use crate::source_control_plugin::{RawFilesStreamerConfig, SharedRawFilesStreamer};
 
 #[derive(Default)]
@@ -57,14 +57,7 @@ impl Plugin for EditorPlugin {
 
 impl EditorPlugin {
     #[allow(clippy::needless_pass_by_value)]
-    fn setup(
-        mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
-        editor_events_receiver: Res<'_, EditorEventsReceiver>,
-    ) {
-        let grpc_server = super::grpc::GRPCServer::new(editor_events_receiver.clone());
-
-        grpc_settings.register_service(grpc_server.service());
-    }
+    fn setup() {}
 
     #[allow(clippy::needless_pass_by_value)]
     fn update_selection(
