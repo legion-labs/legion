@@ -1,4 +1,4 @@
-use crate::components::GraphDefinition;
+use crate::components::GraphDefinition2;
 use lgn_core::Time;
 use lgn_ecs::prelude::{Query, Res};
 

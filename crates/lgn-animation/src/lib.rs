@@ -7,7 +7,6 @@
 // generated from def\animation.rs
 include!(concat!(env!("OUT_DIR"), "/data_def.rs"));
 
-mod animation_graph_events;
 mod animation_options;
 mod animation_pose;
 mod animation_skeleton;

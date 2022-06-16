@@ -13,6 +13,5 @@ pub mod animation_task_system;
 pub mod editor_graph;
 pub mod graph_instance;
 pub mod graph_nodes;
-pub mod node_animation_clip;
 
 // pub use animation_bone_mask::*;
