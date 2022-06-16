@@ -214,11 +214,13 @@ impl Provider {
     /// If the copy fails, an error is returned alongside the parent provider.
     pub async fn commit_and_restart_transaction(&self) -> Result<()> {
         if let Some(parent) = &self.parent {
-            let ids = self.referenced().await;
+            let mut refs = self.refs.lock().await; // maintain lock for duration of transfer to parent
+
+            let ids: Vec<Identifier> = refs.referenced().into_iter().cloned().collect();
 
             self.copy_all_to(ids, parent).await?;
 
-            self.clear_referenced().await;
+            refs.clear();
 
             Ok(())
         } else {
