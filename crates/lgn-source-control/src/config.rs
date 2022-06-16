@@ -94,20 +94,15 @@ impl RepositoryIndexConfig {
 
 impl ApiConfig {
     pub async fn instantiate(&self) -> Result<Box<dyn RepositoryIndex>> {
+        let online_config = lgn_online::Config::load()?;
         let base_url = self
             .base_url
-            .clone()
-            .unwrap_or(lgn_online::Config::load()?.api_base_url);
+            .as_ref()
+            .unwrap_or(&online_config.api_base_url)
+            .clone();
+        let client = online_config.instantiate_client(&[]).await?;
 
-        let client = lgn_online::Config::load()?
-            .instantiate_api_client(&[])
-            .await?;
-
-        // TODO: We use a temporary space for now.
-        let space_id = "default".parse().unwrap();
-        Ok(Box::new(ApiRepositoryIndex::new(
-            client, base_url, space_id,
-        )))
+        Ok(Box::new(ApiRepositoryIndex::new(client, base_url)))
     }
 }
 
