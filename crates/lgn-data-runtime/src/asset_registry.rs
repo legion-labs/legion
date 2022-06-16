@@ -139,10 +139,13 @@ impl AssetRegistryOptions {
     #[must_use]
     pub fn add_device_cas(
         self,
-        provider: Arc<Provider>,
-        manifest_id: SharedTreeIdentifier,
+        volatile_provider: Arc<Provider>,
+        runtime_manifest_id: SharedTreeIdentifier,
     ) -> Self {
-        self.add_device(Box::new(vfs::CasDevice::new(provider, manifest_id)))
+        self.add_device(Box::new(vfs::CasDevice::new(
+            volatile_provider,
+            runtime_manifest_id,
+        )))
     }
 
     /// Specifying `build device` will mount a device that allows to build
@@ -153,8 +156,9 @@ impl AssetRegistryOptions {
     #[allow(clippy::too_many_arguments)]
     pub async fn add_device_build(
         self,
-        provider: Arc<Provider>,
-        manifest: Option<TreeIdentifier>,
+        volatile_provider: Arc<Provider>,
+        source_manifest_id: SharedTreeIdentifier,
+        runtime_manifest_id: Option<TreeIdentifier>,
         build_bin: impl AsRef<Path>,
         output_db_addr: &str,
         repository_name: &str,
@@ -163,8 +167,9 @@ impl AssetRegistryOptions {
     ) -> Self {
         self.add_device(Box::new(
             vfs::BuildDevice::new(
-                manifest,
-                provider,
+                volatile_provider,
+                source_manifest_id,
+                runtime_manifest_id,
                 build_bin,
                 output_db_addr,
                 repository_name,
@@ -775,8 +780,11 @@ mod tests {
 
     async fn setup_singular_asset_test(content: &[u8]) -> (ResourceTypeAndId, Arc<AssetRegistry>) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest =
-            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
+        let mut manifest = ResourceIndex::new_exclusive(
+            Arc::clone(&data_provider),
+            new_resource_type_and_id_indexer(),
+        )
+        .await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -788,7 +796,7 @@ mod tests {
                 .await
                 .unwrap();
             manifest
-                .add_resource(&data_provider, &type_id.into(), provider_id)
+                .add_resource(&type_id.into(), provider_id)
                 .await
                 .unwrap();
 
@@ -806,8 +814,11 @@ mod tests {
 
     async fn setup_dependency_test() -> (ResourceTypeAndId, ResourceTypeAndId, Arc<AssetRegistry>) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest =
-            ResourceIndex::new_exclusive(new_resource_type_and_id_indexer(), &data_provider).await;
+        let mut manifest = ResourceIndex::new_exclusive(
+            Arc::clone(&data_provider),
+            new_resource_type_and_id_indexer(),
+        )
+        .await;
 
         const BINARY_PARENT_ASSETFILE: [u8; 100] = [
             97, 115, 102, 116, // header (asft)
@@ -842,7 +853,6 @@ mod tests {
         let parent_id = {
             manifest
                 .add_resource(
-                    &data_provider,
                     &child_id.into(),
                     data_provider
                         .write_resource_from_bytes(&BINARY_CHILD_ASSETFILE)
@@ -860,7 +870,7 @@ mod tests {
                 id: ResourceId::new_explicit(2),
             };
             manifest
-                .add_resource(&data_provider, &type_id.into(), provider_id)
+                .add_resource(&type_id.into(), provider_id)
                 .await
                 .unwrap();
             type_id

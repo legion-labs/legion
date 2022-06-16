@@ -14,18 +14,24 @@ use crate::resource::deserialize_and_skip_metadata;
 /// Content addressable storage device. Resources are accessed through a
 /// manifest access table.
 pub(crate) struct SourceCasDevice {
-    provider: Arc<Provider>,
-    manifest: ResourceIndex<ResourceTypeAndIdIndexer>,
+    persistent_provider: Arc<Provider>,
+    source_manifest: ResourceIndex<ResourceTypeAndIdIndexer>,
 }
 
 impl SourceCasDevice {
-    pub(crate) fn new(provider: Arc<Provider>, manifest_id: SharedTreeIdentifier) -> Self {
+    pub(crate) fn new(
+        persistent_provider: Arc<Provider>,
+        volatile_provider: Arc<Provider>,
+        source_manifest_id: SharedTreeIdentifier,
+    ) -> Self {
+        let source_manifest = ResourceIndex::new_shared_with_id(
+            volatile_provider,
+            new_resource_type_and_id_indexer(),
+            source_manifest_id,
+        );
         Self {
-            provider,
-            manifest: ResourceIndex::new_shared_with_id(
-                new_resource_type_and_id_indexer(),
-                manifest_id,
-            ),
+            persistent_provider,
+            source_manifest,
         }
     }
 }
@@ -33,12 +39,12 @@ impl SourceCasDevice {
 #[async_trait]
 impl Device for SourceCasDevice {
     async fn load(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        if let Ok(Some(resource_id)) = self
-            .manifest
-            .get_identifier(&self.provider, &type_id.into())
-            .await
-        {
-            if let Ok(resource_bytes) = self.provider.read_resource_as_bytes(&resource_id).await {
+        if let Ok(Some(resource_id)) = self.source_manifest.get_identifier(&type_id.into()).await {
+            if let Ok(resource_bytes) = self
+                .persistent_provider
+                .read_resource_as_bytes(&resource_id)
+                .await
+            {
                 let mut reader = std::io::Cursor::new(resource_bytes);
 
                 // skip over the pre-pended metadata
