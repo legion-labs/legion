@@ -36,8 +36,8 @@ pub struct EditorGraphDefinition {
 
 #[component]
 pub struct Connection {
-    parent_node_id: i32,
-    child_node_id: i32,
+    parent_node_id: u32,
+    child_node_id: u32,
 }
 
 #[component]
@@ -45,3 +45,17 @@ pub struct AnimationClipNode {
     id: i32,
     track: AnimationTrack,
 }
+
+#[component]
+pub struct EditorGraphDefinition2 {
+    states: Vec<AnimationClipNode>,
+    connections: Vec<Connection>,
+}
+
+#[component]
+pub trait Node {}
+
+#[component]
+pub struct StateMachineNode {}
+
+impl Node for StateMachineNode {}

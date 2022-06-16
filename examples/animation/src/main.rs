@@ -12,7 +12,7 @@ use lgn_source_control::RepositoryName;
 
 use lgn_animation::offline::{
     AnimationClipNode, AnimationTrack, AnimationTransformBundle, AnimationTransformBundleVec,
-    Connection, EditorGraphDefinition,
+    Connection, EditorGraphDefinition, EditorGraphDefinition2,
 };
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
@@ -989,8 +989,8 @@ async fn create_offline_data(
                 color: (0x20, 0xFF, 0xFF).into(),
                 ..Visual::default()
             }),
-            Box::new(EditorGraphDefinition {
-                nodes: vec![
+            Box::new(EditorGraphDefinition2 {
+                states: vec![
                     AnimationClipNode {
                         id: 1,
                         track: *waving_anim,
@@ -1000,10 +1000,16 @@ async fn create_offline_data(
                         track: *idle_anim,
                     },
                 ],
-                connections: vec![Connection {
-                    parent_node_id: 1,
-                    child_node_id: 2,
-                }],
+                connections: vec![
+                    Connection {
+                        parent_node_id: 0,
+                        child_node_id: 1,
+                    },
+                    Connection {
+                        parent_node_id: 1,
+                        child_node_id: 0,
+                    },
+                ],
             }),
             // Box::new(*waving_anim),
         ],
