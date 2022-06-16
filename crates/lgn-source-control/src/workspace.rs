@@ -2,8 +2,9 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, ResourceIdentifier, ResourceIndex, ResourceReader, ResourceWriter,
-        SharedTreeIdentifier, StringPathIndexer, TreeDiffSide, TreeIdentifier, TreeLeafNode,
+        BasicIndexer, IndexKey, IndexKeyDisplayFormat, ResourceIdentifier, ResourceIndex,
+        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
+        TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
@@ -127,7 +128,7 @@ where
         &self,
         id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>> {
-        self.get_resource_identifier_from_index(&self.main_index, id)
+        self.get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
             .await
     }
 
@@ -136,26 +137,54 @@ where
         path: &str,
     ) -> Result<Option<ResourceIdentifier>> {
         if path.len() > 1 {
-            self.get_resource_identifier_from_index(&self.path_index, &path.into())
-                .await
+            self.get_resource_identifier_from_index(
+                &self.path_index,
+                &path.into(),
+                IndexKeyDisplayFormat::Utf8,
+            )
+            .await
         } else {
             // path is invalid, too short
             Err(Error::invalid_path(path))
         }
     }
 
+    #[allow(unused_variables)]
     async fn get_resource_identifier_from_index<Indexer>(
         &self,
         index: &ResourceIndex<Indexer>,
         id: &IndexKey,
+        format: IndexKeyDisplayFormat,
     ) -> Result<Option<ResourceIdentifier>>
     where
         Indexer: BasicIndexer + Sync,
     {
-        index
+        let result = index
             .get_identifier(id)
             .await
-            .map_err(Error::ContentStoreIndexing)
+            .map_err(Error::ContentStoreIndexing);
+
+        #[cfg(feature = "verbose")]
+        {
+            print!(
+                "\nlookup resource '{}' in index {}",
+                id.format(format),
+                index.id()
+            );
+            match &result {
+                Ok(Some(resource_id)) => {
+                    println!(" -> {}", resource_id);
+                }
+                Ok(None) => {
+                    println!(" -> not found",);
+                }
+                Err(err) => {
+                    println!(": FAILED, {}", err);
+                }
+            }
+        }
+
+        result
     }
 
     pub async fn resource_exists(&self, id: &IndexKey) -> Result<bool> {
@@ -170,12 +199,16 @@ where
 
     pub async fn load_resource(&self, id: &IndexKey) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.main_index, id)
+            .get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
             #[cfg(feature = "verbose")]
-            println!("reading resource '{}' -> {}", id.to_hex(), resource_id);
+            println!(
+                "\nreading resource '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
+                resource_id
+            );
             Ok((resource_bytes, resource_id))
         } else {
             Err(Error::resource_not_found_by_id(id.clone()))
@@ -184,12 +217,16 @@ where
 
     pub async fn load_resource_by_path(&self, path: &str) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.path_index, &path.into())
+            .get_resource_identifier_from_index(
+                &self.path_index,
+                &path.into(),
+                IndexKeyDisplayFormat::Utf8,
+            )
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
             #[cfg(feature = "verbose")]
-            println!("reading resource '{}' -> {}", path, resource_id);
+            println!("\nreading resource '{}' -> {}", path, resource_id);
             Ok((resource_bytes, resource_id))
         } else {
             Err(Error::resource_not_found_by_path(path))
@@ -228,14 +265,13 @@ where
     }
 
     #[cfg(feature = "verbose")]
-    async fn dump_index<Indexer, F>(
+    async fn dump_index<Indexer>(
         &self,
         index: &ResourceIndex<Indexer>,
         resource_id: Option<&ResourceIdentifier>,
-        f: F,
+        format: IndexKeyDisplayFormat,
     ) where
         Indexer: BasicIndexer + Sync,
-        F: Fn(&IndexKey) -> String,
     {
         if let Ok(contents) = index.enumerate_resources().await {
             match resource_id {
@@ -247,7 +283,7 @@ where
                         println!(
                             "index: {}, [{}] -> {}",
                             index.id(),
-                            f(index_key),
+                            index_key.format(format),
                             resource_id
                         );
                     }
@@ -255,7 +291,7 @@ where
                 None => {
                     println!("contents of index '{}'", index.id());
                     for (index_key, resource_id) in contents {
-                        println!("[{}] -> {}", f(&index_key), resource_id);
+                        println!("[{}] -> {}", index_key.format(format), resource_id);
                     }
                 }
             }
@@ -264,12 +300,10 @@ where
 
     #[cfg(feature = "verbose")]
     async fn dump_all_indices(&self, resource_id: Option<&ResourceIdentifier>) {
-        self.dump_index(&self.main_index, resource_id, IndexKey::to_hex)
+        self.dump_index(&self.main_index, resource_id, IndexKeyDisplayFormat::Hex)
             .await;
-        self.dump_index(&self.path_index, resource_id, |index_key| {
-            std::str::from_utf8(index_key.as_ref()).unwrap().to_owned()
-        })
-        .await;
+        self.dump_index(&self.path_index, resource_id, IndexKeyDisplayFormat::Utf8)
+            .await;
     }
 
     /// Add a resource to the local changes.
@@ -297,8 +331,8 @@ where
         #[cfg(feature = "verbose")]
         {
             println!(
-                "adding resource '{}', path: '{}' -> {}",
-                id.to_hex(),
+                "\nadding resource '{}', path: '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
                 path,
                 resource_identifier,
             );
@@ -325,8 +359,8 @@ where
             #[cfg(feature = "verbose")]
             {
                 println!(
-                    "updating resource '{}', path: '{}' -> {}...",
-                    id.to_hex(),
+                    "\nupdating resource '{}', path: '{}' -> {}...",
+                    id.format(IndexKeyDisplayFormat::Hex),
                     path,
                     old_identifier,
                 );
@@ -352,7 +386,7 @@ where
             {
                 println!(
                     "... to resource '{}', path: '{}' -> {}",
-                    id.to_hex(),
+                    id.format(IndexKeyDisplayFormat::Hex),
                     path,
                     resource_identifier,
                 );
@@ -381,8 +415,8 @@ where
             #[cfg(feature = "verbose")]
             {
                 println!(
-                    "renaming resource '{}', path: '{}' -> {}...",
-                    id.to_hex(),
+                    "\nrenaming resource '{}', path: '{}' -> {}...",
+                    id.format(IndexKeyDisplayFormat::Hex),
                     old_path,
                     old_identifier,
                 );
@@ -412,7 +446,7 @@ where
             {
                 println!(
                     "... to resource '{}', path: '{}' -> {}",
-                    id.to_hex(),
+                    id.format(IndexKeyDisplayFormat::Hex),
                     new_path,
                     resource_identifier,
                 );
@@ -446,8 +480,8 @@ where
         #[cfg(feature = "verbose")]
         {
             println!(
-                "deleting resource '{}', path: '{}' -> {}",
-                id.to_hex(),
+                "\ndeleting resource '{}', path: '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
                 std::str::from_utf8(path.as_ref()).unwrap(),
                 resource_id,
             );
@@ -588,6 +622,17 @@ where
                         old_id: previous_resource_id,
                     },
                 ));
+            }
+        }
+
+        #[cfg(feature = "verbose")]
+        {
+            println!(
+                "\npending changes, comparing commit {} with {}",
+                commit_index_id, main_index_id
+            );
+            for (index_key, change_type) in &changes {
+                println!("{}, {}", index_key, change_type);
             }
         }
 
