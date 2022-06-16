@@ -6,7 +6,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourcePathId};
-use lgn_source_control::{RepositoryIndex, RepositoryName};
+use lgn_source_control::{BranchName, RepositoryIndex, RepositoryName};
 use serial_test::serial;
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
@@ -30,7 +30,7 @@ async fn build_device() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
-    let branch_name = "main";
+    let branch_name: BranchName = "main".parse().unwrap();
     repository_index
         .create_repository(&repository_name)
         .await
@@ -52,7 +52,7 @@ async fn build_device() {
     let mut project = Project::new(
         &repository_index,
         &repository_name,
-        branch_name,
+        &branch_name,
         Arc::clone(&source_control_content_provider),
         Arc::clone(&data_content_provider),
     )
@@ -149,7 +149,7 @@ async fn build_device() {
             DATABUILD_EXE,
             &DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
             repository_name.as_str(),
-            branch_name,
+            branch_name.as_str(),
             true,
         )
         .await
@@ -227,7 +227,7 @@ async fn no_intermediate_resource() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
-    let branch_name = "main";
+    let branch_name: BranchName = "main".parse().unwrap();
     repository_index
         .create_repository(&repository_name)
         .await
@@ -248,7 +248,7 @@ async fn no_intermediate_resource() {
         let mut project = Project::new(
             &repository_index,
             &repository_name,
-            branch_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
         )
@@ -344,7 +344,7 @@ async fn with_intermediate_resource() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
-    let branch_name = "main";
+    let branch_name: BranchName = "main".parse().unwrap();
     repository_index
         .create_repository(&repository_name)
         .await
@@ -366,7 +366,7 @@ async fn with_intermediate_resource() {
         let mut project = Project::new(
             &repository_index,
             &repository_name,
-            branch_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
             Arc::clone(&data_content_provider),
         )
