@@ -311,7 +311,7 @@ components:
           type: string
         total:
           type: integer
-          format: int32
+          format: int64
           minimum: 0
         resource_description:
           type: array
