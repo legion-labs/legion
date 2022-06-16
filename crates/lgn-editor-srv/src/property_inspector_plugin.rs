@@ -330,8 +330,7 @@ impl PropertyInspector for PropertyInspectorRPC {
                             for (model, name) in &models {
                                 gltf_loader.models.push(
                                     ResourcePathId::from(gltf_resource_id)
-                                        .push_named(lgn_graphics_data::offline::Model::TYPE, name)
-                                        .push(lgn_graphics_data::runtime::Model::TYPE),
+                                        .push_named(lgn_graphics_data::runtime::Model::TYPE, name)
                                 );
                                 gltf_loader
                                     .materials

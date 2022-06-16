@@ -1,8 +1,7 @@
 use std::{cell::RefCell, str::FromStr};
 
 use crate::{
-    offline::{Material, Mesh, Model, SamplerData},
-    runtime::RawTexture,
+    runtime::{Material, Mesh, Model, RawTexture, SamplerData},
     Color, Filter, TextureType, WrappingMode,
 };
 use gltf::{
@@ -16,6 +15,116 @@ use lgn_math::{Vec2, Vec3, Vec4};
 
 use lgn_data_runtime::prelude::*;
 use lgn_tracing::warn;
+
+pub fn extract_materials_from_document(
+    document: &Document,
+    resource_id: ResourceTypeAndId,
+) -> (Vec<(Material, String)>, Vec<ResourcePathId>) {
+    let mut references = Vec::<ResourcePathId>::new();
+    let mut materials = Vec::new();
+    for material in document.materials() {
+        let material_name = material.name().unwrap();
+        let base_albedo = material.pbr_metallic_roughness().base_color_factor();
+        let base_albedo = Color::from((
+            (base_albedo[0] * 255.0) as u8,
+            (base_albedo[1] * 255.0) as u8,
+            (base_albedo[2] * 255.0) as u8,
+            (base_albedo[3] * 255.0) as u8,
+        ));
+        let material_sampler = RefCell::new(None);
+        let albedo = material
+            .pbr_metallic_roughness()
+            .base_color_texture()
+            .map(|info| {
+                *material_sampler.borrow_mut() = Some(info.texture().sampler());
+                ResourcePathId::from(resource_id)
+                    .push_named(
+                        crate::runtime::RawTexture::TYPE,
+                        texture_name(&info.texture()).unwrap().as_str(),
+                    )
+                    .push_named(crate::runtime::BinTexture::TYPE, "Albedo")
+            });
+
+        let normal = material.normal_texture().map(|info| {
+            let normal_sampler = info.texture().sampler();
+            if let Some(sampler) = &*material_sampler.borrow() {
+                if !samplers_equal(sampler, &normal_sampler) {
+                    warn!("Material {} uses more than one sampler", material_name);
+                }
+            } else {
+                *material_sampler.borrow_mut() = Some(normal_sampler);
+            }
+
+            ResourcePathId::from(resource_id)
+                .push_named(
+                    crate::runtime::RawTexture::TYPE,
+                    normal_texture_name(&info).unwrap().as_str(),
+                )
+                .push_named(crate::runtime::BinTexture::TYPE, "Normal")
+        });
+        let base_roughness = material.pbr_metallic_roughness().roughness_factor();
+        let base_metalness = material.pbr_metallic_roughness().metallic_factor();
+        let roughness = material
+            .pbr_metallic_roughness()
+            .metallic_roughness_texture()
+            .map(|info| {
+                let roughness_sampler = info.texture().sampler();
+                if let Some(sampler) = &*material_sampler.borrow() {
+                    if !samplers_equal(sampler, &roughness_sampler) {
+                        warn!("Material {} uses more than one sampler", material_name);
+                    }
+                } else {
+                    *material_sampler.borrow_mut() = Some(roughness_sampler);
+                }
+                ResourcePathId::from(resource_id)
+                    .push_named(
+                        crate::runtime::RawTexture::TYPE,
+                        format!("{}_Roughness", texture_name(&info.texture()).unwrap()).as_str(),
+                    )
+                    .push_named(crate::runtime::BinTexture::TYPE, "Roughness")
+            });
+        let metalness = material
+            .pbr_metallic_roughness()
+            .metallic_roughness_texture()
+            .map(|info| {
+                let metalness_sampler = info.texture().sampler();
+                if let Some(sampler) = &*material_sampler.borrow() {
+                    if !samplers_equal(sampler, &metalness_sampler) {
+                        warn!("Material {} uses more than one sampler", material_name);
+                    }
+                } else {
+                    *material_sampler.borrow_mut() = Some(metalness_sampler);
+                }
+                ResourcePathId::from(resource_id)
+                    .push_named(
+                        crate::runtime::RawTexture::TYPE,
+                        format!("{}_Metalness", texture_name(&info.texture()).unwrap()).as_str(),
+                    )
+                    .push_named(crate::runtime::BinTexture::TYPE, "Metalness")
+            });
+
+        references.extend(albedo.iter().cloned());
+        references.extend(normal.iter().cloned());
+        references.extend(roughness.iter().cloned());
+        references.extend(metalness.iter().cloned());
+
+        materials.push((
+            Material {
+                albedo: albedo.map(|p| p.resource_id().into()),
+                normal: normal.map(|p| p.resource_id().into()),
+                roughness: roughness.map(|p| p.resource_id().into()),
+                metalness: metalness.map(|p| p.resource_id().into()),
+                base_albedo,
+                base_metalness,
+                base_roughness,
+                sampler: material_sampler.borrow().as_ref().map(build_sampler),
+                ..Material::default()
+            },
+            String::from(material_name),
+        ));
+    }
+    (materials, references)
+}
 
 pub struct GltfFile {
     document: Document,
@@ -37,8 +146,12 @@ impl GltfFile {
         })
     }
 
-    pub fn gather_models(&self, resource_id: ResourceTypeAndId) -> Vec<(Model, String)> {
+    pub fn gather_models(
+        &self,
+        resource_id: ResourceTypeAndId,
+    ) -> (Vec<(Model, String)>, Vec<ResourcePathId>) {
         let mut models = Vec::new();
+        let mut references = Vec::<ResourcePathId>::new();
         for mesh in self.document.meshes() {
             let mut meshes = Vec::new();
             for primitive in mesh.primitives() {
@@ -52,6 +165,7 @@ impl GltfFile {
 
                 let reader = primitive.reader(|buffer| Some(&self.buffers[buffer.index()]));
                 if let Some(iter) = reader.read_positions() {
+                    positions.reserve(iter.size_hint().0);
                     for position in iter {
                         // GLTF uses RH Y-up coordinate system, Legion Engine uses RH Z-up. By importing -Z -> Y and Y -> Z we
                         // rotate the imported model 90 degrees. This is done to compensate rotation caused by Blender exporting
@@ -61,11 +175,13 @@ impl GltfFile {
                     }
                 }
                 if let Some(iter) = reader.read_normals() {
+                    normals.reserve(iter.size_hint().0);
                     for normal in iter {
                         normals.push(Vec3::new(normal[0], -normal[2], normal[1]));
                     }
                 }
                 if let Some(iter) = reader.read_tangents() {
+                    tangents.reserve(iter.size_hint().0);
                     for tangent in iter {
                         // Same rule as above applies to the tangents. W coordinate of the tangent contains the handedness
                         // of the tangent space. -1 handedness corresponds to a LH tangent basis in a RH coordinate system.
@@ -76,6 +192,7 @@ impl GltfFile {
                 if let Some(tex_coords_option) = reader.read_tex_coords(0) {
                     match tex_coords_option {
                         ReadTexCoords::F32(iter) => {
+                            tex_coords.reserve(iter.size_hint().0);
                             for tex_coord in iter {
                                 tex_coords.push(Vec2::new(tex_coord[0], tex_coord[1]));
                             }
@@ -86,16 +203,19 @@ impl GltfFile {
                 if let Some(indices_option) = reader.read_indices() {
                     match indices_option {
                         ReadIndices::U8(iter) => {
+                            indices.reserve(iter.size_hint().0);
                             for idx in iter {
                                 indices.push(u16::from(idx));
                             }
                         }
                         ReadIndices::U16(iter) => {
+                            indices.reserve(iter.size_hint().0);
                             for idx in iter {
                                 indices.push(idx);
                             }
                         }
                         ReadIndices::U32(iter) => {
+                            indices.reserve(iter.size_hint().0);
                             for idx in iter {
                                 // TODO - will panic if does not fit in 16bits
                                 indices.push(idx as u16);
@@ -130,6 +250,9 @@ impl GltfFile {
                         )
                     },
                 );
+
+                references.extend(material.iter().cloned());
+
                 meshes.push(Mesh {
                     positions,
                     normals,
@@ -137,122 +260,21 @@ impl GltfFile {
                     tex_coords,
                     indices,
                     colors: Vec::new(),
-                    material,
+                    material: material.map(|p| p.resource_id().into()),
                 });
             }
-            models.push((
-                Model {
-                    meshes,
-                    ..Model::default()
-                },
-                String::from(mesh.name().unwrap()),
-            ));
+
+            models.push((Model { meshes }, String::from(mesh.name().unwrap())));
         }
-        models
+        (models, references)
     }
 
-    pub fn gather_materials(&self, resource_id: ResourceTypeAndId) -> Vec<(Material, String)> {
-        let mut materials = Vec::new();
-        for material in self.document.materials() {
-            let material_name = material.name().unwrap();
-            let base_albedo = material.pbr_metallic_roughness().base_color_factor();
-            let base_albedo = Color::from((
-                (base_albedo[0] * 255.0) as u8,
-                (base_albedo[1] * 255.0) as u8,
-                (base_albedo[2] * 255.0) as u8,
-                (base_albedo[3] * 255.0) as u8,
-            ));
-            let material_sampler = RefCell::new(None);
-            let albedo = material
-                .pbr_metallic_roughness()
-                .base_color_texture()
-                .map(|info| {
-                    *material_sampler.borrow_mut() = Some(info.texture().sampler());
-                    ResourcePathId::from(resource_id)
-                        .push_named(
-                            crate::runtime::RawTexture::TYPE,
-                            texture_name(&info.texture()).unwrap().as_str(),
-                        )
-                        .push_named(crate::runtime::BinTexture::TYPE, "Albedo")
-                });
-
-            let normal = material.normal_texture().map(|info| {
-                let normal_sampler = info.texture().sampler();
-                if let Some(sampler) = &*material_sampler.borrow() {
-                    if !samplers_equal(sampler, &normal_sampler) {
-                        warn!("Material {} uses more than one sampler", material_name);
-                    }
-                } else {
-                    *material_sampler.borrow_mut() = Some(normal_sampler);
-                }
-
-                ResourcePathId::from(resource_id)
-                    .push_named(
-                        crate::runtime::RawTexture::TYPE,
-                        normal_texture_name(&info).unwrap().as_str(),
-                    )
-                    .push_named(crate::runtime::BinTexture::TYPE, "Normal")
-            });
-            let base_roughness = material.pbr_metallic_roughness().roughness_factor();
-            let base_metalness = material.pbr_metallic_roughness().metallic_factor();
-            let roughness = material
-                .pbr_metallic_roughness()
-                .metallic_roughness_texture()
-                .map(|info| {
-                    let roughness_sampler = info.texture().sampler();
-                    if let Some(sampler) = &*material_sampler.borrow() {
-                        if !samplers_equal(sampler, &roughness_sampler) {
-                            warn!("Material {} uses more than one sampler", material_name);
-                        }
-                    } else {
-                        *material_sampler.borrow_mut() = Some(roughness_sampler);
-                    }
-                    ResourcePathId::from(resource_id)
-                        .push_named(
-                            crate::runtime::RawTexture::TYPE,
-                            format!("{}_Roughness", texture_name(&info.texture()).unwrap())
-                                .as_str(),
-                        )
-                        .push_named(crate::runtime::BinTexture::TYPE, "Roughness")
-                });
-            let metalness = material
-                .pbr_metallic_roughness()
-                .metallic_roughness_texture()
-                .map(|info| {
-                    let metalness_sampler = info.texture().sampler();
-                    if let Some(sampler) = &*material_sampler.borrow() {
-                        if !samplers_equal(sampler, &metalness_sampler) {
-                            warn!("Material {} uses more than one sampler", material_name);
-                        }
-                    } else {
-                        *material_sampler.borrow_mut() = Some(metalness_sampler);
-                    }
-                    ResourcePathId::from(resource_id)
-                        .push_named(
-                            crate::runtime::RawTexture::TYPE,
-                            format!("{}_Metalness", texture_name(&info.texture()).unwrap())
-                                .as_str(),
-                        )
-                        .push_named(crate::runtime::BinTexture::TYPE, "Metalness")
-                });
-            materials.push((
-                Material {
-                    albedo,
-                    normal,
-                    roughness,
-                    metalness,
-                    base_albedo,
-                    base_metalness,
-                    base_roughness,
-                    sampler: material_sampler.borrow().as_ref().map(build_sampler),
-                    ..Material::default()
-                },
-                String::from(material_name),
-            ));
-        }
-        materials
+    pub fn gather_materials(
+        &self,
+        resource_id: ResourceTypeAndId,
+    ) -> (Vec<(Material, String)>, Vec<ResourcePathId>) {
+        extract_materials_from_document(&self.document, resource_id)
     }
-
     pub fn gather_textures(&self) -> Vec<(RawTexture, String)> {
         let mut metallic_roughness_textures = Vec::new();
         for material in self.document.materials() {
@@ -267,10 +289,11 @@ impl GltfFile {
         for texture in self.document.textures() {
             let name = texture_name(&texture).unwrap();
             let image = &self.images[texture.source().index()];
+            let capacity = (image.width * image.height) as usize;
             if metallic_roughness_textures.contains(&name) {
-                let mut roughness = Vec::new();
-                let mut metalness = Vec::new();
-                for i in 0..(image.width * image.height) as usize {
+                let mut roughness = Vec::with_capacity(capacity);
+                let mut metalness = Vec::with_capacity(capacity);
+                for i in 0..capacity {
                     roughness.push(image.pixels[i * 3 + 1]);
                     metalness.push(image.pixels[i * 3 + 2]);
                 }
@@ -302,11 +325,12 @@ impl GltfFile {
                             //Format::R8 => image.pixels.clone().iter().flat_map(|v| vec![*v, 0, 0, 0]).collect(),
                             Format::R8G8B8A8 => serde_bytes::ByteBuf::from(image.pixels.clone()),
                             Format::R8G8B8 => {
-                                let mut rgba = Vec::new();
-                                for i in 0..(image.width * image.height) as usize {
-                                    rgba.push(image.pixels[i * 3]);
-                                    rgba.push(image.pixels[i * 3 + 1]);
-                                    rgba.push(image.pixels[i * 3 + 2]);
+                                let mut rgba = Vec::with_capacity(capacity);
+                                let source = image.pixels.chunks(3);
+                                for pixels in source {
+                                    rgba.push(pixels[0]);
+                                    rgba.push(pixels[1]);
+                                    rgba.push(pixels[2]);
                                     rgba.push(255);
                                 }
                                 serde_bytes::ByteBuf::from(rgba)

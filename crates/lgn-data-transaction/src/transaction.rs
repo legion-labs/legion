@@ -56,9 +56,10 @@ impl Transaction {
             // All the ops complete, the the resources
             let changed = context.save_changed_resources().await?;
             let mut log = format!(
-                "Transaction Applied: {} / {}ops",
+                "Transaction Applied: {} / {}ops ({} changed)",
                 &self.id,
-                self.operations.len()
+                self.operations.len(),
+                changed.as_ref().map_or(0, Vec::len)
             );
 
             if lgn_config::get_or("data_transaction.log_operation", false).unwrap() {
@@ -99,9 +100,10 @@ impl Transaction {
             // All the ops complete, the the resources
             let changed = context.save_changed_resources().await?;
             info!(
-                "Transaction Rollbacked: {} / {}ops",
+                "Transaction Rollbacked: {} / {}ops ({} changed)",
                 &self.id,
-                self.operations.len()
+                self.operations.len(),
+                changed.as_ref().map_or(0, Vec::len)
             );
             Ok(changed)
         }

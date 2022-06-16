@@ -2,7 +2,9 @@ use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 use lgn_content_store::indexing::SharedTreeIdentifier;
 use lgn_data_offline::{Project, ResourcePathName};
-use lgn_data_runtime::{AssetRegistryError, ResourcePathId, ResourceType, ResourceTypeAndId};
+use lgn_data_runtime::{
+    AssetRegistryError, AssetRegistryMessage, ResourcePathId, ResourceType, ResourceTypeAndId,
+};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -78,6 +80,8 @@ pub enum Error {
 pub struct TransactionManager {
     commited_transactions: Vec<Transaction>,
     rollbacked_transactions: Vec<Transaction>,
+    notification_tx: crossbeam_channel::Sender<AssetRegistryMessage>,
+    notification_rx: crossbeam_channel::Receiver<AssetRegistryMessage>,
 
     pub(crate) project: Arc<Mutex<Project>>,
     pub(crate) build_manager: Arc<Mutex<BuildManager>>,
@@ -92,14 +96,24 @@ impl TransactionManager {
         build_manager: BuildManager,
         selection_manager: Arc<SelectionManager>,
     ) -> Self {
+        let (notification_tx, notification_rx) =
+            crossbeam_channel::unbounded::<AssetRegistryMessage>();
+
         Self {
             commited_transactions: Vec::new(),
             rollbacked_transactions: Vec::new(),
+            notification_tx,
+            notification_rx,
             project,
             build_manager: Arc::new(Mutex::new(build_manager)),
             selection_manager,
             active_scenes: HashSet::new(),
         }
+    }
+
+    /// Return a Notification receiver
+    pub fn get_notification_receiver(&self) -> crossbeam_channel::Receiver<AssetRegistryMessage> {
+        self.notification_rx.clone()
     }
 
     /// Add a scene and build it
@@ -130,6 +144,22 @@ impl TransactionManager {
         self.active_scenes.iter().copied().collect()
     }
 
+    fn notify_changed_resources(&self, changed: Option<Vec<ResourceTypeAndId>>) {
+        if let Some(changed) = changed {
+            let runtime_changed = changed
+                .iter()
+                .map(|r| BuildManager::get_derived_id(*r).resource_id())
+                .collect::<Vec<_>>();
+
+            if let Err(err) = self
+                .notification_tx
+                .send(AssetRegistryMessage::ChangedResources(runtime_changed))
+            {
+                lgn_tracing::warn!("Failed to TransactionMessage::ChangedResources: {}", err);
+            }
+        }
+    }
+
     /// Build a resource by id
     pub async fn build_by_id(
         &self,
@@ -143,53 +173,42 @@ impl TransactionManager {
             .await
             .map_err(|err| Error::Databuild(resource_id, err))?;
 
-        /*// Reload runtime asset (just entity for now)
-        for asset_id in changed_assets {
-            // Try to reload, if it doesn't exist, load normally
-            if asset_id.kind.as_pretty().starts_with("runtime_")
-                && !ctx.asset_registry.reload(asset_id)
-            {
-                ctx.asset_registry.load_untyped(asset_id);
-            }
-        }*/
         Ok(runtime_path_id)
     }
 
     /// Commit the current pending `Transaction`
-    pub async fn commit_transaction(
-        &mut self,
-        mut transaction: Transaction,
-    ) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
+    pub async fn commit_transaction(&mut self, mut transaction: Transaction) -> Result<(), Error> {
         let changed = transaction
             .apply_transaction(LockContext::new(self).await)
             .await?;
         self.commited_transactions.push(transaction);
         self.rollbacked_transactions.clear();
-        Ok(changed)
+        self.notify_changed_resources(changed);
+        Ok(())
     }
 
     /// Undo the last committed transaction
-    pub async fn undo_transaction(&mut self) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
+    pub async fn undo_transaction(&mut self) -> Result<(), Error> {
         if let Some(mut transaction) = self.commited_transactions.pop() {
             let changed = transaction
                 .rollback_transaction(LockContext::new(self).await)
                 .await?;
             self.rollbacked_transactions.push(transaction);
-            return Ok(changed);
+            self.notify_changed_resources(changed);
         }
-        Ok(None)
+        Ok(())
     }
 
     /// Reapply a rollbacked transaction
-    pub async fn redo_transaction(&mut self) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
+    pub async fn redo_transaction(&mut self) -> Result<(), Error> {
         if let Some(mut transaction) = self.rollbacked_transactions.pop() {
             let changed = transaction
                 .apply_transaction(LockContext::new(self).await)
                 .await?;
             self.commited_transactions.push(transaction);
-            return Ok(changed);
+            self.notify_changed_resources(changed);
         }
-        Ok(None)
+        Ok(())
     }
 
     /// Retrieve the identifier for the current runtime manifest

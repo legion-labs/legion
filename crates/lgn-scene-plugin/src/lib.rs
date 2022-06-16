@@ -60,7 +60,24 @@ impl ScenePlugin {
         scene_manager: Res<'_, Arc<SceneManager>>,
         tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         mut commands: Commands<'_, '_>,
+        asset_registry_events: ResMut<'_, crossbeam_channel::Receiver<AssetRegistryMessage>>,
     ) {
+        for event in asset_registry_events.try_iter() {
+            match event {
+                AssetRegistryMessage::ChangedResources(changed_resources) => {
+                    let asset_registry = asset_registry.clone();
+                    let scene_manager = scene_manager.clone();
+                    let changed_resources = changed_resources.clone();
+
+                    tokio_runtime.start_detached(async move {
+                        scene_manager
+                            .notify_changed_resources(&changed_resources, &asset_registry)
+                            .await;
+                    });
+                }
+            }
+        }
+
         for event in scene_events.iter() {
             match event {
                 SceneMessage::OpenScene(resource_id) => {
@@ -70,7 +87,7 @@ impl ScenePlugin {
                     tokio_runtime.start_detached(async move {
                         match asset_registry.load_async::<Entity>(resource_id).await {
                             Ok(handle) => {
-                                scene_manager.add_pending(handle);
+                                scene_manager.add_pending_scene(handle);
                                 println!("ok");
                             }
                             Err(err) => lgn_tracing::error!(

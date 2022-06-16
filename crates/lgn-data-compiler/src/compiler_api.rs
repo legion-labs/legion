@@ -396,14 +396,15 @@ async fn get_transform_hash(
     env: &CompilationEnv,
     transform: Transform,
 ) -> Result<CompilerHash, CompilerError> {
-    let (compiler, transform) = compilers
-        .find_compiler(transform)
-        .ok_or(CompilerError::CompilerNotFound(transform))?;
+    let (compiler, transform) = compilers.find_compiler(transform).ok_or_else(|| {
+        lgn_tracing::error!("Not found");
+        CompilerError::CompilerNotFound(transform)
+    })?;
 
-    let compiler_hash = compiler
-        .compiler_hash(transform, env)
-        .await
-        .map_err(|_e| CompilerError::CompilerNotFound(transform))?;
+    let compiler_hash = compiler.compiler_hash(transform, env).await.map_err(|e| {
+        lgn_tracing::error!("{}", e);
+        CompilerError::CompilerNotFound(transform)
+    })?;
 
     Ok(compiler_hash)
 }
@@ -508,9 +509,10 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
             };
 
             let registry = {
-                let (compiler, _) = compilers
-                    .find_compiler(transform)
-                    .ok_or(CompilerError::CompilerNotFound(transform))?;
+                let (compiler, _) = compilers.find_compiler(transform).ok_or_else(|| {
+                    lgn_tracing::error!("Compiler not found");
+                    CompilerError::CompilerNotFound(transform)
+                })?;
 
                 let registry = AssetRegistryOptions::new()
                     .add_device_cas(Arc::clone(&data_provider), runtime_manifest_id.clone())
@@ -524,10 +526,10 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
 
             let shell = CompilerNode::new(compilers, registry);
 
-            let (compiler, _) = shell
-                .compilers()
-                .find_compiler(transform)
-                .ok_or(CompilerError::CompilerNotFound(transform))?;
+            let (compiler, _) = shell.compilers().find_compiler(transform).ok_or_else(|| {
+                lgn_tracing::error!("Compiler not found");
+                CompilerError::CompilerNotFound(transform)
+            })?;
 
             let compilation_output = compiler
                 .compile(

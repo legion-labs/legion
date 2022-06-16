@@ -16,6 +16,20 @@ impl Transform {
     pub const fn new(from: ResourceType, to: ResourceType) -> Self {
         Self { from, to }
     }
+
+    /// Wildcard
+    pub fn is_wildcard_for(&self, transform: &Transform) -> bool {
+        self.from == self.to && self.from == transform.from
+    }
+
+    /// To Identity transform
+    #[must_use]
+    pub fn as_identity(&self) -> Self {
+        Self {
+            from: self.from,
+            to: self.from,
+        }
+    }
 }
 
 impl fmt::Display for Transform {
