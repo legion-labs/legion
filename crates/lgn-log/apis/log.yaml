@@ -4,7 +4,7 @@ info:
   description: "The OpenAPI specification for the Legion Labs log service."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspace/{workspace-id}/session/log/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/session/log/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -30,7 +30,12 @@ components:
       properties:
         level:
           type: string
-          enum: [Error, Warn, Info, Debug, Trace]
+          enum:
+            - Error
+            - Warn
+            - Info
+            - Debug
+            - Trace
         time:
           type: integer
           format: int64

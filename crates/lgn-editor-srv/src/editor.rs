@@ -1,23 +1,31 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use async_trait::async_trait;
 use lgn_data_transaction::TransactionManager;
-use lgn_editor_yaml::editor::server::{
-    RedoTransactionRequest, RedoTransactionResponse, UndoTransactionRequest,
-    UndoTransactionResponse,
-};
 use lgn_editor_yaml::editor::Api;
-use lgn_online::server::Result;
-use tokio::sync::Mutex;
+use lgn_editor_yaml::editor::{
+    server::{
+        GetMessagesRequest, GetMessagesResponse, RedoTransactionRequest, RedoTransactionResponse,
+        UndoTransactionRequest, UndoTransactionResponse,
+    },
+    Message, MessageMsgType,
+};
+use lgn_online::server::{Error, Result};
+use tokio::{sync::broadcast::error::RecvError, sync::Mutex, time::sleep};
+
+use crate::grpc::{EditorEvent, EditorEventsReceiver};
 
 pub(crate) struct Server {
     transaction_manager: Arc<Mutex<TransactionManager>>,
+    editor_events_receiver: EditorEventsReceiver,
 }
 /*
 impl Server {
-    pub(crate) fn new(transaction_manager: Arc<Mutex<TransactionManager>>) -> Self {
+    pub(crate) fn new(transaction_manager: Arc<Mutex<TransactionManager>>, editor_events_receiver: EditorEventsReceiver) -> Self {
         Self {
             transaction_manager,
+            editor_events_receiver,
         }
     }
 }
@@ -49,68 +57,37 @@ impl Api for Server {
         }
     }
 
-    /*
-        type InitMessageStreamStream =
-            UnboundedReceiverStream<Result<InitMessageStreamResponse, Status>>;
+    async fn get_messages(&self, _request: GetMessagesRequest) -> Result<GetMessagesResponse> {
+        let receiver = self.editor_events_receiver.clone();
 
-        async fn init_message_stream(
-            &self,
-            _: Request<InitMessageStreamRequest>,
-        ) -> Result<tonic::Response<<Self as Editor>::InitMessageStreamStream>, Status> {
-            let (tx, rx) = mpsc::unbounded_channel();
-            let receiver = self.editor_events_receiver.clone();
+        let msg_future = async move {
+            loop {
+                match receiver.lock().await.recv().await {
+                    Ok(editor_event) => {
+                        let message = match editor_event {
+                            EditorEvent::SelectionChanged(selections) => Message {
+                                msg_type: MessageMsgType::SelectionChanged,
+                                payload: serde_json::json!(selections).to_string(),
+                            },
+                            EditorEvent::ResourceChanged(changed_resources) => Message {
+                                msg_type: MessageMsgType::ResourceChanged,
+                                payload: serde_json::json!(changed_resources).to_string(),
+                            },
+                        };
 
-            tokio::spawn(async move {
-                loop {
-                    match receiver.lock().await.recv().await {
-                        Ok(editor_event) => {
-                            if let Some(message) = match editor_event {
-                                EditorEvent::SelectionChanged(selections) => {
-                                    Some(lgn_editor_proto::editor::Message {
-                                        msg_type:
-                                            lgn_editor_proto::editor::MessageType::SelectionChanged
-                                                as i32,
-                                        payload: serde_json::json!(selections).to_string(),
-                                    })
-                                }
-                                EditorEvent::ResourceChanged(changed_resources) => {
-                                    Some(lgn_editor_proto::editor::Message {
-                                        msg_type: lgn_editor_proto::editor::MessageType::ResourceChanged
-                                            as i32,
-                                        payload: serde_json::json!(changed_resources).to_string(),
-                                    })
-                                }
-                            } {
-                                if let Err(_error) = tx.send(Ok(InitMessageStreamResponse {
-                                    response: Some(init_message_stream_response::Response::Message(
-                                        message,
-                                    )),
-                                })) {
-                                    // Sent errors are always related to closed connection:
-                                    // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
-                                    // So we can stop the task
-                                    return;
-                                }
-                            }
-                        }
-                        Err(RecvError::Lagged(skipped_messages)) => {
-                            if let Err(_error) = tx.send(Ok(InitMessageStreamResponse {
-                                response: Some(init_message_stream_response::Response::Lagging(
-                                    skipped_messages,
-                                )),
-                            })) {
-                                // Sent errors are always related to closed connection:
-                                // https://github.com/tokio-rs/tokio/blob/b1afd95994be0d46ea70ba784439a684a787f50e/tokio/src/sync/mpsc/error.rs#L12
-                                // So we can stop the task
-                                return;
-                            }
-                        }
-                        Err(RecvError::Closed) => return,
+                        return Ok(GetMessagesResponse::Status200(message));
+                    }
+                    Err(RecvError::Lagged(_)) => continue,
+                    Err(RecvError::Closed) => {
+                        return Err(Error::internal("message channel got closed"))
                     }
                 }
-            });
+            }
+        };
 
-            Ok(Response::new(UnboundedReceiverStream::new(rx)))
+        tokio::select! {
+            response = msg_future => response,
+            _ = sleep(Duration::from_secs(5)) => Ok(GetMessagesResponse::Status204)
         }
-    */
+    }
 }

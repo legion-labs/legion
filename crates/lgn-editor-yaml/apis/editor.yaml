@@ -30,6 +30,23 @@ paths:
           description: Ok.
         "409":
           description: Redo transaction failed
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/messages:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    get:
+      description: Get messages from the server (using long polling)
+      operationId: getMessages
+      responses:
+        "200":
+          description: New message delivered.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "204":
+          description: No messages to deliver
+
 components:
   parameters:
     transaction_id:
@@ -43,3 +60,17 @@ components:
     TransactionId:
       description: An identifier to a unique a transaction.
       type: string
+    Message:
+      description: A message coming from the server
+      type: object
+      properties:
+          msg_type:
+            type: string
+            enum:
+              - SelectionChanged
+              - ResourceChanged
+          payload:
+            type: string
+      required:
+        - payload
+        - msg_type

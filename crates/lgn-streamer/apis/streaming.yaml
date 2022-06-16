@@ -4,7 +4,7 @@ info:
   description: "The OpenAPI specification for the Legion Labs streaming service."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspace/{workspace-id}/session/graphic-session/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/session/graphic-session/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
