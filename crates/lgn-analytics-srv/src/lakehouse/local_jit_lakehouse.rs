@@ -161,7 +161,7 @@ impl LocalJitLakehouse {
         build_span_tree(&file_reader)
     }
 
-    async fn read_call_tree(
+    async fn read_tree_block(
         &self,
         spans_file_path: &Path,
         scopes_file_path: &Path,
@@ -271,7 +271,7 @@ impl JitLakehouse for LocalJitLakehouse {
                 .await;
         }
 
-        self.read_call_tree(&spans_file_path, &scopes_file_path)
+        self.read_tree_block(&spans_file_path, &scopes_file_path)
             .await
     }
 }

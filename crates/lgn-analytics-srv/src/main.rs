@@ -137,14 +137,14 @@ pub async fn connect_to_local_data_lake(
 pub async fn connect_to_remote_data_lake(
     db_uri: &str,
     s3_url_data_lake: &str,
-    s3_url_cache: &str,
+    s3_url_cache: String,
     lakehouse_uri: Option<String>,
 ) -> Result<AnalyticsService> {
     info!("connecting to blob storage");
     let data_lake_blobs =
         Arc::new(AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url_data_lake)?).await);
     let cache_blobs = Arc::new(Lz4BlobStorageAdapter::new(
-        AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url_cache)?).await,
+        AwsS3BlobStorage::new(AwsS3Url::from_str(&s3_url_cache)?).await,
     ));
     let pool = sqlx::any::AnyPoolOptions::new()
         .max_connections(10)
@@ -153,7 +153,13 @@ pub async fn connect_to_remote_data_lake(
         .with_context(|| String::from("Connecting to telemetry database"))?;
 
     let lakehouse = new_jit_lakehouse(
-        lakehouse_uri.unwrap_or_else(|| format!("{}/tables", s3_url_cache)),
+        lakehouse_uri.unwrap_or_else(|| {
+            if s3_url_cache.ends_with('/') {
+                s3_url_cache + "tables/"
+            } else {
+                s3_url_cache + "/tables/"
+            }
+        }),
         pool.clone(),
         data_lake_blobs.clone(),
     )
@@ -186,7 +192,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             s3_lake_url,
             s3_cache_url,
         } => {
-            connect_to_remote_data_lake(&db_uri, &s3_lake_url, &s3_cache_url, args.lakehouse_uri)
+            connect_to_remote_data_lake(&db_uri, &s3_lake_url, s3_cache_url, args.lakehouse_uri)
                 .await?
         }
     };

@@ -1,5 +1,5 @@
 use crate::{
-    call_tree::{compute_block_spans, process_thread_block},
+    call_tree::process_thread_block,
     lakehouse::{
         bytes_chunk_reader::BytesChunkReader, jit_lakehouse::JitLakehouse,
         span_table::make_rows_from_tree,
@@ -10,7 +10,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::{AwsS3Url, BlobStorage};
-use lgn_telemetry_proto::analytics::{BlockSpansReply, CallTree, ScopeDesc, SpanBlockLod};
+use lgn_telemetry_proto::analytics::{BlockSpansReply, ScopeDesc, SpanBlockLod};
 use lgn_tracing::prelude::*;
 use parquet::file::serialized_reader::SerializedFileReader;
 use parquet::{file::reader::FileReader, record::RowAccessor};
@@ -18,7 +18,10 @@ use std::sync::Arc;
 
 use super::{
     scope_table::{make_scopes_table_writer, ScopeRowGroup},
-    span_table::{build_spans_lod0, make_spans_table_writer, SpanRowGroup, TabularSpanTree},
+    span_table::{
+        build_span_tree, build_spans_lod0, lod0_from_span_tree, make_spans_table_writer,
+        SpanRowGroup, TabularSpanTree,
+    },
 };
 
 pub struct RemoteJitLakehouse {
@@ -58,6 +61,22 @@ impl RemoteJitLakehouse {
         };
         let file_reader = SerializedFileReader::new(bytes)?;
         build_spans_lod0(&file_reader)
+    }
+
+    async fn read_tree(&self, spans_key: String) -> Result<TabularSpanTree> {
+        //todo: factor out creation of file reader from key
+        let get_obj_output = self
+            .s3client
+            .get_object()
+            .bucket(&self.tables_uri.bucket_name)
+            .key(&spans_key)
+            .send()
+            .await?;
+        let bytes = BytesChunkReader {
+            bytes: get_obj_output.body.collect().await?.into_bytes(),
+        };
+        let file_reader = SerializedFileReader::new(bytes)?;
+        build_span_tree(&file_reader)
     }
 
     async fn read_scopes(&self, scopes_key: String) -> Result<ScopeHashMap> {
@@ -154,14 +173,14 @@ impl RemoteJitLakehouse {
         Ok(())
     }
 
-    async fn write_thread_block(
+    async fn write_call_tree(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
         spans_key: String,
         scopes_key: String,
-    ) -> Result<BlockSpansReply> {
+    ) -> Result<(ScopeHashMap, TabularSpanTree)> {
         info!("writing thread block {}", block_id);
         let convert_ticks = ConvertTicks::new(process);
         let processed = process_thread_block(
@@ -173,16 +192,7 @@ impl RemoteJitLakehouse {
         )
         .await?;
         if processed.call_tree_root.is_none() {
-            return Ok(BlockSpansReply {
-                scopes: ScopeHashMap::new(),
-                lod: Some(SpanBlockLod {
-                    lod_id: 0,
-                    tracks: vec![],
-                }),
-                block_id: block_id.to_owned(),
-                begin_ms: f64::MAX,
-                end_ms: f64::MIN,
-            });
+            return Ok((ScopeHashMap::new(), TabularSpanTree::new()));
         }
         let root = processed
             .call_tree_root
@@ -193,12 +203,7 @@ impl RemoteJitLakehouse {
         self.write_spans(&rows, spans_key).await?;
         self.write_scopes(&processed.scopes, scopes_key).await?;
 
-        //todo: do not iterate twice
-        let tree = CallTree {
-            scopes: processed.scopes,
-            root: Some(root),
-        };
-        Ok(compute_block_spans(tree, block_id))
+        Ok((processed.scopes, TabularSpanTree::from_rows(&rows)?))
     }
 
     async fn object_exists(&self, key: &str) -> Result<bool> {
@@ -223,6 +228,32 @@ impl RemoteJitLakehouse {
             Err(err) => anyhow::bail!(err),
         }
     }
+
+    async fn read_tree_block(
+        &self,
+        spans_key: String,
+        scopes_key: String,
+    ) -> Result<(ScopeHashMap, TabularSpanTree)> {
+        let scopes = self.read_scopes(scopes_key).await?;
+        let tree = self.read_tree(spans_key).await?;
+        Ok((scopes, tree))
+    }
+
+    fn get_table_keys(
+        &self,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        block_id: &str,
+    ) -> (String, String) {
+        let spans_key = format!(
+            "{}spans/process_id={}/block_id={}/spans.parquet",
+            &self.tables_uri.root, &process.process_id, block_id
+        );
+        let scopes_key = format!(
+            "{}scopes/process_id={}/block_id={}/scopes.parquet",
+            &self.tables_uri.root, &process.process_id, block_id
+        );
+        (spans_key, scopes_key)
+    }
 }
 
 #[async_trait]
@@ -239,19 +270,32 @@ impl JitLakehouse for RemoteJitLakehouse {
         stream: &lgn_telemetry_sink::StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply> {
-        let spans_key = format!(
-            "{}/spans/process_id={}/block_id={}/spans.parquet",
-            &self.tables_uri.root, &process.process_id, block_id
-        );
-        let scopes_key = format!(
-            "{}/scopes/process_id={}/block_id={}/scopes.parquet",
-            &self.tables_uri.root, &process.process_id, block_id
-        );
-
+        let (spans_key, scopes_key) = self.get_table_keys(process, block_id);
         if !self.object_exists(&spans_key).await? || !self.object_exists(&scopes_key).await? {
-            return self
-                .write_thread_block(process, stream, block_id, spans_key, scopes_key)
-                .await;
+            let (scopes, tree) = self
+                .write_call_tree(process, stream, block_id, spans_key, scopes_key)
+                .await?;
+            if tree.is_empty() {
+                return Ok(BlockSpansReply {
+                    scopes: ScopeHashMap::new(),
+                    lod: Some(SpanBlockLod {
+                        lod_id: 0,
+                        tracks: vec![],
+                    }),
+                    block_id: block_id.to_owned(),
+                    begin_ms: f64::MAX,
+                    end_ms: f64::MIN,
+                });
+            }
+            let lod = lod0_from_span_tree(&tree)?;
+            let root_span = tree.get_row(0)?;
+            return Ok(BlockSpansReply {
+                scopes,
+                lod: Some(lod),
+                block_id: block_id.to_owned(),
+                begin_ms: root_span.begin_ms,
+                end_ms: root_span.end_ms,
+            });
         }
 
         self.read_thread_block(block_id, spans_key, scopes_key)
@@ -260,10 +304,16 @@ impl JitLakehouse for RemoteJitLakehouse {
 
     async fn get_call_tree(
         &self,
-        _process: &lgn_telemetry_sink::ProcessInfo,
-        _stream: &lgn_telemetry_sink::StreamInfo,
-        _block_id: &str,
+        process: &lgn_telemetry_sink::ProcessInfo,
+        stream: &lgn_telemetry_sink::StreamInfo,
+        block_id: &str,
     ) -> Result<(ScopeHashMap, TabularSpanTree)> {
-        anyhow::bail!("get_call_tree not implemented");
+        let (spans_key, scopes_key) = self.get_table_keys(process, block_id);
+        if !self.object_exists(&spans_key).await? || !self.object_exists(&scopes_key).await? {
+            return self
+                .write_call_tree(process, stream, block_id, spans_key, scopes_key)
+                .await;
+        }
+        self.read_tree_block(spans_key, scopes_key).await
     }
 }
