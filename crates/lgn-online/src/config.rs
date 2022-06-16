@@ -57,27 +57,6 @@ impl Config {
         Ok(lgn_config::get("online")?.unwrap_or_default())
     }
 
-    /// Instantiate an API client.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the authentication settings are invalid.
-    pub async fn instantiate_api_client(
-        &self,
-        scopes: &[String],
-    ) -> Result<AuthenticatedClient<HyperClient, BoxedAuthenticator>> {
-        let client = HyperClient::default();
-
-        let authenticator = match &self.authentication {
-            Some(config) => Some(config.instantiate_authenticator().await?),
-            None => None,
-        };
-
-        let client = AuthenticatedClient::new(client, authenticator, scopes);
-
-        Ok(client)
-    }
-
     /// Instantiate a `gRPC` API client.
     ///
     /// # Errors
