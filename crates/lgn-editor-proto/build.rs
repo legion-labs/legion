@@ -3,7 +3,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let protos = &[
         "./protos/editor.proto",
         "./protos/resource_browser.proto",
-        "./protos/property_inspector.proto",
         "./protos/source_control.proto",
     ];
     tonic_build::configure()
