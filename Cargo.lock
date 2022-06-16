@@ -2453,6 +2453,7 @@ dependencies = [
  "http",
  "hyper",
  "inventory",
+ "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -2469,7 +2470,6 @@ dependencies = [
  "lgn-data-transaction",
  "lgn-ecs",
  "lgn-editor-proto",
- "lgn-editor-yaml",
  "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
@@ -4748,24 +4748,6 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-build",
-]
-
-[[package]]
-name = "lgn-editor-yaml"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "axum",
- "http",
- "hyper",
- "lgn-api-codegen",
- "lgn-governance",
- "lgn-online",
- "lgn-tracing",
- "serde",
- "serde_json",
- "serde_qs",
- "thiserror",
 ]
 
 [[package]]

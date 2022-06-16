@@ -8,14 +8,7 @@ use lgn_content_store::{
 use lgn_governance::api::space::SpaceId;
 use lgn_governance::api::workspace::WorkspaceId;
 
-use lgn_data_build::DataBuildOptions;
-use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId};
-use lgn_data_transaction::{
-    ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
-};
-use lgn_editor_yaml::resource_browser::{
+use editor_srv::resource_browser::{
     server::{
         CloneResourceRequest, CloneResourceResponse, CreateResourceRequest, CreateResourceResponse,
         DeleteResourceRequest, DeleteResourceResponse, GetResourceTypeNamesRequest,
@@ -24,6 +17,13 @@ use lgn_editor_yaml::resource_browser::{
     },
     Api, CloneResourceBody, CreateResourceBody, DeleteResourceBody, InitPropertyValue,
     ListAssetsBody, RenameResourceBody, ReparentResourceBody,
+};
+use lgn_data_build::DataBuildOptions;
+use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
+use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
+use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceTypeAndId};
+use lgn_data_transaction::{
+    ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
 use lgn_math::Vec3;
 use lgn_scene_plugin::SceneMessage;

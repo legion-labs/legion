@@ -1,13 +1,13 @@
-use lgn_data_offline::resource::ResourcePathName;
-use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
-use lgn_data_transaction::{CreateResourceOperation, Transaction};
-use lgn_editor_yaml::property_inspector::{
+use editor_srv::property_inspector::{
     server::{
         GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
         GetPropertiesResponse, InsertPropertyArrayItemRequest,
     },
     Api, InsertPropertyArrayItem, ResourceDescriptionProperties, ResourceId,
 };
+use lgn_data_offline::resource::ResourcePathName;
+use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
+use lgn_data_transaction::{CreateResourceOperation, Transaction};
 use lgn_governance::api::{space::SpaceId, workspace::WorkspaceId};
 use tokio::sync::broadcast;
 

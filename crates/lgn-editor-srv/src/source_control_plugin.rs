@@ -14,7 +14,7 @@ use lgn_app::prelude::*;
 use lgn_data_offline::resource::ChangeType;
 use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{LockContext, TransactionManager};
-use lgn_editor_yaml::source_control::{
+use editor_srv::source_control::{
     server::{
         register_routes, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
         ContentUploadCancelRequest, ContentUploadCancelResponse, ContentUploadInitRequest,

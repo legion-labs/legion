@@ -9,6 +9,17 @@ use std::{
 };
 
 use async_trait::async_trait;
+use editor_srv::property_inspector::{
+    server::{
+        register_routes, DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
+        GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
+        GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
+        ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
+        UpdatePropertiesResponse, UpdatePropertySelectionRequest, UpdatePropertySelectionResponse,
+    },
+    Api, InsertPropertyArrayItem200Response, ResourceDescription, ResourceDescriptionProperties,
+    ResourceProperty,
+};
 use lgn_app::prelude::*;
 use lgn_data_model::{
     collector::{collect_properties, ItemInfo, PropertyCollector},
@@ -24,17 +35,6 @@ use lgn_data_transaction::{
     ArrayOperation, LockContext, Transaction, TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
-use lgn_editor_yaml::property_inspector::{
-    server::{
-        register_routes, DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
-        GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
-        GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
-        ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
-        UpdatePropertiesResponse, UpdatePropertySelectionRequest, UpdatePropertySelectionResponse,
-    },
-    Api, InsertPropertyArrayItem200Response, ResourceDescription, ResourceDescriptionProperties,
-    ResourceProperty,
-};
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::SharedRouter;
 use lgn_online::server::{Error, Result};

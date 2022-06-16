@@ -2,15 +2,15 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use lgn_data_transaction::TransactionManager;
-use lgn_editor_yaml::editor::Api;
-use lgn_editor_yaml::editor::{
+use editor_srv::editor::Api;
+use editor_srv::editor::{
     server::{
         GetMessagesRequest, GetMessagesResponse, RedoTransactionRequest, RedoTransactionResponse,
         UndoTransactionRequest, UndoTransactionResponse,
     },
     Message, MessageMsgType,
 };
+use lgn_data_transaction::TransactionManager;
 use lgn_online::server::{Error, Result};
 use tokio::{sync::broadcast::error::RecvError, sync::Mutex, time::sleep};
 

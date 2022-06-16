@@ -22,7 +22,7 @@ use lgn_data_transaction::{
 };
 use lgn_ecs::prelude::*;
 
-use lgn_editor_yaml::resource_browser::server::{
+use editor_srv::resource_browser::server::{
     self, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
     CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
     GetActiveScenesRequest, GetActiveScenesResponse, GetResourceTypeNamesRequest,
@@ -33,7 +33,7 @@ use lgn_editor_yaml::resource_browser::server::{
 };
 use lgn_online::server::{Error, Result};
 
-use lgn_editor_yaml::resource_browser::{
+use editor_srv::resource_browser::{
     Api, Asset, CloneResource200Response, CreateResource200Response, GetActiveScenes200Response,
     GetResourceTypeNames200Response, GetRuntimeSceneInfo200Response, ListAssets200Response,
     NextSearchToken, ResourceDescription,
