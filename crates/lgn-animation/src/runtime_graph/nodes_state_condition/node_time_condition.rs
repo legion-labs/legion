@@ -1,12 +1,8 @@
 use crate::runtime_graph::nodes_state_condition::value_nodes::node_bool_value::BoolValueNode;
 
 pub struct TimeConditionNode {
-    // settings: Settings,
-    // source_state_node: *const StateNode,
-    // input_value_node: *const FloatValueNode,
     pub required_elapsed_time: f32,
     pub time_since_last_verification: f32,
-    // pub result: bool,
 }
 
 impl BoolValueNode for TimeConditionNode {
@@ -19,31 +15,3 @@ impl BoolValueNode for TimeConditionNode {
         false
     }
 }
-
-impl TimeConditionNode {
-    pub fn initialize_internal() {}
-}
-
-pub struct Settings {
-    // source_state_node_idx: i16,
-    // input_value_node_idx: i16,
-    // comparer: f32,
-}
-
-impl Settings {
-    pub fn instantiate_node() {}
-}
-
-// Eventually add these to TimeConditionNode if needed!
-// enum ComparisonType {
-//     PercentageThroughState,
-//     PercentageThroughSyncEvent,
-//     LoopCount,
-//     ElapsedTime,
-// }
-// enum Operator {
-//     LessThan = 0,
-//     LessThanEqual,
-//     GreaterThan,
-//     GreaterThanEqual,
-// }

@@ -12,7 +12,7 @@ use lgn_source_control::{BranchName, RepositoryName};
 
 use lgn_animation::offline::{
     AnimationClipNode, AnimationTrack, AnimationTransformBundle, AnimationTransformBundleVec,
-    Connection, EditorGraphDefinition, EditorGraphDefinition2,
+    Connection, EditorGraphDefinition,
 };
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;

@@ -1,54 +1,26 @@
-use crate::runtime::{Connection, EditorGraphDefinition, EditorGraphDefinition2};
+use crate::runtime::{Connection, EditorGraphDefinition};
 use crate::runtime_graph::node::Node;
 use crate::runtime_graph::node_animation_clip::AnimationClipNode;
 use crate::runtime_graph::node_state::StateNode;
 use crate::runtime_graph::node_state_machine::{StateMachineNode, TransitionInfo};
 use crate::runtime_graph::node_transition::TransitionNode;
 use crate::runtime_graph::nodes_state_condition::node_time_condition::TimeConditionNode;
-// use crate::runtime_graph::node_transition::TransitionNode;
 use lgn_ecs::component::Component;
 
 use crate::runtime_graph::node_state_machine::StateInfo;
 
 use super::AnimationClip;
 
-#[derive(Component, Clone)]
-pub struct GraphDefinition {
-    pub current_node_index: i32,
-    pub nodes: Vec<AnimationClipNode>,
-    pub connections: Vec<Connection>,
-}
-
-impl GraphDefinition {
-    #[must_use]
-    pub fn new(raw_anim_graph: &EditorGraphDefinition) -> Self {
-        let mut runtime_nodes: Vec<AnimationClipNode> = Vec::new();
-        let current_id = 1;
-        for node in &raw_anim_graph.nodes {
-            let current_clip = AnimationClip::new(&node.track);
-            runtime_nodes.push(AnimationClipNode {
-                id: current_id,
-                clip: current_clip,
-            });
-        }
-        Self {
-            current_node_index: 0,
-            nodes: runtime_nodes,
-            connections: raw_anim_graph.connections.clone(),
-        }
-    }
-}
-
 #[derive(Component)]
-pub struct GraphDefinition2 {
+pub struct GraphDefinition {
     pub current_node_index: i32,
     pub nodes: Vec<Box<dyn Node>>,
     pub connections: Vec<Connection>,
 }
 
-impl GraphDefinition2 {
+impl GraphDefinition {
     #[must_use]
-    pub fn new(state_machine: &EditorGraphDefinition2) -> Self {
+    pub fn new(state_machine: &EditorGraphDefinition) -> Self {
         let mut states = Vec::new();
         let mut current_id: u32 = 0;
         let mut transition_nodes = Vec::new();
@@ -75,7 +47,6 @@ impl GraphDefinition2 {
                 condition_node: Box::new(TimeConditionNode {
                     required_elapsed_time: 4.0,
                     time_since_last_verification: 0.0,
-                    // result: false,
                 }),
             }];
 
@@ -93,7 +64,7 @@ impl GraphDefinition2 {
                 states,
                 active_state_idx: 0,
             })],
-            connections: state_machine.connections.clone(), // None for now
+            connections: state_machine.connections.clone(),
         }
     }
 }
