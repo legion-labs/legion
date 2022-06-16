@@ -466,13 +466,10 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let data_provider = Arc::new(Provider::new_in_memory());
 
-        let mut project = Project::new_with_remote_mock(
-            &work_dir.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::clone(&data_provider),
-        )
-        .await
-        .expect("failed to create a project");
+        let mut project =
+            Project::new_with_remote_mock(&work_dir.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("failed to create a project");
 
         let version = "0.0.1";
 

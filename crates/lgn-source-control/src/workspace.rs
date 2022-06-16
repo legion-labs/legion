@@ -21,7 +21,6 @@ where
 {
     index: Box<dyn Index>,
     persistent_provider: Arc<Provider>,
-    volatile_provider: Arc<Provider>,
     branch_name: BranchName,
     main_index: ResourceIndex<MainIndexer>,
     path_index: ResourceIndex<StringPathIndexer>,
@@ -72,26 +71,24 @@ where
         repository_name: &RepositoryName,
         branch_name: &BranchName,
         persistent_provider: Arc<Provider>,
-        volatile_provider: Arc<Provider>,
         main_indexer: MainIndexer,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
         let branch = index.get_branch(branch_name).await?;
         let commit = index.get_commit(branch_name, branch.head).await?;
         let main_index = ResourceIndex::new_shared_with_raw_id(
-            Arc::clone(&volatile_provider),
+            Arc::clone(&persistent_provider),
             main_indexer,
             commit.main_index_tree_id,
         );
         let path_index = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(&volatile_provider),
+            Arc::clone(&persistent_provider),
             StringPathIndexer::default(),
             commit.path_index_tree_id,
         );
         Ok(Self {
             index,
             persistent_provider,
-            volatile_provider,
             branch_name: branch_name.clone(),
             main_index,
             path_index,
@@ -209,7 +206,7 @@ where
     pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         let commit = self.get_current_commit().await?;
         let commit_manifest = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(&self.volatile_provider),
+            Arc::clone(self.main_index.provider()),
             self.main_index.indexer().clone(),
             commit.main_index_tree_id,
         );
@@ -492,7 +489,7 @@ where
         let mut leaves = self
             .main_index
             .indexer()
-            .diff_leaves(&self.volatile_provider, &commit_index_id, &main_index_id)
+            .diff_leaves(self.main_index.provider(), &commit_index_id, &main_index_id)
             .await?
             .map(|(side, index_key, leaf)| match leaf {
                 Ok(leaf) => match leaf {

@@ -21,11 +21,10 @@ pub(crate) struct SourceCasDevice {
 impl SourceCasDevice {
     pub(crate) fn new(
         persistent_provider: Arc<Provider>,
-        volatile_provider: Arc<Provider>,
         source_manifest_id: SharedTreeIdentifier,
     ) -> Self {
         let source_manifest = ResourceIndex::new_shared_with_id(
-            volatile_provider,
+            Arc::clone(&persistent_provider),
             new_resource_type_and_id_indexer(),
             source_manifest_id,
         );
