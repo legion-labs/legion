@@ -90,7 +90,7 @@ paths:
         "204":
           description: Staged resources committed
 
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/staged-resources/sync-latest:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/staged-resources/sync-latest/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -101,6 +101,43 @@ paths:
         "204":
           description: Synced latest.
 
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/revert-resources/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Revert resources.
+      operationId: revertResources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RevertResourcesIds"
+      responses:
+        "204":
+          description: Reverted resources.
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/properties/{property-id}/pull-assets/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/property_id"
+    post:
+      description: Pull assets.
+      operationId: pullAssets
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullAssetsSucceeded"
+        "400":
+          description: Property id is invalid
+        "404":
+          description: Property not found
+
 components:
   parameters:
     transaction_id:
@@ -110,8 +147,17 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/TransactionId"
+    property_id:
+      name: property-id
+      in: path
+      description: Property id.
+      required: true
+      schema:
+        $ref: "#/components/schemas/PropertyId"
   schemas:
     TransactionId:
+      type: string
+    PropertyId:
       type: string
     ContentUploadInit:
       type: object
@@ -195,3 +241,27 @@ components:
           type: string
       required:
         - message
+    RevertResourcesIds:
+      type: array
+      items:
+        type: string
+    PullAssets:
+      type: object
+      properties:
+        id:
+          type: string
+      required:
+        - id
+    PullAssetsSucceeded:
+      type: object
+      properties:
+        size:
+          type: integer
+          format: int32
+          minimum: 0
+        content:
+          type: string
+          format: byte
+      required:
+        - size
+        - content

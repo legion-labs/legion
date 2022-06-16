@@ -14,30 +14,28 @@ use lgn_app::prelude::*;
 use lgn_data_offline::resource::ChangeType;
 use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{LockContext, TransactionManager};
-use lgn_ecs::{
-    prelude::{IntoExclusiveSystem, Res, ResMut},
-    schedule::ExclusiveSystemDescriptorCoercion,
-};
 use lgn_editor_yaml::source_control::{
     server::{
         register_routes, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
         ContentUploadCancelRequest, ContentUploadCancelResponse, ContentUploadInitRequest,
         ContentUploadInitResponse, ContentUploadRequest, ContentUploadResponse,
-        GetStagedResourcesRequest, GetStagedResourcesResponse, SyncLatestRequest,
+        GetStagedResourcesRequest, GetStagedResourcesResponse, PullAssetsRequest,
+        PullAssetsResponse, RevertResourcesRequest, RevertResourcesResponse, SyncLatestRequest,
         SyncLatestResponse,
     },
     Api, ContentUploadInitSucceeded, ContentUploadSucceeded, ContentUploadSucceededStatus,
-    ResourceDescription, StagedResource, StagedResourceChangeType, StagedResources,
+    PullAssetsSucceeded, ResourceDescription, StagedResource, StagedResourceChangeType,
+    StagedResources,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
-use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings, SharedRouter};
+use lgn_grpc::SharedRouter;
 use lgn_online::server::{Error, Result};
-use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
+use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_tracing::error;
 use thiserror::Error;
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
-use tonic::{codegen::StdError, Request, Response, Status};
+use tonic::codegen::StdError;
 use uuid::Uuid;
 
 #[derive(Error, Debug)]
@@ -423,29 +421,8 @@ impl Clone for SharedRawFilesStreamer {
     }
 }
 
-pub(crate) struct SourceControlRPC {
-    transaction_manager: Arc<Mutex<TransactionManager>>,
-}
-
 #[derive(Default)]
 pub(crate) struct SourceControlPlugin;
-
-impl SourceControlPlugin {
-    #[allow(clippy::needless_pass_by_value)]
-    fn setup(
-        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
-        mut grpc_settings: ResMut<'_, GRPCPluginSettings>,
-    ) {
-        let property_inspector =
-            lgn_editor_proto::source_control::source_control_server::SourceControlServer::new(
-                SourceControlRPC {
-                    transaction_manager: transaction_manager.clone(),
-                },
-            );
-
-        grpc_settings.register_service(property_inspector);
-    }
-}
 
 impl Plugin for SourceControlPlugin {
     fn build(&self, app: &mut App) {
@@ -466,77 +443,14 @@ impl Plugin for SourceControlPlugin {
 
         router.register_routes(register_routes, server);
 
-        app.add_startup_system_to_stage(
-            StartupStage::PostStartup,
-            Self::setup
-                .exclusive_system()
-                .after(ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(GRPCPluginScheduling::StartRpcServer),
-        );
-    }
-}
-
-#[tonic::async_trait]
-impl lgn_editor_proto::source_control::source_control_server::SourceControl for SourceControlRPC {
-    async fn revert_resources(
-        &self,
-        request: Request<lgn_editor_proto::source_control::RevertResourcesRequest>,
-    ) -> Result<Response<lgn_editor_proto::source_control::RevertResourcesResponse>, Status> {
-        let request = request.into_inner();
-        let transaction_manager = self.transaction_manager.lock().await;
-        let mut ctx = LockContext::new(&transaction_manager).await;
-
-        let mut need_rebuild = Vec::new();
-        for id in &request.ids {
-            if let Ok(id) = ResourceTypeAndId::from_str(id) {
-                match ctx.project.revert_resource(id).await {
-                    Ok(()) => need_rebuild.push(id),
-                    Err(err) => lgn_tracing::error!("Failed to revert {}: {}", id, err),
-                }
-            } else {
-                error!("Invalid ResourceTypeAndId format {}", id);
-            }
-        }
-
-        for id in need_rebuild {
-            match ctx.build.build_all_derived(id, &ctx.project).await {
-                Ok((runtime_path_id, _built_resources)) => {
-                    ctx.asset_registry.reload(runtime_path_id.resource_id());
-                }
-                Err(e) => {
-                    lgn_tracing::error!("Error building resource derivations {:?}", e);
-                }
-            }
-        }
-
-        Ok(Response::new(
-            lgn_editor_proto::source_control::RevertResourcesResponse {},
-        ))
-    }
-
-    async fn pull_asset(
-        &self,
-        request: Request<lgn_editor_proto::source_control::PullAssetRequest>,
-    ) -> Result<Response<lgn_editor_proto::source_control::PullAssetResponse>, Status> {
-        let message = request.into_inner();
-        let transaction_manager = self.transaction_manager.lock().await;
-        let ctx = LockContext::new(&transaction_manager).await;
-        let id = ResourceTypeAndId::from_str(message.id.as_str()).map_err(Status::unknown)?;
-        if id.kind != GltfFile::TYPE {
-            return Err(Status::internal(
-                "pull_asset supports GltfFile only at the moment",
-            ));
-        }
-        let resource = ctx.asset_registry.load_sync::<GltfFile>(id);
-        if let Some(gltf_file) = resource.get(&ctx.asset_registry) {
-            return Ok(Response::new(
-                lgn_editor_proto::source_control::PullAssetResponse {
-                    size: gltf_file.bytes().len() as u32,
-                    content: gltf_file.bytes().to_vec(),
-                },
-            ));
-        }
-        return Err(Status::internal(format!("Failed to get an asset {}", id)));
+        // TODO: Adapt the before/after logic to OpenAPI
+        // app.add_startup_system_to_stage(
+        //     StartupStage::PostStartup,
+        //     Self::setup
+        //         .exclusive_system()
+        //         .after(ResourceRegistryPluginScheduling::ResourceRegistryCreated)
+        //         .before(GRPCPluginScheduling::StartRpcServer),
+        // );
     }
 }
 
@@ -766,5 +680,67 @@ impl Api for Server {
         }
 
         Ok(SyncLatestResponse::Status204)
+    }
+
+    async fn revert_resources(
+        &self,
+        request: RevertResourcesRequest,
+    ) -> Result<RevertResourcesResponse> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+
+        let mut need_rebuild = Vec::new();
+
+        for id in &request.body.0 {
+            if let Ok(id) = ResourceTypeAndId::from_str(id) {
+                match ctx.project.revert_resource(id).await {
+                    Ok(()) => need_rebuild.push(id),
+                    Err(err) => lgn_tracing::error!("Failed to revert {}: {}", id, err),
+                }
+            } else {
+                error!("Invalid ResourceTypeAndId format {}", id);
+            }
+        }
+
+        for id in need_rebuild {
+            match ctx.build.build_all_derived(id, &ctx.project).await {
+                Ok((runtime_path_id, _built_resources)) => {
+                    ctx.asset_registry.reload(runtime_path_id.resource_id());
+                }
+                Err(e) => {
+                    lgn_tracing::error!("Error building resource derivations {:?}", e);
+                }
+            }
+        }
+
+        Ok(RevertResourcesResponse::Status204)
+    }
+
+    async fn pull_assets(&self, request: PullAssetsRequest) -> Result<PullAssetsResponse> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let id = match ResourceTypeAndId::from_str(request.property_id.0.as_str()) {
+            Err(_err) => {
+                return Ok(PullAssetsResponse::Status400);
+            }
+            Ok(id) => id,
+        };
+
+        if id.kind != GltfFile::TYPE {
+            return Err(Error::internal(
+                "pull_asset supports GltfFile only at the moment",
+            ));
+        }
+
+        let resource = ctx.asset_registry.load_sync::<GltfFile>(id);
+
+        if let Some(gltf_file) = resource.get(&ctx.asset_registry) {
+            return Ok(PullAssetsResponse::Status200(PullAssetsSucceeded {
+                size: gltf_file.bytes().len() as u32,
+                content: gltf_file.bytes().to_vec().into(),
+            }));
+        }
+
+        return Ok(PullAssetsResponse::Status404);
     }
 }
