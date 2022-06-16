@@ -21,7 +21,7 @@ where
     MainIndexer: BasicIndexer + Clone + Sync,
 {
     index: Box<dyn Index>,
-    persistent_provider: Arc<Provider>,
+    transaction: Arc<Provider>,
     branch_name: BranchName,
     main_index: ResourceIndex<MainIndexer>,
     path_index: ResourceIndex<StringPathIndexer>,
@@ -77,23 +77,28 @@ where
         let index = repository_index.load_repository(repository_name).await?;
         let branch = index.get_branch(branch_name).await?;
         let commit = index.get_commit(branch_name, branch.head).await?;
+        let transaction = Arc::new(persistent_provider.begin_transaction_in_memory());
         let main_index = ResourceIndex::new_shared_with_raw_id(
-            Arc::clone(&persistent_provider),
+            Arc::clone(&transaction),
             main_indexer,
             commit.main_index_tree_id,
         );
         let path_index = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(&persistent_provider),
+            Arc::clone(&transaction),
             StringPathIndexer::default(),
             commit.path_index_tree_id,
         );
         Ok(Self {
             index,
-            persistent_provider,
+            transaction,
             branch_name: branch_name.clone(),
             main_index,
             path_index,
         })
+    }
+
+    async fn commit_and_reopen_transaction(&mut self) {
+        //let x = self.transaction.commit_transaction().await;
     }
 
     /// Return the repository name of the workspace.
@@ -234,10 +239,7 @@ where
     }
 
     pub async fn load_resource_by_id(&self, resource_id: &ResourceIdentifier) -> Result<Vec<u8>> {
-        Ok(self
-            .persistent_provider
-            .read_resource_as_bytes(resource_id)
-            .await?)
+        Ok(self.transaction.read_resource_as_bytes(resource_id).await?)
     }
 
     pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
@@ -316,10 +318,7 @@ where
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         self.main_index
             .add_resource(id, resource_identifier.clone())
@@ -349,10 +348,7 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
@@ -378,9 +374,7 @@ where
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.persistent_provider
-                .unwrite_resource(old_identifier)
-                .await?;
+            self.transaction.unwrite_resource(old_identifier).await?;
 
             #[cfg(feature = "verbose")]
             {
@@ -405,10 +399,7 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
@@ -438,9 +429,7 @@ where
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.persistent_provider
-                .unwrite_resource(old_identifier)
-                .await?;
+            self.transaction.unwrite_resource(old_identifier).await?;
 
             #[cfg(feature = "verbose")]
             {
@@ -473,9 +462,7 @@ where
         assert_eq!(resource_id, removed_id);
 
         // unwrite resource from content-store
-        self.persistent_provider
-            .unwrite_resource(&resource_id)
-            .await?;
+        self.transaction.unwrite_resource(&resource_id).await?;
 
         #[cfg(feature = "verbose")]
         {
