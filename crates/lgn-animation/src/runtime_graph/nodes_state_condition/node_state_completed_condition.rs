@@ -1,7 +1,3 @@
-use core::time;
-
-use lgn_core::Time;
-
 use crate::runtime_graph::{
     node_state::StateNode,
     nodes_state_condition::value_nodes::{
@@ -18,8 +14,7 @@ pub struct StateCompletedConditionNode {
 }
 
 impl BoolValueNode for StateCompletedConditionNode {
-    fn verify_condition(&mut self, delta_time: f32) -> bool {
-        // Todo!
+    fn verify_condition(&mut self, _delta_time: f32) -> bool {
         false
     }
 }

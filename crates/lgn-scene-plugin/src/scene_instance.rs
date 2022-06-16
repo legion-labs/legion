@@ -1,4 +1,4 @@
-use lgn_animation::components::{AnimationClip, GraphDefinition, GraphDefinition2};
+use lgn_animation::components::{AnimationClip, GraphDefinition};
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, ResourceDescriptor, ResourceTypeAndId};
@@ -208,7 +208,7 @@ impl SceneInstance {
                     let runtime_animation_data = AnimationClip::new(animation_data);
                     entity.insert(runtime_animation_data);
                 } else if let Some(anim_graph) =
-                    component.downcast_ref::<lgn_animation::runtime::EditorGraphDefinition2>()
+                    component.downcast_ref::<lgn_animation::runtime::EditorGraphDefinition>()
                 {
                     let runtime_anim_graph: GraphDefinition = GraphDefinition::new(anim_graph);
                     entity.insert(runtime_anim_graph);
