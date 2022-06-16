@@ -20,11 +20,14 @@ use lgn_ecs::{
 };
 use lgn_editor_yaml::source_control::{
     server::{
-        register_routes, ContentUploadCancelRequest, ContentUploadCancelResponse,
-        ContentUploadInitRequest, ContentUploadInitResponse, ContentUploadRequest,
-        ContentUploadResponse,
+        register_routes, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
+        ContentUploadCancelRequest, ContentUploadCancelResponse, ContentUploadInitRequest,
+        ContentUploadInitResponse, ContentUploadRequest, ContentUploadResponse,
+        GetStagedResourcesRequest, GetStagedResourcesResponse, SyncLatestRequest,
+        SyncLatestResponse,
     },
     Api, ContentUploadInitSucceeded, ContentUploadSucceeded, ContentUploadSucceededStatus,
+    ResourceDescription, StagedResource, StagedResourceChangeType, StagedResources,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings, SharedRouter};
@@ -421,8 +424,6 @@ impl Clone for SharedRawFilesStreamer {
 }
 
 pub(crate) struct SourceControlRPC {
-    streamer: SharedRawFilesStreamer,
-    uploads_folder: PathBuf,
     transaction_manager: Arc<Mutex<TransactionManager>>,
 }
 
@@ -433,15 +434,11 @@ impl SourceControlPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
-        settings: Res<'_, ResourceRegistrySettings>,
-        streamer: Res<'_, SharedRawFilesStreamer>,
         mut grpc_settings: ResMut<'_, GRPCPluginSettings>,
     ) {
         let property_inspector =
             lgn_editor_proto::source_control::source_control_server::SourceControlServer::new(
                 SourceControlRPC {
-                    streamer: streamer.clone(),
-                    uploads_folder: settings.root_folder().join("uploads"),
                     transaction_manager: transaction_manager.clone(),
                 },
             );
@@ -481,245 +478,6 @@ impl Plugin for SourceControlPlugin {
 
 #[tonic::async_trait]
 impl lgn_editor_proto::source_control::source_control_server::SourceControl for SourceControlRPC {
-    async fn init_upload_raw_file(
-        &self,
-        request: Request<lgn_editor_proto::source_control::InitUploadRawFileRequest>,
-    ) -> Result<Response<lgn_editor_proto::source_control::InitUploadRawFileResponse>, Status> {
-        let message = request.into_inner();
-
-        let size = message.size;
-
-        if size > self.streamer.max_size().await {
-            return Ok(Response::new(
-                lgn_editor_proto::source_control::InitUploadRawFileResponse {
-                    status: lgn_editor_proto::source_control::UploadStatus::Rejected as i32,
-                    id: None,
-                },
-            ));
-        }
-
-        let file_id = self
-            .streamer
-            .insert(self.uploads_folder.as_path(), &message.name, size)
-            .await
-            .map_err(|_error| {
-                Status::internal(format!("Couldn't create file for {}", message.name))
-            })?;
-
-        Ok(Response::new(
-            lgn_editor_proto::source_control::InitUploadRawFileResponse {
-                status: lgn_editor_proto::source_control::UploadStatus::Queued as i32,
-                id: Some(file_id.into()),
-            },
-        ))
-    }
-
-    type UploadRawFileStream =
-        ReceiverStream<Result<lgn_editor_proto::source_control::UploadRawFileResponse, Status>>;
-
-    async fn upload_raw_file(
-        &self,
-        request: Request<lgn_editor_proto::source_control::UploadRawFileRequest>,
-    ) -> Result<Response<Self::UploadRawFileStream>, Status> {
-        let message = request.into_inner();
-
-        let streamer = self.streamer.clone();
-
-        let (tx, rx) = mpsc::channel(32);
-
-        tokio::spawn(async move {
-            // Unfortunately it's not possible to have bidirectional streaming client -> server -> client
-            // so we do receive the whole file and then chunk it and save it progressively.
-            // When bidirectional streaming will be achievable we will receive only chunks of files.
-            let mut stream = streamer
-                .stream(message.id.clone().into(), message.content)
-                .await
-                .unwrap();
-
-            while let Some(status) = stream.next().await {
-                let response = match status {
-                    RawFileStatus::Done => {
-                        Ok(lgn_editor_proto::source_control::UploadRawFileResponse {
-                            response: Some(lgn_editor_proto::source_control::upload_raw_file_response::Response::Progress(
-                                lgn_editor_proto::source_control::UploadRawFileProgress {
-                                    id: message.id.clone(),
-                                    completion: None,
-                                    status: lgn_editor_proto::source_control::UploadStatus::Done as i32,
-                                },
-                            )),
-                        })
-                    }
-                    RawFileStatus::InProgress { completion, .. }=> {
-                        Ok(lgn_editor_proto::source_control::UploadRawFileResponse {
-                            response: Some(lgn_editor_proto::source_control::upload_raw_file_response::Response::Progress(
-                                lgn_editor_proto::source_control::UploadRawFileProgress {
-                                    id: message.id.clone(),
-                                    completion: Some(completion),
-                                    status: lgn_editor_proto::source_control::UploadStatus::Started
-                                        as i32,
-                                },
-                            )),
-                        })
-                    }
-                    RawFileStatus::Error { error } => {
-                        Ok(lgn_editor_proto::source_control::UploadRawFileResponse {
-                            response: Some(lgn_editor_proto::source_control::upload_raw_file_response::Response::Error(
-                                error.to_string(),
-                            )),
-                        })
-                    }
-                };
-
-                tx.send(response).await.unwrap();
-            }
-        });
-
-        Ok(Response::new(ReceiverStream::new(rx)))
-    }
-
-    async fn cancel_upload_raw_file(
-        &self,
-        request: Request<lgn_editor_proto::source_control::CancelUploadRawFileRequest>,
-    ) -> Result<Response<lgn_editor_proto::source_control::CancelUploadRawFileResponse>, Status>
-    {
-        let message = request.into_inner();
-
-        let canceled = self.streamer.cancel(&message.id.into()).await;
-
-        Ok(Response::new(
-            lgn_editor_proto::source_control::CancelUploadRawFileResponse { ok: canceled },
-        ))
-    }
-
-    async fn commit_staged_resources(
-        &self,
-        request: Request<lgn_editor_proto::source_control::CommitStagedResourcesRequest>,
-    ) -> Result<Response<lgn_editor_proto::source_control::CommitStagedResourcesResponse>, Status>
-    {
-        let request = request.into_inner();
-        let transaction_manager = self.transaction_manager.lock().await;
-        let mut ctx = LockContext::new(&transaction_manager).await;
-        ctx.project
-            .commit(&request.message)
-            .await
-            .map_err(|err| Status::internal(err.to_string()))?;
-        Ok(Response::new(
-            lgn_editor_proto::source_control::CommitStagedResourcesResponse {},
-        ))
-    }
-
-    async fn sync_latest(
-        &self,
-        request: Request<lgn_editor_proto::source_control::SyncLatestResquest>,
-    ) -> Result<Response<lgn_editor_proto::source_control::SyncLatestResponse>, Status> {
-        let _request = request.into_inner();
-
-        let (resource_to_build, resource_to_unload) = {
-            let mut resource_to_build = Vec::new();
-            let mut resource_to_unload = Vec::new();
-
-            let transaction_manager = self.transaction_manager.lock().await;
-            let mut ctx = LockContext::new(&transaction_manager).await;
-            let changes = ctx.project.sync_latest().await.map_err(|err| {
-                error!("Failed to get changes: {}", err);
-                Status::internal(err.to_string())
-            })?;
-
-            for (resource_id, change_type) in changes {
-                match change_type {
-                    ChangeType::Add | ChangeType::Edit => {
-                        resource_to_build.push(resource_id);
-                    }
-                    ChangeType::Delete => {
-                        resource_to_unload.push(resource_id);
-                    }
-                }
-            }
-            (resource_to_build, resource_to_unload)
-        };
-
-        let transaction_manager = self.transaction_manager.lock().await;
-        for resource_id in resource_to_build {
-            if resource_id.kind == sample_data::offline::Entity::TYPE {
-                {
-                    let mut ctx = LockContext::new(&transaction_manager).await;
-                    if let Err(err) = ctx.reload(resource_id).await {
-                        error!("Failed to reload resource {}: {}", resource_id, err);
-                    }
-                }
-                if let Err(err) = transaction_manager.build_by_id(resource_id).await {
-                    error!("Failed to compile resource {}: {}", resource_id, err);
-                }
-            }
-        }
-
-        for resource_id in resource_to_unload {
-            let mut ctx = LockContext::new(&transaction_manager).await;
-            ctx.unload(resource_id).await;
-        }
-
-        Ok(Response::new(
-            lgn_editor_proto::source_control::SyncLatestResponse {},
-        ))
-    }
-
-    async fn get_staged_resources(
-        &self,
-        _request: Request<lgn_editor_proto::source_control::GetStagedResourcesRequest>,
-    ) -> Result<Response<lgn_editor_proto::source_control::GetStagedResourcesResponse>, Status>
-    {
-        let transaction_manager = self.transaction_manager.lock().await;
-        let mut ctx = LockContext::new(&transaction_manager).await;
-        let changes = ctx
-            .project
-            .get_pending_changes()
-            .await
-            .map_err(|err| Status::internal(err.to_string()))?;
-
-        let mut entries = Vec::<lgn_editor_proto::source_control::StagedResource>::new();
-        for (resource_type_id, change_type) in changes {
-            let path = if let ChangeType::Delete = change_type {
-                ctx.project
-                    .deleted_resource_info(resource_type_id)
-                    .await
-                    .unwrap_or_else(|_err| "(error)".into())
-            } else {
-                ctx.project
-                    .resource_name(resource_type_id)
-                    .await
-                    .unwrap_or_else(|_err| "(error)".into())
-            };
-
-            entries.push(lgn_editor_proto::source_control::StagedResource {
-                info: Some(lgn_editor_proto::source_control::ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&resource_type_id),
-                    path: path.to_string(),
-                    r#type: resource_type_id
-                        .kind
-                        .as_pretty()
-                        .trim_start_matches("offline_")
-                        .into(),
-                    version: 1,
-                }),
-                change_type: match change_type {
-                    ChangeType::Add => {
-                        lgn_editor_proto::source_control::staged_resource::ChangeType::Add as i32
-                    }
-                    ChangeType::Edit => {
-                        lgn_editor_proto::source_control::staged_resource::ChangeType::Edit as i32
-                    }
-                    ChangeType::Delete => {
-                        lgn_editor_proto::source_control::staged_resource::ChangeType::Delete as i32
-                    }
-                },
-            });
-        }
-
-        Ok(Response::new(
-            lgn_editor_proto::source_control::GetStagedResourcesResponse { entries },
-        ))
-    }
-
     async fn revert_resources(
         &self,
         request: Request<lgn_editor_proto::source_control::RevertResourcesRequest>,
@@ -894,5 +652,119 @@ impl Api for Server {
         } else {
             ContentUploadCancelResponse::Status404
         })
+    }
+
+    async fn get_staged_resources(
+        &self,
+        _request: GetStagedResourcesRequest,
+    ) -> Result<GetStagedResourcesResponse> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+        let changes = ctx
+            .project
+            .get_pending_changes()
+            .await
+            .map_err(|err| Error::internal(err.to_string()))?;
+
+        let mut entries = Vec::new();
+
+        for (resource_type_id, change_type) in changes {
+            let path = if let ChangeType::Delete = change_type {
+                ctx.project
+                    .deleted_resource_info(resource_type_id)
+                    .await
+                    .unwrap_or_else(|_err| "(error)".into())
+            } else {
+                ctx.project
+                    .resource_name(resource_type_id)
+                    .await
+                    .unwrap_or_else(|_err| "(error)".into())
+            };
+
+            entries.push(StagedResource {
+                info: ResourceDescription {
+                    id: ResourceTypeAndId::to_string(&resource_type_id),
+                    path: path.to_string(),
+                    type_: resource_type_id
+                        .kind
+                        .as_pretty()
+                        .trim_start_matches("offline_")
+                        .into(),
+                    version: 1,
+                },
+                change_type: match change_type {
+                    ChangeType::Add => StagedResourceChangeType::Add,
+                    ChangeType::Edit => StagedResourceChangeType::Edit,
+                    ChangeType::Delete => StagedResourceChangeType::Delete,
+                },
+            });
+        }
+
+        Ok(GetStagedResourcesResponse::Status200(StagedResources(
+            entries,
+        )))
+    }
+
+    async fn commit_staged_resources(
+        &self,
+        request: CommitStagedResourcesRequest,
+    ) -> Result<CommitStagedResourcesResponse> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+
+        ctx.project
+            .commit(&request.body.message)
+            .await
+            .map_err(|err| Error::internal(err.to_string()))?;
+
+        Ok(CommitStagedResourcesResponse::Status204)
+    }
+
+    async fn sync_latest(&self, _request: SyncLatestRequest) -> Result<SyncLatestResponse> {
+        let (resource_to_build, resource_to_unload) = {
+            let mut resource_to_build = Vec::new();
+            let mut resource_to_unload = Vec::new();
+
+            let transaction_manager = self.transaction_manager.lock().await;
+            let mut ctx = LockContext::new(&transaction_manager).await;
+            let changes = ctx.project.sync_latest().await.map_err(|err| {
+                error!("Failed to get changes: {}", err);
+                Error::internal(err.to_string())
+            })?;
+
+            for (resource_id, change_type) in changes {
+                match change_type {
+                    ChangeType::Add | ChangeType::Edit => {
+                        resource_to_build.push(resource_id);
+                    }
+                    ChangeType::Delete => {
+                        resource_to_unload.push(resource_id);
+                    }
+                }
+            }
+            (resource_to_build, resource_to_unload)
+        };
+
+        let transaction_manager = self.transaction_manager.lock().await;
+        for resource_id in resource_to_build {
+            if resource_id.kind == sample_data::offline::Entity::TYPE {
+                {
+                    let mut ctx = LockContext::new(&transaction_manager).await;
+                    if let Err(err) = ctx.reload(resource_id).await {
+                        error!("Failed to reload resource {}: {}", resource_id, err);
+                    }
+                }
+                if let Err(err) = transaction_manager.build_by_id(resource_id).await {
+                    error!("Failed to compile resource {}: {}", resource_id, err);
+                }
+            }
+        }
+
+        for resource_id in resource_to_unload {
+            let mut ctx = LockContext::new(&transaction_manager).await;
+            ctx.unload(resource_id).await;
+        }
+
+        Ok(SyncLatestResponse::Status204)
     }
 }

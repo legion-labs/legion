@@ -63,6 +63,44 @@ paths:
         "404":
           description: Transaction id not found
 
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/staged-resources/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    get:
+      description: Get staged resources.
+      operationId: getStagedResources
+      responses:
+        "200":
+          description: Staged resources.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StagedResources"
+    post:
+      description: Commit the staged resources.
+      operationId: commitStagedResources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitStagedResources"
+      responses:
+        "204":
+          description: Staged resources committed
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/staged-resources/sync-latest:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Sync latest.
+      operationId: syncLatest
+      responses:
+        "204":
+          description: Synced latest.
+
 components:
   parameters:
     transaction_id:
@@ -114,3 +152,46 @@ components:
         - id
         - status
         - completion
+    ResourceDescription:
+      type: object
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        version:
+          type: integer
+          format: int32
+          minimum: 0
+        type:
+          type: string
+      required:
+        - id
+        - path
+        - version
+        - type
+    StagedResources:
+      type: array
+      items:
+        $ref: "#/components/schemas/StagedResource"
+    StagedResource:
+      type: object
+      properties:
+        info:
+          $ref: "#/components/schemas/ResourceDescription"
+        change_type:
+          type: string
+          enum:
+            - Add
+            - Edit
+            - Delete
+      required:
+        - info
+        - change_type
+    CommitStagedResources:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
