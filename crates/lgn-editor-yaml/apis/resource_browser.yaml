@@ -221,6 +221,30 @@ paths:
                 required:
                   - scene_ids
 
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/scene_id"
+    get:
+      description: Get runtime scenes info
+      operationId: GetRuntimeSceneInfo
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  manifest_id:
+                    type: string
+                  asset_id:
+                    type: string
+                required:
+                  - manifest_id
+                  - asset_id
+
   /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/assets:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"

@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::{str::FromStr, sync::Arc};
 
 use async_trait::async_trait;
+use axum::Router;
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_model::json_utils::get_property_as_json_string;
@@ -20,24 +21,22 @@ use lgn_data_transaction::{
     TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
-use lgn_editor_proto::{
-    property_inspector::UpdateResourcePropertiesRequest,
-    resource_browser::{GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse},
-};
 
 use lgn_editor_yaml::resource_browser::server::{
-    CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
+    self, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
     CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
     GetActiveScenesRequest, GetActiveScenesResponse, GetResourceTypeNamesRequest,
-    GetResourceTypeNamesResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
-    OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+    GetResourceTypeNamesResponse, GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse,
+    ListAssetsRequest, ListAssetsResponse, OpenSceneRequest, OpenSceneResponse,
+    RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
     ReparentResourceResponse, SearchResourcesRequest, SearchResourcesResponse,
 };
 use lgn_online::server::{Error, Result};
 
 use lgn_editor_yaml::resource_browser::{
     Api, Asset, CloneResource200Response, CreateResource200Response, GetActiveScenes200Response,
-    GetResourceTypeNames200Response, ListAssets200Response, NextSearchToken, ResourceDescription,
+    GetResourceTypeNames200Response, GetRuntimeSceneInfo200Response, ListAssets200Response,
+    NextSearchToken, ResourceDescription,
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -46,13 +45,6 @@ use lgn_scene_plugin::SceneMessage;
 use lgn_tracing::{error, info, span_scope, warn};
 use serde_json::json;
 use tokio::sync::Mutex;
-use tonic::{codegen::http::status, Request, Response, Status};
-
-pub(crate) struct ResourceBrowserRPC {
-    pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
-    pub(crate) uploads_folder: PathBuf,
-    pub(crate) scene_events_tx: crossbeam_channel::Sender<SceneMessage>,
-}
 
 pub(crate) struct ResourceBrowserSettings {
     default_scene: String,
@@ -69,10 +61,10 @@ pub(crate) struct ResourceBrowserPlugin {
     active_scenes: HashSet<ResourceTypeAndId>,
 }
 
-fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Status> {
+fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Error> {
     value
         .parse::<ResourceTypeAndId>()
-        .map_err(|_err| Status::internal(format!("Invalid ResourceID format: {}", value)))
+        .map_err(|_err| Error::bad_request(format!("Invalid ResourceID format: {}", value)))
 }
 
 #[derive(Debug)]
@@ -128,10 +120,6 @@ impl IndexSnapshot {
     }
 }
 
-use lgn_editor_proto::resource_browser::resource_browser_server::{
-    ResourceBrowser, ResourceBrowserServer,
-};
-
 impl Plugin for ResourceBrowserPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system_to_stage(
@@ -141,6 +129,7 @@ impl Plugin for ResourceBrowserPlugin {
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
                 .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer)
         );
+
         app.add_system(Self::handle_events);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
@@ -159,25 +148,30 @@ pub enum SelectionOperation {
     Remove = 2,
 }
 
-impl ResourceBrowserPlugin {
-    #[allow(clippy::needless_pass_by_value)]
-    fn post_setup(world: &mut World) {
+impl Server {
+    pub fn new(world: &mut World) -> Self {
         let (scene_events_tx, scene_events_rx) = crossbeam_channel::unbounded::<SceneMessage>();
         world.insert_resource(scene_events_rx);
 
         let transaction_manager = world.resource::<Arc<Mutex<TransactionManager>>>();
         let settings = world.resource::<ResourceRegistrySettings>();
 
-        let resource_browser_service = ResourceBrowserServer::new(ResourceBrowserRPC {
+        Self {
             transaction_manager: transaction_manager.clone(),
             uploads_folder: settings.root_folder().join("uploads"),
             scene_events_tx,
-        });
-
-        {
-            let mut grpc_settings = world.resource_mut::<lgn_grpc::GRPCPluginSettings>();
-            grpc_settings.register_service(resource_browser_service);
         }
+    }
+}
+
+impl ResourceBrowserPlugin {
+    fn post_setup(world: &mut World) {
+        let server = Arc::new(Server::new(world));
+
+        world
+            .resource_mut::<lgn_grpc::SharedRouter>()
+            .into_inner()
+            .register_routes(server::register_routes, server);
     }
 
     #[allow(clippy::needless_pass_by_value)]
@@ -333,14 +327,14 @@ fn update_entity_parenting(
 }
 
 // Works for both .gltf and .glb (doesn't support external references anymore)
-fn create_gltf_resource(gltf_path: &Path) -> Result<PathBuf, Status> {
-    let raw_data = std::fs::read(gltf_path)?;
+fn create_gltf_resource(gltf_path: &Path) -> Result<PathBuf, Error> {
+    let raw_data = std::fs::read(gltf_path).map_err(|err| Error::internal(err.to_string()))?;
     let gltf_file = GltfFile::from_bytes(raw_data);
     let path = gltf_path.with_extension("temp");
-    let mut file = std::fs::File::create(&path).map_err(|err| Status::internal(err.to_string()))?;
+    let mut file = std::fs::File::create(&path).map_err(|err| Error::internal(err.to_string()))?;
     gltf_file
         .write(&mut file)
-        .map_err(|err| Status::internal(err.to_string()))?;
+        .map_err(|err| Error::internal(err.to_string()))?;
     Ok(path)
 }
 
@@ -421,9 +415,7 @@ impl Api for Server {
 
         let mut parent_id: Option<ResourceTypeAndId> = None;
         let mut resource_path = if let Some(parent_id_str) = &request.body.parent_resource_id {
-            parent_id = Some(parse_resource_id(parent_id_str).map_err(|err| {
-                Error::bad_request(format!("failed to parse resource_id: {}", err))
-            })?);
+            parent_id = Some(parse_resource_id(parent_id_str)?);
 
             let mut res_name = ResourcePathName::new(format!("!{}", parent_id.unwrap()));
             res_name.push(name);
@@ -514,8 +506,7 @@ impl Api for Server {
         &self,
         request: DeleteResourceRequest,
     ) -> Result<DeleteResourceResponse> {
-        let resource_id = parse_resource_id(request.body.id.as_str())
-            .map_err(|err| Error::bad_request(format!("failed to parse resource_id: {}", err)))?;
+        let resource_id = parse_resource_id(request.body.id.as_str())?;
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
@@ -581,8 +572,7 @@ impl Api for Server {
         &self,
         request: RenameResourceRequest,
     ) -> Result<RenameResourceResponse> {
-        let resource_id = parse_resource_id(request.body.id.as_str())
-            .map_err(|err| Error::bad_request(format!("failed to parse resource_id: {}", err)))?;
+        let resource_id = parse_resource_id(request.body.id.as_str())?;
 
         let mut transaction = Transaction::new().add_operation(RenameResourceOperation::new(
             resource_id,
@@ -633,8 +623,7 @@ impl Api for Server {
 
     /// Clone a Resource
     async fn clone_resource(&self, request: CloneResourceRequest) -> Result<CloneResourceResponse> {
-        let source_resource_id = parse_resource_id(request.body.source_id.as_str())
-            .map_err(|err| Error::bad_request(format!("failed to parse resource_id: {}", err)))?;
+        let source_resource_id = parse_resource_id(request.body.source_id.as_str())?;
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
@@ -646,9 +635,7 @@ impl Api for Server {
         // Are we cloning into another target
         let target_parent_id: Option<ResourceTypeAndId> =
             if let Some(target) = &request.body.target_parent_id {
-                Some(parse_resource_id(target).map_err(|err| {
-                    Error::bad_request(format!("failed to parse resource_id: {}", err))
-                })?)
+                Some(parse_resource_id(target)?)
             } else {
                 None
             };
@@ -756,8 +743,7 @@ impl Api for Server {
         &self,
         request: ReparentResourceRequest,
     ) -> Result<ReparentResourceResponse> {
-        let resource_id = parse_resource_id(request.body.id.as_str())
-            .map_err(|err| Error::bad_request(format!("failed to parse resource_id: {}", err)))?;
+        let resource_id = parse_resource_id(request.body.id.as_str())?;
 
         let mut new_path = ResourcePathName::new(&request.body.new_path);
 
@@ -806,8 +792,7 @@ impl Api for Server {
 
     /// Open a Scene
     async fn open_scene(&self, request: OpenSceneRequest) -> Result<OpenSceneResponse> {
-        let mut resource_id = parse_resource_id(request.scene_id.0.as_str())
-            .map_err(|err| Error::bad_request(format!("failed to parse scene_id: {}", err)))?;
+        let mut resource_id = parse_resource_id(request.scene_id.0.as_str())?;
 
         if resource_id.kind != sample_data::offline::Entity::TYPE {
             return Err(Error::internal(format!(
@@ -842,8 +827,7 @@ impl Api for Server {
 
     /// Close a Scene
     async fn close_scene(&self, request: CloseSceneRequest) -> Result<CloseSceneResponse> {
-        let mut resource_id = parse_resource_id(request.scene_id.0.as_str())
-            .map_err(|err| Error::bad_request(format!("failed to parse scene_id: {}", err)))?;
+        let mut resource_id = parse_resource_id(request.scene_id.0.as_str())?;
 
         let mut transaction_manager = self.transaction_manager.lock().await;
         transaction_manager.remove_scene(resource_id).await;
@@ -881,19 +865,15 @@ impl Api for Server {
             },
         ))
     }
-}
 
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
     async fn get_runtime_scene_info(
         &self,
-        request: Request<GetRuntimeSceneInfoRequest>,
-    ) -> Result<Response<GetRuntimeSceneInfoResponse>, Status> {
-        let request = request.get_ref();
-        let resource_id = parse_resource_id(request.resource_id.as_str())?;
+        request: GetRuntimeSceneInfoRequest,
+    ) -> Result<GetRuntimeSceneInfoResponse> {
+        let resource_id = parse_resource_id(request.scene_id.0.as_str())?;
 
         if resource_id.kind != sample_data::offline::Entity::TYPE {
-            return Err(Status::internal(format!(
+            return Err(Error::internal(format!(
                 "Expected Entity in GetRuntimeSceneInfo. Resource {} is a {}",
                 resource_id,
                 resource_id.kind.as_pretty()
@@ -917,9 +897,11 @@ impl ResourceBrowser for ResourceBrowserRPC {
             asset_id
         );
 
-        Ok(Response::new(GetRuntimeSceneInfoResponse {
-            manifest_id: manifest_id.to_string(),
-            asset_id: asset_id.to_string(),
-        }))
+        Ok(GetRuntimeSceneInfoResponse::Status200(
+            GetRuntimeSceneInfo200Response {
+                manifest_id: manifest_id.to_string(),
+                asset_id: asset_id.to_string(),
+            },
+        ))
     }
 }

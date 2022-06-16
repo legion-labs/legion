@@ -13,10 +13,6 @@ pub mod editor {
     tonic::include_proto!("editor");
 }
 
-pub mod resource_browser {
-    tonic::include_proto!("resource_browser");
-}
-
 pub mod property_inspector {
     tonic::include_proto!("property_inspector");
 }
