@@ -27,11 +27,8 @@ fn find_compiler() {
 
 #[tokio::test]
 async fn compile_atoi() {
-    let persistent_content_provider = Config::load_and_instantiate_persistent_provider()
-        .await
-        .unwrap();
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
+    let persistent_content_provider = Arc::new(
+        Config::load_and_instantiate_persistent_provider()
             .await
             .unwrap(),
     );
@@ -53,14 +50,8 @@ async fn compile_atoi() {
 
         resource.content = source_magic_value.clone();
 
-        let source_manifest_id = common::write_resource(
-            source,
-            &persistent_content_provider,
-            volatile_content_provider,
-            &proc,
-            resource,
-        )
-        .await;
+        let source_manifest_id =
+            common::write_resource(source, persistent_content_provider, &proc, resource).await;
 
         (source, source_manifest_id)
     };
@@ -114,11 +105,8 @@ async fn compile_atoi() {
 
 #[tokio::test]
 async fn compile_intermediate() {
-    let persistent_content_provider = Config::load_and_instantiate_persistent_provider()
-        .await
-        .unwrap();
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
+    let persistent_content_provider = Arc::new(
+        Config::load_and_instantiate_persistent_provider()
             .await
             .unwrap(),
     );
@@ -138,14 +126,8 @@ async fn compile_intermediate() {
 
         resource.content = source_magic_value.clone();
 
-        let source_manifest_id = common::write_resource(
-            source,
-            &persistent_content_provider,
-            volatile_content_provider,
-            &proc,
-            resource,
-        )
-        .await;
+        let source_manifest_id =
+            common::write_resource(source, persistent_content_provider, &proc, resource).await;
 
         (source, source_manifest_id)
     };
@@ -221,11 +203,8 @@ async fn compile_intermediate() {
 
 #[tokio::test]
 async fn compile_multi_resource() {
-    let persistent_content_provider = Config::load_and_instantiate_persistent_provider()
-        .await
-        .unwrap();
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
+    let persistent_content_provider = Arc::new(
+        Config::load_and_instantiate_persistent_provider()
             .await
             .unwrap(),
     );
@@ -245,14 +224,8 @@ async fn compile_multi_resource() {
 
         resource.text_list = source_text_list.clone();
 
-        let source_manifest_id = common::write_resource(
-            source,
-            &persistent_content_provider,
-            volatile_content_provider,
-            &proc,
-            resource,
-        )
-        .await;
+        let source_manifest_id =
+            common::write_resource(source, persistent_content_provider, &proc, resource).await;
 
         (source, source_manifest_id)
     };
@@ -317,11 +290,8 @@ async fn compile_multi_resource() {
 
 #[tokio::test]
 async fn compile_base64() {
-    let persistent_content_provider = Config::load_and_instantiate_persistent_provider()
-        .await
-        .unwrap();
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
+    let persistent_content_provider = Arc::new(
+        Config::load_and_instantiate_persistent_provider()
             .await
             .unwrap(),
     );
@@ -344,14 +314,8 @@ async fn compile_base64() {
 
         resource.content = source_binary_value;
 
-        let source_manifest_id = common::write_resource(
-            source,
-            &persistent_content_provider,
-            volatile_content_provider,
-            &proc,
-            resource,
-        )
-        .await;
+        let source_manifest_id =
+            common::write_resource(source, persistent_content_provider, &proc, resource).await;
 
         (source, source_manifest_id)
     };
