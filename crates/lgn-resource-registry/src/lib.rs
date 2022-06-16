@@ -71,7 +71,6 @@ impl ResourceRegistryPlugin {
                 &settings.source_control_repository_name,
                 &settings.source_control_branch_name,
                 Arc::clone(&source_control_content_provider),
-                Arc::clone(&data_content_provider),
             )
             .await
             .unwrap();

@@ -57,7 +57,6 @@ mod tests {
             &repository_name,
             &branch_name,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await;
 
@@ -89,7 +88,6 @@ mod tests {
         let project = Project::new_with_remote_mock(
             &project_dir,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("failed to create a project");

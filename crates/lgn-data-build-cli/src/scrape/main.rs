@@ -440,7 +440,6 @@ async fn main() -> Result<(), String> {
                 &repository_name,
                 &branch_name,
                 source_control_content_provider,
-                data_content_provider,
             )
             .await
             .map_err(|e| e.to_string())?;

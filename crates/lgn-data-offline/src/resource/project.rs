@@ -140,14 +140,12 @@ impl Project {
         repository_name: &RepositoryName,
         branch_name: &BranchName,
         persistent_provider: Arc<Provider>,
-        volatile_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
         let workspace = Workspace::new(
             repository_index,
             repository_name,
             branch_name,
             persistent_provider,
-            volatile_provider,
             new_resource_type_and_id_indexer(),
         )
         .await?;
@@ -162,7 +160,6 @@ impl Project {
     pub async fn new_with_remote_mock(
         project_dir: impl AsRef<Path>,
         persistent_provider: Arc<Provider>,
-        volatile_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
         let repository_index = LocalRepositoryIndex::new(remote_dir).await?;
@@ -176,7 +173,6 @@ impl Project {
             &repository_name,
             &branch_name,
             persistent_provider,
-            volatile_provider,
         )
         .await
     }
@@ -902,13 +898,10 @@ mod tests {
     #[tokio::test]
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let _resources = create_actor(&mut project).await;
 
         assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
@@ -917,13 +910,10 @@ mod tests {
     #[tokio::test]
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let resources = create_actor(&mut project).await;
 
         let actor_id = project
@@ -975,13 +965,10 @@ mod tests {
     #[tokio::test]
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let resources = create_actor(&mut project).await;
 
         let actor_id = project
@@ -1023,13 +1010,10 @@ mod tests {
     #[tokio::test]
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let _resources = create_actor(&mut project).await;
 
         let top_level_resource = project
@@ -1066,13 +1050,10 @@ mod tests {
     #[tokio::test]
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let resources = create_actor(&mut project).await;
         assert!(project.commit("rename test").await.is_ok());
         create_sky_material(&mut project, &resources).await;

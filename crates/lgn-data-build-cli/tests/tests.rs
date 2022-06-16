@@ -54,7 +54,6 @@ async fn build_device() {
         &repository_name,
         &branch_name,
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
     )
     .await
     .expect("new project");
@@ -250,7 +249,6 @@ async fn no_intermediate_resource() {
             &repository_name,
             &branch_name,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");
@@ -368,7 +366,6 @@ async fn with_intermediate_resource() {
             &repository_name,
             &branch_name,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");

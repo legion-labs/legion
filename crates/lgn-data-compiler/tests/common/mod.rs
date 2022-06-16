@@ -37,8 +37,7 @@ pub fn test_env() -> CompilationEnv {
 
 pub async fn write_resource(
     id: ResourceTypeAndId,
-    persistent_provider: &Provider,
-    volatile_provider: Arc<Provider>,
+    persistent_provider: Arc<Provider>,
     proc: &impl ResourceProcessor,
     resource: &dyn Resource,
 ) -> TreeIdentifier {
@@ -58,7 +57,7 @@ pub async fn write_resource(
         .expect("write to content-store");
 
     let mut source_manifest =
-        ResourceIndex::new_exclusive(volatile_provider, new_resource_type_and_id_indexer()).await;
+        ResourceIndex::new_exclusive(persistent_provider, new_resource_type_and_id_indexer()).await;
     source_manifest
         .add_resource(&id.into(), resource_id)
         .await
