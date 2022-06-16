@@ -27,6 +27,10 @@ use lgn_app::prelude::*;
 use lgn_data_offline::resource::ChangeType;
 use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{LockContext, TransactionManager};
+use lgn_ecs::{
+    prelude::{IntoExclusiveSystem, Res, ResMut},
+    schedule::ExclusiveSystemDescriptorCoercion,
+};
 use lgn_graphics_data::offline_gltf::GltfFile;
 use lgn_grpc::SharedRouter;
 use lgn_online::server::{Error, Result};
@@ -426,31 +430,31 @@ pub(crate) struct SourceControlPlugin;
 
 impl Plugin for SourceControlPlugin {
     fn build(&self, app: &mut App) {
-        let transaction_manager = app
-            .world
-            .resource::<Arc<Mutex<TransactionManager>>>()
-            .clone();
-        let settings = app
-            .world
-            .resource::<ResourceRegistrySettings>()
-            .root_folder()
-            .join("uploads");
-        let streamer = app.world.resource::<SharedRawFilesStreamer>().clone();
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            Self::setup
+                .exclusive_system()
+                .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+        );
+    }
+}
 
-        let mut router = app.world.resource_mut::<SharedRouter>();
-
-        let server = Arc::new(Server::new(streamer, settings, transaction_manager));
+impl SourceControlPlugin {
+    #[allow(clippy::needless_pass_by_value)]
+    fn setup(
+        mut router: ResMut<'_, SharedRouter>,
+        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
+        settings: Res<'_, ResourceRegistrySettings>,
+        streamer: Res<'_, SharedRawFilesStreamer>,
+    ) {
+        let server = Arc::new(Server::new(
+            streamer.clone(),
+            settings.root_folder().join("uploads"),
+            transaction_manager.clone(),
+        ));
 
         router.register_routes(register_routes, server);
-
-        // TODO: Adapt the before/after logic to OpenAPI
-        // app.add_startup_system_to_stage(
-        //     StartupStage::PostStartup,
-        //     Self::setup
-        //         .exclusive_system()
-        //         .after(ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-        //         .before(GRPCPluginScheduling::StartRpcServer),
-        // );
     }
 }
 

@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 use std::{collections::HashSet, sync::Arc};
 
+use editor_srv::editor::server::register_routes;
 use lgn_app::{prelude::*, Events};
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_async::TokioAsyncRuntime;
@@ -15,6 +16,7 @@ use lgn_data_transaction::{
 use lgn_ecs::prelude::*;
 use lgn_graphics_renderer::picking::PickingEvent;
 use lgn_graphics_renderer::picking::{ManipulatorManager, PickingManager};
+use lgn_grpc::SharedRouter;
 use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButtonInput, MouseMotion},
@@ -25,7 +27,7 @@ use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::{broadcast, Mutex};
 
-use crate::editor::{EditorEvent, EditorEventsReceiver};
+use crate::editor::{EditorEvent, EditorEventsReceiver, Server};
 use crate::source_control_plugin::{RawFilesStreamerConfig, SharedRawFilesStreamer};
 
 #[derive(Default)]
@@ -57,7 +59,18 @@ impl Plugin for EditorPlugin {
 
 impl EditorPlugin {
     #[allow(clippy::needless_pass_by_value)]
-    fn setup() {}
+    fn setup(
+        mut router: ResMut<'_, SharedRouter>,
+        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
+        editor_events_receiver: Res<'_, EditorEventsReceiver>,
+    ) {
+        let server = Arc::new(Server::new(
+            transaction_manager.clone(),
+            editor_events_receiver.clone(),
+        ));
+
+        router.register_routes(register_routes, server);
+    }
 
     #[allow(clippy::needless_pass_by_value)]
     fn update_selection(

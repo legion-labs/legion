@@ -129,7 +129,6 @@ impl Plugin for ResourceBrowserPlugin {
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
                 .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer)
         );
-
         app.add_system(Self::handle_events);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,

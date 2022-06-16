@@ -28,16 +28,18 @@ pub(crate) struct Server {
     transaction_manager: Arc<Mutex<TransactionManager>>,
     editor_events_receiver: EditorEventsReceiver,
 }
-/*
+
 impl Server {
-    pub(crate) fn new(transaction_manager: Arc<Mutex<TransactionManager>>, editor_events_receiver: EditorEventsReceiver) -> Self {
+    pub(crate) fn new(
+        transaction_manager: Arc<Mutex<TransactionManager>>,
+        editor_events_receiver: EditorEventsReceiver,
+    ) -> Self {
         Self {
             transaction_manager,
             editor_events_receiver,
         }
     }
 }
-*/
 
 #[async_trait]
 impl Api for Server {

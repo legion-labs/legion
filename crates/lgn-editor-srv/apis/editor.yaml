@@ -4,7 +4,7 @@ info:
   description: "The OpenAPI specification for the Legion Labs editor."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/undo/{transaction-id}:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/undo/{transaction-id}/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -17,7 +17,7 @@ paths:
           description: Ok.
         "409":
           description: Undo transaction failed
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/redo/{transaction-id}:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/redo/{transaction-id}/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -30,7 +30,7 @@ paths:
           description: Ok.
         "409":
           description: Redo transaction failed
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/messages:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/messages/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"

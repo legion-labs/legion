@@ -67,18 +67,27 @@ fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Status> {
 
 impl Plugin for PropertyInspectorPlugin {
     fn build(&self, app: &mut App) {
-        let transaction_manager = app
-            .world
-            .resource::<Arc<Mutex<TransactionManager>>>()
-            .clone();
-        let event_sender = app
-            .world
-            .resource::<broadcast::Sender<EditorEvent>>()
-            .clone();
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            Self::setup
+                .exclusive_system()
+                .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
+                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+        );
+    }
+}
 
-        let mut router = app.world.resource_mut::<SharedRouter>();
-
-        let server = Arc::new(Server::new(transaction_manager, event_sender));
+impl PropertyInspectorPlugin {
+    #[allow(clippy::needless_pass_by_value)]
+    fn setup(
+        mut router: ResMut<'_, SharedRouter>,
+        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
+        event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
+    ) {
+        let server = Arc::new(Server::new(
+            transaction_manager.clone(),
+            event_sender.clone(),
+        ));
 
         router.register_routes(register_routes, server);
     }

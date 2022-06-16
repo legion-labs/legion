@@ -15,10 +15,8 @@ import type {
   ResourceWithProperties,
 } from "../components/propertyGrid/lib/propertyGrid";
 
-// const defaultGrpcEditorServerURL = "http://[::1]:50051";
-// const defaultGrpcRuntimeServerURL = "http://[::1]:50052";
-const defaultRestEditorServerURL = "http://[::1]:5051";
-const defaultRestRuntimeServerURL = "http://[::1]:5052";
+const defaultEditorServerURL = "http://[::1]:5051";
+const defaultRuntimeServerURL = "http://[::1]:5052";
 
 let resourceBrowserClient: ResourceBrowser.Client;
 
@@ -34,46 +32,42 @@ let editorLogStreamClient: Log.Client;
 let runtimeLogStreamClient: Log.Client;
 
 export function initApiClient({
-  // grpcEditorServerUrl = defaultGrpcEditorServerURL,
-  // grpcRuntimeServerUrl = defaultGrpcRuntimeServerURL,
-  restEditorServerUrl = defaultRestEditorServerURL,
-  restRuntimeServerUrl = defaultRestRuntimeServerURL,
+  editorServerUrl = defaultEditorServerURL,
+  runtimeServerUrl = defaultRuntimeServerURL,
   accessTokenCookieName,
 }: {
-  grpcEditorServerUrl?: string;
-  grpcRuntimeServerUrl?: string;
-  restEditorServerUrl?: string;
-  restRuntimeServerUrl?: string;
+  editorServerUrl?: string;
+  runtimeServerUrl?: string;
   accessTokenCookieName: string;
 }) {
   resourceBrowserClient = new ResourceBrowser.Client({
-    baseUri: restEditorServerUrl,
+    baseUri: editorServerUrl,
   });
 
   propertyInspectorClient = new PropertyInspector.Client({
-    baseUri: restEditorServerUrl,
+    baseUri: editorServerUrl,
   });
 
   sourceControlClient = new SourceControl.Client({
-    baseUri: restEditorServerUrl,
+    baseUri: editorServerUrl,
   });
 
   editorClient = new Editor.Client({
-    baseUri: restEditorServerUrl,
+    baseUri: editorServerUrl,
   });
 
   runtimeClient = addAuthToClient(
-    new Runtime.Client({ baseUri: restEditorServerUrl }),
+    new Runtime.Client({ baseUri: editorServerUrl }),
     accessTokenCookieName
   );
 
   editorLogStreamClient = addAuthToClient(
-    new Log.Client({ baseUri: restEditorServerUrl }),
+    new Log.Client({ baseUri: editorServerUrl }),
     accessTokenCookieName
   );
 
   runtimeLogStreamClient = addAuthToClient(
-    new Log.Client({ baseUri: restRuntimeServerUrl }),
+    new Log.Client({ baseUri: runtimeServerUrl }),
     accessTokenCookieName
   );
 }
