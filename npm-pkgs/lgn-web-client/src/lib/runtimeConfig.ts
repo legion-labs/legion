@@ -1,7 +1,9 @@
 import type { Env } from "./env";
 import { getEnv } from "./env";
 
-export function getRuntimeConfig<RuntimeConfig extends Record<string, string>>({
+export function getRuntimeConfig<
+  RuntimeConfig extends Record<string, unknown>
+>({
   allowedApp,
   allowedDomain,
   configs,

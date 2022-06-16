@@ -6,16 +6,8 @@ import { enhanceGrpcClient } from "@lgn/web-client/src/lib/client";
 
 import { accessTokenCookieName } from "@/constants";
 
-export function getRemoteHost(): string {
-  return import.meta.env.VITE_LEGION_ANALYTICS_REMOTE_HOST as string;
-}
-
-export function getUrl(): string {
-  return import.meta.env.VITE_LEGION_ANALYTICS_API_URL as string;
-}
-
-export function createGrpcClient() {
-  const rpc = new GrpcWebImpl(getUrl(), {});
+export function createGrpcClient(url: string) {
+  const rpc = new GrpcWebImpl(url, {});
 
   return enhanceGrpcClient(
     new PerformanceAnalyticsClientImpl(rpc),

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { getContext } from "svelte";
 
   import {
     GrpcWebImpl,
@@ -7,11 +8,11 @@
   } from "@lgn/proto-telemetry/dist/health";
   import log from "@lgn/web-client/src/lib/log";
 
-  import { getRemoteHost } from "@/lib/client";
+  const runtimeConfig = getContext("runtime-config");
 
   onMount(async () => {
     const client = new HealthClientImpl(
-      new GrpcWebImpl("http://" + getRemoteHost() + ":9090", {})
+      new GrpcWebImpl("http://" + runtimeConfig.apiAnalytics.host + ":9090", {})
     );
 
     const res = await client.check({ service: "analytics" });
