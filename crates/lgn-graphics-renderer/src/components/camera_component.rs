@@ -22,41 +22,6 @@ pub struct CameraOptions {
 }
 
 impl CameraOptions {
-    fn new(
-        setup: &CameraSetup,
-        camera_transform: &mut GlobalTransform,
-        speed: f32,
-        rotation_speed: Angle,
-    ) -> Self {
-        let camera_options = Self {
-            setup: setup.clone(),
-            speed,
-            rotation_speed,
-        };
-        camera_options.setup_camera_transform(camera_transform);
-        camera_options
-
-        //let forward = (setup.look_at - setup.eye).normalize();
-        //
-        //let (yaw, pitch, _roll) = vector_to_euler(forward);
-        //
-        //assert!(yaw <= std::f32::consts::TAU);
-        //assert!(yaw >= 0.0);
-        //
-        //assert!(pitch <= std::f32::consts::PI);
-        //assert!(pitch >= -std::f32::consts::PI);
-        //
-        //CameraRig::builder()
-        //    .with(Position::new(setup.eye))
-        //    .with(
-        //        YawPitch::new()
-        //            .yaw_degrees(yaw.to_degrees())
-        //            .pitch_degrees(pitch.to_degrees()),
-        //    )
-        //    .with(Smooth::new_position_rotation(0.2, 0.2))
-        //    .build()
-    }
-
     fn reset(&self, camera_transform: &mut GlobalTransform) {
         self.setup_camera_transform(camera_transform);
     }
@@ -86,7 +51,7 @@ impl CameraOptions {
 impl Default for CameraOptions {
     fn default() -> Self {
         let setup = CameraSetup {
-            eye: Vec3::new(0.0, -2.0, 1.0),
+            eye: Vec3::new(0.0, 2.0, -1.0),
             look_at: Vec3::ZERO,
         };
 
@@ -99,8 +64,8 @@ impl Default for CameraOptions {
 }
 
 fn dir_to_yaw_pitch(dir: Vec3) -> (f32, f32) {
-    let yaw = std::f32::consts::PI - (dir.x).atan2(-dir.y);
-    let dir_no_yaw = Mat3::from_rotation_z(yaw) * dir;
+    let yaw = (-dir.x).atan2(dir.y);
+    let dir_no_yaw = Mat3::from_rotation_z(-yaw) * dir;
     let pitch = (dir_no_yaw.y).atan2(-dir_no_yaw.z);
     (yaw, pitch)
 }
@@ -142,6 +107,7 @@ impl Default for CameraComponent {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub(crate) fn tmp_create_camera(
     mut commands: Commands<'_, '_>,
     camera_options: Res<'_, CameraOptions>,
@@ -175,29 +141,6 @@ pub(crate) fn apply_camera_setups(
     drop(camera_setups);
 }
 
-pub struct CameraRotation {
-    pub yaw: f32,
-    pub pitch: f32,
-}
-
-impl CameraRotation {
-    pub fn rotate_yaw_pitch(&mut self, yaw: f32, pitch: f32) {
-        self.yaw += yaw;
-        self.pitch += pitch;
-        self.yaw = (self.yaw + yaw) % std::f32::consts::TAU;
-        self.pitch = (self.pitch + pitch).clamp(0.0, std::f32::consts::PI);
-    }
-}
-
-impl Default for CameraRotation {
-    fn default() -> Self {
-        CameraRotation {
-            yaw: std::f32::consts::PI,
-            pitch: std::f32::consts::FRAC_PI_2,
-        }
-    }
-}
-
 #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
 pub(crate) fn camera_control(
     mut cameras_query: Query<'_, '_, &mut GlobalTransform, With<CameraComponent>>,
@@ -209,7 +152,6 @@ pub(crate) fn camera_control(
     gamepad_axes: Res<'_, Axis<GamepadAxis>>,
     gamepad_buttons: Res<'_, Input<GamepadButton>>,
     mut camera_options: ResMut<'_, CameraOptions>,
-    mut camera_rotation: Local<'_, CameraRotation>,
 
     time: Res<'_, Time>,
 ) {
@@ -299,17 +241,20 @@ pub(crate) fn camera_control(
                 let rotation = (rotation_speed.degrees() * time.delta_seconds())
                     .min(10.0)
                     .to_radians(); // clamping rotation speed for when it's laggy
-
-                camera_rotation.rotate_yaw_pitch(
-                    -mouse_motion_event.delta.x * rotation,
-                    -mouse_motion_event.delta.y * rotation,
+                let (yaw, pitch) = dir_to_yaw_pitch(transform.forward());
+                let delta_yaw = mouse_motion_event.delta.x * rotation;
+                let delta_pitch = mouse_motion_event.delta.y * rotation;
+                let yaw = (yaw - delta_yaw) % std::f32::consts::TAU;
+                let pitch = (pitch - delta_pitch)
+                    .clamp(std::f32::EPSILON, std::f32::consts::PI - std::f32::EPSILON);
+                lgn_tracing::info!(
+                    "y_p: {:.2} {:.2}, dy: {:.2}, forward: {}",
+                    yaw.to_degrees(),
+                    pitch.to_degrees(),
+                    delta_yaw.to_degrees(),
+                    transform.forward()
                 );
-                transform.rotation = Quat::from_euler(
-                    EulerRot::YZX,
-                    0.0,
-                    camera_rotation.yaw,
-                    camera_rotation.pitch,
-                );
+                transform.rotation = Quat::from_euler(EulerRot::YZX, 0.0, yaw, pitch);
             }
             for mouse_wheel_event in mouse_wheel_events.iter() {
                 // Different signs on Line and Pixel is correct. Line returns positive values when scrolling up
@@ -393,26 +338,33 @@ pub(crate) fn reflect_camera_components(
 
 #[cfg(test)]
 mod test {
-    use lgn_math::{EulerRot, Mat3, Quat, Vec3};
+    use lgn_math::Vec3;
 
-    use crate::{components::camera_component::dir_to_euler, DOWN_VECTOR};
+    use crate::components::camera_component::dir_to_yaw_pitch;
+
+    use std::f32::{
+        consts::{FRAC_PI_2, FRAC_PI_4, PI},
+        EPSILON,
+    };
 
     #[test]
-    fn camera() {
-        let default_rotation = Quat::from_mat3(&Mat3::IDENTITY);
-        assert_eq!(default_rotation, Quat::from_xyzw(0.0, 0.0, 0.0, 1.0));
-        assert_eq!(default_rotation.to_euler(EulerRot::YXZ), (0.0, 0.0, 0.0));
+    fn test_dir_to_yaw_pitch() {
+        let (yaw, pitch) = dir_to_yaw_pitch(Vec3::new(0.0, -1.0, -1.0));
+        println!(
+            "yaw: {:.2}, pitch: {:.2}",
+            yaw.to_degrees(),
+            pitch.to_degrees()
+        );
+        assert!((yaw - (-PI)).abs() < EPSILON);
+        assert!((pitch - FRAC_PI_4).abs() < EPSILON);
 
-        let pitch_90 = Quat::from_mat3(&Mat3::from_cols_array(&[
-            1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0,
-        ]));
-        let (yaw, pitch, roll) = pitch_90.to_euler(EulerRot::YXZ);
-        assert!(yaw.abs() < f32::EPSILON);
-        assert!((pitch - std::f32::consts::FRAC_PI_2).abs() < 0.003); // It seems like to_euler() is not very precise so not using f32::EPSILON
-        assert!(roll.abs() < f32::EPSILON);
-
-        //let eye = Vec3::new(0.0, -2.0, 1.0);
-        //let look_at = Vec3::ZERO;
-        assert_eq!(dir_to_euler(DOWN_VECTOR), (0.0, 0.0, 0.0));
+        let (yaw, pitch) = dir_to_yaw_pitch(Vec3::new(-1.0, -1.0, 0.0));
+        println!(
+            "yaw: {:.2}, pitch: {:.2}",
+            yaw.to_degrees(),
+            pitch.to_degrees()
+        );
+        assert!((yaw - 3.0 * FRAC_PI_4).abs() < EPSILON);
+        assert!((pitch - FRAC_PI_2).abs() < EPSILON);
     }
 }
