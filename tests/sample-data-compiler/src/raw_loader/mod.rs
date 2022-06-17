@@ -20,7 +20,7 @@ use lgn_data_runtime::{
     ResourceTypeAndId,
 };
 use lgn_graphics_data::{offline_gltf::GltfFile, offline_psd::PsdFile};
-use lgn_source_control::{RepositoryIndex, RepositoryName};
+use lgn_source_control::{BranchName, RepositoryIndex, RepositoryName};
 use lgn_tracing::{error, info};
 use lgn_utils::DefaultHasher;
 use sample_data::offline as offline_data;
@@ -32,9 +32,8 @@ pub async fn build_offline(
     root_folder: impl AsRef<Path>,
     repository_index: impl RepositoryIndex,
     repository_name: &RepositoryName,
-    branch_name: &str,
+    branch_name: &BranchName,
     source_control_content_provider: Arc<Provider>,
-    data_content_provider: Arc<Provider>,
     incremental: bool,
 ) -> Project {
     let raw_dir = {
@@ -53,7 +52,6 @@ pub async fn build_offline(
         repository_name,
         branch_name,
         source_control_content_provider,
-        data_content_provider,
     )
     .await;
 
@@ -213,9 +211,8 @@ pub async fn build_offline(
 async fn setup_project(
     repository_index: impl RepositoryIndex,
     repository_name: &RepositoryName,
-    branch_name: &str,
+    branch_name: &BranchName,
     source_control_content_provider: Arc<Provider>,
-    data_content_provider: Arc<Provider>,
 ) -> (Project, Arc<AssetRegistry>) {
     // create/load project
     let project = Project::new(
@@ -223,7 +220,6 @@ async fn setup_project(
         repository_name,
         branch_name,
         source_control_content_provider,
-        data_content_provider,
     )
     .await
     .unwrap();

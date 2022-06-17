@@ -16,7 +16,7 @@ use lgn_data_runtime::{
     ResourcePathId, ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
-    CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
+    BranchName, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
 };
 use lgn_tracing::error;
 use thiserror::Error;
@@ -71,7 +71,7 @@ use super::deserialize_and_skip_metadata;
 /// can be changed freely.
 pub struct Project {
     workspace: Workspace<ResourceTypeAndIdIndexer>,
-    deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
+    deleted_pending: HashMap<ResourceTypeAndId, ResourcePathName>,
 }
 
 #[derive(Error, Debug)]
@@ -138,16 +138,14 @@ impl Project {
     pub async fn new(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        branch_name: &str,
+        branch_name: &BranchName,
         persistent_provider: Arc<Provider>,
-        volatile_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
         let workspace = Workspace::new(
             repository_index,
             repository_name,
             branch_name,
             persistent_provider,
-            volatile_provider,
             new_resource_type_and_id_indexer(),
         )
         .await?;
@@ -162,20 +160,19 @@ impl Project {
     pub async fn new_with_remote_mock(
         project_dir: impl AsRef<Path>,
         persistent_provider: Arc<Provider>,
-        volatile_provider: Arc<Provider>,
     ) -> Result<Self, Error> {
         let remote_dir = project_dir.as_ref().join("remote");
         let repository_index = LocalRepositoryIndex::new(remote_dir).await?;
         let repository_name: RepositoryName = "default".parse().unwrap();
+        let branch_name: BranchName = "main".parse().unwrap();
 
         repository_index.create_repository(&repository_name).await?;
 
         Self::new(
             repository_index,
             &repository_name,
-            "main",
+            &branch_name,
             persistent_provider,
-            volatile_provider,
         )
         .await
     }
@@ -435,51 +432,28 @@ impl Project {
     /// Returns the name of the resource from its `.meta` file.
     pub async fn deleted_resource_info(
         &mut self,
-        _type_id: ResourceTypeAndId,
+        type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        // let metadata_path = self.metadata_path(id);
+        if let Some(path) = self.deleted_pending.get(&type_id) {
+            Ok(path.clone())
+        } else {
+            let pending_changes = self.workspace.get_pending_changes().await?;
 
-        // match self.deleted_pending.entry(id) {
-        //     Entry::Vacant(entry) => {
-        //         let tree = self.workspace.get_staged_changes().await?;
+            let type_id_as_key: IndexKey = type_id.into();
+            let found_key = pending_changes
+                .binary_search_by(|(index_key, _change_type)| index_key.cmp(&type_id_as_key));
 
-        //         let meta_lsc_path =
-        //             CanonicalPath::new_from_canonical_paths(self.workspace.root(), &metadata_path)
-        //                 .map_err(|err| {
-        //                     error!(
-        //                         "Failed to retrieve delete info for Resource {}: {}",
-        //                         id, err
-        //                     );
-        //                     Error::SourceControl(err)
-        //                 })?;
+            if let Ok(index) = found_key {
+                let (_index_key, change_type) = &pending_changes[index];
+                if let lgn_source_control::ChangeType::Delete { old_id } = change_type {
+                    let metadata = self.read_meta_by_resource_id(old_id).await?;
+                    self.deleted_pending.insert(type_id, metadata.name.clone());
+                    return Ok(metadata.name);
+                }
+            }
 
-        //         if let Some(lgn_source_control::ChangeType::Delete { old_id }) = tree
-        //             .get(&meta_lsc_path)
-        //             .map(lgn_source_control::Change::change_type)
-        //         {
-        //             match self.workspace.provider().read(old_id).await {
-        //                 Ok(data) => {
-        //                     if let Ok(meta) = serde_json::from_slice::<Metadata>(&data) {
-        //                         let value = (meta.name, meta.type_id);
-        //                         entry.insert(value.clone());
-        //                         return Ok(value);
-        //                     }
-        //                 }
-        //                 Err(err) => {
-        //                     error!(
-        //                         "Failed to retrieve delete info for Resource {}: {}",
-        //                         id, err
-        //                     );
-        //                 }
-        //             }
-        //         }
-
-        //         Err(Error::FileNotFound(meta_lsc_path.to_string()))
-        //     }
-        //     Entry::Occupied(entry) => Ok(entry.get().clone()),
-        // }
-
-        Err(Error::FileNotFound("not implemented".to_owned()))
+            Err(Error::ResourceNotFound(type_id))
+        }
     }
 
     /// Returns the raw name of the resource from its `.meta` file.
@@ -901,13 +875,10 @@ mod tests {
     #[tokio::test]
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let _resources = create_actor(&mut project).await;
 
         assert_eq!(project.get_pending_changes().await.unwrap().len(), 5);
@@ -916,13 +887,10 @@ mod tests {
     #[tokio::test]
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let resources = create_actor(&mut project).await;
 
         let actor_id = project
@@ -963,24 +931,21 @@ mod tests {
                 .await
                 .unwrap();
 
-            // assert_eq!(project.get_pending_changes().await.unwrap().len(), 1);
+            assert_eq!(project.get_pending_changes().await.unwrap().len(), 1);
         }
 
         project.commit("update actor").await.unwrap();
 
-        // assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
+        assert_eq!(project.get_pending_changes().await.unwrap().len(), 0);
     }
 
     #[tokio::test]
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let resources = create_actor(&mut project).await;
 
         let actor_id = project
@@ -1022,13 +987,10 @@ mod tests {
     #[tokio::test]
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let _resources = create_actor(&mut project).await;
 
         let top_level_resource = project
@@ -1065,13 +1027,10 @@ mod tests {
     #[tokio::test]
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
-        let mut project = Project::new_with_remote_mock(
-            root.path(),
-            Arc::new(Provider::new_in_memory()),
-            Arc::new(Provider::new_in_memory()),
-        )
-        .await
-        .expect("new project");
+        let mut project =
+            Project::new_with_remote_mock(root.path(), Arc::new(Provider::new_in_memory()))
+                .await
+                .expect("new project");
         let resources = create_actor(&mut project).await;
         assert!(project.commit("rename test").await.is_ok());
         create_sky_material(&mut project, &resources).await;

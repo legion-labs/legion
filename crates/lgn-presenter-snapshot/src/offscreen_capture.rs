@@ -128,23 +128,15 @@ impl OffscreenHelper {
         let render_texture_rtv = &self.render_image_rtv;
         let copy_texture = &self.copy_image;
 
-        let view_target = render_surface.view_target();
-        let view_target_srv = render_surface.view_target_srv();
+        let final_target_srv = render_surface.final_target_srv();
 
         cmd_buffer.cmd_resource_barrier(
             &[],
-            &[
-                TextureBarrier::state_transition(
-                    render_texture,
-                    ResourceState::COPY_SRC,
-                    ResourceState::RENDER_TARGET,
-                ),
-                TextureBarrier::state_transition(
-                    view_target,
-                    ResourceState::RENDER_TARGET,
-                    ResourceState::SHADER_RESOURCE,
-                ),
-            ],
+            &[TextureBarrier::state_transition(
+                render_texture,
+                ResourceState::COPY_SRC,
+                ResourceState::RENDER_TARGET,
+            )],
         );
 
         cmd_buffer.cmd_begin_render_pass(
@@ -164,7 +156,7 @@ impl OffscreenHelper {
         cmd_buffer.cmd_bind_pipeline(pipeline);
 
         let mut descriptor_set = cgen::descriptor_set::DisplayMapperDescriptorSet::default();
-        descriptor_set.set_hdr_image(view_target_srv);
+        descriptor_set.set_hdr_image(final_target_srv);
         descriptor_set.set_hdr_sampler(&self.bilinear_sampler);
         let descriptor_set_handle = render_context.write_descriptor_set(
             cgen::descriptor_set::DisplayMapperDescriptorSet::descriptor_set_layout(),
@@ -186,11 +178,6 @@ impl OffscreenHelper {
                     render_texture,
                     ResourceState::RENDER_TARGET,
                     ResourceState::COPY_SRC,
-                ),
-                TextureBarrier::state_transition(
-                    view_target,
-                    ResourceState::SHADER_RESOURCE,
-                    ResourceState::RENDER_TARGET,
                 ),
                 TextureBarrier::state_transition(
                     copy_texture,

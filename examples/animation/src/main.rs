@@ -8,7 +8,7 @@ use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
 
 use clap::{ArgEnum, Parser};
 use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
-use lgn_source_control::RepositoryName;
+use lgn_source_control::{BranchName, RepositoryName};
 
 use lgn_animation::offline::{
     AnimationTrack, AnimationTransformBundle, AnimationTransformBundleVec,
@@ -70,6 +70,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .unwrap();
     let repository_name: RepositoryName = "examples-animation".parse().unwrap();
+    let branch_name: BranchName = "main".parse().unwrap();
 
     // Ensure the repository exists.
     let _index = repository_index.ensure_repository(&repository_name).await;
@@ -88,16 +89,14 @@ async fn main() -> anyhow::Result<()> {
     let mut project = Project::new(
         &repository_index,
         &repository_name,
-        "main",
+        &branch_name,
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
     )
     .await
     .expect("failed to create a project");
 
     let mut asset_registry = AssetRegistryOptions::new().add_device_source_cas(
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
         project.source_manifest_id(),
     );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);

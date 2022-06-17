@@ -139,10 +139,13 @@ impl AssetRegistryOptions {
     #[must_use]
     pub fn add_device_cas(
         self,
-        provider: Arc<Provider>,
-        manifest_id: SharedTreeIdentifier,
+        volatile_provider: Arc<Provider>,
+        runtime_manifest_id: SharedTreeIdentifier,
     ) -> Self {
-        self.add_device(Box::new(vfs::CasDevice::new(provider, manifest_id)))
+        self.add_device(Box::new(vfs::CasDevice::new(
+            volatile_provider,
+            runtime_manifest_id,
+        )))
     }
 
     /// Specifying `build device` will mount a device that allows to build
@@ -153,8 +156,9 @@ impl AssetRegistryOptions {
     #[allow(clippy::too_many_arguments)]
     pub async fn add_device_build(
         self,
-        provider: Arc<Provider>,
-        manifest: Option<TreeIdentifier>,
+        volatile_provider: Arc<Provider>,
+        source_manifest_id: SharedTreeIdentifier,
+        runtime_manifest_id: Option<TreeIdentifier>,
         build_bin: impl AsRef<Path>,
         output_db_addr: &str,
         repository_name: &str,
@@ -163,8 +167,9 @@ impl AssetRegistryOptions {
     ) -> Self {
         self.add_device(Box::new(
             vfs::BuildDevice::new(
-                manifest,
-                provider,
+                volatile_provider,
+                source_manifest_id,
+                runtime_manifest_id,
                 build_bin,
                 output_db_addr,
                 repository_name,

@@ -6,7 +6,7 @@ use lgn_data_compiler::{
 };
 use lgn_data_offline::resource::{Project, ResourcePathName};
 use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourcePathId};
-use lgn_source_control::{RepositoryIndex, RepositoryName};
+use lgn_source_control::{BranchName, RepositoryIndex, RepositoryName};
 use serial_test::serial;
 
 static DATABUILD_EXE: &str = env!("CARGO_BIN_EXE_data-build");
@@ -30,7 +30,7 @@ async fn build_device() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
-    let branch_name = "main";
+    let branch_name: BranchName = "main".parse().unwrap();
     repository_index
         .create_repository(&repository_name)
         .await
@@ -52,9 +52,8 @@ async fn build_device() {
     let mut project = Project::new(
         &repository_index,
         &repository_name,
-        branch_name,
+        &branch_name,
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
     )
     .await
     .expect("new project");
@@ -144,11 +143,12 @@ async fn build_device() {
         .add_loader::<refs_asset::RefsAsset>()
         .add_device_build(
             Arc::clone(&data_content_provider),
+            project.source_manifest_id(),
             None,
             DATABUILD_EXE,
             &DataBuildOptions::output_db_path_dir(output_dir, project_dir, DataBuild::version()),
             repository_name.as_str(),
-            branch_name,
+            branch_name.as_str(),
             true,
         )
         .await
@@ -226,7 +226,7 @@ async fn no_intermediate_resource() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
-    let branch_name = "main";
+    let branch_name: BranchName = "main".parse().unwrap();
     repository_index
         .create_repository(&repository_name)
         .await
@@ -243,13 +243,12 @@ async fn no_intermediate_resource() {
     );
 
     // create project that contains test resource.
-    let resource_id = {
+    let (resource_id, source_manifest_id) = {
         let mut project = Project::new(
             &repository_index,
             &repository_name,
-            branch_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");
@@ -286,7 +285,7 @@ async fn no_intermediate_resource() {
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
 
-        resource_id
+        (resource_id, project.source_manifest_id())
     };
 
     let compile_path = ResourcePathId::from(resource_id).push(refs_asset::RefsAsset::TYPE);
@@ -304,6 +303,7 @@ async fn no_intermediate_resource() {
         command.arg(format!("--output={}", output_dir.to_str().unwrap()));
         command.arg(format!("--repository-name={}", repository_name));
         command.arg(format!("--branch-name={}", branch_name));
+        command.arg(format!("--source-manifest-id={}", source_manifest_id));
         command
     };
 
@@ -342,7 +342,7 @@ async fn with_intermediate_resource() {
         .await
         .unwrap();
     let repository_name: RepositoryName = "default".parse().unwrap();
-    let branch_name = "main";
+    let branch_name: BranchName = "main".parse().unwrap();
     repository_index
         .create_repository(&repository_name)
         .await
@@ -360,13 +360,12 @@ async fn with_intermediate_resource() {
     );
 
     // create project that contains test resource.
-    let resource_id = {
+    let (resource_id, source_manifest_id) = {
         let mut project = Project::new(
             &repository_index,
             &repository_name,
-            branch_name,
+            &branch_name,
             Arc::clone(&source_control_content_provider),
-            Arc::clone(&data_content_provider),
         )
         .await
         .expect("new project");
@@ -403,7 +402,7 @@ async fn with_intermediate_resource() {
         .expect("new build index");
         build.source_pull(&project).await.expect("successful pull");
 
-        resource_id
+        (resource_id, project.source_manifest_id())
     };
 
     let compile_path = ResourcePathId::from(resource_id)
@@ -424,6 +423,7 @@ async fn with_intermediate_resource() {
         command.arg(format!("--output={}", output_dir.to_str().unwrap()));
         command.arg(format!("--repository-name={}", repository_name));
         command.arg(format!("--branch-name={}", branch_name));
+        command.arg(format!("--source-manifest-id={}", source_manifest_id));
         command
     };
 

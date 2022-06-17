@@ -14,8 +14,7 @@ mod common;
 
 async fn create_test_resource(
     id: ResourceTypeAndId,
-    persistent_provider: &Provider,
-    volatile_provider: Arc<Provider>,
+    persistent_provider: Arc<Provider>,
     content: &str,
 ) -> TreeIdentifier {
     let mut proc = refs_resource::TestResourceProc {};
@@ -26,14 +25,7 @@ async fn create_test_resource(
         .unwrap()
         .content = String::from(content);
 
-    common::write_resource(
-        id,
-        persistent_provider,
-        volatile_provider,
-        &proc,
-        resource.as_ref(),
-    )
-    .await
+    common::write_resource(id, persistent_provider, &proc, resource.as_ref()).await
 }
 
 #[tokio::test]
@@ -78,11 +70,8 @@ async fn command_compiler_hash() {
 
 #[tokio::test]
 async fn command_compile() {
-    let persistent_content_provider = Config::load_and_instantiate_persistent_provider()
-        .await
-        .unwrap();
-    let volatile_content_provider = Arc::new(
-        Config::load_and_instantiate_volatile_provider()
+    let persistent_content_provider = Arc::new(
+        Config::load_and_instantiate_persistent_provider()
             .await
             .unwrap(),
     );
@@ -93,13 +82,8 @@ async fn command_compile() {
         kind: refs_resource::TestResource::TYPE,
         id: ResourceId::new(),
     };
-    let source_manifest_id = create_test_resource(
-        source,
-        &persistent_content_provider,
-        volatile_content_provider,
-        content,
-    )
-    .await;
+    let source_manifest_id =
+        create_test_resource(source, persistent_content_provider, content).await;
 
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());

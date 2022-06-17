@@ -2,16 +2,17 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, ResourceIdentifier, ResourceIndex, ResourceReader, ResourceWriter,
-        SharedTreeIdentifier, StringPathIndexer, TreeDiffSide, TreeIdentifier, TreeLeafNode,
+        BasicIndexer, IndexKey, IndexKeyDisplayFormat, ResourceIdentifier, ResourceIndex,
+        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
+        TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
 use tokio_stream::StreamExt;
 
 use crate::{
-    Branch, ChangeType, Commit, Error, Index, ListBranchesQuery, ListCommitsQuery, RepositoryIndex,
-    RepositoryName, Result,
+    Branch, BranchName, ChangeType, Commit, Error, Index, ListBranchesQuery, ListCommitsQuery,
+    NewCommit, RepositoryIndex, RepositoryName, Result,
 };
 
 /// Represents a workspace.
@@ -20,9 +21,8 @@ where
     MainIndexer: BasicIndexer + Clone + Sync,
 {
     index: Box<dyn Index>,
-    persistent_provider: Arc<Provider>,
-    volatile_provider: Arc<Provider>,
-    branch_name: String,
+    transaction: Arc<Provider>,
+    branch_name: BranchName,
     main_index: ResourceIndex<MainIndexer>,
     path_index: ResourceIndex<StringPathIndexer>,
 }
@@ -70,32 +70,38 @@ where
     pub async fn new(
         repository_index: impl RepositoryIndex,
         repository_name: &RepositoryName,
-        branch_name: &str,
+        branch_name: &BranchName,
         persistent_provider: Arc<Provider>,
-        volatile_provider: Arc<Provider>,
         main_indexer: MainIndexer,
     ) -> Result<Self> {
         let index = repository_index.load_repository(repository_name).await?;
         let branch = index.get_branch(branch_name).await?;
-        let commit = index.get_commit(branch.head).await?;
+        let commit = index.get_commit(branch_name, branch.head).await?;
+        let transaction = Arc::new(persistent_provider.begin_transaction_in_memory());
         let main_index = ResourceIndex::new_shared_with_raw_id(
-            Arc::clone(&volatile_provider),
+            Arc::clone(&transaction),
             main_indexer,
             commit.main_index_tree_id,
         );
         let path_index = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(&volatile_provider),
+            Arc::clone(&transaction),
             StringPathIndexer::default(),
             commit.path_index_tree_id,
         );
         Ok(Self {
             index,
-            persistent_provider,
-            volatile_provider,
-            branch_name: branch_name.to_owned(),
+            transaction,
+            branch_name: branch_name.clone(),
             main_index,
             path_index,
         })
+    }
+
+    async fn commit_and_restart_transaction(&mut self) -> Result<()> {
+        self.transaction
+            .commit_and_restart_transaction()
+            .await
+            .map_err(Error::ContentStore)
     }
 
     /// Return the repository name of the workspace.
@@ -121,14 +127,16 @@ where
     async fn get_current_commit(&self) -> Result<Commit> {
         let current_branch = self.get_current_branch().await?;
 
-        self.index.get_commit(current_branch.head).await
+        self.index
+            .get_commit(&current_branch.name, current_branch.head)
+            .await
     }
 
     pub async fn get_resource_identifier(
         &self,
         id: &IndexKey,
     ) -> Result<Option<ResourceIdentifier>> {
-        self.get_resource_identifier_from_index(&self.main_index, id)
+        self.get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
             .await
     }
 
@@ -137,26 +145,54 @@ where
         path: &str,
     ) -> Result<Option<ResourceIdentifier>> {
         if path.len() > 1 {
-            self.get_resource_identifier_from_index(&self.path_index, &path.into())
-                .await
+            self.get_resource_identifier_from_index(
+                &self.path_index,
+                &path.into(),
+                IndexKeyDisplayFormat::Utf8,
+            )
+            .await
         } else {
             // path is invalid, too short
             Err(Error::invalid_path(path))
         }
     }
 
+    #[allow(unused_variables)]
     async fn get_resource_identifier_from_index<Indexer>(
         &self,
         index: &ResourceIndex<Indexer>,
         id: &IndexKey,
+        format: IndexKeyDisplayFormat,
     ) -> Result<Option<ResourceIdentifier>>
     where
         Indexer: BasicIndexer + Sync,
     {
-        index
+        let result = index
             .get_identifier(id)
             .await
-            .map_err(Error::ContentStoreIndexing)
+            .map_err(Error::ContentStoreIndexing);
+
+        #[cfg(feature = "verbose")]
+        {
+            print!(
+                "\nlookup resource '{}' in index {}",
+                id.format(format),
+                index.id()
+            );
+            match &result {
+                Ok(Some(resource_id)) => {
+                    println!(" -> {}", resource_id);
+                }
+                Ok(None) => {
+                    println!(" -> not found",);
+                }
+                Err(err) => {
+                    println!(": FAILED, {}", err);
+                }
+            }
+        }
+
+        result
     }
 
     pub async fn resource_exists(&self, id: &IndexKey) -> Result<bool> {
@@ -171,12 +207,16 @@ where
 
     pub async fn load_resource(&self, id: &IndexKey) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.main_index, id)
+            .get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
             #[cfg(feature = "verbose")]
-            println!("reading resource '{}' -> {}", id.to_hex(), resource_id);
+            println!(
+                "\nreading resource '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
+                resource_id
+            );
             Ok((resource_bytes, resource_id))
         } else {
             Err(Error::resource_not_found_by_id(id.clone()))
@@ -185,12 +225,16 @@ where
 
     pub async fn load_resource_by_path(&self, path: &str) -> Result<(Vec<u8>, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.path_index, &path.into())
+            .get_resource_identifier_from_index(
+                &self.path_index,
+                &path.into(),
+                IndexKeyDisplayFormat::Utf8,
+            )
             .await?
         {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
             #[cfg(feature = "verbose")]
-            println!("reading resource '{}' -> {}", path, resource_id);
+            println!("\nreading resource '{}' -> {}", path, resource_id);
             Ok((resource_bytes, resource_id))
         } else {
             Err(Error::resource_not_found_by_path(path))
@@ -198,16 +242,13 @@ where
     }
 
     pub async fn load_resource_by_id(&self, resource_id: &ResourceIdentifier) -> Result<Vec<u8>> {
-        Ok(self
-            .persistent_provider
-            .read_resource_as_bytes(resource_id)
-            .await?)
+        Ok(self.transaction.read_resource_as_bytes(resource_id).await?)
     }
 
     pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
         let commit = self.get_current_commit().await?;
         let commit_manifest = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(&self.volatile_provider),
+            Arc::clone(self.main_index.provider()),
             self.main_index.indexer().clone(),
             commit.main_index_tree_id,
         );
@@ -229,14 +270,13 @@ where
     }
 
     #[cfg(feature = "verbose")]
-    async fn dump_index<Indexer, F>(
+    async fn dump_index<Indexer>(
         &self,
         index: &ResourceIndex<Indexer>,
         resource_id: Option<&ResourceIdentifier>,
-        f: F,
+        format: IndexKeyDisplayFormat,
     ) where
         Indexer: BasicIndexer + Sync,
-        F: Fn(&IndexKey) -> String,
     {
         if let Ok(contents) = index.enumerate_resources().await {
             match resource_id {
@@ -248,7 +288,7 @@ where
                         println!(
                             "index: {}, [{}] -> {}",
                             index.id(),
-                            f(index_key),
+                            index_key.format(format),
                             resource_id
                         );
                     }
@@ -256,7 +296,7 @@ where
                 None => {
                     println!("contents of index '{}'", index.id());
                     for (index_key, resource_id) in contents {
-                        println!("[{}] -> {}", f(&index_key), resource_id);
+                        println!("[{}] -> {}", index_key.format(format), resource_id);
                     }
                 }
             }
@@ -265,12 +305,10 @@ where
 
     #[cfg(feature = "verbose")]
     async fn dump_all_indices(&self, resource_id: Option<&ResourceIdentifier>) {
-        self.dump_index(&self.main_index, resource_id, IndexKey::to_hex)
+        self.dump_index(&self.main_index, resource_id, IndexKeyDisplayFormat::Hex)
             .await;
-        self.dump_index(&self.path_index, resource_id, |index_key| {
-            std::str::from_utf8(index_key.as_ref()).unwrap().to_owned()
-        })
-        .await;
+        self.dump_index(&self.path_index, resource_id, IndexKeyDisplayFormat::Utf8)
+            .await;
     }
 
     /// Add a resource to the local changes.
@@ -283,10 +321,7 @@ where
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         self.main_index
             .add_resource(id, resource_identifier.clone())
@@ -298,13 +333,15 @@ where
         #[cfg(feature = "verbose")]
         {
             println!(
-                "adding resource '{}', path: '{}' -> {}",
-                id.to_hex(),
+                "\nadding resource '{}', path: '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
                 path,
                 resource_identifier,
             );
             self.dump_all_indices(Some(&resource_identifier)).await;
         }
+
+        self.commit_and_restart_transaction().await?;
 
         Ok(resource_identifier)
     }
@@ -316,18 +353,15 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
             #[cfg(feature = "verbose")]
             {
                 println!(
-                    "updating resource '{}', path: '{}' -> {}...",
-                    id.to_hex(),
+                    "\nupdating resource '{}', path: '{}' -> {}...",
+                    id.format(IndexKeyDisplayFormat::Hex),
                     path,
                     old_identifier,
                 );
@@ -345,21 +379,21 @@ where
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.persistent_provider
-                .unwrite_resource(old_identifier)
-                .await?;
+            self.transaction.unwrite_resource(old_identifier).await?;
 
             #[cfg(feature = "verbose")]
             {
                 println!(
                     "... to resource '{}', path: '{}' -> {}",
-                    id.to_hex(),
+                    id.format(IndexKeyDisplayFormat::Hex),
                     path,
                     resource_identifier,
                 );
                 self.dump_all_indices(Some(&resource_identifier)).await;
             }
         }
+
+        self.commit_and_restart_transaction().await?;
 
         Ok(resource_identifier)
     }
@@ -372,18 +406,15 @@ where
         contents: &[u8],
         old_identifier: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self
-            .persistent_provider
-            .write_resource_from_bytes(contents)
-            .await?;
+        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
 
         if &resource_identifier != old_identifier {
             // content has changed
             #[cfg(feature = "verbose")]
             {
                 println!(
-                    "renaming resource '{}', path: '{}' -> {}...",
-                    id.to_hex(),
+                    "\nrenaming resource '{}', path: '{}' -> {}...",
+                    id.format(IndexKeyDisplayFormat::Hex),
                     old_path,
                     old_identifier,
                 );
@@ -405,21 +436,21 @@ where
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.persistent_provider
-                .unwrite_resource(old_identifier)
-                .await?;
+            self.transaction.unwrite_resource(old_identifier).await?;
 
             #[cfg(feature = "verbose")]
             {
                 println!(
                     "... to resource '{}', path: '{}' -> {}",
-                    id.to_hex(),
+                    id.format(IndexKeyDisplayFormat::Hex),
                     new_path,
                     resource_identifier,
                 );
                 self.dump_all_indices(Some(&resource_identifier)).await;
             }
         }
+
+        self.commit_and_restart_transaction().await?;
 
         Ok(resource_identifier)
     }
@@ -440,20 +471,20 @@ where
         assert_eq!(resource_id, removed_id);
 
         // unwrite resource from content-store
-        self.persistent_provider
-            .unwrite_resource(&resource_id)
-            .await?;
+        self.transaction.unwrite_resource(&resource_id).await?;
 
         #[cfg(feature = "verbose")]
         {
             println!(
-                "deleting resource '{}', path: '{}' -> {}",
-                id.to_hex(),
+                "\ndeleting resource '{}', path: '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
                 std::str::from_utf8(path.as_ref()).unwrap(),
                 resource_id,
             );
             self.dump_all_indices(Some(&resource_id)).await;
         }
+
+        self.commit_and_restart_transaction().await?;
 
         Ok(resource_id)
     }
@@ -490,7 +521,7 @@ where
         let mut leaves = self
             .main_index
             .indexer()
-            .diff_leaves(&self.volatile_provider, &commit_index_id, &main_index_id)
+            .diff_leaves(self.main_index.provider(), &commit_index_id, &main_index_id)
             .await?
             .map(|(side, index_key, leaf)| match leaf {
                 Ok(leaf) => match leaf {
@@ -592,6 +623,17 @@ where
             }
         }
 
+        #[cfg(feature = "verbose")]
+        {
+            println!(
+                "\npending changes, comparing commit {} with {}",
+                commit_index_id, main_index_id
+            );
+            for (index_key, change_type) in &changes {
+                println!("{}, {}", index_key, change_type);
+            }
+        }
+
         Ok(changes)
     }
 
@@ -601,9 +643,14 @@ where
     ///
     /// The commit id.
     pub async fn commit(&mut self, message: &str, behavior: CommitMode) -> Result<Commit> {
+        assert!(!self.transaction.has_references().await);
+
         let current_branch = self.get_current_branch().await?;
         let mut branch = self.index.get_branch(&current_branch.name).await?;
-        let commit = self.index.get_commit(current_branch.head).await?;
+        let commit = self
+            .index
+            .get_commit(&current_branch.name, current_branch.head)
+            .await?;
 
         // Early check in case we are out-of-date long before making the commit.
         if branch.head != current_branch.head {
@@ -618,7 +665,7 @@ where
         }
 
         let commit = if !empty_commit {
-            let mut commit = Commit::new_unique_now(
+            let new_commit = NewCommit::new_unique_now(
                 whoami::username(),
                 message,
                 self.main_index.id(),
@@ -626,7 +673,10 @@ where
                 BTreeSet::from([commit.id]),
             );
 
-            commit.id = self.index.commit_to_branch(&commit, &branch).await?;
+            let commit = self
+                .index
+                .commit_to_branch(&branch.name, new_commit)
+                .await?;
 
             branch.head = commit.id;
 
@@ -706,26 +756,26 @@ where
 
     /// Get the current branch.
     pub async fn get_current_branch(&self) -> Result<Branch> {
-        self.index.get_branch(self.branch_name.as_str()).await
+        self.index.get_branch(&self.branch_name).await
     }
 
     /// Create a branch with the given name and the current commit as its head.
     ///
     /// The newly created branch will be a descendant of the current branch and
     /// share the same lock domain.
-    pub async fn create_branch(&mut self, branch_name: &str) -> Result<Branch> {
+    pub async fn create_branch(&mut self, branch_name: &BranchName) -> Result<Branch> {
         let current_branch = self.get_current_branch().await?;
 
-        if branch_name == current_branch.name {
+        if branch_name == &current_branch.name {
             return Err(Error::already_on_branch(current_branch.name));
         }
 
-        let new_branch = current_branch.branch_out(branch_name.to_owned());
+        let new_branch = current_branch.branch_out(branch_name.clone());
 
-        self.index.insert_branch(&new_branch).await?;
-        self.branch_name = new_branch.name.clone();
+        let branch = self.index.insert_branch(new_branch).await?;
+        self.branch_name = branch.name.clone();
 
-        Ok(new_branch)
+        Ok(branch)
     }
 
     /// Detach the current branch from its parent.
@@ -734,13 +784,12 @@ where
     ///
     /// The resulting branch is detached and now uses its own lock domain.
     pub async fn detach_branch(&self) -> Result<Branch> {
-        let mut current_branch = self.get_current_branch().await?;
+        let current_branch = self.get_current_branch().await?;
 
-        current_branch.detach();
+        let new_branch = current_branch.detach();
+        let branch = self.index.insert_branch(new_branch).await?;
 
-        self.index.insert_branch(&current_branch).await?;
-
-        Ok(current_branch)
+        Ok(branch)
     }
 
     /// Attach the current branch to the specified branch.
@@ -749,16 +798,15 @@ where
     ///
     /// The resulting branch is attached and now uses the same lock domain as
     /// its parent.
-    pub async fn attach_branch(&self, branch_name: &str) -> Result<Branch> {
-        let mut current_branch = self.get_current_branch().await?;
+    pub async fn attach_branch(&self, branch_name: &BranchName) -> Result<Branch> {
+        let current_branch = self.get_current_branch().await?;
         let parent_branch = self.index.get_branch(branch_name).await?;
 
-        current_branch.attach(&parent_branch);
-
-        self.index.insert_branch(&current_branch).await?;
+        let new_branch = current_branch.attach(&parent_branch);
+        let branch = self.index.insert_branch(new_branch).await?;
         // self.backend.set_current_branch(&current_branch).await?;
 
-        Ok(current_branch)
+        Ok(branch)
     }
 
     /// Get the branches in the repository.
@@ -775,7 +823,7 @@ where
     /// Switch to a different branch and updates the current files.
     ///
     /// Returns the commit id of the new branch as well as the changes.
-    pub async fn switch_branch(&self, _branch_name: &str) -> Result<(Branch, BTreeSet<Change>)> {
+    pub async fn switch_branch(&self, _branch_name: &BranchName) -> Result<(Branch, BTreeSet<Change>)> {
         let current_branch = self.get_current_branch().await?;
 
         if branch_name == current_branch.name {

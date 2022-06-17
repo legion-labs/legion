@@ -26,7 +26,7 @@ use lgn_physics::{
     offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere, PhysicsSceneSettings},
     RigidActorType,
 };
-use lgn_source_control::RepositoryName;
+use lgn_source_control::{BranchName, RepositoryName};
 use lgn_tracing::{info, LevelFilter};
 use sample_data::{
     offline::{Light, Transform, Visual},
@@ -67,6 +67,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .unwrap();
     let repository_name: RepositoryName = "examples-physics".parse().unwrap();
+    let branch_name: BranchName = "main".parse().unwrap();
 
     // Ensure the repository exists.
     let _index = repository_index.ensure_repository(&repository_name).await;
@@ -85,16 +86,14 @@ async fn main() -> anyhow::Result<()> {
     let mut project = Project::new(
         &repository_index,
         &repository_name,
-        "main",
+        &branch_name,
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
     )
     .await
     .expect("failed to create a project");
 
     let mut asset_registry = AssetRegistryOptions::new().add_device_source_cas(
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
         project.source_manifest_id(),
     );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);

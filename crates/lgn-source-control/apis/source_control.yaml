@@ -1,0 +1,434 @@
+openapi: 3.0.3
+info:
+  title: "Source Control API"
+  description: "The OpenAPI specification for the Legion Labs Source Control API."
+  version: 1.0.0
+paths:
+  /v1/spaces/{space-id}/source-control/repositories/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+    get:
+      description: Retrieves all repositories.
+      operationId: listRepositories
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepositoryNameList"
+    put:
+      description: Creates a new repository.
+      operationId: createRepository
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepositoryName"
+      responses:
+        "201":
+          description: Created.
+        "409":
+          description: The repository already exists.
+  /v1/spaces/{space-id}/source-control/repositories/{repository-name}/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/repository_name"
+    head:
+      description: Verifies if a repository exists.
+      operationId: repositoryExists
+      responses:
+        "200":
+          description: The repository exists.
+        "404":
+          description: The repository was not found.
+    delete:
+      description: Deletes a repository.
+      operationId: deleteRepository
+      responses:
+        "204":
+          description: Ok.
+        "404":
+          description: The repository was not found.
+  /v1/spaces/{space-id}/source-control/repositories/{repository-name}/branches/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/repository_name"
+    get:
+      description: Retrieves all branches.
+      operationId: listBranches
+      parameters:
+        - lock_domain_id:
+          name: lock-domain-id
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/LockDomainId"
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BranchList"
+    post:
+      description: Creates a new branch.
+      operationId: createBranch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewBranch"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branch"
+        "409":
+          description: The branch already exists.
+  /v1/spaces/{space-id}/source-control/repositories/{repository-name}/branches/{branch-name}/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/repository_name"
+      - $ref: "#/components/parameters/branch_name"
+    get:
+      description: Retrieves a branch.
+      operationId: getBranch
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branch"
+        "404":
+          description: The branch was not found.
+    put:
+      description: Updates a branch.
+      operationId: updateBranch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBranch"
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branch"
+        "404":
+          description: The branch was not found.
+  /v1/spaces/{space-id}/source-control/repositories/{repository-name}/branches/{branch-name}/commits/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/repository_name"
+      - $ref: "#/components/parameters/branch_name"
+    get:
+      description: Retrieves all commits.
+      operationId: listCommits
+      parameters:
+        - commit_ids:
+          name: commit-ids
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/CommitId"
+        - depth:
+          name: depth
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommitList"
+    post:
+      description: Creates a new commit on a branch.
+      operationId: commitToBranch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewCommit"
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Commit"
+  /v1/spaces/{space-id}/source-control/repositories/{repository-name}/locks/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/repository_name"
+    head:
+      description: Retrieves the number of locks.
+      operationId: countLocks
+      parameters:
+        - $ref: "#/components/parameters/lock_domain_ids"
+      responses:
+        "204":
+          description: Ok.
+          headers:
+            x-locks-count:
+              schema:
+                type: integer
+                format: int32
+    get:
+      description: Retrieves all locks.
+      operationId: listLocks
+      parameters:
+        - $ref: "#/components/parameters/lock_domain_ids"
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LockList"
+    post:
+      description: Creates a new lock.
+      operationId: lock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Lock"
+      responses:
+        "201":
+          description: Created.
+        "409":
+          description: The lock already exists.
+  /v1/spaces/{space-id}/source-control/repositories/{repository-name}/locks/{lock-domain-id}/{canonical-path}:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/repository_name"
+      - $ref: "#/components/parameters/lock_domain_id"
+      - $ref: "#/components/parameters/canonical_path"
+    get:
+      description: Retrieves a lock.
+      operationId: getLock
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lock"
+        "404":
+          description: The lock was not found.
+    delete:
+      description: Deletes a lock.
+      operationId: unlock
+      responses:
+        "204":
+          description: Ok.
+        "404":
+          description: The lock was not found.
+components:
+  parameters:
+    repository_name:
+      name: repository-name
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/RepositoryName"
+    branch_name:
+      name: branch-name
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/BranchName"
+    lock_domain_ids:
+      name: lock-domain-ids
+      in: query
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/LockDomainId"
+    lock_domain_id:
+      name: lock-domain-id
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/LockDomainId"
+    canonical_path:
+      name: canonical-path
+      in: path
+      required: true
+      schema:
+        $ref: "#/components/schemas/CanonicalPath"
+  schemas:
+    RepositoryNameList:
+      description: The repository name list.
+      type: array
+      items:
+        $ref: "#/components/schemas/RepositoryName"
+    RepositoryName:
+      description: The repository name.
+      type: string
+    BranchList:
+      description: The branch list.
+      type: array
+      items:
+        $ref: "#/components/schemas/Branch"
+    Branch:
+      description: The branch.
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/BranchName"
+        head:
+          $ref: "#/components/schemas/CommitId"
+        lock_domain_id:
+          $ref: "#/components/schemas/LockDomainId"
+      required:
+        - name
+        - head
+        - lock_domain_id
+    NewBranch:
+      description: The branch to create.
+      type: object
+      properties:
+        name:
+          $ref: "#/components/schemas/BranchName"
+        head:
+          $ref: "#/components/schemas/CommitId"
+        lock_domain_id:
+          $ref: "#/components/schemas/LockDomainId"
+      required:
+        - name
+        - head
+        - lock_domain_id
+    UpdateBranch:
+      description: The branch to create.
+      type: object
+      properties:
+        head:
+          $ref: "#/components/schemas/CommitId"
+        lock_domain_id:
+          $ref: "#/components/schemas/LockDomainId"
+      required:
+        - head
+        - lock_domain_id
+    BranchName:
+      description: The branch name.
+      type: string
+    LockList:
+      description: The lock list.
+      type: array
+      items:
+        $ref: "#/components/schemas/Lock"
+    CommitList:
+      description: The commit list.
+      type: array
+      items:
+        $ref: "#/components/schemas/Commit"
+    Commit:
+      description: The commit.
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/CommitId"
+        owner:
+          type: string
+        message:
+          type: string
+        main_index_tree_id:
+          type: string
+        path_index_tree_id:
+          type: string
+        parents:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommitId"
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - id
+        - owner
+        - message
+        - main_index_tree_id
+        - path_index_tree_id
+        - parents
+        - timestamp
+    NewCommit:
+      description: The commit to create.
+      type: object
+      properties:
+        owner:
+          type: string
+        message:
+          type: string
+        main_index_tree_id:
+          type: string
+        path_index_tree_id:
+          type: string
+        parents:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommitId"
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - owner
+        - message
+        - main_index_tree_id
+        - path_index_tree_id
+        - parents
+        - timestamp
+    CommitId:
+      description: The commit id.
+      type: integer
+      format: int64
+      minimum: 0
+    ChangeType:
+      description: The change type.
+      type: object
+      properties:
+        old_id:
+          type: string
+        new_id:
+          type: string
+    CanonicalPath:
+      type: string
+    Lock:
+      description: The lock.
+      type: object
+      properties:
+        canonical_path:
+          $ref: "#/components/schemas/CanonicalPath"
+        lock_domain_id:
+          $ref: "#/components/schemas/LockDomainId"
+        workspace_id:
+          $ref: "../../lgn-governance/apis/workspace.yaml#/components/schemas/WorkspaceId"
+        branch_name:
+          $ref: "#/components/schemas/BranchName"
+      required:
+        - canonical_path
+        - lock_domain_id
+        - workspace_id
+        - branch_name
+    LockDomainId:
+      description: The lock domain id.
+      type: string

@@ -76,6 +76,10 @@ where
         }
     }
 
+    pub fn provider(&self) -> &Arc<Provider> {
+        &self.provider
+    }
+
     pub fn indexer(&self) -> &Indexer {
         &self.indexer
     }

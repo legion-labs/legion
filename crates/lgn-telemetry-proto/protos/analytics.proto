@@ -12,12 +12,8 @@ package analytics;
 
 service PerformanceAnalytics {
   rpc block_spans(BlockSpansRequest) returns (BlockSpansReply);
-  rpc process_cumulative_call_graph(ProcessCumulativeCallGraphRequest)
-      returns (CumulativeCallGraphReply);
   rpc fetch_cumulative_call_graph_manifest(CumulativeCallGraphManifestRequest)
       returns (CumulativeCallGraphManifest);
-  rpc fetch_cumulative_call_graph_block(CumulativeCallGraphBlockRequest)
-      returns (CumulativeCallGraphBlock);
   rpc fetch_cumulative_call_graph_computed_block(CumulativeCallGraphBlockRequest)
       returns (CumulativeCallGraphComputedBlock);
   rpc find_process(FindProcessRequest) returns (FindProcessReply);
@@ -26,8 +22,6 @@ service PerformanceAnalytics {
   rpc list_process_streams(ListProcessStreamsRequest) returns (ListStreamsReply);
   rpc list_stream_blocks(ListStreamBlocksRequest) returns (ListStreamBlocksReply);
   rpc nb_process_log_entries(ProcessNbLogEntriesRequest) returns (ProcessNbLogEntriesReply);
-  rpc fetch_async_spans(AsyncSpansRequest) returns (AsyncSpansReply);
-  rpc fetch_block_async_stats(BlockAsyncStatsRequest) returns (BlockAsyncEventsStatReply);
   rpc fetch_block_metric_manifest(MetricBlockManifestRequest) returns (MetricBlockManifest);
   rpc fetch_block_metric(MetricBlockRequest) returns (MetricBlockData);
   rpc list_recent_processes(RecentProcessesRequest) returns (ProcessListReply);
@@ -141,36 +135,6 @@ message ListProcessChildrenRequest {
 
 message ProcessChildrenReply {
   repeated telemetry.Process processes = 1;
-}
-
-// fetch_block_async_stats
-message BlockAsyncStatsRequest {
-  telemetry.Process process = 1;
-  telemetry.Stream stream = 2;
-  string block_id = 3;
-}
-
-message BlockAsyncEventsStatReply {
-  string block_id = 1;
-  double begin_ms = 2;
-  double end_ms = 3;
-  uint64 nb_events = 4;
-}
-
-// fetch_async_spans
-message AsyncSpansRequest {
-  int32 section_sequence_number = 1;
-  uint32 section_lod = 2;
-
-  // thread blocks intersecting with the requested section could be computed server-side.
-  repeated string block_ids = 3;
-}
-
-message AsyncSpansReply {
-  int32 section_sequence_number = 1;
-  uint32 section_lod = 2;
-  repeated AsyncSpanTrack tracks = 3;
-  map<uint32, ScopeDesc> scopes = 4;
 }
 
 // build_timeline_tables

@@ -102,12 +102,8 @@ impl EguiPass {
                         let egui = execute_context.debug_stuff.egui;
 
                         if egui.is_enabled() {
-                            let egui_pass =
-                                execute_context.debug_stuff.render_surface.egui_renderpass();
-                            let mut egui_pass = egui_pass.write();
-
                             let textures_delta = egui.textures_delta();
-                            let mut textures_delta = textures_delta.lock().unwrap();
+                            let mut textures_delta = textures_delta;
                             for (_texture_id, image_delta) in textures_delta.set.drain() {
                                 match &image_delta.image {
                                     egui::epaint::ImageData::Color(_) => {
@@ -137,57 +133,56 @@ impl EguiPass {
                                                 "egui font",
                                             );
 
-                                        let texture_view = texture.create_view(
-                                            TextureViewDef::as_shader_resource_view(texture.definition()),
-                                        );
-
-                                        fn fast_round(r: f32) -> u8 {
-                                            (r + 0.5).floor() as _ // rust does a saturating cast since 1.45
-                                        }
-
-                                        let gamma = 1.0 / 2.2;
-                                        // See egui::epaint::FontImage::srgba_pixels() -- it returns R8G8B8A8 but that's a waste, R8 is enough.
-                                        let data: Vec<u8> = font_texture.pixels.iter().map(move |coverage| {
-                                            fast_round(coverage.powf(gamma / 2.2) * 255.0) as u8
-                                        }).collect();
-
-                                        let staging_buffer =
-                                            execute_context.render_context.device_context.create_buffer(
-                                                BufferDef::for_staging_buffer_data(
-                                                    &data,
-                                                    ResourceUsage::empty(),
-                                                ),
-                                                "staging_buffer",
+                                            let texture_view = texture.create_view(
+                                                TextureViewDef::as_shader_resource_view(texture.definition()),
                                             );
 
-                                        staging_buffer.copy_to_host_visible_buffer(&data);
+                                            fn fast_round(r: f32) -> u8 {
+                                                (r + 0.5).floor() as _ // rust does a saturating cast since 1.45
+                                            }
 
-                                        cmd_buffer.cmd_resource_barrier(
-                                            &[],
-                                            &[TextureBarrier::state_transition(
+                                            let gamma = 1.0 / 2.2;
+                                            // See egui::epaint::FontImage::srgba_pixels() -- it returns R8G8B8A8 but that's a waste, R8 is enough.
+                                            let data: Vec<u8> = font_texture.pixels.iter().map(move |coverage| {
+                                                fast_round(coverage.powf(gamma / 2.2) * 255.0) as u8
+                                            }).collect();
+
+                                            let staging_buffer =
+                                                execute_context.render_context.device_context.create_buffer(
+                                                    BufferDef::for_staging_buffer_data(
+                                                        &data,
+                                                        ResourceUsage::empty(),
+                                                    ),
+                                                    "staging_buffer",
+                                                );
+
+                                            staging_buffer.copy_to_host_visible_buffer(&data);
+
+                                            cmd_buffer.cmd_resource_barrier(
+                                                &[],
+                                                &[TextureBarrier::state_transition(
+                                                    &texture,
+                                                    ResourceState::UNDEFINED,
+                                                    ResourceState::COPY_DST,
+                                                )],
+                                            );
+
+                                            cmd_buffer.cmd_copy_buffer_to_texture(
+                                                &staging_buffer,
                                                 &texture,
-                                                ResourceState::UNDEFINED,
-                                                ResourceState::COPY_DST,
-                                            )],
-                                        );
+                                                &CmdCopyBufferToTextureParams::default(),
+                                            );
 
-                                        cmd_buffer.cmd_copy_buffer_to_texture(
-                                            &staging_buffer,
-                                            &texture,
-                                            &CmdCopyBufferToTextureParams::default(),
-                                        );
+                                            cmd_buffer.cmd_resource_barrier(
+                                                &[],
+                                                &[TextureBarrier::state_transition(
+                                                    &texture,
+                                                    ResourceState::COPY_DST,
+                                                    ResourceState::SHADER_RESOURCE,
+                                                )],
+                                            );
 
-                                        cmd_buffer.cmd_resource_barrier(
-                                            &[],
-                                            &[TextureBarrier::state_transition(
-                                                &texture,
-                                                ResourceState::COPY_DST,
-                                                ResourceState::SHADER_RESOURCE,
-                                            )],
-                                        );
-
-                                        egui_pass.font_texture =
-                                            Some((texture, texture_view));
+                                            egui.set_font_texture(texture, texture_view);
                                         } else {
                                             // TODO(jsg): Implement partial texture updates.
                                         }
@@ -203,11 +198,7 @@ impl EguiPass {
                         .execute(move |_, execute_context, cmd_buffer| {
                             let egui = execute_context.debug_stuff.egui;
 
-                            let egui_pass =
-                                execute_context.debug_stuff.render_surface.egui_renderpass();
-                            let egui_pass = egui_pass.write();
-
-                            if egui.is_enabled() && egui_pass.font_texture.is_some() {
+                            if egui.is_enabled() && egui.font_texture().is_some() {
 
                                 if let Some(pipeline) = execute_context
                                     .render_context
@@ -221,7 +212,7 @@ impl EguiPass {
                                     let mut descriptor_set =
                                         cgen::descriptor_set::EguiDescriptorSet::default();
                                     descriptor_set
-                                        .set_font_texture(&egui_pass.font_texture.as_ref().unwrap().1);
+                                        .set_font_texture(&egui.font_texture().as_ref().unwrap().1);
                                     descriptor_set.set_font_sampler(&sampler);
 
                                     let descriptor_set_handle = execute_context
@@ -279,12 +270,12 @@ impl EguiPass {
                                                     .set_translation(Vec2::new(0.0, 0.0).into());
                                                 push_constant_data.set_width(
                                                     (view_target_extents.width as f32
-                                                        / egui.context().pixels_per_point())
+                                                        / egui.pixels_per_point())
                                                     .into(),
                                                 );
                                                 push_constant_data.set_height(
                                                     (view_target_extents.height as f32
-                                                        / egui.context().pixels_per_point())
+                                                        / egui.pixels_per_point())
                                                     .into(),
                                                 );
 

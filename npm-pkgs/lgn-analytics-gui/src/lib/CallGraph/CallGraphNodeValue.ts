@@ -1,4 +1,4 @@
-import type { CumulativeCallGraphEdge } from "@lgn/proto-telemetry/dist/callgraph";
+import type { CumulativeStats } from "@lgn/proto-telemetry/dist/callgraph";
 
 export class CallGraphNodeValue {
   acc = 0;
@@ -9,23 +9,17 @@ export class CallGraphNodeValue {
   childSum = 0;
   min = Infinity;
   max = -Infinity;
-  private isRootNode: boolean;
 
-  constructor(edge: CumulativeCallGraphEdge | null, isRootNode: boolean) {
-    this.isRootNode = isRootNode;
-    if (edge) {
-      this.accumulateEdge(edge);
+  constructor(stats: CumulativeStats | null) {
+    if (stats) {
+      this.accumulateStats(stats);
     }
   }
 
-  accumulateEdge(input: CumulativeCallGraphEdge) {
+  accumulateStats(input: CumulativeStats) {
     this.min = Math.min(this.min, input.min);
     this.max = Math.max(this.max, input.max);
-    if (this.isRootNode) {
-      this.count = 1;
-    } else {
-      this.count += input.count;
-    }
+    this.count += input.count;
     this.acc += input.sum;
     this.sqr += input.sumSqr;
     this.avg = this.acc / this.count;

@@ -97,54 +97,50 @@ impl Display for ChangeType {
     }
 }
 
-impl From<ChangeType> for lgn_source_control_proto::ChangeType {
+impl From<ChangeType> for crate::api::source_control::ChangeType {
     fn from(change_type: ChangeType) -> Self {
         match change_type {
             ChangeType::Add { new_id } => Self {
-                old_id: "".to_string(),
-                new_id: new_id.to_string(),
+                old_id: None,
+                new_id: Some(new_id.to_string()),
             },
             ChangeType::Edit { old_id, new_id } => Self {
-                old_id: old_id.to_string(),
-                new_id: new_id.to_string(),
+                old_id: Some(old_id.to_string()),
+                new_id: Some(new_id.to_string()),
             },
             ChangeType::Delete { old_id } => Self {
-                old_id: old_id.to_string(),
-                new_id: "".to_string(),
+                old_id: Some(old_id.to_string()),
+                new_id: None,
             },
         }
     }
 }
 
-impl TryFrom<lgn_source_control_proto::ChangeType> for ChangeType {
+impl TryFrom<crate::api::source_control::ChangeType> for ChangeType {
     type Error = Error;
 
-    fn try_from(change_type: lgn_source_control_proto::ChangeType) -> Result<Self> {
-        Ok(if change_type.old_id.is_empty() {
-            Self::Add {
-                new_id: change_type
-                    .new_id
-                    .parse()
-                    .map_other_err("reading chunk identifier")?,
-            }
-        } else if change_type.new_id.is_empty() {
-            Self::Delete {
-                old_id: change_type
-                    .old_id
-                    .parse()
-                    .map_other_err("reading chunk identifier")?,
-            }
-        } else {
-            Self::Edit {
-                old_id: change_type
-                    .old_id
-                    .parse()
-                    .map_other_err("reading chunk identifier")?,
-                new_id: change_type
-                    .new_id
-                    .parse()
-                    .map_other_err("reading chunk identifier")?,
-            }
+    fn try_from(change_type: crate::api::source_control::ChangeType) -> Result<Self> {
+        Ok(match change_type {
+            crate::api::source_control::ChangeType {
+                old_id: None,
+                new_id: Some(new_id),
+            } => ChangeType::Add {
+                new_id: new_id.parse().map_other_err("reading chunk identifier")?,
+            },
+            crate::api::source_control::ChangeType {
+                old_id: Some(old_id),
+                new_id: Some(new_id),
+            } => ChangeType::Edit {
+                old_id: old_id.parse().map_other_err("reading chunk identifier")?,
+                new_id: new_id.parse().map_other_err("reading chunk identifier")?,
+            },
+            crate::api::source_control::ChangeType {
+                old_id: Some(old_id),
+                new_id: None,
+            } => ChangeType::Delete {
+                old_id: old_id.parse().map_other_err("reading chunk identifier")?,
+            },
+            _ => return Err(Error::InvalidChangeType),
         })
     }
 }
@@ -218,13 +214,13 @@ mod tests {
     }
 
     #[test]
-    fn test_change_type_from_proto() {
-        let proto = lgn_source_control_proto::ChangeType {
-            old_id: id("old").to_string(),
-            new_id: id("new").to_string(),
+    fn test_change_type_from_api() {
+        let api = crate::api::source_control::ChangeType {
+            old_id: Some(id("old").to_string()),
+            new_id: Some(id("new").to_string()),
         };
 
-        let change_type = ChangeType::try_from(proto).unwrap();
+        let change_type = ChangeType::try_from(api).unwrap();
 
         assert_eq!(
             change_type,
@@ -233,22 +229,64 @@ mod tests {
                 new_id: id("new"),
             }
         );
+
+        let api = crate::api::source_control::ChangeType {
+            old_id: Some(id("old").to_string()),
+            new_id: None,
+        };
+
+        let change_type = ChangeType::try_from(api).unwrap();
+
+        assert_eq!(change_type, ChangeType::Delete { old_id: id("old") });
+
+        let api = crate::api::source_control::ChangeType {
+            old_id: None,
+            new_id: Some(id("new").to_string()),
+        };
+
+        let change_type = ChangeType::try_from(api).unwrap();
+
+        assert_eq!(change_type, ChangeType::Add { new_id: id("new") });
     }
 
     #[test]
-    fn test_change_type_into_proto() {
+    fn test_change_type_into_api() {
         let change_type = ChangeType::Edit {
             old_id: id("old"),
             new_id: id("new"),
         };
 
-        let proto: lgn_source_control_proto::ChangeType = change_type.into();
+        let api: crate::api::source_control::ChangeType = change_type.into();
 
         assert_eq!(
-            proto,
-            lgn_source_control_proto::ChangeType {
-                old_id: id("old").to_string(),
-                new_id: id("new").to_string(),
+            api,
+            crate::api::source_control::ChangeType {
+                old_id: Some(id("old").to_string()),
+                new_id: Some(id("new").to_string()),
+            }
+        );
+
+        let change_type = ChangeType::Add { new_id: id("new") };
+
+        let api: crate::api::source_control::ChangeType = change_type.into();
+
+        assert_eq!(
+            api,
+            crate::api::source_control::ChangeType {
+                old_id: None,
+                new_id: Some(id("new").to_string()),
+            }
+        );
+
+        let change_type = ChangeType::Delete { old_id: id("old") };
+
+        let api: crate::api::source_control::ChangeType = change_type.into();
+
+        assert_eq!(
+            api,
+            crate::api::source_control::ChangeType {
+                old_id: Some(id("old").to_string()),
+                new_id: None,
             }
         );
     }

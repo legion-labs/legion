@@ -5,39 +5,6 @@ package analytics;
 import public "process.proto";
 import public "calltree.proto";
 
-// Old : server side serial implementation
-message ProcessCumulativeCallGraphRequest {
-  telemetry.Process process = 1;
-  double begin_ms = 2;
-  double end_ms = 3;
-}
-
-message CumulativeCallGraphReply {
-  map<uint32, ScopeDesc> scopes = 1;
-  repeated CumulativeCallGraphNode nodes = 2;
-}
-
-message CumulativeCallGraphNode {
-  uint32 hash = 1;
-  NodeStats stats = 2;
-  repeated CallGraphEdge callers = 3;
-  repeated CallGraphEdge callees = 4;
-}
-
-message CallGraphEdge {
-  uint32 hash = 1;
-  double weight = 2;
-}
-
-message NodeStats {
-  double sum = 1;
-  double min = 2;
-  double max = 3;
-  double avg = 4;
-  double median = 5;
-  uint64 count = 6;
-}
-
 // Manifest
 message CumulativeCallGraphManifestRequest {
   string process_id = 1;
@@ -56,7 +23,6 @@ message CumulativeCallGraphBlockDesc {
   bool full = 2;
 }
 
-// Old : client side block streaming
 message CumulativeCallGraphBlockRequest {
   string block_id = 1;
   double begin_ms = 2;
@@ -65,13 +31,6 @@ message CumulativeCallGraphBlockRequest {
   int64 start_ticks = 5;
 }
 
-message CumulativeCallGraphBlock {
-  CallTree call_tree = 1;
-  uint32 stream_hash = 2;
-  string stream_name = 3;
-}
-
-// New : client side accumulated blocks
 message CumulativeCallGraphComputedBlock {
   map<uint32, ScopeDesc> scopes = 1;
   repeated CumulativeComputedCallGraphNode nodes = 2;
@@ -81,13 +40,13 @@ message CumulativeCallGraphComputedBlock {
 }
 
 message CumulativeComputedCallGraphNode {
-  CumulativeCallGraphEdge node = 1;
-  repeated CumulativeCallGraphEdge callers = 3;
-  repeated CumulativeCallGraphEdge callees = 4;
+  CumulativeStats stats = 1;
+  repeated CumulativeStats callers = 3;
+  repeated CumulativeStats callees = 4;
 }
 
-message CumulativeCallGraphEdge {
-  uint32 hash = 1;
+message CumulativeStats {
+  uint32 hash = 1;  // not a stat, but avoids using a map in callers/callees
   double sum = 2;
   double sum_sqr = 3;
   double min = 4;
