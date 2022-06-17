@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use lgn_governance::{
     formatter::Format,
-    types::{SpaceId, SpaceUpdate, UserId},
+    types::{ExtendedUserId, SpaceId, SpaceUpdate},
     Config,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
@@ -53,12 +53,12 @@ enum UsersCommands {
     #[clap(name = "get", about = "Get the user's information")]
     Get {
         #[clap(help = "The user's ID")]
-        user_id: UserId,
+        user_id: ExtendedUserId,
     },
     #[clap(name = "resolve", about = "Resolve a user id from its email address")]
     Resolve {
-        #[clap(help = "The user's email")]
-        email: String,
+        #[clap(help = "The user's ID")]
+        user_id: ExtendedUserId,
     },
 }
 
@@ -147,8 +147,8 @@ async fn main() -> anyhow::Result<()> {
 
                 args.format.format_one(&user_info);
             }
-            UsersCommands::Resolve { email } => {
-                let user_id = client.resolve_user_id(&email).await?;
+            UsersCommands::Resolve { user_id } => {
+                let user_id = client.resolve_user_id(&user_id).await?;
 
                 args.format.format_unit(&user_id);
             }

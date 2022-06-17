@@ -4,7 +4,6 @@ use lgn_tracing::{debug, info, warn};
 use crate::{
     api::user::{server, Api},
     check_user_global_permissions,
-    types::UserId,
 };
 
 use super::{Error, Server};
@@ -48,18 +47,14 @@ impl Api for Server {
     ) -> lgn_online::server::Result<server::GetUserInfoResponse> {
         let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
 
-        let user_id: UserId = {
-            if request.user_id.0 == "@me" {
-                caller_user_id.clone()
-            } else {
-                request.user_id.into()
-            }
-        };
-
         debug!(
             "{} is querying user information for {}",
-            caller_user_id, user_id
+            caller_user_id, request.user_id.0
         );
+
+        let user_id = self
+            .resolve_api_extended_user_id(request.user_id, &caller_user_id)
+            .await?;
 
         if user_id != caller_user_id {
             check_user_global_permissions!(self, caller_user_id, USER_READ);
@@ -77,14 +72,15 @@ impl Api for Server {
         &self,
         request: server::ResolveUserIdRequest,
     ) -> lgn_online::server::Result<server::ResolveUserIdResponse> {
+        let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
+
         let user_id = match self
-            .aws_cognito_dal
-            .resolve_username_by("email", &request.email)
+            .resolve_api_extended_user_id(request.user_id.clone(), &caller_user_id)
             .await
         {
             Ok(user_id) => user_id,
             Err(Error::DoesNotExist) => {
-                return Ok(server::ResolveUserIdResponse::Status404(request.email))
+                return Ok(server::ResolveUserIdResponse::Status404(request.user_id))
             }
             Err(err) => return Err(err.into()),
         };
@@ -97,7 +93,9 @@ impl Api for Server {
         request: server::ListUserSpacesRequest,
     ) -> lgn_online::server::Result<server::ListUserSpacesResponse> {
         let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
-        let user_id = request.user_id.into();
+        let user_id = self
+            .resolve_api_extended_user_id(request.user_id, &caller_user_id)
+            .await?;
 
         if caller_user_id != user_id {
             check_user_global_permissions!(self, caller_user_id, ROOT);
@@ -124,7 +122,9 @@ impl Api for Server {
         request: server::ListUserRolesRequest,
     ) -> lgn_online::server::Result<server::ListUserRolesResponse> {
         let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
-        let user_id = request.user_id.into();
+        let user_id = self
+            .resolve_api_extended_user_id(request.user_id, &caller_user_id)
+            .await?;
 
         if caller_user_id != user_id {
             check_user_global_permissions!(self, caller_user_id, USER_ADMIN);

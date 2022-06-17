@@ -23,7 +23,7 @@ paths:
           description: The stack was already initialized.
   /v1/users/{user-id}/:
     parameters:
-      - $ref: "#/components/parameters/user_id"
+      - $ref: "#/components/parameters/extended_user_id"
     get:
       description: Get the user information. Requires administrative privileges or that you call the API for yourself.
       operationId: getUserInfo
@@ -39,15 +39,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/UserId"
-  /v1/resolve-users/email/{email}:
+                $ref: "#/components/schemas/ExtendedUserId"
+  /v1/users/{user-id}/email/:
     parameters:
-      - name: email
-        in: path
-        required: true
-        schema:
-          type: string
-        description: The user's email address.
+      - $ref: "#/components/parameters/extended_user_id"
     get:
       description: Resolve a user by its email address.
       operationId: resolveUserId
@@ -63,10 +58,10 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: "#/components/schemas/ExtendedUserId"
   /v1/users/{user-id}/spaces/:
     parameters:
-      - $ref: "#/components/parameters/user_id"
+      - $ref: "#/components/parameters/extended_user_id"
     get:
       description: List all the spaces that the current user has access to.
       operationId: listUserSpaces
@@ -79,7 +74,7 @@ paths:
                 $ref: "space.yaml#/components/schemas/SpaceList"
   /v1/users/{user-id}/roles/:
     parameters:
-      - $ref: "#/components/parameters/user_id"
+      - $ref: "#/components/parameters/extended_user_id"
     get:
       description: List all the roles that the current user has.
       operationId: listUserRoles
@@ -99,9 +94,19 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/UserId"
+    extended_user_id:
+      name: user-id
+      in: path
+      description: An extended user identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/ExtendedUserId"
   schemas:
     UserId:
       description: An identifier to an unique user.
+      type: string
+    ExtendedUserId:
+      description: An identifier to an unique user or its email address.
       type: string
     UserInfo:
       description: Information about a user.

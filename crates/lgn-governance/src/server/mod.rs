@@ -17,7 +17,7 @@ use sqlx::ConnectOptions;
 
 pub use errors::{Error, Result};
 
-use crate::types::UserId;
+use crate::types::{ExtendedUserId, UserId};
 pub use permissions_cache::{PermissionsCache, PermissionsProvider};
 
 /// A Server implementation.
@@ -140,5 +140,23 @@ impl Server {
                 })
             })
             .and_then(|s| s.parse().map_err(Into::into))
+    }
+
+    async fn resolve_api_extended_user_id(
+        &self,
+        extended_user_id: crate::api::user::ExtendedUserId,
+        caller_user_id: &UserId,
+    ) -> Result<UserId> {
+        let extended_user_id: ExtendedUserId = extended_user_id.try_into()?;
+
+        match extended_user_id {
+            ExtendedUserId::UserId(user_id) => Ok(user_id),
+            ExtendedUserId::Email(email) => {
+                self.aws_cognito_dal
+                    .resolve_username_by("email", &email)
+                    .await
+            }
+            ExtendedUserId::MySelf => Ok(caller_user_id.clone()),
+        }
     }
 }

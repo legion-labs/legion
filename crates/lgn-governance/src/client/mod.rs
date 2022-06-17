@@ -4,7 +4,9 @@ use errors::{Error, Result};
 use http::{Request, Response};
 use hyper::service::Service;
 
-use crate::types::{Permission, Role, Space, SpaceId, SpaceUpdate, UserId, UserInfo, Workspace};
+use crate::types::{
+    ExtendedUserId, Permission, Role, Space, SpaceId, SpaceUpdate, UserId, UserInfo, Workspace,
+};
 
 /// A client for the governance service.
 pub struct Client<Inner> {
@@ -68,7 +70,7 @@ where
     ///
     /// This function will return an error if the client does not have the
     /// appropriate permissions or if the user does not exist.
-    pub async fn get_user_info(&self, user_id: &UserId) -> Result<UserInfo> {
+    pub async fn get_user_info(&self, user_id: &ExtendedUserId) -> Result<UserInfo> {
         use crate::api::user::client::{GetUserInfoRequest, GetUserInfoResponse};
 
         match self
@@ -79,7 +81,9 @@ where
             .await?
         {
             GetUserInfoResponse::Status200 { body, .. } => Ok(body.into()),
-            GetUserInfoResponse::Status404 { body, .. } => Err(Error::UserNotFound(body.into())),
+            GetUserInfoResponse::Status404 { body, .. } => {
+                Err(Error::UserNotFound(body.try_into()?))
+            }
         }
     }
 
@@ -89,18 +93,20 @@ where
     ///
     /// This function will return an error if the client does not have the
     /// appropriate permissions or if the user does not exist.
-    pub async fn resolve_user_id(&self, email: &str) -> Result<UserId> {
+    pub async fn resolve_user_id(&self, user_id: &ExtendedUserId) -> Result<UserId> {
         use crate::api::user::client::{ResolveUserIdRequest, ResolveUserIdResponse};
 
         match self
             .user_client
             .resolve_user_id(ResolveUserIdRequest {
-                email: email.to_string(),
+                user_id: user_id.clone().into(),
             })
             .await?
         {
             ResolveUserIdResponse::Status200 { body, .. } => Ok(body.into()),
-            ResolveUserIdResponse::Status404 { body, .. } => Err(Error::UserEmailNotFound(body)),
+            ResolveUserIdResponse::Status404 { body, .. } => {
+                Err(Error::UserNotFound(body.try_into()?))
+            }
         }
     }
 

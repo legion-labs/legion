@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::types::{Space, SpaceId, UserId};
+use crate::types::{ExtendedUserId, Space, SpaceId};
 
 /// An error type.
 #[derive(Error, Debug)]
@@ -20,9 +20,7 @@ pub enum Error {
     #[error("the operation cannot be attempted while the space is being used")]
     SpaceInUse(Space),
     #[error("the user `{0}` was not found")]
-    UserNotFound(UserId),
-    #[error("the user with email `{0}` was not found")]
-    UserEmailNotFound(String),
+    UserNotFound(ExtendedUserId),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

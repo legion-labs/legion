@@ -10,6 +10,64 @@ use super::{Error, Result};
 #[cfg(feature = "tabled")]
 use tabled::Tabled;
 
+/// An extended user identifier.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub enum ExtendedUserId {
+    UserId(UserId),
+    Email(String),
+    MySelf,
+}
+
+impl Display for ExtendedUserId {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UserId(user_id) => write!(f, "{}", user_id),
+            Self::Email(email) => write!(f, "@{}", email),
+            Self::MySelf => write!(f, "@me"),
+        }
+    }
+}
+
+impl FromStr for ExtendedUserId {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        if s.is_empty() {
+            return Err(Error::InvalidUserId(s.to_string()));
+        }
+
+        Ok(if s.starts_with('@') {
+            if s == "@me" {
+                Self::MySelf
+            } else {
+                Self::Email(s.strip_prefix('@').unwrap().to_string())
+            }
+        } else {
+            Self::UserId(s.parse()?)
+        })
+    }
+}
+
+impl From<UserId> for ExtendedUserId {
+    fn from(user_id: UserId) -> Self {
+        Self::UserId(user_id)
+    }
+}
+
+impl From<ExtendedUserId> for crate::api::user::ExtendedUserId {
+    fn from(user_id: ExtendedUserId) -> Self {
+        Self(user_id.to_string())
+    }
+}
+
+impl TryFrom<crate::api::user::ExtendedUserId> for ExtendedUserId {
+    type Error = Error;
+
+    fn try_from(user_id: crate::api::user::ExtendedUserId) -> Result<Self> {
+        user_id.0.parse()
+    }
+}
+
 /// A user identifier.
 #[derive(
     Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, sqlx::Type,
