@@ -13,20 +13,20 @@ pub trait AddDeviceSourceCas {
     #[must_use]
     fn add_device_source_cas(
         self,
-        _provider: Arc<Provider>,
-        _manifest_id: SharedTreeIdentifier,
+        persistent_provider: Arc<Provider>,
+        source_manifest_id: SharedTreeIdentifier,
     ) -> Self;
 }
 
 impl AddDeviceSourceCas for AssetRegistryOptions {
     fn add_device_source_cas(
         self,
-        provider: Arc<Provider>,
-        manifest_id: SharedTreeIdentifier,
+        persistent_provider: Arc<Provider>,
+        source_manifest_id: SharedTreeIdentifier,
     ) -> Self {
         self.add_device(Box::new(source_cas_device::SourceCasDevice::new(
-            provider,
-            manifest_id,
+            persistent_provider,
+            source_manifest_id,
         )))
     }
 }

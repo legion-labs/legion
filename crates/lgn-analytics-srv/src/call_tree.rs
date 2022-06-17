@@ -5,11 +5,8 @@ use lgn_analytics::prelude::*;
 use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::AsyncSpanEvent;
-use lgn_telemetry_proto::analytics::BlockSpansReply;
-use lgn_telemetry_proto::analytics::CallTree;
 use lgn_telemetry_proto::analytics::CallTreeNode;
 use lgn_telemetry_proto::analytics::ScopeDesc;
-use lgn_telemetry_proto::analytics::Span;
 use lgn_telemetry_proto::analytics::SpanBlockLod;
 use lgn_telemetry_proto::analytics::SpanEventType;
 use lgn_telemetry_proto::analytics::SpanTrack;
@@ -214,67 +211,6 @@ use crate::scope::compute_scope_hash;
 use crate::scope::ScopeHashMap;
 use crate::thread_block_processor::parse_thread_block;
 use crate::thread_block_processor::ThreadBlockProcessor;
-
-fn make_spans_from_tree(tree: &CallTreeNode, depth: u32, lod: &mut SpanBlockLod) {
-    let span = Span {
-        scope_hash: tree.hash,
-        begin_ms: tree.begin_ms,
-        end_ms: tree.end_ms,
-        alpha: 255,
-    };
-    if lod.tracks.len() <= depth as usize {
-        lod.tracks.push(SpanTrack { spans: vec![] });
-    }
-    assert!(lod.tracks.len() > depth as usize);
-    lod.tracks[depth as usize].spans.push(span);
-    for child in &tree.children {
-        make_spans_from_tree(child, depth + 1, lod);
-    }
-}
-
-#[span_fn]
-pub(crate) fn compute_block_spans(tree: CallTree, block_id: &str) -> BlockSpansReply {
-    if tree.root.is_none() {
-        info!("empty call tree for block {}", block_id);
-        return BlockSpansReply {
-            scopes: ScopeHashMap::new(),
-            lod: Some(SpanBlockLod {
-                lod_id: 0,
-                tracks: vec![],
-            }),
-            block_id: block_id.to_owned(),
-            begin_ms: f64::MAX,
-            end_ms: f64::MIN,
-        };
-    }
-
-    let root = tree.root.unwrap();
-    let mut begin_ms = root.begin_ms;
-    let mut end_ms = root.end_ms;
-    let mut lod = SpanBlockLod {
-        lod_id: 0,
-        tracks: vec![],
-    };
-    if root.hash == 0 {
-        begin_ms = f64::MAX;
-        end_ms = f64::MIN;
-        for child in &root.children {
-            begin_ms = begin_ms.min(child.begin_ms);
-            end_ms = end_ms.max(child.end_ms);
-            make_spans_from_tree(child, 0, &mut lod);
-        }
-    } else {
-        make_spans_from_tree(&root, 0, &mut lod);
-    }
-
-    BlockSpansReply {
-        scopes: tree.scopes,
-        lod: Some(lod),
-        block_id: block_id.to_owned(),
-        begin_ms,
-        end_ms,
-    }
-}
 
 #[allow(clippy::cast_possible_wrap)]
 #[span_fn]

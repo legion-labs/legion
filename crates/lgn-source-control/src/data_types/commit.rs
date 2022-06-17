@@ -1,6 +1,6 @@
-use std::{collections::BTreeSet, num::ParseIntError, str::FromStr, time::SystemTime};
+use std::{collections::BTreeSet, num::ParseIntError, str::FromStr};
 
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use lgn_content_store::indexing::TreeIdentifier;
 use lgn_tracing::span_fn;
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,18 @@ impl FromStr for CommitId {
     }
 }
 
+impl From<CommitId> for crate::api::source_control::CommitId {
+    fn from(id: CommitId) -> Self {
+        Self(id.0)
+    }
+}
+
+impl From<crate::api::source_control::CommitId> for CommitId {
+    fn from(id: crate::api::source_control::CommitId) -> Self {
+        Self(id.0)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Commit {
     pub id: CommitId,
@@ -41,9 +53,18 @@ pub struct Commit {
     pub timestamp: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NewCommit {
+    pub owner: String,
+    pub message: String,
+    pub main_index_tree_id: TreeIdentifier,
+    pub path_index_tree_id: TreeIdentifier,
+    pub parents: BTreeSet<CommitId>,
+    pub timestamp: DateTime<Utc>,
+}
+
 impl Commit {
     #[span_fn]
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: CommitId,
         owner: String,
@@ -53,10 +74,29 @@ impl Commit {
         parents: BTreeSet<CommitId>,
         timestamp: DateTime<Utc>,
     ) -> Self {
-        assert!(!parents.contains(&id), "commit cannot be its own parent");
-
         Self {
             id,
+            owner,
+            message,
+            main_index_tree_id,
+            path_index_tree_id,
+            parents,
+            timestamp,
+        }
+    }
+}
+
+impl NewCommit {
+    #[span_fn]
+    pub fn new(
+        owner: String,
+        message: String,
+        main_index_tree_id: TreeIdentifier,
+        path_index_tree_id: TreeIdentifier,
+        parents: BTreeSet<CommitId>,
+        timestamp: DateTime<Utc>,
+    ) -> Self {
+        Self {
             owner,
             message,
             main_index_tree_id,
@@ -74,11 +114,9 @@ impl Commit {
         path_index_tree_id: TreeIdentifier,
         parents: BTreeSet<CommitId>,
     ) -> Self {
-        let id = CommitId(0);
         let timestamp = Utc::now();
 
         Self::new(
-            id,
             owner,
             message.into(),
             main_index_tree_id,
@@ -87,43 +125,75 @@ impl Commit {
             timestamp,
         )
     }
+
+    pub fn into_commit(self, id: CommitId) -> Commit {
+        Commit::new(
+            id,
+            self.owner,
+            self.message,
+            self.main_index_tree_id,
+            self.path_index_tree_id,
+            self.parents,
+            self.timestamp,
+        )
+    }
 }
 
-impl From<Commit> for lgn_source_control_proto::Commit {
+impl From<Commit> for crate::api::source_control::Commit {
     fn from(commit: Commit) -> Self {
-        let timestamp: SystemTime = commit.timestamp.into();
-
         Self {
-            id: commit.id.0,
+            id: commit.id.into(),
             owner: commit.owner,
             message: commit.message,
             main_index_tree_id: commit.main_index_tree_id.to_string(),
             path_index_tree_id: commit.path_index_tree_id.to_string(),
-            parents: commit.parents.into_iter().map(|id| id.0).collect(),
-            timestamp: Some(timestamp.into()),
+            parents: commit.parents.into_iter().map(Into::into).collect(),
+            timestamp: commit.timestamp,
         }
     }
 }
 
-impl TryFrom<lgn_source_control_proto::Commit> for Commit {
+impl TryFrom<crate::api::source_control::Commit> for Commit {
     type Error = Error;
 
-    fn try_from(commit: lgn_source_control_proto::Commit) -> Result<Self> {
-        let timestamp = commit.timestamp.unwrap_or_default();
-        let timestamp = DateTime::from_utc(
-            NaiveDateTime::from_timestamp(timestamp.seconds, timestamp.nanos as u32),
-            Utc,
-        );
-
+    fn try_from(commit: crate::api::source_control::Commit) -> Result<Self> {
         Ok(Self {
-            id: CommitId(commit.id),
+            id: commit.id.into(),
             owner: commit.owner,
             message: commit.message,
             main_index_tree_id: commit.main_index_tree_id.parse().unwrap(),
             path_index_tree_id: commit.path_index_tree_id.parse().unwrap(),
-            parents: commit.parents.into_iter().map(CommitId).collect(),
-            timestamp,
+            parents: commit.parents.into_iter().map(Into::into).collect(),
+            timestamp: commit.timestamp,
         })
+    }
+}
+
+impl TryFrom<crate::api::source_control::NewCommit> for NewCommit {
+    type Error = Error;
+
+    fn try_from(commit: crate::api::source_control::NewCommit) -> Result<Self> {
+        Ok(Self {
+            owner: commit.owner,
+            message: commit.message,
+            main_index_tree_id: commit.main_index_tree_id.parse().unwrap(),
+            path_index_tree_id: commit.path_index_tree_id.parse().unwrap(),
+            parents: commit.parents.into_iter().map(Into::into).collect(),
+            timestamp: commit.timestamp,
+        })
+    }
+}
+
+impl From<NewCommit> for crate::api::source_control::NewCommit {
+    fn from(commit: NewCommit) -> Self {
+        Self {
+            owner: commit.owner,
+            message: commit.message,
+            main_index_tree_id: commit.main_index_tree_id.to_string(),
+            path_index_tree_id: commit.path_index_tree_id.to_string(),
+            parents: commit.parents.into_iter().map(Into::into).collect(),
+            timestamp: commit.timestamp,
+        }
     }
 }
 
@@ -135,21 +205,20 @@ mod tests {
     const PATH_INDEX_TREE_ID: &str = "AG5vZGU3";
 
     #[test]
-    fn test_commit_from_proto() {
+    fn test_commit_from_api() {
         let now = "2020-01-01T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
-        let now_sys = SystemTime::from(now);
 
-        let proto = lgn_source_control_proto::Commit {
-            id: 42,
+        let api = crate::api::source_control::Commit {
+            id: crate::api::source_control::CommitId(42),
             owner: "owner".to_owned(),
             message: "message".to_owned(),
             main_index_tree_id: MAIN_INDEX_TREE_ID.to_owned(),
             path_index_tree_id: PATH_INDEX_TREE_ID.to_owned(),
-            parents: vec![43],
-            timestamp: Some(now_sys.into()),
+            parents: vec![crate::api::source_control::CommitId(43)],
+            timestamp: now,
         };
 
-        let commit = Commit::try_from(proto).unwrap();
+        let commit = Commit::try_from(api).unwrap();
 
         assert_eq!(
             commit,
@@ -166,9 +235,8 @@ mod tests {
     }
 
     #[test]
-    fn test_commit_to_proto() {
+    fn test_commit_to_api() {
         let now = "2020-01-01T00:00:00Z".parse::<DateTime<Utc>>().unwrap();
-        let now_sys = SystemTime::from(now);
 
         let commit = Commit {
             id: CommitId(42),
@@ -180,18 +248,18 @@ mod tests {
             timestamp: now,
         };
 
-        let proto: lgn_source_control_proto::Commit = commit.into();
+        let api: crate::api::source_control::Commit = commit.into();
 
         assert_eq!(
-            proto,
-            lgn_source_control_proto::Commit {
-                id: 42,
+            api,
+            crate::api::source_control::Commit {
+                id: crate::api::source_control::CommitId(42),
                 owner: "owner".to_owned(),
                 message: "message".to_owned(),
                 main_index_tree_id: MAIN_INDEX_TREE_ID.to_owned(),
                 path_index_tree_id: PATH_INDEX_TREE_ID.to_owned(),
-                parents: vec![43],
-                timestamp: Some(now_sys.into()),
+                parents: vec![crate::api::source_control::CommitId(43)],
+                timestamp: now,
             }
         );
     }
