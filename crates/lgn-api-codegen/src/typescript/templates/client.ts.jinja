@@ -22,7 +22,7 @@ export class Client extends ApiClient implements Api {
                 {% if !route.parameters.query.is_empty() -%}
                     const query: {{ route.name|pascal_case }}Query = { 
                         {% for parameter in route.parameters.query -%}
-                            "{{ parameter.name }}": input.query["{{ parameter.name }}"],
+                            "{{ parameter.name }}": params["{{ parameter.name }}"],
                         {% endfor -%}
                     };
 
@@ -46,33 +46,33 @@ export class Client extends ApiClient implements Api {
                             headers.set(
                                 "{{ parameter.name }}",
                                 {% if parameter.type_ == Type::String %}
-                                        input.headers["{{ parameter.name }}"],
+                                        params["{{ parameter.name }}"],
                                 {% else if parameter.type_ == Type::Int32 ||
                                     parameter.type_ == Type::Int64 ||
                                     parameter.type_ == Type::Boolean ||
                                     parameter.type_ == Type::Float32 ||
                                     parameter.type_ == Type::Float64 %}
-                                        input.headers["{{ parameter.name }}"].toString(),
+                                        params["{{ parameter.name }}"].toString(),
                                 {% else if parameter.type_ == Type::Bytes %}
-                                    await input.headers["{{ parameter.name }}"].text(),
+                                    await params["{{ parameter.name }}"].text(),
                                 {% else %}
                                     "unknown",
                                 {% endif %}
                             ); 
                         {% else %}
-                            if (input.headers["{{ parameter.name }}"]) {
+                            if (params["{{ parameter.name }}"]) {
                                 headers.set(
                                     "{{ parameter.name }}",
                                     {% if parameter.type_ == Type::String %}
-                                            input.headers["{{ parameter.name }}"],
+                                            params["{{ parameter.name }}"],
                                     {% else if parameter.type_ == Type::Int32 ||
                                         parameter.type_ == Type::Int64 ||
                                         parameter.type_ == Type::Boolean ||
                                         parameter.type_ == Type::Float32 ||
                                         parameter.type_ == Type::Float64 %}
-                                            input.headers["{{ parameter.name }}"].toString(),
+                                            params["{{ parameter.name }}"].toString(),
                                     {% else if parameter.type_ == Type::Bytes %}
-                                        await input.headers["{{ parameter.name }}"].text(),
+                                        await params["{{ parameter.name }}"].text(),
                                     {% else %}
                                         "unknown",
                                     {% endif %}
@@ -88,9 +88,9 @@ export class Client extends ApiClient implements Api {
                     {% if let Some(request_body) = route.request_body %}
                         {% match request_body.content.media_type %}
                             {% when MediaType::Json %}
-                                body: JSON.stringify(input.body),
+                                body: JSON.stringify(body),
                             {% when MediaType::Bytes %}
-                                body: input.body,
+                                body: body,
                         {% endmatch %}
                     {% endif -%}
                     {% if let Some(request_body) = route.request_body %}

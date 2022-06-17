@@ -395,13 +395,15 @@ export async function getActiveScenes() {
 
 export function getEditorTraceEvents() {
   return editorLogStreamClient.logEntries({
-    params: { "space-id": "0", "workspace-id": "0" },
+    "space-id": "0",
+    "workspace-id": "0",
   });
 }
 
 export function getRuntimeTraceEvents() {
   return runtimeLogStreamClient.logEntries({
-    params: { "space-id": "0", "workspace-id": "0" },
+    "space-id": "0",
+    "workspace-id": "0",
   });
 }
 
@@ -414,10 +416,10 @@ export async function loadRuntimeManifest({
 }: {
   manifestId: string;
 }) {
-  return runtimeClient.loadManifest({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: new Blob([manifestId]),
-  });
+  return runtimeClient.loadManifest(
+    { "space-id": "0", "workspace-id": "0" },
+    new Blob([manifestId])
+  );
 }
 
 export async function loadRuntimeRootAsset({
@@ -425,14 +427,15 @@ export async function loadRuntimeRootAsset({
 }: {
   rootAssetId: string;
 }) {
-  return runtimeClient.loadRootAsset({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: new Blob([rootAssetId]),
-  });
+  return runtimeClient.loadRootAsset(
+    { "space-id": "0", "workspace-id": "0" },
+    new Blob([rootAssetId])
+  );
 }
 
 export async function pauseRuntime() {
   return runtimeClient.pause({
-    params: { "space-id": "0", "workspace-id": "0" },
+    "space-id": "0",
+    "workspace-id": "0",
   });
 }

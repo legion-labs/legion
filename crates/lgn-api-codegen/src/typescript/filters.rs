@@ -79,7 +79,7 @@ pub fn fmt_ts_path(path: &Path, parameters: &[Parameter]) -> ::askama::Result<St
                     .iter()
                     .any(|parameter| parameter.name == capture_name)
                 {
-                    return format!("${{input.params[\"{}\"]}}", capture_name);
+                    return format!("${{params[\"{}\"]}}", capture_name);
                 }
             }
 
@@ -134,7 +134,7 @@ mod tests {
                 }]
             )
             .unwrap(),
-            "/v1/users/${input.params[\"id\"]}"
+            "/v1/users/${params[\"id\"]}"
         );
         assert_eq!(
             fmt_ts_path(
@@ -147,7 +147,7 @@ mod tests {
                 }]
             )
             .unwrap(),
-            "/v1/users/${input.params[\"my-id\"]}"
+            "/v1/users/${params[\"my-id\"]}"
         );
         assert_eq!(
             fmt_ts_path(
@@ -168,7 +168,7 @@ mod tests {
                 ]
             )
             .unwrap(),
-            "/v1/users/${input.params[\"id\"]}/${input.params[\"name\"]}"
+            "/v1/users/${params[\"id\"]}/${params[\"name\"]}"
         );
     }
 }

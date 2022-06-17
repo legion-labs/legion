@@ -52,60 +52,46 @@ export namespace Cars {
 
     testAdditionalPropertiesString(): Promise<TestAdditionalPropertiesStringResponse>;
 
-    testHeaders(input: {
-      headers: {
-        "x-string-header"?: string;
-        "x-bytes-header"?: Blob;
-        "x-int-header"?: number;
-      };
+    testHeaders(params: {
+      "x-string-header"?: string;
+      "x-bytes-header"?: Blob;
+      "x-int-header"?: number;
     }): Promise<TestHeadersResponse>;
 
     testOneOf(): Promise<TestOneOfResponse>;
 
-    getCars(input: {
-      params: {
-        "space-id": string;
-      };
-
-      query: {
-        names?: string[];
-        q?: string;
-      };
+    getCars(params: {
+      "space-id": string;
+      names?: string[];
+      q?: string;
     }): Promise<GetCarsResponse>;
 
-    createCar(input: {
+    createCar(
       params: {
         "space-id": string;
-      };
-
-      headers: {
         "span-id"?: string;
-      };
+      },
 
-      body: Components.Car;
-    }): Promise<CreateCarResponse>;
+      body: Components.Car
+    ): Promise<CreateCarResponse>;
 
-    getCar(input: {
-      params: {
-        "space-id": string;
-        "car-id": bigint;
-      };
+    getCar(params: {
+      "space-id": string;
+      "car-id": bigint;
     }): Promise<GetCarResponse>;
 
-    deleteCar(input: {
-      params: {
-        "space-id": string;
-        "car-id": bigint;
-      };
+    deleteCar(params: {
+      "space-id": string;
+      "car-id": bigint;
     }): Promise<DeleteCarResponse>;
 
-    testBinary(input: {
+    testBinary(
       params: {
         "space-id": string;
-      };
+      },
 
-      body: Blob;
-    }): Promise<TestBinaryResponse>;
+      body: Blob
+    ): Promise<TestBinaryResponse>;
   }
 
   // ---------- Client ----------
@@ -197,38 +183,36 @@ export namespace Cars {
       return TestAdditionalPropertiesStringResponse.fromResponse(response);
     }
 
-    async testHeaders(input: {
-      headers: {
-        "x-string-header"?: string;
-        "x-bytes-header"?: Blob;
-        "x-int-header"?: number;
-      };
+    async testHeaders(params: {
+      "x-string-header"?: string;
+      "x-bytes-header"?: Blob;
+      "x-int-header"?: number;
     }): Promise<TestHeadersResponse> {
       const url = new URL(`${this.#baseUri}/test-headers`);
 
       const headers = new Headers();
 
-      if (input.headers["x-string-header"]) {
+      if (params["x-string-header"]) {
         headers.set(
           "x-string-header",
 
-          input.headers["x-string-header"]
+          params["x-string-header"]
         );
       }
 
-      if (input.headers["x-bytes-header"]) {
+      if (params["x-bytes-header"]) {
         headers.set(
           "x-bytes-header",
 
-          await input.headers["x-bytes-header"].text()
+          await params["x-bytes-header"].text()
         );
       }
 
-      if (input.headers["x-int-header"]) {
+      if (params["x-int-header"]) {
         headers.set(
           "x-int-header",
 
-          input.headers["x-int-header"].toString()
+          params["x-int-header"].toString()
         );
       }
 
@@ -253,25 +237,18 @@ export namespace Cars {
       return TestOneOfResponse.fromResponse(response);
     }
 
-    async getCars(input: {
-      params: {
-        "space-id": string;
-      };
-
-      query: {
-        names?: string[];
-        q?: string;
-      };
+    async getCars(params: {
+      "space-id": string;
+      names?: string[];
+      q?: string;
     }): Promise<GetCarsResponse> {
       const url = new URL(
-        `${this.#baseUri}/v1/spaces/${
-          input.params["space-id"]
-        }/car-service/cars`
+        `${this.#baseUri}/v1/spaces/${params["space-id"]}/car-service/cars`
       );
 
       const query: GetCarsQuery = {
-        names: input.query["names"],
-        q: input.query["q"],
+        names: params["names"],
+        q: params["q"],
       };
 
       url.search = stringifyQueryObject(query);
@@ -286,32 +263,27 @@ export namespace Cars {
       return GetCarsResponse.fromResponse(response);
     }
 
-    async createCar(input: {
+    async createCar(
       params: {
         "space-id": string;
-      };
-
-      headers: {
         "span-id"?: string;
-      };
+      },
 
-      body: Components.Car;
-    }): Promise<CreateCarResponse> {
+      body: Components.Car
+    ): Promise<CreateCarResponse> {
       const url = new URL(
-        `${this.#baseUri}/v1/spaces/${
-          input.params["space-id"]
-        }/car-service/cars`
+        `${this.#baseUri}/v1/spaces/${params["space-id"]}/car-service/cars`
       );
 
       const headers = new Headers();
 
       headers.set("Content-Type", "application/json");
 
-      if (input.headers["span-id"]) {
+      if (params["span-id"]) {
         headers.set(
           "span-id",
 
-          input.headers["span-id"]
+          params["span-id"]
         );
       }
 
@@ -319,22 +291,20 @@ export namespace Cars {
         method: "POST",
         headers,
 
-        body: JSON.stringify(input.body),
+        body: JSON.stringify(body),
       });
 
       return CreateCarResponse.fromResponse(response);
     }
 
-    async getCar(input: {
-      params: {
-        "space-id": string;
-        "car-id": bigint;
-      };
+    async getCar(params: {
+      "space-id": string;
+      "car-id": bigint;
     }): Promise<GetCarResponse> {
       const url = new URL(
-        `${this.#baseUri}/v1/spaces/${
-          input.params["space-id"]
-        }/car-service/cars/${input.params["car-id"]}`
+        `${this.#baseUri}/v1/spaces/${params["space-id"]}/car-service/cars/${
+          params["car-id"]
+        }`
       );
 
       const headers = new Headers();
@@ -347,16 +317,14 @@ export namespace Cars {
       return GetCarResponse.fromResponse(response);
     }
 
-    async deleteCar(input: {
-      params: {
-        "space-id": string;
-        "car-id": bigint;
-      };
+    async deleteCar(params: {
+      "space-id": string;
+      "car-id": bigint;
     }): Promise<DeleteCarResponse> {
       const url = new URL(
-        `${this.#baseUri}/v1/spaces/${
-          input.params["space-id"]
-        }/car-service/cars/${input.params["car-id"]}`
+        `${this.#baseUri}/v1/spaces/${params["space-id"]}/car-service/cars/${
+          params["car-id"]
+        }`
       );
 
       const headers = new Headers();
@@ -369,16 +337,16 @@ export namespace Cars {
       return DeleteCarResponse.fromResponse(response);
     }
 
-    async testBinary(input: {
+    async testBinary(
       params: {
         "space-id": string;
-      };
+      },
 
-      body: Blob;
-    }): Promise<TestBinaryResponse> {
+      body: Blob
+    ): Promise<TestBinaryResponse> {
       const url = new URL(
         `${this.#baseUri}/v1/spaces/${
-          input.params["space-id"]
+          params["space-id"]
         }/car-service/test-binary`
       );
 
@@ -390,7 +358,7 @@ export namespace Cars {
         method: "POST",
         headers,
 
-        body: input.body,
+        body: body,
       });
 
       return TestBinaryResponse.fromResponse(response);
