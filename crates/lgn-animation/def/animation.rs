@@ -18,7 +18,7 @@ pub struct AnimationTransformBundleVec {
 #[component]
 struct AnimationTrack {
     key_frames: Vec<AnimationTransformBundleVec>,
-    current_key_frame_index: u32,
+    current_key_frame_index: usize,
     duration_key_frames: Vec<f32>,
     time_since_last_tick: f32,
     looping: bool,
@@ -30,8 +30,8 @@ struct AnimationTrack {
 
 #[component]
 pub struct Connection {
-    parent_node_id: u32,
-    child_node_id: u32,
+    parent_node_id: usize,
+    child_node_id: usize,
 }
 
 #[component]

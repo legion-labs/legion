@@ -13,7 +13,7 @@ use super::AnimationClip;
 
 #[derive(Component)]
 pub struct GraphDefinition {
-    pub current_node_index: i32,
+    pub current_node_index: usize,
     pub nodes: Vec<Box<dyn Node>>,
     pub connections: Vec<Connection>,
 }
@@ -22,7 +22,7 @@ impl GraphDefinition {
     #[must_use]
     pub fn new(state_machine: &EditorGraphDefinition) -> Self {
         let mut states = Vec::new();
-        let mut current_id: u32 = 0;
+        let mut current_id: usize = 0;
         let mut transition_nodes = Vec::new();
 
         for connection in &state_machine.connections {
@@ -35,7 +35,7 @@ impl GraphDefinition {
         for state in &state_machine.states {
             let current_clip = AnimationClip::new(&state.track);
             let clip_node = AnimationClipNode {
-                id: current_id as i32,
+                id: current_id,
                 clip: current_clip,
             };
             let state_node: StateNode = StateNode {
@@ -43,7 +43,7 @@ impl GraphDefinition {
                 child_node: Box::new(clip_node),
             };
             let transitions = vec![TransitionInfo {
-                transition_node: transition_nodes[current_id as usize].clone(),
+                transition_node: transition_nodes[current_id].clone(),
                 condition_node: Box::new(TimeConditionNode {
                     required_elapsed_time: 4.0,
                     time_since_last_verification: 0.0,
@@ -51,7 +51,7 @@ impl GraphDefinition {
             }];
 
             states.push(StateInfo {
-                state_node_idx: current_id as i16,
+                state_node_idx: current_id,
                 state_node,
                 transitions,
             });

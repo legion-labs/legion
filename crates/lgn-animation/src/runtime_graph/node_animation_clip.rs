@@ -2,7 +2,7 @@ use crate::{components::AnimationClip, runtime_graph::node::Node};
 
 #[derive(Clone)]
 pub struct AnimationClipNode {
-    pub id: i32,
+    pub id: usize,
     pub clip: AnimationClip,
 }
 
@@ -15,12 +15,11 @@ impl Node for AnimationClipNode {
         // Changes frame when at exact key frame
         if AnimationClipNode::is_exact_key_frame(
             self.clip.time_since_last_tick,
-            self.clip.duration_key_frames[current_key_frame_idx as usize],
+            self.clip.duration_key_frames[current_key_frame_idx],
         ) {
-            self.clip.time_since_last_tick -=
-                self.clip.duration_key_frames[current_key_frame_idx as usize];
+            self.clip.time_since_last_tick -= self.clip.duration_key_frames[current_key_frame_idx];
 
-            if self.clip.looping && current_key_frame_idx == self.clip.poses.len() as u32 - 1 {
+            if self.clip.looping && current_key_frame_idx == self.clip.poses.len() - 1 {
                 self.clip.current_key_frame_index = 0;
             } else {
                 self.clip.current_key_frame_index += 1;

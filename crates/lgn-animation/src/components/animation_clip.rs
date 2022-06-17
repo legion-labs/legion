@@ -10,7 +10,7 @@ use lgn_transform::{
 
 #[derive(Component, Clone)]
 pub struct AnimationClip {
-    pub(crate) current_key_frame_index: u32,
+    pub(crate) current_key_frame_index: usize,
     pub(crate) duration_key_frames: Vec<f32>,
     pub(crate) time_since_last_tick: f32,
     pub(crate) looping: bool,

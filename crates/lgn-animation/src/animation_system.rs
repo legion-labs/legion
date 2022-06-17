@@ -8,7 +8,7 @@ pub(crate) fn graph_update(mut graphs: Query<'_, '_, &mut GraphDefinition>, time
         let current_node_index = graph.current_node_index;
 
         // update the current node
-        (*graph.nodes[current_node_index as usize]).update(delta_time);
+        (*graph.nodes[current_node_index]).update(delta_time);
     }
     drop(graphs);
     drop(time);
