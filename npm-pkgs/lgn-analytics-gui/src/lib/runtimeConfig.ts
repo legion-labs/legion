@@ -1,4 +1,4 @@
-import { getRuntimeConfig as genericGetRuntimeConfig } from "@lgn/web-client/src/lib/runtimeConfig";
+import { env } from "@/constants";
 
 import runtimeConfigs from "../config.json";
 
@@ -22,13 +22,13 @@ const defaultRuntimeConfig = {
 };
 
 export function getRuntimeConfig() {
-  const config = genericGetRuntimeConfig({
-    allowedApp: "analytics",
-    allowedDomain: "legionengine.com",
-    configs: runtimeConfigs,
-  });
+  if (!env) {
+    return defaultRuntimeConfig;
+  }
 
-  if (!config) {
+  const config = runtimeConfigs[env];
+
+  if (config === undefined) {
     return defaultRuntimeConfig;
   }
 
