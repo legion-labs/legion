@@ -101,9 +101,6 @@ interface ApiClient {
       | Parameters<typeof globalThis.fetch>
   ): void;
 }
-// interface XX {
-//   addRequestStartInterceptor(interceptor: (input: RequestInfo | URL, init?: RequestInit | undefined) => [input: RequestInfo | URL, init?: RequestInit | undefined] | Promise<...>): void
-// }
 
 /**
  * Automatically appends the auth header to all requests, automatically refreshes the token set

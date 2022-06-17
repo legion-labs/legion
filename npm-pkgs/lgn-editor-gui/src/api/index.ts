@@ -1,7 +1,7 @@
 import type { Observable } from "rxjs";
 
-import { Log } from "@lgn/apis/log";
-import { Runtime } from "@lgn/apis/runtime";
+import { Log } from "@lgn/api/log";
+import { Runtime } from "@lgn/api/runtime";
 import {
   EditorClientImpl,
   GrpcWebImpl as EditorImpl,

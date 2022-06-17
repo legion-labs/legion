@@ -21,7 +21,11 @@ mod filters;
 
 #[derive(askama::Template)]
 #[template(path = "index.ts.jinja", escape = "none")]
-struct TypeScriptIndexTemplate<'a> {
+struct TypeScriptIndexTemplate;
+
+#[derive(askama::Template)]
+#[template(path = "api.ts.jinja", escape = "none")]
+struct TypeScriptApiTemplate<'a> {
     pub ctx: &'a TypeScriptGenerationContext,
 }
 
@@ -100,7 +104,17 @@ fn format_typescript<'a, 'b>(
 }
 
 fn generate_index_content(ctx: &TypeScriptGenerationContext) -> Result<String> {
-    let mut content = TypeScriptIndexTemplate { ctx }.render()?;
+    let mut content = TypeScriptIndexTemplate.render()?;
+
+    if !ctx.options.skip_format {
+        content = format_typescript(&ctx.options, &content, "index.ts")?.into_owned();
+    }
+
+    Ok(content)
+}
+
+fn generate_api_content(ctx: &TypeScriptGenerationContext) -> Result<String> {
+    let mut content = TypeScriptApiTemplate { ctx }.render()?;
 
     if !ctx.options.skip_format {
         content = format_typescript(&ctx.options, &content, "index.ts")?.into_owned();
@@ -125,17 +139,20 @@ impl Language {
         options: TypeScriptOptions,
         output_dir: &Path,
     ) -> Result<()> {
+        if &options.filename == "index" {
+            return Err(Error::TypeScriptFilename);
+        }
+
         std::fs::create_dir_all(output_dir)?;
 
         let ctx = ctx.with_options(options);
-        let filename = ctx
-            .options
-            .filename
-            .as_ref()
-            .map_or_else(|| "index", String::as_str);
-        let output_file = output_dir.join(filename).with_extension("ts");
-        let content = generate_index_content(&ctx)?;
 
+        let output_file = output_dir.join(&ctx.options.filename).with_extension("ts");
+        let content = generate_api_content(&ctx)?;
+        std::fs::write(output_file, content)?;
+
+        let output_file = output_dir.join("index").with_extension("ts");
+        let content = generate_index_content(&ctx)?;
         std::fs::write(output_file, content)?;
 
         if ctx.options.with_package_json {
@@ -172,6 +189,25 @@ mod tests {
             .unwrap()
             .with_options(TypeScriptOptions::default());
         let content = generate_index_content(&ctx).unwrap();
+
+        insta::assert_snapshot!(content);
+    }
+
+    #[test]
+    fn test_ts_api_generation() {
+        let loader = OpenApiLoader::default();
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tests/api-codegen")
+            .canonicalize()
+            .unwrap();
+        let openapi = loader
+            .load_openapi(OpenApiRefLocation::new(&root, "cars.yaml".into()))
+            .unwrap();
+        let ctx = Visitor::new(root)
+            .visit(&[openapi.clone()])
+            .unwrap()
+            .with_options(TypeScriptOptions::default());
+        let content = generate_api_content(&ctx).unwrap();
 
         insta::assert_snapshot!(content);
     }

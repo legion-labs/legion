@@ -27,7 +27,7 @@ export class Client extends ApiClient implements Api {
                     };
 
                     {# TODO: Supports only the default serialization style: form, explode: true for now #}
-                    url.search = qs.stringify(query, { arrayFormat: "repeat" });
+                    url.search = stringifyQueryObject(query);
                 {% endif %}
 
                 const headers = new Headers();
