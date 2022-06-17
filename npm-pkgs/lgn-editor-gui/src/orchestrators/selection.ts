@@ -19,10 +19,12 @@ import {
 
 export function initMessageStream() {
   async function rec(): Promise<void> {
-    const message = await getLastMessage();
+    const message = await getLastMessage().catch((error) => {
+      log.error("messages", `An error occured: ${displayError(error)}`);
+    });
 
     if (!message) {
-      await rec().catch((error) => {
+      return rec().catch((error) => {
         log.error("messages", `An error occured: ${displayError(error)}`);
       });
     }
