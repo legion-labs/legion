@@ -37,7 +37,7 @@ impl CameraOptions {
 impl Default for CameraOptions {
     fn default() -> Self {
         let setup = CameraSetup {
-            eye: Vec3::new(0.0, 2.0, -1.0),
+            eye: Vec3::new(0.0, -2.0, 1.0),
             look_at: Vec3::ZERO,
         };
 
@@ -233,13 +233,6 @@ pub(crate) fn camera_control(
                 let yaw = (yaw - delta_yaw) % std::f32::consts::TAU;
                 let pitch = (pitch - delta_pitch)
                     .clamp(std::f32::EPSILON, std::f32::consts::PI - std::f32::EPSILON);
-                lgn_tracing::info!(
-                    "y_p: {:.2} {:.2}, dy: {:.2}, forward: {}",
-                    yaw.to_degrees(),
-                    pitch.to_degrees(),
-                    delta_yaw.to_degrees(),
-                    transform.forward()
-                );
                 transform.rotation = Quat::from_euler(EulerRot::YZX, 0.0, yaw, pitch);
             }
             for mouse_wheel_event in mouse_wheel_events.iter() {
