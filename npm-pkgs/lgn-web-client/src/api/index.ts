@@ -95,7 +95,7 @@ export async function initializeStream(
   const client = getClientFor(serverType);
 
   const response = await client.initializeStream(
-    { "space-id": "0", "workspace-id": "0" },
+    { spaceId: "0", workspaceId: "0" },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     jsonToBlob(localSessionDescription.toJSON())
   );

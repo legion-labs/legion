@@ -1,6 +1,7 @@
 import { grpc } from "@improbable-eng/grpc-web";
 
 import type { ApiClient } from "@lgn/api";
+
 import { authClient } from "./auth";
 import { getCookie } from "./cookie";
 import log from "./log";

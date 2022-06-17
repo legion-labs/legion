@@ -108,7 +108,7 @@ importers:
       '@types/babel__core': ^7.1.19
       '@types/d3': ^7.4.0
       '@types/jest': ^28.1.0
-      '@types/node': ^17.0.39
+      '@types/node': ^17.0.45
       '@types/progressbar.js': ^1.1.2
       '@types/tailwindcss': ^3.0.10
       '@types/testing-library__jest-dom': ^5.14.3
@@ -241,7 +241,7 @@ importers:
       '@trivago/prettier-plugin-sort-imports': ^3.2.0
       '@types/color-convert': ^2.0.0
       '@types/jest': ^28.1.0
-      '@types/node': ^17.0.39
+      '@types/node': ^17.0.45
       '@types/qs': ^6.9.7
       '@types/testing-library__jest-dom': ^5.14.3
       '@types/uuid': ^8.3.4
@@ -368,6 +368,7 @@ importers:
       '@trivago/prettier-plugin-sort-imports': ^3.2.0
       '@types/color-convert': ^2.0.0
       '@types/jest': ^28.1.0
+      '@types/node': ^17.0.39
       '@types/testing-library__jest-dom': ^5.14.3
       '@typescript-eslint/eslint-plugin': ^5.27.0
       '@typescript-eslint/parser': ^5.27.0
@@ -426,6 +427,7 @@ importers:
       '@trivago/prettier-plugin-sort-imports': 3.2.0_prettier@2.6.2
       '@types/color-convert': 2.0.0
       '@types/jest': 28.1.2
+      '@types/node': 17.0.45
       '@types/testing-library__jest-dom': 5.14.4
       '@typescript-eslint/eslint-plugin': 5.28.0_7yumg2qjgbp7maccqlfhx2vudu
       '@typescript-eslint/parser': 5.28.0_ud6rd4xtew5bv4yhvkvu24pzm4
@@ -471,6 +473,7 @@ importers:
       '@types/color-convert': ^2.0.0
       '@types/estree': ^0.0.51
       '@types/jest': ^28.1.0
+      '@types/node': ^17.0.39
       '@types/qs': ^6.9.7
       '@types/testing-library__jest-dom': ^5.14.3
       '@typescript-eslint/eslint-plugin': ^5.27.0
@@ -536,6 +539,7 @@ importers:
       '@types/color-convert': 2.0.0
       '@types/estree': 0.0.51
       '@types/jest': 28.1.2
+      '@types/node': 17.0.45
       '@types/qs': 6.9.7
       '@types/testing-library__jest-dom': 5.14.4
       '@typescript-eslint/eslint-plugin': 5.28.0_7yumg2qjgbp7maccqlfhx2vudu
@@ -1590,7 +1594,7 @@ packages:
   /@types/keyv/3.1.4:
     resolution: {integrity: sha512-BQ5aZNSCpj7D6K2ksrRCTmKRLEpnPvWDiLPfoGyhZ++8YtiK9d/3DBKPJgry359X/P1PfruyYwvnvwFjuEiEIg==}
     dependencies:
-      '@types/node': 17.0.45
+      '@types/node': 18.0.0
 
   /@types/long/4.0.2:
     resolution: {integrity: sha512-MqTGEo5bj5t157U6fA/BiDynNkn0YknVdh48CMPkTSpFTVmvao5UQmm7uEF6xBEo7qIMAlY/JSleYaE6VOdpaA==}
@@ -1610,6 +1614,7 @@ packages:
 
   /@types/node/17.0.45:
     resolution: {integrity: sha512-w+tIMs3rq2afQdsPJlODhoUEKzFP1ayaoyl1CcnwtIlsVe7K7bA1NGm4s3PraqTLlXnbIN84zuBlxBWo1u9BLw==}
+    dev: true
 
   /@types/node/18.0.0:
     resolution: {integrity: sha512-cHlGmko4gWLVI27cGJntjs/Sj8th9aYwplmZFwmmgYQQvL5NUsgVJG7OddLvNfLqYS31KFN0s3qlaD9qCaxACA==}
@@ -1633,7 +1638,7 @@ packages:
   /@types/responselike/1.0.0:
     resolution: {integrity: sha512-85Y2BjiufFzaMIlvJDvTTB8Fxl2xfLo4HgmHzVBz08w4wDePCTjYw66PdrolO0kzli3yam/YCgRufyo1DdQVTA==}
     dependencies:
-      '@types/node': 17.0.45
+      '@types/node': 18.0.0
 
   /@types/sass/1.43.1:
     resolution: {integrity: sha512-BPdoIt1lfJ6B7rw35ncdwBZrAssjcwzI5LByIrYs+tpXlj/CAkuVdRsgZDdP4lq5EjyWzwxZCqAoFyHKFwp32g==}

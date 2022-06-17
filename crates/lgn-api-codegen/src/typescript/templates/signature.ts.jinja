@@ -6,13 +6,25 @@
     {% if has_path_params || has_query_params || has_header_params %}
     params: {
         {% for parameter in route.parameters.path -%}
-            {% include "parameter.ts.jinja" %}
+            {%- if parameter.required -%}
+                "{{ parameter.name|camel_case }}": {{ parameter.type_|fmt_type(ctx, module_path) }};
+            {%- else -%}
+                "{{ parameter.name|camel_case }}"?: {{ parameter.type_|fmt_type(ctx, module_path) }};
+            {%- endif -%}
         {% endfor -%}
         {% for parameter in route.parameters.query -%}
-            {% include "parameter.ts.jinja" %}
+            {%- if parameter.required -%}
+                "{{ parameter.name|camel_case }}": {{ parameter.type_|fmt_type(ctx, module_path) }};
+            {%- else -%}
+                "{{ parameter.name|camel_case }}"?: {{ parameter.type_|fmt_type(ctx, module_path) }};
+            {%- endif -%}
         {% endfor -%}
         {% for parameter in route.parameters.header -%}
-            {% include "parameter.ts.jinja" %}
+            {%- if parameter.required -%}
+                "{{ parameter.name|camel_case }}": {{ parameter.type_|fmt_type(ctx, module_path) }};
+            {%- else -%}
+                "{{ parameter.name|camel_case }}"?: {{ parameter.type_|fmt_type(ctx, module_path) }};
+            {%- endif -%}
         {% endfor -%}
     },
     {% endif %}

@@ -395,15 +395,15 @@ export async function getActiveScenes() {
 
 export function getEditorTraceEvents() {
   return editorLogStreamClient.logEntries({
-    "space-id": "0",
-    "workspace-id": "0",
+    spaceId: "0",
+    workspaceId: "0",
   });
 }
 
 export function getRuntimeTraceEvents() {
   return runtimeLogStreamClient.logEntries({
-    "space-id": "0",
-    "workspace-id": "0",
+    spaceId: "0",
+    workspaceId: "0",
   });
 }
 
@@ -417,7 +417,7 @@ export async function loadRuntimeManifest({
   manifestId: string;
 }) {
   return runtimeClient.loadManifest(
-    { "space-id": "0", "workspace-id": "0" },
+    { spaceId: "0", workspaceId: "0" },
     new Blob([manifestId])
   );
 }
@@ -428,14 +428,14 @@ export async function loadRuntimeRootAsset({
   rootAssetId: string;
 }) {
   return runtimeClient.loadRootAsset(
-    { "space-id": "0", "workspace-id": "0" },
+    { spaceId: "0", workspaceId: "0" },
     new Blob([rootAssetId])
   );
 }
 
 export async function pauseRuntime() {
   return runtimeClient.pause({
-    "space-id": "0",
-    "workspace-id": "0",
+    spaceId: "0",
+    workspaceId: "0",
   });
 }
