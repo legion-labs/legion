@@ -17,6 +17,7 @@ pub struct AnimationTransformBundleVec {
 
 #[component]
 struct AnimationTrack {
+    name: String,
     key_frames: Vec<AnimationTransformBundleVec>,
     current_key_frame_index: usize,
     duration_key_frames: Vec<f32>,

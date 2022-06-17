@@ -24,8 +24,8 @@ impl Node for StateMachineNode {
             .update(time);
     }
 
-    fn get_active_state(&mut self) -> Option<&mut StateInfo> {
-        Some(&mut self.states[self.active_state_idx])
+    fn get_active_state(&self) -> Option<&StateInfo> {
+        Some(&self.states[self.active_state_idx])
     }
 }
 

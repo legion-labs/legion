@@ -11,7 +11,7 @@ pub(crate) fn display_animation(
     debug_display: Res<'_, DebugDisplay>,
     bump_allocator_pool: Res<'_, BumpAllocatorPool>,
     animation_options: Res<'_, AnimationOptions>,
-    mut graphs: Query<'_, '_, &mut GraphDefinition2>,
+    graphs: Query<'_, '_, &GraphDefinition>,
 ) {
     if !animation_options.show_animation_skeleton_bones {
         return;
@@ -19,10 +19,10 @@ pub(crate) fn display_animation(
 
     bump_allocator_pool.scoped_bump(|bump| {
         debug_display.create_display_list(bump, |builder| {
-            for mut graph in graphs.iter_mut() {
+            for graph in graphs.iter() {
                 let current_node_index = graph.current_node_index;
 
-                let active_state: &mut StateInfo = (*graph.nodes[current_node_index])
+                let active_state: &StateInfo = (*graph.nodes[current_node_index])
                     .get_active_state()
                     .unwrap();
 

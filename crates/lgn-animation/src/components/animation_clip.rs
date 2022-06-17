@@ -10,6 +10,7 @@ use lgn_transform::{
 
 #[derive(Component, Clone)]
 pub struct AnimationClip {
+    pub(crate) name: String,
     pub(crate) current_key_frame_index: usize,
     pub(crate) duration_key_frames: Vec<f32>,
     pub(crate) time_since_last_tick: f32,
@@ -53,6 +54,7 @@ impl AnimationClip {
         update_children_transforms(&mut converted_poses);
 
         Self {
+            name: raw_animation_track.name.clone(),
             current_key_frame_index: raw_animation_track.current_key_frame_index,
             duration_key_frames: raw_animation_track.duration_key_frames.clone(),
             time_since_last_tick: raw_animation_track.time_since_last_tick,
