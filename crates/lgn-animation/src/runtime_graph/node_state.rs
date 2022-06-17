@@ -1,8 +1,8 @@
 use crate::runtime_graph::node::Node;
 
 pub struct StateNode {
-    pub id: usize,
-    pub child_node: Box<dyn Node>,
+    pub(crate) id: usize,
+    pub(crate) child_node: Box<dyn Node>,
 }
 
 impl Node for StateNode {

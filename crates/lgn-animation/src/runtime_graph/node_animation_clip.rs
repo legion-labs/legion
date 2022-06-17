@@ -2,8 +2,8 @@ use crate::{components::AnimationClip, runtime_graph::node::Node};
 
 #[derive(Clone)]
 pub struct AnimationClipNode {
-    pub id: usize,
-    pub clip: AnimationClip,
+    pub(crate) id: usize,
+    pub(crate) clip: AnimationClip,
 }
 
 impl Node for AnimationClipNode {

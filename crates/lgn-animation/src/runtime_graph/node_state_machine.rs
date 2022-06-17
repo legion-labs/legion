@@ -4,8 +4,8 @@ use crate::runtime_graph::{
 };
 
 pub struct StateMachineNode {
-    pub states: Vec<StateInfo>,
-    pub active_state_idx: usize,
+    pub(crate) states: Vec<StateInfo>,
+    pub(crate) active_state_idx: usize,
 }
 
 impl Node for StateMachineNode {
@@ -31,13 +31,13 @@ impl Node for StateMachineNode {
 
 // Transition
 pub struct TransitionInfo {
-    pub transition_node: TransitionNode,
-    pub condition_node: Box<dyn BoolValueNode>,
+    pub(crate) transition_node: TransitionNode,
+    pub(crate) condition_node: Box<dyn BoolValueNode>,
 }
 
 // State
 pub struct StateInfo {
-    pub state_node_idx: usize,
-    pub state_node: StateNode,
-    pub transitions: Vec<TransitionInfo>,
+    pub(crate) state_node_idx: usize,
+    pub(crate) state_node: StateNode,
+    pub(crate) transitions: Vec<TransitionInfo>,
 }
