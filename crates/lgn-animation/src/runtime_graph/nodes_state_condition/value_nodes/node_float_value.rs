@@ -5,7 +5,7 @@ use crate::runtime_graph::nodes_state_condition::value_nodes::{
 pub struct FloatValueNode {}
 
 impl ValueNode for FloatValueNode {
-    fn get_value_type() -> GraphValueType {
-        GraphValueType::Float
+    fn get_value_type() -> Option<GraphValueType> {
+        Some(GraphValueType::Float)
     }
 }

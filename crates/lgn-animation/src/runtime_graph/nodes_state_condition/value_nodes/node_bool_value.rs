@@ -10,7 +10,7 @@ pub trait BoolValueNode: Send + Sync {
 
 impl ValueNode for dyn BoolValueNode {
     #[inline]
-    fn get_value_type() -> GraphValueType {
-        GraphValueType::Bool
+    fn get_value_type() -> Option<GraphValueType> {
+        Some(GraphValueType::Bool)
     }
 }
