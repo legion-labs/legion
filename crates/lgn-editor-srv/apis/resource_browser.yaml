@@ -4,7 +4,7 @@ info:
   description: "The OpenAPI specification for the Legion Labs resource browser."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/search/{token}/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/search/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -285,7 +285,7 @@ components:
   parameters:
     token:
       name: token
-      in: path
+      in: query
       description: The resource to search for.
       required: true
       schema:

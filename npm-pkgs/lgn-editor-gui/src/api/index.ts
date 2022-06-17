@@ -40,24 +40,39 @@ export function initApiClient({
   runtimeServerUrl?: string;
   accessTokenCookieName: string;
 }) {
-  resourceBrowserClient = new ResourceBrowser.Client({
-    baseUri: editorServerUrl,
-  });
+  resourceBrowserClient = addAuthToClient(
+    new ResourceBrowser.Client({
+      baseUri: editorServerUrl,
+    }),
+    accessTokenCookieName
+  );
 
-  propertyInspectorClient = new PropertyInspector.Client({
-    baseUri: editorServerUrl,
-  });
+  propertyInspectorClient = addAuthToClient(
+    new PropertyInspector.Client({
+      baseUri: editorServerUrl,
+    }),
+    accessTokenCookieName
+  );
 
-  sourceControlClient = new SourceControl.Client({
-    baseUri: editorServerUrl,
-  });
+  sourceControlClient = addAuthToClient(
+    new SourceControl.Client({
+      baseUri: editorServerUrl,
+    }),
+    accessTokenCookieName
+  );
 
-  editorClient = new Editor.Client({
-    baseUri: editorServerUrl,
-  });
+  editorClient = addAuthToClient(
+    new Editor.Client({
+      baseUri: editorServerUrl,
+    }),
+    accessTokenCookieName
+  );
 
   runtimeClient = addAuthToClient(
-    new Runtime.Client({ baseUri: editorServerUrl }),
+    addAuthToClient(
+      new Runtime.Client({ baseUri: editorServerUrl }),
+      accessTokenCookieName
+    ),
     accessTokenCookieName
   );
 
@@ -83,8 +98,8 @@ export async function getAllResources(searchToken = "") {
     searchToken: string
   ): Promise<ResourceBrowser.ResourceDescription[]> {
     const response = await resourceBrowserClient.searchResources({
-      params: { "space-id": "0", "workspace-id": "0", token: searchToken },
-      query: {},
+      params: { "space-id": "0", "workspace-id": "0" },
+      query: { token: searchToken },
     });
 
     resourceDescriptions.push(...response.value.resource_descriptions);
@@ -109,8 +124,8 @@ export async function getRootResource(
       resource_descriptions: [resourceDescription],
     },
   } = await resourceBrowserClient.searchResources({
-    params: { "space-id": "0", "workspace-id": "0", token: "" },
-    query: { "root-resource-id": id },
+    params: { "space-id": "0", "workspace-id": "0" },
+    query: { "root-resource-id": id, token: "" },
   });
 
   return resourceDescription ?? null;
