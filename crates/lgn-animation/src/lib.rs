@@ -18,9 +18,8 @@ pub mod runtime_graph;
 mod tmp;
 
 use crate::{
-    animation_options::AnimationOptions, animation_system::clip_update,
-    animation_system::graph_update, debug_display::display_animation,
-    debug_display::display_animation_2, labels::AnimationStage,
+    animation_options::AnimationOptions, animation_system::graph_update,
+    debug_display::display_animation, labels::AnimationStage,
 };
 use lgn_app::{App, CoreStage, Plugin};
 use lgn_ecs::schedule::SystemStage;
@@ -47,6 +46,6 @@ impl Plugin for AnimationPlugin {
                 RenderStage::Prepare,
                 animation_options::ui_animation_options,
             )
-            .add_system_to_stage(RenderStage::Prepare, display_animation_2);
+            .add_system_to_stage(RenderStage::Prepare, display_animation);
     }
 }

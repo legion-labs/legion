@@ -1,7 +1,7 @@
 use crate::runtime_graph::node::Node;
 
 pub struct StateNode {
-    pub id: u32,
+    pub id: usize,
     pub child_node: Box<dyn Node>,
 }
 
