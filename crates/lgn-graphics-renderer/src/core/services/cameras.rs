@@ -1,18 +1,14 @@
-use dolly::{
-    prelude::{Handedness, RightHanded},
-    transform::Transform,
-};
 use lgn_graphics_cgen_runtime::Float4;
 use lgn_math::{Angle, DMat4, Mat4, Vec2, Vec4};
 use lgn_transform::prelude::GlobalTransform;
 
 use crate::{cgen, components::CameraComponent, UP_VECTOR};
 
-pub fn view_transform(final_transform: &Transform<RightHanded>) -> GlobalTransform {
-    let eye = final_transform.position.as_dvec3();
-    let forward = final_transform.forward().as_dvec3();
+pub fn view_transform(camera_transform: &GlobalTransform) -> GlobalTransform {
+    let eye = camera_transform.translation.as_dvec3();
+    let forward = camera_transform.forward().as_dvec3();
 
-    let view_matrix = DMat4::look_at_rh(eye, eye + forward, UP_VECTOR.as_dvec3());
+    let view_matrix = DMat4::look_at_rh(eye, eye + forward, camera_transform.up().as_dvec3());
     let (_scale, rotation, translation) = view_matrix.to_scale_rotation_translation();
 
     let mut view_transform = GlobalTransform::identity();
@@ -28,16 +24,16 @@ pub fn build_projection(width: f32, height: f32, fov_y: Angle, z_near: f32) -> M
 }
 
 pub fn build_culling_planes(
-    final_transform: &Transform<RightHanded>,
+    camera_transform: &GlobalTransform,
     aspect_ratio: f32,
     fov_y: Angle,
     z_near: f32,
     z_far: f32,
 ) -> [Float4; 6] {
-    let eye = final_transform.position;
-    let forward = final_transform.forward();
-    let up = final_transform.up();
-    let right = final_transform.right();
+    let eye = camera_transform.translation;
+    let forward = camera_transform.forward();
+    let up = camera_transform.up();
+    let right = camera_transform.right();
 
     let half_v_side = z_far * (fov_y.radians() * 0.5).tan();
     let half_h_side = half_v_side * aspect_ratio;
@@ -79,23 +75,23 @@ pub fn build_culling_planes(
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct RenderCamera<H: Handedness = RightHanded> {
-    pub final_transform: Transform<H>,
+pub struct RenderCamera {
+    pub transform: GlobalTransform,
     fov_y: Angle,
     z_near: f32,
     z_far: f32,
 }
 
 impl From<(&GlobalTransform, &CameraComponent)> for RenderCamera {
-    fn from((_global_transform, camera_component): (&GlobalTransform, &CameraComponent)) -> Self {
-        RenderCamera::new(camera_component) // TMP
+    fn from((global_transform, camera_component): (&GlobalTransform, &CameraComponent)) -> Self {
+        RenderCamera::new(camera_component, global_transform)
     }
 }
 
 impl RenderCamera {
-    pub fn new(camera_component: &CameraComponent) -> Self {
+    pub fn new(camera_component: &CameraComponent, transform: &GlobalTransform) -> Self {
         Self {
-            final_transform: camera_component.final_transform(),
+            transform: *transform,
             fov_y: camera_component.fov_y(),
             z_near: camera_component.z_near(),
             z_far: camera_component.z_far(),
@@ -103,7 +99,7 @@ impl RenderCamera {
     }
 
     pub fn view_transform(&self) -> GlobalTransform {
-        view_transform(&self.final_transform)
+        view_transform(&self.transform)
     }
 
     pub fn build_projection(&self, width: f32, height: f32) -> Mat4 {
@@ -112,7 +108,7 @@ impl RenderCamera {
 
     pub fn build_culling_planes(&self, aspect_ratio: f32) -> [Float4; 6] {
         build_culling_planes(
-            &self.final_transform,
+            &self.transform,
             aspect_ratio,
             self.fov_y,
             self.z_near,
