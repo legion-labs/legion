@@ -127,14 +127,14 @@ impl Plugin for ResourceBrowserPlugin {
             Self::post_setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer)
+                .before(lgn_api::ApiPluginScheduling::StartRpcServer)
         );
         app.add_system(Self::handle_events);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
             Self::load_default_scene
                 .exclusive_system()
-                .after(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .after(lgn_api::ApiPluginScheduling::StartRpcServer),
         );
     }
 }
@@ -168,7 +168,7 @@ impl ResourceBrowserPlugin {
         let server = Arc::new(Server::new(world));
 
         world
-            .resource_mut::<lgn_grpc::SharedRouter>()
+            .resource_mut::<lgn_api::SharedRouter>()
             .into_inner()
             .register_routes(server::register_routes, server);
     }

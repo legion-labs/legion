@@ -1,12 +1,12 @@
 [package]
-name = "lgn-grpc"
+name = "lgn-api"
 version = "0.1.0"
 edition = "2021"
-description = "Legion's ECS gRPC server plugin"
+description = "Legion's ECS (Open)Api server plugin"
 homepage = "https://legionengine.com"
 repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
-keywords = ["ecs", "game", "legion", "grpc"]
+keywords = ["ecs", "game", "legion", "api"]
 
 [dependencies]
 axum = "0.5"
@@ -15,6 +15,5 @@ lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
 lgn-async = { path = "../lgn-async", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-tonic = { version = "0.6", features = ["tls-roots"] }
 futures-lite = "1.12"
 anyhow = "1.0"

@@ -131,7 +131,7 @@ impl Authenticator for MockAuthenticator {
 #[tokio::test]
 #[serial_test::serial]
 async fn test_service_multiplexer() -> anyhow::Result<()> {
-    //let server = lgn_grpc::server::transport::http2::Server::default();
+    //let server = lgn_api::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service::default());
     let sum_service = SummerServer::new(Service::default());
     let service = lgn_online::grpc::MultiplexerService::builder()
@@ -216,7 +216,7 @@ async fn test_service_multiplexer() -> anyhow::Result<()> {
 #[tokio::test]
 #[serial_test::serial]
 async fn test_service_authentication() -> anyhow::Result<()> {
-    //let server = lgn_grpc::server::transport::http2::Server::default();
+    //let server = lgn_api::server::transport::http2::Server::default();
     let echo_service = EchoerServer::new(Service::default());
 
     let validation = Validation::<NoSignatureValidation>::default().disable_exp_validation();

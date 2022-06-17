@@ -23,6 +23,7 @@ use editor_srv::source_control::{
     PullAssetsSucceeded, ResourceDescription, StagedResource, StagedResourceChangeType,
     StagedResources,
 };
+use lgn_api::SharedRouter;
 use lgn_app::prelude::*;
 use lgn_data_offline::resource::ChangeType;
 use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
@@ -32,7 +33,6 @@ use lgn_ecs::{
     schedule::ExclusiveSystemDescriptorCoercion,
 };
 use lgn_graphics_data::offline_gltf::GltfFile;
-use lgn_grpc::SharedRouter;
 use lgn_online::server::{Error, Result};
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_tracing::error;
@@ -435,7 +435,7 @@ impl Plugin for SourceControlPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartRpcServer),
         );
     }
 }

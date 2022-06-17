@@ -2,6 +2,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use editor_srv::editor::server::register_routes;
+use lgn_api::SharedRouter;
 use lgn_app::{prelude::*, Events};
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_async::TokioAsyncRuntime;
@@ -16,7 +17,6 @@ use lgn_data_transaction::{
 use lgn_ecs::prelude::*;
 use lgn_graphics_renderer::picking::PickingEvent;
 use lgn_graphics_renderer::picking::{ManipulatorManager, PickingManager};
-use lgn_grpc::SharedRouter;
 use lgn_input::{
     keyboard::{KeyCode, KeyboardInput},
     mouse::{MouseButtonInput, MouseMotion},
@@ -52,7 +52,7 @@ impl Plugin for EditorPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartRpcServer),
         );
     }
 }

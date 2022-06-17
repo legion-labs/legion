@@ -20,6 +20,7 @@ use editor_srv::property_inspector::{
     Api, InsertPropertyArrayItem200Response, ResourceDescription, ResourceDescriptionProperties,
     ResourceProperty,
 };
+use lgn_api::SharedRouter;
 use lgn_app::prelude::*;
 use lgn_data_model::{
     collector::{collect_properties, ItemInfo, PropertyCollector},
@@ -36,7 +37,6 @@ use lgn_data_transaction::{
 };
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::offline_gltf::GltfFile;
-use lgn_grpc::SharedRouter;
 use lgn_online::server::{Error, Result};
 use lgn_scene_plugin::SceneMessage;
 use sample_data::offline::GltfLoader;
@@ -72,7 +72,7 @@ impl Plugin for PropertyInspectorPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartRpcServer),
         );
     }
 }

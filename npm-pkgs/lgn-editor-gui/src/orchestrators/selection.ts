@@ -22,7 +22,9 @@ export function initMessageStream() {
     const message = await getLastMessage();
 
     if (!message) {
-      return rec();
+      await rec().catch((error) => {
+        log.error("messages", `An error occured: ${displayError(error)}`);
+      });
     }
 
     switch (message.msg_type) {
@@ -71,7 +73,9 @@ export function initMessageStream() {
       }
     }
 
-    await rec();
+    await rec().catch((error) => {
+      log.error("messages", `An error occured: ${displayError(error)}`);
+    });
   }
 
   rec().catch((error) =>

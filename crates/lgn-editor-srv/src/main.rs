@@ -5,6 +5,7 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
+use lgn_api::{ApiPlugin, ApiPluginSettings};
 use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
@@ -13,7 +14,6 @@ use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
 use lgn_ecs::prelude::Local;
 use lgn_graphics_renderer::RendererPlugin;
-use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_log::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
@@ -286,9 +286,9 @@ fn main() {
             compilation_mode,
         ))
         .add_plugin(ResourceRegistryPlugin::default())
-        .insert_resource(GRPCPluginSettings::rest(listen_endpoint))
+        .insert_resource(ApiPluginSettings::new(listen_endpoint))
         .insert_resource(trace_events_receiver)
-        .add_plugin(GRPCPlugin::rest_only())
+        .add_plugin(ApiPlugin::default())
         .add_plugin(LogStreamPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::default())

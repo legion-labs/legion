@@ -2453,6 +2453,7 @@ dependencies = [
  "http",
  "hyper",
  "inventory",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
@@ -2472,7 +2473,6 @@ dependencies = [
  "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
  "lgn-log",
@@ -3929,6 +3929,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "futures-lite",
+ "lgn-app",
+ "lgn-async",
+ "lgn-ecs",
+ "lgn-online",
+ "lgn-tracing",
+]
+
+[[package]]
 name = "lgn-api-codegen"
 version = "0.1.0"
 dependencies = [
@@ -4969,21 +4983,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-grpc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "futures-lite",
- "lgn-app",
- "lgn-async",
- "lgn-ecs",
- "lgn-online",
- "lgn-tracing",
- "tonic",
-]
-
-[[package]]
 name = "lgn-hierarchy"
 version = "0.1.0"
 dependencies = [
@@ -5014,12 +5013,12 @@ dependencies = [
  "axum",
  "http",
  "hyper",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-async",
  "lgn-ecs",
  "lgn-governance",
- "lgn-grpc",
  "lgn-online",
  "lgn-tracing",
  "serde",
@@ -5365,6 +5364,7 @@ dependencies = [
  "http",
  "hyper",
  "interceptor",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-async",
@@ -5379,7 +5379,6 @@ dependencies = [
  "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
@@ -7624,6 +7623,7 @@ dependencies = [
  "hyper",
  "instant",
  "lgn-animation",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
@@ -7637,7 +7637,6 @@ dependencies = [
  "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
  "lgn-log",
