@@ -206,6 +206,7 @@ async fn create_offline_data(
     .await;
 
     let waving_anim = Box::new(AnimationTrack {
+        name: String::from("Waving animation"),
         key_frames: vec![
             AnimationTransformBundleVec {
                 anim_transform_vec: vec![
@@ -592,6 +593,7 @@ async fn create_offline_data(
         parent_indices: vec![-1, 0, 0, 2, 3, 4, 5, 0, 7, 8, 9, 0, 11, 12, 13], // Stores the bone idx of every bones parent, if -1: root bone
     });
     let idle_anim = Box::new(AnimationTrack {
+        name: String::from("Idle animation"),
         key_frames: vec![
             AnimationTransformBundleVec {
                 anim_transform_vec: vec![

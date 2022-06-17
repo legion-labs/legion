@@ -27,8 +27,12 @@ impl Node for AnimationClipNode {
         }
     }
 
-    fn get_clip(&mut self) -> Option<&AnimationClip> {
+    fn get_clip(&self) -> Option<&AnimationClip> {
         Some(&self.clip)
+    }
+
+    fn get_state_name(&self) -> Option<&String> {
+        Some(&self.clip.name)
     }
 }
 
