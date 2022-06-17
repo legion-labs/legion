@@ -14,8 +14,8 @@
     "cognitoPoolId": "ca-central-1_SkZKDimWz",
     "clientId": "2kp01gr54dfc7qp1325hibcro3",
     "apiAnalytics": {
-      "url": "https://api.legionengine.com",
-      "host": "legionengine.com"
+      "url": "https://web-api.live.playground.legionlabs.com:443",
+      "host": "web-api.live.playground.legionlabs.com"
     }
   },
 
