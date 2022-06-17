@@ -9,7 +9,7 @@ use lgn_input::{
         Axis, GamepadAxis, GamepadAxisType, GamepadButton, Gamepads, Input, KeyCode, MouseButton,
     },
 };
-use lgn_math::{Angle, DMat4, EulerRot, Mat3, Quat, Vec3};
+use lgn_math::{Angle, EulerRot, Mat3, Quat, Vec3};
 use lgn_transform::components::GlobalTransform;
 use lgn_utils::HashMap;
 
@@ -24,20 +24,6 @@ pub struct CameraOptions {
 impl CameraOptions {
     fn reset(&self, camera_transform: &mut GlobalTransform) {
         self.setup_camera_transform(camera_transform);
-    }
-
-    pub fn view_transform(camera_transform: &GlobalTransform) -> GlobalTransform {
-        let eye = camera_transform.translation.as_dvec3();
-        let forward = camera_transform.forward().as_dvec3();
-
-        let world2view = DMat4::look_at_rh(eye, eye + forward, camera_transform.up().as_dvec3());
-        let (_scale, rotation, translation) = world2view.to_scale_rotation_translation();
-
-        let mut view_transform = GlobalTransform::identity();
-        view_transform.translation = translation.as_vec3();
-        view_transform.rotation = rotation.as_f32();
-
-        view_transform
     }
 
     fn setup_camera_transform(&self, camera_transform: &mut GlobalTransform) {
