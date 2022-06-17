@@ -5,7 +5,8 @@ use http::{Request, Response};
 use hyper::service::Service;
 
 use crate::types::{
-    ExtendedUserId, Permission, Role, Space, SpaceId, SpaceUpdate, UserId, UserInfo, Workspace,
+    ExtendedUserId, Permission, Role, RoleAssignation, Space, SpaceId, SpaceUpdate, UserId,
+    UserInfo, Workspace,
 };
 
 /// A client for the governance service.
@@ -105,6 +106,59 @@ where
         {
             ResolveUserIdResponse::Status200 { body, .. } => Ok(body.into()),
             ResolveUserIdResponse::Status404 { body, .. } => {
+                Err(Error::UserNotFound(body.try_into()?))
+            }
+        }
+    }
+
+    /// List the spaces a user has access to.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the client does not have the
+    /// appropriate permissions or if the user does not exist.
+    pub async fn list_user_spaces(&self, user_id: &ExtendedUserId) -> Result<Vec<Space>> {
+        use crate::api::user::client::{ListUserSpacesRequest, ListUserSpacesResponse};
+
+        match self
+            .user_client
+            .list_user_spaces(ListUserSpacesRequest {
+                user_id: user_id.clone().into(),
+            })
+            .await?
+        {
+            ListUserSpacesResponse::Status200 { body, .. } => {
+                Ok(body.0.into_iter().map(Into::into).collect())
+            }
+            ListUserSpacesResponse::Status404 { body, .. } => {
+                Err(Error::UserNotFound(body.try_into()?))
+            }
+        }
+    }
+
+    /// List the roles a user has.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the client does not have the
+    /// appropriate permissions or if the user does not exist.
+    pub async fn list_user_roles(&self, user_id: &ExtendedUserId) -> Result<Vec<RoleAssignation>> {
+        use crate::api::user::client::{ListUserRolesRequest, ListUserRolesResponse};
+
+        match self
+            .user_client
+            .list_user_roles(ListUserRolesRequest {
+                user_id: user_id.clone().into(),
+            })
+            .await?
+        {
+            ListUserRolesResponse::Status200 { body, .. } => body
+                .0
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<crate::types::Result<Vec<_>>>()
+                .map_err(Into::into),
+            ListUserRolesResponse::Status404 { body, .. } => {
                 Err(Error::UserNotFound(body.try_into()?))
             }
         }

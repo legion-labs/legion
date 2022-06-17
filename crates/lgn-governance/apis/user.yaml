@@ -54,7 +54,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserId"
         "404":
-          description: The user with the specified email was not found.
+          description: The user with the specified id was not found.
           content:
             application/json:
               schema:
@@ -72,6 +72,12 @@ paths:
             application/json:
               schema:
                 $ref: "space.yaml#/components/schemas/SpaceList"
+        "404":
+          description: The user with the specified id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtendedUserId"
   /v1/users/{user-id}/roles/:
     parameters:
       - $ref: "#/components/parameters/extended_user_id"
@@ -85,6 +91,12 @@ paths:
             application/json:
               schema:
                 $ref: "role.yaml#/components/schemas/RoleAssignationList"
+        "404":
+          description: The user with the specified id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtendedUserId"
 components:
   parameters:
     user_id:

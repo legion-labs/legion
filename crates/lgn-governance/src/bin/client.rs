@@ -60,6 +60,16 @@ enum UsersCommands {
         #[clap(help = "The user's ID")]
         user_id: ExtendedUserId,
     },
+    #[clap(name = "list-spaces", about = "List the spaces a user has access to")]
+    ListSpaces {
+        #[clap(help = "The user's ID")]
+        user_id: ExtendedUserId,
+    },
+    #[clap(name = "list-roles", about = "List the roles assigned to a user")]
+    ListRoles {
+        #[clap(help = "The user's ID")]
+        user_id: ExtendedUserId,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -151,6 +161,16 @@ async fn main() -> anyhow::Result<()> {
                 let user_id = client.resolve_user_id(&user_id).await?;
 
                 args.format.format_unit(&user_id);
+            }
+            UsersCommands::ListSpaces { user_id } => {
+                let spaces = client.list_user_spaces(&user_id).await?;
+
+                args.format.format_many(&spaces);
+            }
+            UsersCommands::ListRoles { user_id } => {
+                let roles = client.list_user_roles(&user_id).await?;
+
+                args.format.format_many(&roles);
             }
         },
         Commands::Permissions(command) => match command {
