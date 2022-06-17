@@ -13,9 +13,9 @@ use super::AnimationClip;
 
 #[derive(Component)]
 pub struct GraphDefinition {
-    pub current_node_index: usize,
-    pub nodes: Vec<Box<dyn Node>>,
-    pub connections: Vec<Connection>,
+    pub(crate) current_node_index: usize,
+    pub(crate) nodes: Vec<Box<dyn Node>>,
+    pub(crate) connections: Vec<Connection>,
 }
 
 impl GraphDefinition {

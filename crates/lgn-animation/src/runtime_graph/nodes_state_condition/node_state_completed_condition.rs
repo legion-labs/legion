@@ -6,11 +6,11 @@ use crate::runtime_graph::{
 };
 
 pub struct StateCompletedConditionNode {
-    settings: Settings,
+    pub(crate) settings: Settings,
 
-    source_state_node: StateNode,
-    result: bool,
-    duration_node: FloatValueNode,
+    pub(crate) source_state_node: StateNode,
+    pub(crate) result: bool,
+    pub(crate) duration_node: FloatValueNode,
 }
 
 impl BoolValueNode for StateCompletedConditionNode {
@@ -24,6 +24,6 @@ impl StateCompletedConditionNode {
 }
 
 pub struct Settings {
-    source_state_node_idx: i16,
-    transition_duration: f32,
+    pub(crate) source_state_node_idx: usize,
+    pub(crate) transition_duration: f32,
 }

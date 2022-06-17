@@ -1,8 +1,8 @@
 use crate::runtime_graph::nodes_state_condition::value_nodes::node_bool_value::BoolValueNode;
 
 pub struct TimeConditionNode {
-    pub required_elapsed_time: f32,
-    pub time_since_last_verification: f32,
+    pub(crate) required_elapsed_time: f32,
+    pub(crate) time_since_last_verification: f32,
 }
 
 impl BoolValueNode for TimeConditionNode {
