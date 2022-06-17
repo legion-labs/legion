@@ -9,11 +9,12 @@ use sqlx::{migrate::Migrator, mysql::MySqlRow, MySqlConnection, Row};
 
 use super::PermissionsProvider;
 use crate::types::{
-    Permission, PermissionId, PermissionList, PermissionSet, Role, RoleAssignation, RoleId,
-    RoleList, Space, SpaceId, SpaceUpdate, UserId,
+    Permission, PermissionId, PermissionList, PermissionSet, Role, RoleAssignation,
+    RoleAssignationPatch, RoleId, RoleList, Space, SpaceId, SpaceUpdate, UserAlias,
+    UserAliasAssociation, UserId,
 };
 
-use super::Result;
+use super::{Error, Result};
 
 // The SQL migrations.
 static MIGRATIONS: Migrator = sqlx::migrate!("migrations/mysql");
@@ -77,21 +78,22 @@ impl MySqlDal {
     pub async fn init_stack(&self, user_id: &UserId) -> Result<bool> {
         let mut tx = self.sqlx_pool.begin().await?;
 
-        let result = if !sqlx::query("SELECT COUNT(1) FROM `users_to_roles` LIMIT 1 FOR UPDATE")
-            .fetch_one(&mut tx)
-            .await?
-            .get::<bool, _>(0)
-        {
-            sqlx::query("INSERT INTO `users_to_roles` (user_id, role_id) VALUES (?, ?)")
-                .bind(user_id)
-                .bind(RoleId::SUPERADMIN)
-                .execute(&mut tx)
-                .await?;
+        let result =
+            if !sqlx::query("SELECT COUNT(1) FROM `global_users_to_roles` LIMIT 1 FOR UPDATE")
+                .fetch_one(&mut tx)
+                .await?
+                .get::<bool, _>(0)
+            {
+                sqlx::query("INSERT INTO `global_users_to_roles` (user_id, role_id) VALUES (?, ?)")
+                    .bind(user_id)
+                    .bind(RoleId::SUPERADMIN)
+                    .execute(&mut tx)
+                    .await?;
 
-            true
-        } else {
-            false
-        };
+                true
+            } else {
+                false
+            };
 
         tx.commit().await.map_err(Into::into).map(|_| result)
     }
@@ -197,55 +199,265 @@ impl MySqlDal {
     }
 
     pub async fn list_all_roles_for_user(&self, user_id: &UserId) -> Result<Vec<RoleAssignation>> {
-        self.list_all_roles_for_user_tx(&self.sqlx_pool, user_id)
-            .await
+        let mut conn = self.sqlx_pool.acquire().await?;
+
+        self.list_all_roles_for_user_tx(&mut conn, user_id).await
     }
 
-    async fn list_roles_for_user_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
+    pub async fn patch_roles_for_user(
+        &self,
+        user_id: &UserId,
+        role_assignation_patch: &RoleAssignationPatch,
+    ) -> Result<Vec<RoleAssignation>> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
+        self.patch_roles_for_user_tx(&mut tx, user_id, role_assignation_patch)
+            .await?;
+
+        let role_list = self.list_all_roles_for_user_tx(&mut tx, user_id).await?;
+
+        tx.commit().await.map(|_| role_list).map_err(Into::into)
+    }
+
+    async fn patch_roles_for_user_tx(
+        &self,
+        tx: &mut MySqlConnection,
+        user_id: &UserId,
+        role_assignation_patch: &RoleAssignationPatch,
+    ) -> Result<()> {
+        for role_assignation in &role_assignation_patch.set {
+            self.set_role_for_user_tx(&mut *tx, user_id, role_assignation)
+                .await?;
+        }
+
+        for role_assignation in &role_assignation_patch.unset {
+            self.unset_role_for_user_tx(&mut *tx, user_id, role_assignation)
+                .await?;
+        }
+
+        Ok(())
+    }
+
+    async fn set_role_for_user_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
         &self,
         tx: Tx,
+        user_id: &UserId,
+        role_assignation: &RoleAssignation,
+    ) -> Result<()> {
+        if let Some(space_id) = &role_assignation.space_id {
+            sqlx::query(
+                "INSERT INTO `space_users_to_roles` (`user_id`, `role_id`, `space_id`) VALUES (?, ?, ?)",
+            )
+            .bind(user_id)
+            .bind(&role_assignation.role_id)
+            .bind(space_id)
+        } else {
+            sqlx::query(
+                "INSERT INTO `global_users_to_roles` (`user_id`, `role_id`) VALUES (?, ?)",
+            )
+            .bind(user_id)
+            .bind(&role_assignation.role_id)
+        }
+        .execute(tx)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn unset_role_for_user_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
+        &self,
+        tx: Tx,
+        user_id: &UserId,
+        role_assignation: &RoleAssignation,
+    ) -> Result<()> {
+        if let Some(space_id) = &role_assignation.space_id {
+            sqlx::query(
+                "DELETE FROM `space_users_to_roles` WHERE `user_id` = ? AND `role_id` = ? AND `space_id` = ?",
+            )
+            .bind(user_id)
+            .bind(&role_assignation.role_id)
+            .bind(space_id)
+        } else {
+            sqlx::query(
+                "DELETE FROM `global_users_to_roles` WHERE `user_id` = ? AND `role_id` = ?",
+            )
+            .bind(user_id)
+            .bind(&role_assignation.role_id)
+        }
+        .execute(tx)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn list_roles_for_user_tx(
+        &self,
+        tx: &mut MySqlConnection,
         user_id: &UserId,
         space_id: Option<&SpaceId>,
     ) -> Result<Vec<RoleAssignation>> {
-        let query = if let Some(space_id) = space_id {
-            sqlx::query("SELECT role_id, space_id FROM `users_to_roles` WHERE `user_id` = ? AND (`space_id` IS NULL OR `space_id` = ?)")
-            .bind(user_id)
-            .bind(space_id)
-        } else {
-            sqlx::query("SELECT role_id, space_id FROM `users_to_roles` WHERE `user_id` = ? AND `space_id` IS NULL")
-            .bind(user_id)
-        };
+        let mut roles = self
+            .list_global_roles_for_user_tx(&mut *tx, user_id)
+            .await?;
 
-        query
+        if let Some(space_id) = space_id {
+            roles.append(
+                &mut self
+                    .list_space_roles_for_user_tx(&mut *tx, user_id, space_id)
+                    .await?,
+            );
+        }
+
+        Ok(roles)
+    }
+
+    async fn list_global_roles_for_user_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
+        &self,
+        tx: Tx,
+        user_id: &UserId,
+    ) -> Result<Vec<RoleAssignation>> {
+        sqlx::query("SELECT role_id FROM `global_users_to_roles` WHERE `user_id` = ?")
+            .bind(user_id)
             .fetch_all(tx)
             .await?
             .into_iter()
             .map(|row| {
                 Ok(RoleAssignation {
                     role_id: row.get::<&str, _>(0).parse()?,
-                    space_id: row.get(1),
+                    space_id: None,
                 })
             })
             .collect::<Result<_>>()
     }
 
-    async fn list_all_roles_for_user_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
+    async fn list_space_roles_for_user_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
         &self,
         tx: Tx,
         user_id: &UserId,
+        space_id: &SpaceId,
     ) -> Result<Vec<RoleAssignation>> {
-        sqlx::query("SELECT role_id, space_id FROM `users_to_roles` WHERE `user_id` = ?")
+        sqlx::query(
+            "SELECT role_id FROM `space_users_to_roles` WHERE `user_id` = ? AND `space_id` = ?",
+        )
+        .bind(user_id)
+        .bind(space_id)
+        .fetch_all(tx)
+        .await?
+        .into_iter()
+        .map(|row| {
+            Ok(RoleAssignation {
+                role_id: row.get::<&str, _>(0).parse()?,
+                space_id: Some(space_id.clone()),
+            })
+        })
+        .collect::<Result<_>>()
+    }
+
+    pub async fn register_user_alias(
+        &self,
+        alias: &UserAlias,
+        user_id: &UserId,
+    ) -> Result<Vec<UserAliasAssociation>> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
+        sqlx::query("INSERT INTO `users_aliases` (`alias`, `user_id`) VALUES (?, ?)")
+            .bind(alias)
             .bind(user_id)
+            .execute(&mut *tx)
+            .await?;
+
+        let user_aliases = self.list_user_aliases_tx(&mut *tx).await?;
+
+        tx.commit().await.map(|_| user_aliases).map_err(Into::into)
+    }
+
+    pub async fn unregister_user_alias(
+        &self,
+        alias: &UserAlias,
+    ) -> Result<Vec<UserAliasAssociation>> {
+        let mut tx = self.sqlx_pool.begin().await?;
+
+        let r = sqlx::query("DELETE FROM `users_aliases` WHERE `alias` = ?")
+            .bind(alias)
+            .execute(&self.sqlx_pool)
+            .await?;
+
+        if r.rows_affected() == 0 {
+            return Err(Error::DoesNotExist);
+        }
+
+        let user_aliases = self.list_user_aliases_tx(&mut *tx).await?;
+
+        tx.commit().await.map(|_| user_aliases).map_err(Into::into)
+    }
+
+    pub async fn list_user_aliases(&self) -> Result<Vec<UserAliasAssociation>> {
+        self.list_user_aliases_tx(&self.sqlx_pool).await
+    }
+
+    async fn list_user_aliases_tx<'tx, Tx: sqlx::mysql::MySqlExecutor<'tx>>(
+        &self,
+        tx: Tx,
+    ) -> Result<Vec<UserAliasAssociation>> {
+        sqlx::query("SELECT `alias`, `user_id` FROM `users_aliases`")
             .fetch_all(tx)
+            .await?
+            .into_iter()
+            .map(|row| {
+                Ok(UserAliasAssociation {
+                    alias: row.get::<&str, _>(0).parse()?,
+                    user_id: row.get::<&str, _>(1).parse()?,
+                })
+            })
+            .collect()
+    }
+
+    pub async fn resolve_user_alias(&self, user_alias: &UserAlias) -> Result<UserId> {
+        let row = sqlx::query("SELECT `user_id` FROM `users_aliases` WHERE `alias` = ?")
+            .bind(user_alias)
+            .fetch_one(&self.sqlx_pool)
+            .await?;
+
+        Ok(row.try_get::<&str, _>(0)?.parse()?)
+    }
+
+    async fn list_all_roles_for_user_tx(
+        &self,
+        tx: &mut MySqlConnection,
+        user_id: &UserId,
+    ) -> Result<Vec<RoleAssignation>> {
+        let mut roles =
+            sqlx::query("SELECT role_id FROM `global_users_to_roles` WHERE `user_id` = ?")
+                .bind(user_id)
+                .fetch_all(&mut *tx)
+                .await?
+                .into_iter()
+                .map(|row| {
+                    Ok(RoleAssignation {
+                        role_id: row.get::<&str, _>(0).parse()?,
+                        space_id: None,
+                    })
+                })
+                .collect::<Result<Vec<_>>>()?;
+
+        roles.append(
+            &mut sqlx::query(
+                "SELECT role_id, space_id FROM `space_users_to_roles` WHERE `user_id` = ?",
+            )
+            .bind(user_id)
+            .fetch_all(&mut *tx)
             .await?
             .into_iter()
             .map(|row| {
                 Ok(RoleAssignation {
                     role_id: row.get::<&str, _>(0).parse()?,
-                    space_id: row.get(1),
+                    space_id: Some(row.get(1)),
                 })
             })
-            .collect::<Result<_>>()
+            .collect::<Result<_>>()?,
+        );
+
+        Ok(roles)
     }
 
     async fn list_all_permissions_by_space_for_user_tx(
@@ -372,10 +584,14 @@ impl MySqlDal {
 
         let space = self.get_space_tx(&mut tx, space_id).await?;
 
-        sqlx::query("DELETE FROM `spaces` WHERE `id` = ?")
+        let r = sqlx::query("DELETE FROM `spaces` WHERE `id` = ?")
             .bind(space_id)
             .execute(&mut tx)
             .await?;
+
+        if r.rows_affected() == 0 {
+            return Err(Error::DoesNotExist);
+        }
 
         tx.commit().await.map(|_| space).map_err(Into::into)
     }

@@ -155,3 +155,18 @@ components:
       description: A list of role assignations.
       items:
         $ref: "#/components/schemas/RoleAssignation"
+    RoleAssignationPatch:
+      description: A patch for role assignations.
+      type: object
+      properties:
+        set:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleAssignation"
+        unset:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleAssignation"
+      required:
+        - set
+        - unset

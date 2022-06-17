@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     fmt::{Display, Formatter},
     hash::Hash,
     str::FromStr,
@@ -248,7 +248,7 @@ impl TryFrom<crate::api::role::RoleUserAssignation> for RoleUserAssignation {
 }
 
 /// Defines the assignation of a role, in an optional space.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[cfg_attr(feature = "tabled", derive(Tabled))]
 pub struct RoleAssignation {
     pub role_id: RoleId,
@@ -295,5 +295,79 @@ impl TryFrom<crate::api::role::RoleAssignation> for RoleAssignation {
             role_id: role_assignation.role_id.try_into()?,
             space_id: role_assignation.space_id.map(Into::into),
         })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct RoleAssignationPatch {
+    pub set: BTreeSet<RoleAssignation>,
+    pub unset: BTreeSet<RoleAssignation>,
+}
+
+impl RoleAssignationPatch {
+    pub fn single_addition(role_id: RoleId, space_id: Option<SpaceId>) -> Self {
+        Self {
+            set: [RoleAssignation { role_id, space_id }]
+                .into_iter()
+                .collect(),
+            unset: BTreeSet::new(),
+        }
+    }
+
+    pub fn single_removal(role_id: RoleId, space_id: Option<SpaceId>) -> Self {
+        Self {
+            set: BTreeSet::new(),
+            unset: [RoleAssignation { role_id, space_id }]
+                .into_iter()
+                .collect(),
+        }
+    }
+}
+
+impl From<RoleAssignationPatch> for crate::api::role::RoleAssignationPatch {
+    fn from(role_assignation_patch: RoleAssignationPatch) -> Self {
+        Self {
+            set: role_assignation_patch
+                .set
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            unset: role_assignation_patch
+                .unset
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        }
+    }
+}
+
+impl TryFrom<crate::api::role::RoleAssignationPatch> for RoleAssignationPatch {
+    type Error = Error;
+
+    fn try_from(role_assignation_patch: crate::api::role::RoleAssignationPatch) -> Result<Self> {
+        let unset = role_assignation_patch
+            .unset
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<crate::types::Result<BTreeSet<RoleAssignation>>>()?;
+
+        let set = role_assignation_patch
+            .set
+            .into_iter()
+            .filter_map(|role_assignation| match role_assignation.try_into() {
+                Ok(role_assignation) => {
+                    // If the unset list contain the same role assignation, we
+                    // remove it from the set to avoid useless work.
+                    if unset.contains(&role_assignation) {
+                        None
+                    } else {
+                        Some(Ok(role_assignation))
+                    }
+                }
+                Err(err) => Some(Err(err)),
+            })
+            .collect::<crate::types::Result<BTreeSet<RoleAssignation>>>()?;
+
+        Ok(Self { set, unset })
     }
 }

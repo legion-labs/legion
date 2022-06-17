@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use clap::{Parser, Subcommand};
 use lgn_governance::{
     formatter::Format,
-    types::{ExtendedUserId, SpaceId, SpaceUpdate},
+    types::{ExtendedUserId, RoleAssignationPatch, RoleId, SpaceId, SpaceUpdate, UserAlias},
     Config,
 };
 use lgn_telemetry_sink::TelemetryGuardBuilder;
@@ -69,6 +69,38 @@ enum UsersCommands {
     ListRoles {
         #[clap(help = "The user's ID")]
         user_id: ExtendedUserId,
+    },
+    #[clap(name = "assign-role", about = "Assign a role to the user")]
+    AssignRole {
+        #[clap(help = "The user's ID")]
+        user_id: ExtendedUserId,
+        #[clap(help = "The role")]
+        role_id: RoleId,
+        #[clap(help = "The space into which the role is assigned")]
+        space_id: Option<SpaceId>,
+    },
+    #[clap(name = "unassign-role", about = "Unassign a role from a user")]
+    UnassignRole {
+        #[clap(help = "The user's ID")]
+        user_id: ExtendedUserId,
+        #[clap(help = "The role")]
+        role_id: RoleId,
+        #[clap(help = "The space into which the role is unassigned")]
+        space_id: Option<SpaceId>,
+    },
+    #[clap(name = "list-aliases", about = "List the user aliases")]
+    ListAliases,
+    #[clap(name = "register-alias", about = "Register a new alias for a user")]
+    RegisterAlias {
+        #[clap(help = "The user alias")]
+        user_alias: UserAlias,
+        #[clap(help = "The user's ID")]
+        user_id: ExtendedUserId,
+    },
+    #[clap(name = "unregister-alias", about = "Unregister an alias for a user")]
+    UnregisterAlias {
+        #[clap(help = "The user alias")]
+        user_alias: UserAlias,
     },
 }
 
@@ -171,6 +203,52 @@ async fn main() -> anyhow::Result<()> {
                 let roles = client.list_user_roles(&user_id).await?;
 
                 args.format.format_many(&roles);
+            }
+            UsersCommands::AssignRole {
+                user_id,
+                role_id,
+                space_id,
+            } => {
+                let roles = client
+                    .patch_user_roles(
+                        &user_id,
+                        RoleAssignationPatch::single_addition(role_id, space_id),
+                    )
+                    .await?;
+
+                args.format.format_many(&roles);
+            }
+            UsersCommands::UnassignRole {
+                user_id,
+                role_id,
+                space_id,
+            } => {
+                let roles = client
+                    .patch_user_roles(
+                        &user_id,
+                        RoleAssignationPatch::single_removal(role_id, space_id),
+                    )
+                    .await?;
+
+                args.format.format_many(&roles);
+            }
+            UsersCommands::ListAliases => {
+                let user_aliases = client.list_users_aliases().await?;
+
+                args.format.format_many(&user_aliases);
+            }
+            UsersCommands::RegisterAlias {
+                user_alias,
+                user_id,
+            } => {
+                let user_aliases = client.register_user_alias(&user_alias, &user_id).await?;
+
+                args.format.format_many(&user_aliases);
+            }
+            UsersCommands::UnregisterAlias { user_alias } => {
+                let user_aliases = client.unregister_user_alias(&user_alias).await?;
+
+                args.format.format_many(&user_aliases);
             }
         },
         Commands::Permissions(command) => match command {

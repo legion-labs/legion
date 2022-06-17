@@ -5,8 +5,8 @@ use http::{Request, Response};
 use hyper::service::Service;
 
 use crate::types::{
-    ExtendedUserId, Permission, Role, RoleAssignation, Space, SpaceId, SpaceUpdate, UserId,
-    UserInfo, Workspace,
+    ExtendedUserId, Permission, Role, RoleAssignation, RoleAssignationPatch, Space, SpaceId,
+    SpaceUpdate, UserAlias, UserAliasAssociation, UserId, UserInfo, Workspace,
 };
 
 /// A client for the governance service.
@@ -159,6 +159,39 @@ where
                 .collect::<crate::types::Result<Vec<_>>>()
                 .map_err(Into::into),
             ListUserRolesResponse::Status404 { body, .. } => {
+                Err(Error::UserNotFound(body.try_into()?))
+            }
+        }
+    }
+
+    /// Patch the roles of a user.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the client does not have the
+    /// appropriate permissions or if the user does not exist.
+    pub async fn patch_user_roles(
+        &self,
+        user_id: &ExtendedUserId,
+        role_assignation_patch: RoleAssignationPatch,
+    ) -> Result<Vec<RoleAssignation>> {
+        use crate::api::user::client::{PatchUserRolesRequest, PatchUserRolesResponse};
+
+        match self
+            .user_client
+            .patch_user_roles(PatchUserRolesRequest {
+                user_id: user_id.clone().into(),
+                body: role_assignation_patch.into(),
+            })
+            .await?
+        {
+            PatchUserRolesResponse::Status200 { body, .. } => body
+                .0
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<crate::types::Result<Vec<_>>>()
+                .map_err(Into::into),
+            PatchUserRolesResponse::Status404 { body, .. } => {
                 Err(Error::UserNotFound(body.try_into()?))
             }
         }
@@ -369,6 +402,79 @@ where
         match self.workspace_client.list_workspaces(request).await? {
             ListWorkspacesResponse::Status200 { body, .. } => {
                 Ok(body.0.into_iter().map(Into::into).collect())
+            }
+        }
+    }
+
+    /// List all the users aliases.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the client does not have the
+    /// appropriate permissions.
+    pub async fn list_users_aliases(&self) -> Result<Vec<UserAliasAssociation>> {
+        use crate::api::user::client::ListUsersAliasesResponse;
+
+        match self.user_client.list_users_aliases().await? {
+            ListUsersAliasesResponse::Status200 { body, .. } => {
+                Ok(body.0.into_iter().map(Into::into).collect())
+            }
+        }
+    }
+
+    /// Register a user alias.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the client does not have the
+    /// appropriate permissions.
+    pub async fn register_user_alias(
+        &self,
+        user_alias: &UserAlias,
+        user_id: &ExtendedUserId,
+    ) -> Result<Vec<UserAliasAssociation>> {
+        use crate::api::user::client::RegisterUserAliasResponse;
+
+        let request = crate::api::user::client::RegisterUserAliasRequest {
+            user_alias: user_alias.clone().into(),
+            body: user_id.clone().into(),
+        };
+
+        match self.user_client.register_user_alias(request).await? {
+            RegisterUserAliasResponse::Status200 { body, .. } => {
+                Ok(body.0.into_iter().map(Into::into).collect())
+            }
+            RegisterUserAliasResponse::Status404 { body, .. } => {
+                Err(Error::UserNotFound(body.try_into()?))
+            }
+            RegisterUserAliasResponse::Status409 { body, .. } => {
+                Err(Error::UserAliasAlreadyExists(body.into()))
+            }
+        }
+    }
+
+    /// Unregister a user alias.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the client does not have the
+    /// appropriate permissions.
+    pub async fn unregister_user_alias(
+        &self,
+        user_alias: &UserAlias,
+    ) -> Result<Vec<UserAliasAssociation>> {
+        use crate::api::user::client::UnregisterUserAliasResponse;
+
+        let request = crate::api::user::client::UnregisterUserAliasRequest {
+            user_alias: user_alias.clone().into(),
+        };
+
+        match self.user_client.unregister_user_alias(request).await? {
+            UnregisterUserAliasResponse::Status200 { body, .. } => {
+                Ok(body.0.into_iter().map(Into::into).collect())
+            }
+            UnregisterUserAliasResponse::Status404 { body, .. } => {
+                Err(Error::UserAliasNotFound(body.into()))
             }
         }
     }

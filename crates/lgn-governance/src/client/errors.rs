@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::types::{ExtendedUserId, Space, SpaceId};
+use crate::types::{ExtendedUserId, Space, SpaceId, UserAlias};
 
 /// An error type.
 #[derive(Error, Debug)]
@@ -21,6 +21,10 @@ pub enum Error {
     SpaceInUse(Space),
     #[error("the user `{0}` was not found")]
     UserNotFound(ExtendedUserId),
+    #[error("the user alias `{0}` is already registered")]
+    UserAliasAlreadyExists(UserAlias),
+    #[error("the user alias `{0}` does not exist")]
+    UserAliasNotFound(UserAlias),
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

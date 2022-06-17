@@ -146,17 +146,27 @@ impl Server {
         &self,
         extended_user_id: crate::api::user::ExtendedUserId,
         caller_user_id: &UserId,
-    ) -> Result<UserId> {
+    ) -> Result<Option<UserId>> {
         let extended_user_id: ExtendedUserId = extended_user_id.try_into()?;
 
         match extended_user_id {
-            ExtendedUserId::UserId(user_id) => Ok(user_id),
-            ExtendedUserId::Email(email) => {
-                self.aws_cognito_dal
-                    .resolve_username_by("email", &email)
-                    .await
+            ExtendedUserId::UserId(user_id) => Ok(Some(user_id)),
+            ExtendedUserId::Email(email) => self
+                .aws_cognito_dal
+                .resolve_username_by("email", &email)
+                .await
+                .map(Some),
+            ExtendedUserId::Alias(user_alias) => {
+                match self.mysql_dal.resolve_user_alias(&user_alias).await {
+                    Ok(user_id) => Ok(Some(user_id)),
+                    Err(Error::DoesNotExist) => Ok(None),
+                    Err(err) => Err(Error::Unexpected(format!(
+                        "failed to resolve user alias: {}",
+                        err
+                    ))),
+                }
             }
-            ExtendedUserId::MySelf => Ok(caller_user_id.clone()),
+            ExtendedUserId::MySelf => Ok(Some(caller_user_id.clone())),
         }
     }
 }

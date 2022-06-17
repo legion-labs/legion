@@ -12,6 +12,8 @@ pub enum Error {
     InvalidRoleId(String),
     #[error("invalid user id: {0}")]
     InvalidUserId(String),
+    #[error("invalid user alias: {0}")]
+    InvalidUserAlias(String),
     #[error("unexpected: {0}")]
     Unexpected(String),
 }
