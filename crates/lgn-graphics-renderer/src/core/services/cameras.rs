@@ -2,7 +2,7 @@ use lgn_graphics_cgen_runtime::Float4;
 use lgn_math::{Angle, DMat4, Mat4, Vec2, Vec4};
 use lgn_transform::prelude::GlobalTransform;
 
-use crate::{cgen, components::CameraComponent, UP_VECTOR};
+use crate::{cgen, components::CameraComponent};
 
 pub fn view_transform(camera_transform: &GlobalTransform) -> GlobalTransform {
     let eye = camera_transform.translation.as_dvec3();
