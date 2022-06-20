@@ -28,14 +28,10 @@ impl Node for StateMachineNode {
         Some(&self.states[self.active_state_idx])
     }
 }
-
-// Transition
 pub struct TransitionInfo {
     pub(crate) transition_node: TransitionNode,
     pub(crate) condition_node: Box<dyn BoolValueNode>,
 }
-
-// State
 pub struct StateInfo {
     pub(crate) state_node_idx: usize,
     pub(crate) state_node: StateNode,
