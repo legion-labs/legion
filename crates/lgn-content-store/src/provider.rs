@@ -55,6 +55,16 @@ impl Provider {
         Self::new(MemoryContentProvider::new(), MemoryAliasProvider::new())
     }
 
+    /// Disable unwrites for testing purposes mainly.
+    ///
+    /// # Errors
+    ///   None
+    #[must_use]
+    pub fn with_disabled_unwrites(mut self) -> Self {
+        self.content_provider_supports_unwrite = false;
+        self
+    }
+
     /// Instantiate a new small content provider that wraps the specified
     /// provider using the default identifier size threshold.
     ///

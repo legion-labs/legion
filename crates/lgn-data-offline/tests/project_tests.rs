@@ -74,7 +74,7 @@ mod tests {
     #[tokio::test]
     async fn local_changes() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Arc::new(Provider::new_in_memory().with_disabled_unwrites());
         let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
@@ -88,7 +88,7 @@ mod tests {
     async fn commit() {
         let root = tempfile::tempdir().unwrap();
 
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Arc::new(Provider::new_in_memory().with_disabled_unwrites());
         let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
@@ -145,7 +145,7 @@ mod tests {
     #[tokio::test]
     async fn change_to_previous() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Arc::new(Provider::new_in_memory().with_disabled_unwrites());
         let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
@@ -191,7 +191,7 @@ mod tests {
     #[tokio::test]
     async fn immediate_dependencies() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Arc::new(Provider::new_in_memory().with_disabled_unwrites());
         let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");
@@ -231,7 +231,7 @@ mod tests {
     #[tokio::test]
     async fn rename() {
         let root = tempfile::tempdir().unwrap();
-        let provider = Arc::new(Provider::new_in_memory());
+        let provider = Arc::new(Provider::new_in_memory().with_disabled_unwrites());
         let mut project = Project::new_with_remote_mock(root.path(), provider)
             .await
             .expect("new project");

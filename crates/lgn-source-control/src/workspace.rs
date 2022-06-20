@@ -387,14 +387,16 @@ where
             }
 
             // update indices
-            let _replaced_id = self
+            let replaced_id = self
                 .main_index
                 .replace_resource(id, resource_identifier.clone())
                 .await?;
-            let _replaced_id = self
+            assert_eq!(&replaced_id, old_identifier);
+            let replaced_id = self
                 .path_index
                 .replace_resource(&path.into(), resource_identifier.clone())
                 .await?;
+            assert_eq!(&replaced_id, old_identifier);
 
             // unwrite previous resource content from content-store
             self.persistent_provider
