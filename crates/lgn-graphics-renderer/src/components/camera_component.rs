@@ -127,6 +127,51 @@ pub(crate) fn apply_camera_setups(
     drop(camera_setups);
 }
 
+pub struct CameraSmooth {
+    position: Vec3,
+    rotation: Quat,
+
+    smooth_time: f32,
+    smooth_rotation_left: f32,
+
+    set: bool,
+}
+
+impl Default for CameraSmooth {
+    fn default() -> Self {
+        CameraSmooth {
+            position: Vec3::default(),
+            rotation: Quat::default(),
+            smooth_time: 0.2,
+            smooth_rotation_left: 0.0,
+            set: false,
+        }
+    }
+}
+
+impl CameraSmooth {
+    pub fn init(&mut self, rotation: Quat) {
+        self.rotation = rotation;
+        self.set = true;
+    }
+
+    pub fn smooth_rotation(
+        &mut self,
+        start_rotation: Quat,
+        new_rotation: Quat,
+        delta_time: f32,
+    ) -> Quat {
+        if new_rotation != self.rotation {
+            self.rotation = new_rotation;
+            self.smooth_rotation_left = self.smooth_time;
+        }
+        self.smooth_rotation_left = (self.smooth_rotation_left - delta_time).max(0.0);
+
+        let t = self.smooth_rotation_left / self.smooth_time;
+        start_rotation * (t) + new_rotation * (1.0 - t)
+    }
+}
+
 #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
 pub(crate) fn camera_control(
     mut cameras_query: Query<'_, '_, &mut GlobalTransform, With<CameraComponent>>,
@@ -138,6 +183,7 @@ pub(crate) fn camera_control(
     gamepad_axes: Res<'_, Axis<GamepadAxis>>,
     gamepad_buttons: Res<'_, Input<GamepadButton>>,
     mut camera_options: ResMut<'_, CameraOptions>,
+    mut camera_smooth: Local<'_, CameraSmooth>,
 
     time: Res<'_, Time>,
 ) {
@@ -148,6 +194,9 @@ pub(crate) fn camera_control(
     for mut transform in cameras_query.iter_mut() {
         let transform = transform.as_mut();
 
+        if !camera_smooth.set {
+            camera_smooth.init(transform.rotation);
+        }
         if keys.pressed(KeyCode::Z)
             && !keys.any_pressed([
                 KeyCode::LShift,
@@ -227,13 +276,17 @@ pub(crate) fn camera_control(
                 let rotation = (rotation_speed.degrees() * time.delta_seconds())
                     .min(10.0)
                     .to_radians(); // clamping rotation speed for when it's laggy
-                let (yaw, pitch) = dir_to_yaw_pitch(transform.forward());
+                let (yaw, pitch) = dir_to_yaw_pitch(-(camera_smooth.rotation * Vec3::Z));
                 let delta_yaw = mouse_motion_event.delta.x * rotation;
                 let delta_pitch = mouse_motion_event.delta.y * rotation;
                 let yaw = (yaw - delta_yaw) % std::f32::consts::TAU;
                 let pitch = (pitch - delta_pitch)
                     .clamp(std::f32::EPSILON, std::f32::consts::PI - std::f32::EPSILON);
-                transform.rotation = Quat::from_euler(EulerRot::YZX, 0.0, yaw, pitch);
+                transform.rotation = camera_smooth.smooth_rotation(
+                    transform.rotation,
+                    Quat::from_euler(EulerRot::YZX, 0.0, yaw, pitch),
+                    time.delta_seconds(),
+                );
             }
             for mouse_wheel_event in mouse_wheel_events.iter() {
                 // Different signs on Line and Pixel is correct. Line returns positive values when scrolling up
