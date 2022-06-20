@@ -219,7 +219,7 @@ impl RustOptions {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct TypeScriptAliasMappings(HashMap<PathBuf, ModulePath>);
 
 impl TypeScriptAliasMappings {
@@ -265,16 +265,16 @@ where
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct TypeScriptOptions {
     pub prettier_config_path: Option<PathBuf>,
     pub with_package_json: bool,
     pub skip_format: bool,
     pub alias_mappings: TypeScriptAliasMappings,
-    pub filename: Option<String>,
+    pub filename: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Language {
     Rust(RustOptions),
     TypeScript(TypeScriptOptions),

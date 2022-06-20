@@ -1,7 +1,7 @@
 import type { Observable } from "rxjs";
 
-import { Log } from "@lgn/apis/log";
-import { Runtime } from "@lgn/apis/runtime";
+import { Log } from "@lgn/api/log";
+import { Runtime } from "@lgn/api/runtime";
 import {
   EditorClientImpl,
   GrpcWebImpl as EditorImpl,
@@ -395,13 +395,15 @@ export async function getActiveScenes() {
 
 export function getEditorTraceEvents() {
   return editorLogStreamClient.logEntries({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 }
 
 export function getRuntimeTraceEvents() {
   return runtimeLogStreamClient.logEntries({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 }
 
@@ -414,10 +416,10 @@ export async function loadRuntimeManifest({
 }: {
   manifestId: string;
 }) {
-  return runtimeClient.loadManifest({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: new Blob([manifestId]),
-  });
+  return runtimeClient.loadManifest(
+    { spaceId: "0", workspaceId: "0" },
+    new Blob([manifestId])
+  );
 }
 
 export async function loadRuntimeRootAsset({
@@ -425,14 +427,15 @@ export async function loadRuntimeRootAsset({
 }: {
   rootAssetId: string;
 }) {
-  return runtimeClient.loadRootAsset({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: new Blob([rootAssetId]),
-  });
+  return runtimeClient.loadRootAsset(
+    { spaceId: "0", workspaceId: "0" },
+    new Blob([rootAssetId])
+  );
 }
 
 export async function pauseRuntime() {
   return runtimeClient.pause({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 }
