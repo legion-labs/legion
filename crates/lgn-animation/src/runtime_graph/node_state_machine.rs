@@ -41,12 +41,6 @@ impl Node for StateMachineNode {
     }
 }
 
-// Transition
-pub struct TransitionInfo {
-    pub(crate) transition_node: TransitionNode,
-    pub(crate) condition_node: Box<dyn BoolValueNode>,
-}
-
 impl StateMachineNode {
     pub fn evaluate_transitions() {}
     pub fn update_transition_stack() {}
@@ -54,7 +48,7 @@ impl StateMachineNode {
 
 // Todo! Add derivation from PoseNode::Settings
 pub struct Settings {
-    state_settings: Vec<StateSettings>,
+    // state_settings: Vec<StateSettings>,
     // default_state_idx: i16,
 }
 

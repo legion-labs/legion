@@ -42,7 +42,7 @@ pub struct AnimationClipNode {
 }
 
 #[component]
-pub struct EditorGraphDefinition2 {
+pub struct EditorGraphDefinition {
     states: Vec<AnimationClipNode>,
     connections: Vec<Connection>,
 }
@@ -54,7 +54,3 @@ pub trait Node {}
 pub struct StateMachineNode {}
 
 impl Node for StateMachineNode {}
-pub struct EditorGraphDefinition {
-    states: Vec<AnimationClipNode>,
-    connections: Vec<Connection>,
-}
