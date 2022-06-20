@@ -6,4 +6,6 @@ pub struct TransitionNode {
     pub(crate) target_node_id: usize,
 }
 
-impl Node for TransitionNode {}
+impl Node for TransitionNode {
+    fn update(&mut self, _time: f32) {}
+}
