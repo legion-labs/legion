@@ -1,6 +1,6 @@
 import { derived } from "svelte/store";
 
-import type { ResourceBrowser } from "@lgn/apis/editor";
+import type { ResourceBrowser } from "@lgn/api/editor";
 import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import { createAsyncStoreListOrchestrator } from "@lgn/web-client/src/orchestrators/async";

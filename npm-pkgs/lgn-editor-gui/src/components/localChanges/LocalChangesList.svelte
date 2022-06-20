@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Writable } from "svelte/store";
 
-  import type { SourceControl } from "@lgn/apis/editor";
+  import type { SourceControl } from "@lgn/api/editor";
 
   import contextMenu from "@/actions/contextMenu";
   import { fileName } from "@/lib/path";

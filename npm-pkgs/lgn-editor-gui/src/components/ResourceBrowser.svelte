@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
 
-  import type { ResourceBrowser } from "@lgn/apis/editor";
+  import type { ResourceBrowser } from "@lgn/api/editor";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
   import Loader from "@lgn/web-client/src/components/Loader.svelte";
   import { displayError } from "@lgn/web-client/src/lib/errors";

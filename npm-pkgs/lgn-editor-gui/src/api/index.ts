@@ -98,8 +98,9 @@ export async function getAllResources(searchToken = "") {
     searchToken: string
   ): Promise<ResourceBrowser.ResourceDescription[]> {
     const response = await resourceBrowserClient.searchResources({
-      params: { "space-id": "0", "workspace-id": "0" },
-      query: { token: searchToken },
+      spaceId: "0",
+      workspaceId: "0",
+      token: searchToken,
     });
 
     resourceDescriptions.push(...response.value.resource_descriptions);
@@ -124,8 +125,10 @@ export async function getRootResource(
       resource_descriptions: [resourceDescription],
     },
   } = await resourceBrowserClient.searchResources({
-    params: { "space-id": "0", "workspace-id": "0" },
-    query: { "root-resource-id": id, token: "" },
+    spaceId: "0",
+    workspaceId: "0",
+    rootResourceId: id,
+    token: "",
   });
 
   return resourceDescription ?? null;
@@ -148,7 +151,9 @@ export async function getResourceProperties(
   id: string
 ): Promise<ResourceWithProperties> {
   const response = await propertyInspectorClient.getProperties({
-    params: { "resource-id": id, "space-id": "0", "workspace-id": "0" },
+    resourceId: id,
+    spaceId: "0",
+    workspaceId: "0",
   });
 
   if (response.type !== "200") {
@@ -185,17 +190,21 @@ export async function updateResourceProperties(
   version: number,
   propertyUpdates: PropertyUpdate[]
 ) {
-  const response = await propertyInspectorClient.updateProperties({
-    params: { "resource-id": resourceId, "space-id": "0", "workspace-id": "0" },
-    body: {
+  const response = await propertyInspectorClient.updateProperties(
+    {
+      resourceId: resourceId,
+      spaceId: "0",
+      workspaceId: "0",
+    },
+    {
       version,
       updates: propertyUpdates.map(({ name, value }) => ({
         name: name,
         // eslint-disable-next-line camelcase
         json_value: JSON.stringify(value),
       })),
-    },
-  });
+    }
+  );
 
   if (response.type !== "204") {
     throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
@@ -209,7 +218,9 @@ export async function updateResourceProperties(
  */
 export async function updateSelection(resourceId: string) {
   const response = await propertyInspectorClient.updatePropertySelection({
-    params: { "resource-id": resourceId, "space-id": "0", "workspace-id": "0" },
+    resourceId: resourceId,
+    spaceId: "0",
+    workspaceId: "0",
   });
 
   if (response.type !== "204") {
@@ -227,11 +238,15 @@ export async function addPropertyInPropertyVector(
   resourceId: string,
   { path, index, jsonValue }: AddVectorSubProperty
 ) {
-  const response = await propertyInspectorClient.insertPropertyArrayItem({
-    params: { "resource-id": resourceId, "space-id": "0", "workspace-id": "0" },
+  const response = await propertyInspectorClient.insertPropertyArrayItem(
+    {
+      resourceId: resourceId,
+      spaceId: "0",
+      workspaceId: "0",
+    },
     // eslint-disable-next-line camelcase
-    body: { array_path: path, index: BigInt(index), json_value: jsonValue },
-  });
+    { array_path: path, index: BigInt(index), json_value: jsonValue }
+  );
 
   if (response.type !== "200") {
     throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
@@ -257,11 +272,15 @@ export async function removeVectorSubProperty(
   resourceId: string,
   { path, indices }: RemoveVectorSubProperty
 ) {
-  const response = await propertyInspectorClient.deletePropertiesArrayItem({
-    params: { "resource-id": resourceId, "space-id": "0", "workspace-id": "0" },
+  const response = await propertyInspectorClient.deletePropertiesArrayItem(
+    {
+      resourceId: resourceId,
+      spaceId: "0",
+      workspaceId: "0",
+    },
     // eslint-disable-next-line camelcase
-    body: { array_path: path, indices: indices.map(BigInt) },
-  });
+    { array_path: path, indices: indices.map(BigInt) }
+  );
 
   if (response.type !== "204") {
     throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
@@ -270,7 +289,8 @@ export async function removeVectorSubProperty(
 
 export async function getResourceTypes() {
   const response = await resourceBrowserClient.getResourceTypeNames({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 
   return response.value;
@@ -278,9 +298,9 @@ export async function getResourceTypes() {
 
 export async function getAvailableComponentTypes() {
   const response = await propertyInspectorClient.getAvailableDynTraits({
-    params: { "space-id": "0", "workspace-id": "0" },
-    // eslint-disable-next-line camelcase
-    query: { trait_name: "dyn Component" },
+    spaceId: "0",
+    workspaceId: "0",
+    traitName: "dyn Component",
   });
 
   return response.value;
@@ -297,9 +317,12 @@ export async function createResource({
   parentResourceId: string | undefined;
   uploadId: string | undefined;
 }) {
-  const response = await resourceBrowserClient.createResource({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: {
+  const response = await resourceBrowserClient.createResource(
+    {
+      spaceId: "0",
+      workspaceId: "0",
+    },
+    {
       // eslint-disable-next-line camelcase
       resource_name: resourceName,
       // eslint-disable-next-line camelcase
@@ -311,8 +334,8 @@ export async function createResource({
       parent_resource_id: parentResourceId,
       // eslint-disable-next-line camelcase
       init_values: [],
-    },
-  });
+    }
+  );
 
   return response.value;
 }
@@ -324,18 +347,24 @@ export async function renameResource({
   id: string;
   newPath: string;
 }) {
-  await resourceBrowserClient.renameResource({
-    params: { "space-id": "0", "workspace-id": "0" },
+  await resourceBrowserClient.renameResource(
+    {
+      spaceId: "0",
+      workspaceId: "0",
+    },
     // eslint-disable-next-line camelcase
-    body: { new_path: newPath, id },
-  });
+    { new_path: newPath, id }
+  );
 }
 
 export async function removeResource({ id }: { id: string }) {
-  await resourceBrowserClient.deleteResource({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: { id },
-  });
+  await resourceBrowserClient.deleteResource(
+    {
+      spaceId: "0",
+      workspaceId: "0",
+    },
+    { id }
+  );
 }
 
 export async function cloneResource({
@@ -345,26 +374,29 @@ export async function cloneResource({
   sourceId: string;
   targetParentId?: string;
 }) {
-  const response = await resourceBrowserClient.cloneResource({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: {
+  const response = await resourceBrowserClient.cloneResource(
+    {
+      spaceId: "0",
+      workspaceId: "0",
+    },
+    {
       // eslint-disable-next-line camelcase
       source_id: sourceId,
       // eslint-disable-next-line camelcase
       target_parent_id: targetParentId,
       // eslint-disable-next-line camelcase
       init_values: [],
-    },
-  });
+    }
+  );
 
   return response.value;
 }
 
 export async function revertResources({ ids }: { ids: string[] }) {
-  await sourceControlClient.revertResources({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: ids,
-  });
+  await sourceControlClient.revertResources(
+    { spaceId: "0", workspaceId: "0" },
+    ids
+  );
 }
 
 /**
@@ -383,10 +415,10 @@ export async function initFileUpload({
   name: string;
   size: number;
 }) {
-  const response = await sourceControlClient.contentUploadInit({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: { name, size: BigInt(size) },
-  });
+  const response = await sourceControlClient.contentUploadInit(
+    { spaceId: "0", workspaceId: "0" },
+    { name, size: BigInt(size) }
+  );
 
   if (response.type !== "200") {
     throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
@@ -402,10 +434,14 @@ export async function streamFileUpload({
   id: string;
   content: Blob;
 }): Promise<SourceControl.ContentUploadSucceeded> {
-  const response = await sourceControlClient.contentUpload({
-    params: { "space-id": "0", "workspace-id": "0", "transaction-id": id },
-    body: content,
-  });
+  const response = await sourceControlClient.contentUpload(
+    {
+      spaceId: "0",
+      workspaceId: "0",
+      transactionId: id,
+    },
+    content
+  );
 
   if (response.type !== "200") {
     throw new Error(`Request was not successful: ${JSON.stringify(response)}`);
@@ -423,29 +459,28 @@ export async function reparentResources({
   id: string;
   newPath: string;
 }) {
-  await resourceBrowserClient.reparentResource({
-    params: { "space-id": "0", "workspace-id": "0" },
+  await resourceBrowserClient.reparentResource(
+    { spaceId: "0", workspaceId: "0" },
     // eslint-disable-next-line camelcase
-    body: { id, new_path: newPath },
-  });
+    { id, new_path: newPath }
+  );
 }
 
 export async function syncLatest() {
-  await sourceControlClient.syncLatest({
-    params: { "space-id": "0", "workspace-id": "0" },
-  });
+  await sourceControlClient.syncLatest({ spaceId: "0", workspaceId: "0" });
 }
 
 export async function commitStagedResources({ message }: { message: string }) {
-  await sourceControlClient.commitStagedResources({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: { message },
-  });
+  await sourceControlClient.commitStagedResources(
+    { spaceId: "0", workspaceId: "0" },
+    { message }
+  );
 }
 
 export async function getStagedResources() {
   const response = await sourceControlClient.getStagedResources({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 
   return response.value;
@@ -454,20 +489,25 @@ export async function getStagedResources() {
 export async function openScene({ id }: { id: string }) {
   await resourceBrowserClient.openScene({
     // eslint-disable-next-line camelcase
-    params: { "space-id": "0", "workspace-id": "0", scene_id: id },
+    spaceId: "0",
+    workspaceId: "0",
+    sceneId: id,
   });
 }
 
 export async function closeScene({ id }: { id: string }) {
   await resourceBrowserClient.closeScene({
     // eslint-disable-next-line camelcase
-    params: { "space-id": "0", "workspace-id": "0", scene_id: id },
+    spaceId: "0",
+    workspaceId: "0",
+    sceneId: id,
   });
 }
 
 export async function getActiveSceneIds() {
   const response = await resourceBrowserClient.getActiveScenes({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 
   return response.value.scene_ids;
@@ -479,7 +519,9 @@ export async function getRuntimeSceneInfo({
   resourceId: string;
 }) {
   const response = await resourceBrowserClient.getRuntimeSceneInfo({
-    params: { "space-id": "0", "workspace-id": "0", "resource-id": resourceId },
+    spaceId: "0",
+    workspaceId: "0",
+    resourceId: resourceId,
   });
 
   return response.value;
@@ -505,7 +547,8 @@ export function getRuntimeTraceEvents() {
 
 export async function getLastMessage() {
   const response = await editorClient.getMessages({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 
   return response.type === "200" ? response.value : null;

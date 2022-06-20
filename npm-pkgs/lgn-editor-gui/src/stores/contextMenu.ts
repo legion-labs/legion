@@ -1,6 +1,6 @@
 import type { Writable } from "svelte/store";
 
-import type { ResourceBrowser, SourceControl } from "@lgn/apis/editor";
+import type { ResourceBrowser, SourceControl } from "@lgn/api/editor";
 import { createContextMenuStore } from "@lgn/web-client/src/stores/contextMenu";
 import type { Entry } from "@lgn/web-client/src/types/contextMenu";
 

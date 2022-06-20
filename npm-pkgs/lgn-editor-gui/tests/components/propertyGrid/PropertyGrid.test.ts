@@ -1,7 +1,7 @@
 import { cleanup } from "@testing-library/svelte";
 import { render } from "@testing-library/svelte";
 
-import type { PropertyInspector } from "@lgn/apis/editor";
+import type { PropertyInspector } from "@lgn/api/editor";
 
 import PropertyGrid from "@/components/propertyGrid/PropertyGrid.svelte";
 import { formatProperties } from "@/components/propertyGrid/lib/propertyGrid";

@@ -1,4 +1,4 @@
-import type { ResourceBrowser } from "@lgn/apis/editor";
+import type { ResourceBrowser } from "@lgn/api/editor";
 
 import type { Entry } from "./hierarchyTree";
 

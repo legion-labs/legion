@@ -1,4 +1,4 @@
-import type { PropertyInspector } from "@lgn/apis/editor";
+import type { PropertyInspector } from "@lgn/api/editor";
 
 import {
   buildDefaultPrimitiveProperty,

@@ -3,7 +3,7 @@
   import { onDestroy } from "svelte";
   import { readable } from "svelte/store";
 
-  import type { ResourceBrowser } from "@lgn/apis/editor";
+  import type { ResourceBrowser } from "@lgn/api/editor";
 
   import { resourceDragAndDropType } from "@/constants";
   import type { Entry } from "@/lib/hierarchyTree";

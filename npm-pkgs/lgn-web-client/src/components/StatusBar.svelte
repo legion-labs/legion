@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SourceControl } from "@lgn/apis/editor";
+  import type { SourceControl } from "@lgn/api/editor";
 
   import statusStore from "../stores/statusBarData";
   import Button from "./Button.svelte";

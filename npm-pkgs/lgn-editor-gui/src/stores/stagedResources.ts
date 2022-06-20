@@ -1,7 +1,7 @@
 import type { Writable } from "svelte/store";
 import { get, writable } from "svelte/store";
 
-import type { SourceControl } from "@lgn/apis/editor";
+import type { SourceControl } from "@lgn/api/editor";
 import log from "@lgn/web-client/src/lib/log";
 
 import { commitStagedResources, getStagedResources, syncLatest } from "@/api";

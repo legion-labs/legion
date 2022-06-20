@@ -2,7 +2,7 @@
   import { form as createForm, field } from "svelte-forms";
   import { required } from "svelte-forms/validators";
 
-  import type { ResourceBrowser } from "@lgn/apis/editor";
+  import type { ResourceBrowser } from "@lgn/api/editor";
   import Button from "@lgn/web-client/src/components/Button.svelte";
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import log from "@lgn/web-client/src/lib/log";

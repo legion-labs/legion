@@ -2,7 +2,7 @@
   import { form as createForm, field } from "svelte-forms";
   import { required } from "svelte-forms/validators";
 
-  import type { PropertyInspector } from "@lgn/apis/editor";
+  import type { PropertyInspector } from "@lgn/api/editor";
   import Button from "@lgn/web-client/src/components/Button.svelte";
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";

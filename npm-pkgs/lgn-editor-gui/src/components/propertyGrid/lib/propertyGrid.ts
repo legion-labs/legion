@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import type { PropertyInspector } from "@lgn/apis/editor";
+import type { PropertyInspector } from "@lgn/api/editor";
 import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import { filterMap } from "@lgn/web-client/src/lib/array";
 
