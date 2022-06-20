@@ -18,49 +18,37 @@ const plugins = [
     extensions: [".ts", ".svelte"],
   }),
   viteApiCodegen({
-    path: "../../crates/lgn-streamer/apis",
-    apiNames: ["streaming"],
-    withPackageJson: true,
     aliasMappings: {
       "../../crates/lgn-governance/apis/space.yaml": "Space",
       "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
     },
-    filename: "streaming",
-  }),
-  viteApiCodegen({
-    path: "../../crates/lgn-log/apis",
-    apiNames: ["log"],
-    withPackageJson: true,
-    aliasMappings: {
-      "../../crates/lgn-governance/apis/space.yaml": "Space",
-      "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
-    },
-    filename: "log",
-  }),
-  viteApiCodegen({
-    path: "../../crates/lgn-editor-srv/apis",
-    apiNames: [
-      "editor",
-      "property_inspector",
-      "resource_browser",
-      "source_control",
+    apiOptions: [
+      {
+        path: "../../crates/lgn-streamer/apis",
+        names: ["streaming"],
+        filename: "streaming",
+      },
+      {
+        path: "../../crates/lgn-log/apis",
+        names: ["log"],
+        filename: "log",
+      },
+      {
+        path: "../../crates/lgn-runtime-srv/apis",
+        names: ["runtime"],
+        filename: "runtime",
+      },
+      {
+        path: "../../crates/lgn-editor-srv/apis",
+        names: [
+          "editor",
+          "property_inspector",
+          "resource_browser",
+          "source_control",
+        ],
+        filename: "editor",
+      },
     ],
-    withPackageJson: true,
-    aliasMappings: {
-      "../../crates/lgn-governance/apis/space.yaml": "Space",
-      "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
-    },
-    filename: "editor",
-  }),
-  viteApiCodegen({
-    path: "../../crates/lgn-runtime-srv/apis",
-    apiNames: ["runtime"],
-    withPackageJson: true,
-    aliasMappings: {
-      "../../crates/lgn-governance/apis/space.yaml": "Space",
-      "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
-    },
-    filename: "runtime",
   }),
   // viteWasmPack({
   //   crates: [

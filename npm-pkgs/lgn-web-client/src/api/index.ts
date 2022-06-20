@@ -1,4 +1,4 @@
-import { Streaming } from "@lgn/apis/streaming";
+import { Streaming } from "@lgn/api/streaming";
 
 import { blobToJson, jsonToBlob } from "../lib/api";
 import { addAuthToClient } from "../lib/client";
@@ -75,11 +75,11 @@ export async function initializeStream(
 ) {
   const client = getClientFor(serverType);
 
-  const response = await client.initializeStream({
-    params: { "space-id": "0", "workspace-id": "0" },
+  const response = await client.initializeStream(
+    { spaceId: "0", workspaceId: "0" },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    body: jsonToBlob(localSessionDescription.toJSON()),
-  });
+    jsonToBlob(localSessionDescription.toJSON())
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   return new RTCSessionDescription(await blobToJson(response.value));

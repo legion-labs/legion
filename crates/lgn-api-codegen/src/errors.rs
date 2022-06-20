@@ -18,6 +18,8 @@ pub enum Error {
     Uri(#[from] http::uri::InvalidUri),
     #[error("rust format: {0}")]
     RustFormat(#[from] rust_format::Error),
+    #[error("invalid typescript filename \"index\" is reserved")]
+    TypeScriptFilename,
     #[error("typescript format: {0}")]
     TypeScriptFormat(anyhow::Error),
     #[error("at {0}: {1} are invalid")]

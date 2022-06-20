@@ -11,6 +11,11 @@ paths:
       operationId: getCars
       parameters:
         - $ref: "./components.yaml#/parameters/SpaceId"
+        - name: other_query
+          in: query
+          required: true
+          schema:
+            type: string
         - name: names
           in: query
           description: Names to filter by

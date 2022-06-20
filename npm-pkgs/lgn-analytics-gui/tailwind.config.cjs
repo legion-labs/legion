@@ -10,13 +10,7 @@ const {
   lgnFrontendContentDir,
 } = require("./../tailwind.const.js");
 
-// It's really painful that the type definition doesn't support commonjs
-/** @type {any} */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, no-undef
-const plugin_ = require("tailwindcss/plugin");
-/** @type {import("tailwindcss/plugin").TailwindPluginCreator} */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-const plugin = plugin_;
+const plugin = require("tailwindcss/plugin");
 
 const themePlugin = plugin(function ({ addComponents }) {
   addComponents({

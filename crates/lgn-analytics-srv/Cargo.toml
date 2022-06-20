@@ -1,6 +1,6 @@
 [package]
 name = "analytics-srv"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
@@ -24,7 +24,9 @@ bytes = "1"
 chrono = "0.4"
 clap = { version = "3.0", features = ["derive"] }
 blake3 = { version = "1.3", features = ["prefer_intrinsics"] }
-deltalake = { git = "https://github.com/delta-io/delta-rs.git", rev = "9216a8e2f068cba7c7a965f51ab608ee1f55d773", version = "0.4.1", features = ["datafusion-ext"], optional = true }
+deltalake = { git = "https://github.com/delta-io/delta-rs.git", rev = "9216a8e2f068cba7c7a965f51ab608ee1f55d773", version = "0.4.1", features = [
+  "datafusion-ext",
+], optional = true }
 datafusion = { git = "https://github.com/apache/arrow-datafusion.git", rev = "f943b6a65291c3de6403dde827cb411a050f4fa0", version = "7.0.0", optional = true }
 futures = "0.3"
 http = "0.2"
@@ -32,15 +34,15 @@ parquet = { version = "13" }
 tonic = "0.6"
 tonic-web = "0.2"
 tokio = { version = "1.13", features = [
-    "macros",
-    "rt-multi-thread",
-    "tracing",
+  "macros",
+  "rt-multi-thread",
+  "tracing",
 ] }
 sqlx = { version = "0.5", features = [
-    "sqlite",
-    "any",
-    "mysql",
-    "runtime-tokio-native-tls",
+  "sqlite",
+  "any",
+  "mysql",
+  "runtime-tokio-native-tls",
 ] }
 thiserror = "1"
 tower = "0.4"

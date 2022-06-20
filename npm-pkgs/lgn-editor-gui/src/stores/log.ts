@@ -1,6 +1,6 @@
 import { derived, get, writable } from "svelte/store";
 
-import type { Log } from "@lgn/apis/log";
+import type { Log } from "@lgn/api/log";
 import { displayError } from "@lgn/web-client/src/lib/errors";
 import log from "@lgn/web-client/src/lib/log";
 import { throttled } from "@lgn/web-client/src/lib/store";

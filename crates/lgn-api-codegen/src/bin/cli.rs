@@ -68,8 +68,7 @@ struct Args {
     skip_format: bool,
     #[clap(
         long,
-        help = "Specify filename without prefix nor extension (only works when targeting TypeScript)",
-        default_value = "index"
+        help = "Specify filename without prefix nor extension (only works when targeting TypeScript)"
     )]
     typescript_filename: String,
 }
@@ -90,7 +89,7 @@ fn main() -> anyhow::Result<()> {
             prettier_config_path: args.prettier_config_path.map(PathBuf::from),
             skip_format: args.skip_format,
             with_package_json: args.with_package_json,
-            filename: Some(args.typescript_filename),
+            filename: args.typescript_filename,
         }),
         Language::Python => InternalLanguage::Python,
     };

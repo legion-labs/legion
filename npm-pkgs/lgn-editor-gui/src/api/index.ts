@@ -3,9 +3,9 @@ import {
   PropertyInspector,
   ResourceBrowser,
   SourceControl,
-} from "@lgn/apis/editor";
-import { Log } from "@lgn/apis/log";
-import { Runtime } from "@lgn/apis/runtime";
+} from "@lgn/api/editor";
+import { Log } from "@lgn/api/log";
+import { Runtime } from "@lgn/api/runtime";
 import { addAuthToClient } from "@lgn/web-client/src/lib/client";
 import log from "@lgn/web-client/src/lib/log";
 
@@ -491,13 +491,15 @@ export async function getActiveScenes() {
 
 export function getEditorTraceEvents() {
   return editorLogStreamClient.logEntries({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 }
 
 export function getRuntimeTraceEvents() {
   return runtimeLogStreamClient.logEntries({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 }
 
@@ -514,10 +516,10 @@ export async function loadRuntimeManifest({
 }: {
   manifestId: string;
 }) {
-  return runtimeClient.loadManifest({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: new Blob([manifestId]),
-  });
+  return runtimeClient.loadManifest(
+    { spaceId: "0", workspaceId: "0" },
+    new Blob([manifestId])
+  );
 }
 
 export async function loadRuntimeRootAsset({
@@ -525,14 +527,15 @@ export async function loadRuntimeRootAsset({
 }: {
   rootAssetId: string;
 }) {
-  return runtimeClient.loadRootAsset({
-    params: { "space-id": "0", "workspace-id": "0" },
-    body: new Blob([rootAssetId]),
-  });
+  return runtimeClient.loadRootAsset(
+    { spaceId: "0", workspaceId: "0" },
+    new Blob([rootAssetId])
+  );
 }
 
 export async function pauseRuntime() {
   return runtimeClient.pause({
-    params: { "space-id": "0", "workspace-id": "0" },
+    spaceId: "0",
+    workspaceId: "0",
   });
 }

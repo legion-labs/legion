@@ -236,6 +236,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { generate } = nativeBinding
+const { generate, generateAll } = nativeBinding
 
 module.exports.generate = generate
+module.exports.generateAll = generateAll

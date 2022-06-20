@@ -816,6 +816,8 @@ pub mod cars {
 
         #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
         struct GetCarsQuery {
+            #[serde(rename = "other_query")]
+            other_query: String,
             #[serde(rename = "names")]
             #[serde(skip_serializing_if = "Option::is_none")]
             names: Option<Vec<String>>,
@@ -829,6 +831,7 @@ pub mod cars {
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct GetCarsRequest {
             pub space_id: String,
+            pub other_query: String,
             pub names: Option<Vec<String>>,
             pub q: Option<String>,
         }
@@ -1386,6 +1389,7 @@ pub mod cars {
                 );
 
                 let query = GetCarsQuery {
+                    other_query: request.other_query,
                     names: request.names,
                     q: request.q,
                 };
@@ -2786,6 +2790,8 @@ pub mod cars {
 
         #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
         struct GetCarsQuery {
+            #[serde(rename = "other_query")]
+            other_query: String,
             #[serde(rename = "names")]
             #[serde(skip_serializing_if = "Option::is_none")]
             names: Option<Vec<String>>,
@@ -2799,6 +2805,7 @@ pub mod cars {
         #[derive(Debug)]
         pub struct GetCarsRequest {
             pub space_id: String,
+            pub other_query: String,
             pub names: Option<Vec<String>>,
             pub q: Option<String>,
             pub parts: http::request::Parts,
@@ -2940,6 +2947,7 @@ pub mod cars {
         {
             let request = GetCarsRequest {
                 space_id,
+                other_query: query.other_query,
                 names: query.names,
                 q: query.q,
                 parts,
