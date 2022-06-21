@@ -4,7 +4,7 @@ info:
   description: "The OpenAPI specification for the Legion Labs editor."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/transactions/{transaction-id}/undo/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/transactions/{transaction-id}/undo/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
