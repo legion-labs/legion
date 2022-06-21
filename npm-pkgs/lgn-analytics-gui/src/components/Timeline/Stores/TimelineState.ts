@@ -1,7 +1,6 @@
 import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import type { Process } from "@lgn/proto-telemetry/dist/process";
 
-import type { ProcessAsyncData } from "../Lib/ProcessAsyncData";
 import type { Thread } from "../Lib/Thread";
 import type { ThreadBlock } from "../Lib/ThreadBlock";
 import type { TimelinePan } from "../Lib/TimelinePan";
@@ -15,7 +14,6 @@ export class TimelineState {
   eventCount = 0;
   processes: Process[] = [];
   collapsedProcesseIds: string[] = [];
-  processAsyncData: Record<string, ProcessAsyncData> = {};
   scopes: Record<number, ScopeDesc> = {};
   ready = false;
   beginRange: number | null = null;

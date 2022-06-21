@@ -213,6 +213,31 @@ impl Provider {
         }
     }
 
+    /// Commit a transaction, and immediately restart it with same parent.
+    ///
+    /// # Panics
+    ///
+    /// If the provider does not have a parent provider set.
+    ///
+    /// # Errors
+    ///
+    /// If the copy fails, an error is returned alongside the parent provider.
+    pub async fn commit_and_restart_transaction(&self) -> Result<()> {
+        if let Some(parent) = &self.parent {
+            let mut refs = self.refs.lock().await; // maintain lock for duration of transfer to parent
+
+            let ids: Vec<Identifier> = refs.referenced().into_iter().cloned().collect();
+
+            self.copy_all_to(ids, parent).await?;
+
+            refs.clear();
+
+            Ok(())
+        } else {
+            panic!("no parent provider");
+        }
+    }
+
     /// Check whether a content exists.
     ///
     /// # Errors

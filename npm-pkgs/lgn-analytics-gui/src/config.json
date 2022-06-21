@@ -2,18 +2,30 @@
   "uat": {
     "cognitoRegion": "ca-central-1",
     "cognitoPoolId": "ca-central-1_4M4ix7FmM",
-    "clientId": "772bd7gv0m2bveb6vr8lobdfko"
+    "clientId": "772bd7gv0m2bveb6vr8lobdfko",
+    "apiAnalytics": {
+      "url": "https://web-api.uat.legionengine.com",
+      "host": "web-api.uat.legionengine.com"
+    }
   },
 
   "production": {
     "cognitoRegion": "ca-central-1",
     "cognitoPoolId": "ca-central-1_SkZKDimWz",
-    "clientId": "2kp01gr54dfc7qp1325hibcro3"
+    "clientId": "2kp01gr54dfc7qp1325hibcro3",
+    "apiAnalytics": {
+      "url": "https://web-api.live.playground.legionlabs.com:443",
+      "host": "web-api.live.playground.legionlabs.com"
+    }
   },
 
   "local": {
     "cognitoRegion": "ca-central-1",
     "cognitoPoolId": "ca-central-1_SkZKDimWz",
-    "clientId": "2kp01gr54dfc7qp1325hibcro3"
+    "clientId": "2kp01gr54dfc7qp1325hibcro3",
+    "apiAnalytics": {
+      "url": "https://web-api.live.playground.legionlabs.com:443",
+      "host": "web-api.live.playground.legionlabs.com"
+    }
   }
 }

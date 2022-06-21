@@ -31,10 +31,20 @@ impl VulkanPipeline {
             ash::vk::Format::UNDEFINED
         };
 
+        let vk_stencil_format = if let Some(depth_format) = pipeline_def.depth_stencil_format {
+            if depth_format.has_stencil() {
+                depth_format.into()
+            } else {
+                ash::vk::Format::UNDEFINED
+            }
+        } else {
+            ash::vk::Format::UNDEFINED
+        };
+
         let mut pipeline_rendering_create_info = vk::PipelineRenderingCreateInfo::builder()
             .color_attachment_formats(&vk_color_formats)
             .depth_attachment_format(vk_depth_format)
-            .stencil_attachment_format(vk_depth_format)
+            .stencil_attachment_format(vk_stencil_format)
             .build();
 
         let mut entry_point_names = vec![];

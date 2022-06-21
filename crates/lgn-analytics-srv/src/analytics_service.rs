@@ -1,12 +1,8 @@
 use anyhow::Context;
-use anyhow::{bail, Result};
+use anyhow::Result;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
-use lgn_telemetry_proto::analytics::AsyncSpansReply;
-use lgn_telemetry_proto::analytics::AsyncSpansRequest;
-use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
-use lgn_telemetry_proto::analytics::BlockAsyncStatsRequest;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BuildTimelineTablesReply;
 use lgn_telemetry_proto::analytics::BuildTimelineTablesRequest;
@@ -45,11 +41,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
-use crate::async_spans::compute_async_spans;
-use crate::async_spans::compute_block_async_stats;
 use crate::cache::DiskCache;
 use crate::call_tree::reduce_lod;
-use crate::call_tree_store::CallTreeStore;
 use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
 use crate::lakehouse::jit_lakehouse::JitLakehouse;
 use crate::log_entry::Searchable;
@@ -85,7 +78,6 @@ pub struct AnalyticsService {
     data_lake_blobs: Arc<dyn BlobStorage>,
     cache: Arc<DiskCache>,
     jit_lakehouse: Arc<dyn JitLakehouse>,
-    call_trees: Arc<CallTreeStore>,
     flush_monitor: FlushMonitor,
 }
 
@@ -98,11 +90,10 @@ impl AnalyticsService {
         jit_lakehouse: Arc<dyn JitLakehouse>,
     ) -> Self {
         Self {
-            pool: pool.clone(),
-            data_lake_blobs: data_lake_blobs.clone(),
-            cache: Arc::new(DiskCache::new(cache_blobs.clone())),
+            pool,
+            data_lake_blobs,
+            cache: Arc::new(DiskCache::new(cache_blobs)),
             jit_lakehouse,
-            call_trees: Arc::new(CallTreeStore::new(pool, data_lake_blobs, cache_blobs)),
             flush_monitor: FlushMonitor::default(),
         }
     }
@@ -346,31 +337,6 @@ impl AnalyticsService {
         let blocks =
             find_process_blocks(&mut connection, &request.process_id, &request.tag).await?;
         Ok(ProcessBlocksReply { blocks })
-    }
-
-    #[span_fn]
-    async fn fetch_block_async_stats_impl(
-        &self,
-        request: BlockAsyncStatsRequest,
-    ) -> Result<BlockAsyncEventsStatReply> {
-        if request.process.is_none() {
-            bail!("missing process in fetch_block_async_stats request");
-        }
-        if request.stream.is_none() {
-            bail!("missing stream in fetch_block_async_stats request");
-        }
-        compute_block_async_stats(&self.call_trees, request.block_id).await
-    }
-
-    #[span_fn]
-    async fn fetch_async_spans_impl(&self, request: AsyncSpansRequest) -> Result<AsyncSpansReply> {
-        compute_async_spans(
-            &self.call_trees,
-            request.section_sequence_number,
-            request.section_lod,
-            request.block_ids,
-        )
-        .await
     }
 
     #[span_fn]
@@ -769,46 +735,6 @@ impl PerformanceAnalytics for AnalyticsService {
                 error!("Error in fetch_block_metric_manifest: {:?}", e);
                 Err(Status::internal(format!(
                     "Error in fetch_block_metric_manifest: {}",
-                    e
-                )))
-            }
-        }
-    }
-
-    async fn fetch_block_async_stats(
-        &self,
-        request: Request<BlockAsyncStatsRequest>,
-    ) -> Result<Response<BlockAsyncEventsStatReply>, Status> {
-        self.flush_monitor.tick();
-        async_span_scope!("AnalyticsService::fetch_block_async_stats");
-        let _guard = RequestGuard::new();
-        let inner_request = request.into_inner();
-        match self.fetch_block_async_stats_impl(inner_request).await {
-            Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => {
-                error!("Error in fetch_block_async_stats: {:?}", e);
-                Err(Status::internal(format!(
-                    "Error in fetch_block_async_stats: {}",
-                    e
-                )))
-            }
-        }
-    }
-
-    async fn fetch_async_spans(
-        &self,
-        request: Request<AsyncSpansRequest>,
-    ) -> Result<Response<AsyncSpansReply>, Status> {
-        self.flush_monitor.tick();
-        async_span_scope!("AnalyticsService::fetch_async_spans");
-        let _guard = RequestGuard::new();
-        let inner_request = request.into_inner();
-        match self.fetch_async_spans_impl(inner_request).await {
-            Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => {
-                error!("Error in fetch_fetch_async_spans: {:?}", e);
-                Err(Status::internal(format!(
-                    "Error in fetch_async_spans: {}",
                     e
                 )))
             }

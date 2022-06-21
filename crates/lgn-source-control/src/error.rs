@@ -85,6 +85,8 @@ pub enum Error {
     },
     #[error("{0}")]
     Unspecified(String),
+    #[error("content store: {0}")]
+    ContentStore(#[from] lgn_content_store::Error),
     #[error("content store indexing: {0}")]
     ContentStoreIndexing(#[from] lgn_content_store::indexing::Error),
     #[error("resource  `{id}` not found in content store")]
