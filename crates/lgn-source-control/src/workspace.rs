@@ -232,7 +232,7 @@ where
             .await?
         {
             if let Ok(reader) = self
-                .persistent_provider
+                .transaction
                 .get_reader(resource_id.as_identifier())
                 .await
             {

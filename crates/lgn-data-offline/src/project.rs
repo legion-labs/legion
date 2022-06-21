@@ -14,7 +14,7 @@ use lgn_content_store::{
 };
 use lgn_data_runtime::{
     new_resource_type_and_id_indexer, AssetRegistryError, AssetRegistryReader, Resource,
-    ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
+    ResourcePathId, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
     BranchName, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
@@ -369,14 +369,14 @@ impl Project {
         {
             let meta = crate::get_meta(resource);
             assert_eq!(meta.type_id, type_id);
-        self.workspace
+            self.workspace
                 .update_resource(
                     &type_id.into(),
                     meta.name.as_str(),
                     &contents,
                     &old_resource_id,
                 )
-            .await?;
+                .await?;
         }
 
         Ok(())

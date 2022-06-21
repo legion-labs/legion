@@ -45,7 +45,7 @@ impl Default for CameraOptions {
             speed: 2.5,
             rotation_speed: Angle::from_degrees(40.0),
             setup,
-    }
+        }
     }
 }
 
