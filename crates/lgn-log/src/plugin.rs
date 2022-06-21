@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use lgn_api::SharedRouter;
 use lgn_app::prelude::{App, Plugin};
 use lgn_async::receiver::SharedUnboundedReceiver;
-use lgn_grpc::SharedRouter;
 use tokio::sync::broadcast::error::RecvError;
 
 use crate::{

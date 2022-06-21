@@ -6,10 +6,10 @@
 
 use std::sync::Arc;
 
+use lgn_api::SharedRouter;
 use lgn_app::prelude::*;
 use lgn_codec_api::stream_encoder::StreamEncoder;
 use lgn_core::Time;
-use lgn_grpc::SharedRouter;
 
 use crate::server::Server;
 

@@ -4,27 +4,8 @@ import { blobToJson, jsonToBlob } from "../lib/api";
 import { addAuthToClient } from "../lib/client";
 import log from "../lib/log";
 
-// Access token
-// let accessToken: string | null = getCookie(accessTokenCookieName);
-
-// Refresh
-// log.debug(
-//   "http-client",
-//   "Access token not found, trying to refresh the client token set"
-// );
-// const clientTokenSet = await authClient.refreshClientTokenSet();
-// authClient.storeClientTokenSet(clientTokenSet);
-// return clientTokenSet.access_token;
-
-// failure
-// log.debug(
-//   "http-client",
-//   "Couldn't refresh the client token set, redirecting to the idp"
-// );
-// window.location.href = await authClient.getAuthorizationUrl();
-
-const defaultRestEditorServerUrl = "http://[::1]:5051";
-const defaultRestRuntimeServerUrl = "http://[::1]:5052";
+const defaultEditorServerUrl = "http://[::1]:5051";
+const defaultRuntimeServerUrl = "http://[::1]:5052";
 
 export type ServerType = "editor" | "runtime";
 
@@ -43,20 +24,20 @@ function getClientFor(type: ServerType): Streaming.Client {
 }
 
 export function initApiClient({
-  restEditorServerUrl = defaultRestEditorServerUrl,
-  restRuntimeServerUrl = defaultRestRuntimeServerUrl,
+  editorServerUrl = defaultEditorServerUrl,
+  runtimeServerUrl = defaultRuntimeServerUrl,
   accessTokenCookieName,
   fetch,
 }: {
-  restEditorServerUrl?: string;
-  restRuntimeServerUrl?: string;
+  editorServerUrl?: string;
+  runtimeServerUrl?: string;
   accessTokenCookieName?: string;
   fetch?: typeof globalThis.fetch;
 } = {}) {
   if (accessTokenCookieName !== undefined) {
     editorClient = addAuthToClient(
       new Streaming.Client({
-        baseUri: restEditorServerUrl,
+        baseUri: editorServerUrl,
         fetch,
       }),
       accessTokenCookieName
@@ -64,19 +45,19 @@ export function initApiClient({
 
     runtimeClient = addAuthToClient(
       new Streaming.Client({
-        baseUri: restRuntimeServerUrl,
+        baseUri: runtimeServerUrl,
         fetch,
       }),
       accessTokenCookieName
     );
   } else {
     editorClient = new Streaming.Client({
-      baseUri: restEditorServerUrl,
+      baseUri: editorServerUrl,
       fetch,
     });
 
     runtimeClient = new Streaming.Client({
-      baseUri: restRuntimeServerUrl,
+      baseUri: runtimeServerUrl,
       fetch,
     });
   }

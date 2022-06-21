@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 # Legion engine
 lgn-animation = { path = "../lgn-animation", version = "0.1.0" }
+lgn-api = { path = "../lgn-api", version = "0.1.0" }
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
 lgn-asset-registry = { path = "../lgn-asset-registry", version = "0.1.0" }
 lgn-async = { path = "../lgn-async", version = "0.1.0" }
@@ -21,7 +22,6 @@ lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0", features
     "runtime",
 ] }
 lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
-lgn-grpc = { path = "../lgn-grpc", version = "0.1.0" }
 lgn-governance = { path = "../lgn-governance", version = "0.1.0" }
 lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
 lgn-input = { path = "../lgn-input", version = "0.1.0" }
@@ -113,9 +113,4 @@ extra-files = [
 
 [package.metadata.cargo-udeps.ignore]
 # used only when standalone feature is not enabled
-normal = [
-    "lgn-async",
-    "lgn-grpc",
-    "lgn-log",
-    "lgn-streamer",
-]
+normal = ["lgn-async", "lgn-api", "lgn-log", "lgn-streamer"]

@@ -1,6 +1,6 @@
 import { derived } from "svelte/store";
 
-import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import type { Common } from "@lgn/api/editor";
 import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import { createAsyncStoreListOrchestrator } from "@lgn/web-client/src/orchestrators/async";
@@ -10,11 +10,11 @@ import { getActiveSceneIds } from "@/api";
 import { allResources, allResourcesLoading } from "./allResources";
 
 export type AllActiveScenesOrchestrator = AsyncOrchestrator<
-  ResourceDescription[]
+  Common.ResourceDescription[]
 >;
 
 const allActiveScenesOrchestrator =
-  createAsyncStoreListOrchestrator<ResourceDescription[]>();
+  createAsyncStoreListOrchestrator<Common.ResourceDescription[]>();
 
 // TODO: Uncomment this whole section when the scene explorer is more advanced
 
@@ -52,8 +52,8 @@ const allActiveSceneIdsOrchestrator =
 
 export type AllActiveScenesValue =
   | {
-      rootScene: ResourceDescription;
-      scenes: NonEmptyArray<ResourceDescription>;
+      rootScene: Common.ResourceDescription;
+      scenes: NonEmptyArray<Common.ResourceDescription>;
     }[]
   | null;
 
@@ -79,7 +79,7 @@ export const allActiveScenes = derived(
           rootScene,
           scenes: allResources.filter((resource) =>
             resource.path.startsWith(rootScene.path)
-          ) as NonEmptyArray<ResourceDescription>,
+          ) as NonEmptyArray<Common.ResourceDescription>,
         },
       ];
     }, [] as Exclude<AllActiveScenesValue, null>);
