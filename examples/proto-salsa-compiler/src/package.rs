@@ -1,4 +1,4 @@
-use salsa_test::ContentAddr;
+use proto_salsa_compiler::ContentAddr;
 
 use crate::inputs::Inputs;
 

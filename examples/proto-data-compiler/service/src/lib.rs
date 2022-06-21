@@ -35,7 +35,7 @@ pub struct CompilationInputs {
     pub output_id: ResourcePathId,
 }
 
-#[derive(Clone, Hash, Ord, Eq, Debug)]
+#[derive(Clone, Eq, Debug)]
 pub struct ResourcePathId {
     pub source_resource: ResourceGuid,
     pub transformations: Vec<CompilerType>,
@@ -59,6 +59,12 @@ impl From<&ResourcePathId> for ResourcePathId {
 impl PartialEq for ResourcePathId {
     fn eq(&self, other: &Self) -> bool {
         self.source_resource == other.source_resource
+    }
+}
+
+impl Hash for ResourcePathId {
+    fn hash<H: Hasher>(&self, resource: &mut H) {
+        self.source_resource.hash(resource);
     }
 }
 
@@ -166,7 +172,7 @@ pub async fn minimal_hash_internal(
     }
 
     let output = hasher.finish();
-    
+
     println!("= {}", output);
     Some(output as u128)
 }

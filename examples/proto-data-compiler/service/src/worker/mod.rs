@@ -29,6 +29,7 @@ impl Worker {
         let dll_as_str = dll_path.to_str().unwrap();
         println!("Loading {}", dll_as_str);
 
+        #[allow(unsafe_code)]
         unsafe {
             let lib = libloading::Library::new(dll_as_str).unwrap();
             let compile_fn: libloading::Symbol<

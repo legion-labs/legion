@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::Hash, hash::Hasher};
 
 use petgraph::{dot::Dot, Graph};
 use service::{
@@ -7,7 +7,7 @@ use service::{
     EdgeDependencyType, ResourcePathId,
 };
 
-#[derive(Clone, Hash, Debug, Eq, Default)]
+#[derive(Clone, Debug, Eq, Default)]
 struct GraphNode {
     resource_path_id: ResourcePathId,
     verified_at: CommitRoot,
@@ -31,6 +31,13 @@ impl GraphNode {
 impl PartialEq for GraphNode {
     fn eq(&self, other: &Self) -> bool {
         self.resource_path_id == other.resource_path_id && self.verified_at == other.verified_at
+    }
+}
+
+impl Hash for GraphNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.resource_path_id.hash(state);
+        self.verified_at.hash(state);
     }
 }
 
@@ -131,6 +138,6 @@ async fn invalidate_graph() {
     let nodes = diff_files(previous_root, current_root);
 
     for node in nodes {
-        all_nodes.get(node);
+        all_nodes.get(&node);
     }
 }

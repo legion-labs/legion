@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use exe::{
+use proto_data_compiler::{
     local_data_execution_provider::LocalDataExecutionProvider, local_worker::LocalWorker,
     runtime::Runtime,
 };

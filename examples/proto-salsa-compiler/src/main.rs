@@ -1,7 +1,7 @@
 use atlas::AtlasStorage;
 use entity::EntityStorage;
 use material::MaterialStorage;
-use salsa_test::{Locale, Platform, Target};
+use proto_salsa_compiler::{Locale, Platform, Target};
 
 use crate::inputs::{Inputs, InputsStorage};
 use crate::texture::TextureStorage;
