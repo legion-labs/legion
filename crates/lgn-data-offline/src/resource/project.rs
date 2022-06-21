@@ -355,7 +355,8 @@ impl Project {
     /// Delete the resource+meta files, remove from Registry and Flush index
     pub async fn revert_resource(&mut self, type_id: ResourceTypeAndId) -> Result<(), Error> {
         let name = self.raw_resource_name(type_id).await?;
-        self.workspace
+        let _resource_id = self
+            .workspace
             .revert_resource(&type_id.into(), name.as_str())
             .await?;
 

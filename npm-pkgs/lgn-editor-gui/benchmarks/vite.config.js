@@ -5,8 +5,6 @@ import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-import viteTsProto from "@lgn/vite-plugin-ts-proto";
-
 // https://vitejs.dev/config/
 export default defineConfig({
   // TODO: Drop this option when vite-tsconfig-paths
@@ -36,8 +34,5 @@ export default defineConfig({
       extensions: [".ts", ".svelte", ".json"],
     }),
     svelte({ hot: false }),
-    viteTsProto({
-      modules: [{ name: "@lgn/proto-editor", glob: "*.proto" }],
-    }),
   ],
 });

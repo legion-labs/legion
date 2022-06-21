@@ -15,6 +15,8 @@ use crate::server::{RuntimeServerCommand, Server};
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
 use lgn_animation::AnimationPlugin;
+#[cfg(not(feature = "standalone"))]
+use lgn_api::{ApiPlugin, ApiPluginSettings};
 use lgn_app::prelude::App;
 #[cfg(not(feature = "standalone"))]
 use lgn_app::{prelude::StartupStage, CoreStage};
@@ -30,8 +32,6 @@ use lgn_ecs::prelude::{
 };
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
-#[cfg(not(feature = "standalone"))]
-use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 #[cfg(not(feature = "standalone"))]
@@ -301,9 +301,9 @@ pub fn build_runtime() -> App {
             add_primary_window: false,
             exit_on_close: false,
         })
-        .insert_resource(GRPCPluginSettings::rest(rest_listen_endpoint))
+        .insert_resource(ApiPluginSettings::new(rest_listen_endpoint))
         .insert_resource(trace_events_receiver)
-        .add_plugin(GRPCPlugin::rest_only())
+        .add_plugin(ApiPlugin::default())
         .add_plugin(LogStreamPlugin::default())
         .add_plugin(streamer_plugin);
 
@@ -311,7 +311,7 @@ pub fn build_runtime() -> App {
             StartupStage::PostStartup,
             setup_runtime_grpc
                 .exclusive_system()
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartServer),
         )
         .add_system_to_stage(CoreStage::PreUpdate, rebroadcast_commands);
     }
@@ -333,7 +333,7 @@ fn setup_runtime_grpc(world: &mut World) {
     let server = Arc::new(Server::new(command_sender));
 
     world
-        .resource_mut::<lgn_grpc::SharedRouter>()
+        .resource_mut::<lgn_api::SharedRouter>()
         .into_inner()
         .register_routes(crate::api::runtime::server::register_routes, server);
 

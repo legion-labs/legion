@@ -1,0 +1,40 @@
+parameters:
+  transaction_id:
+    name: transaction-id
+    in: path
+    description: The transaction identifier.
+    required: true
+    schema:
+      $ref: "#/schemas/TransactionId"
+  resource_id:
+    name: resource-id
+    in: path
+    required: true
+    schema:
+      $ref: "#/schemas/ResourceId"
+
+schemas:
+  TransactionId:
+    description: An identifier to a unique a transaction.
+    type: string
+  ResourceId:
+    type: string
+  ResourceDescription:
+    description: Description of a resource
+    type: object
+    properties:
+      id:
+        $ref: "#/schemas/ResourceId"
+      path:
+        type: string
+      version:
+        type: integer
+        format: int32
+        minimum: 0
+      type:
+        type: string
+    required:
+      - id
+      - path
+      - version
+      - type

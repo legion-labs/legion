@@ -1,6 +1,8 @@
 #![allow(unused_imports)]
 use std::{collections::HashSet, sync::Arc};
 
+use editor_srv::editor::server::register_routes;
+use lgn_api::SharedRouter;
 use lgn_app::{prelude::*, Events};
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_async::TokioAsyncRuntime;
@@ -25,7 +27,7 @@ use lgn_tracing::{error, info, warn};
 use lgn_transform::components::Transform;
 use tokio::sync::{broadcast, Mutex};
 
-use crate::grpc::{EditorEvent, EditorEventsReceiver};
+use crate::editor::{EditorEvent, EditorEventsReceiver, Server};
 use crate::source_control_plugin::{RawFilesStreamerConfig, SharedRawFilesStreamer};
 
 #[derive(Default)]
@@ -50,7 +52,7 @@ impl Plugin for EditorPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartServer),
         );
     }
 }
@@ -58,16 +60,16 @@ impl Plugin for EditorPlugin {
 impl EditorPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
+        mut router: ResMut<'_, SharedRouter>,
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
-        mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
         editor_events_receiver: Res<'_, EditorEventsReceiver>,
     ) {
-        let grpc_server = super::grpc::GRPCServer::new(
+        let server = Arc::new(Server::new(
             transaction_manager.clone(),
             editor_events_receiver.clone(),
-        );
+        ));
 
-        grpc_settings.register_service(grpc_server.service());
+        router.register_routes(register_routes, server);
     }
 
     #[allow(clippy::needless_pass_by_value)]

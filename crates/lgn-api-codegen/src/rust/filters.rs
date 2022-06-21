@@ -67,7 +67,7 @@ pub fn fmt_type(
             fmt_type(inner, ctx, module_path).unwrap()
         ),
         Type::Map(inner) => format!(
-            "std::collections::HashMap<String, {}>",
+            "std::collections::BTreeMap<String, {}>",
             fmt_type(inner, ctx, module_path).unwrap()
         ),
         Type::Named(ref_) => {

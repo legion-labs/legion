@@ -2,24 +2,29 @@
 #![allow(unused_imports)]
 #![allow(unused_mut)]
 
-use lgn_graphics_data::offline_gltf::GltfFile;
-use lgn_scene_plugin::SceneMessage;
-use sample_data::offline::GltfLoader;
-use std::{collections::HashMap, str::FromStr, sync::Arc};
-use tokio::sync::{broadcast, Mutex};
-use tonic::{codegen::http::status, Request, Response, Status};
-
-use lgn_app::prelude::*;
-use lgn_editor_proto::property_inspector::{
-    property_inspector_server::{PropertyInspector, PropertyInspectorServer},
-    DeleteArrayElementRequest, DeleteArrayElementResponse, GetAvailableDynTraitsRequest,
-    GetAvailableDynTraitsResponse, GetResourcePropertiesRequest, GetResourcePropertiesResponse,
-    InsertNewArrayElementRequest, InsertNewArrayElementResponse, ReorderArrayElementRequest,
-    ReorderArrayElementResponse, ResourceDescription, ResourceProperty, ResourcePropertyUpdate,
-    UpdateResourcePropertiesRequest, UpdateResourcePropertiesResponse, UpdateSelectionRequest,
-    UpdateSelectionResponse,
+use std::{
+    collections::{BTreeMap, HashMap},
+    str::FromStr,
+    sync::Arc,
 };
 
+use async_trait::async_trait;
+use editor_srv::{
+    common::ResourceDescription,
+    property_inspector::{
+        server::{
+            register_routes, DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
+            GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
+            GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
+            ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
+            UpdatePropertiesResponse, UpdatePropertySelectionRequest,
+            UpdatePropertySelectionResponse,
+        },
+        Api, InsertPropertyArrayItem200Response, ResourceDescriptionProperties, ResourceProperty,
+    },
+};
+use lgn_api::SharedRouter;
+use lgn_app::prelude::*;
 use lgn_data_model::{
     collector::{collect_properties, ItemInfo, PropertyCollector},
     json_utils::{self, get_property_as_json_string},
@@ -34,8 +39,14 @@ use lgn_data_transaction::{
     ArrayOperation, LockContext, Transaction, TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
+use lgn_graphics_data::offline_gltf::GltfFile;
+use lgn_online::server::{Error, Result};
+use lgn_scene_plugin::SceneMessage;
+use sample_data::offline::GltfLoader;
+use tokio::sync::{broadcast, Mutex};
+use tonic::{codegen::http::status, Request, Response, Status};
 
-use crate::grpc::EditorEvent;
+use crate::editor::EditorEvent;
 
 pub(crate) struct PropertyInspectorRPC {
     pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
@@ -43,11 +54,11 @@ pub(crate) struct PropertyInspectorRPC {
 }
 
 #[derive(Default)]
-pub(crate) struct PropertyInspectorPlugin {}
+pub(crate) struct PropertyInspectorPlugin;
 
 impl PropertyInspectorPlugin {
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 
@@ -64,7 +75,7 @@ impl Plugin for PropertyInspectorPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartServer),
         );
     }
 }
@@ -72,21 +83,24 @@ impl Plugin for PropertyInspectorPlugin {
 impl PropertyInspectorPlugin {
     #[allow(clippy::needless_pass_by_value)]
     fn setup(
+        mut router: ResMut<'_, SharedRouter>,
         transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
         event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
-        mut grpc_settings: ResMut<'_, lgn_grpc::GRPCPluginSettings>,
     ) {
-        let property_inspector = PropertyInspectorServer::new(PropertyInspectorRPC {
-            transaction_manager: transaction_manager.clone(),
-            event_sender: event_sender.clone(),
-        });
-        grpc_settings.register_service(property_inspector);
+        let server = Arc::new(Server::new(
+            transaction_manager.clone(),
+            event_sender.clone(),
+        ));
+
+        router.register_routes(register_routes, server);
     }
 }
 
 struct ResourcePropertyCollector;
+
 impl PropertyCollector for ResourcePropertyCollector {
     type Item = ResourceProperty;
+
     fn new_item(item_info: &ItemInfo<'_>) -> Result<Self::Item, ReflectionError> {
         let mut name = item_info
             .field_descriptor
@@ -97,14 +111,20 @@ impl PropertyCollector for ResourcePropertyCollector {
         let mut sub_properties = Vec::new();
         let mut attributes = None;
         if let Some(field_desc) = &item_info.field_descriptor {
-            attributes = field_desc.attributes.as_ref().cloned();
+            attributes = field_desc
+                .attributes
+                .as_ref()
+                .map(|attrs| attrs.clone().into_iter().collect());
         }
 
         let mut json_value: Option<String> = None;
 
         match item_info.type_def {
             TypeDefinition::Struct(struct_descriptor) => {
-                attributes = struct_descriptor.attributes.as_ref().cloned();
+                attributes = struct_descriptor
+                    .attributes
+                    .as_ref()
+                    .map(|attrs| attrs.clone().into_iter().collect());
             }
 
             TypeDefinition::Primitive(primitive_descriptor) => {
@@ -139,15 +159,21 @@ impl PropertyCollector for ResourcePropertyCollector {
                 sub_properties = enum_descriptor
                     .variants
                     .iter()
-                    .map(|enum_variant| ResourceProperty {
-                        name: enum_variant.variant_name.clone(),
-                        ptype: "_enumvariant_".into(),
-                        json_value: Some(serde_json::json!(enum_variant.variant_name).to_string()),
-                        sub_properties: Vec::new(),
-                        attributes: enum_variant.attributes.as_ref().map_or(
-                            std::collections::HashMap::default(),
-                            std::clone::Clone::clone,
-                        ),
+                    .map(|enum_variant| {
+                        Box::new(ResourceProperty {
+                            name: enum_variant.variant_name.clone(),
+                            ptype: "_enumvariant_".into(),
+                            json_value: Some(
+                                serde_json::json!(enum_variant.variant_name).to_string(),
+                            ),
+                            sub_properties: Vec::new(),
+                            attributes: enum_variant
+                                .attributes
+                                .as_ref()
+                                .map_or(std::collections::BTreeMap::default(), |attrs| {
+                                    attrs.clone().into_iter().collect()
+                                }),
+                        })
                     })
                     .collect();
             }
@@ -162,6 +188,7 @@ impl PropertyCollector for ResourcePropertyCollector {
             attributes: attributes.unwrap_or_default(),
         })
     }
+
     fn add_child(parent: &mut Self::Item, child: Self::Item) {
         let sub_properties = &mut parent.sub_properties;
 
@@ -176,81 +203,67 @@ impl PropertyCollector for ResourcePropertyCollector {
                 group_bag
             } else {
                 // Create a new group bag if not found
-                sub_properties.push(Self::Item {
+                sub_properties.push(Box::new(Self::Item {
                     name: group_name.into(),
                     ptype: "_group_".into(),
-                    ..ResourceProperty::default()
-                });
+                    json_value: None,
+                    attributes: BTreeMap::new(),
+                    sub_properties: Vec::new(),
+                }));
                 sub_properties.last_mut().unwrap()
             };
 
             // Add child to group
-            group_bag.sub_properties.push(child);
+            group_bag.sub_properties.push(Box::new(child));
         } else {
-            sub_properties.push(child);
+            sub_properties.push(Box::new(child));
         }
     }
 }
 
-#[tonic::async_trait]
-impl PropertyInspector for PropertyInspectorRPC {
-    async fn update_selection(
-        &self,
-        request: Request<UpdateSelectionRequest>,
-    ) -> Result<Response<UpdateSelectionResponse>, Status> {
-        let request = request.into_inner();
+pub(crate) struct Server {
+    pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
+    pub(crate) event_sender: broadcast::Sender<EditorEvent>,
+}
 
-        let resource_id = request
-            .resource_id
-            .parse::<ResourceTypeAndId>()
-            .map_err(|_err| {
-                Status::internal(format!(
-                    "Invalid ResourceID format: {}",
-                    request.resource_id
-                ))
-            })?;
-
-        let transaction = Transaction::new().add_operation(
-            lgn_data_transaction::SelectionOperation::set_selection(&[resource_id]),
-        );
-
-        {
-            let mut transaction_manager = self.transaction_manager.lock().await;
-            transaction_manager
-                .commit_transaction(transaction)
-                .await
-                .map_err(|err| Status::internal(err.to_string()))?;
-        };
-        Ok(Response::new(UpdateSelectionResponse {}))
+impl Server {
+    fn new(
+        transaction_manager: Arc<Mutex<TransactionManager>>,
+        event_sender: broadcast::Sender<EditorEvent>,
+    ) -> Self {
+        Self {
+            transaction_manager,
+            event_sender,
+        }
     }
+}
 
-    async fn get_resource_properties(
-        &self,
-        request: Request<GetResourcePropertiesRequest>,
-    ) -> Result<Response<GetResourcePropertiesResponse>, Status> {
-        let request = request.into_inner();
-        let resource_id = parse_resource_id(request.id.as_str())?;
+#[async_trait]
+impl Api for Server {
+    async fn get_properties(&self, request: GetPropertiesRequest) -> Result<GetPropertiesResponse> {
+        let resource_id = parse_resource_id(&request.resource_id.0)
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
 
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
-        let handle = ctx
-            .get_or_load(resource_id)
-            .await
-            .map_err(|err| Status::internal(err.to_string()))?;
+        let handle = match ctx.get_or_load(resource_id).await {
+            Ok(resource) => resource,
+            Err(_) => return Ok(GetPropertiesResponse::Status404),
+        };
 
         let mut property_bag = if let Some(reflection) = ctx
             .asset_registry
             .get_resource_reflection(resource_id.kind, &handle)
         {
             collect_properties::<ResourcePropertyCollector>(reflection.as_reflect())
-                .map_err(|err| Status::internal(err.to_string()))?
+                .map_err(|err| Error::internal(err.to_string()))?
         } else {
             // Return a default bag if there's no reflection
             ResourceProperty {
                 name: "".into(),
                 ptype: resource_id.kind.as_pretty().into(),
                 json_value: None,
-                attributes: HashMap::new(),
+                attributes: BTreeMap::new(),
                 sub_properties: Vec::new(),
             }
         };
@@ -258,53 +271,56 @@ impl PropertyInspector for PropertyInspectorRPC {
         // Add Id property
         property_bag.sub_properties.insert(
             0,
-            ResourceProperty {
+            Box::new(ResourceProperty {
                 name: "id".into(),
                 ptype: "String".into(),
                 sub_properties: Vec::new(),
                 json_value: Some(serde_json::json!(resource_id.id.to_string()).to_string()),
                 attributes: {
-                    let mut attr = HashMap::new();
+                    let mut attr = BTreeMap::new();
                     attr.insert("readonly".into(), "true".into());
                     attr
                 },
-            },
+            }),
         );
 
-        Ok(Response::new(GetResourcePropertiesResponse {
-            description: Some(ResourceDescription {
-                id: ResourceTypeAndId::to_string(&resource_id),
-                path: ctx
-                    .project
-                    .resource_name(resource_id)
-                    .await
-                    .unwrap_or_else(|_err| "".into())
-                    .to_string(),
-                version: 1,
-                r#type: resource_id
-                    .kind
-                    .as_pretty()
-                    .trim_start_matches("offline_")
-                    .into(),
-            }),
-            properties: vec![property_bag],
-        }))
+        Ok(GetPropertiesResponse::Status200(
+            ResourceDescriptionProperties {
+                description: ResourceDescription {
+                    id: editor_srv::common::ResourceId(ResourceTypeAndId::to_string(&resource_id)),
+                    path: ctx
+                        .project
+                        .resource_name(resource_id)
+                        .await
+                        .unwrap_or_else(|_err| "".into())
+                        .to_string(),
+                    version: 1,
+                    type_: resource_id
+                        .kind
+                        .as_pretty()
+                        .trim_start_matches("offline_")
+                        .into(),
+                },
+                properties: vec![property_bag],
+            },
+        ))
     }
 
-    async fn update_resource_properties(
+    async fn update_properties(
         &self,
-        request: Request<UpdateResourcePropertiesRequest>,
-    ) -> Result<Response<UpdateResourcePropertiesResponse>, Status> {
-        let mut request = request.into_inner();
-        let resource_id = parse_resource_id(request.id.as_str())?;
+        request: UpdatePropertiesRequest,
+    ) -> Result<UpdatePropertiesResponse> {
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
 
         {
             let mut transaction = Transaction::new();
 
+            let mut updates = request.body.updates.clone();
+
             // HACK!!!
             // Pre-fill GlftLoader component
-            if let Some(property) = request
-                .property_updates
+            if let Some(mut property) = updates
                 .iter_mut()
                 .find(|update| update.name == "components.[Visual].renderable_geometry")
             {
@@ -370,20 +386,25 @@ impl PropertyInspector for PropertyInspectorRPC {
                                         .to_string();
                             }
 
-                            if let Ok(entity_handle) = ctx.get_or_load(resource_id).await {
-                                if let Some(mut entity) = entity_handle
-                                    .instantiate::<sample_data::offline::Entity>(
+                            match ctx.get_or_load(resource_id).await {
+                                Ok(entity_handle) => {
+                                    if let Some(mut entity) = entity_handle
+                                        .instantiate::<sample_data::offline::Entity>(
                                         &ctx.asset_registry,
-                                    )
-                                {
-                                    entity
-                                        .components
-                                        .retain(|component| !component.is::<GltfLoader>());
-                                    entity.components.push(Box::new(gltf_loader));
+                                    ) {
+                                        entity
+                                            .components
+                                            .retain(|component| !component.is::<GltfLoader>());
+                                        entity.components.push(Box::new(gltf_loader));
 
-                                    entity_handle.apply(entity, &ctx.asset_registry);
+                                        entity_handle.apply(entity, &ctx.asset_registry);
+                                    }
                                 }
-                            }
+                                Err(_) => {
+                                    return Ok(UpdatePropertiesResponse::Status404);
+                                }
+                            };
+
                             if let Err(_err) = self
                                 .event_sender
                                 .send(EditorEvent::ResourceChanged(vec![resource_id]))
@@ -396,8 +417,7 @@ impl PropertyInspector for PropertyInspectorRPC {
 
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 resource_id,
-                &request
-                    .property_updates
+                &updates
                     .iter()
                     .map(|update| (&update.name, &update.json_value))
                     .collect::<Vec<_>>(),
@@ -407,145 +427,16 @@ impl PropertyInspector for PropertyInspectorRPC {
             transaction_manager
                 .commit_transaction(transaction)
                 .await
-                .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
+                .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
         }
-        Ok(Response::new(UpdateResourcePropertiesResponse {}))
-    }
 
-    async fn delete_array_element(
-        &self,
-        request: Request<DeleteArrayElementRequest>,
-    ) -> Result<Response<DeleteArrayElementResponse>, Status> {
-        let mut request = request.into_inner();
-        let resource_id = parse_resource_id(request.resource_id.as_str())?;
-        let transaction = {
-            // Remove indices in reverse order to maintain indices
-            request.indices.sort_unstable();
-            let mut transaction = Transaction::new();
-            for index in request.indices.iter().rev() {
-                transaction = transaction.add_operation(ArrayOperation::delete_element(
-                    resource_id,
-                    request.array_path.as_str(),
-                    *index as usize,
-                ));
-            }
-            transaction
-        };
-
-        self.transaction_manager
-            .lock()
-            .await
-            .commit_transaction(transaction)
-            .await
-            .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
-
-        Ok(Response::new(DeleteArrayElementResponse {}))
-    }
-
-    async fn insert_new_array_element(
-        &self,
-        request: Request<InsertNewArrayElementRequest>,
-    ) -> Result<Response<InsertNewArrayElementResponse>, Status> {
-        let request = request.into_inner();
-        let resource_id = parse_resource_id(request.resource_id.as_str())?;
-        let transaction = {
-            // Remove indices in reverse order to maintain indices
-            Transaction::new().add_operation(ArrayOperation::insert_element(
-                resource_id,
-                request.array_path.as_str(),
-                Some(request.index as usize),
-                request.json_value,
-            ))
-        };
-
-        self.transaction_manager
-            .lock()
-            .await
-            .commit_transaction(transaction)
-            .await
-            .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
-
-        let transaction_manager = self.transaction_manager.lock().await;
-        let mut ctx = LockContext::new(&transaction_manager).await;
-        let handle = ctx
-            .get_or_load(resource_id)
-            .await
-            .map_err(|err| Status::internal(err.to_string()))?;
-
-        let reflection = ctx
-            .asset_registry
-            .get_resource_reflection(resource_id.kind, &handle)
-            .ok_or_else(|| {
-                Status::internal(format!("Invalid ResourceID format: {}", resource_id))
-            })?;
-
-        //let mut indexed_path = format!("{}[{}]", request.array_path, request.index);
-        let array_prop = find_property(reflection.as_reflect(), &request.array_path)
-            .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
-
-        if let TypeDefinition::Array(array_desc) = array_prop.type_def {
-            let mut base = array_prop.base;
-            let mut type_def = array_desc.inner_type;
-            base = (array_desc.get)(base, request.index as usize)
-                .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
-
-            let array_subscript = if let TypeDefinition::BoxDyn(box_desc) = array_desc.inner_type {
-                type_def = (box_desc.get_inner_type)(base);
-                base = (box_desc.get_inner)(base);
-                format!("[{}]", type_def.get_type_name())
-            } else {
-                format!("[{}]", request.index)
-            };
-
-            let resource_property = ItemInfo {
-                base,
-                field_descriptor: None,
-                type_def,
-                suffix: Some(&array_subscript),
-                depth: 0,
-            }
-            .collect::<ResourcePropertyCollector>()
-            .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
-
-            Ok(Response::new(InsertNewArrayElementResponse {
-                new_value: Some(resource_property),
-            }))
-        } else {
-            Err(Status::internal("Invalid Array Descriptor"))
-        }
-    }
-
-    async fn reorder_array_element(
-        &self,
-        request: Request<ReorderArrayElementRequest>,
-    ) -> Result<Response<ReorderArrayElementResponse>, Status> {
-        let request = request.into_inner();
-        let resource_id = parse_resource_id(request.resource_id.as_str())?;
-        let transaction = {
-            Transaction::new().add_operation(ArrayOperation::reorder_element(
-                resource_id,
-                request.array_path.as_str(),
-                request.old_index as usize,
-                request.new_index as usize,
-            ))
-        };
-
-        self.transaction_manager
-            .lock()
-            .await
-            .commit_transaction(transaction)
-            .await
-            .map_err(|err| Status::internal(format!("transaction error {}", err)))?;
-
-        Ok(Response::new(ReorderArrayElementResponse {}))
+        Ok(UpdatePropertiesResponse::Status204)
     }
 
     async fn get_available_dyn_traits(
         &self,
-        request: Request<GetAvailableDynTraitsRequest>,
-    ) -> Result<Response<GetAvailableDynTraitsResponse>, Status> {
-        let request = request.get_ref();
-
+        request: GetAvailableDynTraitsRequest,
+    ) -> Result<GetAvailableDynTraitsResponse> {
         let available_traits = match request.trait_name.as_str() {
             "dyn Component" => {
                 let mut results = vec![];
@@ -559,14 +450,175 @@ impl PropertyInspector for PropertyInspectorRPC {
         };
 
         if let Some(available_traits) = available_traits {
-            Ok(Response::new(GetAvailableDynTraitsResponse {
-                available_traits,
-            }))
+            Ok(GetAvailableDynTraitsResponse::Status200(available_traits))
         } else {
-            Err(Status::internal(format!(
+            Err(Error::internal(format!(
                 "Unknown factory '{}'",
                 request.trait_name
             )))
         }
+    }
+
+    async fn insert_property_array_item(
+        &self,
+        request: InsertPropertyArrayItemRequest,
+    ) -> Result<InsertPropertyArrayItemResponse> {
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
+
+        let transaction = {
+            // Remove indices in reverse order to maintain indices
+            Transaction::new().add_operation(ArrayOperation::insert_element(
+                resource_id,
+                request.body.array_path.as_str(),
+                Some(request.body.index as usize),
+                request.body.json_value,
+            ))
+        };
+
+        self.transaction_manager
+            .lock()
+            .await
+            .commit_transaction(transaction)
+            .await
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+        let handle = match ctx.get_or_load(resource_id).await {
+            Ok(resource) => resource,
+            Err(_) => return Ok(InsertPropertyArrayItemResponse::Status404),
+        };
+
+        let reflection = ctx
+            .asset_registry
+            .get_resource_reflection(resource_id.kind, &handle)
+            .ok_or_else(|| {
+                Error::internal(format!("Invalid ResourceID format: {}", resource_id))
+            })?;
+
+        //let mut indexed_path = format!("{}[{}]", request.array_path, request.index);
+        let array_prop = find_property(reflection.as_reflect(), &request.body.array_path)
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+        if let TypeDefinition::Array(array_desc) = array_prop.type_def {
+            let mut base = array_prop.base;
+            let mut type_def = array_desc.inner_type;
+            base = (array_desc.get)(base, request.body.index as usize)
+                .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+            let array_subscript = if let TypeDefinition::BoxDyn(box_desc) = array_desc.inner_type {
+                type_def = (box_desc.get_inner_type)(base);
+                base = (box_desc.get_inner)(base);
+                format!("[{}]", type_def.get_type_name())
+            } else {
+                format!("[{}]", request.body.index)
+            };
+
+            let resource_property = ItemInfo {
+                base,
+                field_descriptor: None,
+                type_def,
+                suffix: Some(&array_subscript),
+                depth: 0,
+            }
+            .collect::<ResourcePropertyCollector>()
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+            Ok(InsertPropertyArrayItemResponse::Status200(
+                InsertPropertyArrayItem200Response {
+                    new_value: Some(resource_property),
+                },
+            ))
+        } else {
+            Err(Error::internal("Invalid Array Descriptor"))
+        }
+    }
+
+    async fn delete_properties_array_item(
+        &self,
+        mut request: DeletePropertiesArrayItemRequest,
+    ) -> Result<DeletePropertiesArrayItemResponse> {
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
+
+        let transaction = {
+            // Remove indices in reverse order to maintain indices
+            request.body.indices.sort_unstable();
+            let mut transaction = Transaction::new();
+            for index in request.body.indices.iter().rev() {
+                transaction = transaction.add_operation(ArrayOperation::delete_element(
+                    resource_id,
+                    request.body.array_path.as_str(),
+                    *index as usize,
+                ));
+            }
+            transaction
+        };
+
+        self.transaction_manager
+            .lock()
+            .await
+            .commit_transaction(transaction)
+            .await
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+        Ok(DeletePropertiesArrayItemResponse::Status204)
+    }
+
+    async fn reorder_property_array(
+        &self,
+        request: ReorderPropertyArrayRequest,
+    ) -> Result<ReorderPropertyArrayResponse> {
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())
+            .map_err(|_err| Error::bad_request("invalid resource id"))?;
+
+        let transaction = {
+            Transaction::new().add_operation(ArrayOperation::reorder_element(
+                resource_id,
+                request.body.array_path.as_str(),
+                request.body.old_index as usize,
+                request.body.new_index as usize,
+            ))
+        };
+
+        self.transaction_manager
+            .lock()
+            .await
+            .commit_transaction(transaction)
+            .await
+            .map_err(|err| Error::internal(format!("transaction error {}", err)))?;
+
+        Ok(ReorderPropertyArrayResponse::Status204)
+    }
+
+    async fn update_property_selection(
+        &self,
+        request: UpdatePropertySelectionRequest,
+    ) -> Result<UpdatePropertySelectionResponse> {
+        let resource_id = request
+            .resource_id
+            .0
+            .parse::<ResourceTypeAndId>()
+            .map_err(|_err| {
+                Error::bad_request(format!(
+                    "Invalid ResourceID format: {}",
+                    request.resource_id.0
+                ))
+            })?;
+
+        let transaction = Transaction::new().add_operation(
+            lgn_data_transaction::SelectionOperation::set_selection(&[resource_id]),
+        );
+
+        {
+            let mut transaction_manager = self.transaction_manager.lock().await;
+            transaction_manager
+                .commit_transaction(transaction)
+                .await
+                .map_err(|err| Error::internal(err.to_string()))?;
+        };
+
+        Ok(UpdatePropertySelectionResponse::Status204)
     }
 }

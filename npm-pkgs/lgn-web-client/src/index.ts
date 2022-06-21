@@ -56,8 +56,8 @@ export type Config = {
     /** Transports to use */
     transports: NonEmptyArray<Transport>;
   };
-  restEditorServerUrl?: string;
-  restRuntimeServerUrl?: string;
+  editorServerUrl?: string;
+  runtimeServerUrl?: string;
 };
 
 /**
@@ -78,14 +78,14 @@ export async function run({
   rootQuerySelector,
   auth: authConfig,
   log: logConfig,
-  restEditorServerUrl,
-  restRuntimeServerUrl,
+  editorServerUrl,
+  runtimeServerUrl,
 }: Config): Promise<void> {
   await onPreInit?.();
 
   initApiClient({
-    restEditorServerUrl,
-    restRuntimeServerUrl,
+    editorServerUrl,
+    runtimeServerUrl,
     accessTokenCookieName: authConfig?.login.cookies?.accessToken,
     fetch: authConfig?.fetch,
   });
@@ -171,8 +171,8 @@ export type HeadlessConfig = {
     /** Transports to use */
     transports: NonEmptyArray<Transport>;
   };
-  restEditorServerUrl?: string;
-  restRuntimeServerUrl?: string;
+  editorServerUrl?: string;
+  runtimeServerUrl?: string;
 };
 
 export type HeadlessRun = {
@@ -197,14 +197,14 @@ export async function headlessRun({
   onPreInit,
   auth: authConfig,
   log: logConfig,
-  restEditorServerUrl,
-  restRuntimeServerUrl,
+  editorServerUrl,
+  runtimeServerUrl,
 }: HeadlessConfig): Promise<HeadlessRun> {
   await onPreInit?.();
 
   initApiClient({
-    restEditorServerUrl,
-    restRuntimeServerUrl,
+    editorServerUrl,
+    runtimeServerUrl,
     accessTokenCookieName: authConfig?.login.cookies?.accessToken,
     fetch: authConfig?.fetch,
   });

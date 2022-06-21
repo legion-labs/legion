@@ -39,13 +39,14 @@
 
       // TODO: Handle non primitives
       if (innerPType && ptypeBelongsToPrimitive(innerPType)) {
-        property.subProperties[0] = buildDefaultPrimitiveProperty(
+        property.sub_properties[0] = buildDefaultPrimitiveProperty(
           property.name,
           innerPType
         );
       }
     } else {
-      property.subProperties = [];
+      // eslint-disable-next-line camelcase
+      property.sub_properties = [];
 
       dispatch("input", {
         name: pathParts.join("."),
@@ -55,10 +56,10 @@
   }
 </script>
 
-{#if property.subProperties[0]}
+{#if property.sub_properties[0]}
   <PropertyInput
     on:input={(event) => dispatch("input", event.detail)}
-    property={property.subProperties[0]}
+    property={property.sub_properties[0]}
     parentProperty={property}
     {pathParts}
     {index}

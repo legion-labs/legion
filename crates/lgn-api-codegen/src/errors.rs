@@ -2,10 +2,7 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-use crate::{
-    api_types::Model,
-    openapi_loader::{OpenApiRef, OpenApiRefLocation},
-};
+use crate::openapi_loader::{OpenApiRef, OpenApiRefLocation};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -31,8 +28,6 @@ pub enum Error {
     BrokenReference(OpenApiRef),
     #[error("path is missing operation id: {0}")]
     MissingOperationID(OpenApiRef),
-    #[error("the model `{}` was already registered with a different definition", .0.ref_)]
-    ModelAlreadyRegistered(Model),
     #[error("document already exists at location: {0}")]
     DocumentAlreadyExists(OpenApiRefLocation),
     #[error("at {0}: {1} are not supported")]
