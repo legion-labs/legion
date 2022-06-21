@@ -182,7 +182,7 @@ pub struct CompilerContext<'a> {
     /// Compilation environment.
     pub env: &'a CompilationEnv,
     /// Content-addressable storage of compilation output.
-    pub provider: &'a Provider,
+    pub provider: Arc<Provider>,
 }
 
 impl CompilerContext<'_> {
@@ -366,7 +366,7 @@ impl CompilerDescriptor {
         dependencies: &[ResourcePathId],
         _derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        provider: &Provider,
+        provider: Arc<Provider>,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         let transform = compile_path
@@ -500,7 +500,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 };
 
                 let manifest = manifest
-                    .into_rt_manifest(&data_provider, |_rpid| true)
+                    .into_rt_manifest(Arc::clone(&data_provider), |_rpid| true)
                     .await;
 
                 SharedTreeIdentifier::new(manifest)
@@ -534,7 +534,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &dependencies,
                     &derived_deps,
                     shell.registry(),
-                    &data_provider,
+                    data_provider,
                     &source_manifest_id,
                     &runtime_manifest_id,
                     &env,

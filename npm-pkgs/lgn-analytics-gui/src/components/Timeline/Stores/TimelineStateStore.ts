@@ -1,16 +1,11 @@
 import { writable } from "svelte/store";
 
-import type {
-  AsyncSpansReply,
-  BlockAsyncEventsStatReply,
-  BlockSpansReply,
-} from "@lgn/proto-telemetry/dist/analytics";
+import type { BlockSpansReply } from "@lgn/proto-telemetry/dist/analytics";
 import type { BlockMetadata } from "@lgn/proto-telemetry/dist/block";
 import type { ScopeDesc } from "@lgn/proto-telemetry/dist/calltree";
 import type { Process } from "@lgn/proto-telemetry/dist/process";
 import type { Stream } from "@lgn/proto-telemetry/dist/stream";
 
-import { LODState } from "../Lib/LodState";
 import type { TimelineState } from "./TimelineState";
 
 export type TimelineStateStore = ReturnType<typeof createTimelineStateStore>;
@@ -56,19 +51,6 @@ export function createTimelineStateStore(state: TimelineState) {
     });
   };
 
-  const addProcessAsyncBlock = (processId: string) => {
-    updateState((s) => {
-      s.processAsyncData[processId] = {
-        processId: processId,
-        maxDepth: 0,
-        minMs: Infinity,
-        maxMs: -Infinity,
-        blockStats: {},
-        sections: [],
-      };
-    });
-  };
-
   const addBlock = (
     beginMs: number,
     endMs: number,
@@ -106,44 +88,6 @@ export function createTimelineStateStore(state: TimelineState) {
         block.lods[blockLod.lodId].tracks = blockLod.tracks;
       }
       return s;
-    });
-  };
-
-  const addAsyncBlockData = (
-    processId: string,
-    data: BlockAsyncEventsStatReply
-  ) => {
-    updateState((s) => {
-      const asyncData = s.processAsyncData[processId];
-      asyncData.minMs = Math.min(asyncData.minMs, data.beginMs);
-      asyncData.maxMs = Math.max(asyncData.maxMs, data.endMs);
-      asyncData.blockStats[data.blockId] = data;
-    });
-  };
-
-  const addAsyncData = (
-    processId: string,
-    reply: AsyncSpansReply,
-    sectionNumber: number
-  ) => {
-    updateState((s) => {
-      const data = s.processAsyncData[processId];
-      data.maxDepth = Math.max(data.maxDepth, reply.tracks.length);
-      const section = data.sections[sectionNumber];
-      section.tracks = reply.tracks;
-      section.state = LODState.Loaded;
-      addScopes(reply.scopes);
-    });
-  };
-
-  const setProcessSection = (processId: string, iSection: number) => {
-    updateState((s) => {
-      s.processAsyncData[processId].sections[iSection] = {
-        sectionSequenceNumber: iSection,
-        sectionLod: 0,
-        state: LODState.Requested,
-        tracks: [],
-      };
     });
   };
 
@@ -273,16 +217,12 @@ export function createTimelineStateStore(state: TimelineState) {
 
   return {
     subscribe,
-    addProcessAsyncBlock,
     addBlock,
     addProcess,
     addThread,
     addScopes,
     addBlockData,
-    addAsyncData,
-    addAsyncBlockData,
     set,
-    setProcessSection,
     keyboardZoom,
     keyboardTranslate,
     wheelZoom,

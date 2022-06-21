@@ -19,24 +19,22 @@ export default defineConfig(() => {
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
       svelte({ hot: !!process.env.DEV && !process.env.VITEST }),
       viteApiCodegen({
-        path: "../../crates/lgn-streamer/apis",
-        apiNames: ["streaming"],
-        withPackageJson: true,
         aliasMappings: {
           "../../crates/lgn-governance/apis/space.yaml": "Space",
           "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
         },
-        filename: "streaming",
-      }),
-      viteApiCodegen({
-        path: "../../crates/lgn-log/apis",
-        apiNames: ["log"],
-        withPackageJson: true,
-        aliasMappings: {
-          "../../crates/lgn-governance/apis/space.yaml": "Space",
-          "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
-        },
-        filename: "log",
+        apiOptions: [
+          {
+            path: "../../crates/lgn-streamer/apis",
+            names: ["streaming"],
+            filename: "streaming",
+          },
+          {
+            path: "../../crates/lgn-log/apis",
+            names: ["log"],
+            filename: "log",
+          },
+        ],
       }),
     ],
     test: {

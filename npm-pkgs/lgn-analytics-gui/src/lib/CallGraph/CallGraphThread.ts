@@ -12,15 +12,17 @@ export class CallGraphThread {
 
   ingestBlock(block: CumulativeCallGraphComputedBlock) {
     for (const node of block.nodes) {
-      if (!node.node) {
+      if (!node.stats) {
         continue;
       }
-      if (node.node.hash === 0) node.node.hash = block.streamHash;
-      const item = this.data.get(node.node.hash);
+      if (node.stats.hash === 0) {
+        node.stats.hash = block.streamHash;
+      }
+      const item = this.data.get(node.stats.hash);
       if (item) {
         item.ingest(node);
       } else {
-        this.data.set(node.node.hash, new CallGraphNode(node, false));
+        this.data.set(node.stats.hash, new CallGraphNode(node));
       }
     }
   }

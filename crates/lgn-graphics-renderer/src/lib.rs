@@ -14,8 +14,8 @@ mod cgen {
 
 use crate::components::{
     reflect_camera_components, reflect_viewports, reflect_visual_components, tmp_create_camera,
-    tmp_debug_display_lights, EcsToRenderCamera, EcsToRenderLight, EcsToRenderViewport,
-    EcsToRenderVisual,
+    tmp_debug_display_lights, CameraOptions, EcsToRenderCamera, EcsToRenderLight,
+    EcsToRenderViewport, EcsToRenderVisual,
 };
 use crate::core::{
     RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
@@ -327,6 +327,7 @@ impl Plugin for RendererPlugin {
             .insert_resource(shared_resources_manager)
             .insert_resource(texture_manager)
             .insert_resource(RendererOptions::default())
+            .insert_resource(CameraOptions::default())
             .insert_resource(picking_manager.clone());
 
         // Init ecs

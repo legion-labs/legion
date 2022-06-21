@@ -1,52 +1,50 @@
 import mkdirp from "mkdirp";
 import path from "path";
-import { generate } from "@lgn/api-codegen";
+import { generateAll } from "@lgn/api-codegen";
 
-export type Config = {
+export type ApiConfig = {
   /** Root path of the apis definitions files (.yaml) */
   path: string;
   /** An array containing the api to generate the client(s) for */
-  apiNames: string[];
-  /** Path to a Prettier config file */
-  prettierConfigPath?: string;
-  /** Generates a package.json file alongside the source */
-  withPackageJson?: boolean;
-  /** Skips code formatting */
-  skipFormat?: boolean;
+  names: string[];
+  /** Filename without prefix nor extension */
+  filename: string;
+};
+
+export type Config = {
   /** Maps external references to TS namespaces */
   aliasMappings?: Record<string, string>;
-  /** Filename without prefix nor extension */
-  filename?: string;
+  /** Path to a Prettier config file */
+  prettierConfigPath?: string;
+  /** Skips code formatting */
+  skipFormat?: boolean;
+  /** Api configurations */
+  apiOptions: [ApiConfig, ...ApiConfig[]];
 };
 
 /**
  * Automatically generates TypeScript code from OpenAPI files before Vite build
  */
 export default function vitePluginApiCodegen({
-  path: apisPath,
-  apiNames,
   prettierConfigPath,
   skipFormat,
-  withPackageJson,
   aliasMappings,
-  filename,
+  apiOptions,
 }: Config) {
   return {
     name: "@lgn/vite-plugin-api-codegen",
     async buildStart() {
-      const outDir = path.resolve(process.cwd(), "node_modules", "@lgn/apis");
+      const outDir = path.resolve(process.cwd(), "node_modules", "@lgn/api");
 
       await mkdirp(outDir);
 
-      generate({
-        apiNames,
-        path: apisPath,
+      generateAll({
         outDir,
+        aliasMappings,
         prettierConfigPath,
         skipFormat,
-        withPackageJson,
-        aliasMappings,
-        filename,
+        withPackageJson: true,
+        apiOptions,
       });
     },
   };

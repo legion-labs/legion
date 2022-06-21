@@ -3,7 +3,7 @@ use std::{collections::BTreeSet, path::PathBuf};
 use lgn_content_store::{indexing::IndexKey, Identifier};
 use thiserror::Error;
 
-use crate::{Branch, CanonicalPath, CommitId, Lock, RepositoryName};
+use crate::{Branch, BranchName, CanonicalPath, CommitId, Lock, RepositoryName};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -12,8 +12,8 @@ pub enum Error {
         repository_name: String,
         reason: String,
     },
-    #[error("the specified repository `{repository_name}` does not exist")]
-    RepositoryDoesNotExist { repository_name: RepositoryName },
+    #[error("the specified repository `{repository_name}` was not found")]
+    RepositoryNotFound { repository_name: RepositoryName },
     #[error("the specified repository `{repository_name}` already exists")]
     RepositoryAlreadyExists { repository_name: RepositoryName },
     #[error("commit `{commit_id}` was not found")]
@@ -24,15 +24,19 @@ pub enum Error {
     UnmatchedPath { path: PathBuf },
     #[error("the path `{path}` is a symbolic link which is not supported")]
     SymbolicLinkNotSupported { path: PathBuf },
+    #[error("invalid branch name `{branch_name}`: {reason}")]
+    InvalidBranchName { branch_name: String, reason: String },
     #[error("branch `{branch_name}` was not found")]
-    BranchNotFound { branch_name: String },
+    BranchNotFound { branch_name: BranchName },
+    #[error("branch `{branch_name}` already exists")]
+    BranchAlreadyExists { branch_name: BranchName },
     #[error("lock `{lock_domain_id}/{canonical_path}` was not found")]
     LockNotFound {
         lock_domain_id: String,
         canonical_path: CanonicalPath,
     },
     #[error("already on branch `{branch_name}`")]
-    AlreadyOnBranch { branch_name: String },
+    AlreadyOnBranch { branch_name: BranchName },
     #[error("the workspace is dirty - please commit or stash changes")]
     WorkspaceDirty,
     #[error("cannot commit on stale branch `{}` who is now at `{}`", .branch.name, .branch.head)]
@@ -81,6 +85,8 @@ pub enum Error {
     },
     #[error("{0}")]
     Unspecified(String),
+    #[error("content store: {0}")]
+    ContentStore(#[from] lgn_content_store::Error),
     #[error("content store indexing: {0}")]
     ContentStoreIndexing(#[from] lgn_content_store::indexing::Error),
     #[error("resource  `{id}` not found in content store")]
@@ -89,11 +95,13 @@ pub enum Error {
     ResourceNotFoundByPath { path: String },
     #[error("path `{path}` is not valid for storage in content store")]
     InvalidPath { path: String },
+    #[error("unknown error: {0}")]
+    Unknown(#[from] anyhow::Error),
 }
 
 impl Error {
-    pub fn repository_does_not_exist(repository_name: RepositoryName) -> Self {
-        Self::RepositoryDoesNotExist { repository_name }
+    pub fn repository_not_found(repository_name: RepositoryName) -> Self {
+        Self::RepositoryNotFound { repository_name }
     }
 
     pub fn repository_already_exists(repository_name: RepositoryName) -> Self {
@@ -116,8 +124,12 @@ impl Error {
         Self::SymbolicLinkNotSupported { path: path.into() }
     }
 
-    pub fn branch_not_found(branch_name: String) -> Self {
+    pub fn branch_not_found(branch_name: BranchName) -> Self {
         Self::BranchNotFound { branch_name }
+    }
+
+    pub fn branch_already_exists(branch_name: BranchName) -> Self {
+        Self::BranchAlreadyExists { branch_name }
     }
 
     pub fn lock_not_found(lock_domain_id: String, canonical_path: CanonicalPath) -> Self {
@@ -127,7 +139,7 @@ impl Error {
         }
     }
 
-    pub fn already_on_branch(branch_name: String) -> Self {
+    pub fn already_on_branch(branch_name: BranchName) -> Self {
         Self::AlreadyOnBranch { branch_name }
     }
 

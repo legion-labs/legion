@@ -1,18 +1,11 @@
 use anyhow::Context;
-use anyhow::{bail, Result};
-use async_recursion::async_recursion;
+use anyhow::Result;
 use lgn_analytics::prelude::*;
-use lgn_analytics::time::ConvertTicks;
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
-use lgn_telemetry_proto::analytics::AsyncSpansReply;
-use lgn_telemetry_proto::analytics::AsyncSpansRequest;
-use lgn_telemetry_proto::analytics::BlockAsyncEventsStatReply;
-use lgn_telemetry_proto::analytics::BlockAsyncStatsRequest;
 use lgn_telemetry_proto::analytics::BlockSpansReply;
 use lgn_telemetry_proto::analytics::BuildTimelineTablesReply;
 use lgn_telemetry_proto::analytics::BuildTimelineTablesRequest;
-use lgn_telemetry_proto::analytics::CumulativeCallGraphBlock;
 use lgn_telemetry_proto::analytics::CumulativeCallGraphComputedBlock;
 use lgn_telemetry_proto::analytics::FindProcessReply;
 use lgn_telemetry_proto::analytics::FindProcessRequest;
@@ -27,7 +20,6 @@ use lgn_telemetry_proto::analytics::MetricBlockManifest;
 use lgn_telemetry_proto::analytics::MetricBlockManifestRequest;
 use lgn_telemetry_proto::analytics::MetricBlockRequest;
 use lgn_telemetry_proto::analytics::ProcessChildrenReply;
-use lgn_telemetry_proto::analytics::ProcessCumulativeCallGraphRequest;
 use lgn_telemetry_proto::analytics::ProcessListReply;
 use lgn_telemetry_proto::analytics::ProcessLogReply;
 use lgn_telemetry_proto::analytics::ProcessLogRequest;
@@ -40,7 +32,7 @@ use lgn_telemetry_proto::analytics::{
 };
 use lgn_telemetry_proto::analytics::{
     CumulativeCallGraphBlockRequest, CumulativeCallGraphManifest,
-    CumulativeCallGraphManifestRequest, CumulativeCallGraphReply,
+    CumulativeCallGraphManifestRequest,
 };
 use lgn_tracing::dispatch::init_thread_stream;
 use lgn_tracing::flush_monitor::FlushMonitor;
@@ -49,13 +41,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tonic::{Request, Response, Status};
 
-use crate::async_spans::compute_async_spans;
-use crate::async_spans::compute_block_async_stats;
 use crate::cache::DiskCache;
-use crate::call_tree::compute_block_spans;
 use crate::call_tree::reduce_lod;
-use crate::call_tree_store::CallTreeStore;
-use crate::cumulative_call_graph::compute_cumulative_call_graph;
 use crate::cumulative_call_graph_handler::CumulativeCallGraphHandler;
 use crate::lakehouse::jit_lakehouse::JitLakehouse;
 use crate::log_entry::Searchable;
@@ -91,7 +78,6 @@ pub struct AnalyticsService {
     data_lake_blobs: Arc<dyn BlobStorage>,
     cache: Arc<DiskCache>,
     jit_lakehouse: Arc<dyn JitLakehouse>,
-    call_trees: Arc<CallTreeStore>,
     flush_monitor: FlushMonitor,
 }
 
@@ -104,11 +90,10 @@ impl AnalyticsService {
         jit_lakehouse: Arc<dyn JitLakehouse>,
     ) -> Self {
         Self {
-            pool: pool.clone(),
-            data_lake_blobs: data_lake_blobs.clone(),
-            cache: Arc::new(DiskCache::new(cache_blobs.clone())),
+            pool,
+            data_lake_blobs,
+            cache: Arc::new(DiskCache::new(cache_blobs)),
             jit_lakehouse,
-            call_trees: Arc::new(CallTreeStore::new(pool, data_lake_blobs, cache_blobs)),
             flush_monitor: FlushMonitor::default(),
         }
     }
@@ -172,14 +157,13 @@ impl AnalyticsService {
         block_id: &str,
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
+        let lod0_reply = self
+            .jit_lakehouse
+            .get_thread_block(process, stream, block_id)
+            .await?;
         if lod_id == 0 {
-            let tree = self
-                .call_trees
-                .get_call_tree(ConvertTicks::new(process), stream, block_id)
-                .await?;
-            return Ok(compute_block_spans(tree, block_id));
+            return Ok(lod0_reply);
         }
-        let lod0_reply = self.block_spans_impl(process, stream, block_id, 0).await?;
         let lod0 = lod0_reply.lod.unwrap();
         let reduced = reduce_lod(&lod0, lod_id);
         Ok(BlockSpansReply {
@@ -191,7 +175,7 @@ impl AnalyticsService {
         })
     }
 
-    #[async_recursion]
+    #[span_fn]
     async fn block_spans_impl(
         &self,
         process: &lgn_telemetry_sink::ProcessInfo,
@@ -200,25 +184,19 @@ impl AnalyticsService {
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
         async_span_scope!("AnalyticsService::block_spans_impl");
-        let cache_item_name = format!("spans_{}_{}", block_id, lod_id);
-        self.cache
-            .get_or_put(&cache_item_name, async {
-                self.compute_spans_lod(process, stream, block_id, lod_id)
-                    .await
-            })
-            .await
-    }
-
-    #[span_fn]
-    async fn process_cumulative_call_graph_impl(
-        &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        begin_ms: f64,
-        end_ms: f64,
-    ) -> Result<CumulativeCallGraphReply> {
-        let mut connection = self.pool.acquire().await?;
-        compute_cumulative_call_graph(&mut connection, &self.call_trees, process, begin_ms, end_ms)
-            .await
+        if lod_id == 0 {
+            self.jit_lakehouse
+                .get_thread_block(process, stream, block_id)
+                .await
+        } else {
+            let cache_item_name = format!("spans_{}_{}", block_id, lod_id);
+            self.cache
+                .get_or_put(&cache_item_name, async {
+                    self.compute_spans_lod(process, stream, block_id, lod_id)
+                        .await
+                })
+                .await
+        }
     }
 
     #[allow(clippy::cast_precision_loss)]
@@ -362,35 +340,12 @@ impl AnalyticsService {
     }
 
     #[span_fn]
-    async fn fetch_block_async_stats_impl(
-        &self,
-        request: BlockAsyncStatsRequest,
-    ) -> Result<BlockAsyncEventsStatReply> {
-        if request.process.is_none() {
-            bail!("missing process in fetch_block_async_stats request");
-        }
-        if request.stream.is_none() {
-            bail!("missing stream in fetch_block_async_stats request");
-        }
-        compute_block_async_stats(&self.call_trees, request.block_id).await
-    }
-
-    #[span_fn]
-    async fn fetch_async_spans_impl(&self, request: AsyncSpansRequest) -> Result<AsyncSpansReply> {
-        compute_async_spans(
-            &self.call_trees,
-            request.section_sequence_number,
-            request.section_lod,
-            request.block_ids,
-        )
-        .await
-    }
-
-    #[span_fn]
+    #[allow(unused_variables)]
     async fn build_timeline_tables_impl(
         &self,
         request: BuildTimelineTablesRequest,
     ) -> Result<BuildTimelineTablesReply> {
+        #[cfg(feature = "deltalake-proto")]
         self.jit_lakehouse
             .build_timeline_tables(&request.process_id)
             .await?;
@@ -566,39 +521,6 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    async fn process_cumulative_call_graph(
-        &self,
-        request: Request<ProcessCumulativeCallGraphRequest>,
-    ) -> Result<Response<CumulativeCallGraphReply>, Status> {
-        self.flush_monitor.tick();
-        async_span_scope!("AnalyticsService::process_cumulative_call_graph");
-        let _guard = RequestGuard::new();
-        let inner_request = request.into_inner();
-        if inner_request.process.is_none() {
-            error!("Missing process in process_cumulative_call_graph");
-            return Err(Status::internal(String::from(
-                "Missing process in process_cumulative_call_graph",
-            )));
-        }
-        match self
-            .process_cumulative_call_graph_impl(
-                &inner_request.process.unwrap(),
-                inner_request.begin_ms,
-                inner_request.end_ms,
-            )
-            .await
-        {
-            Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => {
-                error!("Error in process_cumulative_call_graph: {:?}", e);
-                Err(Status::internal(format!(
-                    "Error in process_cumulative_call_graph: {}",
-                    e
-                )))
-            }
-        }
-    }
-
     async fn fetch_cumulative_call_graph_manifest(
         &self,
         request: Request<CumulativeCallGraphManifestRequest>,
@@ -608,7 +530,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         let handler =
-            CumulativeCallGraphHandler::new(self.pool.clone(), Arc::clone(&self.call_trees));
+            CumulativeCallGraphHandler::new(self.pool.clone(), self.jit_lakehouse.clone());
         match handler
             .get_process_call_graph_manifest(
                 inner_request.process_id,
@@ -628,35 +550,6 @@ impl PerformanceAnalytics for AnalyticsService {
         }
     }
 
-    async fn fetch_cumulative_call_graph_block(
-        &self,
-        request: tonic::Request<CumulativeCallGraphBlockRequest>,
-    ) -> Result<tonic::Response<CumulativeCallGraphBlock>, Status> {
-        self.flush_monitor.tick();
-        async_span_scope!("AnalyticsService::fetch_cumulative_call_graph_block");
-        let _guard = RequestGuard::new();
-        let inner_request = request.into_inner();
-        let handler =
-            CumulativeCallGraphHandler::new(self.pool.clone(), Arc::clone(&self.call_trees));
-        match handler
-            .get_call_graph_block(
-                inner_request.block_id,
-                inner_request.start_ticks,
-                inner_request.tsc_frequency,
-            )
-            .await
-        {
-            Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => {
-                error!("Error in fetch_cumulative_call_graph_block: {:?}", e);
-                Err(Status::internal(format!(
-                    "Error in fetch_cumulative_call_graph_block: {}",
-                    e
-                )))
-            }
-        }
-    }
-
     async fn fetch_cumulative_call_graph_computed_block(
         &self,
         request: tonic::Request<CumulativeCallGraphBlockRequest>,
@@ -666,7 +559,7 @@ impl PerformanceAnalytics for AnalyticsService {
         let _guard = RequestGuard::new();
         let inner_request = request.into_inner();
         let handler =
-            CumulativeCallGraphHandler::new(self.pool.clone(), Arc::clone(&self.call_trees));
+            CumulativeCallGraphHandler::new(self.pool.clone(), self.jit_lakehouse.clone());
         match handler
             .get_call_graph_computed_block(
                 inner_request.block_id,
@@ -842,46 +735,6 @@ impl PerformanceAnalytics for AnalyticsService {
                 error!("Error in fetch_block_metric_manifest: {:?}", e);
                 Err(Status::internal(format!(
                     "Error in fetch_block_metric_manifest: {}",
-                    e
-                )))
-            }
-        }
-    }
-
-    async fn fetch_block_async_stats(
-        &self,
-        request: Request<BlockAsyncStatsRequest>,
-    ) -> Result<Response<BlockAsyncEventsStatReply>, Status> {
-        self.flush_monitor.tick();
-        async_span_scope!("AnalyticsService::fetch_block_async_stats");
-        let _guard = RequestGuard::new();
-        let inner_request = request.into_inner();
-        match self.fetch_block_async_stats_impl(inner_request).await {
-            Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => {
-                error!("Error in fetch_block_async_stats: {:?}", e);
-                Err(Status::internal(format!(
-                    "Error in fetch_block_async_stats: {}",
-                    e
-                )))
-            }
-        }
-    }
-
-    async fn fetch_async_spans(
-        &self,
-        request: Request<AsyncSpansRequest>,
-    ) -> Result<Response<AsyncSpansReply>, Status> {
-        self.flush_monitor.tick();
-        async_span_scope!("AnalyticsService::fetch_async_spans");
-        let _guard = RequestGuard::new();
-        let inner_request = request.into_inner();
-        match self.fetch_async_spans_impl(inner_request).await {
-            Ok(reply) => Ok(Response::new(reply)),
-            Err(e) => {
-                error!("Error in fetch_fetch_async_spans: {:?}", e);
-                Err(Status::internal(format!(
-                    "Error in fetch_async_spans: {}",
                     e
                 )))
             }

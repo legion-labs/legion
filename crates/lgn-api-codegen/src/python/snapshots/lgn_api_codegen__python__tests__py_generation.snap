@@ -213,10 +213,12 @@ class GetCarsRequest:
     def __init__(
         self,
         space_id: str,
+        other_query: str,
         names: list[str] = None,
         q: str = None,
     ):
         self.space_id = space_id
+        self.other_query = other_query
         if names:
             self.names = names
         if q:
@@ -971,6 +973,15 @@ class Client(Api):
         headers = {}
         params = {}
         uri+= "?"
+        required = True
+        if required or (hasattr(request, "other_query") and request.other_query):
+            if isinstance(request.other_query, list):
+                for num, item in enumerate(request.other_query):
+                    if num > 0:
+                        uri += '&'
+                    uri += "other_query[{}]={}".format(num, item)
+            else:
+                params["other_query"] = request.other_query
         required = False
         if required or (hasattr(request, "names") and request.names):
             if isinstance(request.names, list):

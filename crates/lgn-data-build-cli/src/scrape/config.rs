@@ -9,7 +9,7 @@ use lgn_data_build::{DataBuild, DataBuildOptions};
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::resource::Project;
 use lgn_data_runtime::ResourceType;
-use lgn_source_control::{RepositoryIndex, RepositoryName};
+use lgn_source_control::{BranchName, RepositoryIndex, RepositoryName};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -40,7 +40,7 @@ impl Config {
     pub async fn open(
         &self,
         repository_name: &RepositoryName,
-        branch_name: &str,
+        branch_name: &BranchName,
         source_control_content_provider: Arc<Provider>,
         data_content_provider: Arc<Provider>,
         repository_index: impl RepositoryIndex,

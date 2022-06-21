@@ -90,6 +90,7 @@ impl RotationManipulator {
         base_global_transform: &GlobalTransform,
         parent_global_transform: &GlobalTransform,
         camera: &CameraComponent,
+        camera_transform: &GlobalTransform,
         picked_pos: Vec2,
         screen_size: Vec2,
         cursor_pos: Vec2,
@@ -101,13 +102,25 @@ impl RotationManipulator {
             RotationComponents::ZAxis => Vec3::Z,
         };
 
-        let picked_world_point =
-            new_world_point_for_cursor(camera, screen_size, picked_pos, plane_point, plane_normal);
+        let picked_world_point = new_world_point_for_cursor(
+            camera,
+            camera_transform,
+            screen_size,
+            picked_pos,
+            plane_point,
+            plane_normal,
+        );
         let dir_to_picked_point =
             (picked_world_point - base_global_transform.translation).normalize();
 
-        let new_world_point =
-            new_world_point_for_cursor(camera, screen_size, cursor_pos, plane_point, plane_normal);
+        let new_world_point = new_world_point_for_cursor(
+            camera,
+            camera_transform,
+            screen_size,
+            cursor_pos,
+            plane_point,
+            plane_normal,
+        );
         let dir_to_new_point = (new_world_point - base_global_transform.translation).normalize();
 
         let initial_rotation = Mat3::from_quat(base_global_transform.rotation);

@@ -8,26 +8,26 @@ pub struct Lock {
     pub branch_name: String,
 }
 
-impl From<Lock> for lgn_source_control_proto::Lock {
+impl From<Lock> for crate::api::source_control::Lock {
     fn from(lock: Lock) -> Self {
         Self {
-            canonical_path: lock.canonical_path.to_string(),
-            lock_domain_id: lock.lock_domain_id,
-            workspace_id: lock.workspace_id,
-            branch_name: lock.branch_name,
+            canonical_path: lock.canonical_path.into(),
+            lock_domain_id: lock.lock_domain_id.into(),
+            workspace_id: lock.workspace_id.into(),
+            branch_name: lock.branch_name.into(),
         }
     }
 }
 
-impl TryFrom<lgn_source_control_proto::Lock> for Lock {
+impl TryFrom<crate::api::source_control::Lock> for Lock {
     type Error = Error;
 
-    fn try_from(lock: lgn_source_control_proto::Lock) -> Result<Self> {
+    fn try_from(lock: crate::api::source_control::Lock) -> Result<Self> {
         Ok(Self {
-            canonical_path: CanonicalPath::new(&lock.canonical_path)?,
-            lock_domain_id: lock.lock_domain_id,
-            workspace_id: lock.workspace_id,
-            branch_name: lock.branch_name,
+            canonical_path: lock.canonical_path.try_into()?,
+            lock_domain_id: lock.lock_domain_id.0,
+            workspace_id: lock.workspace_id.0,
+            branch_name: lock.branch_name.0,
         })
     }
 }
@@ -51,26 +51,26 @@ mod tests {
             branch_name: "branch_name".to_string(),
         };
 
-        let proto_lock = lgn_source_control_proto::Lock::from(lock);
+        let proto_lock = crate::api::source_control::Lock::from(lock);
 
         assert_eq!(
             proto_lock,
-            lgn_source_control_proto::Lock {
-                canonical_path: "/canonical_path".to_string(),
-                lock_domain_id: "lock_domain_id".to_string(),
-                workspace_id: "workspace_id".to_string(),
-                branch_name: "branch_name".to_string(),
+            crate::api::source_control::Lock {
+                canonical_path: "/canonical_path".to_string().into(),
+                lock_domain_id: "lock_domain_id".to_string().into(),
+                workspace_id: "workspace_id".to_string().into(),
+                branch_name: "branch_name".to_string().into(),
             }
         );
     }
 
     #[test]
     fn test_lock_to_proto() {
-        let proto_lock = lgn_source_control_proto::Lock {
-            canonical_path: "/canonical_path".to_string(),
-            lock_domain_id: "lock_domain_id".to_string(),
-            workspace_id: "workspace_id".to_string(),
-            branch_name: "branch_name".to_string(),
+        let proto_lock = crate::api::source_control::Lock {
+            canonical_path: "/canonical_path".to_string().into(),
+            lock_domain_id: "lock_domain_id".to_string().into(),
+            workspace_id: "workspace_id".to_string().into(),
+            branch_name: "branch_name".to_string().into(),
         };
 
         let lock = Lock::try_from(proto_lock).unwrap();

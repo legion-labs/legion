@@ -39,14 +39,14 @@ pub struct ApiContentProvider<C> {
 }
 
 impl<C> ApiContentProvider<C> {
-    pub async fn new(client: C, base_url: Uri, space_id: SpaceId, data_space: DataSpace) -> Self {
+    pub async fn new(client: C, base_url: Uri, data_space: DataSpace) -> Self {
         let client = Arc::new(Client::new(client, base_url));
         // The buffer for HTTP uploaders is set to 2MB.
         let buf_size = 2 * 1024 * 1024;
 
         Self {
             client,
-            space_id,
+            space_id: "default".parse().unwrap(),
             data_space,
             buf_size,
         }
@@ -588,7 +588,6 @@ mod test {
         let address_provider = Arc::new(FakeContentAddressProvider::new(
             http_server.url("/").to_string(),
         ));
-        let space_id = "space_id".parse().unwrap();
         let data_space = DataSpace::persistent();
         let providers = vec![(
             data_space.clone(),
@@ -615,13 +614,12 @@ mod test {
             socket_addr: &SocketAddr,
             http_server: &httptest::Server,
             address_provider: Arc<FakeContentAddressProvider>,
-            space_id: SpaceId,
             data_space: DataSpace,
         ) {
             let client = HyperClient::default();
             let base_url: http::Uri = format!("http://{}", socket_addr).parse().unwrap();
             let content_provider =
-                ApiContentProvider::new(client, base_url.clone(), space_id, data_space).await;
+                ApiContentProvider::new(client, base_url.clone(), data_space).await;
 
             let origin = Origin::Memory {};
             crate::content_providers::test_content_provider(&content_provider, &SMALL_DATA, origin)
@@ -697,7 +695,7 @@ mod test {
                     .with_graceful_shutdown(async move { lgn_cli_utils::wait_for_termination().await.unwrap() })
                     .await
                 } => panic!("server is no longer bound: {}", res.unwrap_err()),
-                _ = f(&addr, &http_server, address_provider, space_id, data_space) => break
+                _ = f(&addr, &http_server, address_provider, data_space) => break
             };
         }
     }

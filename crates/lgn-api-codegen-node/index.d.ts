@@ -19,7 +19,7 @@ export interface GenerateOption {
   /** Aliases for external API references */
   aliasMappings?: Record<string, string>
   /** Filename without prefix nor extension */
-  filename?: string
+  filename: string
 }
 /**
  * Generate api clients.
@@ -29,3 +29,33 @@ export interface GenerateOption {
  * Throws if the generation fails (file not found, invalid, etc...)
  */
 export function generate(options: GenerateOption): void
+export interface ApiOption {
+  /** Path to the _folder_ that contains all the apis definition files (.yaml), prefer absolute paths */
+  path: string
+  /** Name(s) of the api to generate the client code for */
+  names: Array<string>
+  /** Filename without prefix nor extension */
+  filename: string
+}
+export interface GenerateAllOption {
+  /** Output directory, prefer absolute paths */
+  outDir: string
+  /** Path to a Prettier config file */
+  prettierConfigPath?: string
+  /** Generates a full-fledged node module including a `package.json` file */
+  withPackageJson?: boolean
+  /** Skips code formatting */
+  skipFormat?: boolean
+  /** Aliases for external API references */
+  aliasMappings?: Record<string, string>
+  /** Api options */
+  apiOptions: Array<ApiOption>
+}
+/**
+ * Generate all api clients.
+ *
+ * # Errors
+ *
+ * Throws if the generation fails (file not found, invalid, etc...)
+ */
+export function generateAll(options: GenerateAllOption): void

@@ -166,12 +166,15 @@ dependencies = [
 
 [[package]]
 name = "analytics-srv"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-recursion",
  "async-trait",
+ "aws-config",
+ "aws-sdk-s3",
  "blake3",
+ "bytes",
  "chrono",
  "clap 3.1.18",
  "datafusion",
@@ -2379,15 +2382,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac1b7517328c04c2aa68422fc60a41b92208182142ed04a25879c26c8f878794"
 dependencies = [
  "libloading",
-]
-
-[[package]]
-name = "dolly"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72ca62af80028e899eae554918f89106ae480104b1de01965b454601e1ad87de"
-dependencies = [
- "glam",
 ]
 
 [[package]]
@@ -4909,7 +4903,6 @@ dependencies = [
  "bumpalo",
  "bumpalo-herd",
  "crossbeam-channel",
- "dolly",
  "egui",
  "lgn-app",
  "lgn-asset-registry",
@@ -5288,17 +5281,21 @@ dependencies = [
  "atty",
  "aws-config",
  "aws-sdk-s3",
+ "axum",
  "bytes",
  "chrono",
  "clap 3.1.18",
  "futures",
  "http",
+ "hyper",
  "itertools",
+ "lgn-api-codegen",
  "lgn-auth",
+ "lgn-cli-utils",
  "lgn-config",
  "lgn-content-store",
+ "lgn-governance",
  "lgn-online",
- "lgn-source-control-proto",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lz4",
@@ -5309,6 +5306,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "serde_qs",
  "sha2 0.10.2",
  "sqlx",
  "tempfile",
@@ -5317,8 +5315,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util 0.6.10",
- "tonic",
- "tonic-web",
  "tower",
  "tower-http",
  "urlencoding",
@@ -5341,18 +5337,6 @@ dependencies = [
  "libc",
  "tokio",
  "users",
-]
-
-[[package]]
-name = "lgn-source-control-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "prost-types",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]

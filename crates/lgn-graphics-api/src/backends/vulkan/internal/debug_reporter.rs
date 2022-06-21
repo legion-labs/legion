@@ -8,13 +8,15 @@ use lgn_tracing::{debug, error, info, trace, warn};
 use crate::backends::vulkan::VulkanDeviceContext;
 use crate::{Buffer, Texture};
 
-const ERRORS_TO_IGNORE: [&str; 0] = [
+const ERRORS_TO_IGNORE: [&str; 2] = [
     // Temporary - I suspect locally built validation on M1 mac has a bug
     //"VUID-VkWriteDescriptorSet-descriptorType-00332",
     //"VUID-VkWriteDescriptorSet-descriptorType-00333",
     // windows/5700xt can return 0 max surface size when window is resized to (0, 0). Spec
     // states swapchain size must be > 0
     //"VUID-VkSwapchainCreateInfoKHR-imageExtent-01274",
+    "VUID-vkCmdBindPipeline-pipeline-06197",
+    "VUID-vkCmdBindPipeline-pipeline-06195",
 ];
 
 /// Callback for vulkan validation layer logging

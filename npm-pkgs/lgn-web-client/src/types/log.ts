@@ -1,4 +1,4 @@
-import type { Log } from "@lgn/apis/log";
+import type { Log } from "@lgn/api/log";
 
 export type Severity = "error" | "warn" | "info" | "trace" | "debug";
 
