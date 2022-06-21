@@ -7176,6 +7176,8 @@ name = "proto-salsa-compiler"
 version = "0.1.0"
 dependencies = [
  "salsa",
+ "strum 0.24.1",
+ "strum_macros 0.24.0",
 ]
 
 [[package]]

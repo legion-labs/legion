@@ -38,7 +38,7 @@ impl SourceControlBuilder {
             resource_content.insert(guid, addr);
         }
 
-        let resource_list: Vec<ResourceGuid> = resource_content.keys().cloned().collect();
+        let resource_list: Vec<ResourceGuid> = resource_content.keys().copied().collect();
 
         let commit_root = Self::calculate_hash(&resource_content);
 

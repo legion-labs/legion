@@ -9,3 +9,5 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 salsa = "0.16"
+strum = "0.24"
+strum_macros = "0.24"

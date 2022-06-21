@@ -111,11 +111,10 @@ impl ResourceManager {
             .await
     }
 
+    // 1. Check if it's a source-resource. If it is, send the content-store link
+    // 2. Check in the Build-database if this resource is already in the content-store.
+    // 3. If it's not there, request the data executor provider to compile it
     pub async fn load(&self, id: ResourcePathId) -> Result<String, CompilerError> {
-        // 1. Check if it's a source-resource. If it is, send the content-store link
-        // 2. Check in the Build-database if this resource is already in the content-store.
-        // 3. If it's not there, request the data executor provider to compile it
-
         let mut log_entry = LoadEntry {
             id: id.clone(),
             commit_root: self.workspace.commit_root,
