@@ -112,13 +112,14 @@ fn intersect_ray_with_plane(
 
 pub(super) fn new_world_point_for_cursor(
     camera: &CameraComponent,
+    camera_transform: &GlobalTransform,
     screen_size: Vec2,
     mut cursor_pos: Vec2,
     plane_point: Vec3,
     plane_normal: Vec3,
 ) -> Vec3 {
     cursor_pos.y = screen_size.y - cursor_pos.y;
-    let camera_pos = camera.position();
+    let camera_pos = camera_transform.translation;
     let ray_point = camera_pos;
     let screen_offset = 2.0 * (cursor_pos / screen_size) - 1.0;
     let screen_pos = Vec4::new(screen_offset.x, screen_offset.y, 0.5, 1.0);
@@ -132,7 +133,7 @@ pub(super) fn new_world_point_for_cursor(
     let mut view_pos = projection_matrix.inverse().mul_vec4(screen_pos);
     view_pos /= view_pos.w;
 
-    let view_matrix = view_transform(&camera.final_transform()).compute_matrix();
+    let view_matrix = view_transform(camera_transform).compute_matrix();
     let world_pos = view_matrix.inverse().mul_vec4(view_pos);
 
     let ray_dir = (world_pos.xyz() - camera_pos).normalize();
@@ -143,10 +144,9 @@ pub(super) fn new_world_point_for_cursor(
 pub(super) fn plane_normal_for_camera_pos(
     component: AxisComponents,
     base_entity_transform: &GlobalTransform,
-    camera: &CameraComponent,
+    camera_pos: Vec3,
     rotation: Quat,
 ) -> Vec3 {
-    let camera_pos = camera.position();
     let dir_to_camera = (camera_pos - base_entity_transform.translation).normalize();
 
     let xy_plane_normal = rotation.mul_vec3(Vec3::Z);
@@ -270,6 +270,7 @@ impl ManipulatorManager {
         base_global_transform: &GlobalTransform,
         parent_global_transform: &GlobalTransform,
         camera: &CameraComponent,
+        camera_transform: &GlobalTransform,
         picked_pos: Vec2,
         screen_size: Vec2,
         cursor_pos: Vec2,
@@ -283,6 +284,7 @@ impl ManipulatorManager {
                 base_global_transform,
                 parent_global_transform,
                 camera,
+                camera_transform,
                 picked_pos,
                 screen_size,
                 cursor_pos,
@@ -293,6 +295,7 @@ impl ManipulatorManager {
                 base_global_transform,
                 parent_global_transform,
                 camera,
+                camera_transform,
                 picked_pos,
                 screen_size,
                 cursor_pos,
@@ -303,6 +306,7 @@ impl ManipulatorManager {
                 base_global_transform,
                 parent_global_transform,
                 camera,
+                camera_transform,
                 picked_pos,
                 screen_size,
                 cursor_pos,

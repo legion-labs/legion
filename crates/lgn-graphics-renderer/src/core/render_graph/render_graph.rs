@@ -1269,7 +1269,6 @@ impl RenderGraph {
             let mut color_targets = SmallVec::<
                 [ColorRenderTargetBinding<'_>; MAX_RENDER_TARGET_ATTACHMENTS],
             >::with_capacity(node.render_targets.len());
-            let mut depth_target: Option<DepthStencilRenderTargetBinding<'_>> = None;
 
             for resource_data in node.render_targets.iter().flatten() {
                 let view_id = resource_data.key;

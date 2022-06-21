@@ -8,7 +8,6 @@ use crate::{
 };
 use http::Uri;
 use lgn_config::RichPathBuf;
-use lgn_governance::types::SpaceId;
 use serde::Deserialize;
 
 /// The configuration of the content-store.
@@ -88,7 +87,6 @@ pub struct RedisAliasProviderConfig {
 pub struct ApiContentProviderConfig {
     #[serde(default, with = "option_uri")]
     pub base_url: Option<Uri>,
-    pub space_id: SpaceId,
     pub data_space: DataSpace,
 }
 
@@ -96,7 +94,6 @@ pub struct ApiContentProviderConfig {
 pub struct ApiAliasProviderConfig {
     #[serde(default, with = "option_uri")]
     pub base_url: Option<Uri>,
-    pub space_id: SpaceId,
     pub data_space: DataSpace,
 }
 
@@ -307,24 +304,15 @@ impl ContentProviderConfig {
                     .await?,
             ),
             Self::Api(config) => {
+                let online_config = lgn_online::Config::load()?;
                 let base_url = config
                     .base_url
-                    .clone()
-                    .unwrap_or(lgn_online::Config::load()?.api_base_url);
+                    .as_ref()
+                    .unwrap_or(&online_config.api_base_url)
+                    .clone();
+                let client = online_config.instantiate_client(&[]).await?;
 
-                let client = lgn_online::Config::load()?
-                    .instantiate_api_client(&[])
-                    .await?;
-
-                Box::new(
-                    ApiContentProvider::new(
-                        client,
-                        base_url,
-                        config.space_id.clone(),
-                        config.data_space.clone(),
-                    )
-                    .await,
-                )
+                Box::new(ApiContentProvider::new(client, base_url, config.data_space.clone()).await)
             }
         })
     }
@@ -374,24 +362,15 @@ impl AliasProviderConfig {
                     .await?,
             ),
             Self::Api(config) => {
+                let online_config = lgn_online::Config::load()?;
                 let base_url = config
                     .base_url
-                    .clone()
-                    .unwrap_or(lgn_online::Config::load()?.api_base_url);
+                    .as_ref()
+                    .unwrap_or(&online_config.api_base_url)
+                    .clone();
+                let client = online_config.instantiate_client(&[]).await?;
 
-                let client = lgn_online::Config::load()?
-                    .instantiate_api_client(&[])
-                    .await?;
-
-                Box::new(
-                    ApiAliasProvider::new(
-                        client,
-                        base_url,
-                        config.space_id.clone(),
-                        config.data_space.clone(),
-                    )
-                    .await,
-                )
+                Box::new(ApiAliasProvider::new(client, base_url, config.data_space.clone()).await)
             }
         })
     }

@@ -14,7 +14,7 @@ use lgn_content_store::{
 };
 use lgn_data_runtime::{
     new_resource_type_and_id_indexer, AssetRegistryError, AssetRegistryReader, Resource,
-    ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId, ResourceTypeAndIdIndexer,
+    ResourcePathId, ResourceTypeAndId, ResourceTypeAndIdIndexer,
 };
 use lgn_source_control::{
     BranchName, CommitMode, LocalRepositoryIndex, RepositoryIndex, RepositoryName, Workspace,
@@ -63,7 +63,7 @@ use thiserror::Error;
 /// can be changed freely.
 pub struct Project {
     workspace: Workspace<ResourceTypeAndIdIndexer>,
-    deleted_pending: HashMap<ResourceId, (ResourcePathName, ResourceType)>,
+    deleted_pending: HashMap<ResourceTypeAndId, ResourcePathName>,
 }
 
 #[derive(Error, Debug)]
@@ -450,51 +450,28 @@ impl Project {
     /// Returns the name of the resource from its `.meta` file.
     pub async fn deleted_resource_info(
         &mut self,
-        _type_id: ResourceTypeAndId,
+        type_id: ResourceTypeAndId,
     ) -> Result<ResourcePathName, Error> {
-        // let metadata_path = self.metadata_path(id);
+        if let Some(path) = self.deleted_pending.get(&type_id) {
+            Ok(path.clone())
+        } else {
+            let pending_changes = self.workspace.get_pending_changes().await?;
 
-        // match self.deleted_pending.entry(id) {
-        //     Entry::Vacant(entry) => {
-        //         let tree = self.workspace.get_staged_changes().await?;
+            let type_id_as_key: IndexKey = type_id.into();
+            let found_key = pending_changes
+                .binary_search_by(|(index_key, _change_type)| index_key.cmp(&type_id_as_key));
 
-        //         let meta_lsc_path =
-        //             CanonicalPath::new_from_canonical_paths(self.workspace.root(), &metadata_path)
-        //                 .map_err(|err| {
-        //                     error!(
-        //                         "Failed to retrieve delete info for Resource {}: {}",
-        //                         id, err
-        //                     );
-        //                     Error::SourceControl(err)
-        //                 })?;
+            if let Ok(index) = found_key {
+                let (_index_key, change_type) = &pending_changes[index];
+                if let lgn_source_control::ChangeType::Delete { old_id } = change_type {
+                    let metadata = self.read_meta_by_resource_id(old_id).await?;
+                    self.deleted_pending.insert(type_id, metadata.name.clone());
+                    return Ok(metadata.name);
+                }
+            }
 
-        //         if let Some(lgn_source_control::ChangeType::Delete { old_id }) = tree
-        //             .get(&meta_lsc_path)
-        //             .map(lgn_source_control::Change::change_type)
-        //         {
-        //             match self.workspace.provider().read(old_id).await {
-        //                 Ok(data) => {
-        //                     if let Ok(meta) = serde_json::from_slice::<Metadata>(&data) {
-        //                         let value = (meta.name, meta.type_id);
-        //                         entry.insert(value.clone());
-        //                         return Ok(value);
-        //                     }
-        //                 }
-        //                 Err(err) => {
-        //                     error!(
-        //                         "Failed to retrieve delete info for Resource {}: {}",
-        //                         id, err
-        //                     );
-        //                 }
-        //             }
-        //         }
-
-        //         Err(Error::FileNotFound(meta_lsc_path.to_string()))
-        //     }
-        //     Entry::Occupied(entry) => Ok(entry.get().clone()),
-        // }
-
-        Err(Error::FileNotFound("not implemented".to_owned()))
+            Err(Error::ResourceNotFound(type_id))
+        }
     }
 
     /// Returns the raw name of the resource from its `.meta` file.

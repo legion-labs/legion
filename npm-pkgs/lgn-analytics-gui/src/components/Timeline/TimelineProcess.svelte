@@ -8,16 +8,12 @@
   import { formatExecutionTime, formatProcessName } from "@/lib/format";
 
   import L10n from "../Misc/L10n.svelte";
-  import { TimelineTrackCanvasAsyncDrawer } from "./Drawing/TimelineTrackCanvasAsyncDrawer";
   import { TimelineTrackCanvasSyncDrawer } from "./Drawing/TimelineTrackCanvasSyncDrawer";
   import type { TimelineStateStore } from "./Stores/TimelineStateStore";
   import TimelineRow from "./TimelineRow.svelte";
   import TimelineTrack from "./TimelineTrack.svelte";
   import TimelineDebug from "./Tools/TimelineDebug.svelte";
-  import {
-    asyncTaskName,
-    spanPixelHeight as sph,
-  } from "./Values/TimelineValues";
+  import { spanPixelHeight as sph } from "./Values/TimelineValues";
 
   export let process: Process;
   export let stateStore: TimelineStateStore;
@@ -35,8 +31,6 @@
   $: threads = Object.values($stateStore.threads).filter(
     (t) => t.streamInfo.processId === process.processId
   );
-
-  $: processAsyncData = $stateStore.processAsyncData[process.processId];
 
   $: validThreadCount = threads.filter((t) => t.block_ids.length > 0).length;
 
@@ -93,27 +87,6 @@
   </div>
   <div class="flex flex-col gap-y-1 select-none">
     {#if $stateStore}
-      {#if processAsyncData && Object.keys(processAsyncData.blockStats).length > 0}
-        <TimelineRow
-          bind:this={components[0]}
-          processCollapsed={collapsed}
-          threadName={asyncTaskName}
-          maxDepth={processAsyncData.maxDepth}
-        >
-          <TimelineTrack
-            slot="canvas"
-            {stateStore}
-            processCollapsed={collapsed}
-            maxDepth={processAsyncData.maxDepth}
-            on:zoom={(e) => wheelDispatcher("zoom", e.detail)}
-            drawerBuilder={() =>
-              new TimelineTrackCanvasAsyncDrawer(
-                processOffsetMs,
-                processAsyncData
-              )}
-          />
-        </TimelineRow>
-      {/if}
       {#each threads as thread, index (thread.streamInfo.streamId)}
         {@const threadName = thread.streamInfo.properties["thread-name"]}
         {@const threadLength = formatExecutionTime(thread.maxMs - thread.minMs)}

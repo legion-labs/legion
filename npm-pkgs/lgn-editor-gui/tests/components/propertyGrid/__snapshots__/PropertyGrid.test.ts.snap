@@ -407,32 +407,32 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                   class="extension right-extension svelte-yvswm7 extension-default"
                                 >
                                   <div
-                                    class="root svelte-bi7nzo"
+                                    class="root svelte-15bbqzr"
                                   >
                                     <div
-                                      class="dropdown-toggle svelte-bi7nzo"
+                                      class="dropdown-toggle svelte-15bbqzr"
                                     >
                                       <div
-                                        class="dropdown-toggle-color svelte-bi7nzo"
+                                        class="dropdown-toggle-color svelte-15bbqzr"
                                         style="--current-rgba-color: rgba(255,0,0,1.0);"
                                       />
                                     </div>
                                      
                                     <div
-                                      class="dropdown svelte-bi7nzo invisible right-0"
+                                      class="dropdown svelte-15bbqzr invisible right-0"
                                     >
                                       <div
-                                        class="sv-selector-input svelte-bi7nzo"
+                                        class="sv-selector-input svelte-15bbqzr"
                                       >
                                         <div
-                                          class="sv-selector-background svelte-bi7nzo"
+                                          class="sv-selector-background svelte-15bbqzr"
                                           style="--current-background: rgba(255,0,0,1.0);"
                                         >
                                           <div
-                                            class="sv-selector-white-gradient-mask svelte-bi7nzo"
+                                            class="sv-selector-white-gradient-mask svelte-15bbqzr"
                                           >
                                             <div
-                                              class="sv-selector-black-gradient-mask svelte-bi7nzo"
+                                              class="sv-selector-black-gradient-mask svelte-15bbqzr"
                                             >
                                               <iframe
                                                 aria-hidden="true"
@@ -443,7 +443,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                             </div>
                                              
                                             <div
-                                              class="sv-selector-cursor svelte-bi7nzo"
+                                              class="sv-selector-cursor svelte-15bbqzr"
                                               style="--color-block-top: -6px; --color-block-left: -6px; --current-rgba-color: rgba(255,0,0,1);"
                                             />
                                           </div>
@@ -451,13 +451,13 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                       </div>
                                        
                                       <div
-                                        class="additional-selectors svelte-bi7nzo"
+                                        class="additional-selectors svelte-15bbqzr"
                                       >
                                         <div
-                                          class="h-selector-container svelte-bi7nzo"
+                                          class="h-selector-container svelte-15bbqzr"
                                         >
                                           <input
-                                            class="h-selector svelte-bi7nzo"
+                                            class="h-selector svelte-15bbqzr"
                                             max="360"
                                             min="0"
                                             style="--current-background: rgba(255,0,0,1);"
@@ -466,17 +466,17 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                         </div>
                                          
                                         <div
-                                          class="alpha-selector-container svelte-bi7nzo"
+                                          class="alpha-selector-container svelte-15bbqzr"
                                         >
                                           <div
-                                            class="alpha-selector-checkered-mask svelte-bi7nzo"
+                                            class="alpha-selector-checkered-mask svelte-15bbqzr"
                                           >
                                             <div
-                                              class="alpha-selector-opacity-mask svelte-bi7nzo"
+                                              class="alpha-selector-opacity-mask svelte-15bbqzr"
                                               style="--tw-gradient-to: rgba(255,0,0,1);"
                                             >
                                               <input
-                                                class="alpha-selector svelte-bi7nzo"
+                                                class="alpha-selector svelte-15bbqzr"
                                                 max="255"
                                                 min="0"
                                                 style="--current-background: rgba(255,0,0,1);"
@@ -487,10 +487,10 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                         </div>
                                          
                                         <div
-                                          class="rgba-inputs svelte-bi7nzo"
+                                          class="rgba-inputs svelte-15bbqzr"
                                         >
                                           <div
-                                            class="svelte-bi7nzo"
+                                            class="svelte-15bbqzr"
                                           >
                                             <input
                                               aria-autocomplete="none"
@@ -504,7 +504,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                           </div>
                                            
                                           <div
-                                            class="svelte-bi7nzo"
+                                            class="svelte-15bbqzr"
                                           >
                                             <input
                                               aria-autocomplete="none"
@@ -518,7 +518,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                           </div>
                                            
                                           <div
-                                            class="svelte-bi7nzo"
+                                            class="svelte-15bbqzr"
                                           >
                                             <input
                                               aria-autocomplete="none"
@@ -532,7 +532,7 @@ exports[`PropertyGrid > renders properly with the current resource set 1`] = `
                                           </div>
                                            
                                           <div
-                                            class="svelte-bi7nzo"
+                                            class="svelte-15bbqzr"
                                           >
                                             <input
                                               aria-autocomplete="none"

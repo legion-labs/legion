@@ -27,12 +27,12 @@ pub struct ApiAliasProvider<C> {
 }
 
 impl<C> ApiAliasProvider<C> {
-    pub async fn new(client: C, base_url: Uri, space_id: SpaceId, data_space: DataSpace) -> Self {
+    pub async fn new(client: C, base_url: Uri, data_space: DataSpace) -> Self {
         let client = Arc::new(Client::new(client, base_url));
 
         Self {
             client,
-            space_id,
+            space_id: "default".parse().unwrap(),
             data_space,
         }
     }

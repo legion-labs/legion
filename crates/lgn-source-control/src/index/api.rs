@@ -48,10 +48,10 @@ where
     ResBody::Data: Send,
     ResBody::Error: std::error::Error,
 {
-    pub fn new(inner: C, base_url: Uri, space_id: SpaceId) -> Self {
+    pub fn new(inner: C, base_url: Uri) -> Self {
         Self {
             client: Arc::new(Client::new(inner, base_url)),
-            space_id,
+            space_id: "default".parse().unwrap(),
         }
     }
 }
