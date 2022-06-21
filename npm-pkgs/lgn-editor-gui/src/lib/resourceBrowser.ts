@@ -1,4 +1,4 @@
-import type { ResourceBrowser } from "@lgn/api/editor";
+import type { Common } from "@lgn/api/editor";
 
 import type { Entry } from "./hierarchyTree";
 
@@ -19,7 +19,7 @@ const runtimeModel = "|5c4b1b522bf5dcb0";
 
 export function createResourcePathId(
   resourceType: string,
-  entry: Entry<ResourceBrowser.ResourceDescription>
+  entry: Entry<Common.ResourceDescription>
 ): string | null {
   let result = `${entry.item.id}`;
 
@@ -102,9 +102,7 @@ export function createResourcePathId(
   return result;
 }
 
-export function iconFor(
-  entry: Entry<ResourceBrowser.ResourceDescription | symbol>
-) {
+export function iconFor(entry: Entry<Common.ResourceDescription | symbol>) {
   if (typeof entry.item === "symbol") {
     return "ic:baseline-folder-open";
   }

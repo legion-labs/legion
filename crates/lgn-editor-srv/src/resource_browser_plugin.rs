@@ -33,10 +33,13 @@ use editor_srv::resource_browser::server::{
 };
 use lgn_online::server::{Error, Result};
 
-use editor_srv::resource_browser::{
-    Api, Asset, CloneResource200Response, CreateResource200Response, GetActiveScenes200Response,
-    GetResourceTypeNames200Response, GetRuntimeSceneInfo200Response, ListAssets200Response,
-    NextSearchToken, ResourceDescription,
+use editor_srv::{
+    common::ResourceDescription,
+    resource_browser::{
+        Api, Asset, CloneResource200Response, CreateResource200Response,
+        GetActiveScenes200Response, GetResourceTypeNames200Response,
+        GetRuntimeSceneInfo200Response, ListAssets200Response, NextSearchToken,
+    },
 };
 
 use lgn_graphics_data::offline_gltf::GltfFile;
@@ -127,14 +130,14 @@ impl Plugin for ResourceBrowserPlugin {
             Self::post_setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_api::ApiPluginScheduling::StartRpcServer)
+                .before(lgn_api::ApiPluginScheduling::StartServer)
         );
         app.add_system(Self::handle_events);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
             Self::load_default_scene
                 .exclusive_system()
-                .after(lgn_api::ApiPluginScheduling::StartRpcServer),
+                .after(lgn_api::ApiPluginScheduling::StartServer),
         );
     }
 }
@@ -368,7 +371,7 @@ impl Api for Server {
             }
 
             descriptors.push(ResourceDescription {
-                id: ResourceTypeAndId::to_string(&resource_id),
+                id: editor_srv::common::ResourceId(ResourceTypeAndId::to_string(&resource_id)),
                 path,
                 type_: resource_id
                     .kind
@@ -414,7 +417,7 @@ impl Api for Server {
 
         let mut parent_id: Option<ResourceTypeAndId> = None;
         let mut resource_path = if let Some(parent_id_str) = &request.body.parent_resource_id {
-            parent_id = Some(parse_resource_id(parent_id_str)?);
+            parent_id = Some(parse_resource_id(&parent_id_str.0)?);
 
             let mut res_name = ResourcePathName::new(format!("!{}", parent_id.unwrap()));
             res_name.push(name);
@@ -476,7 +479,7 @@ impl Api for Server {
 
         Ok(CreateResourceResponse::Status200(
             CreateResource200Response {
-                new_id: new_resource_id.to_string(),
+                new_id: editor_srv::common::ResourceId(new_resource_id.to_string()),
             },
         ))
     }
@@ -592,9 +595,9 @@ impl Api for Server {
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
         let mut asset_types = Vec::new();
-        for asset_type in &request.body.asset_types {
+        for asset_type in &request.asset_types {
             asset_types.push(
-                ResourceType::from_str(asset_type.as_str())
+                ResourceType::from_str(asset_type.0.as_str())
                     .map_err(|err| Error::internal(format!("list assets failed: {}", err)))?,
             );
         }
@@ -725,7 +728,7 @@ impl Api for Server {
 
         Ok(CloneResourceResponse::Status200(CloneResource200Response {
             new_resource: ResourceDescription {
-                id: clone_id.to_string(),
+                id: editor_srv::common::ResourceId(clone_id.to_string()),
                 path,
                 type_: clone_id
                     .kind

@@ -4,11 +4,11 @@ info:
   description: "The OpenAPI specification for the Legion Labs editor."
   version: 1.0.0
 paths:
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/undo/{transaction-id}/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/transactions/{transaction-id}/undo/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
-      - $ref: "#/components/parameters/transaction_id"
+      - $ref: "./common.yaml#/parameters/transaction_id"
     post:
       description: Undo transaction.
       operationId: UndoTransaction
@@ -17,11 +17,11 @@ paths:
           description: Ok.
         "409":
           description: Undo transaction failed
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/editor/redo/{transaction-id}/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/transactions/{transaction-id}/redo/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
-      - $ref: "#/components/parameters/transaction_id"
+      - $ref: "./common.yaml#/parameters/transaction_id"
     post:
       description: Redo transaction.
       operationId: RedoTransaction
@@ -48,18 +48,7 @@ paths:
           description: No messages to deliver
 
 components:
-  parameters:
-    transaction_id:
-      name: transaction-id
-      in: path
-      description: The transaction identifier.
-      required: true
-      schema:
-        $ref: "#/components/schemas/TransactionId"
   schemas:
-    TransactionId:
-      description: An identifier to a unique a transaction.
-      type: string
     Message:
       description: A message coming from the server
       type: object

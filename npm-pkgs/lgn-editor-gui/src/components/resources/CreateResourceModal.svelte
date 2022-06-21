@@ -2,7 +2,7 @@
   import { form as createForm, field } from "svelte-forms";
   import { required } from "svelte-forms/validators";
 
-  import type { ResourceBrowser } from "@lgn/api/editor";
+  import type { Common, ResourceBrowser } from "@lgn/api/editor";
   import Button from "@lgn/web-client/src/components/Button.svelte";
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import log from "@lgn/web-client/src/lib/log";
@@ -36,7 +36,7 @@
 
   // We don't get any resource description when the user tries to create
   // a resource at the top level
-  export let resourceDescription: ResourceBrowser.ResourceDescription | null;
+  export let resourceDescription: Common.ResourceDescription | null;
 
   async function createResource(event: Event /* SubmitEvent */) {
     event.preventDefault();

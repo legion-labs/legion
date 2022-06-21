@@ -1,3 +1,4 @@
+import type { Common } from "@lgn/api/editor";
 import {
   Editor,
   PropertyInspector,
@@ -92,11 +93,11 @@ export function initApiClient({
  * @returns All the resource descriptions
  */
 export async function getAllResources(searchToken = "") {
-  const resourceDescriptions: ResourceBrowser.ResourceDescription[] = [];
+  const resourceDescriptions: Common.ResourceDescription[] = [];
 
   async function getMoreResources(
     searchToken: string
-  ): Promise<ResourceBrowser.ResourceDescription[]> {
+  ): Promise<Common.ResourceDescription[]> {
     const response = await resourceBrowserClient.searchResources({
       spaceId: "0",
       workspaceId: "0",
@@ -119,7 +120,7 @@ export async function getAllResources(searchToken = "") {
 
 export async function getRootResource(
   id: string
-): Promise<ResourceBrowser.ResourceDescription | null> {
+): Promise<Common.ResourceDescription | null> {
   const {
     value: {
       resource_descriptions: [resourceDescription],
@@ -138,7 +139,7 @@ export async function getAllRootResources(ids: string[]) {
   const resources = await Promise.all(ids.map(getRootResource));
 
   return resources.filter(
-    (resource): resource is ResourceBrowser.ResourceDescription => !!resource
+    (resource): resource is Common.ResourceDescription => !!resource
   );
 }
 

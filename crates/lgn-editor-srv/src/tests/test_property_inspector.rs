@@ -1,9 +1,12 @@
-use editor_srv::property_inspector::{
-    server::{
-        GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
-        GetPropertiesResponse, InsertPropertyArrayItemRequest,
+use editor_srv::{
+    common::ResourceId,
+    property_inspector::{
+        server::{
+            GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
+            GetPropertiesResponse, InsertPropertyArrayItemRequest,
+        },
+        Api, InsertPropertyArrayItem, ResourceDescriptionProperties,
     },
-    Api, InsertPropertyArrayItem, ResourceDescriptionProperties, ResourceId,
 };
 use lgn_data_offline::resource::ResourcePathName;
 use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
@@ -111,7 +114,7 @@ async fn test_property_inspector() -> anyhow::Result<()> {
             }) = response
             {
                 assert_eq!(description.path.as_str(), "/dummy_entity");
-                assert_eq!(description.id, new_id.to_string());
+                assert_eq!(description.id, ResourceId(new_id.to_string()));
                 assert_eq!(properties[0].ptype, "Entity");
                 assert_eq!(properties[0].sub_properties[0].name, "id");
                 assert_eq!(properties[0].sub_properties[1].name, "children");

@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import type { PropertyInspector } from "@lgn/api/editor";
+import type { Common, PropertyInspector } from "@lgn/api/editor";
 import type { NonEmptyArray } from "@lgn/web-client/src/lib/array";
 import { filterMap } from "@lgn/web-client/src/lib/array";
 
@@ -526,7 +526,7 @@ export function buildDefaultPrimitiveProperty(
 
 export type ResourceWithProperties = {
   id: string;
-  description: PropertyInspector.ResourceDescription;
+  description: Common.ResourceDescription;
   version: number;
   properties: ResourceProperty[];
 };
@@ -606,7 +606,7 @@ export function formatProperties(
 
 /** Retrieves the resource name from the resource `Entries` based on the provided value string */
 export function getResourceNameFromEntries(
-  resourceEntries: Entries<PropertyInspector.ResourceDescription>,
+  resourceEntries: Entries<Common.ResourceDescription>,
   value: string
 ): string {
   const entry = resourceEntries.find((entry) =>

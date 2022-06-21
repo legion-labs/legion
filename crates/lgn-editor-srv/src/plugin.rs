@@ -52,7 +52,7 @@ impl Plugin for EditorPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_api::ApiPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartServer),
         );
     }
 }

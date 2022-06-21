@@ -20,7 +20,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/NextSearchToken"
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resource-types/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -56,7 +56,7 @@ paths:
                 resource_name:
                   type: string
                 parent_resource_id:
-                  type: string
+                  $ref: "./common.yaml#/schemas/ResourceId"
                 init_values:
                   type: array
                   items:
@@ -75,7 +75,7 @@ paths:
                 type: object
                 properties:
                   new_id:
-                    type: string
+                    $ref: "./common.yaml#/schemas/ResourceId"
                 required:
                   - new_id
     delete:
@@ -149,7 +149,7 @@ paths:
                 type: object
                 properties:
                   new_resource:
-                    $ref: "#/components/schemas/ResourceDescription"
+                    $ref: "common.yaml#/schemas/ResourceDescription"
                 required:
                   - new_resource
   /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/reparent/:
@@ -200,7 +200,7 @@ paths:
         "204":
           description: Ok.
 
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scene-ids/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
@@ -226,7 +226,7 @@ paths:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
-      - $ref: "#/components/parameters/resource_id"
+      - $ref: "./common.yaml#/parameters/resource_id"
     get:
       description: Get runtime scenes info
       operationId: GetRuntimeSceneInfo
@@ -246,26 +246,14 @@ paths:
                   - manifest_id
                   - asset_id
 
-  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/assets/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/assets/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
-    post:
+      - $ref: "#/components/parameters/asset_types"
+    get:
       description: List assets by type
       operationId: listAssets
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                asset_types:
-                  type: array
-                  items:
-                    type: string
-              required:
-                - asset_types
       responses:
         "200":
           description: Ok.
@@ -283,6 +271,14 @@ paths:
 
 components:
   parameters:
+    asset_types:
+      name: asset-types
+      in: query
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/AssetType"
     token:
       name: token
       in: query
@@ -291,29 +287,23 @@ components:
       schema:
         $ref: "#/components/schemas/Token"
     scene_id:
-      name: scene_id
+      name: scene-id
       in: path
       description: The scene id
       required: true
       schema:
         $ref: "#/components/schemas/SceneId"
-    resource_id:
-      name: resource-id
-      in: path
-      required: true
-      schema:
-        $ref: "#/components/schemas/RootResourceId"
     root_resource_id:
       name: root-resource-id
       in: query
       description: An optional root resource id
       schema:
-        $ref: "#/components/schemas/ResourceId"
+        $ref: "#/components/schemas/RootResourceId"
   schemas:
     Token:
       description: Token to search for
       type: string
-    ResourceId:
+    AssetType:
       type: string
     RootResourceId:
       type: string
@@ -333,28 +323,11 @@ components:
         resource_descriptions:
           type: array
           items:
-            $ref: "#/components/schemas/ResourceDescription"
+            $ref: "common.yaml#/schemas/ResourceDescription"
       required:
         - next_search_token
         - total
         - resource_descriptions
-    ResourceDescription:
-      description: Description of a resource
-      type: object
-      properties:
-        id:
-          type: string
-        path:
-          type: string
-        version:
-          type: integer
-        type:
-          type: string
-      required:
-        - id
-        - path
-        - version
-        - type
     InitPropertyValue:
       description: Init Property value
       type: object

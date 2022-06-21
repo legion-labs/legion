@@ -311,7 +311,7 @@ pub fn build_runtime() -> App {
             StartupStage::PostStartup,
             setup_runtime_grpc
                 .exclusive_system()
-                .before(lgn_api::ApiPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartServer),
         )
         .add_system_to_stage(CoreStage::PreUpdate, rebroadcast_commands);
     }

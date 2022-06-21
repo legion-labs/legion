@@ -10,18 +10,20 @@ use std::{
 
 use async_trait::async_trait;
 use bytes::BytesMut;
-use editor_srv::source_control::{
-    server::{
-        register_routes, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
-        ContentUploadCancelRequest, ContentUploadCancelResponse, ContentUploadInitRequest,
-        ContentUploadInitResponse, ContentUploadRequest, ContentUploadResponse,
-        GetStagedResourcesRequest, GetStagedResourcesResponse, PullAssetsRequest,
-        PullAssetsResponse, RevertResourcesRequest, RevertResourcesResponse, SyncLatestRequest,
-        SyncLatestResponse,
+use editor_srv::{
+    common::ResourceDescription,
+    source_control::{
+        server::{
+            register_routes, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
+            ContentUploadCancelRequest, ContentUploadCancelResponse, ContentUploadInitRequest,
+            ContentUploadInitResponse, ContentUploadRequest, ContentUploadResponse,
+            GetStagedResourcesRequest, GetStagedResourcesResponse, PullAssetsRequest,
+            PullAssetsResponse, RevertResourcesRequest, RevertResourcesResponse, SyncLatestRequest,
+            SyncLatestResponse,
+        },
+        Api, ContentUploadInitSucceeded, ContentUploadSucceeded, ContentUploadSucceededStatus,
+        PullAssetsSucceeded, StagedResource, StagedResourceChangeType, StagedResources,
     },
-    Api, ContentUploadInitSucceeded, ContentUploadSucceeded, ContentUploadSucceededStatus,
-    PullAssetsSucceeded, ResourceDescription, StagedResource, StagedResourceChangeType,
-    StagedResources,
 };
 use lgn_api::SharedRouter;
 use lgn_app::prelude::*;
@@ -435,7 +437,7 @@ impl Plugin for SourceControlPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_api::ApiPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartServer),
         );
     }
 }
@@ -601,7 +603,9 @@ impl Api for Server {
 
             entries.push(StagedResource {
                 info: ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&resource_type_id),
+                    id: editor_srv::common::ResourceId(ResourceTypeAndId::to_string(
+                        &resource_type_id,
+                    )),
                     path: path.to_string(),
                     type_: resource_type_id
                         .kind

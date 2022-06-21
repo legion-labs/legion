@@ -9,16 +9,19 @@ use std::{
 };
 
 use async_trait::async_trait;
-use editor_srv::property_inspector::{
-    server::{
-        register_routes, DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
-        GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
-        GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
-        ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
-        UpdatePropertiesResponse, UpdatePropertySelectionRequest, UpdatePropertySelectionResponse,
+use editor_srv::{
+    common::ResourceDescription,
+    property_inspector::{
+        server::{
+            register_routes, DeletePropertiesArrayItemRequest, DeletePropertiesArrayItemResponse,
+            GetAvailableDynTraitsRequest, GetAvailableDynTraitsResponse, GetPropertiesRequest,
+            GetPropertiesResponse, InsertPropertyArrayItemRequest, InsertPropertyArrayItemResponse,
+            ReorderPropertyArrayRequest, ReorderPropertyArrayResponse, UpdatePropertiesRequest,
+            UpdatePropertiesResponse, UpdatePropertySelectionRequest,
+            UpdatePropertySelectionResponse,
+        },
+        Api, InsertPropertyArrayItem200Response, ResourceDescriptionProperties, ResourceProperty,
     },
-    Api, InsertPropertyArrayItem200Response, ResourceDescription, ResourceDescriptionProperties,
-    ResourceProperty,
 };
 use lgn_api::SharedRouter;
 use lgn_app::prelude::*;
@@ -72,7 +75,7 @@ impl Plugin for PropertyInspectorPlugin {
             Self::setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_api::ApiPluginScheduling::StartRpcServer),
+                .before(lgn_api::ApiPluginScheduling::StartServer),
         );
     }
 }
@@ -284,7 +287,7 @@ impl Api for Server {
         Ok(GetPropertiesResponse::Status200(
             ResourceDescriptionProperties {
                 description: ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&resource_id),
+                    id: editor_srv::common::ResourceId(ResourceTypeAndId::to_string(&resource_id)),
                     path: ctx
                         .project
                         .resource_name(resource_id)

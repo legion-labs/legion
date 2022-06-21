@@ -1,6 +1,6 @@
 import type { Writable } from "svelte/store";
 
-import type { ResourceBrowser, SourceControl } from "@lgn/api/editor";
+import type { Common, SourceControl } from "@lgn/api/editor";
 import { createContextMenuStore } from "@lgn/web-client/src/stores/contextMenu";
 import type { Entry } from "@lgn/web-client/src/types/contextMenu";
 
@@ -41,7 +41,7 @@ export const localChangesEntries: Entry[] = [
 
 export type ContextMenuEntryRecord = {
   [resourceBrowserItemContextMenuId]: {
-    item: ResourceBrowser.ResourceDescription | null;
+    item: Common.ResourceDescription | null;
     name: string;
   };
   [resourceBrowserPanelContextMenuId]: { item: null; name: string };

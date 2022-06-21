@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
 
-  import type { ResourceBrowser } from "@lgn/api/editor";
+  import type { Common } from "@lgn/api/editor";
   import HighlightedText from "@lgn/web-client/src/components/HighlightedText.svelte";
   import Loader from "@lgn/web-client/src/components/Loader.svelte";
   import { displayError } from "@lgn/web-client/src/lib/errors";
@@ -68,7 +68,7 @@
 
   let uploadingFiles = false;
 
-  let resourceHierarchyTree: HierarchyTree<ResourceBrowser.ResourceDescription> | null =
+  let resourceHierarchyTree: HierarchyTree<Common.ResourceDescription> | null =
     null;
 
   let removePromptId: symbol | null = null;
@@ -97,7 +97,7 @@
   async function saveEditedResourceProperty({
     detail: { entry, newName },
   }: CustomEvent<{
-    entry: Entry<ResourceBrowser.ResourceDescription>;
+    entry: Entry<Common.ResourceDescription>;
     newName: string;
   }>) {
     const pathComponents = components(entry.item.path);
@@ -243,7 +243,7 @@
 
   function selectResource({
     detail: resourceDescription,
-  }: CustomEvent<Entry<ResourceBrowser.ResourceDescription>>) {
+  }: CustomEvent<Entry<Common.ResourceDescription>>) {
     if (resourceDescription) {
       fetchCurrentResourceDescription(resourceDescription.item.id).catch(() => {
         // TODO: Handle errors
@@ -481,8 +481,8 @@
   async function moveEntry({
     detail: { draggedEntry, dropzoneEntry },
   }: CustomEvent<{
-    draggedEntry: Entry<ResourceBrowser.ResourceDescription>;
-    dropzoneEntry: Entry<ResourceBrowser.ResourceDescription>;
+    draggedEntry: Entry<Common.ResourceDescription>;
+    dropzoneEntry: Entry<Common.ResourceDescription>;
   }>) {
     const newPath = dropzoneEntry.item.path;
 

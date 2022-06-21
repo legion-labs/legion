@@ -19,7 +19,7 @@ use lgn_tracing::warn;
 /// Label to use for scheduling systems for Api Service registration
 #[derive(Debug, Hash, PartialEq, Eq, Clone, SystemLabel)]
 pub enum ApiPluginScheduling {
-    StartRpcServer,
+    StartServer,
 }
 
 pub struct ApiPluginSettings {
@@ -72,7 +72,7 @@ impl Plugin for ApiPlugin {
 
         let system = Self::start_server
             .exclusive_system()
-            .label(ApiPluginScheduling::StartRpcServer);
+            .label(ApiPluginScheduling::StartServer);
 
         app.init_resource::<ApiPluginSettings>()
             .add_startup_system_to_stage(StartupStage::PostStartup, system);
