@@ -25,6 +25,7 @@ pub fn compile_texture(
     name: String,
     compression: CompressionType,
 ) -> String {
+    println!("compile_texture {}", name);
     let filename_split: Vec<&str> = name.split('.').collect();
     let extension = filename_split[1];
     if extension == "jpg" {

@@ -6,12 +6,15 @@ use crate::texture::{CompressionType, TextureCompiler};
 
 #[salsa::query_group(AtlasStorage)]
 pub trait AtlasCompiler: Inputs + TextureCompiler + MetaCompiler {
-    fn compile_atlas(&self, name: String, build_params: BuildParams) -> String;
+    fn compile_atlas(&self, textures_in_atlas: String, build_params: BuildParams) -> String;
 }
 
-pub fn compile_atlas(db: &dyn AtlasCompiler, name: String, build_params: BuildParams) -> String {
-    let file_content: String = db.input_file(name);
-    let texture_metas = file_content.split(',');
+pub fn compile_atlas(
+    db: &dyn AtlasCompiler,
+    textures_in_atlas: String,
+    build_params: BuildParams,
+) -> String {
+    let texture_metas: Vec<&str> = textures_in_atlas.split(',').collect();
 
     let mut atlas = String::new();
     for texture_meta in texture_metas {

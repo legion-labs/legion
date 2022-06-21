@@ -20,7 +20,6 @@ pub fn meta_get_resource_path(
     let meta_content = db.input_file(meta_file.to_string());
     let split_meta: Vec<&str> = meta_content.split('\n').collect();
 
-    println!("{}", build_params.locale);
     for meta in split_meta {
         let split_lang_filepath: Vec<&str> = meta.split(':').collect();
         let locale_meta = split_lang_filepath[0];
