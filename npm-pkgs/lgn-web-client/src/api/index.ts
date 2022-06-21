@@ -1,8 +1,27 @@
-import { Streaming } from "@lgn/apis/streaming";
+import { Streaming } from "@lgn/api/streaming";
 
 import { blobToJson, jsonToBlob } from "../lib/api";
 import { addAuthToClient } from "../lib/client";
 import log from "../lib/log";
+
+// Access token
+// let accessToken: string | null = getCookie(accessTokenCookieName);
+
+// Refresh
+// log.debug(
+//   "http-client",
+//   "Access token not found, trying to refresh the client token set"
+// );
+// const clientTokenSet = await authClient.refreshClientTokenSet();
+// authClient.storeClientTokenSet(clientTokenSet);
+// return clientTokenSet.access_token;
+
+// failure
+// log.debug(
+//   "http-client",
+//   "Couldn't refresh the client token set, redirecting to the idp"
+// );
+// window.location.href = await authClient.getAuthorizationUrl();
 
 const defaultRestEditorServerUrl = "http://[::1]:5051";
 const defaultRestRuntimeServerUrl = "http://[::1]:5052";
@@ -75,11 +94,11 @@ export async function initializeStream(
 ) {
   const client = getClientFor(serverType);
 
-  const response = await client.initializeStream({
-    params: { "space-id": "0", "workspace-id": "0" },
+  const response = await client.initializeStream(
+    { spaceId: "0", workspaceId: "0" },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    body: jsonToBlob(localSessionDescription.toJSON()),
-  });
+    jsonToBlob(localSessionDescription.toJSON())
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   return new RTCSessionDescription(await blobToJson(response.value));

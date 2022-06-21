@@ -12,11 +12,9 @@
 //#![allow()]
 
 mod analytics_service;
-mod async_spans;
 mod auth;
 mod cache;
 mod call_tree;
-mod call_tree_store;
 mod cumulative_call_graph;
 mod cumulative_call_graph_handler;
 mod cumulative_call_graph_node;
@@ -229,7 +227,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let auth_layer = tower::ServiceBuilder::new() //todo: compose with cors layer
         .layer(AuthLayer {
             user_info_url: String::from(
-                "https://legionlabs-playground.auth.ca-central-1.amazoncognito.com/oauth2/userInfo",
+                "https://legionengine.auth.ca-central-1.amazoncognito.com/oauth2/userInfo",
             ),
         })
         .into_inner();

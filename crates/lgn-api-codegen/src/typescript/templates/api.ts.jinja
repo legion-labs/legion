@@ -1,15 +1,18 @@
-// ---------- Api ----------
+// Auto-generated file
 
-{% include "interface.ts.jinja" %}
+import {
+  // @ts-ignore
+  ApiClient,
+  // @ts-ignore
+  InternalError,
+  // @ts-ignore
+  defaultFetch,
+  // @ts-ignore
+  stringifyQueryObject,
+} from "./index";
+// @ts-ignore
+import type { Fetch } from "./index";
 
-// ---------- Client ----------
-
-{% include "client.ts.jinja" %}
-
-// ---------- Parameters ----------
-
-{% include "parameters.ts.jinja" %}
-
-// ---------- Responses ----------
-
-{% include "responses.ts.jinja" %}
+{% for (module_path, location_ctx) in ctx.as_typescript_modules()? %}
+{% include "location_context.ts.jinja" %}
+{% endfor %}

@@ -7,7 +7,7 @@ export namespace {{ module|pascal_case }} {
 {% include "models.ts.jinja" %}
 
 {% if let Some(api) = location_ctx.api %}
-{% include "api.ts.jinja" %}
+{% include "api_content.ts.jinja" %}
 {% endif %}
 
 {% for module in module_path.parts().iter() %}

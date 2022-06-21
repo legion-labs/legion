@@ -155,7 +155,7 @@
 
   setContext(l10nOrchestratorContextKey, l10n);
 
-  setContext("http-client", createGrpcClient());
+  setContext("http-client", createGrpcClient(runtimeConfig.apiAnalytics.url));
 
   setContext("notifications", notifications);
 

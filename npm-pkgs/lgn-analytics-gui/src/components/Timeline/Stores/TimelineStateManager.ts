@@ -16,7 +16,6 @@ import {
 } from "@/lib/time";
 
 import { LODState } from "../Lib/LodState";
-import type { ProcessAsyncData } from "../Lib/ProcessAsyncData";
 import type { ThreadBlock } from "../Lib/ThreadBlock";
 import { TimelineState } from "./TimelineState";
 import type { TimelineStateStore } from "./TimelineStateStore";
@@ -124,148 +123,6 @@ export class TimelineStateManager {
     await Promise.all(promises);
   }
 
-  private rangesOverlap(
-    range1: [number, number],
-    range2: [number, number]
-  ): boolean {
-    return range1[0] <= range2[1] && range2[0] <= range1[1];
-  }
-
-  private async fetchAsyncSpansSection(
-    processAsyncData: ProcessAsyncData,
-    sectionSequenceNumber: number,
-    sectionLod: number,
-    processId: string
-  ) {
-    const sectionWidthMs = 1000.0;
-    const sectionTimeRange = [
-      sectionSequenceNumber * sectionWidthMs,
-      (sectionSequenceNumber + 1) * sectionWidthMs,
-    ] as [number, number]; //section is in relative ms
-    const blocksOfInterest: string[] = [];
-
-    for (const stats of Object.values(processAsyncData.blockStats)) {
-      if (this.rangesOverlap(sectionTimeRange, [stats.beginMs, stats.endMs])) {
-        blocksOfInterest.push(stats.blockId);
-      }
-    }
-
-    this.#nbRequestsInFlight += 1;
-    await loadPromise(
-      this.#client
-        .fetch_async_spans({
-          sectionSequenceNumber: sectionSequenceNumber,
-          sectionLod: sectionLod,
-          blockIds: blocksOfInterest,
-        })
-        .then(
-          (reply) => {
-            this.state.addAsyncData(processId, reply, sectionSequenceNumber);
-            this.#nbRequestsInFlight -= 1;
-            return this.fetchDynData();
-          },
-          (error) => {
-            log.error(
-              `Error in fetch_block_async_spans: ${displayError(error)}`
-            );
-            this.#nbRequestsInFlight -= 1;
-            return this.fetchDynData();
-          }
-        )
-    );
-  }
-
-  private async fetchAsyncSpans(process: Process) {
-    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS !== "true") {
-      return;
-    }
-
-    const state = get(this.state);
-    const viewRange = state.viewRange;
-    const processAsyncData = state.processAsyncData[process.processId];
-
-    const sectionWidthMs = 1000.0;
-    const firstSection = Math.floor(viewRange[0] / sectionWidthMs);
-    const lastSection = Math.floor(viewRange[1] / sectionWidthMs);
-    const promises: Promise<void>[] = [];
-    for (let iSection = firstSection; iSection <= lastSection; iSection += 1) {
-      if (this.#nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
-        break;
-      }
-      if (!(iSection in processAsyncData.sections)) {
-        this.state.setProcessSection(process.processId, iSection);
-        promises.push(
-          this.fetchAsyncSpansSection(
-            processAsyncData,
-            iSection,
-            0,
-            process.processId
-          )
-        );
-      }
-    }
-    await Promise.all(promises);
-  }
-
-  private async fetchAsyncStats(process: Process) {
-    if (import.meta.env.VITE_LEGION_ANALYTICS_ENABLE_ASYNC_SPANS !== "true") {
-      return true;
-    }
-    const state = get(this.state);
-    const asyncData = state.processAsyncData[process.processId];
-    const promises: Promise<void>[] = [];
-    let sentRequest = false;
-    const viewRange = state.viewRange;
-
-    for (const block of Object.values(state.blocks)) {
-      const streamId = block.blockDefinition.streamId;
-      const thread = state.threads[streamId];
-      const overlaps = this.rangesOverlap(viewRange, [
-        block.beginMs,
-        block.endMs,
-      ]);
-      const blockStatsMissing = !(
-        block.blockDefinition.blockId in asyncData.blockStats
-      );
-      const blockBelongsToProcess =
-        thread.streamInfo.processId === process.processId;
-      if (overlaps && blockStatsMissing && blockBelongsToProcess) {
-        if (this.#nbRequestsInFlight >= MAX_NB_REQUEST_IN_FLIGHT) {
-          break;
-        }
-        sentRequest = true;
-        this.#nbRequestsInFlight += 1;
-        promises.push(
-          loadPromise(
-            this.#client
-              .fetch_block_async_stats({
-                process,
-                stream: thread.streamInfo,
-                blockId: block.blockDefinition.blockId,
-              })
-              .then(
-                (reply) => {
-                  this.state.addAsyncBlockData(process.processId, reply);
-                  this.#nbRequestsInFlight -= 1;
-                  return this.fetchDynData();
-                },
-                (error) => {
-                  log.error(
-                    `Error in fetch_block_async_stats: ${displayError(error)}`
-                  );
-                  this.#nbRequestsInFlight -= 1;
-                  return this.fetchDynData();
-                }
-              )
-          )
-        );
-      }
-    }
-
-    await Promise.all(promises);
-    return sentRequest;
-  }
-
   private async fetchBlocks(process: Process, stream: Stream) {
     const processOffset = processMsOffsetToRoot(this.process, process);
     const response = await loadWrap(async () => {
@@ -278,7 +135,6 @@ export class TimelineStateManager {
       const endMs = processOffset + timestampToMs(process, block.endTicks);
       this.state.addBlock(beginMs, endMs, block, stream.streamId);
     }
-    this.state.addProcessAsyncBlock(process.processId);
   }
 
   async fetchThreadData(): Promise<boolean> {
@@ -317,17 +173,7 @@ export class TimelineStateManager {
   }
 
   async fetchDynData() {
-    let sentRequest = await this.fetchThreadData();
-    if (!sentRequest) {
-      if (this.process) {
-        sentRequest = await this.fetchAsyncStats(this.process);
-      }
-    }
-    if (!sentRequest) {
-      if (this.process) {
-        await this.fetchAsyncSpans(this.process);
-      }
-    }
+    await this.fetchThreadData();
   }
 
   async fetchBlockSpans(block: ThreadBlock, lodToFetch: number) {
