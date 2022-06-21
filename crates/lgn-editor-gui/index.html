@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style type="text/tailwindcss">
+      *::-webkit-scrollbar {
+        @apply w-3 h-3;
+      }
+
+      *::-webkit-scrollbar-track {
+        @apply bg-[#222];
+      }
+
+      *::-webkit-scrollbar-thumb {
+        @apply hover:bg-gray-400 opacity-0 duration-150 transition-colors rounded-full bg-[#454545];
+
+        border: 0.15rem solid transparent;
+        background-clip: content-box;
+      }
+
+      *::-webkit-scrollbar-thumb:hover {
+        @apply bg-[#707070];
+      }
+    </style>
+    <style>
+      :root {
+        font-size: 12px;
+        background-color: rgb(34, 34, 34);
+        height: 100%;
+        width: 100%;
+      }
+
+      body {
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+</html>

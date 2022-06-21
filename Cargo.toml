@@ -1,3 +1,4 @@
 [workspace]
 members = ["crates/*", "examples/*", "tests/*", "build/*"]
-exclude = ["build/env"]
+# Editor gui is excluded because of https://github.com/tkaitchuck/aHash/issues/95
+exclude = ["build/env", "crates/lgn-editor-gui"]
