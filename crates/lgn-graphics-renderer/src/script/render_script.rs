@@ -238,7 +238,7 @@ impl RenderScript<'_> {
                     binary_writer.write_slice(&per_state_offsets);
 
                     // Update buffer at layer.state_page.byte_offset()
-                    let mut upload_manager = render_resources.get_mut::<GpuUploadManager>();
+                    let upload_manager = render_resources.get::<GpuUploadManager>();
                     let unified_static_buffer = render_resources.get::<UnifiedStaticBuffer>();
                     upload_manager.push(UploadGPUResource::Buffer(UploadGPUBuffer {
                         src_data: binary_writer.take(),

@@ -295,7 +295,7 @@ pub struct UpdateUnifiedStaticBufferCommand {
 
 impl RenderCommand<RenderResources> for UpdateUnifiedStaticBufferCommand {
     fn execute(self, render_resources: &RenderResources) {
-        let mut upload_manager = render_resources.get_mut::<GpuUploadManager>();
+        let upload_manager = render_resources.get::<GpuUploadManager>();
         let unified_static_buffer = render_resources.get::<UnifiedStaticBuffer>();
         upload_manager.push(UploadGPUResource::Buffer(UploadGPUBuffer {
             src_data: self.src_buffer,

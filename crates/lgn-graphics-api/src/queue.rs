@@ -67,7 +67,6 @@ impl Queue {
             wait_semaphores,
             signal_semaphores,
             signal_fence,
-            self.device_context().current_cpu_frame(),
         );
     }
 

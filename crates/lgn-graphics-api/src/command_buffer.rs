@@ -45,6 +45,10 @@ impl CommandBuffer {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.backend_reset();
+    }
+
     pub fn begin(&mut self) {
         self.cur_pipeline = None;
         self.backend_begin();
@@ -145,10 +149,6 @@ impl CommandBuffer {
         &mut self,
         layout: &DescriptorSetLayout,
         handle: DescriptorSetHandle,
-        // pipeline_type: PipelineType,
-        // root_signature: &RootSignature,
-        // set_index: u32,
-        // descriptor_set_handle: DescriptorSetHandle,
     ) {
         assert!(self.cur_pipeline.is_some());
 

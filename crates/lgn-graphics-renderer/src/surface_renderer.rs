@@ -8,7 +8,7 @@ use crate::core::{
 };
 use crate::gpu_renderer::GpuInstanceManager;
 use crate::lighting::LightingManager;
-use crate::resources::{PersistentDescriptorSetManager, SamplerManager};
+use crate::resources::PersistentDescriptorSetManager;
 use crate::script::render_passes::{
     AlphaBlendedLayerPass, DebugPass, EguiPass, GpuCullingPass, LightingPass, OpaqueLayerPass,
     PickingPass, PostProcessPass, SSAOPass, UiPass,
@@ -31,9 +31,6 @@ impl SurfaceRenderer {
     ) {
         // Persistent descriptor set
         {
-            render_resources
-                .get_mut::<SamplerManager>()
-                .upload(persistent_descriptor_set_manager);
             let descriptor_set = persistent_descriptor_set_manager.descriptor_set();
             render_context
                 .set_persistent_descriptor_set(descriptor_set.layout(), *descriptor_set.handle());

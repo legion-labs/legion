@@ -34,7 +34,8 @@ impl<'de, T: Resource + Default + serde::Deserialize<'de>> ResourceInstaller
         request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
     ) -> Result<Box<dyn Resource>, AssetRegistryError> {
-        let mut new_resource: Box<dyn crate::Resource> = from_binary_reader::<T>(reader).await?;
+        let mut new_resource: Box<dyn crate::Resource> =
+            Box::new(from_binary_reader::<T>(reader).await?);
         activate_reference(
             resource_id,
             new_resource.as_mut(),

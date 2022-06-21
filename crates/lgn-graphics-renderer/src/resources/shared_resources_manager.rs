@@ -1,17 +1,14 @@
 use lgn_graphics_data::Color;
-use strum::{EnumCount, IntoEnumIterator};
+use strum::IntoEnumIterator;
 
 use lgn_graphics_api::{
-    DeviceContext, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceUsage, TextureDef,
-    TextureTiling, TextureView, TextureViewDef,
+    DeviceContext, Extents3D, Format, MemoryUsage, ResourceFlags, ResourceUsage, Sampler,
+    SamplerDef, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
 
-use crate::{
-    components::TextureData,
-    core::{RenderCommandBuilder, UploadTextureCommand},
-};
+use crate::core::{RenderCommandBuilder, UploadTextureCommand};
 
-use super::PersistentDescriptorSetManager;
+use super::{PersistentDescriptorSetManager, SamplerSlot, TextureData, TextureSlot};
 
 #[derive(Clone, Copy, strum::EnumCount, strum::EnumIter)]
 pub enum SharedTextureId {
@@ -21,14 +18,21 @@ pub enum SharedTextureId {
     Roughness,
 }
 
-#[derive(Debug, Clone)]
-struct SharedTexture {
+#[derive(Clone)]
+struct DefaultSampler {
+    _sampler: Sampler,
+    bindless_slot: SamplerSlot,
+}
+
+#[derive(Clone)]
+struct DefaultTexture {
     _texture_view: TextureView,
-    bindless_index: u32,
+    bindless_slot: TextureSlot,
 }
 
 pub struct SharedResourcesManager {
-    textures: [SharedTexture; SharedTextureId::COUNT],
+    default_sampler: DefaultSampler,
+    default_textures: Vec<DefaultTexture>,
 }
 
 impl SharedResourcesManager {
@@ -37,19 +41,27 @@ impl SharedResourcesManager {
         device_context: &DeviceContext,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
     ) -> Self {
-        let shared_textures = Self::create_shared_textures(
+        let default_sampler =
+            Self::create_default_sampler(device_context, persistent_descriptor_set_manager);
+
+        let default_textures = Self::create_default_textures(
             render_commands,
             device_context,
             persistent_descriptor_set_manager,
         );
 
         Self {
-            textures: shared_textures.try_into().unwrap(),
+            default_sampler,
+            default_textures,
         }
     }
 
-    pub fn default_texture_bindless_index(&self, shared_texture_id: SharedTextureId) -> u32 {
-        self.textures[shared_texture_id as usize].bindless_index
+    pub fn default_texture_slot(&self, shared_texture_id: SharedTextureId) -> TextureSlot {
+        self.default_textures[shared_texture_id as usize].bindless_slot
+    }
+
+    pub fn default_sampler_slot(&self) -> SamplerSlot {
+        self.default_sampler.bindless_slot
     }
 
     fn create_texture(
@@ -198,19 +210,31 @@ impl SharedResourcesManager {
         )
     }
 
-    fn create_shared_textures(
+    fn create_default_sampler(
+        device_context: &DeviceContext,
+        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
+    ) -> DefaultSampler {
+        let sampler = device_context.create_sampler(SamplerDef::default());
+        let bindless_slot = persistent_descriptor_set_manager.allocate_sampler_slot(&sampler);
+        DefaultSampler {
+            _sampler: sampler,
+            bindless_slot,
+        }
+    }
+
+    fn create_default_textures(
         render_commands: &mut RenderCommandBuilder,
         device_context: &DeviceContext,
         persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
-    ) -> Vec<SharedTexture> {
+    ) -> Vec<DefaultTexture> {
         SharedTextureId::iter()
             .map(|shared_texture_id| {
                 let texture_view =
                     Self::create_texture(render_commands, device_context, shared_texture_id);
-                SharedTexture {
+                DefaultTexture {
                     _texture_view: texture_view.clone(),
-                    bindless_index: persistent_descriptor_set_manager
-                        .set_bindless_texture(&texture_view),
+                    bindless_slot: persistent_descriptor_set_manager
+                        .allocate_texture_slot(&texture_view),
                 }
             })
             .collect::<Vec<_>>()

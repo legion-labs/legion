@@ -1,25 +1,125 @@
+use egui::mutex::RwLock;
 use lgn_graphics_api::{
     DescriptorHeapDef, DescriptorHeapPartition, DescriptorRef, DescriptorSet, DescriptorSetWriter,
     DeviceContext, Sampler, TextureView,
 };
 
-use crate::{cgen, resources::IndexAllocator};
+use std::sync::Arc;
 
-use super::DescriptorHeapManager;
+use crate::cgen;
 
-const BINDLESS_TEXTURE_ARRAY_LEN: u32 = 10 * 1024;
-const SAMPLER_ARRAY_SIZE: u32 = 64; // When changing this number make sure to make a corresponding change to material_samplers in root.rn
+use super::{DescriptorHeapManager, IndexAllocator};
 
-pub struct PersistentDescriptorSetManager {
-    device_context: DeviceContext,
-    descriptor_set: DescriptorSet,
+const TEXTURE_ARRAY_LEN: u32 = 10 * 1024;
+const SAMPLER_ARRAY_LEN: u32 = 64; // When changing this number make sure to make a corresponding change to material_samplers in root.rn
+
+// new_key_type!(
+//     pub struct TextureSlot;
+// );
+
+// impl TextureSlot {
+//     pub fn index(self) -> u32 {
+//         // WARNING: using this ffi backdoor to get the index. If the SlotMap library changes, it won't
+//         // work anymore.
+//         // Implement something solid
+//         let ffi_value = self.0.as_ffi();
+//         ffi_value as u32
+//     }
+// }
+
+// new_key_type!(
+//     pub struct SamplerSlot;
+// );
+
+// impl SamplerSlot {
+//     pub fn index(self) -> u32 {
+//         // WARNING: using this ffi backdoor to get the index. If the SlotMap library changes, it won't
+//         // work anymore.
+//         // Implement something solid
+//         let ffi_value = self.0.as_ffi();
+//         ffi_value as u32
+//     }
+// }
+
+#[derive(Clone, Copy)]
+pub struct TextureSlot(u32);
+
+impl TextureSlot {
+    pub fn index(self) -> u32 {
+        self.0
+    }
+}
+
+impl From<u32> for TextureSlot {
+    fn from(val: u32) -> Self {
+        TextureSlot(val)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct SamplerSlot(u32);
+
+impl SamplerSlot {
+    pub fn index(self) -> u32 {
+        self.0
+    }
+}
+
+impl From<u32> for SamplerSlot {
+    fn from(val: u32) -> Self {
+        SamplerSlot(val)
+    }
+}
+
+struct BindlessAllocator {
+    index_allocator: IndexAllocator,
+    removed_slots: Vec<Vec<u32>>,
     render_frame: u64,
     num_render_frames: u64,
-    bindless_index_allocator: IndexAllocator,
-    removed_indices: Vec<Vec<u32>>,
+}
 
+impl BindlessAllocator {
+    fn new(capacity: u32, num_render_frames: u64) -> Self {
+        Self {
+            index_allocator: IndexAllocator::new(capacity),
+            removed_slots: (0..num_render_frames)
+                .map(|_| Vec::new())
+                .collect::<Vec<_>>(),
+            render_frame: 0,
+            num_render_frames,
+        }
+    }
+
+    fn allocate(&mut self) -> u32 {
+        self.index_allocator.allocate()
+    }
+
+    fn free(&mut self, slot: u32) {
+        let removed_indices = &mut self.removed_slots[self.render_frame as usize];
+        removed_indices.push(slot);
+    }
+
+    fn frame_update(&mut self) {
+        self.render_frame = (self.render_frame + 1) % self.num_render_frames;
+        self.removed_slots[self.render_frame as usize]
+            .iter()
+            .for_each(|slot| self.index_allocator.free(*slot));
+        self.removed_slots[self.render_frame as usize].clear();
+    }
+}
+
+struct Inner {
+    device_context: DeviceContext,
+    descriptor_set: DescriptorSet,
+    texture_allocator: RwLock<BindlessAllocator>,
+    sampler_allocator: RwLock<BindlessAllocator>,
     material_textures_index: u32,
     material_samplers_index: u32,
+}
+
+#[derive(Clone)]
+pub struct PersistentDescriptorSetManager {
+    inner: Arc<Inner>,
 }
 
 impl PersistentDescriptorSetManager {
@@ -38,7 +138,7 @@ impl PersistentDescriptorSetManager {
                 .unwrap()
                 .element_count
                 .get(),
-            BINDLESS_TEXTURE_ARRAY_LEN
+            TEXTURE_ARRAY_LEN
         );
 
         let material_textures_index = layout
@@ -55,66 +155,83 @@ impl PersistentDescriptorSetManager {
         );
 
         Self {
-            device_context: device_context.clone(),
-            descriptor_set: persistent_partition.alloc(layout).unwrap(),
-            render_frame: 0,
-            num_render_frames,
-            bindless_index_allocator: IndexAllocator::new(BINDLESS_TEXTURE_ARRAY_LEN),
-            removed_indices: (0..num_render_frames)
-                .map(|_| Vec::new())
-                .collect::<Vec<_>>(),
-            material_textures_index,
-            material_samplers_index,
+            inner: Arc::new(Inner {
+                device_context: device_context.clone(),
+                descriptor_set: persistent_partition.alloc(layout).unwrap(),
+                material_textures_index,
+                material_samplers_index,
+                texture_allocator: RwLock::new(BindlessAllocator::new(
+                    TEXTURE_ARRAY_LEN,
+                    num_render_frames,
+                )),
+                sampler_allocator: RwLock::new(BindlessAllocator::new(
+                    SAMPLER_ARRAY_LEN,
+                    num_render_frames,
+                )),
+            }),
         }
     }
 
-    // todo: make batched versions (set_bindless_textureS with a slice?)
-    pub fn set_bindless_texture(&mut self, texture_view: &TextureView) -> u32 {
-        let index = self.bindless_index_allocator.acquire_index();
+    pub fn allocate_texture_slot(&self, texture_view: &TextureView) -> TextureSlot {
+        let mut allocator = self.inner.texture_allocator.write();
+        let slot = allocator.allocate();
 
         let mut writer = DescriptorSetWriter::new(
-            &self.device_context,
-            self.descriptor_set.handle(),
-            self.descriptor_set.layout(),
+            &self.inner.device_context,
+            self.inner.descriptor_set.handle(),
+            self.inner.descriptor_set.layout(),
         );
 
         writer.set_descriptors_by_index_and_offset(
-            self.material_textures_index,
-            index,
+            self.inner.material_textures_index,
+            slot,
             &[DescriptorRef::TextureView(texture_view)],
         );
 
-        index
+        TextureSlot(slot)
     }
 
-    pub fn set_sampler(&mut self, idx: u32, sampler: &Sampler) {
-        assert!(idx < SAMPLER_ARRAY_SIZE);
+    pub fn free_texture_slot(&self, slot: TextureSlot) {
+        let mut allocator = self.inner.texture_allocator.write();
+        allocator.free(slot.0);
+    }
+
+    pub fn allocate_sampler_slot(&self, sampler: &Sampler) -> SamplerSlot {
+        let mut allocator = self.inner.sampler_allocator.write();
+        let slot = allocator.allocate();
+
         let mut writer = DescriptorSetWriter::new(
-            &self.device_context,
-            self.descriptor_set.handle(),
-            self.descriptor_set.layout(),
+            &self.inner.device_context,
+            self.inner.descriptor_set.handle(),
+            self.inner.descriptor_set.layout(),
         );
 
         writer.set_descriptors_by_index_and_offset(
-            self.material_samplers_index,
-            idx,
+            self.inner.material_samplers_index,
+            slot,
             &[DescriptorRef::Sampler(sampler)],
         );
+
+        SamplerSlot(slot)
     }
 
-    pub fn unset_bindless_texture(&mut self, index: u32) {
-        let removed_indices = &mut self.removed_indices[self.render_frame as usize];
-        removed_indices.push(index);
+    pub fn free_sampler_slot(&self, slot: SamplerSlot) {
+        let mut allocator = self.inner.sampler_allocator.write();
+        allocator.free(slot.0);
     }
 
     pub fn descriptor_set(&self) -> &DescriptorSet {
-        &self.descriptor_set
+        &self.inner.descriptor_set
     }
 
     pub fn frame_update(&mut self) {
-        self.render_frame = (self.render_frame + 1) % self.num_render_frames as u64;
-        self.bindless_index_allocator
-            .release_indexes(&self.removed_indices[self.render_frame as usize]);
-        self.removed_indices[self.render_frame as usize].clear();
+        {
+            let mut allocator = self.inner.texture_allocator.write();
+            allocator.frame_update();
+        }
+        {
+            let mut allocator = self.inner.sampler_allocator.write();
+            allocator.frame_update();
+        }
     }
 }

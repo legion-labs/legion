@@ -53,7 +53,8 @@ impl ResourceInstaller for ModelInstaller {
         _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
     ) -> Result<Box<dyn Resource>, AssetRegistryError> {
-        let model = from_binary_reader::<lgn_graphics_data::runtime::Model>(reader).await?;
+        let model =
+            Box::new(from_binary_reader::<lgn_graphics_data::runtime::Model>(reader).await?);
         lgn_tracing::info!("Model {} | ({} meshes)", resource_id.id, model.meshes.len(),);
         Ok(model)
 

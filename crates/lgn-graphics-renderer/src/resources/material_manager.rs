@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use lgn_app::App;
 use lgn_data_runtime::{from_binary_reader, prelude::*};
@@ -16,8 +16,8 @@ use crate::{
 };
 
 use super::{
-    GpuDataManager, IndexAllocator, MissingVisualTracker, SamplerId, SamplerManager,
-    SharedResourcesManager, TextureEvent, TextureManager, UnifiedStaticBufferAllocator,
+    GpuDataManager, IndexAllocator, MissingVisualTracker, RenderTexture, SamplerManager,
+    SamplerSlot, SharedResourcesManager, TextureSlot, UnifiedStaticBufferAllocator,
 };
 
 type GpuMaterialData = GpuDataManager<MaterialId, crate::cgen::cgen_type::MaterialData>;
@@ -84,7 +84,8 @@ impl ResourceInstaller for MaterialInstaller {
         _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
     ) -> Result<Box<dyn Resource>, AssetRegistryError> {
-        let material = from_binary_reader::<lgn_graphics_data::runtime::Material>(reader).await?;
+        let material =
+            Box::new(from_binary_reader::<lgn_graphics_data::runtime::Material>(reader).await?);
         lgn_tracing::info!("Material {}", resource_id.id,);
 
         Ok(material)
@@ -145,7 +146,7 @@ impl MaterialManager {
             id: ResourceId::new(),
         };
 
-        let default_material_id = index_allocator.acquire_index();
+        let default_material_id = index_allocator.allocate();
 
         Self {
             index_allocator,
@@ -171,10 +172,8 @@ impl MaterialManager {
                 .with_system(on_material_added)
                 .with_system(on_material_changed)
                 .with_system(on_material_removed)
-                .with_system(on_texture_event)
                 .with_system(upload_default_material)
-                .label(MaterialManagerLabel::UpdateDone)
-                .after(ResourceStageLabel::Texture),
+                .label(MaterialManagerLabel::UpdateDone),
         );
         app.add_system_set_to_stage(
             RenderStage::Resource,
@@ -229,7 +228,7 @@ impl MaterialManager {
 
     fn add_material(&mut self, entity: Entity, material_component: &MaterialComponent) {
         let material_resource_id = material_component.resource.id();
-        let material_id: MaterialId = self.index_allocator.acquire_index().into();
+        let material_id: MaterialId = self.index_allocator.allocate().into();
         let material_data = material_component.material_data.clone();
 
         self.alloc_material(material_id, material_resource_id, material_data);
@@ -267,17 +266,17 @@ impl MaterialManager {
         let material_id = self.entity_to_material_id.remove(&entity).unwrap();
         self.material_id_to_texture_ids.remove(&material_id);
         self.gpu_material_data.remove_gpu_data(&material_id);
-        self.index_allocator.release_index(material_id.index());
+        self.index_allocator.free(material_id.index());
     }
 
-    fn on_texture_state_changed(&mut self, texture_id: &ResourceTypeAndId) {
-        // TODO(vdbdd): can be optimized by having a map ( texture_id -> material )
-        for (material_id, texture_ids) in &self.material_id_to_texture_ids {
-            if texture_ids.contains(texture_id) {
-                self.upload_queue.insert(*material_id);
-            }
-        }
-    }
+    // fn on_texture_state_changed(&mut self, texture_id: &ResourceTypeAndId) {
+    //     // TODO(vdbdd): can be optimized by having a map ( texture_id -> material )
+    //     for (material_id, texture_ids) in &self.material_id_to_texture_ids {
+    //         if texture_ids.contains(texture_id) {
+    //             self.upload_queue.insert(*material_id);
+    //         }
+    //     }
+    // }
 
     fn collect_texture_dependencies(material_data: &MaterialData) -> Vec<ResourceTypeAndId> {
         let mut result = Vec::new();
@@ -299,8 +298,8 @@ impl MaterialManager {
     }
 
     fn build_gpu_material_data(
+        asset_registry: &Arc<AssetRegistry>,
         material_component: &MaterialData,
-        texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
         sampler_manager: &SamplerManager,
     ) -> crate::cgen::cgen_type::MaterialData {
@@ -317,74 +316,92 @@ impl MaterialManager {
         material_data.set_reflectance(material_component.reflectance.into());
         material_data.set_base_roughness(material_component.base_roughness.into());
         material_data.set_albedo_texture(
-            Self::get_bindless_index(
+            Self::get_texture_slot(
+                asset_registry,
                 material_component.albedo_texture.as_ref(),
                 SharedTextureId::Albedo,
-                texture_manager,
                 shared_resources_manager,
             )
+            .index()
             .into(),
         );
         material_data.set_normal_texture(
-            Self::get_bindless_index(
+            Self::get_texture_slot(
+                asset_registry,
                 material_component.normal_texture.as_ref(),
                 SharedTextureId::Normal,
-                texture_manager,
                 shared_resources_manager,
             )
+            .index()
             .into(),
         );
         material_data.set_metalness_texture(
-            Self::get_bindless_index(
+            Self::get_texture_slot(
+                asset_registry,
                 material_component.metalness_texture.as_ref(),
                 SharedTextureId::Metalness,
-                texture_manager,
                 shared_resources_manager,
             )
+            .index()
             .into(),
         );
         material_data.set_roughness_texture(
-            Self::get_bindless_index(
+            Self::get_texture_slot(
+                asset_registry,
                 material_component.roughness_texture.as_ref(),
                 SharedTextureId::Roughness,
-                texture_manager,
                 shared_resources_manager,
             )
+            .index()
             .into(),
         );
         material_data.set_sampler(
-            Self::get_sampler_index(sampler_manager, material_component.sampler_data.as_ref())
-                .as_index()
-                .into(),
+            Self::get_sampler_slot(
+                sampler_manager,
+                material_component.sampler_data.as_ref(),
+                shared_resources_manager,
+            )
+            .index()
+            .into(),
         );
 
         material_data
     }
 
-    fn get_bindless_index(
+    fn get_texture_slot(
+        asset_registry: &Arc<AssetRegistry>,
         texture_id: Option<&BinTextureReferenceType>,
         default_shared_id: SharedTextureId,
-        texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
-    ) -> u32 {
+    ) -> TextureSlot {
         if let Some(texture_id) = texture_id {
-            texture_manager
-                .bindless_index_for_resource_id(&texture_id.id())
-                .unwrap_or_else(|| {
-                    shared_resources_manager.default_texture_bindless_index(default_shared_id)
-                })
+            let render_texture_guard = asset_registry
+                .lookup::<RenderTexture>(&texture_id.id())
+                .expect("Must be installed");
+
+            let render_texture = render_texture_guard.get().unwrap();
+
+            render_texture.bindless_slot()
+
+            // asset_registry
+            //     .texture_manager
+            //     .bindless_index_for_resource_id(&texture_id.id())
+            //     .unwrap_or_else(|| {
+            //         shared_resources_manager.default_texture_bindless_index(default_shared_id)
+            //     })
         } else {
-            shared_resources_manager.default_texture_bindless_index(default_shared_id)
+            shared_resources_manager.default_texture_slot(default_shared_id)
         }
     }
 
-    fn get_sampler_index(
+    fn get_sampler_slot(
         sampler_manager: &SamplerManager,
         sampler_data: Option<&SamplerData>,
-    ) -> SamplerId {
+        shared_resources_manager: &SharedResourcesManager,
+    ) -> SamplerSlot {
         if let Some(sampler_data) = sampler_data {
             #[allow(clippy::match_same_arms)]
-            sampler_manager.get_index(&SamplerDef {
+            sampler_manager.get_slot(&SamplerDef {
                 min_filter: match sampler_data.min_filter {
                     lgn_graphics_data::Filter::Nearest => FilterType::Nearest,
                     lgn_graphics_data::Filter::Linear => FilterType::Linear,
@@ -418,17 +435,17 @@ impl MaterialManager {
                 compare_op: CompareOp::LessOrEqual,
             })
         } else {
-            SamplerManager::get_default_sampler_index()
+            shared_resources_manager.default_sampler_slot()
         }
     }
 
     fn upload_material_data(
         &mut self,
         renderer: &Renderer,
-        texture_manager: &TextureManager,
         shared_resources_manager: &SharedResourcesManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
         sampler_manager: &SamplerManager,
+        asset_registry: &Arc<AssetRegistry>,
     ) {
         let mut render_commands = renderer.render_command_builder();
 
@@ -437,8 +454,8 @@ impl MaterialManager {
             let material_data = &material.material_data;
 
             let gpu_material_data = Self::build_gpu_material_data(
+                asset_registry,
                 material_data,
-                texture_manager,
                 shared_resources_manager,
                 sampler_manager,
             );
@@ -472,27 +489,32 @@ impl MaterialManager {
             default_material_data.set_base_roughness(0.4.into());
             default_material_data.set_albedo_texture(
                 shared_resources_manager
-                    .default_texture_bindless_index(SharedTextureId::Albedo)
+                    .default_texture_slot(SharedTextureId::Albedo)
+                    .index()
                     .into(),
             );
             default_material_data.set_normal_texture(
                 shared_resources_manager
-                    .default_texture_bindless_index(SharedTextureId::Normal)
+                    .default_texture_slot(SharedTextureId::Normal)
+                    .index()
                     .into(),
             );
             default_material_data.set_metalness_texture(
                 shared_resources_manager
-                    .default_texture_bindless_index(SharedTextureId::Metalness)
+                    .default_texture_slot(SharedTextureId::Metalness)
+                    .index()
                     .into(),
             );
             default_material_data.set_roughness_texture(
                 shared_resources_manager
-                    .default_texture_bindless_index(SharedTextureId::Roughness)
+                    .default_texture_slot(SharedTextureId::Roughness)
+                    .index()
                     .into(),
             );
             default_material_data.set_sampler(
-                SamplerManager::get_default_sampler_index()
-                    .as_index()
+                shared_resources_manager
+                    .default_sampler_slot()
+                    .index()
                     .into(),
             );
 
@@ -579,22 +601,22 @@ fn on_material_removed(
     }
 }
 
-#[allow(clippy::needless_pass_by_value)]
-fn on_texture_event(
-    mut event_reader: EventReader<'_, '_, TextureEvent>,
-    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
-) {
-    let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
-    for event in event_reader.iter() {
-        match event {
-            TextureEvent::StateChanged(texture_id_list) => {
-                for texture_id in texture_id_list {
-                    material_manager.on_texture_state_changed(texture_id);
-                }
-            }
-        }
-    }
-}
+// #[allow(clippy::needless_pass_by_value)]
+// fn on_texture_event(
+//     mut event_reader: EventReader<'_, '_, TextureEvent>,
+//     renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
+// ) {
+//     let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
+//     for event in event_reader.iter() {
+//         match event {
+//             TextureEvent::StateChanged(texture_id_list) => {
+//                 for texture_id in texture_id_list {
+//                     material_manager.on_texture_state_changed(texture_id);
+//                 }
+//             }
+//         }
+//     }
+// }
 
 #[allow(clippy::needless_pass_by_value)]
 fn upload_default_material(
@@ -608,8 +630,8 @@ fn upload_default_material(
 #[allow(clippy::needless_pass_by_value)]
 fn upload_material_data(
     renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
-    texture_manager: Res<'_, TextureManager>,
     shared_resources_manager: Res<'_, SharedResourcesManager>,
+    asset_registry: Res<'_, Arc<AssetRegistry>>,
 ) {
     let mut material_manager = renderer.render_resources().get_mut::<MaterialManager>();
     let mut missing_visuals_tracker = renderer
@@ -619,9 +641,9 @@ fn upload_material_data(
     let sampler_manager = renderer.render_resources().get::<SamplerManager>();
     material_manager.upload_material_data(
         &renderer,
-        &texture_manager,
         &shared_resources_manager,
         &mut missing_visuals_tracker,
         &sampler_manager,
+        &asset_registry,
     );
 }

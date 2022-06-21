@@ -172,7 +172,7 @@ impl Plugin for RendererPlugin {
         let graphics_queue = GraphicsQueue::new(device_context);
         let cgen_registry = Arc::new(cgen::initialize(device_context));
         let render_scope = RenderScope::new(NUM_RENDER_FRAMES, device_context);
-        let upload_manager = GpuUploadManager::new();
+        let upload_manager = GpuUploadManager::new(device_context);
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
         let render_command_queue_pool = RenderCommandQueuePool::new();
@@ -197,12 +197,16 @@ impl Plugin for RendererPlugin {
         let mut mesh_manager = MeshManager::new(static_buffer.allocator());
         mesh_manager.initialize_default_meshes(&mut render_commands);
 
-        let texture_manager = TextureManager::new(device_context);
+        let texture_manager = TextureManager::new(
+            device_context,
+            &persistent_descriptor_set_manager,
+            &upload_manager,
+        );
 
         let material_manager = MaterialManager::new(static_buffer.allocator());
 
         let sampler_manager =
-            SamplerManager::new(device_context, &mut persistent_descriptor_set_manager);
+            SamplerManager::new(device_context, &persistent_descriptor_set_manager);
 
         let shared_resources_manager = SharedResourcesManager::new(
             &mut render_commands,
@@ -323,15 +327,12 @@ impl Plugin for RendererPlugin {
             .insert_resource(cgen_registry_list)
             .insert_resource(RenderSurfaces::new())
             .insert_resource(DebugDisplay::default())
-            .insert_resource(persistent_descriptor_set_manager)
             .insert_resource(shared_resources_manager)
-            .insert_resource(texture_manager)
             .insert_resource(RendererOptions::default())
             .insert_resource(CameraOptions::default())
             .insert_resource(picking_manager.clone());
 
         // Init ecs
-        TextureManager::init_ecs(app);
         MaterialManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
@@ -422,6 +423,7 @@ impl Plugin for RendererPlugin {
             .insert(picking_manager)
             .insert(model_manager)
             .insert(mesh_manager)
+            .insert(texture_manager)
             .insert(material_manager)
             .insert(sampler_manager)
             .insert(missing_visuals_tracker)
@@ -429,6 +431,7 @@ impl Plugin for RendererPlugin {
             .insert(render_features)
             .insert(render_graph_persistent_state)
             .insert(Herd::new())
+            .insert(persistent_descriptor_set_manager)
             .finalize();
 
         app.add_system_to_stage(CoreStage::Last, on_app_exit);
@@ -446,10 +449,16 @@ impl Plugin for RendererPlugin {
     }
 }
 
-fn register_installers(asset_registry_options: NonSendMut<'_, AssetRegistryOptions>) {
+#[allow(clippy::needless_pass_by_value)]
+fn register_installers(
+    asset_registry_options: NonSendMut<'_, AssetRegistryOptions>,
+    renderer: Res<'_, Renderer>,
+) {
     let asset_registry_options = asset_registry_options.into_inner();
 
-    let texture_installer = Arc::new(resources::TextureInstaller::new());
+    let texture_manager = renderer.render_resources().get::<TextureManager>();
+
+    let texture_installer = Arc::new(resources::TextureInstaller::new(&texture_manager));
     asset_registry_options.add_resource_installer(
         lgn_graphics_data::runtime::BinTexture::TYPE,
         texture_installer.clone(),
@@ -560,7 +569,6 @@ fn render_update(
         ResMut<'_, PickingManager>,
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
-        ResMut<'_, PersistentDescriptorSetManager>,
         ResMut<'_, RenderSurfaces>,
         EventReader<'_, '_, KeyboardInput>,
     ),
@@ -575,9 +583,8 @@ fn render_update(
     let picking_manager = resources.2;
     let mut egui = resources.3;
     let mut debug_display = resources.4;
-    let mut persistent_descriptor_set_manager = resources.5;
-    let mut render_surfaces = resources.6;
-    let mut keyboard_input_events = resources.7;
+    let mut render_surfaces = resources.5;
+    let mut keyboard_input_events = resources.6;
 
     // queries
     let q_picked_drawables = queries.0;
@@ -667,7 +674,6 @@ fn render_update(
             descriptor_heap_manager.begin_frame();
 
             device_context.free_gpu_memory();
-            device_context.inc_current_cpu_frame();
 
             transient_buffer.begin_frame();
             transient_commandbuffer_manager.begin_frame();
@@ -681,6 +687,9 @@ fn render_update(
                 .get_mut::<RenderCommandManager>()
                 .apply(&render_resources);
 
+            let mut persistent_descriptor_set_manager =
+                render_resources.get_mut::<PersistentDescriptorSetManager>();
+
             persistent_descriptor_set_manager.frame_update();
             pipeline_manager.frame_update(&device_context);
 
@@ -692,7 +701,7 @@ fn render_update(
             let mut transient_buffer_allocator =
                 TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
-            render_resources.get_mut::<GpuUploadManager>().upload(
+            render_resources.get::<GpuUploadManager>().upload(
                 &mut transient_commandbuffer_allocator,
                 &mut transient_buffer_allocator,
                 &graphics_queue,

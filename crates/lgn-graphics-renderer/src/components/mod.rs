@@ -19,8 +19,5 @@ pub use render_surface::*;
 mod visual_component;
 pub use visual_component::*;
 
-mod texture_component;
-pub use texture_component::*;
-
 mod model_component;
 pub use model_component::*;
