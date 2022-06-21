@@ -33,8 +33,8 @@ async fn source_change() {
         .unwrap();
 
     let log = runtime.resource_manager.pop_log().await.unwrap();
-    assert_eq!(log.id, atlas_id);
     println!("log: {:?}", log);
+    assert_eq!(log.id, atlas_id);
     assert!(matches!(log.result, LoadCompletion::Compiled));
 
     let _ = runtime
@@ -44,8 +44,8 @@ async fn source_change() {
         .unwrap();
 
     let log = runtime.resource_manager.pop_log().await.unwrap();
-    assert_eq!(log.id, atlas_id);
     println!("log: {:?}", log);
+    assert_eq!(log.id, atlas_id);
     assert!(matches!(log.result, LoadCompletion::Cached(_)));
 
     runtime

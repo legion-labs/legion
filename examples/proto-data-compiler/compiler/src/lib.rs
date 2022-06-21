@@ -1,11 +1,12 @@
 use async_ffi::{FfiFuture, FutureExt};
 use atlas_compiler::AtlasCompiler;
+use entity_compiler::EntityCompiler;
 use futures::future::join_all;
 use material_compiler::MaterialCompiler;
 use service::{
     compiler_interface::{
         BuildParams, Compiler, CompilerContext, CompilerError, CompilerType, Services,
-        ATLAS_COMPILER, MATERIAL_COMPILER, TEST_COMPILER, TEXTURE_COMPILER,
+        ATLAS_COMPILER, ENTITY_COMPILER, MATERIAL_COMPILER, TEST_COMPILER, TEXTURE_COMPILER,
     },
     minimal_hash_internal,
     resource_manager::ResourceManager,
@@ -15,10 +16,11 @@ use service::{
 use test_compiler::TestCompiler;
 use texture_compiler::TextureCompiler;
 
-pub mod atlas_compiler;
-pub mod material_compiler;
-pub mod test_compiler;
-pub mod texture_compiler;
+mod atlas_compiler;
+mod entity_compiler;
+mod material_compiler;
+mod test_compiler;
+mod texture_compiler;
 
 #[no_mangle]
 pub fn compile(
@@ -158,6 +160,8 @@ pub fn find_compiler(
         Ok(Box::new(MaterialCompiler {}))
     } else if compiler_type == TEST_COMPILER {
         Ok(Box::new(TestCompiler {}))
+    } else if compiler_type == ENTITY_COMPILER {
+        Ok(Box::new(EntityCompiler {}))
     } else {
         Err(CompilerError::CompilerNotFound(compiler_type))
     }

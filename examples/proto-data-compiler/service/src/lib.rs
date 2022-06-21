@@ -155,7 +155,7 @@ pub async fn minimal_hash_internal(
 
     print!("{} ", source_addr);
 
-    // todo: recurse find_dependencies...
+    // todo: recursively find_dependencies...
     for dependency_addr in dependencies.iter().map(|dep| {
         source_control
             .find_address(dep.source_resource, commit_root)
@@ -166,8 +166,8 @@ pub async fn minimal_hash_internal(
     }
 
     let output = hasher.finish();
+    
     println!("= {}", output);
-
     Some(output as u128)
 }
 

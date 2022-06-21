@@ -44,6 +44,7 @@ pub const TEXTURE_C_CONTENT: &str = "texture c";
 pub const MATERIAL_CONTENT: &str = "material";
 
 pub const ATLAS_COMPILER: &str = "AtlasCompiler";
+pub const ENTITY_COMPILER: &str = "EntityCompiler";
 pub const MATERIAL_COMPILER: &str = "MaterialCompiler";
 pub const TEST_COMPILER: &str = "TestCompiler";
 pub const TEST_COMPILATION_APPEND: &str = " compiled";
