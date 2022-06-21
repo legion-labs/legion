@@ -1,13 +1,13 @@
 use std::{
-    borrow::Cow,
-    fs::{read_to_string, File},
+    fs::{read_to_string, remove_dir_all, File},
     io::Write,
-    path::Path,
+    path::{Path, PathBuf},
     process::Command,
 };
 
 use anyhow::anyhow;
 use askama::Template;
+use serde::Deserialize;
 use tempfile::tempdir;
 use which::which;
 
@@ -35,11 +35,61 @@ struct TypeScriptPackageTemplate;
 
 pub type TypeScriptGenerationContext = GenerationContext<TypeScriptOptions>;
 
-fn format_typescript<'a, 'b>(
+#[derive(Debug, Deserialize)]
+struct NpmConfig {
+    cache: PathBuf,
+}
+
+impl NpmConfig {
+    fn read() -> Result<NpmConfig> {
+        let npm_path = which("npm").map_err(|_err| {
+            Error::TypeScriptFormat(anyhow!(
+                "couldn't find npm binary, is it installed and accessible in the path?"
+            ))
+        })?;
+
+        let mut cmd = Command::new(npm_path);
+
+        cmd.args(["config", "list", "--json"]);
+
+        let output = cmd.output().map_err(|error| {
+            Error::TypeScriptFormat(anyhow!("npm config command was not successful: {}", error))
+        })?;
+
+        let config: NpmConfig = serde_json::from_slice(&output.stdout).map_err(|_err| {
+            Error::TypeScriptFormat(anyhow!("npm config list output is not valid"))
+        })?;
+
+        Ok(config)
+    }
+}
+
+/// Removes the npx cache folder _entirely_.
+fn clean_npx_cache() -> Result<bool> {
+    let npm_config = NpmConfig::read()?;
+
+    let npx_cache_path = npm_config.cache.join("_npx");
+
+    if npx_cache_path.exists() {
+        remove_dir_all(npx_cache_path)
+            .map_err(|_err| Error::TypeScriptFormat(anyhow!("couldn't clean npm cache")))?;
+
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+/// Executes [Prettier](https://prettier.io/) under the hood to format the provided content on the fly.
+///
+/// # Errors
+///
+/// Can fail if `npm` or `npx` are not installed, of if Prettier returns a non-zero code.
+fn format_typescript(
     options: &TypeScriptOptions,
-    content: &'a str,
-    temp_file_name: &'b str,
-) -> Result<Cow<'a, str>> {
+    content: &str,
+    temp_file_name: &str,
+) -> Result<String> {
     let prettier_config_path = options
         .prettier_config_path
         .clone()
@@ -55,12 +105,13 @@ fn format_typescript<'a, 'b>(
     write!(file, "{}", content)
         .map_err(|_err| Error::TypeScriptFormat(anyhow!("couldn't write content to tmp file")))?;
 
-    let binary_path = match which("npx") {
-        Err(_) => return Ok(content.into()),
-        Ok(path) => path,
-    };
+    let npx_path = which("npx").map_err(|_err| {
+        Error::TypeScriptFormat(anyhow!(
+            "couldn't find npx binary, is it installed and accessible in the path?"
+        ))
+    })?;
 
-    let mut command = Command::new(binary_path);
+    let mut cmd = Command::new(npx_path);
 
     let tmp_file_path = file_path.as_path().to_string_lossy();
 
@@ -81,9 +132,9 @@ fn format_typescript<'a, 'b>(
         }
     };
 
-    command.args(&args);
+    cmd.args(&args);
 
-    let status = command.status().map_err(|error| {
+    let status = cmd.status().map_err(|error| {
         Error::TypeScriptFormat(anyhow!(
             "npx prettier command was not successful: {}",
             error
@@ -94,7 +145,7 @@ fn format_typescript<'a, 'b>(
         let formatted_content = read_to_string(&file_path)
             .map_err(|_err| Error::TypeScriptFormat(anyhow!("couldn't read tmp file")))?;
 
-        Ok(formatted_content.into())
+        Ok(formatted_content)
     } else {
         Err(Error::TypeScriptFormat(anyhow!(
             "npx prettier command was not successful: {}",
@@ -103,11 +154,28 @@ fn format_typescript<'a, 'b>(
     }
 }
 
+/// Safe-ish alternative to [`format_typescript`] that cleans the NPM cache
+/// and tries again if the format fails the first time
+///
+/// # Errors
+///
+/// Can fail if `npm` or `npx` are not installed, of if Prettier returns a non-zero code.
+fn safe_format_typescript(
+    options: &TypeScriptOptions,
+    content: &str,
+    temp_file_name: &str,
+) -> Result<String> {
+    format_typescript(options, content, temp_file_name).or_else(|_err| {
+        let _npm_cache_cleaned = clean_npx_cache()?;
+        format_typescript(options, content, temp_file_name)
+    })
+}
+
 fn generate_index_content(ctx: &TypeScriptGenerationContext) -> Result<String> {
     let mut content = TypeScriptIndexTemplate.render()?;
 
     if !ctx.options.skip_format {
-        content = format_typescript(&ctx.options, &content, "index.ts")?.into_owned();
+        content = safe_format_typescript(&ctx.options, &content, "index.ts")?;
     }
 
     Ok(content)
@@ -117,7 +185,7 @@ fn generate_api_content(ctx: &TypeScriptGenerationContext) -> Result<String> {
     let mut content = TypeScriptApiTemplate { ctx }.render()?;
 
     if !ctx.options.skip_format {
-        content = format_typescript(&ctx.options, &content, "index.ts")?.into_owned();
+        content = safe_format_typescript(&ctx.options, &content, "index.ts")?;
     }
 
     Ok(content)
@@ -127,7 +195,7 @@ fn generate_package_content(options: &TypeScriptOptions) -> Result<String> {
     let mut content = TypeScriptPackageTemplate.render()?;
 
     if !options.skip_format {
-        content = format_typescript(options, &content, "package.json")?.into_owned();
+        content = safe_format_typescript(options, &content, "package.json")?;
     }
 
     Ok(content)
