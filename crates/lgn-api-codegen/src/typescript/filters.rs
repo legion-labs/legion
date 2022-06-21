@@ -17,14 +17,19 @@ pub fn fmt_type(
     module_path: &ModulePath,
 ) -> ::askama::Result<String> {
     Ok(match type_ {
-        Type::Int32 | Type::Float32 => "number".to_string(),
-        Type::Int64 | Type::Float64 => "bigint".to_string(),
+        Type::Any => "any".to_string(),
+        Type::Int32 | Type::UInt32 | Type::Float32 => "number".to_string(),
+        Type::Int64 | Type::UInt64 | Type::Float64 => "bigint".to_string(),
         Type::String => "string".to_string(),
         Type::Boolean => "boolean".to_string(),
         Type::Bytes | Type::Binary => "Blob".to_string(),
         Type::DateTime | Type::Date => "Date".to_string(),
         Type::Array(inner) => format!("{}[]", fmt_type(inner, ctx, module_path).unwrap()),
         Type::HashSet(inner) => format!("Set<{}>", fmt_type(inner, ctx, module_path).unwrap()),
+        Type::Map(inner) => format!(
+            "Record<string, {}>",
+            fmt_type(inner, ctx, module_path).unwrap()
+        ),
         Type::Named(ref_) => {
             let ref_module_path = ctx.ref_loc_to_typescript_module_path(ref_.ref_location())?;
 
@@ -39,6 +44,7 @@ pub fn fmt_type(
                 "complex types cannot be formatted".to_string(),
             ))))
         }
+        Type::Box(inner) => fmt_type(inner.as_ref(), ctx, module_path)?,
     })
 }
 

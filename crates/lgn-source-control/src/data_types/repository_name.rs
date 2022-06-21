@@ -2,7 +2,7 @@ use std::{fmt::Display, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
-use crate::Error;
+use crate::{Error, Result};
 
 /// Represents the name of a repository.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Hash, Eq, PartialEq, Ord, PartialOrd)]
@@ -32,6 +32,19 @@ impl FromStr for RepositoryName {
                 reason: "repository name characters must be alphanumeric".to_string(),
             })
         }
+    }
+}
+
+impl From<RepositoryName> for crate::api::source_control::RepositoryName {
+    fn from(name: RepositoryName) -> Self {
+        Self(name.0)
+    }
+}
+
+impl TryFrom<crate::api::source_control::RepositoryName> for RepositoryName {
+    type Error = Error;
+    fn try_from(name: crate::api::source_control::RepositoryName) -> Result<Self> {
+        Self::from_str(&name.0)
     }
 }
 

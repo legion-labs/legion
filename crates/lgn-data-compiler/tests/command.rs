@@ -1,4 +1,6 @@
 use generic_data::{offline::RefsAsset, offline::TestResource};
+use std::sync::Arc;
+
 use lgn_content_store::{
     indexing::{ResourceExists, TreeIdentifier},
     Config, Provider,
@@ -11,13 +13,13 @@ mod common;
 
 async fn create_test_resource(
     id: ResourceTypeAndId,
-    provider: &Provider,
+    persistent_provider: Arc<Provider>,
     content: &str,
 ) -> TreeIdentifier {
     let mut resource = TestResource::new_named("test_resource");
     resource.content = String::from(content);
 
-    common::write_resource(id, provider, &resource).await
+    common::write_resource(id, persistent_provider, &resource).await
 }
 
 #[tokio::test]
@@ -62,9 +64,11 @@ async fn command_compiler_hash() {
 
 #[tokio::test]
 async fn command_compile() {
-    let persistent_content_provider = Config::load_and_instantiate_persistent_provider()
-        .await
-        .unwrap();
+    let persistent_content_provider = Arc::new(
+        Config::load_and_instantiate_persistent_provider()
+            .await
+            .unwrap(),
+    );
 
     let content = "test content";
 
@@ -73,7 +77,7 @@ async fn command_compile() {
         id: ResourceId::new(),
     };
     let source_manifest_id =
-        create_test_resource(source, &persistent_content_provider, content).await;
+        create_test_resource(source, persistent_content_provider, content).await;
 
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());

@@ -1,7 +1,4 @@
-use lgn_online::{
-    codegen::Bytes,
-    server::Error,
-};
+use lgn_online::codegen::Error;
 
 {% for model in location_ctx.models.values() %}
     {% if let Some(description) = model.description %}/// {{ description }}{% endif -%}
@@ -24,7 +21,7 @@ use lgn_online::{
                         {%- for variant in variants -%}
                             "{{ variant|pascal_case }}" => Ok(Self::{{ variant|pascal_case }}),
                         {%- endfor -%}
-                        _ => Err(Error::Internal(format!("unknown enum value {}", s))),
+                        _ => Err(Error::Invalid(format!("unknown enum value {}", s))),
                     }
                 }
             }
@@ -37,7 +34,7 @@ use lgn_online::{
                         {%- for variant in variants -%}
                             {{ loop.index0 }} => Ok(Self::{{ variant|pascal_case }}),
                         {%- endfor -%}
-                        _ => Err(Error::Internal(format!("index out of bound {}, accepted index between 0 and {{ variants.len() - 1 }}", n))),
+                        _ => Err(Error::Invalid(format!("index out of bound {}, accepted index between 0 and {{ variants.len() - 1 }}", n))),
                     }
                 }
             }
@@ -50,7 +47,7 @@ use lgn_online::{
                         {%- for variant in variants -%}
                             {{ loop.index0 }} => Ok(Self::{{ variant|pascal_case }}),
                         {%- endfor -%}
-                        _ => Err(Error::Internal(format!("index out of bound {}, accepted index between 0 and {{ variants.len() - 1 }}", n))),
+                        _ => Err(Error::Invalid(format!("index out of bound {}, accepted index between 0 and {{ variants.len() - 1 }}", n))),
                     }
                 }
             }
@@ -74,9 +71,15 @@ use lgn_online::{
                     Option{{loop.index}}({{ type_|fmt_type(ctx, module_path) }}),
                 {%- endfor -%}
             }
-        {% when Type::Struct with { fields } %}
-            #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+        {% when Type::Struct with { fields, map } %}
+            {{ map|fmt_struct_derive }}
             pub struct {{ model|fmt_model_name(ctx) }} {
+                {% match map %}
+                {% when Some with (map) %}
+                #[serde(flatten)]
+                pub __additional_properties: std::collections::BTreeMap<String, {{ map|fmt_type(ctx, module_path) }}>,
+                {% when None %}
+                {% endmatch %}
                 {% for field in fields.values() %}
                     {% if let Some(description) = field.description -%}/// {{ description }}{%- endif %}
                     #[serde(rename = "{{ field.name }}")]

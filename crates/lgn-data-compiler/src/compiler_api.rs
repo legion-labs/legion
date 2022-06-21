@@ -182,10 +182,10 @@ pub struct CompilerContext<'a> {
     pub env: &'a CompilationEnv,
     /// Content-addressable storage of compilation output.
     /// Anything that is a derived resource and can be reconstructed should go here.
-    pub volatile_provider: &'a Provider,
+    pub volatile_provider: Arc<Provider>,
     /// Content-addressable storage for any source data payload.
     /// Anything that is a source data provided/created/imported by the user should go here.
-    pub persistent_provider: &'a Provider,
+    pub persistent_provider: Arc<Provider>,
 }
 
 impl CompilerContext<'_> {
@@ -365,8 +365,8 @@ impl CompilerDescriptor {
         dependencies: &[ResourcePathId],
         _derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        volatile_provider: &Provider,
-        persistent_provider: &Provider,
+        volatile_provider: Arc<Provider>,
+        persistent_provider: Arc<Provider>,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         let transform = compile_path
@@ -501,7 +501,7 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                 };
 
                 let manifest = manifest
-                    .into_rt_manifest(&data_provider, |_rpid| true)
+                    .into_rt_manifest(Arc::clone(&data_provider), |_rpid| true)
                     .await;
 
                 SharedTreeIdentifier::new(manifest)
@@ -535,8 +535,8 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &dependencies,
                     &derived_deps,
                     shell.registry(),
-                    &data_provider,   // volatile
-                    &source_provider, // persistent
+                    data_provider,   // volatile
+                    source_provider, // persistent
                     &source_manifest_id,
                     &runtime_manifest_id,
                     &env,

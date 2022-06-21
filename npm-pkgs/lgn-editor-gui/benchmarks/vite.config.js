@@ -37,10 +37,7 @@ export default defineConfig({
     }),
     svelte({ hot: false }),
     viteTsProto({
-      modules: [
-        { name: "@lgn/proto-editor", glob: "*.proto" },
-        { name: "@lgn/proto-runtime", glob: "*.proto" },
-      ],
+      modules: [{ name: "@lgn/proto-editor", glob: "*.proto" }],
     }),
   ],
 });

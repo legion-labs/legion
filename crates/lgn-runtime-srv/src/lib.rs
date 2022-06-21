@@ -9,6 +9,9 @@
 
 use std::{net::SocketAddr, path::PathBuf};
 
+#[cfg(not(feature = "standalone"))]
+use crate::server::{RuntimeServerCommand, Server};
+
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
 use lgn_animation::AnimationPlugin;
@@ -27,6 +30,8 @@ use lgn_ecs::prelude::{
 };
 use lgn_graphics_data::GraphicsPlugin;
 use lgn_graphics_renderer::RendererPlugin;
+#[cfg(not(feature = "standalone"))]
+use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::prelude::HierarchyPlugin;
 use lgn_input::InputPlugin;
 #[cfg(not(feature = "standalone"))]
@@ -50,12 +55,11 @@ use serde::Deserialize;
 use tokio::sync::broadcast;
 
 #[cfg(not(feature = "standalone"))]
-mod grpc;
+mod api;
+#[cfg(not(feature = "standalone"))]
+mod server;
 #[cfg(feature = "standalone")]
 mod standalone;
-
-#[cfg(not(feature = "standalone"))]
-use crate::grpc::{GRPCServer, RuntimeServerCommand};
 
 #[derive(Parser, Debug)]
 #[clap(name = "Legion Labs runtime server")]
@@ -291,19 +295,15 @@ pub fn build_runtime() -> App {
 
     #[cfg(not(feature = "standalone"))]
     {
-        use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
         use lgn_window::WindowPlugin;
 
         app.add_plugin(WindowPlugin {
             add_primary_window: false,
             exit_on_close: false,
         })
-        .insert_resource(GRPCPluginSettings::hybrid(
-            listen_endpoint,
-            rest_listen_endpoint,
-        ))
+        .insert_resource(GRPCPluginSettings::rest(rest_listen_endpoint))
         .insert_resource(trace_events_receiver)
-        .add_plugin(GRPCPlugin::hybrid())
+        .add_plugin(GRPCPlugin::rest_only())
         .add_plugin(LogStreamPlugin::default())
         .add_plugin(streamer_plugin);
 
@@ -326,11 +326,16 @@ pub fn start_runtime(app: &mut App) {
 
 #[cfg(not(feature = "standalone"))]
 fn setup_runtime_grpc(world: &mut World) {
+    use std::sync::Arc;
+
     let (command_sender, command_receiver) = crossbeam_channel::unbounded::<RuntimeServerCommand>();
 
-    let grpc_server = GRPCServer::new(command_sender);
-    let mut grpc_settings = world.resource_mut::<lgn_grpc::GRPCPluginSettings>();
-    grpc_settings.register_service(grpc_server.service());
+    let server = Arc::new(Server::new(command_sender));
+
+    world
+        .resource_mut::<lgn_grpc::SharedRouter>()
+        .into_inner()
+        .register_routes(crate::api::runtime::server::register_routes, server);
 
     world.insert_resource(command_receiver);
 }

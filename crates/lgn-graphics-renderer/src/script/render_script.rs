@@ -1,5 +1,5 @@
 use crate::{
-    cgen,
+    cgen::{self},
     core::RenderGraphBuilder,
     core::{
         BinaryWriter, GpuUploadManager, RenderGraph, RenderGraphResourceId, RenderGraphViewId,
@@ -275,7 +275,6 @@ impl RenderScript<'_> {
         );
         render_graph_builder = self.picking_pass.build_render_graph(
             render_graph_builder,
-            view,
             gbuffer_write_view_ids[0],
             draw_count_buffer_id,
             draw_args_buffer_id,
@@ -308,7 +307,6 @@ impl RenderScript<'_> {
         );
         render_graph_builder = self.debug_pass.build_render_graph(
             render_graph_builder,
-            view,
             depth_view_id,
             gbuffer_write_view_ids[0], // radiance_write_rt_view_id
         );

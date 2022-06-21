@@ -13,13 +13,17 @@ use lgn_auth::{
 use serde::Deserialize;
 
 use crate::{
-    client::HyperClient,
-    grpc::{AuthenticatedClient, GrpcClient, GrpcWebClient},
+    client::{AuthenticatedClient, HyperClient},
+    grpc::{GrpcClient, GrpcWebClient},
     Result,
 };
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
+    /// The base URL for requests.
+    #[serde(default, with = "http_serde::uri")]
+    pub base_url: Uri,
+
     /// The base URL for api requests.
     #[serde(default, with = "http_serde::uri")]
     pub api_base_url: Uri,
@@ -39,6 +43,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            base_url: "http://localhost:8000".parse().unwrap(),
             api_base_url: "http://localhost:8000".parse().unwrap(),
             web_api_base_url: "http://localhost:8000".parse().unwrap(),
             authentication: None,
@@ -135,6 +140,27 @@ impl Config {
         scopes: &[String],
     ) -> Result<AuthenticatedClient<GrpcWebClient, BoxedAuthenticator>> {
         let client = GrpcWebClient::new(url.unwrap_or(&self.web_api_base_url).clone());
+
+        let authenticator = match &self.authentication {
+            Some(config) => Some(config.instantiate_authenticator().await?),
+            None => None,
+        };
+
+        let client = AuthenticatedClient::new(client, authenticator, scopes);
+
+        Ok(client)
+    }
+
+    /// Instantiate an `OpenAPI` client.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the authentication settings are invalid.
+    pub async fn instantiate_client(
+        &self,
+        scopes: &[String],
+    ) -> Result<AuthenticatedClient<HyperClient, BoxedAuthenticator>> {
+        let client = HyperClient::default();
 
         let authenticator = match &self.authentication {
             Some(config) => Some(config.instantiate_authenticator().await?),

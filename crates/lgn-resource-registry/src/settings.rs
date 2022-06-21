@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use lgn_source_control::RepositoryName;
+use lgn_source_control::{BranchName, RepositoryName};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,7 +50,7 @@ pub struct ResourceRegistrySettings {
     pub(crate) root_folder: PathBuf,
     pub(crate) source_control_repository_index: Box<dyn lgn_source_control::RepositoryIndex>,
     pub(crate) source_control_repository_name: RepositoryName,
-    pub(crate) source_control_branch_name: String,
+    pub(crate) source_control_branch_name: BranchName,
     pub(crate) build_output_db_addr: String,
     pub(crate) compilation_mode: CompilationMode,
 }
@@ -60,7 +60,7 @@ impl ResourceRegistrySettings {
         root_folder: impl AsRef<Path>,
         source_control_repository_index: Box<dyn lgn_source_control::RepositoryIndex>,
         source_control_repository_name: RepositoryName,
-        source_control_branch_name: String,
+        source_control_branch_name: BranchName,
         build_output_db_addr: String,
         compilation_mode: CompilationMode,
     ) -> Self {

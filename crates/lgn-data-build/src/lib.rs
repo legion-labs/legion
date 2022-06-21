@@ -190,9 +190,6 @@ pub enum Error {
     /// Output database error.
     #[error("Database Error: '{0}'")]
     Database(#[source] sqlx::Error),
-    /// Project has uncommited changes
-    #[error("Project has uncommited changes.")]
-    ProjectNotCommitted,
 }
 
 mod databuild;

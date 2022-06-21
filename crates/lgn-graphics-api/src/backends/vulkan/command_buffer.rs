@@ -1,5 +1,5 @@
 use ash;
-use lgn_tracing::trace;
+use lgn_tracing::{span_scope, trace};
 use smallvec::SmallVec;
 use std::sync::Arc;
 
@@ -8,8 +8,8 @@ use crate::{
     BarrierQueueTransition, Buffer, BufferBarrier, BufferCopy, CmdBlitParams,
     CmdCopyBufferToTextureParams, CmdCopyTextureParams, ColorRenderTargetBinding, CommandBuffer,
     CommandBufferDef, CommandPool, DepthStencilRenderTargetBinding, DescriptorSetHandle,
-    DeviceContext, IndexBufferBinding, Pipeline, PipelineType, PlaneSlice, ResourceState,
-    ResourceUsage, RootSignature, Texture, TextureBarrier, VertexBufferBinding,
+    DeviceContext, IndexBufferBinding, Pipeline, PipelineType, PlaneSlice, ResourceUsage,
+    RootSignature, Texture, TextureBarrier, VertexBufferBinding, MAX_RENDER_TARGET_ATTACHMENTS,
     MAX_VERTEX_INPUT_BINDINGS,
 };
 pub(crate) struct VulkanCommandBuffer {
@@ -97,50 +97,7 @@ impl CommandBuffer {
         color_targets: &[ColorRenderTargetBinding<'_>],
         depth_target: &Option<DepthStencilRenderTargetBinding<'_>>,
     ) {
-        let barriers = {
-            let mut barriers = Vec::with_capacity(color_targets.len() + 1);
-            for color_target in color_targets {
-                if color_target
-                    .texture_view
-                    .texture()
-                    .take_is_undefined_layout()
-                {
-                    trace!(
-                        "Transition RT {:?} from {:?} to {:?}",
-                        color_target,
-                        ResourceState::UNDEFINED,
-                        ResourceState::RENDER_TARGET
-                    );
-                    barriers.push(TextureBarrier::state_transition(
-                        color_target.texture_view.texture(),
-                        ResourceState::UNDEFINED,
-                        ResourceState::RENDER_TARGET,
-                    ));
-                }
-            }
-
-            if let Some(depth_target) = &depth_target {
-                if depth_target
-                    .texture_view
-                    .texture()
-                    .take_is_undefined_layout()
-                {
-                    trace!(
-                        "Transition RT {:?} from {:?} to {:?}",
-                        depth_target,
-                        ResourceState::UNDEFINED,
-                        ResourceState::DEPTH_WRITE
-                    );
-                    barriers.push(TextureBarrier::state_transition(
-                        depth_target.texture_view.texture(),
-                        ResourceState::UNDEFINED,
-                        ResourceState::DEPTH_WRITE,
-                    ));
-                }
-            }
-
-            barriers
-        };
+        span_scope!("backend_cmd_begin_render_pass");
 
         let extents = if let Some(first_color_rt) = color_targets.first() {
             let texture_def = first_color_rt.texture_view.texture().definition();
@@ -164,12 +121,13 @@ impl CommandBuffer {
             },
         };
 
-        if !barriers.is_empty() {
-            self.backend_cmd_resource_barrier(&[], &barriers);
-        }
-
-        let mut color_attachments =
-            vec![ash::vk::RenderingAttachmentInfo::default(); color_targets.len()];
+        let mut color_attachments = SmallVec::<
+            [ash::vk::RenderingAttachmentInfo; MAX_RENDER_TARGET_ATTACHMENTS],
+        >::with_capacity(color_targets.len());
+        color_attachments.resize(
+            color_targets.len(),
+            ash::vk::RenderingAttachmentInfo::default(),
+        );
         for (i, color_target) in color_targets.iter().enumerate() {
             color_attachments[i] = ash::vk::RenderingAttachmentInfo::builder()
                 .image_view(color_target.texture_view.vk_image_view())
@@ -251,6 +209,7 @@ impl CommandBuffer {
     }
 
     pub(crate) fn backend_cmd_end_render_pass(&mut self) {
+        span_scope!("backend_cmd_end_render_pass");
         unsafe {
             self.device_context
                 .vk_device()
@@ -584,6 +543,8 @@ impl CommandBuffer {
         buffer_barriers: &[BufferBarrier<'_>],
         texture_barriers: &[TextureBarrier<'_>],
     ) {
+        span_scope!("backend_cmd_resource_barrier");
+
         let mut vk_image_barriers = Vec::with_capacity(texture_barriers.len());
         let mut vk_buffer_barriers = Vec::with_capacity(buffer_barriers.len());
 

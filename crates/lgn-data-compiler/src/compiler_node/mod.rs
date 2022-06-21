@@ -175,7 +175,7 @@ mod tests {
         };
         let compile_path = ResourcePathId::from(source).push(ResourceType::new(b"output"));
 
-        let source_control_content_provider = Provider::new_in_memory();
+        let source_control_content_provider = Arc::new(Provider::new_in_memory());
         let source_manifest_id = SharedTreeIdentifier::new(
             empty_tree_id(&source_control_content_provider)
                 .await
@@ -198,8 +198,8 @@ mod tests {
                     &[],
                     &[],
                     registry,
-                    &data_content_provider,
-                    &source_control_content_provider,
+                    Arc::clone(&data_content_provider),
+                    Arc::clone(&source_control_content_provider),
                     &source_manifest_id,
                     &runtime_manifest_id,
                     &env,

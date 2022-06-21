@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Branch, CommitId};
+use crate::{Branch, BranchName, CommitId};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PendingBranchMerge {
-    pub name: String,
+    pub name: BranchName,
     pub head: CommitId,
 }
 

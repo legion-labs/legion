@@ -27,7 +27,7 @@ use lgn_graphics_data::{
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::Vec3;
 use lgn_scripting_data::ScriptType;
-use lgn_source_control::RepositoryName;
+use lgn_source_control::{BranchName, RepositoryName};
 use lgn_tracing::{info, LevelFilter};
 use sample_data::offline::Transform;
 
@@ -65,6 +65,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .unwrap();
     let repository_name: RepositoryName = "examples-pong".parse().unwrap();
+    let branch_name: BranchName = "main".parse().unwrap();
 
     // Ensure the repository exists.
     let _index = repository_index.ensure_repository(&repository_name).await;
@@ -83,7 +84,7 @@ async fn main() -> anyhow::Result<()> {
     let mut project = Project::new(
         &repository_index,
         &repository_name,
-        "main",
+        &branch_name,
         Arc::clone(&source_control_content_provider),
     )
     .await
@@ -404,7 +405,7 @@ pub fn update(entity, last_result, entities) {
         {
             ball_direction.y = -ball_direction.y;
         }
-    }    
+    }
 
     position.x += VELOCITY * ball_direction.x;
     position.y += VELOCITY * ball_direction.y;

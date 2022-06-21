@@ -1,6 +1,7 @@
+use parking_lot::RwLock;
+use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::sync::RwLock;
 
 use lgn_core::Handle;
 use lgn_graphics_api::{
@@ -13,15 +14,13 @@ use lgn_graphics_api::{
     MAX_RENDER_TARGET_ATTACHMENTS,
 };
 use lgn_tracing::span_scope;
-use lgn_transform::prelude::GlobalTransform;
 
-use crate::components::{CameraComponent, ManipulatorComponent, RenderSurface, VisualComponent};
 use crate::core::render_graph::RenderGraphBuilder;
-use crate::core::{RenderListSet, RenderResources};
-use crate::debug_display::DebugDisplay;
+use crate::core::RenderViewport;
+use crate::core::{RenderCamera, RenderListSet, RenderResources};
 use crate::egui::Egui;
-use crate::picking::PickingManager;
 
+use crate::render_pass::PickingRenderPass;
 use crate::resources::{PipelineManager, ReadbackBuffer};
 use crate::RenderContext;
 
@@ -639,12 +638,9 @@ impl RenderGraphContext {
 }
 
 pub struct DebugStuff<'a> {
-    pub render_surface: &'a RenderSurface,
-    pub picking_manager: &'a PickingManager,
-    pub debug_display: &'a DebugDisplay,
-    pub picked_drawables: &'a [(&'a VisualComponent, &'a GlobalTransform)],
-    pub manipulator_drawables: &'a [(&'a GlobalTransform, &'a ManipulatorComponent)],
-    pub camera_component: &'a CameraComponent,
+    pub picking_renderpass: &'a RwLock<PickingRenderPass>,
+    pub render_viewport: &'a RenderViewport,
+    pub render_camera: &'a RenderCamera,
     pub egui: &'a Egui,
 }
 
@@ -694,7 +690,7 @@ impl RenderGraphPersistentState {
         let mut need_destroy = false;
 
         {
-            let resources = self.resources.read().unwrap();
+            let resources = self.resources.read();
             if let Some(value) = resources.get(name) {
                 if &value.0 == def {
                     return Some(value.1.clone());
@@ -707,8 +703,8 @@ impl RenderGraphPersistentState {
         if need_destroy {
             // Destroy resource and it will be recreated and re-added.
             // Also destroy all views related to this resource so they will also be recreated.
-            let mut resources = self.resources.write().unwrap();
-            let mut views = self.views.write().unwrap();
+            let mut resources = self.resources.write();
+            let mut views = self.views.write();
             let value = resources.get(name).unwrap();
             match &value.1 {
                 RenderGraphResource::Texture(texture) => {
@@ -738,7 +734,7 @@ impl RenderGraphPersistentState {
         def: &RenderGraphResourceDef,
         resource: &RenderGraphResource,
     ) {
-        let mut resources = self.resources.write().unwrap();
+        let mut resources = self.resources.write();
         resources.insert(name.to_string(), (def.clone(), resource.clone()));
     }
 
@@ -748,7 +744,7 @@ impl RenderGraphPersistentState {
         view_type: GPUViewType,
     ) -> Option<RenderGraphView> {
         {
-            let views = self.views.read().unwrap();
+            let views = self.views.read();
             if let Some(view) = views.get(&(def.clone(), view_type)) {
                 return Some(view.clone());
             }
@@ -763,7 +759,7 @@ impl RenderGraphPersistentState {
         view_type: GPUViewType,
         view: &RenderGraphView,
     ) {
-        let mut views = self.views.write().unwrap();
+        let mut views = self.views.write();
         views.insert((def.clone(), view_type), view.clone());
     }
 }
@@ -774,6 +770,8 @@ struct ResourceBarrier {
     prev_state: ResourceState,
     next_state: ResourceState,
 }
+
+const BARRIER_COUNT: usize = 32;
 
 impl RenderGraph {
     pub fn builder<'a>(
@@ -941,7 +939,7 @@ impl RenderGraph {
         texture: &'a Texture,
         prev_state: ResourceState,
         next_state: ResourceState,
-        texture_barriers: &mut Vec<TextureBarrier<'a>>,
+        texture_barriers: &mut SmallVec<[TextureBarrier<'a>; BARRIER_COUNT]>,
     ) {
         // println!(
         //     "  Transition texture {} mip {} from {:?} to {:?}",
@@ -966,7 +964,7 @@ impl RenderGraph {
         buffer: &'a Buffer,
         prev_state: ResourceState,
         next_state: ResourceState,
-        buffer_barriers: &mut Vec<BufferBarrier<'a>>,
+        buffer_barriers: &mut SmallVec<[BufferBarrier<'a>; BARRIER_COUNT]>,
     ) {
         // println!(
         //     "  Transition buffer {} from {:?} to {:?}",
@@ -989,7 +987,7 @@ impl RenderGraph {
         texture_view_def: &RenderGraphTextureViewDef,
         context: &mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         let resource_id = texture_view_def.resource_id;
         let res_idx = texture_view_def.resource_id as usize;
@@ -1046,7 +1044,7 @@ impl RenderGraph {
         buffer_view_def: &RenderGraphBufferViewDef,
         context: &mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         let resource_id = buffer_view_def.resource_id;
         let res_idx = buffer_view_def.resource_id as usize;
@@ -1098,7 +1096,7 @@ impl RenderGraph {
         view_id: RenderGraphViewId,
         context: &'a mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         let view_idx = view_id as usize;
 
@@ -1130,7 +1128,7 @@ impl RenderGraph {
         context: &mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         for read_res in &node.read_resources {
             self.gather_resource_transitions(read_res.key, context, execute_context, barriers);
@@ -1142,7 +1140,7 @@ impl RenderGraph {
         context: &'a mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         for write_res in &node.write_resources {
             self.gather_resource_transitions(write_res.key, context, execute_context, barriers);
@@ -1154,7 +1152,7 @@ impl RenderGraph {
         context: &'a mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         for rt_res in node.render_targets.iter().flatten() {
             self.gather_resource_transitions(rt_res.key, context, execute_context, barriers);
@@ -1166,7 +1164,7 @@ impl RenderGraph {
         context: &'a mut RenderGraphContext,
         execute_context: &RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
-        barriers: &mut Vec<ResourceBarrier>,
+        barriers: &mut SmallVec<[ResourceBarrier; BARRIER_COUNT]>,
     ) {
         if let Some(depth_stencil_res) = &node.depth_stencil {
             self.gather_resource_transitions(
@@ -1185,8 +1183,11 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("do_resource_transitions");
+
         // Gather barriers into a container.
-        let mut barriers: Vec<ResourceBarrier> = Vec::with_capacity(32);
+        let mut barriers =
+            SmallVec::<[ResourceBarrier; BARRIER_COUNT]>::with_capacity(BARRIER_COUNT);
 
         self.gather_read_resource_transitions(context, execute_context, node, &mut barriers);
 
@@ -1202,8 +1203,10 @@ impl RenderGraph {
         );
 
         // Create the actual barriers
-        let mut buffer_barriers: Vec<BufferBarrier<'_>> = Vec::with_capacity(32);
-        let mut texture_barriers: Vec<TextureBarrier<'_>> = Vec::with_capacity(32);
+        let mut buffer_barriers =
+            SmallVec::<[BufferBarrier<'_>; BARRIER_COUNT]>::with_capacity(BARRIER_COUNT);
+        let mut texture_barriers =
+            SmallVec::<[TextureBarrier<'_>; BARRIER_COUNT]>::with_capacity(BARRIER_COUNT);
 
         for barrier in &barriers {
             let view_idx = barrier.view_id as usize;
@@ -1260,9 +1263,13 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("do_begin_render_pass");
+
         if self.need_begin_end_render_pass(node) {
-            let mut color_targets: Vec<ColorRenderTargetBinding<'_>> =
-                Vec::with_capacity(node.render_targets.len());
+            let mut color_targets = SmallVec::<
+                [ColorRenderTargetBinding<'_>; MAX_RENDER_TARGET_ATTACHMENTS],
+            >::with_capacity(node.render_targets.len());
+            let mut depth_target: Option<DepthStencilRenderTargetBinding<'_>> = None;
 
             for resource_data in node.render_targets.iter().flatten() {
                 let view_id = resource_data.key;
@@ -1402,6 +1409,8 @@ impl RenderGraph {
         execute_context: &mut RenderGraphExecuteContext<'_, '_>,
         node: &RGNode,
     ) {
+        span_scope!("create_views");
+
         for resource_data in node.render_targets.iter().flatten() {
             self.create_view(
                 context,
@@ -1492,6 +1501,8 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("clear_write_targets");
+
         for resource_data in &node.write_resources {
             let view_id = resource_data.key;
             let view_def = self.get_view_def(view_id);
@@ -1502,6 +1513,7 @@ impl RenderGraph {
                     //println!("  !! Clear {} ", self.get_resource_name(resource_id));
                     match view_def {
                         RenderGraphViewDef::Texture(_) => {
+                            span_scope!("clear_texture");
                             let texture = context.get_texture(resource_id);
                             let data = vec![value; texture.vk_alloc_size() as usize / 4];
                             Self::upload_texture_data(
@@ -1513,6 +1525,7 @@ impl RenderGraph {
                             );
                         }
                         RenderGraphViewDef::Buffer(_) => {
+                            span_scope!("clear_buffer");
                             let buffer = context.get_buffer(resource_id);
                             cmd_buffer.cmd_fill_buffer(buffer, 0, buffer.definition().size, value);
                         }
@@ -1542,6 +1555,8 @@ impl RenderGraph {
         node: &RGNode,
         cmd_buffer: &mut CommandBuffer,
     ) {
+        span_scope!("begin_execute");
+
         // Batch up and execute resource transitions.
         self.do_resource_transitions(context, execute_context, node, cmd_buffer);
 
@@ -1630,7 +1645,6 @@ impl RenderGraph {
         render_resources: &RenderResources,
         render_context: &mut RenderContext<'rt>,
         debug_stuff: &DebugStuff<'_>,
-        cmd_buffer: &mut CommandBuffer,
     ) {
         span_scope!("execute_render_graph");
 
@@ -1650,8 +1664,7 @@ impl RenderGraph {
 
             // Destroy the views of any injected resource that was modified (for example, resized) since last frame.
             {
-                let prev_frame_injected_resources =
-                    persistent_state.injected_resources.read().unwrap();
+                let prev_frame_injected_resources = persistent_state.injected_resources.read();
                 for prev_frame_injected_resource in prev_frame_injected_resources.iter() {
                     let val = self
                         .injected_resources
@@ -1660,7 +1673,7 @@ impl RenderGraph {
 
                     // If an injected resource from the previous frame was not found in this frame's injected resources, destroy its views.
                     if val.is_none() {
-                        let mut views = persistent_state.views.write().unwrap();
+                        let mut views = persistent_state.views.write();
                         views.retain(|key, _| {
                             key.0.get_resource_id() != prev_frame_injected_resource.0
                         });
@@ -1673,7 +1686,28 @@ impl RenderGraph {
         }
 
         for child in &self.root_nodes {
+            let mut cmd_buffer_handle = execute_context
+                .render_context
+                .transient_commandbuffer_allocator
+                .acquire();
+            let cmd_buffer = cmd_buffer_handle.as_mut();
+
+            cmd_buffer.begin();
+
             self.execute_inner(context, &mut execute_context, child, cmd_buffer);
+
+            cmd_buffer.end();
+
+            execute_context
+                .render_context
+                .graphics_queue
+                .queue_mut()
+                .submit(&[cmd_buffer], &[], &[], None);
+
+            execute_context
+                .render_context
+                .transient_commandbuffer_allocator
+                .release(cmd_buffer_handle);
         }
     }
 
@@ -1690,7 +1724,10 @@ impl RenderGraph {
         cmd_buffer.with_label(&node.name, |cmd_buffer| {
             if let Some(execute_fn) = &node.execute_fn {
                 self.begin_execute(context, execute_context, node, cmd_buffer);
-                (execute_fn)(context, execute_context, cmd_buffer);
+                {
+                    span_scope!("execute_fn");
+                    (execute_fn)(context, execute_context, cmd_buffer);
+                }
                 self.end_execute(context, node, cmd_buffer);
             }
 

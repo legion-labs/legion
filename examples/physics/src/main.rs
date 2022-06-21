@@ -23,7 +23,7 @@ use lgn_physics::{
     offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere, PhysicsSceneSettings},
     RigidActorType,
 };
-use lgn_source_control::RepositoryName;
+use lgn_source_control::{BranchName, RepositoryName};
 use lgn_tracing::{info, LevelFilter};
 use sample_data::offline::Transform;
 
@@ -61,6 +61,7 @@ async fn main() -> anyhow::Result<()> {
         .await
         .unwrap();
     let repository_name: RepositoryName = "examples-physics".parse().unwrap();
+    let branch_name: BranchName = "main".parse().unwrap();
 
     // Ensure the repository exists.
     let _index = repository_index.ensure_repository(&repository_name).await;
@@ -79,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
     let mut project = Project::new(
         &repository_index,
         &repository_name,
-        "main",
+        &branch_name,
         Arc::clone(&source_control_content_provider),
     )
     .await
@@ -187,9 +188,9 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         "/scene/ground.ent",
         vec![
             Box::new(Transform {
-                position: (0_f32, -1_f32, 0_f32).into(),
+                position: (0_f32, 0_f32, -1_f32).into(),
                 rotation: Quat::from_rotation_x(-0.01_f32),
-                scale: (12_f32, 0.1_f32, 12_f32).into(),
+                scale: (12_f32, 12_f32, 0.1_f32).into(),
             }),
             Box::new(Visual {
                 renderable_geometry: Some(cube_model_id.clone()),
@@ -211,7 +212,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         "/scene/box-a.ent",
         vec![
             Box::new(Transform {
-                position: (-1_f32, 0.1_f32, 1_f32).into(),
+                position: (-1_f32, 1_f32, 0.1_f32).into(),
                 rotation: Quat::from_rotation_z(0.3_f32),
                 ..Transform::default()
             }),
@@ -235,7 +236,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         "/scene/box-b.ent",
         vec![
             Box::new(Transform {
-                position: (-1_f32, 1.3_f32, 1.2_f32).into(),
+                position: (-1_f32, 1.2_f32, 1.3_f32).into(),
                 rotation: Quat::from_rotation_x(-0.2_f32),
                 ..Transform::default()
             }),
@@ -259,7 +260,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         "/scene/box-c.ent",
         vec![
             Box::new(Transform {
-                position: (-0.5_f32, 0_f32, 0.5_f32).into(),
+                position: (-0.5_f32, 0.5_f32, 0_f32).into(),
                 rotation: Quat::from_rotation_y(1_f32),
                 ..Transform::default()
             }),
@@ -283,7 +284,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         "/scene/ball-a.ent",
         vec![
             Box::new(Transform {
-                position: (0.2_f32, 2.3_f32, 0.5_f32).into(),
+                position: (0.2_f32, 0.5_f32, 2.3_f32).into(),
                 ..Transform::default()
             }),
             Box::new(Visual {
@@ -306,7 +307,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         "/scene/pyramid.ent",
         vec![
             Box::new(Transform {
-                position: (0_f32, 0.6_f32, 0_f32).into(),
+                position: (0_f32, 0_f32, 0.6_f32).into(),
                 rotation: Quat::from_rotation_z(1_f32),
                 ..Transform::default()
             }),
@@ -319,9 +320,9 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
                 actor_type: RigidActorType::Dynamic,
                 vertices: vec![
                     Vec3::new(0.5, -0.5, -0.5),
-                    Vec3::new(0.5, -0.5, 0.5),
+                    Vec3::new(0.5, 0.5, -0.5),
                     Vec3::new(-0.5, -0.5, -0.5),
-                    Vec3::new(-0.5, -0.5, 0.5),
+                    Vec3::new(-0.5, 0.5, -0.5),
                     Vec3::new(0.0, 0.0, 0.0),
                 ],
                 ..PhysicsRigidConvexMesh::default()
@@ -337,13 +338,13 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         "/scene/light.ent",
         vec![
             Box::new(Transform {
-                position: (0_f32, 10_f32, 0_f32).into(),
+                position: (0_f32, 0_f32, 10_f32).into(),
                 ..Transform::default()
             }),
             Box::new(Light {
                 light_type: LightType::Directional,
                 color: (0xFF, 0xFF, 0xEF).into(),
-                radiance: 12_f32,
+                radiance: 40_f32,
                 enabled: true,
                 ..Light::default()
             }),
@@ -358,11 +359,11 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         "/scene.ent",
         vec![
             Box::new(CameraSetup {
-                eye: Vec3::new(0.0, 1.2, -3.0),
+                eye: Vec3::new(0.0, 3.0, 1.2),
                 look_at: Vec3::ZERO,
             }),
             Box::new(PhysicsSceneSettings {
-                gravity: Vec3::new(0.0, -1.0, 0.0),
+                gravity: Vec3::new(0.0, 0.0, -1.0),
             }),
         ],
         vec![

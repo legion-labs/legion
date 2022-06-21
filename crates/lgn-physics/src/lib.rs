@@ -64,7 +64,7 @@ use crate::{
     debug_display::display_collision_geometry,
     physics_options::PhysicsOptions,
     rigid_actors::{cleanup_rigid_actors, create_rigid_actors, ActorDestructionEvent},
-    simulation::{step_simulation, sync_transforms},
+    simulation::{step_simulation, sync_transforms, SimulationMemory},
 };
 pub use crate::{
     labels::PhysicsStage,
@@ -144,7 +144,8 @@ impl Plugin for PhysicsPlugin {
         app.insert_resource(Arc::new(PhysicsInstaller::default()));
 
         // simulation
-        app.add_system_to_stage(PhysicsStage::Update, step_simulation)
+        app.init_resource::<SimulationMemory>()
+            .add_system_to_stage(PhysicsStage::Update, step_simulation)
             .add_system_to_stage(PhysicsStage::Update, sync_transforms.after(step_simulation));
 
         // debug display

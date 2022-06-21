@@ -1,13 +1,16 @@
-mod grpc;
+mod api;
 mod local;
 mod sql;
 
 use async_trait::async_trait;
 use lgn_tracing::info;
 
-use crate::{Branch, CanonicalPath, Commit, CommitId, Error, Lock, RepositoryName, Result};
+use crate::{
+    Branch, BranchName, CanonicalPath, Commit, CommitId, Error, Lock, NewBranch, NewCommit,
+    RepositoryName, Result, UpdateBranch,
+};
 
-pub use grpc::*;
+pub use api::*;
 pub use local::*;
 pub use sql::*;
 
@@ -21,6 +24,7 @@ pub struct ListBranchesQuery<'q> {
 /// The query options for the `list_commits` method.
 #[derive(Default, Clone, Debug)]
 pub struct ListCommitsQuery {
+    pub branch_name: BranchName,
     pub commit_ids: Vec<CommitId>,
     pub depth: u32,
 }
@@ -59,7 +63,7 @@ pub trait RepositoryIndex: Send + Sync {
 
                 Ok(index)
             }
-            Err(Error::RepositoryDoesNotExist { .. }) => {
+            Err(Error::RepositoryNotFound { .. }) => {
                 info!(
                     "Repository `{}` does not exist yet: creating it...",
                     repository_name
@@ -75,13 +79,18 @@ pub trait RepositoryIndex: Send + Sync {
 pub trait Index: Send + Sync {
     fn repository_name(&self) -> &RepositoryName;
 
-    async fn insert_branch(&self, branch: &Branch) -> Result<()>;
-    async fn update_branch(&self, branch: &Branch) -> Result<()>;
-    async fn get_branch(&self, branch_name: &str) -> Result<Branch>;
+    async fn insert_branch(&self, new_branch: NewBranch) -> Result<Branch>;
+    async fn update_branch(
+        &self,
+        branch_name: &BranchName,
+        update_branch: UpdateBranch,
+    ) -> Result<Branch>;
+    async fn get_branch(&self, branch_name: &BranchName) -> Result<Branch>;
     async fn list_branches(&self, query: &ListBranchesQuery<'_>) -> Result<Vec<Branch>>;
 
-    async fn get_commit(&self, commit_id: CommitId) -> Result<Commit> {
+    async fn get_commit(&self, branch_name: &BranchName, commit_id: CommitId) -> Result<Commit> {
         self.list_commits(&ListCommitsQuery {
+            branch_name: branch_name.clone(),
             commit_ids: vec![commit_id],
             depth: 1,
         })
@@ -91,7 +100,11 @@ pub trait Index: Send + Sync {
     }
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>>;
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId>;
+    async fn commit_to_branch(
+        &self,
+        branch_name: &BranchName,
+        new_commit: NewCommit,
+    ) -> Result<Commit>;
 
     async fn lock(&self, lock: &Lock) -> Result<()>;
     async fn unlock(&self, lock_domain_id: &str, canonical_path: &CanonicalPath) -> Result<()>;
@@ -146,15 +159,21 @@ impl<T: Index + ?Sized> Index for Box<T> {
         self.as_ref().repository_name()
     }
 
-    async fn insert_branch(&self, branch: &Branch) -> Result<()> {
-        self.as_ref().insert_branch(branch).await
+    async fn insert_branch(&self, new_branch: NewBranch) -> Result<Branch> {
+        self.as_ref().insert_branch(new_branch).await
     }
 
-    async fn update_branch(&self, branch: &Branch) -> Result<()> {
-        self.as_ref().update_branch(branch).await
+    async fn update_branch(
+        &self,
+        branch_name: &BranchName,
+        update_branch: UpdateBranch,
+    ) -> Result<Branch> {
+        self.as_ref()
+            .update_branch(branch_name, update_branch)
+            .await
     }
 
-    async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
+    async fn get_branch(&self, branch_name: &BranchName) -> Result<Branch> {
         self.as_ref().get_branch(branch_name).await
     }
 
@@ -162,16 +181,22 @@ impl<T: Index + ?Sized> Index for Box<T> {
         self.as_ref().list_branches(query).await
     }
 
-    async fn get_commit(&self, commit_id: CommitId) -> Result<Commit> {
-        self.as_ref().get_commit(commit_id).await
+    async fn get_commit(&self, branch_name: &BranchName, commit_id: CommitId) -> Result<Commit> {
+        self.as_ref().get_commit(branch_name, commit_id).await
     }
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
         self.as_ref().list_commits(query).await
     }
 
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
-        self.as_ref().commit_to_branch(commit, branch).await
+    async fn commit_to_branch(
+        &self,
+        branch_name: &BranchName,
+        new_commit: NewCommit,
+    ) -> Result<Commit> {
+        self.as_ref()
+            .commit_to_branch(branch_name, new_commit)
+            .await
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {
@@ -201,15 +226,19 @@ impl<T: Index> Index for &T {
         (**self).repository_name()
     }
 
-    async fn insert_branch(&self, branch: &Branch) -> Result<()> {
-        (**self).insert_branch(branch).await
+    async fn insert_branch(&self, new_branch: NewBranch) -> Result<Branch> {
+        (**self).insert_branch(new_branch).await
     }
 
-    async fn update_branch(&self, branch: &Branch) -> Result<()> {
-        (**self).update_branch(branch).await
+    async fn update_branch(
+        &self,
+        branch_name: &BranchName,
+        update_branch: UpdateBranch,
+    ) -> Result<Branch> {
+        (**self).update_branch(branch_name, update_branch).await
     }
 
-    async fn get_branch(&self, branch_name: &str) -> Result<Branch> {
+    async fn get_branch(&self, branch_name: &BranchName) -> Result<Branch> {
         (**self).get_branch(branch_name).await
     }
 
@@ -217,16 +246,20 @@ impl<T: Index> Index for &T {
         (**self).list_branches(query).await
     }
 
-    async fn get_commit(&self, commit_id: CommitId) -> Result<Commit> {
-        (**self).get_commit(commit_id).await
+    async fn get_commit(&self, branch_name: &BranchName, commit_id: CommitId) -> Result<Commit> {
+        (**self).get_commit(branch_name, commit_id).await
     }
 
     async fn list_commits(&self, query: &ListCommitsQuery) -> Result<Vec<Commit>> {
         (**self).list_commits(query).await
     }
 
-    async fn commit_to_branch(&self, commit: &Commit, branch: &Branch) -> Result<CommitId> {
-        (**self).commit_to_branch(commit, branch).await
+    async fn commit_to_branch(
+        &self,
+        branch_name: &BranchName,
+        new_commit: NewCommit,
+    ) -> Result<Commit> {
+        (**self).commit_to_branch(branch_name, new_commit).await
     }
 
     async fn lock(&self, lock: &Lock) -> Result<()> {

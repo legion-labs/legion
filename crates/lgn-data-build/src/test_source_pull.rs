@@ -54,7 +54,6 @@ mod tests {
                 .add_resource(&TestResource::new_named("resource"))
                 .await
                 .unwrap();
-            project.commit("add resource").await.unwrap();
             resource_id
         });
 
@@ -100,8 +99,6 @@ mod tests {
             parent.build_deps.push(ResourcePathId::from(child_id));
 
             let parent_id = project.add_resource(&parent).await.unwrap();
-
-            project.commit("added parent and child").await.unwrap();
 
             (
                 ResourcePathId::from(child_id),

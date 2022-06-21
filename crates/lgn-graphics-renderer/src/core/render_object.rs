@@ -1,12 +1,15 @@
-use atomic_refcell::{AtomicRef, AtomicRefCell};
+use atomic_refcell::{AtomicRef, AtomicRefCell, AtomicRefMut};
 use bit_set::BitSet;
 
 use lgn_utils::HashMap;
 
+#[cfg(debug_assertions)]
+use std::any::type_name;
 use std::{
     alloc::Layout,
     any::TypeId,
     cell::{Cell, RefCell},
+    intrinsics::transmute,
     marker::PhantomData,
     ptr::NonNull,
     sync::{atomic::AtomicI32, Arc},
@@ -28,6 +31,8 @@ impl<T> RenderObject for T where T: 'static + Send {}
 #[derive(Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Clone, Debug)]
 struct RenderObjectKey {
     type_id: TypeId,
+    #[cfg(debug_assertions)]
+    type_name: &'static str,
 }
 
 impl RenderObjectKey {
@@ -37,6 +42,8 @@ impl RenderObjectKey {
     {
         Self {
             type_id: TypeId::of::<R>(),
+            #[cfg(debug_assertions)]
+            type_name: type_name::<R>(),
         }
     }
 }
@@ -239,6 +246,10 @@ impl RenderObjectSet {
         }
     }
 
+    fn len(&self) -> usize {
+        self.len
+    }
+
     fn begin_frame(&mut self) {
         self.inserted.clear();
         self.updated.clear();
@@ -296,10 +307,35 @@ impl RenderObjectSet {
 // RenderObjectsBuilder
 //
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+struct FatPtr {
+    data: *const (),
+    vtable: *const (),
+}
+
+#[allow(unsafe_code)]
+fn get_fat_ptr<P, S>(data: Box<dyn SecondaryTableHandler<P, S>>) -> FatPtr {
+    // Make a FatPtr from the Box. Implicitly forgotten, must be properly dropped in the SecondaryTable drop impl.
+    unsafe {
+        let p = Box::into_raw(data);
+        transmute::<_, FatPtr>(p)
+    }
+}
+
+#[allow(unsafe_code)]
+fn drop_fat_ptr<P, S>(fat_ptr: FatPtr) {
+    // Convert back from FatPtr to the actual type, and re-box it so it will be dropped properly.
+    unsafe {
+        let handler: *mut dyn SecondaryTableHandler<P, S> = transmute(fat_ptr);
+        Box::from_raw(handler);
+    }
+}
+
 #[derive(Default)]
 pub struct RenderObjectsBuilder {
-    primary_tables: HashMap<RenderObjectKey, PrimaryTable>,
-    secondary_tables: HashMap<RenderObjectKey, SecondaryTable>,
+    primary_tables: HashMap<RenderObjectKey, (PrimaryTable, PrimaryTableCommandQueuePool)>,
+    secondary_tables: HashMap<RenderObjectKey, AtomicRefCell<SecondaryTable>>,
 }
 
 impl RenderObjectsBuilder {
@@ -316,29 +352,66 @@ impl RenderObjectsBuilder {
         let key = RenderObjectKey::new::<P>();
         self.primary_tables.insert(
             key,
-            PrimaryTable {
-                key,
-                set: AtomicRefCell::new(RenderObjectSet::new(
-                    Layout::new::<P>(),
-                    256,
-                    drop_func::<P>,
-                )),
-                render_object_id_pool: RenderObjectIdPool::new(key),
-                command_pool: PrimaryTableCommandQueuePool::new(),
-            },
+            (
+                PrimaryTable {
+                    key,
+                    set: AtomicRefCell::new(RenderObjectSet::new(
+                        Layout::new::<P>(),
+                        256,
+                        drop_func::<P>,
+                    )),
+                    render_object_id_pool: RenderObjectIdPool::new(key),
+                },
+                PrimaryTableCommandQueuePool::new(),
+            ),
         );
         self
     }
 
     #[must_use]
     #[allow(unsafe_code)]
-    #[allow(unused)]
-    pub fn add_secondary_table<P, S>(mut self) -> Self
+    pub fn add_secondary_table<P, S>(self) -> Self
+    where
+        P: RenderObject,
+        S: RenderObject + Default,
+    {
+        self.add_secondary_table_with_handler::<P, S>(Box::new(
+            DefaultSecondaryTableHandler::<P, S>::default(),
+        ))
+    }
+
+    #[must_use]
+    #[allow(unsafe_code)]
+    pub fn add_secondary_table_with_handler<P, S>(
+        mut self,
+        handler: Box<dyn SecondaryTableHandler<P, S>>,
+    ) -> Self
     where
         P: RenderObject,
         S: RenderObject,
     {
-        unsafe fn drop_func<T>(x: *mut u8) {
+        unsafe fn insert_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+            let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
+            let primary_ref = &*p.cast::<P>();
+            let result = handler.insert(primary_ref);
+            s.cast::<S>().write(result);
+        }
+
+        unsafe fn update_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+            let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
+            let primary_ref = &*p.cast::<P>();
+            let secondary_ref = &mut *s.cast::<S>();
+            handler.update(primary_ref, secondary_ref);
+        }
+
+        unsafe fn remove_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+            let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
+            let primary_ref = &*p.cast::<P>();
+            let secondary_ref = &mut *s.cast::<S>();
+            handler.remove(primary_ref, secondary_ref);
+        }
+
+        unsafe fn storage_drop_func<T>(x: *mut u8) {
             x.cast::<T>().drop_in_place();
         }
 
@@ -349,15 +422,16 @@ impl RenderObjectsBuilder {
 
         self.secondary_tables.insert(
             secondary_key,
-            SecondaryTable {
+            AtomicRefCell::new(SecondaryTable {
                 _key: secondary_key,
-                _primary_key: primary_key,
-                _storage: AtomicRefCell::new(RenderObjectStorage::new(
-                    Layout::new::<S>(),
-                    drop_func::<S>,
-                    256,
-                )),
-            },
+                primary_key,
+                storage: RenderObjectStorage::new(Layout::new::<S>(), storage_drop_func::<S>, 256),
+                handler_fat_ptr: get_fat_ptr(handler),
+                insert_fn: insert_fn::<P, S>,
+                update_fn: update_fn::<P, S>,
+                remove_fn: remove_fn::<P, S>,
+                drop_fn: drop_fat_ptr::<P, S>,
+            }),
         );
 
         self
@@ -366,7 +440,7 @@ impl RenderObjectsBuilder {
     pub fn finalize(self) -> RenderObjects {
         RenderObjects {
             primary_tables: self.primary_tables,
-            _secondary_tables: self.secondary_tables,
+            secondary_tables: self.secondary_tables,
         }
     }
 }
@@ -385,7 +459,6 @@ pub struct PrimaryTable {
     key: RenderObjectKey,
     set: AtomicRefCell<RenderObjectSet>,
     render_object_id_pool: RenderObjectIdPool,
-    command_pool: PrimaryTableCommandQueuePool,
 }
 
 impl PrimaryTable {
@@ -424,8 +497,6 @@ impl PrimaryTable {
         );
 
         self.render_object_id_pool.inner.slots_len.replace(set.len);
-
-        self.command_pool.sync_update();
     }
 
     fn begin_frame(&self) {
@@ -433,7 +504,39 @@ impl PrimaryTable {
             let mut set = self.set.borrow_mut();
             set.begin_frame();
         }
-        self.command_pool.apply(self);
+    }
+
+    #[allow(unsafe_code)]
+    #[allow(dead_code)]
+    pub fn try_get<R: RenderObject>(&self, id: RenderObjectId) -> Option<&R> {
+        let index = id.index as usize;
+        let generation = id.generation;
+        if self.set.borrow().allocated.contains(index)
+            && self.set.borrow().generations[index] == generation
+        {
+            unsafe { Some(&*self.set.borrow().storage.get_value(index).cast::<R>()) }
+        } else {
+            None
+        }
+    }
+
+    #[allow(unsafe_code)]
+    pub fn get<R: RenderObject>(&self, id: RenderObjectId) -> &R {
+        let index = id.index as usize;
+        let generation = id.generation;
+        assert!(
+            self.set.borrow().allocated.contains(index),
+            "RenderObject index {} not allocated.",
+            index
+        );
+        assert!(
+            self.set.borrow().generations[index] == generation,
+            "RenderObject index {} generation mismatch (expected {} got {})",
+            index,
+            self.set.borrow().generations[index],
+            generation
+        );
+        unsafe { &*self.set.borrow().storage.get_value(index).cast::<R>() }
     }
 }
 
@@ -505,14 +608,73 @@ impl<'a, R: RenderObject> PrimaryTableWriter<'a, R> {
     }
 }
 
+pub trait SecondaryTableHandler<P, S> {
+    fn insert(&self, render_object: &P) -> S;
+    fn update(&self, render_object: &P, render_object_private_data: &mut S);
+    fn remove(&self, render_object: &P, render_object_private_data: &mut S);
+}
+
+pub struct DefaultSecondaryTableHandler<P, S> {
+    phantom: PhantomData<(P, S)>,
+}
+
+impl<P, S> Default for DefaultSecondaryTableHandler<P, S> {
+    fn default() -> Self {
+        Self {
+            phantom: PhantomData::default(),
+        }
+    }
+}
+
+impl<P, S> SecondaryTableHandler<P, S> for DefaultSecondaryTableHandler<P, S>
+where
+    P: RenderObject,
+    S: RenderObject + Default,
+{
+    fn insert(&self, _render_object: &P) -> S {
+        S::default()
+    }
+    fn update(&self, _render_object: &P, _render_object_private_data: &mut S) {}
+    fn remove(&self, _render_object: &P, _render_object_private_data: &mut S) {}
+}
+
 //
 // SecondaryTable
 //
 
-struct SecondaryTable {
+pub struct SecondaryTable {
     _key: RenderObjectKey,
-    _primary_key: RenderObjectKey,
-    _storage: AtomicRefCell<RenderObjectStorage>,
+    primary_key: RenderObjectKey,
+    storage: RenderObjectStorage,
+    handler_fat_ptr: FatPtr,
+    insert_fn: unsafe fn(FatPtr, *const u8, *mut u8),
+    update_fn: unsafe fn(FatPtr, *const u8, *mut u8),
+    remove_fn: unsafe fn(FatPtr, *const u8, *mut u8),
+    drop_fn: unsafe fn(FatPtr),
+}
+
+#[allow(unsafe_code)]
+impl Drop for SecondaryTable {
+    fn drop(&mut self) {
+        let drop_fn = self.drop_fn;
+        unsafe {
+            drop_fn(self.handler_fat_ptr);
+        }
+    }
+}
+
+impl SecondaryTable {
+    #[allow(unsafe_code)]
+    pub fn get<R: RenderObject>(&self, id: RenderObjectId) -> &R {
+        let index = id.index as usize;
+        unsafe { &*self.storage.get_value(index).cast::<R>() }
+    }
+
+    #[allow(unsafe_code)]
+    pub fn get_mut<R: RenderObject>(&mut self, id: RenderObjectId) -> &mut R {
+        let index = id.index as usize;
+        unsafe { &mut *self.storage.get_value_mut(index).cast::<R>() }
+    }
 }
 
 //
@@ -569,7 +731,7 @@ where
             .primary_tables
             .get(&render_object_key)
             .unwrap();
-        let set = primary_table.set.borrow();
+        let set = primary_table.0.set.borrow();
         Self {
             set,
             // render_objects,
@@ -599,20 +761,77 @@ where
 //
 
 pub struct RenderObjects {
-    primary_tables: HashMap<RenderObjectKey, PrimaryTable>,
-    _secondary_tables: HashMap<RenderObjectKey, SecondaryTable>,
+    primary_tables: HashMap<RenderObjectKey, (PrimaryTable, PrimaryTableCommandQueuePool)>,
+    secondary_tables: HashMap<RenderObjectKey, AtomicRefCell<SecondaryTable>>,
 }
 
 impl RenderObjects {
     pub fn begin_frame(&self) {
-        for (_, primary_table) in self.primary_tables.iter() {
+        // Remove private data for RenderObjects removed last frame, before clearing the removed items (in begin_frame below).
+        for secondary_table in self.secondary_tables.values() {
+            let mut secondary_table = secondary_table.borrow_mut();
+
+            let primary_table_key = secondary_table.primary_key;
+            let primary_table = &self.primary_tables.get(&primary_table_key).unwrap().0;
+            let primary_table_set = primary_table.set.borrow();
+
+            let handler_fat_ptr = secondary_table.handler_fat_ptr;
+
+            for removed_index in primary_table_set.removed.iter() {
+                let remove_fn = secondary_table.remove_fn;
+                let primary_ref = primary_table_set.storage.get_value(removed_index);
+                let secondary_ref = secondary_table.storage.get_value_mut(removed_index);
+                #[allow(unsafe_code)]
+                unsafe {
+                    remove_fn(handler_fat_ptr, primary_ref, secondary_ref);
+                }
+                secondary_table.storage.remove_value(removed_index);
+            }
+        }
+
+        for (_, (primary_table, command_queue)) in self.primary_tables.iter() {
             primary_table.begin_frame();
+            command_queue.apply(primary_table);
+        }
+
+        // Add / update private data for RenderObjects which were added / updated this frame.
+        for secondary_table in self.secondary_tables.values() {
+            let mut secondary_table = secondary_table.borrow_mut();
+
+            let primary_table_key = secondary_table.primary_key;
+            let primary_table = &self.primary_tables.get(&primary_table_key).unwrap().0;
+            let primary_table_set = primary_table.set.borrow();
+
+            secondary_table.storage.resize(primary_table_set.len());
+
+            let handler_fat_ptr = secondary_table.handler_fat_ptr;
+
+            for inserted_index in primary_table_set.inserted.iter() {
+                let insert_fn = secondary_table.insert_fn;
+                let primary_ref = primary_table_set.storage.get_value(inserted_index);
+                let secondary_ref = secondary_table.storage.get_value_mut(inserted_index);
+                #[allow(unsafe_code)]
+                unsafe {
+                    insert_fn(handler_fat_ptr, primary_ref, secondary_ref);
+                }
+            }
+
+            for updated_index in primary_table_set.updated.iter() {
+                let update_fn = secondary_table.update_fn;
+                let primary_ref = primary_table_set.storage.get_value(updated_index);
+                let secondary_ref = secondary_table.storage.get_value_mut(updated_index);
+                #[allow(unsafe_code)]
+                unsafe {
+                    update_fn(handler_fat_ptr, primary_ref, secondary_ref);
+                }
+            }
         }
     }
 
     pub fn sync_update(&mut self) {
-        for (_, primary_table) in self.primary_tables.iter_mut() {
+        for (_, (primary_table, command_queue)) in self.primary_tables.iter_mut() {
             primary_table.sync_update();
+            command_queue.sync_update();
         }
     }
 
@@ -620,21 +839,33 @@ impl RenderObjects {
     where
         R: RenderObject,
     {
-        let primary_table = self.primary_table::<R>();
+        let render_object_key = RenderObjectKey::new::<R>();
+        let primary_table_and_queue = self.primary_tables.get(&render_object_key).unwrap();
 
         PrimaryTableView {
-            allocator: primary_table.render_object_id_pool.clone(),
-            command_queue: primary_table.command_pool.clone(),
+            allocator: primary_table_and_queue.0.render_object_id_pool.clone(),
+            command_queue: primary_table_and_queue.1.clone(),
             _phantom: PhantomData,
         }
     }
 
-    fn primary_table<R>(&self) -> &PrimaryTable
+    pub fn primary_table<R>(&self) -> &PrimaryTable
     where
         R: RenderObject,
     {
         let render_object_key = RenderObjectKey::new::<R>();
-        self.primary_tables.get(&render_object_key).unwrap()
+        &self.primary_tables.get(&render_object_key).unwrap().0
+    }
+
+    pub fn secondary_table_mut<R>(&self) -> AtomicRefMut<'_, SecondaryTable>
+    where
+        R: RenderObject,
+    {
+        let render_object_key = RenderObjectKey::new::<R>();
+        self.secondary_tables
+            .get(&render_object_key)
+            .unwrap()
+            .borrow_mut()
     }
 }
 
@@ -644,6 +875,29 @@ unsafe impl Send for RenderObjects {}
 #[allow(unsafe_code)]
 unsafe impl Sync for RenderObjects {}
 
+impl Drop for RenderObjects {
+    fn drop(&mut self) {
+        for secondary_table in self.secondary_tables.values() {
+            let mut secondary_table = secondary_table.borrow_mut();
+
+            let primary_table_key = secondary_table.primary_key;
+            let primary_table = &self.primary_tables.get(&primary_table_key).unwrap().0;
+            let primary_table_set = primary_table.set.borrow();
+
+            for allocated_index in primary_table_set.allocated.iter() {
+                secondary_table.storage.remove_value(allocated_index);
+            }
+        }
+
+        for (_, (primary_table, _)) in self.primary_tables.iter_mut() {
+            let mut primary_table_set = primary_table.set.borrow_mut();
+            let allocated = primary_table_set.allocated.clone();
+            for allocated_index in allocated.iter() {
+                primary_table_set.storage.remove_value(allocated_index);
+            }
+        }
+    }
+}
 //
 // AddRenderObjectCommand
 //

@@ -17,6 +17,7 @@ pub enum Language {
     Rust,
     #[clap(name = "typescript")]
     TypeScript,
+    Python,
 }
 
 #[derive(Parser, Debug)]
@@ -91,6 +92,7 @@ fn main() -> anyhow::Result<()> {
             with_package_json: args.with_package_json,
             filename: Some(args.typescript_filename),
         }),
+        Language::Python => InternalLanguage::Python,
     };
 
     generate(internal_language, args.root, &args.openapis, &args.out_dir)?;

@@ -1,6 +1,7 @@
 import type { Observable } from "rxjs";
 
 import { Log } from "@lgn/apis/log";
+import { Runtime } from "@lgn/apis/runtime";
 import {
   EditorClientImpl,
   GrpcWebImpl as EditorImpl,
@@ -19,10 +20,6 @@ import {
   SourceControlClientImpl,
   UploadRawFileResponse,
 } from "@lgn/proto-editor/dist/source_control";
-import {
-  RuntimeClientImpl,
-  GrpcWebImpl as RuntimeImpl,
-} from "@lgn/proto-runtime/dist/runtime";
 import { addAuthToClient } from "@lgn/web-client/src/lib/client";
 import log from "@lgn/web-client/src/lib/log";
 
@@ -33,7 +30,7 @@ import type {
 } from "../components/propertyGrid/lib/propertyGrid";
 
 const defaultGrpcEditorServerURL = "http://[::1]:50051";
-const defaultGrpcRuntimeServerURL = "http://[::1]:50052";
+// const defaultGrpcRuntimeServerURL = "http://[::1]:50052";
 const defaultRestEditorServerURL = "http://[::1]:5051";
 const defaultRestRuntimeServerURL = "http://[::1]:5052";
 
@@ -45,14 +42,14 @@ let sourceControlClient: SourceControlClientImpl;
 
 let editorClient: EditorClientImpl;
 
-let runtimeClient: RuntimeClientImpl;
+let runtimeClient: Runtime.Client;
 
 let editorLogStreamClient: Log.Client;
 let runtimeLogStreamClient: Log.Client;
 
 export function initApiClient({
   grpcEditorServerUrl = defaultGrpcEditorServerURL,
-  grpcRuntimeServerUrl = defaultGrpcRuntimeServerURL,
+  // grpcRuntimeServerUrl = defaultGrpcRuntimeServerURL,
   restEditorServerUrl = defaultRestEditorServerURL,
   restRuntimeServerUrl = defaultRestRuntimeServerURL,
   accessTokenCookieName,
@@ -83,10 +80,9 @@ export function initApiClient({
     })
   );
 
-  runtimeClient = new RuntimeClientImpl(
-    new RuntimeImpl(grpcRuntimeServerUrl, {
-      debug: false,
-    })
+  runtimeClient = addAuthToClient(
+    new Runtime.Client({ baseUri: restEditorServerUrl }),
+    accessTokenCookieName
   );
 
   editorLogStreamClient = addAuthToClient(
@@ -418,7 +414,10 @@ export async function loadRuntimeManifest({
 }: {
   manifestId: string;
 }) {
-  return runtimeClient.loadManifest({ manifestId });
+  return runtimeClient.loadManifest({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: new Blob([manifestId]),
+  });
 }
 
 export async function loadRuntimeRootAsset({
@@ -426,9 +425,14 @@ export async function loadRuntimeRootAsset({
 }: {
   rootAssetId: string;
 }) {
-  return runtimeClient.loadRootAsset({ rootAssetId });
+  return runtimeClient.loadRootAsset({
+    params: { "space-id": "0", "workspace-id": "0" },
+    body: new Blob([rootAssetId]),
+  });
 }
 
 export async function pauseRuntime() {
-  return runtimeClient.pause({});
+  return runtimeClient.pause({
+    params: { "space-id": "0", "workspace-id": "0" },
+  });
 }

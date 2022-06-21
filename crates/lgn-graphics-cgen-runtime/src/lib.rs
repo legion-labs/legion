@@ -90,7 +90,7 @@ impl From<Float3> for Vec3 {
 ///
 /// Float4
 ///
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub struct Float4([f32; 4]);
 
 impl_native_type_def!(Float4);
