@@ -1263,7 +1263,6 @@ impl RenderGraph {
         if self.need_begin_end_render_pass(node) {
             let mut color_targets: Vec<ColorRenderTargetBinding<'_>> =
                 Vec::with_capacity(node.render_targets.len());
-            let mut depth_target: Option<DepthStencilRenderTargetBinding<'_>> = None;
 
             for resource_data in node.render_targets.iter().flatten() {
                 let view_id = resource_data.key;
@@ -1298,13 +1297,13 @@ impl RenderGraph {
                 color_targets.push(binding);
             }
 
-            if let Some(resource_data) = &node.depth_stencil {
+            let depth_target = if let Some(resource_data) = &node.depth_stencil {
                 let view_id = resource_data.key;
                 let texture_view_def = self.get_texture_view_def(view_id);
                 let resource_id = texture_view_def.resource_id;
                 let texture_view = context.get_texture_view(view_id);
 
-                depth_target = Some(DepthStencilRenderTargetBinding {
+                Some(DepthStencilRenderTargetBinding {
                     texture_view,
                     depth_load_op: match resource_data.load_state {
                         RenderGraphLoadState::DontCare => LoadOp::DontCare,
@@ -1334,8 +1333,10 @@ impl RenderGraph {
                         RenderGraphLoadState::ClearDepthStencil(clear_value) => clear_value,
                         _ => DepthStencilClearValue::default(),
                     },
-                });
-            }
+                })
+            } else {
+                None
+            };
 
             cmd_buffer.cmd_begin_render_pass(&color_targets, &depth_target);
         }

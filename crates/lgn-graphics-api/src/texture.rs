@@ -2,8 +2,6 @@ use std::hash::{Hash, Hasher};
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering;
 
-use lgn_tracing::span_fn;
-
 use crate::backends::{BackendRawImage, BackendTexture};
 use crate::deferred_drop::Drc;
 use crate::{
@@ -177,7 +175,6 @@ impl Texture {
         &self.inner.texture_def
     }
 
-    #[span_fn]
     pub fn map_texture(&self, plane: PlaneSlice) -> GfxResult<TextureSubResource<'_>> {
         self.backend_map_texture(plane)
     }

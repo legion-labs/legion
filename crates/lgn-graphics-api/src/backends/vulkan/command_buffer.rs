@@ -56,6 +56,18 @@ impl CommandBuffer {
         self.backend_command_buffer.vk_command_buffer
     }
 
+    pub(crate) fn backend_reset(&mut self) {
+        unsafe {
+            self.device_context
+                .vk_device()
+                .reset_command_buffer(
+                    self.backend_command_buffer.vk_command_buffer,
+                    ash::vk::CommandBufferResetFlags::empty(),
+                )
+                .unwrap();
+        }
+    }
+
     pub(crate) fn backend_begin(&mut self) {
         // TODO: check if it is not a ONE TIME SUBMIT
         let command_buffer_usage_flags = ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT;

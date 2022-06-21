@@ -4928,9 +4928,11 @@ dependencies = [
  "paste",
  "renderdoc",
  "slab",
+ "slotmap",
  "smallvec",
  "static_assertions",
  "strum",
+ "thiserror",
  "uuid 1.1.0",
 ]
 

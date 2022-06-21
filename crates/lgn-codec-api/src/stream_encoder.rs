@@ -10,7 +10,7 @@ use crate::{backends::nvenc::nv_encoder::NvEncoder, encoder_resource::EncoderRes
 pub struct EncoderWorkItem {
     pub image: EncoderResource<Texture>,
     pub semaphore: EncoderResource<Semaphore>,
-    pub cpu_frame: u64,
+    pub semaphore_value: u64,
 }
 
 pub(crate) struct StreamEncoderInner {

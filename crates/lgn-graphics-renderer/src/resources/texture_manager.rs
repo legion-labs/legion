@@ -13,9 +13,18 @@ use lgn_graphics_api::{
 };
 use lgn_graphics_data::{runtime::BinTexture, TextureFormat};
 
-use crate::components::{LightComponent, VisualComponent};
+use crate::{
+    components::{LightComponent, VisualComponent},
+    core::{GpuUploadManager, TransferError, UploadGPUResource, UploadGPUTexture},
+};
 
 use super::{PersistentDescriptorSetManager, TextureSlot};
+
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum TextureManagerError {
+    #[error(transparent)]
+    TransferError(#[from] TransferError),
+}
 
 #[derive(Clone)]
 pub struct TextureData {
@@ -30,17 +39,17 @@ impl TextureData {
     }
 
     pub fn from_slices<T: Sized>(mips_data: &[&[T]]) -> Self {
-        let mut data = Vec::with_capacity(mips_data.len());
-        for mip_data in mips_data.iter() {
-            data.push(Self::to_vec_u8(*mip_data));
-        }
-
         Self {
-            data: Arc::new(data),
+            data: Arc::new(
+                mips_data
+                    .iter()
+                    .map(|x| Self::to_vec_u8(x))
+                    .collect::<Vec<_>>(),
+            ),
         }
     }
 
-    pub fn data(&self) -> &Vec<Vec<u8>> {
+    pub fn mips(&self) -> &[Vec<u8>] {
         &self.data
     }
 
@@ -60,15 +69,25 @@ impl TextureData {
         }
     }
 }
-#[derive(Clone)]
-struct TextureInfo {
-    bindless_index: Option<u32>,
-    texture_view: TextureView,
+
+impl From<BinTexture> for TextureData {
+    fn from(mut bin_texture: BinTexture) -> Self {
+        Self {
+            data: Arc::new(
+                bin_texture
+                    .mips
+                    .drain(..)
+                    .map(|mip| mip.texel_data.into_vec())
+                    .collect(),
+            ),
+        }
+    }
 }
 
 struct Inner {
     device_context: DeviceContext,
     persistent_descriptor_set_manager: PersistentDescriptorSetManager,
+    upload_manager: GpuUploadManager,
 }
 
 #[derive(Clone)]
@@ -135,7 +154,7 @@ impl ComponentInstaller for TextureInstaller {
 
 #[derive(Clone)]
 pub struct RenderTexture {
-    data: Box<lgn_graphics_data::runtime::BinTexture>,
+    data: TextureData,
     gpu_texture: Texture,
     default_gpu_view: TextureView,
     bindless_slot: TextureSlot,
@@ -143,7 +162,7 @@ pub struct RenderTexture {
 lgn_data_runtime::implement_runtime_resource!(RenderTexture);
 
 impl RenderTexture {
-    pub fn data(&self) -> &BinTexture {
+    pub fn data(&self) -> &TextureData {
         &self.data
     }
 
@@ -173,12 +192,13 @@ impl ResourceInstaller for TextureInstaller {
             data.format
         );
 
-        let render_texture = Box::new(
-            self.texture_manager
-                .create_texture(data, &resource_id.to_string()),
-        );
+        let render_texture = self
+            .texture_manager
+            .create_texture(data, &resource_id.to_string())
+            .await
+            .map_err(|x| AssetRegistryError::Generic(x.to_string()))?;
 
-        Ok(render_texture)
+        Ok(Box::new(render_texture))
     }
 }
 
@@ -186,160 +206,46 @@ impl TextureManager {
     pub fn new(
         device_context: &DeviceContext,
         persistent_descriptor_set_manager: &PersistentDescriptorSetManager,
+        upload_manager: &GpuUploadManager,
     ) -> Self {
         Self {
             inner: Arc::new(Inner {
                 device_context: device_context.clone(),
                 persistent_descriptor_set_manager: persistent_descriptor_set_manager.clone(),
+                upload_manager: upload_manager.clone(),
             }),
         }
     }
 
-    pub fn create_texture(&self, data: Box<BinTexture>, name: &str) -> RenderTexture {
+    pub async fn create_texture(
+        &self,
+        data: BinTexture,
+        name: &str,
+    ) -> Result<RenderTexture, TextureManagerError> {
         let texture_def = Self::texture_def_from_data(&data);
         let gpu_texture = self.inner.device_context.create_texture(texture_def, name);
         let default_gpu_view =
             gpu_texture.create_view(TextureViewDef::as_shader_resource_view(&texture_def));
-        let bindless_index = self
+        let bindless_slot = self
             .inner
             .persistent_descriptor_set_manager
             .allocate_texture_slot(&default_gpu_view);
+        let data = TextureData::from(data);
+        self.inner
+            .upload_manager
+            .async_upload(UploadGPUResource::Texture(UploadGPUTexture {
+                src_data: data.clone(),
+                dst_texture: gpu_texture.clone(),
+            }))?
+            .await?;
 
-        RenderTexture {
+        Ok(RenderTexture {
             data,
             gpu_texture,
             default_gpu_view,
-            bindless_slot: bindless_index,
-        }
+            bindless_slot,
+        })
     }
-
-    // pub fn update_texture(&mut self, entity: Entity, texture_component: &TextureComponent) {
-    //     // TODO(vdbdd): not tested
-    //     assert_eq!(self.texture_info(entity).state, TextureState::Ready);
-
-    //     let texture_def = Self::texture_def_from_texture_component(texture_component);
-
-    //     let recreate_texture_view = {
-    //         let texture_info = self.texture_info(entity);
-    //         let current_texture_handle = texture_info.texture_view.texture();
-    //         let current_texture_def = current_texture_handle.definition();
-    //         *current_texture_def != texture_def
-    //     };
-
-    //     if recreate_texture_view {
-    //         let texture_view = self.create_texture_view(&texture_def, "material_texture");
-    //         let texture_info = self.texture_info_mut(entity);
-    //         texture_info.texture_view = texture_view;
-    //     }
-
-    //     self.texture_jobs.push(TextureJob::Upload(UploadTextureJob {
-    //         entity,
-    //         texture_data: texture_component.texture_data.clone(),
-    //     }));
-
-    //     let texture_info = self.texture_info_mut(entity);
-    //     texture_info.state = TextureState::QueuedForUpload;
-    // }
-
-    // pub fn remove_by_entity(&mut self, entity: Entity) {
-    //     // TODO(vdbdd): not tested
-    //     assert_eq!(self.texture_info(entity).state, TextureState::Ready);
-
-    //     let texture_id = self.texture_info(entity).texture_id;
-    //     self.texture_jobs
-    //         .push(TextureJob::Remove(RemoveTextureJob { entity, texture_id }));
-
-    //     self.texture_infos.remove(&entity);
-    // }
-
-    // pub fn bindless_index_for_resource_id(&self, texture_id: &ResourceTypeAndId) -> Option<u32> {
-    //     let entity = self.texture_id_to_entity.get(texture_id);
-    //     if let Some(entity) = entity {
-    //         let texture_info = self.texture_infos.get(entity);
-    //         texture_info.map(|ti| ti.bindless_index).and_then(|ti| ti)
-    //     } else {
-    //         None
-    //     }
-    // }
-
-    // #[span_fn]
-    // pub fn apply_changes(
-    //     &mut self,
-    //     renderer: &Renderer,
-    //     persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
-    // ) -> Vec<ResourceTypeAndId> {
-    //     if self.texture_jobs.is_empty() {
-    //         return Vec::new();
-    //     }
-
-    //     // TODO(vdbdd): remove this heap allocation
-    //     let mut state_changed_list = Vec::with_capacity(self.texture_jobs.len());
-    //     let mut texture_jobs = std::mem::take(&mut self.texture_jobs);
-
-    //     for texture_job in &texture_jobs {
-    //         match texture_job {
-    //             TextureJob::Upload(upload_job) => {
-    //                 let bindless_index = self.texture_info(upload_job.entity).bindless_index;
-
-    //                 if let Some(bindless_index) = bindless_index {
-    //                     persistent_descriptor_set_manager.unset_bindless_texture(bindless_index);
-    //                 }
-
-    //                 self.upload_texture(renderer, upload_job);
-
-    //                 let texture_info = self.texture_info_mut(upload_job.entity);
-    //                 texture_info.state = TextureState::Ready;
-    //                 texture_info.bindless_index = Some(
-    //                     persistent_descriptor_set_manager
-    //                         .set_bindless_texture(&texture_info.texture_view),
-    //                 );
-
-    //                 state_changed_list.push(texture_info.texture_id);
-    //             }
-    //             TextureJob::Remove(remove_job) => {
-    //                 // TODO(vdbdd): not tested
-    //                 let texture_info = self.texture_infos.get_mut(&remove_job.entity).unwrap();
-
-    //                 let bindless_index = texture_info.bindless_index.unwrap();
-    //                 persistent_descriptor_set_manager.unset_bindless_texture(bindless_index);
-
-    //                 state_changed_list.push(remove_job.texture_id);
-    //             }
-    //         }
-    //     }
-
-    //     texture_jobs.clear();
-
-    //     self.texture_jobs = texture_jobs;
-
-    //     state_changed_list
-    // }
-
-    // // fn is_valid(&self, entity: Entity) -> bool {
-    // //     self.texture_infos.contains_key(&entity)
-    // // }
-
-    // #[span_fn]
-    // fn upload_texture(&mut self, renderer: &Renderer, upload_job: &UploadTextureJob) {
-    //     let texture_info = self.texture_infos.get(&upload_job.entity).unwrap();
-
-    //     let mut render_commands = renderer.render_command_builder();
-
-    //     render_commands.push(UploadTextureCommand {
-    //         src_data: upload_job.texture_data.clone(),
-    //         dst_texture: texture_info.texture_view.texture().clone(),
-    //     });
-    // }
-
-    // fn texture_info(&self, entity: Entity) -> &TextureInfo {
-    //     assert!(self.is_valid(entity));
-    //     self.texture_infos.get(&entity).unwrap()
-    // }
-
-    // fn texture_info_mut(&mut self, entity: Entity) -> &mut TextureInfo {
-    //     assert!(self.is_valid(entity));
-    //     self.texture_infos.get_mut(&entity).unwrap()
-    // }
 
     fn texture_def_from_data(texture_data: &BinTexture) -> TextureDef {
         let format = match texture_data.format {
@@ -389,69 +295,3 @@ impl TextureManager {
         }
     }
 }
-
-// #[allow(clippy::needless_pass_by_value)]
-// fn on_texture_added(
-//     mut commands: Commands<'_, '_>,
-//     mut texture_manager: ResMut<'_, TextureManager>,
-//     q_added_textures: Query<'_, '_, (Entity, &TextureComponent), Added<TextureComponent>>,
-// ) {
-//     if q_added_textures.is_empty() {
-//         return;
-//     }
-
-//     for (entity, texture_component) in q_added_textures.iter() {
-//         texture_manager.allocate_texture(entity, texture_component);
-
-//         commands.entity(entity).insert(GPUTextureComponent);
-//     }
-// }
-
-// #[allow(clippy::needless_pass_by_value)]
-// fn on_texture_modified(
-//     mut texture_manager: ResMut<'_, TextureManager>,
-//     q_modified_textures: Query<
-//         '_,
-//         '_,
-//         (Entity, &TextureComponent, &GPUTextureComponent),
-//         Changed<TextureComponent>,
-//     >,
-// ) {
-//     if q_modified_textures.is_empty() {
-//         return;
-//     }
-
-//     for (entity, texture_component, _) in q_modified_textures.iter() {
-//         texture_manager.update_texture(entity, texture_component);
-//     }
-// }
-
-// #[allow(clippy::needless_pass_by_value)]
-// fn on_texture_removed(
-//     mut commands: Commands<'_, '_>,
-//     removed_entities: RemovedComponents<'_, TextureComponent>,
-//     mut texture_manager: ResMut<'_, TextureManager>,
-// ) {
-//     // todo: must be send some events to refresh the material
-//     for removed_entity in removed_entities.iter() {
-//         commands
-//             .entity(removed_entity)
-//             .remove::<GPUTextureComponent>();
-//         texture_manager.remove_by_entity(removed_entity);
-//     }
-// }
-
-// #[allow(clippy::needless_pass_by_value)]
-// fn apply_changes(
-//     mut event_writer: EventWriter<'_, '_, TextureEvent>,
-//     renderer: Res<'_, Renderer>,
-//     mut texture_manager: ResMut<'_, TextureManager>,
-//     mut persistent_descriptor_set_manager: ResMut<'_, PersistentDescriptorSetManager>,
-// ) {
-//     // todo: must be send some events to refresh the material
-//     let state_changed_list =
-//         texture_manager.apply_changes(&renderer, &mut persistent_descriptor_set_manager);
-//     if !state_changed_list.is_empty() {
-//         event_writer.send(TextureEvent::StateChanged(state_changed_list));
-//     }
-// }

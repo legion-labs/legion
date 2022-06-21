@@ -176,7 +176,7 @@ impl Plugin for RendererPlugin {
         let graphics_queue = GraphicsQueue::new(device_context);
         let cgen_registry = Arc::new(cgen::initialize(device_context));
         let render_scope = RenderScope::new(NUM_RENDER_FRAMES, device_context);
-        let upload_manager = GpuUploadManager::new();
+        let upload_manager = GpuUploadManager::new(device_context);
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
         let render_command_queue_pool = RenderCommandQueuePool::new();
@@ -201,8 +201,11 @@ impl Plugin for RendererPlugin {
         let mut mesh_manager = MeshManager::new(static_buffer.allocator());
         mesh_manager.initialize_default_meshes(&mut render_commands);
 
-        let texture_manager =
-            TextureManager::new(device_context, &persistent_descriptor_set_manager);
+        let texture_manager = TextureManager::new(
+            device_context,
+            &persistent_descriptor_set_manager,
+            &upload_manager,
+        );
 
         let material_manager = MaterialManager::new(static_buffer.allocator());
 
@@ -640,7 +643,6 @@ fn render_update(
             descriptor_heap_manager.begin_frame();
 
             device_context.free_gpu_memory();
-            device_context.inc_current_cpu_frame();
 
             transient_buffer.begin_frame();
             transient_commandbuffer_manager.begin_frame();
@@ -669,7 +671,7 @@ fn render_update(
             let mut transient_buffer_allocator =
                 TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
-            render_resources.get_mut::<GpuUploadManager>().upload(
+            render_resources.get::<GpuUploadManager>().upload(
                 &mut transient_commandbuffer_allocator,
                 &mut transient_buffer_allocator,
                 &graphics_queue,

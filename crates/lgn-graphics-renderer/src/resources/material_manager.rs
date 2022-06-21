@@ -84,7 +84,8 @@ impl ResourceInstaller for MaterialInstaller {
         _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
     ) -> Result<Box<dyn Resource>, AssetRegistryError> {
-        let material = from_binary_reader::<lgn_graphics_data::runtime::Material>(reader).await?;
+        let material =
+            Box::new(from_binary_reader::<lgn_graphics_data::runtime::Material>(reader).await?);
         lgn_tracing::info!("Material {}", resource_id.id,);
 
         Ok(material)

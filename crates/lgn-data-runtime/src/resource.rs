@@ -18,7 +18,7 @@ pub trait ResourceDescriptor {
 /// Return `AssetRegistryError` on failure
 pub async fn from_binary_reader<'de, T: Resource + Default + serde::Deserialize<'de>>(
     reader: &mut AssetRegistryReader,
-) -> Result<Box<T>, AssetRegistryError> {
+) -> Result<T, AssetRegistryError> {
     use tokio::io::AsyncReadExt;
     let mut buffer = vec![];
     reader.read_to_end(&mut buffer).await?;
@@ -31,7 +31,7 @@ pub async fn from_binary_reader<'de, T: Resource + Default + serde::Deserialize<
             .with_fixint_encoding(),
     );
 
-    let mut new_resource = Box::new(T::default());
+    let mut new_resource = T::default();
     serde::Deserialize::deserialize_in_place(&mut deserializer, &mut new_resource)
         .map_err(|err| AssetRegistryError::SerializationFailed("", err.to_string()))?;
 
