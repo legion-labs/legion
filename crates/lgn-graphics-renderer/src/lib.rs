@@ -203,8 +203,6 @@ impl Plugin for RendererPlugin {
             &upload_manager,
         );
 
-        let material_manager = MaterialManager::new(static_buffer.allocator());
-
         let sampler_manager =
             SamplerManager::new(device_context, &persistent_descriptor_set_manager);
 
@@ -212,6 +210,13 @@ impl Plugin for RendererPlugin {
             &mut render_commands,
             device_context,
             &mut persistent_descriptor_set_manager,
+        );
+
+        let material_manager = MaterialManager::new(
+            static_buffer.allocator(),
+            &mut render_commands,
+            &shared_resources_manager,
+            &sampler_manager,
         );
 
         let render_layers_builder = RenderLayerBuilder::default();
@@ -333,7 +338,6 @@ impl Plugin for RendererPlugin {
             .insert_resource(picking_manager.clone());
 
         // Init ecs
-        MaterialManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
@@ -477,9 +481,10 @@ fn register_installers(
         Arc::new(resources::ModelInstaller::new()),
     );
 
+    let material_manager = renderer.render_resources().get::<MaterialManager>();
     asset_registry_options.add_resource_installer(
         lgn_graphics_data::runtime::Material::TYPE,
-        Arc::new(resources::MaterialInstaller::new()),
+        Arc::new(resources::MaterialInstaller::new(&material_manager)),
     );
 }
 

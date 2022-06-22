@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use async_trait::async_trait;
 use lgn_app::App;
 use lgn_core::BumpAllocatorPool;
 use lgn_data_runtime::{
-    from_binary_reader, AssetRegistryError, AssetRegistryReader, LoadRequest, Resource,
-    ResourceDescriptor, ResourceId, ResourceInstaller, ResourceTypeAndId,
+    from_binary_reader, AssetRegistry, AssetRegistryError, AssetRegistryReader, LoadRequest,
+    Resource, ResourceDescriptor, ResourceId, ResourceInstaller, ResourceTypeAndId,
 };
 use lgn_ecs::{
     prelude::{Changed, Query, Res, ResMut},
@@ -13,7 +13,7 @@ use lgn_ecs::{
 };
 use lgn_graphics_data::Color;
 use lgn_math::Vec3;
-use lgn_tracing::warn;
+
 use lgn_transform::components::{GlobalTransform, Transform};
 use strum::IntoEnumIterator;
 
@@ -26,11 +26,12 @@ use crate::{
 
 use super::{
     DefaultMeshType, MaterialId, MaterialManager, MeshId, MeshManager, MissingVisualTracker,
-    RendererOptions,
+    RenderMaterial, RendererOptions,
 };
 pub struct MeshInstance {
     pub mesh_id: MeshId,
     pub material_id: MaterialId,
+    pub material_va: u64,
 }
 
 pub struct ModelMetaData {
@@ -124,7 +125,7 @@ pub struct ModelManager {
 
 impl ModelManager {
     pub fn new(mesh_manager: &MeshManager, material_manager: &MaterialManager) -> Self {
-        let default_material_id = material_manager.get_default_material_id();
+        let default_material = material_manager.get_default_material();
 
         let mut model_meta_data = BTreeMap::new();
 
@@ -144,7 +145,8 @@ impl ModelManager {
                 ModelMetaData {
                     mesh_instances: vec![MeshInstance {
                         mesh_id: mesh_manager.get_default_mesh_id(default_mesh_type),
-                        material_id: default_material_id,
+                        material_id: default_material.bindless_slot(),
+                        material_va: default_material.va(),
                     }],
                 },
             );
@@ -190,7 +192,8 @@ impl ModelManager {
 
 #[allow(clippy::needless_pass_by_value)]
 pub(crate) fn update_models(
-    renderer: ResMut<'_, Renderer>, // renderer is a ResMut just to avoid concurrent accesses
+    renderer: ResMut<'_, Renderer>,
+    asset_registry: Res<'_, Arc<AssetRegistry>>,
     updated_models: Query<'_, '_, &ModelComponent, Changed<ModelComponent>>,
 ) {
     let mut mesh_manager = renderer.render_resources().get_mut::<MeshManager>();
@@ -212,46 +215,56 @@ pub(crate) fn update_models(
         for mesh in &updated_model.meshes {
             let mesh_id = mesh_manager.add_mesh(&mut render_commands, mesh);
 
-            // for (idx, mesh) in updated_model.meshes.iter().enumerate() {
-            /*
-               UNCOMMENT WHEN THE RESOURCE SYSTEM IS WORKING
-               A RUNTIME DEPENDENCY MUST BE LOADED AND THEN, THE MATERIAL ID MUST BE VALID
+            // let render_material = asset_registry
+            //     .lookup::<RenderMaterial>(&mesh.material_id.id())
+            //     .map_or(material_manager.get_default_material(), |x| *x);
 
-               // If there is no material set on the mesh (should not be the case until we fix that),
-               // we assign the default material
+            // let render_material =
+            //     mesh.material_id
+            //         .map_or(material_manager.get_default_material(), |x| {
+            //             asset_registry
+            //                 .lookup::<RenderMaterial>(&x.id())
+            //                 .expect("Must be installed")
+            //                 .as_ref()
+            //         });
 
-               let material_id = mesh
-               .material_id
-               .as_ref()
-               .map_or(material_manager.get_default_material_id(), |x| {
-                   material_manager.get_material_id_from_resource_id(&x.id())
-               });
-            */
+            let render_material = if let Some(material_resource_id) = &mesh.material_id {
+                let render_material_guard = asset_registry
+                    .lookup::<RenderMaterial>(&material_resource_id.id())
+                    .expect("Must be installed");
 
-            if let Some(material_resource_id) = &mesh.material_id {
-                let material_id_opt =
-                    material_manager.get_material_id_from_resource_id(&material_resource_id.id());
-                if material_id_opt.is_none() {
-                    warn!(
-                        "Dependency issue. Material {} not loaded for model {}",
-                        material_resource_id.id(),
-                        model_resource_id
-                    );
-                }
-            }
+                let render_material = render_material_guard.get().unwrap().clone();
 
-            let material_id =
-                mesh.material_id
-                    .as_ref()
-                    .map_or(material_manager.get_default_material_id(), |x| {
-                        material_manager
-                            .get_material_id_from_resource_id(&x.id())
-                            .unwrap_or_else(|| material_manager.get_default_material_id())
-                    });
+                render_material
+
+                // render_material.bindless_slot()
+
+                // let material_id_opt =
+                //     material_manager.get_material_id_from_resource_id(&material_resource_id.id());
+                // if material_id_opt.is_none() {
+                //     warn!(
+                //         "Dependency issue. Material {} not loaded for model {}",
+                //         material_resource_id.id(),
+                //         model_resource_id
+                //     );
+                // }
+            } else {
+                material_manager.get_default_material().clone()
+            };
+
+            // let material_id =
+            //     mesh.material_id
+            //         .as_ref()
+            //         .map_or(material_manager.get_default_material_id(), |x| {
+            //             material_manager
+            //                 .get_material_id_from_resource_id(&x.id())
+            //                 .unwrap_or_else(|| material_manager.get_default_material_id())
+            //         });
 
             mesh_instances.push(MeshInstance {
                 mesh_id,
-                material_id,
+                material_id: render_material.bindless_slot(),
+                material_va: render_material.va(),
             });
         }
 

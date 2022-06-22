@@ -247,7 +247,7 @@ pub struct UniformGPUData<T> {
 }
 
 impl<T> UniformGPUData<T> {
-    pub fn new(gpu_allocator: &UnifiedStaticBufferAllocator, elements_per_page: u64) -> Self {
+    pub fn new(gpu_allocator: &UnifiedStaticBuffer, elements_per_page: u64) -> Self {
         Self {
             gpu_allocator: gpu_allocator.clone(),
             allocated_pages: RwLock::new(Vec::new()),

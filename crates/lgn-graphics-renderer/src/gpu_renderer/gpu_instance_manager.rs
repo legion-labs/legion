@@ -8,7 +8,7 @@ use lgn_ecs::{
 use lgn_graphics_api::{BufferView, BufferViewDef, ResourceUsage, VertexBufferBinding};
 
 use lgn_math::Vec4;
-use lgn_tracing::warn;
+
 use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
@@ -240,7 +240,6 @@ impl GpuInstanceManager {
 
         let mut gpu_instance_ids = Vec::new();
         let mut gpu_instance_keys = Vec::new();
-        let default_material_id = material_manager.get_default_material_id();
 
         for (mesh_index, mesh) in model.mesh_instances.iter().enumerate() {
             //
@@ -251,20 +250,6 @@ impl GpuInstanceManager {
             //
             // Material (might not be valid)
             //
-            let material_id = if material_manager.is_material_ready(mesh.material_id) {
-                mesh.material_id
-            } else {
-                let material_resource_id = material_manager
-                    .get_material(mesh.material_id)
-                    .resource_id();
-                warn!(
-                    "Dependency issue. Material {} not ready for entity {:?}",
-                    material_resource_id, entity
-                );
-                missing_visuals_tracker
-                    .add_resource_entity_dependency(*material_resource_id, entity);
-                default_material_id
-            };
 
             //
             // Gpu instance
@@ -272,7 +257,7 @@ impl GpuInstanceManager {
 
             let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
-                material_va: material_manager.get_material(material_id).va() as u32,
+                material_va: mesh.material_va as u32,
                 color_va: self.color_manager.va_for_key(&entity) as u32,
                 transform_va: self.transform_manager.va_for_key(&entity) as u32,
                 picking_data_va: self.picking_data_manager.va_for_key(&entity) as u32,
@@ -306,7 +291,7 @@ impl GpuInstanceManager {
 
             self.added_render_elements.push(RenderElement::new(
                 gpu_instance_id,
-                material_id,
+                mesh.material_id,
                 mesh_manager.get_mesh_meta_data(mesh.mesh_id),
             ));
         }

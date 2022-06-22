@@ -1,11 +1,13 @@
 use std::collections::BTreeMap;
 
 use crate::{
-    core::{BinaryWriter, RenderCommandBuilder},
+    core::{
+        BinaryWriter, GpuUploadManager, RenderCommandBuilder, UploadGPUBuffer, UploadGPUResource,
+    },
     resources::UpdateUnifiedStaticBufferCommand,
 };
 
-use super::{IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData};
+use super::{IndexAllocator, UnifiedStaticBufferAllocator, UniformGPUData, UnifiedStaticBuffer};
 
 #[derive(Clone, Copy)]
 pub(crate) struct GpuDataAllocation {
@@ -27,18 +29,25 @@ pub(crate) struct GpuDataManager<K, T> {
     gpu_data: UniformGPUData<T>,
     index_allocator: IndexAllocator,
     data_map: BTreeMap<K, GpuDataAllocation>,
+    gpu_upload_manager: GpuUploadManager,
 }
 
 impl<K: Ord + Copy, T> GpuDataManager<K, T> {
-    pub fn new(allocator: &UnifiedStaticBufferAllocator, block_size: u32) -> Self {
+    pub fn new(
+        gpu_heap: &UnifiedStaticBuffer,
+        block_size: u32,
+        gpu_upload_manager: &GpuUploadManager,
+    ) -> Self {
         let index_allocator = IndexAllocator::new(block_size);
         let page_size = u64::from(block_size) * std::mem::size_of::<T>() as u64;
         let gpu_data = UniformGPUData::<T>::new(allocator, page_size);
+        
 
         Self {
             gpu_data,
             index_allocator,
             data_map: BTreeMap::new(),
+            gpu_upload_manager: gpu_upload_manager.clone(),
         }
     }
 
@@ -76,6 +85,27 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
             src_buffer: binary_writer.take(),
             dst_offset: gpu_data_allocation.va_address,
         });
+    }
+
+    pub async fn async_update_gpu_data(&self, key: &K, data: &T) {
+        assert!(self.data_map.contains_key(key));
+
+        let gpu_data_allocation = self.data_map.get(key).unwrap();
+
+        let mut binary_writer = BinaryWriter::new();
+        binary_writer.write(data);
+
+        self.gpu_upload_manager
+            .async_upload(UploadGPUResource::Buffer(UploadGPUBuffer {
+                src_data: binary_writer.take(),
+                dst_buffer: self.,
+                dst_offset: gpu_data_allocation.va_address,
+            }))
+
+        // render_commands.push(UpdateUnifiedStaticBufferCommand {
+        //     src_buffer: binary_writer.take(),
+        //     dst_offset: gpu_data_allocation.va_address,
+        // });
     }
 
     pub fn remove_gpu_data(&mut self, key: &K) {

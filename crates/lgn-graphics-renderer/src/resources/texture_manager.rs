@@ -183,18 +183,19 @@ impl ResourceInstaller for TextureInstaller {
         _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
     ) -> Result<Box<dyn Resource>, AssetRegistryError> {
-        let data = from_binary_reader::<lgn_graphics_data::runtime::BinTexture>(reader).await?;
+        let texture_data =
+            from_binary_reader::<lgn_graphics_data::runtime::BinTexture>(reader).await?;
         lgn_tracing::info!(
             "Texture {} | width: {}, height: {}, format: {:?}",
             resource_id.id,
-            data.width,
-            data.height,
-            data.format
+            texture_data.width,
+            texture_data.height,
+            texture_data.format
         );
 
         let render_texture = self
             .texture_manager
-            .create_texture(data, &resource_id.to_string())
+            .async_create_texture(texture_data, &resource_id.to_string())
             .await
             .map_err(|x| AssetRegistryError::Generic(x.to_string()))?;
 
@@ -217,12 +218,12 @@ impl TextureManager {
         }
     }
 
-    pub async fn create_texture(
+    async fn async_create_texture(
         &self,
-        data: BinTexture,
+        bin_texture: BinTexture,
         name: &str,
     ) -> Result<RenderTexture, TextureManagerError> {
-        let texture_def = Self::texture_def_from_data(&data);
+        let texture_def = Self::texture_def_from_data(&bin_texture);
         let gpu_texture = self.inner.device_context.create_texture(texture_def, name);
         let default_gpu_view =
             gpu_texture.create_view(TextureViewDef::as_shader_resource_view(&texture_def));
@@ -230,17 +231,17 @@ impl TextureManager {
             .inner
             .persistent_descriptor_set_manager
             .allocate_texture_slot(&default_gpu_view);
-        let data = TextureData::from(data);
+        let texture_data = TextureData::from(bin_texture);
         self.inner
             .upload_manager
             .async_upload(UploadGPUResource::Texture(UploadGPUTexture {
-                src_data: data.clone(),
+                src_data: texture_data.clone(),
                 dst_texture: gpu_texture.clone(),
             }))?
             .await?;
 
         Ok(RenderTexture {
-            data,
+            data: texture_data,
             gpu_texture,
             default_gpu_view,
             bindless_slot,

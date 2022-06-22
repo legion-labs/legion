@@ -4,6 +4,7 @@ use lgn_data_offline::{offline::Metadata, ResourcePathName};
 use lgn_data_runtime::{
     Component, ResourceDescriptor, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
+use lgn_graphics_data::AlphaMode;
 use lgn_tracing::{error, info};
 use sample_data::offline as offline_data;
 
@@ -332,6 +333,7 @@ impl FromRaw<raw_data::Material> for lgn_graphics_data::offline::Material {
             base_metalness: raw.base_metalness,
             base_roughness: raw.base_roughness,
             reflectance: raw.reflectance,
+            alpha_mode: AlphaMode::Opaque,
             sampler: None,
         }
     }
