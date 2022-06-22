@@ -142,6 +142,36 @@ struct BufferViewInner {
     size: u64,
 }
 
+// struct BufferSlice<'a> {
+//     buffer: &'a Buffer,
+//     offset: u64,
+//     size: Option<u64>,
+// }
+
+// impl<'a> BufferSlice<'a> {
+//     pub fn from_whole_buffer(buffer: &'a Buffer) -> Self {
+//         Self {
+//             buffer,
+//             offset: 0,
+//             size: None,
+//         }
+//     }
+//     pub fn from_buffer_slice(buffer: &'a Buffer, offset: u64, size: u64) -> Self {
+//         Self {
+//             buffer,
+//             offset,
+//             size: Some(size),
+//         }
+//     }
+//     pub fn from_buffer_remainder(buffer: &'a Buffer, offset: u64) -> Self {
+//         Self {
+//             buffer,
+//             offset,
+//             size: None,
+//         }
+//     }
+// }
+
 #[derive(Clone)]
 pub struct BufferView {
     inner: Drc<BufferViewInner>,

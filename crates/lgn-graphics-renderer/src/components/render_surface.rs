@@ -14,9 +14,9 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::core::{
-    as_render_object, InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
-    RemoveRenderObjectCommand, RenderObjectId, RenderViewport, RenderViewportRendererData,
-    UpdateRenderObjectCommand, Viewport, ViewportId,
+    as_render_object, GPUTimelineManager, InsertRenderObjectCommand, PrimaryTableCommandBuilder,
+    PrimaryTableView, RemoveRenderObjectCommand, RenderObjectId, RenderViewport,
+    RenderViewportRendererData, UpdateRenderObjectCommand, Viewport, ViewportId,
 };
 use crate::render_pass::PickingRenderPass;
 use crate::{RenderContext, Renderer};
@@ -314,6 +314,7 @@ impl RenderSurface {
 
     pub fn resize(
         &mut self,
+        deferred_drop: &mut GPUTimelineManager,
         device_context: &DeviceContext,
         render_surface_extents: RenderSurfaceExtents,
     ) {
@@ -337,7 +338,14 @@ impl RenderSurface {
                 memory_usage: MemoryUsage::GpuOnly,
                 tiling: TextureTiling::Optimal,
             };
-            self.final_target = device_context.create_texture(final_target_desc, "FinalTarget");
+
+            let prev_final_target = std::mem::replace(
+                &mut self.final_target,
+                device_context.create_texture(final_target_desc, "FinalTarget"),
+            );
+            //deferred_drop.deferred_drop_texture(prev_final_target);
+            deferred_drop.drop(prev_final_target);
+
             self.final_target_srv =
                 self.final_target
                     .create_view(TextureViewDef::as_shader_resource_view(

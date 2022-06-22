@@ -6,7 +6,7 @@ use lgn_graphics_api::{
 };
 use uuid::Uuid;
 
-use crate::core::{RenderObjectId, SecondaryTableHandler};
+use crate::core::{GPUTimelineManager, RenderObjectId, SecondaryTableHandler};
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ViewportId(Uuid);
@@ -166,7 +166,12 @@ impl RenderViewportRendererData {
         [&self.hzb[0], &self.hzb[1]]
     }
 
-    pub fn resize(&mut self, device_context: &DeviceContext, extents: Extents3D) {
+    pub fn resize(
+        &mut self,
+        deferred_drop: &GPUTimelineManager,
+        device_context: &DeviceContext,
+        extents: Extents3D,
+    ) {
         let view_desc = TextureDef {
             extents,
             array_length: 1,
@@ -181,7 +186,13 @@ impl RenderViewportRendererData {
             tiling: TextureTiling::Optimal,
         };
 
-        self.view_target = device_context.create_texture(view_desc, "ViewBuffer");
+        let prev_view_target = std::mem::replace(
+            &mut self.view_target,
+            device_context.create_texture(view_desc, "ViewBuffer"),
+        );
+        //deferred_drop.deferred_drop_texture(prev_view_target);
+        deferred_drop.drop(prev_view_target);
+
         self.view_target_srv =
             self.view_target
                 .create_view(TextureViewDef::as_shader_resource_view(
@@ -190,10 +201,20 @@ impl RenderViewportRendererData {
 
         let hzb_desc = Self::make_hzb_desc(&extents);
 
-        self.hzb = [
+        let prev_hzb_0 = std::mem::replace(
+            &mut self.hzb[0],
             device_context.create_texture(hzb_desc, "HZB 0"),
+        );
+        //deferred_drop.deferred_drop_texture(prev_hzb_0);
+        deferred_drop.drop(prev_hzb_0);
+
+        let prev_hzb_1 = std::mem::replace(
+            &mut self.hzb[1],
             device_context.create_texture(hzb_desc, "HZB 1"),
-        ];
+        );
+        //deferred_drop.deferred_drop_texture(prev_hzb_1);
+        deferred_drop.drop(prev_hzb_1);
+
         self.hzb_cleared = false;
     }
 
@@ -293,6 +314,7 @@ impl RenderViewportRendererData {
 }
 
 pub struct RenderViewportPrivateDataHandler {
+    deferred_drop: GPUTimelineManager,
     device_context: DeviceContext,
 }
 
@@ -315,7 +337,11 @@ impl SecondaryTableHandler<RenderViewport, RenderViewportRendererData>
                 .definition()
                 .extents
         {
-            render_viewport_private_data.resize(&self.device_context, viewport_extents);
+            render_viewport_private_data.resize(
+                &self.deferred_drop,
+                &self.device_context,
+                viewport_extents,
+            );
         }
     }
 
@@ -328,7 +354,10 @@ impl SecondaryTableHandler<RenderViewport, RenderViewportRendererData>
 }
 
 impl RenderViewportPrivateDataHandler {
-    pub fn new(device_context: DeviceContext) -> Self {
-        Self { device_context }
+    pub fn new(deferred_drop: GPUTimelineManager, device_context: DeviceContext) -> Self {
+        Self {
+            deferred_drop,
+            device_context,
+        }
     }
 }

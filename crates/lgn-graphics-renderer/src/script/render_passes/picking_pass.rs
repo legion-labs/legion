@@ -38,13 +38,14 @@ impl PickingPass {
                             .picking_renderpass.write();
                         let picking_manager = render_context.picking_manager;
 
+                        let frame_index = execute_context.render_context.device_context.current_cpu_frame() as usize;
                         let mut count: usize = 0;
                         let mut count_readback = picking_renderpass
                             .count_buffer
-                            .begin_readback(render_context.device_context);
+                            .begin_readback(frame_index, render_context.device_context);
                         let mut picked_readback = picking_renderpass
                             .picked_buffer
-                            .begin_readback(render_context.device_context);
+                            .begin_readback(frame_index, render_context.device_context);
 
                         count_readback.read_gpu_data(
                             0,
@@ -221,10 +222,11 @@ impl PickingPass {
                             picked_readback.sent_to_gpu(picking_manager.frame_no_for_picking());
                         }
 
-                        picking_renderpass.count_buffer.end_readback(count_readback);
+                        let frame_index = execute_context.render_context.device_context.current_cpu_frame() as usize;
+                        picking_renderpass.count_buffer.end_readback(frame_index, count_readback);
                         picking_renderpass
                             .picked_buffer
-                            .end_readback(picked_readback);
+                            .end_readback(frame_index, picked_readback);
                     })
                 })
         })
