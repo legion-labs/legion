@@ -110,9 +110,7 @@ impl RenderTexture {
 }
 
 impl Drop for RenderTexture {
-    fn drop(&mut self) {
-        todo!()
-    }
+    fn drop(&mut self) {}
 }
 
 pub struct TextureInstaller {
@@ -173,9 +171,7 @@ impl ComponentInstaller for TextureInstaller {
 }
 
 impl Drop for TextureInstaller {
-    fn drop(&mut self) {
-        todo!()
-    }
+    fn drop(&mut self) {}
 }
 
 #[async_trait]

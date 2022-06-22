@@ -54,9 +54,7 @@ impl RenderMaterial {
 }
 
 impl Drop for RenderMaterial {
-    fn drop(&mut self) {
-        todo!()
-    }
+    fn drop(&mut self) {}
 }
 
 pub struct MaterialInstaller {
