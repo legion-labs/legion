@@ -18,9 +18,9 @@ use crate::{
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        DefaultMeshType, GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager,
-        MissingVisualTracker, ModelManager, StaticBufferAllocation, StaticBufferView,
-        UnifiedStaticBuffer, UpdateUnifiedStaticBufferCommand,
+        DefaultMeshType, GpuDataAllocation, GpuDataManager, MeshManager, MissingVisualTracker,
+        ModelManager, StaticBufferAllocation, StaticBufferView, UnifiedStaticBuffer,
+        UpdateUnifiedStaticBufferCommand,
     },
     Renderer,
 };
@@ -105,7 +105,7 @@ impl GpuVaTableForGpuInstance {
         let offset_for_gpu_instance =
             self.static_allocation.byte_offset() + u64::from(gpu_data_allocation.index()) * 4;
 
-        let va = u32::try_from(gpu_data_allocation.va_address()).unwrap();
+        let va = u32::try_from(gpu_data_allocation.gpuheap_addr()).unwrap();
 
         let mut binary_writer = BinaryWriter::new();
         binary_writer.write(&va);
@@ -193,7 +193,6 @@ impl GpuInstanceManager {
         visual: &VisualComponent,
         model_manager: &ModelManager,
         mesh_manager: &MeshManager,
-        material_manager: &MaterialManager,
         missing_visuals_tracker: &mut MissingVisualTracker,
         render_commands: &mut RenderCommandBuilder,
         picking_context: &mut PickingIdContext<'_>,
@@ -258,9 +257,9 @@ impl GpuInstanceManager {
             let instance_vas = GpuInstanceVas {
                 submesh_va: mesh_meta_data.mesh_description_offset,
                 material_va: mesh.material_va as u32,
-                color_va: self.color_manager.va_for_key(&entity) as u32,
-                transform_va: self.transform_manager.va_for_key(&entity) as u32,
-                picking_data_va: self.picking_data_manager.va_for_key(&entity) as u32,
+                color_va: self.color_manager.gpuheap_addr_for_key(&entity) as u32,
+                transform_va: self.transform_manager.gpuheap_addr_for_key(&entity) as u32,
+                picking_data_va: self.picking_data_manager.gpuheap_addr_for_key(&entity) as u32,
             };
 
             let gpu_instance_key = GpuInstanceKey { entity, mesh_index };
@@ -286,7 +285,7 @@ impl GpuInstanceManager {
 
             render_commands.push(UpdateUnifiedStaticBufferCommand {
                 src_buffer: binary_writer.take(),
-                dst_offset: gpu_data_allocation.va_address(),
+                dst_offset: gpu_data_allocation.gpuheap_addr(),
             });
 
             self.added_render_elements.push(RenderElement::new(
@@ -361,7 +360,6 @@ fn update_gpu_instances(
     let picking_manager = renderer.render_resources().get::<PickingManager>();
     let model_manager = renderer.render_resources().get::<ModelManager>();
     let mesh_manager = renderer.render_resources().get::<MeshManager>();
-    let material_manager = renderer.render_resources().get::<MaterialManager>();
     let mut instance_manager = renderer.render_resources().get_mut::<GpuInstanceManager>();
     let mut missing_visuals_tracker = renderer
         .render_resources()
@@ -408,7 +406,6 @@ fn update_gpu_instances(
                 visual,
                 &model_manager,
                 &mesh_manager,
-                &material_manager,
                 &mut missing_visuals_tracker,
                 &mut render_commands,
                 &mut picking_context,

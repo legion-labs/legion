@@ -7,9 +7,6 @@ pub use light_component::*;
 mod manipulator_component;
 pub use manipulator_component::*;
 
-mod material_component;
-pub use material_component::*;
-
 mod picked_component;
 pub use picked_component::*;
 

@@ -103,7 +103,7 @@ impl UnifiedStaticBuffer {
 
         let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(
             required_size,
-            self.inner.required_alignment as u64,
+            u64::from(self.inner.required_alignment),
         );
 
         if required_size != alloc_size {
@@ -115,7 +115,7 @@ impl UnifiedStaticBuffer {
         let alloc_range = allocator.allocate(alloc_size).unwrap();
 
         assert_eq!(
-            alloc_range.begin() % self.inner.required_alignment as u64,
+            alloc_range.begin() % u64::from(self.inner.required_alignment),
             0
         );
         assert!(alloc_range.size() >= required_size);

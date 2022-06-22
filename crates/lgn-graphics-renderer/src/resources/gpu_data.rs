@@ -13,7 +13,7 @@ use super::{IndexAllocator, UnifiedStaticBuffer, UniformGPUData};
 #[derive(Clone, Copy)]
 pub(crate) struct GpuDataAllocation {
     index: u32,
-    va_address: u64,
+    gpuheap_addr: u64,
 }
 
 impl GpuDataAllocation {
@@ -21,8 +21,8 @@ impl GpuDataAllocation {
         self.index
     }
 
-    pub fn va_address(self) -> u64 {
-        self.va_address
+    pub fn gpuheap_addr(self) -> u64 {
+        self.gpuheap_addr
     }
 }
 
@@ -57,10 +57,10 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         assert!(!self.data_map.contains_key(key));
 
         let gpu_data_id = self.index_allocator.allocate();
-        let gpu_data_va = self.gpu_data.ensure_index_allocated(gpu_data_id);
+        let gpuheap_addr = self.gpu_data.ensure_index_allocated(gpu_data_id);
         let gpu_data_allocation = GpuDataAllocation {
             index: gpu_data_id,
-            va_address: gpu_data_va,
+            gpuheap_addr,
         };
 
         self.data_map.insert(*key, gpu_data_allocation);
@@ -68,11 +68,11 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         gpu_data_allocation
     }
 
-    pub fn va_for_key(&self, key: &K) -> u64 {
+    pub fn gpuheap_addr_for_key(&self, key: &K) -> u64 {
         assert!(self.data_map.contains_key(key));
 
         let values = self.data_map.get(key).unwrap();
-        values.va_address
+        values.gpuheap_addr
     }
 
     pub fn update_gpu_data(&self, key: &K, data: &T, render_commands: &mut RenderCommandBuilder) {
@@ -85,7 +85,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
 
         render_commands.push(UpdateUnifiedStaticBufferCommand {
             src_buffer: binary_writer.take(),
-            dst_offset: gpu_data_allocation.va_address,
+            dst_offset: gpu_data_allocation.gpuheap_addr,
         });
     }
 
@@ -101,7 +101,7 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
             .async_upload(UploadGPUResource::Buffer(UploadGPUBuffer {
                 src_data: binary_writer.take(),
                 dst_buffer: self.gpu_heap.buffer().clone(),
-                dst_offset: gpu_data_allocation.va_address,
+                dst_offset: gpu_data_allocation.gpuheap_addr,
             }))?;
 
         Ok(())

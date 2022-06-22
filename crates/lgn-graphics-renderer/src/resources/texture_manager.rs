@@ -84,15 +84,35 @@ impl From<BinTexture> for TextureData {
     }
 }
 
-struct Inner {
-    device_context: DeviceContext,
-    persistent_descriptor_set_manager: PersistentDescriptorSetManager,
-    upload_manager: GpuUploadManager,
+#[allow(dead_code)]
+#[derive(Clone)]
+pub struct RenderTexture {
+    data: TextureData,
+    gpu_texture: Texture,
+    default_gpu_view: TextureView,
+    bindless_slot: TextureSlot,
+}
+lgn_data_runtime::implement_runtime_resource!(RenderTexture);
+
+#[allow(dead_code)]
+impl RenderTexture {
+    pub fn data(&self) -> &TextureData {
+        &self.data
+    }
+
+    pub fn gpu_texture(&self) -> &Texture {
+        &self.gpu_texture
+    }
+
+    pub fn bindless_slot(&self) -> TextureSlot {
+        self.bindless_slot
+    }
 }
 
-#[derive(Clone)]
-pub struct TextureManager {
-    inner: Arc<Inner>,
+impl Drop for RenderTexture {
+    fn drop(&mut self) {
+        todo!()
+    }
 }
 
 pub struct TextureInstaller {
@@ -152,30 +172,7 @@ impl ComponentInstaller for TextureInstaller {
     }
 }
 
-#[derive(Clone)]
-pub struct RenderTexture {
-    data: TextureData,
-    gpu_texture: Texture,
-    default_gpu_view: TextureView,
-    bindless_slot: TextureSlot,
-}
-lgn_data_runtime::implement_runtime_resource!(RenderTexture);
-
-impl RenderTexture {
-    pub fn data(&self) -> &TextureData {
-        &self.data
-    }
-
-    pub fn gpu_texture(&self) -> &Texture {
-        &self.gpu_texture
-    }
-
-    pub fn bindless_slot(&self) -> TextureSlot {
-        self.bindless_slot
-    }
-}
-
-impl Drop for RenderTexture {
+impl Drop for TextureInstaller {
     fn drop(&mut self) {
         todo!()
     }
@@ -201,12 +198,23 @@ impl ResourceInstaller for TextureInstaller {
 
         let render_texture = self
             .texture_manager
-            .async_create_texture(texture_data, &resource_id.to_string())
+            .install_texture(texture_data, &resource_id.to_string())
             .await
             .map_err(|x| AssetRegistryError::Generic(x.to_string()))?;
 
         Ok(Box::new(render_texture))
     }
+}
+
+struct Inner {
+    device_context: DeviceContext,
+    persistent_descriptor_set_manager: PersistentDescriptorSetManager,
+    upload_manager: GpuUploadManager,
+}
+
+#[derive(Clone)]
+pub struct TextureManager {
+    inner: Arc<Inner>,
 }
 
 impl TextureManager {
@@ -224,7 +232,7 @@ impl TextureManager {
         }
     }
 
-    async fn async_create_texture(
+    async fn install_texture(
         &self,
         bin_texture: BinTexture,
         name: &str,

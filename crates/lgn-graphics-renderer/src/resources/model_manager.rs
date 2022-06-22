@@ -145,8 +145,8 @@ impl ModelManager {
                 ModelMetaData {
                     mesh_instances: vec![MeshInstance {
                         mesh_id: mesh_manager.get_default_mesh_id(default_mesh_type),
-                        material_id: default_material.bindless_slot(),
-                        material_va: default_material.va(),
+                        material_id: default_material.material_id(),
+                        material_va: default_material.gpuheap_addr(),
                     }],
                 },
             );
@@ -164,8 +164,7 @@ impl ModelManager {
             SystemSet::new()
                 .with_system(update_models)
                 .with_system(debug_bounding_spheres)
-                .label(ResourceStageLabel::Model)
-                .after(ResourceStageLabel::Material),
+                .label(ResourceStageLabel::Model),
         );
     }
 
@@ -215,19 +214,6 @@ pub(crate) fn update_models(
         for mesh in &updated_model.meshes {
             let mesh_id = mesh_manager.add_mesh(&mut render_commands, mesh);
 
-            // let render_material = asset_registry
-            //     .lookup::<RenderMaterial>(&mesh.material_id.id())
-            //     .map_or(material_manager.get_default_material(), |x| *x);
-
-            // let render_material =
-            //     mesh.material_id
-            //         .map_or(material_manager.get_default_material(), |x| {
-            //             asset_registry
-            //                 .lookup::<RenderMaterial>(&x.id())
-            //                 .expect("Must be installed")
-            //                 .as_ref()
-            //         });
-
             let render_material = if let Some(material_resource_id) = &mesh.material_id {
                 let render_material_guard = asset_registry
                     .lookup::<RenderMaterial>(&material_resource_id.id())
@@ -236,35 +222,14 @@ pub(crate) fn update_models(
                 let render_material = render_material_guard.get().unwrap().clone();
 
                 render_material
-
-                // render_material.bindless_slot()
-
-                // let material_id_opt =
-                //     material_manager.get_material_id_from_resource_id(&material_resource_id.id());
-                // if material_id_opt.is_none() {
-                //     warn!(
-                //         "Dependency issue. Material {} not loaded for model {}",
-                //         material_resource_id.id(),
-                //         model_resource_id
-                //     );
-                // }
             } else {
                 material_manager.get_default_material().clone()
             };
 
-            // let material_id =
-            //     mesh.material_id
-            //         .as_ref()
-            //         .map_or(material_manager.get_default_material_id(), |x| {
-            //             material_manager
-            //                 .get_material_id_from_resource_id(&x.id())
-            //                 .unwrap_or_else(|| material_manager.get_default_material_id())
-            //         });
-
             mesh_instances.push(MeshInstance {
                 mesh_id,
-                material_id: render_material.bindless_slot(),
-                material_va: render_material.va(),
+                material_id: render_material.material_id(),
+                material_va: render_material.gpuheap_addr(),
             });
         }
 
