@@ -1,15 +1,13 @@
+use crate::components::animation_clip::AnimationClip;
 use crate::runtime::{Connection, EditorGraphDefinition};
 use crate::runtime_graph::node::Node;
 use crate::runtime_graph::node_animation_clip::AnimationClipNode;
 use crate::runtime_graph::node_state::StateNode;
+use crate::runtime_graph::node_state_machine::StateInfo;
 use crate::runtime_graph::node_state_machine::{StateMachineNode, TransitionInfo};
 use crate::runtime_graph::node_transition::TransitionNode;
 use crate::runtime_graph::nodes_state_condition::node_time_condition::TimeConditionNode;
 use lgn_ecs::component::Component;
-
-use crate::runtime_graph::node_state_machine::StateInfo;
-
-use super::AnimationClip;
 
 #[derive(Component)]
 pub struct GraphDefinition {
@@ -66,5 +64,9 @@ impl GraphDefinition {
             })],
             connections: state_machine.connections.clone(),
         }
+    }
+
+    pub(crate) fn update(&mut self, delta_time: f32) {
+        self.nodes[self.current_node_index].update(delta_time);
     }
 }

@@ -931,15 +931,10 @@ async fn create_offline_data(
         resource_registry,
         "09f7380d-51b2-4061-9fe4-52ceccce55e7",
         "/scene.ent",
-        vec![
-            Box::new(CameraSetup {
-                eye: Vec3::new(0.0, 3.0, 1.2),
-                look_at: Vec3::ZERO,
-            }),
-            Box::new(PhysicsSceneSettings {
-                gravity: Vec3::new(0.0, 0.0, -1.0),
-            }),
-        ],
+        vec![Box::new(CameraSetup {
+            eye: Vec3::new(0.0, 3.0, 1.2),
+            look_at: Vec3::ZERO,
+        })],
         vec![light_id, skeleton],
     )
     .await;

@@ -21,11 +21,8 @@ pub(crate) fn display_animation(
         debug_display.create_display_list(bump, |builder| {
             for graph in graphs.iter() {
                 let current_node_index = graph.current_node_index;
-
-                let active_state: &StateInfo = (*graph.nodes[current_node_index])
-                    .get_active_state()
-                    .unwrap();
-
+                let active_state: &StateInfo =
+                    graph.nodes[current_node_index].get_active_state().unwrap();
                 let clip = (*active_state.state_node.child_node).get_clip().unwrap();
 
                 for n_bone in 0..clip.poses[clip.current_key_frame_index]
