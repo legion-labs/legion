@@ -4,9 +4,7 @@ use lgn_graphics_api::ResourceUsage;
 use lgn_math::{Vec3, Vec4};
 use strum::EnumIter;
 
-use super::{
-    StaticBufferAllocation, UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
-};
+use super::{StaticBufferAllocation, UnifiedStaticBuffer, UpdateUnifiedStaticBufferCommand};
 use crate::{
     components::{Mesh, MeshTopology},
     core::RenderCommandBuilder,
@@ -27,7 +25,7 @@ pub struct MeshMetaData {
 }
 
 pub struct MeshManager {
-    allocator: UnifiedStaticBufferAllocator,
+    gpu_heap: UnifiedStaticBuffer,
     default_mesh_ids: Vec<MeshId>,
     static_meshes: Vec<MeshMetaData>,
 }
@@ -48,9 +46,9 @@ pub enum DefaultMeshType {
 }
 
 impl MeshManager {
-    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
+    pub fn new(gpu_heap: &UnifiedStaticBuffer) -> Self {
         Self {
-            allocator: allocator.clone(),
+            gpu_heap: gpu_heap.clone(),
             default_mesh_ids: Vec::new(),
             static_meshes: Vec::new(),
         }
@@ -83,7 +81,7 @@ impl MeshManager {
         assert_eq!(index_byte_offset % 4, 0);
 
         let allocation = self
-            .allocator
+            .gpu_heap
             .allocate(buf.len() as u64, ResourceUsage::AS_SHADER_RESOURCE);
 
         let allocation_offset = u32::try_from(allocation.byte_offset()).unwrap();

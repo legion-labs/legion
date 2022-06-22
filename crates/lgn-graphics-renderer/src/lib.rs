@@ -172,8 +172,8 @@ impl Plugin for RendererPlugin {
         let graphics_queue = GraphicsQueue::new(device_context);
         let cgen_registry = Arc::new(cgen::initialize(device_context));
         let render_scope = RenderScope::new(NUM_RENDER_FRAMES, device_context);
-        let upload_manager = GpuUploadManager::new(device_context);
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
+        let gpu_upload_manager = GpuUploadManager::new(device_context);
+        let gpu_heap = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
         let render_command_queue_pool = RenderCommandQueuePool::new();
         let render_command_manager = RenderCommandManager::new(&render_command_queue_pool);
@@ -194,16 +194,14 @@ impl Plugin for RendererPlugin {
             NUM_RENDER_FRAMES,
         );
 
-        let mut mesh_manager = MeshManager::new(static_buffer.allocator());
+        let mut mesh_manager = MeshManager::new(&gpu_heap);
         mesh_manager.initialize_default_meshes(&mut render_commands);
 
         let texture_manager = TextureManager::new(
             device_context,
             &persistent_descriptor_set_manager,
-            &upload_manager,
+            &gpu_upload_manager,
         );
-
-        let material_manager = MaterialManager::new(static_buffer.allocator());
 
         let sampler_manager =
             SamplerManager::new(device_context, &persistent_descriptor_set_manager);
@@ -212,6 +210,14 @@ impl Plugin for RendererPlugin {
             &mut render_commands,
             device_context,
             &mut persistent_descriptor_set_manager,
+        );
+
+        let material_manager = MaterialManager::new(
+            &gpu_heap,
+            &gpu_upload_manager,
+            &mut render_commands,
+            &shared_resources_manager,
+            &sampler_manager,
         );
 
         let render_layers_builder = RenderLayerBuilder::default();
@@ -233,9 +239,8 @@ impl Plugin for RendererPlugin {
             RENDER_LAYER_PICKING
         );
 
-        let mesh_renderer =
-            MeshRenderer::new(device_context, static_buffer.allocator(), &render_layers);
-        let instance_manager = GpuInstanceManager::new(static_buffer.allocator());
+        let mesh_renderer = MeshRenderer::new(device_context, &gpu_heap, &render_layers);
+        let instance_manager = GpuInstanceManager::new(&gpu_heap, &gpu_upload_manager);
         let manipulation_manager = ManipulatorManager::new();
         let picking_manager = PickingManager::new(4096);
         let model_manager = ModelManager::new(&mesh_manager, &material_manager);
@@ -333,7 +338,6 @@ impl Plugin for RendererPlugin {
             .insert_resource(picking_manager.clone());
 
         // Init ecs
-        MaterialManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
         ModelManager::init_ecs(app);
         MissingVisualTracker::init_ecs(app);
@@ -408,8 +412,8 @@ impl Plugin for RendererPlugin {
             .insert(render_scope)
             .insert(gfx_api.clone())
             .insert(render_command_manager)
-            .insert(upload_manager)
-            .insert(static_buffer)
+            .insert(gpu_upload_manager)
+            .insert(gpu_heap)
             .insert(transient_buffer)
             .insert(descriptor_heap_manager)
             .insert(transient_commandbuffer_manager)
@@ -477,9 +481,10 @@ fn register_installers(
         Arc::new(resources::ModelInstaller::new()),
     );
 
+    let material_manager = renderer.render_resources().get::<MaterialManager>();
     asset_registry_options.add_resource_installer(
         lgn_graphics_data::runtime::Material::TYPE,
-        Arc::new(resources::MaterialInstaller::new()),
+        Arc::new(resources::MaterialInstaller::new(&material_manager)),
     );
 }
 

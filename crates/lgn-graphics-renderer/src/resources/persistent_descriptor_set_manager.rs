@@ -13,34 +13,6 @@ use super::{DescriptorHeapManager, IndexAllocator};
 const TEXTURE_ARRAY_LEN: u32 = 10 * 1024;
 const SAMPLER_ARRAY_LEN: u32 = 64; // When changing this number make sure to make a corresponding change to material_samplers in root.rn
 
-// new_key_type!(
-//     pub struct TextureSlot;
-// );
-
-// impl TextureSlot {
-//     pub fn index(self) -> u32 {
-//         // WARNING: using this ffi backdoor to get the index. If the SlotMap library changes, it won't
-//         // work anymore.
-//         // Implement something solid
-//         let ffi_value = self.0.as_ffi();
-//         ffi_value as u32
-//     }
-// }
-
-// new_key_type!(
-//     pub struct SamplerSlot;
-// );
-
-// impl SamplerSlot {
-//     pub fn index(self) -> u32 {
-//         // WARNING: using this ffi backdoor to get the index. If the SlotMap library changes, it won't
-//         // work anymore.
-//         // Implement something solid
-//         let ffi_value = self.0.as_ffi();
-//         ffi_value as u32
-//     }
-// }
-
 #[derive(Clone, Copy)]
 pub struct TextureSlot(u32);
 

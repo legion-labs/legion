@@ -4928,6 +4928,7 @@ dependencies = [
  "static_assertions",
  "strum",
  "thiserror",
+ "tokio",
  "uuid 1.1.0",
 ]
 

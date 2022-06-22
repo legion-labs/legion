@@ -12,7 +12,9 @@ lgn-core = { path = "../lgn-core", version = "0.1.0" }
 lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 lgn-data-model = { path = "../lgn-data-model", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
-lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0" }
+lgn-graphics-api = { path = "../lgn-graphics-api", version = "0.1.0", features = [
+    "track-device-contexts",
+] }
 lgn-graphics-cgen-runtime = { path = "../lgn-graphics-cgen-runtime", version = "0.1.0" }
 lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0" }
 lgn-hierarchy = { path = "../lgn-hierarchy", version = "0.1.0" }
@@ -44,6 +46,7 @@ smallvec = "1.7"
 static_assertions = "1.1.0"
 strum = { version = "0.23" }
 thiserror = "1.0.30"
+tokio = { version = "1", features = ["full", "tracing"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 
 [build-dependencies]

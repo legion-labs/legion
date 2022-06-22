@@ -84,15 +84,33 @@ impl From<BinTexture> for TextureData {
     }
 }
 
-struct Inner {
-    device_context: DeviceContext,
-    persistent_descriptor_set_manager: PersistentDescriptorSetManager,
-    upload_manager: GpuUploadManager,
+#[allow(dead_code)]
+#[derive(Clone)]
+pub struct RenderTexture {
+    data: TextureData,
+    gpu_texture: Texture,
+    default_gpu_view: TextureView,
+    bindless_slot: TextureSlot,
+}
+lgn_data_runtime::implement_runtime_resource!(RenderTexture);
+
+#[allow(dead_code)]
+impl RenderTexture {
+    pub fn data(&self) -> &TextureData {
+        &self.data
+    }
+
+    pub fn gpu_texture(&self) -> &Texture {
+        &self.gpu_texture
+    }
+
+    pub fn bindless_slot(&self) -> TextureSlot {
+        self.bindless_slot
+    }
 }
 
-#[derive(Clone)]
-pub struct TextureManager {
-    inner: Arc<Inner>,
+impl Drop for RenderTexture {
+    fn drop(&mut self) {}
 }
 
 pub struct TextureInstaller {
@@ -152,27 +170,8 @@ impl ComponentInstaller for TextureInstaller {
     }
 }
 
-#[derive(Clone)]
-pub struct RenderTexture {
-    data: TextureData,
-    gpu_texture: Texture,
-    default_gpu_view: TextureView,
-    bindless_slot: TextureSlot,
-}
-lgn_data_runtime::implement_runtime_resource!(RenderTexture);
-
-impl RenderTexture {
-    pub fn data(&self) -> &TextureData {
-        &self.data
-    }
-
-    pub fn gpu_texture(&self) -> &Texture {
-        &self.gpu_texture
-    }
-
-    pub fn bindless_slot(&self) -> TextureSlot {
-        self.bindless_slot
-    }
+impl Drop for TextureInstaller {
+    fn drop(&mut self) {}
 }
 
 #[async_trait]
@@ -183,23 +182,35 @@ impl ResourceInstaller for TextureInstaller {
         _request: &mut LoadRequest,
         reader: &mut AssetRegistryReader,
     ) -> Result<Box<dyn Resource>, AssetRegistryError> {
-        let data = from_binary_reader::<lgn_graphics_data::runtime::BinTexture>(reader).await?;
+        let texture_data =
+            from_binary_reader::<lgn_graphics_data::runtime::BinTexture>(reader).await?;
         lgn_tracing::info!(
             "Texture {} | width: {}, height: {}, format: {:?}",
             resource_id.id,
-            data.width,
-            data.height,
-            data.format
+            texture_data.width,
+            texture_data.height,
+            texture_data.format
         );
 
         let render_texture = self
             .texture_manager
-            .create_texture(data, &resource_id.to_string())
+            .install_texture(texture_data, &resource_id.to_string())
             .await
             .map_err(|x| AssetRegistryError::Generic(x.to_string()))?;
 
         Ok(Box::new(render_texture))
     }
+}
+
+struct Inner {
+    device_context: DeviceContext,
+    persistent_descriptor_set_manager: PersistentDescriptorSetManager,
+    upload_manager: GpuUploadManager,
+}
+
+#[derive(Clone)]
+pub struct TextureManager {
+    inner: Arc<Inner>,
 }
 
 impl TextureManager {
@@ -217,12 +228,12 @@ impl TextureManager {
         }
     }
 
-    pub async fn create_texture(
+    async fn install_texture(
         &self,
-        data: BinTexture,
+        bin_texture: BinTexture,
         name: &str,
     ) -> Result<RenderTexture, TextureManagerError> {
-        let texture_def = Self::texture_def_from_data(&data);
+        let texture_def = Self::texture_def_from_data(&bin_texture);
         let gpu_texture = self.inner.device_context.create_texture(texture_def, name);
         let default_gpu_view =
             gpu_texture.create_view(TextureViewDef::as_shader_resource_view(&texture_def));
@@ -230,17 +241,17 @@ impl TextureManager {
             .inner
             .persistent_descriptor_set_manager
             .allocate_texture_slot(&default_gpu_view);
-        let data = TextureData::from(data);
+        let texture_data = TextureData::from(bin_texture);
         self.inner
             .upload_manager
             .async_upload(UploadGPUResource::Texture(UploadGPUTexture {
-                src_data: data.clone(),
+                src_data: texture_data.clone(),
                 dst_texture: gpu_texture.clone(),
             }))?
             .await?;
 
         Ok(RenderTexture {
-            data,
+            data: texture_data,
             gpu_texture,
             default_gpu_view,
             bindless_slot,

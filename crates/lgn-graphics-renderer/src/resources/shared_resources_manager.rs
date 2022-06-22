@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use lgn_graphics_data::Color;
 use strum::IntoEnumIterator;
 
@@ -30,9 +32,14 @@ struct DefaultTexture {
     bindless_slot: TextureSlot,
 }
 
-pub struct SharedResourcesManager {
+struct Inner {
     default_sampler: DefaultSampler,
     default_textures: Vec<DefaultTexture>,
+}
+
+#[derive(Clone)]
+pub struct SharedResourcesManager {
+    inner: Arc<Inner>,
 }
 
 impl SharedResourcesManager {
@@ -51,17 +58,19 @@ impl SharedResourcesManager {
         );
 
         Self {
-            default_sampler,
-            default_textures,
+            inner: Arc::new(Inner {
+                default_sampler,
+                default_textures,
+            }),
         }
     }
 
     pub fn default_texture_slot(&self, shared_texture_id: SharedTextureId) -> TextureSlot {
-        self.default_textures[shared_texture_id as usize].bindless_slot
+        self.inner.default_textures[shared_texture_id as usize].bindless_slot
     }
 
     pub fn default_sampler_slot(&self) -> SamplerSlot {
-        self.default_sampler.bindless_slot
+        self.inner.default_sampler.bindless_slot
     }
 
     fn create_texture(

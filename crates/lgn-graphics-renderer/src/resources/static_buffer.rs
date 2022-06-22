@@ -20,10 +20,16 @@ const STATIC_BUFFER_RESOURCE_USAGE: ResourceUsage = ResourceUsage::from_bits_tru
         | ResourceUsage::AS_TRANSFERABLE.bits(),
 );
 
-pub struct UnifiedStaticBuffer {
+struct Inner {
     buffer: Buffer,
     read_only_view: BufferView,
-    allocator: UnifiedStaticBufferAllocator,
+    required_alignment: u32,
+    allocator: Mutex<RangeAllocator>,
+}
+
+#[derive(Clone)]
+pub struct UnifiedStaticBuffer {
+    inner: Arc<Inner>,
 }
 
 impl UnifiedStaticBuffer {
@@ -55,29 +61,71 @@ impl UnifiedStaticBuffer {
                 .min_storage_buffer_offset_alignment,
         );
 
-        let allocator = UnifiedStaticBufferAllocator::new(&buffer, u64::from(required_alignment));
+        let allocator = Mutex::new(RangeAllocator::new(buffer.definition().size));
 
         Self {
-            buffer,
-            read_only_view,
-            allocator,
+            inner: Arc::new(Inner {
+                buffer,
+                read_only_view,
+                required_alignment,
+                allocator,
+            }),
         }
     }
 
     pub fn buffer(&self) -> &Buffer {
-        &self.buffer
-    }
-
-    pub fn allocator(&self) -> &UnifiedStaticBufferAllocator {
-        &self.allocator
+        &self.inner.buffer
     }
 
     pub fn read_only_view(&self) -> &BufferView {
-        &self.read_only_view
+        &self.inner.read_only_view
     }
 
     pub fn index_buffer_binding(&self) -> IndexBufferBinding {
-        IndexBufferBinding::new(&self.buffer, 0, IndexType::Uint16)
+        IndexBufferBinding::new(&self.inner.buffer, 0, IndexType::Uint16)
+    }
+
+    pub fn allocate(
+        &self,
+        required_size: u64,
+        resource_usage: ResourceUsage,
+    ) -> StaticBufferAllocation {
+        assert_eq!(
+            ResourceUsage::empty(),
+            resource_usage & STATIC_BUFFER_RESOURCE_USAGE.complement()
+        );
+
+        let resource_usage = if resource_usage.is_empty() {
+            STATIC_BUFFER_RESOURCE_USAGE
+        } else {
+            resource_usage
+        };
+
+        let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(
+            required_size,
+            u64::from(self.inner.required_alignment),
+        );
+
+        if required_size != alloc_size {
+            warn!( "UnifiedStaticBuffer: the segment required size ({} bytes) is less than the allocated size ({} bytes). {} bytes of memory will be wasted", required_size, alloc_size, alloc_size-required_size  );
+        }
+
+        let allocator = &mut *self.inner.allocator.lock().unwrap();
+
+        let alloc_range = allocator.allocate(alloc_size).unwrap();
+
+        assert_eq!(
+            alloc_range.begin() % u64::from(self.inner.required_alignment),
+            0
+        );
+        assert!(alloc_range.size() >= required_size);
+
+        StaticBufferAllocation::new(self, alloc_range, resource_usage)
+    }
+
+    fn free(&self, range: Range) {
+        let allocator = &mut *self.inner.allocator.lock().unwrap();
+        allocator.free(range);
     }
 }
 
@@ -100,25 +148,25 @@ impl StaticBufferView {
 }
 
 struct StaticBufferAllocationInner {
-    allocator: UnifiedStaticBufferAllocator,
+    gpu_heap: UnifiedStaticBuffer,
     alloc_range: Range,
     resource_usage: ResourceUsage,
 }
 
 #[derive(Clone)]
-pub(crate) struct StaticBufferAllocation {
+pub struct StaticBufferAllocation {
     inner: Arc<StaticBufferAllocationInner>,
 }
 
 impl StaticBufferAllocation {
     fn new(
-        allocator: &UnifiedStaticBufferAllocator,
+        gpu_heap: &UnifiedStaticBuffer,
         alloc_range: Range,
         resource_usage: ResourceUsage,
     ) -> Self {
         Self {
             inner: Arc::new(StaticBufferAllocationInner {
-                allocator: allocator.clone(),
+                gpu_heap: gpu_heap.clone(),
                 alloc_range,
                 resource_usage,
             }),
@@ -126,7 +174,7 @@ impl StaticBufferAllocation {
     }
 
     pub fn buffer(&self) -> &Buffer {
-        &self.inner.allocator.buffer
+        self.inner.gpu_heap.buffer()
     }
 
     pub fn byte_offset(&self) -> u64 {
@@ -178,78 +226,21 @@ impl StaticBufferAllocation {
 
 impl Drop for StaticBufferAllocationInner {
     fn drop(&mut self) {
-        self.allocator.free(self.alloc_range);
-    }
-}
-
-#[derive(Clone)]
-pub struct UnifiedStaticBufferAllocator {
-    required_alignment: u64,
-    buffer: Buffer,
-    allocator: Arc<Mutex<RangeAllocator>>,
-}
-
-impl UnifiedStaticBufferAllocator {
-    pub fn new(buffer: &Buffer, required_alignment: u64) -> Self {
-        Self {
-            required_alignment,
-            buffer: buffer.clone(),
-            allocator: Arc::new(Mutex::new(RangeAllocator::new(buffer.definition().size))),
-        }
-    }
-
-    pub(crate) fn allocate(
-        &self,
-        required_size: u64,
-        resource_usage: ResourceUsage,
-    ) -> StaticBufferAllocation {
-        assert_eq!(
-            ResourceUsage::empty(),
-            resource_usage & STATIC_BUFFER_RESOURCE_USAGE.complement()
-        );
-
-        let resource_usage = if resource_usage.is_empty() {
-            STATIC_BUFFER_RESOURCE_USAGE
-        } else {
-            resource_usage
-        };
-
-        let alloc_size = lgn_utils::memory::round_size_up_to_alignment_u64(
-            required_size,
-            self.required_alignment,
-        );
-
-        if required_size != alloc_size {
-            warn!( "UnifiedStaticBufferAllocator: the segment required size ({} bytes) is less than the allocated size ({} bytes). {} bytes of memory will be wasted", required_size, alloc_size, alloc_size-required_size  );
-        }
-
-        let allocator = &mut *self.allocator.lock().unwrap();
-
-        let alloc_range = allocator.allocate(alloc_size).unwrap();
-
-        assert_eq!(alloc_range.begin() % self.required_alignment, 0);
-        assert!(alloc_range.size() >= required_size);
-
-        StaticBufferAllocation::new(self, alloc_range, resource_usage)
-    }
-
-    fn free(&self, range: Range) {
-        let allocator = &mut *self.allocator.lock().unwrap();
-        allocator.free(range);
+        self.gpu_heap.free(self.alloc_range);
     }
 }
 
 pub struct UniformGPUData<T> {
-    gpu_allocator: UnifiedStaticBufferAllocator,
+    gpu_allocator: UnifiedStaticBuffer,
     allocated_pages: RwLock<Vec<StaticBufferAllocation>>,
     elements_per_page: u64,
     marker: std::marker::PhantomData<T>,
 }
 
 impl<T> UniformGPUData<T> {
-    pub fn new(gpu_allocator: &UnifiedStaticBufferAllocator, elements_per_page: u64) -> Self {
+    pub fn new(gpu_heap: &UnifiedStaticBuffer, elements_per_page: u64) -> Self {
         Self {
-            gpu_allocator: gpu_allocator.clone(),
+            gpu_allocator: gpu_heap.clone(),
             allocated_pages: RwLock::new(Vec::new()),
             elements_per_page,
             marker: ::std::marker::PhantomData,
