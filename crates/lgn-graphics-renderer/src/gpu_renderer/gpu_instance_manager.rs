@@ -14,13 +14,13 @@ use lgn_transform::prelude::GlobalTransform;
 use crate::{
     cgen,
     components::VisualComponent,
-    core::{BinaryWriter, RenderCommandBuilder},
+    core::{BinaryWriter, GpuUploadManager, RenderCommandBuilder},
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
         DefaultMeshType, GpuDataAllocation, GpuDataManager, MaterialManager, MeshManager,
         MissingVisualTracker, ModelManager, StaticBufferAllocation, StaticBufferView,
-        UnifiedStaticBufferAllocator, UpdateUnifiedStaticBufferCommand,
+        UnifiedStaticBuffer, UpdateUnifiedStaticBufferCommand,
     },
     Renderer,
 };
@@ -77,10 +77,10 @@ struct GpuVaTableForGpuInstance {
 }
 
 impl GpuVaTableForGpuInstance {
-    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
+    pub fn new(gpu_heap: &UnifiedStaticBuffer) -> Self {
         let element_count = 1024 * 1024;
         let element_size = std::mem::size_of::<u32>() as u64;
-        let static_allocation = allocator.allocate(
+        let static_allocation = gpu_heap.allocate(
             element_count * element_size,
             ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_VERTEX_BUFFER,
         );
@@ -137,14 +137,14 @@ pub(crate) struct GpuInstanceManager {
 }
 
 impl GpuInstanceManager {
-    pub fn new(allocator: &UnifiedStaticBufferAllocator) -> Self {
+    pub fn new(gpu_heap: &UnifiedStaticBuffer, gpu_upload_manager: &GpuUploadManager) -> Self {
         Self {
             // TODO(vdbdd): as soon as we have a stable ID, we can move the transforms in their own manager.
-            transform_manager: GpuEntityTransformManager::new(allocator, 1024),
-            color_manager: GpuEntityColorManager::new(allocator, 256),
-            picking_data_manager: GpuPickingDataManager::new(allocator, 1024),
-            va_table_manager: GpuVaTableManager::new(allocator, 4096),
-            va_table_adresses: GpuVaTableForGpuInstance::new(allocator),
+            transform_manager: GpuEntityTransformManager::new(gpu_heap, 1024, gpu_upload_manager),
+            color_manager: GpuEntityColorManager::new(gpu_heap, 256, gpu_upload_manager),
+            picking_data_manager: GpuPickingDataManager::new(gpu_heap, 1024, gpu_upload_manager),
+            va_table_manager: GpuVaTableManager::new(gpu_heap, 4096, gpu_upload_manager),
+            va_table_adresses: GpuVaTableForGpuInstance::new(gpu_heap),
             entity_to_gpu_instance_block: BTreeMap::new(),
             added_render_elements: Vec::new(),
             removed_gpu_instance_ids: Vec::new(),

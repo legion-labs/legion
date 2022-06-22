@@ -1,6 +1,6 @@
 #[cfg(target_os = "windows")]
 use std::ffi::c_void;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering, AtomicU64};
 use std::sync::Arc;
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]

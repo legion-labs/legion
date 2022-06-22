@@ -1,7 +1,7 @@
 use lgn_graphics_api::{Buffer, CommandBuffer, ResourceUsage};
 
 use crate::{
-    resources::{StaticBufferAllocation, UnifiedStaticBufferAllocator},
+    resources::{StaticBufferAllocation, UnifiedStaticBuffer},
     RenderContext,
 };
 
@@ -16,10 +16,10 @@ pub struct RenderLayerBatches {
 }
 
 impl RenderLayerBatches {
-    pub fn new(allocator: &UnifiedStaticBufferAllocator, cpu_render_set: bool) -> Self {
+    pub fn new(gpu_heap: &UnifiedStaticBuffer, cpu_render_set: bool) -> Self {
         const TEMP_MAX_MATERIAL_COUNT: usize = 8192;
         let page_size = TEMP_MAX_MATERIAL_COUNT * std::mem::size_of::<u64>();
-        let state_page = allocator.allocate(page_size as u64, ResourceUsage::empty());
+        let state_page = gpu_heap.allocate(page_size as u64, ResourceUsage::empty());
 
         Self {
             state_page,

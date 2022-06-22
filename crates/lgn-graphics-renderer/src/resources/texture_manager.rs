@@ -175,6 +175,12 @@ impl RenderTexture {
     }
 }
 
+impl Drop for RenderTexture {
+    fn drop(&mut self) {
+        todo!()
+    }
+}
+
 #[async_trait]
 impl ResourceInstaller for TextureInstaller {
     async fn install_from_stream(

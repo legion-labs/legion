@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use egui::mutex::RwLock;
 use lgn_data_runtime::{from_binary_reader, prelude::*};
 
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, SamplerDef};
@@ -8,17 +7,20 @@ use lgn_graphics_data::{runtime::BinTextureReferenceType, runtime::SamplerData};
 use lgn_math::Vec4;
 
 use crate::{
-    core::{RenderCommandBuilder, TransferError},
+    core::{GpuUploadManager, RenderCommandBuilder, TransferError},
     resources::SharedTextureId,
 };
 
 use super::{
     GpuDataManager, IndexAllocator, RenderTexture, SamplerManager, SamplerSlot,
-    SharedResourcesManager, TextureSlot, UnifiedStaticBufferAllocator,
+    SharedResourcesManager, TextureSlot, UnifiedStaticBuffer,
 };
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum MaterialManagerError {
+    #[error(transparent)]
+    AssetRegistryError(#[from] AssetRegistryError),
+
     #[error(transparent)]
     TransferError(#[from] TransferError),
 }
@@ -42,23 +44,20 @@ impl From<u32> for MaterialId {
 
 #[derive(Clone)]
 pub struct RenderMaterial {
-    // resource_id: ResourceTypeAndId,
-    // material_data: MaterialData,
-    bindless_slot: MaterialId,
+    material_id: MaterialId,
     va: u64,
 }
 lgn_data_runtime::implement_runtime_resource!(RenderMaterial);
 
-// #[allow(clippy::large_enum_variant)]
-// #[derive(Clone)]
-// enum MaterialSlot {
-//     Empty,
-//     Occupied(Material),
-// }
+impl Drop for RenderMaterial {
+    fn drop(&mut self) {
+        todo!()
+    }
+}
 
 impl RenderMaterial {
     pub fn bindless_slot(&self) -> MaterialId {
-        self.bindless_slot
+        self.material_id
     }
 
     pub fn va(&self) -> u64 {
@@ -101,35 +100,6 @@ impl ResourceInstaller for MaterialInstaller {
             .map_err(|x| AssetRegistryError::Generic(x.to_string()))?;
 
         Ok(Box::new(render_material))
-
-        /*let mut entity = if let Some(entity) = asset_to_entity_map.get(asset_handle.id()) {
-            commands.entity(entity)
-        } else {
-            commands.spawn()
-        };
-
-        let asset_id = asset_handle.id();
-        let material = asset_handle.get()?;
-        let albedo = material.albedo.clone();
-        let normal = material.normal.clone();
-        let metalness = material.metalness.clone();
-        let roughness = material.roughness.clone();
-        std::mem::forget(material);
-        entity.insert(MaterialComponent::new(
-            asset_handle,
-            albedo,
-            normal,
-            metalness,
-            roughness,
-        ));
-
-        info!(
-            "Spawned {}: {} -> ECS id: {:?}",
-            asset_id.kind.as_pretty().trim_start_matches("runtime_"),
-            asset_id.id,
-            entity.id(),
-        );
-        Some(entity.id())*/
     }
 }
 
@@ -138,8 +108,8 @@ const MATERIAL_BLOCK_SIZE: u32 = 2048;
 struct Inner {
     shared_resources_manager: SharedResourcesManager,
     sampler_manager: SamplerManager,
-    index_allocator: RwLock<IndexAllocator>,
-    gpu_material_data_manager: RwLock<GpuMaterialDataManager>,
+    index_allocator: parking_lot::RwLock<IndexAllocator>,
+    gpu_material_data_manager: tokio::sync::RwLock<GpuMaterialDataManager>,
     default_material: RenderMaterial,
 }
 
@@ -150,7 +120,8 @@ pub struct MaterialManager {
 
 impl MaterialManager {
     pub fn new(
-        allocator: &UnifiedStaticBufferAllocator,
+        gpu_heap: &UnifiedStaticBuffer,
+        gpu_upload_manager: &GpuUploadManager,
         render_commands: &mut RenderCommandBuilder,
         shared_resources_manager: &SharedResourcesManager,
         sampler_manager: &SamplerManager,
@@ -158,7 +129,7 @@ impl MaterialManager {
         let mut index_allocator = IndexAllocator::new(MATERIAL_BLOCK_SIZE);
 
         let mut gpu_material_data_manager =
-            GpuMaterialDataManager::new(allocator, MATERIAL_BLOCK_SIZE);
+            GpuMaterialDataManager::new(gpu_heap, MATERIAL_BLOCK_SIZE, &gpu_upload_manager);
 
         let default_material = Self::install_default_material(
             &mut index_allocator,
@@ -167,17 +138,15 @@ impl MaterialManager {
             shared_resources_manager,
         );
 
-        let result = Self {
+        Self {
             inner: Arc::new(Inner {
                 shared_resources_manager: shared_resources_manager.clone(),
                 sampler_manager: sampler_manager.clone(),
-                index_allocator: RwLock::new(index_allocator),
-                gpu_material_data_manager: RwLock::new(gpu_material_data_manager),
+                index_allocator: parking_lot::RwLock::new(index_allocator),
+                gpu_material_data_manager: tokio::sync::RwLock::new(gpu_material_data_manager),
                 default_material,
             }),
-        };
-
-        result
+        }
     }
 
     pub fn get_default_material(&self) -> &RenderMaterial {
@@ -261,12 +230,12 @@ impl MaterialManager {
     //     result
     // }
 
-    fn build_gpu_material_data(
+    async fn build_gpu_material_data(
         asset_registry: &AssetRegistry,
         material_component: &lgn_graphics_data::runtime::Material,
         shared_resources_manager: &SharedResourcesManager,
         sampler_manager: &SamplerManager,
-    ) -> crate::cgen::cgen_type::MaterialData {
+    ) -> Result<crate::cgen::cgen_type::MaterialData, MaterialManagerError> {
         let mut material_data = crate::cgen::cgen_type::MaterialData::default();
 
         let color = Vec4::new(
@@ -286,6 +255,7 @@ impl MaterialManager {
                 SharedTextureId::Albedo,
                 shared_resources_manager,
             )
+            .await?
             .index()
             .into(),
         );
@@ -296,6 +266,7 @@ impl MaterialManager {
                 SharedTextureId::Normal,
                 shared_resources_manager,
             )
+            .await?
             .index()
             .into(),
         );
@@ -306,6 +277,7 @@ impl MaterialManager {
                 SharedTextureId::Metalness,
                 shared_resources_manager,
             )
+            .await?
             .index()
             .into(),
         );
@@ -316,6 +288,7 @@ impl MaterialManager {
                 SharedTextureId::Roughness,
                 shared_resources_manager,
             )
+            .await?
             .index()
             .into(),
         );
@@ -329,24 +302,25 @@ impl MaterialManager {
             .into(),
         );
 
-        material_data
+        Ok(material_data)
     }
 
-    fn get_texture_slot(
+    async fn get_texture_slot(
         asset_registry: &AssetRegistry,
         texture_id: Option<&BinTextureReferenceType>,
         default_shared_id: SharedTextureId,
         shared_resources_manager: &SharedResourcesManager,
-    ) -> TextureSlot {
-        if let Some(texture_id) = texture_id {
-            let render_texture_guard = asset_registry
-                .lookup::<RenderTexture>(&texture_id.id())
-                .expect("Must be installed");
-            let render_texture = render_texture_guard.get().unwrap();
+    ) -> Result<TextureSlot, AssetRegistryError> {
+        let texture_slot = if let Some(texture_id) = texture_id {
+            let render_texture = asset_registry
+                .load_async::<RenderTexture>(texture_id.id())
+                .await?;
+            let render_texture = render_texture.get().unwrap();
             render_texture.bindless_slot()
         } else {
             shared_resources_manager.default_texture_slot(default_shared_id)
-        }
+        };
+        Ok(texture_slot)
     }
 
     fn get_sampler_slot(
@@ -480,7 +454,7 @@ impl MaterialManager {
         );
 
         RenderMaterial {
-            bindless_slot: default_material_id,
+            material_id: default_material_id,
             va: gpu_data_allocation.va_address(),
         }
     }
@@ -496,7 +470,8 @@ impl MaterialManager {
             &material_data,
             &self.inner.shared_resources_manager,
             &self.inner.sampler_manager,
-        );
+        )
+        .await?;
 
         let material_id = {
             let mut index_allocator = self.inner.index_allocator.write();
@@ -504,15 +479,16 @@ impl MaterialManager {
         };
 
         let gpu_data_allocation = {
-            let mut gpu_material_data_manager = self.inner.gpu_material_data_manager.write();
-            gpu_material_data_manager.alloc_gpu_data(&material_id);
+            let mut gpu_material_data_manager = self.inner.gpu_material_data_manager.write().await;
+            let gpu_data_allocation = gpu_material_data_manager.alloc_gpu_data(&material_id);
             gpu_material_data_manager
                 .async_update_gpu_data(&material_id, &gpu_material_data)
                 .await?;
+            gpu_data_allocation
         };
 
         Ok(RenderMaterial {
-            bindless_slot: material_id,
+            material_id,
             va: gpu_data_allocation.va_address(),
         })
     }
