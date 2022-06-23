@@ -16,7 +16,6 @@ mod ci_testing;
 
 pub use app::*;
 pub use lgn_derive::DynamicPlugin;
-pub use lgn_ecs::event::*;
 pub use plugin::*;
 pub use plugin_group::*;
 pub use schedule_runner::*;

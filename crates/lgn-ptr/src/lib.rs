@@ -1,6 +1,11 @@
+//! Legion Ptr
+//!
+//! TODO: write documentation.
+
+// crate-specific lint exceptions:
+#![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 #![no_std]
-#![warn(missing_docs)]
 
 use core::{cell::UnsafeCell, marker::PhantomData, mem::MaybeUninit, ptr::NonNull};
 

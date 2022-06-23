@@ -4446,7 +4446,6 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "bytemuck",
- "instant",
  "lgn-app",
  "lgn-derive",
  "lgn-ecs",
@@ -5438,6 +5437,16 @@ dependencies = [
  "lgn-tracing",
  "parking_lot 0.12.0",
  "tempfile",
+]
+
+[[package]]
+name = "lgn-time"
+version = "0.1.0"
+dependencies = [
+ "instant",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-utils",
 ]
 
 [[package]]

@@ -2,9 +2,10 @@ use std::fmt::Debug;
 
 pub use lgn_derive::AppLabel;
 use lgn_ecs::{
+    event::{Event, Events},
     prelude::{FromWorld, IntoExclusiveSystem},
     schedule::{
-        IntoSystemDescriptor, RunOnce, Schedule, Stage, StageLabel, State, StateData, SystemSet,
+        IntoSystemDescriptor, Schedule, ShouldRun, Stage, StageLabel, State, StateData, SystemSet,
         SystemStage,
     },
     system::Resource,
@@ -14,9 +15,7 @@ use lgn_telemetry_sink::TelemetryGuard;
 use lgn_tracing::{debug, span_fn};
 use lgn_utils::HashMap;
 
-use crate::{
-    CoreStage, Events, Plugin, PluginGroup, PluginGroupBuilder, StartupSchedule, StartupStage,
-};
+use crate::{CoreStage, Plugin, PluginGroup, PluginGroupBuilder, StartupSchedule, StartupStage};
 
 lgn_utils::define_label!(AppLabel);
 
@@ -632,7 +631,7 @@ impl App {
             .add_stage(
                 StartupSchedule,
                 Schedule::default()
-                    .with_run_criteria(RunOnce::default())
+                    .with_run_criteria(ShouldRun::once)
                     .with_stage(StartupStage::PreStartup, SystemStage::parallel())
                     .with_stage(StartupStage::Startup, SystemStage::parallel())
                     .with_stage(StartupStage::PostStartup, SystemStage::parallel()),
@@ -664,7 +663,7 @@ impl App {
     /// ```
     pub fn add_event<T>(&mut self) -> &mut Self
     where
-        T: Resource,
+        T: Event,
     {
         if !self.world.contains_resource::<Events<T>>() {
             self.init_resource::<Events<T>>()
@@ -673,15 +672,12 @@ impl App {
         self
     }
 
-    /// Inserts a resource to the current [App] and overwrites any resource
-    /// previously added of the same type.
+    /// Inserts a [`Resource`] to the current [`App`] and overwrites any [`Resource`] previously added of the same type.
     ///
-    /// A resource in Legion represents globally unique data. Resources must be
-    /// added to Legion Apps before using them. This happens with
-    /// [`insert_resource`](Self::insert_resource).
+    /// A [`Resource`] in Legion represents globally unique data. [`Resource`]s must be added to Legion apps
+    /// before using them. This happens with [`insert_resource`](Self::insert_resource).
     ///
-    /// See also `init_resource` for resources that implement `Default` or
-    /// [`FromWorld`].
+    /// See [`init_resource`](Self::init_resource) for [`Resource`]s that implement [`Default`] or [`FromWorld`].
     ///
     /// # Examples
     ///
@@ -789,7 +785,7 @@ impl App {
     /// App::default()
     ///     .set_runner(my_runner);
     /// ```
-    pub fn set_runner(&mut self, run_fn: impl FnOnce(Self) + 'static) -> &mut Self {
+    pub fn set_runner(&mut self, run_fn: impl Fn(Self) + 'static) -> &mut Self {
         self.runner = Box::new(run_fn);
         self
     }
@@ -828,11 +824,14 @@ impl App {
     /// There are built-in [`PluginGroup`]s that provide core engine functionality.
     /// The [`PluginGroup`]s available by default are `DefaultPlugins` and `MinimalPlugins`.
     ///
-    /// # Examples
+    /// To customize the plugins in the group (reorder, disable a plugin, add a new plugin
+    /// before / after another plugin), see [`add_plugins_with`](Self::add_plugins_with).
     ///
+    /// ## Examples
     /// ```
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
+    /// # // Dummy created to avoid using bevy_internal, which pulls in to many dependencies.
     /// # struct MinimalPlugins;
     /// # impl PluginGroup for MinimalPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){;}
@@ -853,13 +852,14 @@ impl App {
     /// Can be used to add a group of [`Plugin`]s, where the group is modified
     /// before insertion into a Legion application. For example, you can add
     /// additional [`Plugin`]s at a specific place in the [`PluginGroup`], or deactivate
-    /// specific [`Plugin`]s while keeping the rest.
+    /// specific [`Plugin`]s while keeping the rest using a [`PluginGroupBuilder`].
     ///
     /// # Examples
     ///
     /// ```ignore
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
+    /// # // Dummies created to avoid using bevy_internal which pulls in too many dependencies.
     /// # struct DefaultPlugins;
     /// # impl PluginGroup for DefaultPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){

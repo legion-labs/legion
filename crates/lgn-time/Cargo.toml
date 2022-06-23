@@ -1,22 +1,18 @@
 [package]
-name = "lgn-core"
+name = "lgn-time"
 version = "0.1.0"
 edition = "2021"
-description = "Provides core functionality for Legion"
+description = "Utilities for working with untyped pointers in a more safe way"
 homepage = "https://legionengine.com"
 repository = "https://github.com/legion-labs/legion"
 license = "MIT OR Apache-2.0"
 keywords = ["legion"]
 
 [dependencies]
-# legion
+# Legion
 lgn-app = { path = "../lgn-app", version = "0.1.0" }
-lgn-derive = { path = "../lgn-derive", version = "0.1.0" }
 lgn-ecs = { path = "../lgn-ecs", version = "0.1.0" }
-lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
-lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 
 # other
-bytemuck = "1.7"
-bumpalo = "3.8"
+instant = { version = "0.1", features = ["wasm-bindgen"] }

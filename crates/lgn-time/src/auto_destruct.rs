@@ -1,6 +1,6 @@
 use lgn_ecs::prelude::{Commands, Component, Entity, Query, Res};
 
-use crate::time::{Time, Timer};
+use crate::{Time, Timer};
 use instant::Duration;
 
 /// You can attach an `AutoDestruct` component to an entity to have it despawn
