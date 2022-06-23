@@ -7,16 +7,17 @@ use crate::{
     atlas::AtlasCompiler,
     collision::CollisionCompiler,
     inputs::Inputs,
+    meta::MetaCompiler,
     rust_yard::{token, ShuntingYard},
 };
 
 #[salsa::query_group(ResourceStorage)]
-pub trait ResourceCompiler: Inputs + AtlasCompiler + CollisionCompiler {
-    fn compile_resource(
+pub trait ResourceCompiler: Inputs + AtlasCompiler + CollisionCompiler + MetaCompiler {
+    fn execute_expression(
         &self,
         resource_path_id: String,
         build_params: Arc<BuildParams>,
-    ) -> Result<String, CompilerError>;
+    ) -> Result<Vec<String>, CompilerError>;
 
     fn add_runtime_dependency(
         &self,
@@ -25,12 +26,76 @@ pub trait ResourceCompiler: Inputs + AtlasCompiler + CollisionCompiler {
     ) -> i8;
 }
 
-pub fn compile_resource(
+pub fn execute_expression(
     db: &dyn ResourceCompiler,
     expression: String,
     build_params: Arc<BuildParams>,
-) -> Result<String, CompilerError> {
-    execute_expression(expression.as_str(), build_params, db)
+) -> Result<Vec<String>, CompilerError> {
+    let expressions: Vec<&str> = expression.split(';').collect();
+    let mut result: Vec<String> = Vec::new();
+
+    for expression in expressions {
+        let mut shunting_yard = ShuntingYard::new();
+
+        let mut stack = shunting_yard.parse(expression).unwrap();
+        println!("{}", shunting_yard.to_string());
+
+        // Iterate over the tokens and calculate a result
+        while stack.len() > 1 {
+            let tok = stack.pop().unwrap();
+            if let token::Token::Identifier(identifier) = tok {
+                match &identifier as &str {
+                    "read" => {
+                        let arg = stack.pop();
+
+                        if let Some(token::Token::Identifier(file_name)) = arg {
+                            stack.push(token::Token::Identifier(db.read(file_name)));
+                        }
+                    }
+                    "compile_atlas" => {
+                        let arg = stack.pop();
+
+                        if let Some(token::Token::Identifier(content)) = arg {
+                            stack.push(token::Token::Identifier(
+                                db.compile_atlas(content, build_params.clone()),
+                            ));
+                        }
+                    }
+                    "compile_collision" => {
+                        let arg = stack.pop();
+
+                        if let Some(token::Token::Identifier(content)) = arg {
+                            stack.push(token::Token::Identifier(
+                                db.compile_collision(Arc::new(content)).to_string(),
+                            ));
+                        }
+                    }
+                    "meta" => {
+                        let arg = stack.pop();
+
+                        if let Some(token::Token::Identifier(content)) = arg {
+                            stack.push(token::Token::Identifier(
+                                db.meta_get_resource_path(content, build_params.clone())
+                                    .unwrap(),
+                            ));
+                        }
+                    }
+                    _ => {
+                        println!("{}", shunting_yard.to_string());
+                        return Err(CompilerError::ParsingError);
+                    }
+                }
+            }
+        }
+        let computed = stack.pop();
+        if let Some(token::Token::Identifier(result_identifier)) = computed {
+            result.push(result_identifier);
+        } else {
+            return Err(CompilerError::ParsingError);
+        }
+    }
+
+    return Ok(result);
 }
 
 pub fn add_runtime_dependency(
@@ -39,67 +104,10 @@ pub fn add_runtime_dependency(
     build_params: Arc<BuildParams>,
 ) -> i8 {
     // Todo: Spawn a task to parallelize this build.
-    db.compile_resource(resource_path_id, build_params).unwrap();
+    db.execute_expression(resource_path_id, build_params)
+        .unwrap();
     // This return value is a firewall so the caller never gets invalidated on a runtime dependency.
     0
-}
-
-pub fn execute_expression(
-    expression: &str,
-    build_params: Arc<BuildParams>,
-    db: &dyn ResourceCompiler,
-) -> Result<String, CompilerError> {
-    let mut shunting_yard = ShuntingYard::new();
-
-    let mut stack = shunting_yard.parse(expression).unwrap();
-    println!("{}", shunting_yard.to_string());
-
-    // Iterate over the tokens and calculate a result
-    while stack.len() > 1 {
-        let tok = stack.pop().unwrap();
-        if let token::Token::Identifier(identifier) = tok {
-            match &identifier as &str {
-                "compile_atlas" => {
-                    let arg = stack.pop();
-
-                    if let Some(token::Token::Identifier(arg_name)) = arg {
-                        let textures_in_atlas = db.read(arg_name);
-                        stack.push(token::Token::Identifier(
-                            db.compile_atlas(textures_in_atlas, build_params.clone()),
-                        ));
-                    }
-                }
-                "compile_collision" => {
-                    let arg = stack.pop();
-
-                    if let Some(token::Token::Identifier(arg_name)) = arg {
-                        let collision_content = db.read(arg_name);
-                        stack.push(token::Token::Identifier(
-                            db.compile_collision(Arc::new(collision_content))
-                                .to_string(),
-                        ));
-                    }
-                }
-                "read" => {
-                    let arg = stack.pop();
-
-                    if let Some(token::Token::Identifier(arg_name)) = arg {
-                        stack.push(token::Token::Identifier(db.read(arg_name)));
-                    }
-                }
-                _ => {
-                    println!("{}", shunting_yard.to_string());
-                    return Err(CompilerError::ParsingError);
-                }
-            }
-        }
-    }
-    let result = stack.pop();
-    if let Some(token::Token::Identifier(result_identifier)) = result {
-        Ok(result_identifier)
-    } else {
-        Err(CompilerError::ParsingError)
-    }
 }
 
 #[cfg(test)]
@@ -116,10 +124,11 @@ mod tests {
     fn simple_expression() {
         let db = setup();
         let build_params = Arc::new(BuildParams::default());
-        let result = execute_expression("read(Atlas.entity)", build_params, &db).unwrap();
+        let result =
+            execute_expression(&db, "read(Atlas.entity)".to_string(), build_params).unwrap();
         assert_eq!(
-            result,
-            "meta(TextureA.meta);meta(TextureB.meta);meta(TextureC.meta)"
+            result[0],
+            "meta(read(TextureA.meta));meta(read(TextureB.meta));meta(read(TextureC.meta))"
         );
     }
 }

@@ -16,10 +16,9 @@ pub trait MetaCompiler: Inputs {
 // Only supporting locale for now, but it would be the same for platform & target specifiers
 pub fn meta_get_resource_path(
     db: &dyn MetaCompiler,
-    meta_file: String,
+    meta_content: String,
     build_params: Arc<BuildParams>,
 ) -> Result<String, CompilerError> {
-    let meta_content = db.read(meta_file.to_string());
     let split_meta: Vec<&str> = meta_content.split('\n').collect();
 
     for meta in split_meta {

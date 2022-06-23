@@ -72,7 +72,7 @@ mod tests {
 
         db.set_read(
             "TextureC.meta".to_string(),
-            "English:TextureCEn.jpg\nFrench:TextureCFr.png".to_string(),
+            "English:TextureCEn.jpg;French:TextureCFr.png".to_string(),
         );
         db.set_read(
             "TextureCEn.jpg".to_string(),
@@ -85,12 +85,14 @@ mod tests {
 
         db.set_read(
             "Atlas.entity".to_string(),
-            "meta(TextureA.meta);meta(TextureB.meta);meta(TextureC.meta)".to_string(),
+            "meta(read(TextureA.meta));meta(read(TextureB.meta));meta(read(TextureC.meta))"
+                .to_string(),
         );
 
         db.set_read(
             "MyWorld.entity".to_string(),
-            r#"atlas(Atlas.entity);collision(Car.entity);collision(Tree.entity)"#.to_string(),
+            r#"atlas(read(Atlas.entity));collision(read(Car.entity));collision(read(Tree.entity))"#
+                .to_string(),
         );
 
         db.set_read("Car.entity".to_string(), "5,5,5,10,10,10".to_string());
