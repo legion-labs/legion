@@ -1,33 +1,35 @@
 use std::sync::Arc;
 
-use proto_salsa_compiler::{BuildParams, CompilerError};
-//use rust_yard::shunting_yard::ShuntingYard;
-
+use crate::entity::EntityCompiler;
+use crate::rust_yard::token;
+use crate::rust_yard::ShuntingYard;
+use crate::BuildParams;
+use crate::CompilerError;
 use crate::{
-    atlas::AtlasCompiler,
-    collision::CollisionCompiler,
-    inputs::Inputs,
-    meta::MetaCompiler,
-    rust_yard::{token, ShuntingYard},
+    atlas::AtlasCompiler, collision::CollisionCompiler, inputs::Inputs, meta::MetaCompiler,
 };
 
-#[salsa::query_group(ResourceStorage)]
-pub trait ResourceCompiler: Inputs + AtlasCompiler + CollisionCompiler + MetaCompiler {
+#[salsa::query_group(ExpressionStorage)]
+pub trait ExpressionCompiler:
+    Inputs + AtlasCompiler + CollisionCompiler + MetaCompiler + EntityCompiler
+{
     fn execute_expression(
         &self,
-        resource_path_id: String,
+        expression: String,
         build_params: Arc<BuildParams>,
     ) -> Result<Vec<String>, CompilerError>;
+}
 
-    fn add_runtime_dependency(
-        &self,
-        resource_path_id: String,
-        build_params: Arc<BuildParams>,
-    ) -> i8;
+fn foo(db: &dyn ExpressionCompiler) -> String {
+    bar(db)
+}
+
+fn bar(db: &dyn ExpressionCompiler) -> String {
+    "potato".to_string()
 }
 
 pub fn execute_expression(
-    db: &dyn ResourceCompiler,
+    db: &dyn ExpressionCompiler,
     expression: String,
     build_params: Arc<BuildParams>,
 ) -> Result<Vec<String>, CompilerError> {
@@ -57,7 +59,7 @@ pub fn execute_expression(
 
                         if let Some(token::Token::Identifier(content)) = arg {
                             stack.push(token::Token::Identifier(
-                                db.compile_atlas(content, build_params.clone()),
+                                db.compile_atlas(vec![content], build_params.clone()),
                             ));
                         }
                     }
@@ -80,6 +82,16 @@ pub fn execute_expression(
                             ));
                         }
                     }
+                    "entity" => {
+                        let arg = stack.pop();
+
+                        if let Some(token::Token::Identifier(content)) = arg {
+                            stack.push(token::Token::Identifier(
+                                db.compile_entity(content, build_params.clone()),
+                            ));
+                        }
+                    }
+
                     _ => {
                         println!("{}", shunting_yard.to_string());
                         return Err(CompilerError::ParsingError);
@@ -95,37 +107,25 @@ pub fn execute_expression(
         }
     }
 
-    return Ok(result);
-}
-
-pub fn add_runtime_dependency(
-    db: &dyn ResourceCompiler,
-    resource_path_id: String,
-    build_params: Arc<BuildParams>,
-) -> i8 {
-    // Todo: Spawn a task to parallelize this build.
-    db.execute_expression(resource_path_id, build_params)
-        .unwrap();
-    // This return value is a firewall so the caller never gets invalidated on a runtime dependency.
-    0
+    Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
-    use proto_salsa_compiler::BuildParams;
-
+    use super::ExpressionCompiler;
     use crate::tests::setup;
-
-    use super::execute_expression;
+    use crate::BuildParams;
 
     #[test]
     fn simple_expression() {
         let db = setup();
         let build_params = Arc::new(BuildParams::default());
-        let result =
-            execute_expression(&db, "read(Atlas.entity)".to_string(), build_params).unwrap();
+
+        let result = db
+            .execute_expression("read(Atlas.entity)".to_string(), build_params)
+            .unwrap();
         assert_eq!(
             result[0],
             "meta(read(TextureA.meta));meta(read(TextureB.meta));meta(read(TextureC.meta))"

@@ -1,4 +1,4 @@
-use proto_salsa_compiler::{BuildParams, ContentAddr, Locale, Platform, Target};
+use crate::{BuildParams, ContentAddr, Locale, Platform, Target};
 
 use crate::{entity::EntityCompiler, inputs::Inputs};
 

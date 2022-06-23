@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use proto_salsa_compiler::{BuildParams, CompilerError};
+use crate::{BuildParams, CompilerError};
 
 use crate::inputs::Inputs;
 
