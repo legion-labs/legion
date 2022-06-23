@@ -67,6 +67,11 @@ impl GraphDefinition {
     }
 
     pub(crate) fn update(&mut self, delta_time: f32) {
-        self.nodes[self.current_node_index].update(delta_time);
+        self.get_current_node().update(delta_time);
+    }
+
+    #[allow(clippy::borrowed_box)]
+    pub(crate) fn get_current_node(&mut self) -> &mut Box<dyn Node> {
+        &mut self.nodes[self.current_node_index]
     }
 }

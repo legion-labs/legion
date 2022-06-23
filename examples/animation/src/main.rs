@@ -4,8 +4,6 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
-
 use clap::{ArgEnum, Parser};
 use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_source_control::{BranchName, RepositoryName};
@@ -14,6 +12,7 @@ use lgn_animation::offline::{
     AnimationClipNode, AnimationTrack, AnimationTransformBundle, AnimationTransformBundleVec,
     Connection, EditorGraphDefinition,
 };
+use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
@@ -28,13 +27,13 @@ use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::{Quat, Vec3};
-use lgn_physics::offline::PhysicsSceneSettings;
-
+use lgn_source_control::RepositoryName;
 use lgn_tracing::{info, LevelFilter};
 use sample_data::{
     offline::{Light, Transform, Visual},
     LightType,
 };
+use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
 enum CompilersSource {

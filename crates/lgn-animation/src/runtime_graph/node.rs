@@ -1,6 +1,5 @@
 use crate::components::AnimationClip;
-
-use super::node_state_machine::StateInfo;
+use crate::runtime_graph::node_state_machine::StateInfo;
 
 pub trait Node: Sync + Send {
     fn update(&mut self, _time: f32);

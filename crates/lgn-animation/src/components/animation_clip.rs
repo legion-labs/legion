@@ -1,7 +1,6 @@
 use crate::animation_pose::Pose;
 use crate::animation_skeleton::Skeleton;
 use crate::runtime::{AnimationTrack, AnimationTransformBundleVec};
-
 use lgn_ecs::component::Component;
 use lgn_transform::{
     components::{GlobalTransform, Transform},
