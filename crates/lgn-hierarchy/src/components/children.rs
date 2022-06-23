@@ -39,3 +39,13 @@ impl Deref for Children {
         &self.0[..]
     }
 }
+
+impl<'a> IntoIterator for &'a Children {
+    type Item = <Self::IntoIter as Iterator>::Item;
+
+    type IntoIter = slice::Iter<'a, Entity>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
