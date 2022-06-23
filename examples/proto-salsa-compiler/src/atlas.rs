@@ -1,22 +1,9 @@
 use std::sync::Arc;
 
-use crate::BuildParams;
-
-use crate::inputs::Inputs;
-use crate::meta::MetaCompiler;
-use crate::texture::{CompressionType, TextureCompiler};
-
-#[salsa::query_group(AtlasStorage)]
-pub trait AtlasCompiler: Inputs + TextureCompiler + MetaCompiler {
-    fn compile_atlas(
-        &self,
-        textures_in_atlas: Vec<String>,
-        build_params: Arc<BuildParams>,
-    ) -> String;
-}
+use crate::{compiler::Compiler, texture::CompressionType, BuildParams};
 
 pub fn compile_atlas(
-    db: &dyn AtlasCompiler,
+    db: &dyn Compiler,
     atlas_textures_path: Vec<String>,
     build_params: Arc<BuildParams>,
 ) -> String {
@@ -36,7 +23,8 @@ mod tests {
 
     use crate::BuildParams;
 
-    use crate::{atlas::AtlasCompiler, tests::setup};
+    use crate::compiler::Compiler;
+    use crate::tests::setup;
 
     #[test]
     fn compile_atlas() {

@@ -1,6 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
-use crate::inputs::Inputs;
+use crate::compiler::Compiler;
 
 // Using i64 because float equality doesn't exist in Rust.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -73,12 +73,7 @@ impl Display for AABBCollision {
     }
 }
 
-#[salsa::query_group(CollisionStorage)]
-pub trait CollisionCompiler: Inputs {
-    fn compile_collision(&self, name: Arc<String>) -> AABBCollision;
-}
-
-pub fn compile_collision(_db: &dyn CollisionCompiler, raw_data: Arc<String>) -> AABBCollision {
+pub fn compile_collision(_db: &dyn Compiler, raw_data: Arc<String>) -> AABBCollision {
     let split_resources: Vec<&str> = raw_data.split(',').collect();
 
     AABBCollision {

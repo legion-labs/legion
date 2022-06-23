@@ -1,35 +1,13 @@
 use std::sync::Arc;
 
-use crate::entity::EntityCompiler;
+use crate::compiler::Compiler;
 use crate::rust_yard::token;
 use crate::rust_yard::ShuntingYard;
 use crate::BuildParams;
 use crate::CompilerError;
-use crate::{
-    atlas::AtlasCompiler, collision::CollisionCompiler, inputs::Inputs, meta::MetaCompiler,
-};
-
-#[salsa::query_group(ExpressionStorage)]
-pub trait ExpressionCompiler:
-    Inputs + AtlasCompiler + CollisionCompiler + MetaCompiler + EntityCompiler
-{
-    fn execute_expression(
-        &self,
-        expression: String,
-        build_params: Arc<BuildParams>,
-    ) -> Result<Vec<String>, CompilerError>;
-}
-
-fn foo(db: &dyn ExpressionCompiler) -> String {
-    bar(db)
-}
-
-fn bar(db: &dyn ExpressionCompiler) -> String {
-    "potato".to_string()
-}
 
 pub fn execute_expression(
-    db: &dyn ExpressionCompiler,
+    db: &dyn Compiler,
     expression: String,
     build_params: Arc<BuildParams>,
 ) -> Result<Vec<String>, CompilerError> {
@@ -114,7 +92,7 @@ pub fn execute_expression(
 mod tests {
     use std::sync::Arc;
 
-    use super::ExpressionCompiler;
+    use crate::compiler::Compiler;
     use crate::tests::setup;
     use crate::BuildParams;
 

@@ -1,19 +1,7 @@
-use crate::{BuildParams, ContentAddr, Locale, Platform, Target};
+use crate::{compiler::Compiler, BuildParams, ContentAddr, Locale, Platform, Target};
 
-use crate::{entity::EntityCompiler, inputs::Inputs};
-
-#[salsa::query_group(PackageStorage)]
-pub trait PackageCompiler: Inputs + EntityCompiler {
-    // European countries
-    fn package_see_ps5(&self) -> ContentAddr;
-    // Asian countries
-    fn package_sea_ps5(&self) -> ContentAddr;
-
-    fn package(&self, languages: Vec<Locale>, content_to_package: Vec<String>) -> ContentAddr;
-}
-
-fn package(
-    db: &dyn PackageCompiler,
+pub fn package(
+    db: &dyn Compiler,
     languages: Vec<Locale>,
     content_to_package: Vec<String>,
 ) -> ContentAddr {
@@ -33,7 +21,7 @@ fn package(
     ContentAddr(0)
 }
 
-pub fn package_see_ps5(db: &dyn PackageCompiler) -> ContentAddr {
+pub fn package_see_ps5(db: &dyn Compiler) -> ContentAddr {
     println!("Package SEE PS5");
     let languages = vec![Locale::English, Locale::French];
     // Include only content to be packaged in this build
@@ -44,7 +32,7 @@ pub fn package_see_ps5(db: &dyn PackageCompiler) -> ContentAddr {
     ContentAddr(0)
 }
 
-pub fn package_sea_ps5(db: &dyn PackageCompiler) -> ContentAddr {
+pub fn package_sea_ps5(db: &dyn Compiler) -> ContentAddr {
     println!("Package SEA PS5");
     let languages = vec![Locale::English, Locale::Japenese];
     // Include only content to be packaged in this build

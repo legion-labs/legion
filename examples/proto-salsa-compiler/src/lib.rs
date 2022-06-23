@@ -4,10 +4,10 @@ use strum_macros::{Display, EnumString};
 
 mod atlas;
 mod collision;
+pub mod compiler;
 mod database;
 mod entity;
 mod expression;
-mod inputs;
 mod material;
 mod meta;
 mod navmesh;
@@ -76,10 +76,7 @@ pub enum CompilerError {
 pub mod tests {
     use std::sync::Arc;
 
-    use crate::{
-        database::DatabaseImpl, expression::ExpressionCompiler, inputs::Inputs,
-        package::PackageCompiler, BuildParams,
-    };
+    use crate::{compiler::Compiler, database::DatabaseImpl, BuildParams};
 
     pub fn setup() -> DatabaseImpl {
         let mut db = DatabaseImpl::default();

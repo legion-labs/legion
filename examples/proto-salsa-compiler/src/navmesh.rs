@@ -1,24 +1,15 @@
 use std::sync::Arc;
 
-use crate::{collision::AABBCollision, inputs::Inputs};
+use crate::{collision::AABBCollision, compiler::Compiler};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Navmesh(String);
 
-#[salsa::query_group(NavmeshStorage)]
-pub trait NavmeshCompiler: Inputs {
-    fn query_collisions(&self, quadrant: Arc<AABBCollision>) -> Vec<AABBCollision>;
-    fn compile_navmesh(&self, quadrant: Arc<AABBCollision>) -> Navmesh;
-}
-
-fn query_collisions(
-    _db: &dyn NavmeshCompiler,
-    _quadrant: Arc<AABBCollision>,
-) -> Vec<AABBCollision> {
+pub fn query_collisions(_db: &dyn Compiler, _quadrant: Arc<AABBCollision>) -> Vec<AABBCollision> {
     vec![]
 }
 
-fn compile_navmesh(db: &dyn NavmeshCompiler, quadrant: Arc<AABBCollision>) -> Navmesh {
+pub fn compile_navmesh(db: &dyn Compiler, quadrant: Arc<AABBCollision>) -> Navmesh {
     let collisions = db.query_collisions(quadrant);
 
     let all_collisions = collisions
@@ -32,9 +23,7 @@ fn compile_navmesh(db: &dyn NavmeshCompiler, quadrant: Arc<AABBCollision>) -> Na
 mod tests {
     use std::sync::Arc;
 
-    use crate::{collision::AABBCollision, tests::setup};
-
-    use super::NavmeshCompiler;
+    use crate::{collision::AABBCollision, compiler::Compiler, tests::setup};
 
     #[test]
     fn navmesh_add_object() {

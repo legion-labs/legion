@@ -1,21 +1,10 @@
 use std::sync::Arc;
 
-use crate::{BuildParams, CompilerError};
-
-use crate::inputs::Inputs;
-
-#[salsa::query_group(MetaStorage)]
-pub trait MetaCompiler: Inputs {
-    fn meta_get_resource_path(
-        &self,
-        meta_content: String,
-        build_params: Arc<BuildParams>,
-    ) -> Result<String, CompilerError>;
-}
+use crate::{compiler::Compiler, BuildParams, CompilerError};
 
 // Only supporting locale for now, but it would be the same for platform & target specifiers
 pub fn meta_get_resource_path(
-    db: &dyn MetaCompiler,
+    db: &dyn Compiler,
     meta_content: String,
     build_params: Arc<BuildParams>,
 ) -> Result<String, CompilerError> {

@@ -1,10 +1,5 @@
-use crate::inputs::Inputs;
+use crate::compiler::Compiler;
 
-#[salsa::query_group(MaterialStorage)]
-pub trait MaterialCompiler: Inputs {
-    fn compile_material(&self) -> String;
-}
-
-pub fn compile_material(_db: &dyn MaterialCompiler) -> String {
+pub fn compile_material(_db: &dyn Compiler) -> String {
     "Compiler".to_owned()
 }
