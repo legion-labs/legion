@@ -1,4 +1,4 @@
-use std::{string::ParseError, sync::Arc};
+use std::sync::Arc;
 
 use proto_salsa_compiler::{BuildParams, CompilerError};
 //use rust_yard::shunting_yard::ShuntingYard;
@@ -11,28 +11,32 @@ use crate::{
 };
 
 #[salsa::query_group(ResourceStorage)]
-pub trait ResourceCompiler<'a>: Inputs + AtlasCompiler + CollisionCompiler {
-    fn compile_resource<'a>(
+pub trait ResourceCompiler: Inputs + AtlasCompiler + CollisionCompiler {
+    fn compile_resource(
         &self,
         resource_path_id: String,
-        build_params: BuildParams,
+        build_params: Arc<BuildParams>,
     ) -> Result<String, CompilerError>;
 
-    fn add_runtime_dependency(&self, resource_path_id: String, build_params: BuildParams) -> i8;
+    fn add_runtime_dependency(
+        &self,
+        resource_path_id: String,
+        build_params: Arc<BuildParams>,
+    ) -> i8;
 }
 
-pub fn compile_resource<'a>(
+pub fn compile_resource(
     db: &dyn ResourceCompiler,
     expression: String,
-    build_params: BuildParams,
+    build_params: Arc<BuildParams>,
 ) -> Result<String, CompilerError> {
-    execute_expression(expression.as_str(), &build_params, db)
+    execute_expression(expression.as_str(), build_params, db)
 }
 
 pub fn add_runtime_dependency(
     db: &dyn ResourceCompiler,
     resource_path_id: String,
-    build_params: BuildParams,
+    build_params: Arc<BuildParams>,
 ) -> i8 {
     // Todo: Spawn a task to parallelize this build.
     db.compile_resource(resource_path_id, build_params).unwrap();
@@ -42,7 +46,7 @@ pub fn add_runtime_dependency(
 
 pub fn execute_expression(
     expression: &str,
-    build_params: &BuildParams,
+    build_params: Arc<BuildParams>,
     db: &dyn ResourceCompiler,
 ) -> Result<String, CompilerError> {
     let mut shunting_yard = ShuntingYard::new();
@@ -100,7 +104,9 @@ pub fn execute_expression(
 
 #[cfg(test)]
 mod tests {
-    use proto_salsa_compiler::{BuildParams, Locale, Platform, Target};
+    use std::sync::Arc;
+
+    use proto_salsa_compiler::BuildParams;
 
     use crate::tests::setup;
 
@@ -109,14 +115,11 @@ mod tests {
     #[test]
     fn simple_expression() {
         let db = setup();
-        let build_params = BuildParams {
-            locale: Locale::English,
-            platform: Platform::PS5,
-            target: Target::Client,
-        };
-
-        let result = execute_expression("read(Atlas.entity)", &build_params, &db).unwrap();
-
-        assert_eq!(result, "TextureA.meta,TextureB.meta,TextureC.meta");
+        let build_params = Arc::new(BuildParams::default());
+        let result = execute_expression("read(Atlas.entity)", build_params, &db).unwrap();
+        assert_eq!(
+            result,
+            "meta(TextureA.meta);meta(TextureB.meta);meta(TextureC.meta)"
+        );
     }
 }

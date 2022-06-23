@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use strum_macros::{Display, EnumString};
 
 mod inputs;
@@ -34,11 +36,21 @@ pub struct BuildParams {
 }
 
 impl BuildParams {
-    pub fn new(platform: Platform, target: Target, locale: Locale) -> Self {
-        Self {
+    pub fn new(platform: Platform, target: Target, locale: Locale) -> Arc<Self> {
+        Arc::new(Self {
             platform,
             target,
             locale,
+        })
+    }
+}
+
+impl Default for BuildParams {
+    fn default() -> Self {
+        Self {
+            platform: Platform::PS5,
+            target: Target::Client,
+            locale: Locale::English,
         }
     }
 }

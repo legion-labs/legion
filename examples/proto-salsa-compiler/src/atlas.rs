@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use proto_salsa_compiler::BuildParams;
 
 use crate::inputs::Inputs;
@@ -6,15 +8,15 @@ use crate::texture::{CompressionType, TextureCompiler};
 
 #[salsa::query_group(AtlasStorage)]
 pub trait AtlasCompiler: Inputs + TextureCompiler + MetaCompiler {
-    fn compile_atlas(&self, textures_in_atlas: String, build_params: BuildParams) -> String;
+    fn compile_atlas(&self, textures_in_atlas: String, build_params: Arc<BuildParams>) -> String;
 }
 
 pub fn compile_atlas(
     db: &dyn AtlasCompiler,
     textures_in_atlas: String,
-    build_params: BuildParams,
+    build_params: Arc<BuildParams>,
 ) -> String {
-    let texture_metas: Vec<&str> = textures_in_atlas.split(',').collect();
+    let texture_metas: Vec<&str> = textures_in_atlas.split(';').collect();
 
     let mut atlas = String::new();
     for texture_meta in texture_metas {

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use proto_salsa_compiler::{BuildParams, CompilerError};
 
 use crate::inputs::Inputs;
@@ -7,7 +9,7 @@ pub trait MetaCompiler: Inputs {
     fn meta_get_resource_path(
         &self,
         meta_content: String,
-        build_params: BuildParams,
+        build_params: Arc<BuildParams>,
     ) -> Result<String, CompilerError>;
 }
 
@@ -15,7 +17,7 @@ pub trait MetaCompiler: Inputs {
 pub fn meta_get_resource_path(
     db: &dyn MetaCompiler,
     meta_file: String,
-    build_params: BuildParams,
+    build_params: Arc<BuildParams>,
 ) -> Result<String, CompilerError> {
     let meta_content = db.read(meta_file.to_string());
     let split_meta: Vec<&str> = meta_content.split('\n').collect();

@@ -1,13 +1,19 @@
+use std::sync::Arc;
+
 use proto_salsa_compiler::BuildParams;
 
 use crate::{expression::ResourceCompiler, inputs::Inputs};
 
 #[salsa::query_group(EntityStorage)]
 pub trait EntityCompiler: Inputs + ResourceCompiler {
-    fn compile_entity(&self, name: String, build_params: BuildParams) -> String;
+    fn compile_entity(&self, name: String, build_params: Arc<BuildParams>) -> String;
 }
 
-pub fn compile_entity(db: &dyn EntityCompiler, name: String, build_params: BuildParams) -> String {
+pub fn compile_entity(
+    db: &dyn EntityCompiler,
+    name: String,
+    build_params: Arc<BuildParams>,
+) -> String {
     let resources_to_compile = db.read(name);
 
     let split_resources: Vec<&str> = resources_to_compile.split(',').collect();

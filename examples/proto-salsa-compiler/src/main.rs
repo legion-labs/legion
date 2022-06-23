@@ -45,7 +45,9 @@ fn main() {}
 
 #[cfg(test)]
 mod tests {
-    use proto_salsa_compiler::{BuildParams, Locale, Platform, Target};
+    use std::sync::Arc;
+
+    use proto_salsa_compiler::BuildParams;
 
     use crate::collision::AABBCollision;
     use crate::inputs::Inputs;
@@ -83,19 +85,27 @@ mod tests {
 
         db.set_read(
             "Atlas.entity".to_string(),
-            "TextureA.meta,TextureB.meta,TextureC.meta".to_string(),
+            "meta(TextureA.meta);meta(TextureB.meta);meta(TextureC.meta)".to_string(),
         );
 
         db.set_read(
             "MyWorld.entity".to_string(),
-            r#"compile_atlas(Atlas.entity);compile_collision(Car.entity);compile_collision(Tree.entity)"#
-                .to_string(),
+            r#"atlas(Atlas.entity);collision(Car.entity);collision(Tree.entity)"#.to_string(),
         );
 
         db.set_read("Car.entity".to_string(), "5,5,5,10,10,10".to_string());
         db.set_read("Tree.entity".to_string(), "30,30,30,50,60,70".to_string());
 
         db
+    }
+
+    #[test]
+    fn compile_atlas() {
+        let db = setup();
+
+        let build_params = Arc::new(BuildParams::default());
+        let atlas_content = db.read("Atlas.entity".to_string());
+        println!("Atlas: {}", db.compile_atlas(atlas_content, build_params));
     }
 
     #[test]
@@ -109,10 +119,9 @@ mod tests {
     fn incremental_compilation() {
         let db = setup();
 
-        let build_params = BuildParams::new(Platform::PS5, Target::Client, Locale::English);
+        let build_params = Arc::new(BuildParams::default());
         let atlas_content = db.read("Atlas.entity".to_string());
         println!("Atlas: {}", db.compile_atlas(atlas_content, build_params));
-
         db.package_see_ps5();
     }
 
@@ -120,28 +129,28 @@ mod tests {
     fn navmesh_add_object() {
         let db = setup();
 
-        db.compile_navmesh(AABBCollision {
+        db.compile_navmesh(Arc::new(AABBCollision {
             min_x: 0,
             min_y: 0,
             min_z: 0,
             max_x: 10,
             max_y: 10,
             max_z: 10,
-        });
+        }));
     }
 
     #[test]
     fn navmesh_remove_object() {
         let db = setup();
 
-        db.compile_navmesh(AABBCollision {
+        db.compile_navmesh(Arc::new(AABBCollision {
             min_x: 0,
             min_y: 0,
             min_z: 0,
             max_x: 10,
             max_y: 10,
             max_z: 10,
-        });
+        }));
     }
 
     #[test]

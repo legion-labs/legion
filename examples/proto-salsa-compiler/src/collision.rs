@@ -1,7 +1,5 @@
 use std::{fmt::Display, sync::Arc};
 
-use proto_salsa_compiler::CompilerError;
-
 use crate::inputs::Inputs;
 
 // Using i64 because float equality doesn't exist in Rust.
@@ -13,6 +11,19 @@ pub struct AABBCollision {
     pub max_x: i64,
     pub max_y: i64,
     pub max_z: i64,
+}
+
+impl Default for AABBCollision {
+    fn default() -> Self {
+        Self {
+            min_x: i64::MAX,
+            min_y: i64::MAX,
+            min_z: i64::MAX,
+            max_x: i64::MIN,
+            max_y: i64::MIN,
+            max_z: i64::MIN,
+        }
+    }
 }
 
 impl AABBCollision {

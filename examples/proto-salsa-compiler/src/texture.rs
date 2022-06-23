@@ -50,3 +50,31 @@ pub fn compile_png(db: &dyn TextureCompiler, name: String, compression: Compress
     result.push_str(format!(" compressed {})", compression).as_str());
     result
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        tests::setup,
+        texture::{CompressionType, TextureCompiler},
+    };
+
+    #[test]
+    fn compile_jpg() {
+        let db = setup();
+
+        assert_eq!(
+            db.compile_texture("TextureA.jpg".to_string(), CompressionType::BC7),
+            "(Jpg Texture A compressed BC7)"
+        );
+    }
+
+    #[test]
+    fn compile_png() {
+        let db = setup();
+
+        assert_eq!(
+            db.compile_texture("TextureB.png".to_string(), CompressionType::BC3),
+            "(Png Texture B compressed BC3)"
+        );
+    }
+}
