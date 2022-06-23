@@ -5,9 +5,6 @@
 //#![allow()]
 
 use clap::{ArgEnum, Parser};
-use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
-use lgn_source_control::{BranchName, RepositoryName};
-
 use lgn_animation::offline::{
     AnimationClipNode, AnimationTrack, AnimationTransformBundle, AnimationTransformBundleVec,
     Connection, EditorGraphDefinition,
@@ -27,7 +24,7 @@ use lgn_data_transaction::BuildManager;
 use lgn_graphics_data::offline::CameraSetup;
 use lgn_graphics_renderer::components::Mesh;
 use lgn_math::prelude::{Quat, Vec3};
-use lgn_source_control::RepositoryName;
+use lgn_source_control::{BranchName, RepositoryName};
 use lgn_tracing::{info, LevelFilter};
 use sample_data::{
     offline::{Light, Transform, Visual},
@@ -91,14 +88,12 @@ async fn main() -> anyhow::Result<()> {
         &repository_name,
         &branch_name,
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
     )
     .await
     .expect("failed to create a project");
 
     let mut asset_registry = AssetRegistryOptions::new().add_device_source_cas(
         Arc::clone(&source_control_content_provider),
-        Arc::clone(&data_content_provider),
         project.source_manifest_id(),
     );
     lgn_graphics_data::offline::add_loaders(&mut asset_registry);
