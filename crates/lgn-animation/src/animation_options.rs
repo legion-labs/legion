@@ -10,14 +10,14 @@ pub(crate) struct AnimationOptions {
 pub(crate) fn ui_animation_options(
     egui: Res<'_, Egui>,
     mut animation_options: ResMut<'_, AnimationOptions>,
-    mut graphs: Query<'_, '_, &mut GraphDefinition>,
+    graphs: Query<'_, '_, &GraphDefinition>,
 ) {
     egui.window("Animation options", |ui| {
         ui.checkbox(
             &mut animation_options.show_animation_skeleton_bones,
             "Show animation skeleton bones",
         );
-        for mut graph in graphs.iter_mut() {
+        for graph in graphs.iter() {
             ui.label(format!(
                 "Current state: {}",
                 graph
