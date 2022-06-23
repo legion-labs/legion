@@ -343,7 +343,6 @@ impl RenderSurface {
                 &mut self.final_target,
                 device_context.create_texture(final_target_desc, "FinalTarget"),
             );
-            //deferred_drop.deferred_drop_texture(prev_final_target);
             deferred_drop.drop(prev_final_target);
 
             self.final_target_srv =
