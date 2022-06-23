@@ -107,9 +107,9 @@ impl<T: SparseSetIndex> Access<T> {
             return self.writes.count_ones(..) == 0;
         }
 
-            self.writes.is_disjoint(&other.reads_and_writes)
-                && self.reads_and_writes.is_disjoint(&other.writes)
-        }
+        self.writes.is_disjoint(&other.reads_and_writes)
+            && self.reads_and_writes.is_disjoint(&other.writes)
+    }
 
     /// Returns a vector of elements that the access and `other` cannot access at the same time.
     pub fn get_conflicts(&self, other: &Access<T>) -> Vec<T> {
@@ -303,7 +303,7 @@ impl<T: SparseSetIndex> FilteredAccessSet<T> {
                     return false;
                 }
             }
-                }
+        }
 
         true
     }

@@ -42,11 +42,10 @@ use std::{
     sync::atomic::{AtomicI64, Ordering},
 };
 
-pub use map_entities::*;
 pub use self::serde::*;
+pub use map_entities::*;
 
 use crate::{archetype::ArchetypeId, storage::SparseSetIndex};
-
 
 /// Lightweight identifier of an [entity](crate::entity).
 ///
