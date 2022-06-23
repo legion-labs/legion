@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{ops::Deref, slice};
 
 use lgn_ecs::{
     component::Component,

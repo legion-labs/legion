@@ -171,7 +171,7 @@ pub trait BuildChildren {
     ///
     /// Compared to [`add_children`][BuildChildren::add_children], this method returns self
     /// to allow chaining.
-    fn with_children(&mut self, f: impl FnOnce(&mut ChildBuilder)) -> &mut Self;
+    fn with_children(&mut self, f: impl FnOnce(&mut ChildBuilder<'_, '_, '_>)) -> &mut Self;
     /// Creates a [`ChildBuilder`] with the given children built in the given closure
     ///
     /// Compared to [`with_children`][BuildChildren::with_children], this method returns the
@@ -201,7 +201,7 @@ pub trait BuildChildren {
     ///     });
     /// # }
     /// ```
-    fn add_children<T>(&mut self, f: impl FnOnce(&mut ChildBuilder) -> T) -> T;
+    fn add_children<T>(&mut self, f: impl FnOnce(&mut ChildBuilder<'_, '_, '_>) -> T) -> T;
     /// Pushes children to the back of the builder's children
     fn push_children(&mut self, children: &[Entity]) -> &mut Self;
     /// Inserts children at the given index
@@ -213,20 +213,26 @@ pub trait BuildChildren {
 }
 
 impl<'w, 's, 'a> BuildChildren for EntityCommands<'w, 's, 'a> {
-    fn with_children(&mut self, spawn_children: impl FnOnce(&mut ChildBuilder)) -> &mut Self {
+    fn with_children(
+        &mut self,
+        spawn_children: impl FnOnce(&mut ChildBuilder<'_, '_, '_>),
+    ) -> &mut Self {
         self.add_children(spawn_children);
         self
     }
 
-    fn add_children<T>(&mut self, spawn_children: impl FnOnce(&mut ChildBuilder) -> T) -> T {
+    fn add_children<T>(
+        &mut self,
+        spawn_children: impl FnOnce(&mut ChildBuilder<'_, '_, '_>) -> T,
+    ) -> T {
         let parent = self.id();
-            let mut builder = ChildBuilder {
-                commands: self.commands(),
-                push_children: PushChildren {
-                    children: SmallVec::default(),
-                    parent,
-                },
-            };
+        let mut builder = ChildBuilder {
+            commands: self.commands(),
+            push_children: PushChildren {
+                children: SmallVec::default(),
+                parent,
+            },
+        };
 
         let result = spawn_children(&mut builder);
         let children = builder.push_children;

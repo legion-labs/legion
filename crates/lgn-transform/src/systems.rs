@@ -1,8 +1,4 @@
-use lgn_ecs::{
-    entity::Entity,
-    query::{Changed, With, Without},
-    system::Query,
-};
+use lgn_ecs::prelude::{Changed, Entity, Query, With, Without};
 use lgn_hierarchy::{Children, Parent};
 
 use crate::components::{GlobalTransform, Transform};
@@ -12,6 +8,8 @@ use crate::components::{GlobalTransform, Transform};
 #[allow(clippy::type_complexity)]
 pub fn transform_propagate_system(
     mut root_query: Query<
+        '_,
+        '_,
         (
             Option<(&Children, Changed<Children>)>,
             &Transform,
@@ -21,13 +19,22 @@ pub fn transform_propagate_system(
         ),
         Without<Parent>,
     >,
-    mut transform_query: Query<(
-        &Transform,
-        Changed<Transform>,
-        &mut GlobalTransform,
-        &Parent,
-    )>,
-    children_query: Query<(&Children, Changed<Children>), (With<Parent>, With<GlobalTransform>)>,
+    mut transform_query: Query<
+        '_,
+        '_,
+        (
+            &Transform,
+            Changed<Transform>,
+            &mut GlobalTransform,
+            &Parent,
+        ),
+    >,
+    children_query: Query<
+        '_,
+        '_,
+        (&Children, Changed<Children>),
+        (With<Parent>, With<GlobalTransform>),
+    >,
 ) {
     for (children, transform, transform_changed, mut global_transform, entity) in
         root_query.iter_mut()
@@ -56,15 +63,25 @@ pub fn transform_propagate_system(
     drop(children_query);
 }
 
+#[allow(clippy::type_complexity)]
 fn propagate_recursive(
     parent: &GlobalTransform,
-    transform_query: &mut Query<(
-        &Transform,
-        Changed<Transform>,
-        &mut GlobalTransform,
-        &Parent,
-    )>,
-    children_query: &Query<(&Children, Changed<Children>), (With<Parent>, With<GlobalTransform>)>,
+    transform_query: &mut Query<
+        '_,
+        '_,
+        (
+            &Transform,
+            Changed<Transform>,
+            &mut GlobalTransform,
+            &Parent,
+        ),
+    >,
+    children_query: &Query<
+        '_,
+        '_,
+        (&Children, Changed<Children>),
+        (With<Parent>, With<GlobalTransform>),
+    >,
     entity: Entity,
     expected_parent: Entity,
     mut changed: bool,
@@ -78,41 +95,41 @@ fn propagate_recursive(
             child_parent.0, expected_parent,
             "Malformed hierarchy. This probably means that your hierarchy has been improperly maintained, or contains a cycle"
         );
-            changed |= transform_changed;
-            if changed {
-                *global_transform = parent.mul_transform(*transform);
-            }
-            *global_transform
+        changed |= transform_changed;
+        if changed {
+            *global_transform = parent.mul_transform(*transform);
+        }
+        *global_transform
     };
 
     let (children, changed_children) = children_query.get(entity).map_err(drop)?;
     // If our `Children` has changed, we need to recalculate everything below us
     changed |= changed_children;
-        for child in children.iter() {
+    for child in children.iter() {
         let _ = propagate_recursive(
-                &global_matrix,
-                transform_query,
-                children_query,
-                *child,
+            &global_matrix,
+            transform_query,
+            children_query,
+            *child,
             entity,
-                changed,
-            );
-        }
+            changed,
+        );
+    }
     Ok(())
 }
 
 #[cfg(test)]
 mod test {
-    use lgn_ecs::{
-        schedule::{Schedule, Stage, SystemStage},
-        system::{CommandQueue, Commands},
-        world::World,
-    };
+    use lgn_app::prelude::*;
+    use lgn_ecs::prelude::*;
+    use lgn_ecs::system::CommandQueue;
     use lgn_hierarchy::{
         parent_update_system, BuildChildren, BuildWorldChildren, Children, Parent,
     };
+    use lgn_math::vec3;
 
-    use super::*;
+    use crate::components::{GlobalTransform, Transform};
+    use crate::systems::transform_propagate_system;
     use crate::TransformBundle;
 
     #[test]
@@ -291,7 +308,7 @@ mod test {
 
     #[test]
     fn correct_transforms_when_no_children() {
-        let mut app = App::new();
+        let mut app = App::default();
 
         app.add_system(parent_update_system);
         app.add_system(transform_propagate_system.after(parent_update_system));

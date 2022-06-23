@@ -45,6 +45,7 @@ use lgn_scripting_data::ScriptingDataPlugin;
 #[cfg(not(feature = "standalone"))]
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
+use lgn_time::TimePlugin;
 #[cfg(not(feature = "standalone"))]
 use lgn_tracing::LevelFilter;
 use lgn_tracing::{info, span_fn};
@@ -270,6 +271,7 @@ pub fn build_runtime() -> App {
     app.insert_resource(tokio_rt)
         .insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
+        .add_plugin(TimePlugin::default())
         .add_plugin(AsyncPlugin::default())
         .add_plugin(TransformPlugin::default())
         .add_plugin(HierarchyPlugin::default())

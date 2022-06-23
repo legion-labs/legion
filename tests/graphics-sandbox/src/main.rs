@@ -29,6 +29,7 @@ use lgn_input::{
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
+use lgn_time::TimePlugin;
 use lgn_tracing::{flush_monitor::FlushMonitor, LevelFilter};
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowCloseRequested, WindowDescriptor, WindowPlugin, Windows};
@@ -122,6 +123,7 @@ fn main() {
     }
 
     app.add_plugin(CorePlugin::default())
+        .add_plugin(TimePlugin::default())
         .add_plugin(RendererPlugin::default())
         .insert_resource(WindowDescriptor {
             width: args.width,

@@ -1,7 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use lgn_app::EventWriter;
-use lgn_ecs::prelude::{Commands, Entity, Query};
+use lgn_ecs::prelude::{Commands, Entity, EventWriter, Query};
 use lgn_input::{
     mouse::{MouseButton, MouseButtonInput, MouseMotion},
     ButtonState,

@@ -25,6 +25,7 @@ use lgn_scripting_data::ScriptingDataPlugin;
 use lgn_source_control::{BranchName, RepositoryName};
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
+use lgn_time::TimePlugin;
 use lgn_tracing::{debug, info, warn, LevelFilter};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
@@ -271,6 +272,7 @@ fn main() {
         .add_plugin(ScheduleRunnerPlugin::default())
         .insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
+        .add_plugin(TimePlugin::default())
         .add_plugin(AsyncPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             Some(&game_manifest_path),
