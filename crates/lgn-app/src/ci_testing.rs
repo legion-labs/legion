@@ -1,3 +1,4 @@
+use lgn_tracing::info;
 use serde::Deserialize;
 
 use crate::{app::AppExit, App};
