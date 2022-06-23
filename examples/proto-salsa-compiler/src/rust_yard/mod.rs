@@ -10,7 +10,5 @@ pub mod token;
 
 mod lexer;
 mod peekable_string_iterator;
-mod rpn_calculator;
-
 // Exported types
 pub use self::shunting_yard::ShuntingYard;
