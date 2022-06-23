@@ -526,7 +526,6 @@ fn on_app_exit(mut app_exit: EventReader<'_, '_, AppExit>, renderer: Res<'_, Ren
     clippy::type_complexity
 )]
 fn render_update(
-    task_pool: Res<'_, ComputeTaskPool>,
     resources: (
         Res<'_, Renderer>,
         ResMut<'_, PipelineManager>,
@@ -618,7 +617,7 @@ fn render_update(
     // Run render thread
     //
 
-    task_pool.scope(|scope| {
+    ComputeTaskPool::get().scope(|scope| {
         scope.spawn(async move {
             span_scope!("render_thread");
 
