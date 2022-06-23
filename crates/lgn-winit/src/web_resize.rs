@@ -1,8 +1,8 @@
 use crate::WinitWindows;
-use bevy_app::{App, Plugin};
-use bevy_ecs::prelude::*;
-use bevy_window::WindowId;
 use crossbeam_channel::{Receiver, Sender};
+use lgn_app::{App, Plugin};
+use lgn_ecs::prelude::*;
+use lgn_window::WindowId;
 use wasm_bindgen::JsCast;
 use winit::dpi::LogicalSize;
 

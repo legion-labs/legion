@@ -27,7 +27,7 @@ pub mod prelude {
 use lgn_app::prelude::*;
 use lgn_ecs::{event::Events, schedule::SystemLabel};
 
-/// A [`Plugin`] that defines an interface for windowing support in Bevy.
+/// A [`Plugin`] that defines an interface for windowing support in Legion.
 pub struct WindowPlugin {
     /// Whether to create a window when added.
     ///
@@ -36,7 +36,7 @@ pub struct WindowPlugin {
     pub add_primary_window: bool,
     /// Whether to exit the app when there are no open windows.
     ///
-    /// If disabling this, ensure that you send the [`bevy_app::AppExit`]
+    /// If disabling this, ensure that you send the [`lgn_app::AppExit`]
     /// event when the app should exit. If this does not occur, you will
     /// create 'headless' processes (processes without windows), which may
     /// surprise your users. It is recommended to leave this setting as `true`.

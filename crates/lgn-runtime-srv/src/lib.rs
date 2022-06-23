@@ -301,7 +301,8 @@ pub fn build_runtime() -> App {
 
         app.add_plugin(WindowPlugin {
             add_primary_window: false,
-            exit_on_close: false,
+            exit_on_all_closed: false,
+            close_when_requested: false,
         })
         .insert_resource(ApiPluginSettings::new(rest_listen_endpoint))
         .insert_resource(trace_events_receiver)

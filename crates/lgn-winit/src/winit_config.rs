@@ -72,7 +72,7 @@ pub enum UpdateMode {
     Reactive {
         /// The maximum time to wait before the event loop runs again.
         ///
-        /// Note that Bevy will wait indefinitely if the duration is too high (such as [`Duration::MAX`]).
+        /// Note that Legion Engine will wait indefinitely if the duration is too high (such as [`Duration::MAX`]).
         max_wait: Duration,
     },
     /// The event loop will only update if there is a winit event from direct interaction with the
@@ -94,7 +94,7 @@ pub enum UpdateMode {
     ReactiveLowPower {
         /// The maximum time to wait before the event loop runs again.
         ///
-        /// Note that Bevy will wait indefinitely if the duration is too high (such as [`Duration::MAX`]).
+        /// Note that Legion Engine will wait indefinitely if the duration is too high (such as [`Duration::MAX`]).
         max_wait: Duration,
     },
 }

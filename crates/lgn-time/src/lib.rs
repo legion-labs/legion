@@ -19,7 +19,7 @@ pub use time::*;
 pub use timer::*;
 
 pub mod prelude {
-    //! The Bevy Time Prelude.
+    //! The Legion Time Prelude.
     #[doc(hidden)]
     pub use crate::{AutoDestruct, Time, Timer};
 }

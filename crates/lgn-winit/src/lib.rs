@@ -181,7 +181,7 @@ fn change_window(
                     // Since we have borrowed `windows` to iterate through them, we can't remove the window from it.
                     // Add the removal requests to a queue to solve this
                     removed_windows.push(id);
-                    // No need to run any further commands - this drops the rest of the commands, although the `bevy_window::Window` will be dropped later anyway
+                    // No need to run any further commands - this drops the rest of the commands, although the `lgn_window::Window` will be dropped later anyway
                     break;
                 }
             }

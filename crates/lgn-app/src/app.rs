@@ -831,7 +831,6 @@ impl App {
     /// ```
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
-    /// # // Dummy created to avoid using bevy_internal, which pulls in to many dependencies.
     /// # struct MinimalPlugins;
     /// # impl PluginGroup for MinimalPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){;}
@@ -859,7 +858,6 @@ impl App {
     /// ```ignore
     /// # use lgn_app::{prelude::*, PluginGroupBuilder};
     /// #
-    /// # // Dummies created to avoid using bevy_internal which pulls in too many dependencies.
     /// # struct DefaultPlugins;
     /// # impl PluginGroup for DefaultPlugins {
     /// #     fn build(&mut self, group: &mut PluginGroupBuilder){

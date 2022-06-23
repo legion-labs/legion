@@ -149,7 +149,7 @@ impl WindowResizeConstraints {
 ///
 /// ## Accessing a `Window` from a system
 ///
-/// To access a `Window` from a system, use [`bevy_ecs::change_detection::ResMut`]`<`[`crate::Windows`]`>`.
+/// To access a `Window` from a system, use [`lgn_ecs::change_detection::ResMut`]`<`[`crate::Windows`]`>`.
 ///
 /// ### Example
 /// ```no_run
@@ -194,7 +194,7 @@ pub struct Window {
 
 /// A command to be sent to a window.
 ///
-/// Bevy apps don't interact with this `enum` directly. Instead, they should use the methods on [`Window`].
+/// Legion apps don't interact with this `enum` directly. Instead, they should use the methods on [`Window`].
 /// This `enum` is meant for authors of windowing plugins. See the documentation on [`crate::WindowPlugin`] for more information.
 #[derive(Debug)]
 #[allow(clippy::enum_variant_names)]
@@ -684,7 +684,7 @@ impl Window {
     /// [`Windows`] resource.
     ///
     /// If the default [`WindowPlugin`] is used, when no windows are
-    /// open, the [app will exit](bevy_app::AppExit).  
+    /// open, the [app will exit](lgn_app::AppExit).  
     /// To disable this behaviour, set `exit_on_all_closed` on the [`WindowPlugin`]
     /// to `false`
     ///

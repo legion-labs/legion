@@ -6,13 +6,13 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
 use lgn_api::{ApiPlugin, ApiPluginSettings};
-use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
 use lgn_config::RichPathBuf;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_ecs::prelude::Local;
+use lgn_ecs::prelude::{EventWriter, Local};
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
@@ -309,7 +309,8 @@ fn main() {
         .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
         .add_plugin(WindowPlugin {
             add_primary_window: false,
-            exit_on_close: false,
+            exit_on_all_closed: false,
+            close_when_requested: false,
         });
 
     if let Some(test_name) = args.test {

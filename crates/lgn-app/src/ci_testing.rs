@@ -4,9 +4,9 @@ use crate::{app::AppExit, App};
 
 /// A configuration struct for automated CI testing.
 ///
-/// It gets used when the `bevy_ci_testing` feature is enabled to automatically
-/// exit a Bevy app when run through the CI. This is needed because otherwise
-/// Bevy apps would be stuck in the game loop and wouldn't allow the CI to progress.
+/// It gets used when the `lgn_ci_testing` feature is enabled to automatically
+/// exit a Legion app when run through the CI. This is needed because otherwise
+/// Legion apps would be stuck in the game loop and wouldn't allow the CI to progress.
 #[derive(Deserialize)]
 pub struct CiTestingConfig {
     /// The number of frames after which Legion should exit
@@ -36,7 +36,7 @@ pub(crate) fn setup_app(app: &mut App) -> &mut App {
         ron::from_str(
             &std::fs::read_to_string(filename)
                 .expect("error reading CI testing configuration file"),
-    )
+        )
         .expect("error deserializing CI testing configuration file")
     };
     #[cfg(target_arch = "wasm32")]

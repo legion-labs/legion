@@ -6,11 +6,11 @@ use std::path::PathBuf;
 
 use clap::Parser;
 
-use lgn_app::{prelude::*, AppExit, Events, ScheduleRunnerPlugin};
+use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_ecs::prelude::*;
+use lgn_ecs::{event::Events, prelude::*};
 use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_data::{Color, GraphicsPlugin};
 use lgn_graphics_renderer::{
