@@ -1225,17 +1225,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-manifest"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af6d65c7592744998c67947ec771c62687c76f00179a83ffd563c0482046bb98"
-dependencies = [
- "serde",
- "serde_derive",
- "toml",
-]
-
-[[package]]
 name = "cargo-platform"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2481,6 +2470,7 @@ dependencies = [
  "lgn-streamer",
  "lgn-tasks",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-window",
@@ -3914,6 +3904,7 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-math",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "memoffset",
@@ -4457,7 +4448,6 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "bytemuck",
- "instant",
  "lgn-app",
  "lgn-derive",
  "lgn-ecs",
@@ -4728,12 +4718,13 @@ dependencies = [
  "fixedbitset",
  "fxhash",
  "lgn-ecs-macros",
+ "lgn-ptr",
  "lgn-tasks",
  "lgn-tracing",
  "lgn-utils",
  "rand 0.8.5",
  "serde",
- "thiserror",
+ "thread_local",
 ]
 
 [[package]]
@@ -4928,6 +4919,7 @@ dependencies = [
  "lgn-math",
  "lgn-pso-compiler",
  "lgn-tasks",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-utils",
@@ -4966,6 +4958,7 @@ dependencies = [
  "lgn-presenter-window",
  "lgn-scene-plugin",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-window",
@@ -5024,9 +5017,9 @@ dependencies = [
 name = "lgn-macro-utils"
 version = "0.1.0"
 dependencies = [
- "cargo-manifest",
  "quote",
  "syn",
+ "toml",
 ]
 
 [[package]]
@@ -5113,6 +5106,7 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-math",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "memoffset",
@@ -5170,6 +5164,10 @@ dependencies = [
  "spirv-reflect",
  "spirv-tools",
 ]
+
+[[package]]
+name = "lgn-ptr"
+version = "0.1.0"
 
 [[package]]
 name = "lgn-resource-registry"
@@ -5368,6 +5366,7 @@ dependencies = [
  "lgn-mp4",
  "lgn-online",
  "lgn-tasks",
+ "lgn-time",
  "lgn-tracing",
  "lgn-utils",
  "lgn-window",
@@ -5460,6 +5459,16 @@ dependencies = [
  "lgn-tracing",
  "parking_lot 0.12.0",
  "tempfile",
+]
+
+[[package]]
+name = "lgn-time"
+version = "0.1.0"
+dependencies = [
+ "instant",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-utils",
 ]
 
 [[package]]
@@ -5558,6 +5567,7 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-ecs",
+ "lgn-input",
  "lgn-math",
  "lgn-tracing",
  "lgn-utils",
@@ -5571,6 +5581,7 @@ name = "lgn-winit"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "crossbeam-channel",
  "instant",
  "lgn-app",
  "lgn-ecs",
@@ -7648,6 +7659,7 @@ dependencies = [
  "lgn-scripting-data",
  "lgn-streamer",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-utils",

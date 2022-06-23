@@ -1,5 +1,4 @@
 use instant::{Duration, Instant};
-use lgn_ecs::system::ResMut;
 
 /// Tracks elapsed time since the last update and since the App has started
 #[derive(Debug, Clone)]
@@ -34,7 +33,7 @@ impl Time {
     ///
     /// Calling this method on the [`Time`] resource as part of your app will most likely result in
     /// inaccurate timekeeping, as the resource is ordinarily managed by the
-    /// [`CorePlugin`](crate::CorePlugin).
+    /// [`TimePlugin`](crate::TimePlugin).
     pub fn update(&mut self) {
         self.update_with_instant(Instant::now());
     }
@@ -43,12 +42,12 @@ impl Time {
     ///
     /// This method is provided for use in tests. Calling this method on the [`Time`] resource as
     /// part of your app will most likely result in inaccurate timekeeping, as the resource is
-    /// ordinarily managed by the [`CorePlugin`](crate::CorePlugin).
+    /// ordinarily managed by the [`TimePlugin`](crate::TimePlugin).
     ///
     /// # Examples
     ///
     /// ```
-    /// # use lgn_core::prelude::*;
+    /// # use lgn_time::prelude::*;
     /// # use lgn_ecs::prelude::*;
     /// # use lgn_utils::Duration;
     /// # fn main () {
@@ -149,10 +148,6 @@ impl Time {
     pub fn frame_counter(&self) -> usize {
         self.frame_counter
     }
-}
-
-pub(crate) fn time_system(mut time: ResMut<'_, Time>) {
-    time.update();
 }
 
 #[cfg(test)]

@@ -1,4 +1,3 @@
-use lgn_core::Time;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::runtime::CameraSetup;
 use lgn_input::gamepad::GamepadButtonType;
@@ -10,6 +9,7 @@ use lgn_input::{
     },
 };
 use lgn_math::{Angle, EulerRot, Mat3, Quat, Vec3};
+use lgn_time::Time;
 use lgn_transform::components::GlobalTransform;
 use lgn_utils::HashMap;
 
@@ -162,12 +162,12 @@ pub(crate) fn camera_control(
 
         let gamepad = gamepads.iter().copied().find(|gamepad| {
             if let Some(left_x) =
-                gamepad_axes.get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickX))
+                gamepad_axes.get(GamepadAxis::new(*gamepad, GamepadAxisType::LeftStickX))
             {
                 if left_x.abs() > 0.01 {
                     true
                 } else if let Some(left_y) =
-                    gamepad_axes.get(GamepadAxis(*gamepad, GamepadAxisType::LeftStickY))
+                    gamepad_axes.get(GamepadAxis::new(*gamepad, GamepadAxisType::LeftStickY))
                 {
                     left_y.abs() > 0.01
                 } else {
@@ -196,13 +196,13 @@ pub(crate) fn camera_control(
 
             if let Some(gamepad) = gamepad {
                 if let Some(left_x) =
-                    gamepad_axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX))
+                    gamepad_axes.get(GamepadAxis::new(gamepad, GamepadAxisType::LeftStickX))
                 {
                     camera_translation_change += left_x * transform.right();
                 }
 
                 if let Some(left_y) =
-                    gamepad_axes.get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY))
+                    gamepad_axes.get(GamepadAxis::new(gamepad, GamepadAxisType::LeftStickY))
                 {
                     camera_translation_change += left_y * transform.forward();
                 }
@@ -210,8 +210,10 @@ pub(crate) fn camera_control(
 
             let mut speed = camera_options.speed.exp();
             if let Some(gamepad) = gamepad {
-                if gamepad_buttons.pressed(GamepadButton(gamepad, GamepadButtonType::RightTrigger2))
-                {
+                if gamepad_buttons.pressed(GamepadButton::new(
+                    gamepad,
+                    GamepadButtonType::RightTrigger2,
+                )) {
                     speed *= 5.0;
                 }
             }

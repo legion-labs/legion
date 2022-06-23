@@ -3,7 +3,7 @@ use std::{collections::HashSet, sync::Arc};
 
 use editor_srv::editor::server::register_routes;
 use lgn_api::SharedRouter;
-use lgn_app::{prelude::*, Events};
+use lgn_app::prelude::*;
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_async::TokioAsyncRuntime;
 use lgn_core::Name;

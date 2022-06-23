@@ -19,7 +19,9 @@ The following crates are heavily based on their Bevy counterparts:
 | [crates/lgn-input](https://github.com/legion-labs/legion/tree/main/crates/lgn-input)             | [crates/bevy_input](https://github.com/legion-labs/bevy/tree/main/crates/bevy_input)             |                            |
 | [crates/lgn-macro-utils](https://github.com/legion-labs/legion/tree/main/crates/lgn-macro-utils) | [crates/bevy_macro_utils](https://github.com/legion-labs/bevy/tree/main/crates/bevy_macro_utils) |                            |
 | [crates/lgn-math](https://github.com/legion-labs/legion/tree/main/crates/lgn-math)               | [crates/bevy_math](https://github.com/legion-labs/bevy/tree/main/crates/bevy_math)               |                            |
+| [crates/lgn-ptr](https://github.com/legion-labs/legion/tree/main/crates/lgn-ptr)                 | [crates/bevy_ptr](https://github.com/legion-labs/bevy/tree/main/crates/bevy_ptr)                 |                            |
 | [crates/lgn-tasks](https://github.com/legion-labs/legion/tree/main/crates/lgn-tasks)             | [crates/bevy_tasks](https://github.com/legion-labs/bevy/tree/main/crates/bevy_tasks)             |                            |
+| [crates/lgn-time](https://github.com/legion-labs/legion/tree/main/crates/lgn-time)               | [crates/bevy_time](https://github.com/legion-labs/bevy/tree/main/crates/bevy_time)               |                            |
 | [crates/lgn-transform](https://github.com/legion-labs/legion/tree/main/crates/lgn-transform)     | [crates/bevy_transform](https://github.com/legion-labs/bevy/tree/main/crates/bevy_transform)     |                            |
 | [crates/lgn-utils](https://github.com/legion-labs/legion/tree/main/crates/lgn-utils)\*           | [crates/bevy_utils](https://github.com/legion-labs/bevy/tree/main/crates/bevy_utils)             | labels.rs                  |
 | [crates/lgn-window](https://github.com/legion-labs/legion/tree/main/crates/lgn-window)           | [crates/bevy_window](https://github.com/legion-labs/bevy/tree/main/crates/bevy_window)           |                            |
@@ -39,3 +41,5 @@ The following crates are heavily based on their Bevy counterparts:
   - reference: [024d984](https://github.com/bevyengine/bevy/commit/024d98457c80d25f9d5269f214d31e9967cc734a) (March 22nd 2022)
 - [PR 1596](https://github.com/legion-labs/legion/pull/1596)
   - reference: [328c26d](https://github.com/bevyengine/bevy/commit/328c26d02c50de0bc77f0d24a376f43ba89517b1) (April 27th 2022)
+- [PR 2092](https://github.com/legion-labs/legion/pull/2092)
+  - reference: [86dd6f0](https://github.com/bevyengine/bevy/commit/86dd6f065d8d355ca6d75ee3ea270b9dad7e8ecd) (June 21st 2022)

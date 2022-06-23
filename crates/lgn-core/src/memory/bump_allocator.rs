@@ -11,7 +11,7 @@ use crate::{Handle, ObjectPool};
 pub type BumpAllocatorHandle = Handle<bumpalo::Bump>;
 
 /// Pool of bump allocators. Creates new bump allocators if needed.
-/// Meant to be used as a bevy resource.
+/// Meant to be used as a `lgn_ecs` resource.
 pub struct BumpAllocatorPool {
     bump_allocator_pool: Mutex<ObjectPool<Bump>>,
 }
