@@ -4,6 +4,8 @@
 // #![allow()]
 
 mod converters;
+#[cfg(target_arch = "wasm32")]
+mod web_resize;
 mod winit_config;
 mod winit_windows;
 
@@ -12,7 +14,7 @@ use lgn_app::{App, AppExit, CoreStage, Plugin};
 use lgn_ecs::{
     event::{EventWriter, Events, ManualEventReader},
     schedule::ParallelSystemDescriptorCoercion,
-    system::{NonSend, ResMut},
+    system::{NonSendMut, ResMut},
     world::World,
 };
 use lgn_input::{
@@ -21,11 +23,11 @@ use lgn_input::{
     touch::TouchInput,
 };
 use lgn_math::{ivec2, DVec2, Vec2};
-use lgn_tracing::{error, trace, warn};
+use lgn_tracing::{error, info, trace, warn};
 use lgn_window::{
     CreateWindow, CursorEntered, CursorLeft, CursorMoved, FileDragAndDrop, ModifiesWindows,
     ReceivedCharacter, RequestRedraw, Window, WindowBackendScaleFactorChanged,
-    WindowCloseRequested, WindowCreated, WindowFocused, WindowMoved, WindowResized,
+    WindowCloseRequested, WindowClosed, WindowCreated, WindowFocused, WindowMoved, WindowResized,
     WindowScaleFactorChanged, Windows,
 };
 use winit::{
@@ -45,17 +47,25 @@ impl Plugin for WinitPlugin {
             .init_resource::<WinitSettings>()
             .set_runner(winit_runner)
             .add_system_to_stage(CoreStage::PostUpdate, change_window.label(ModifiesWindows));
+        #[cfg(target_arch = "wasm32")]
+        app.add_plugin(web_resize::CanvasParentResizePlugin);
         let event_loop = EventLoop::new();
-        handle_initial_window_events(&mut app.world, &event_loop);
-        app.insert_non_send_resource(event_loop);
+        let mut create_window_reader = WinitCreateWindowReader::default();
+        // Note that we create a window here "early" because WASM/WebGL requires the window to exist prior to initializing
+        // the renderer.
+        handle_create_window_events(&mut app.world, &event_loop, &mut create_window_reader.0);
+        app.insert_resource(create_window_reader)
+            .insert_non_send_resource(event_loop);
     }
 }
 
 fn change_window(
-    winit_windows: NonSend<'_, WinitWindows>,
+    mut winit_windows: NonSendMut<'_, WinitWindows>,
     mut windows: ResMut<'_, Windows>,
     mut window_dpi_changed_events: EventWriter<'_, '_, WindowScaleFactorChanged>,
+    mut window_close_events: EventWriter<'_, '_, WindowClosed>,
 ) {
+    let mut removed_windows = vec![];
     for legion_window in windows.iter_mut() {
         let id = legion_window.id();
         for command in legion_window.drain_commands() {
@@ -167,11 +177,25 @@ fn change_window(
                         window.set_max_inner_size(Some(max_inner_size));
                     }
                 }
+                lgn_window::WindowCommand::Close => {
+                    // Since we have borrowed `windows` to iterate through them, we can't remove the window from it.
+                    // Add the removal requests to a queue to solve this
+                    removed_windows.push(id);
+                    // No need to run any further commands - this drops the rest of the commands, although the `bevy_window::Window` will be dropped later anyway
+                    break;
+                }
             }
         }
     }
-
-    drop(winit_windows);
+    if !removed_windows.is_empty() {
+        for id in removed_windows {
+            // Close the OS window. (The `Drop` impl actually closes the window)
+            let _window = winit_windows.remove_window(id);
+            // Clean up our own data structures
+            windows.remove(id);
+            window_close_events.send(WindowClosed { id });
+        }
+    }
 }
 
 fn run<F>(event_loop: EventLoop<()>, event_handler: F) -> !
@@ -259,12 +283,19 @@ impl Default for WinitPersistentState {
     }
 }
 
+#[derive(Default)]
+struct WinitCreateWindowReader(ManualEventReader<CreateWindow>);
+
 pub fn winit_runner_with(mut app: App) {
     let mut event_loop = app
         .world
         .remove_non_send_resource::<EventLoop<()>>()
         .unwrap();
-    let mut create_window_event_reader = ManualEventReader::<CreateWindow>::default();
+    let mut create_window_event_reader = app
+        .world
+        .remove_resource::<WinitCreateWindowReader>()
+        .unwrap()
+        .0;
     let mut app_exit_event_reader = ManualEventReader::<AppExit>::default();
     let mut redraw_event_reader = ManualEventReader::<RequestRedraw>::default();
     let mut winit_state = WinitPersistentState::default();
@@ -272,6 +303,7 @@ pub fn winit_runner_with(mut app: App) {
         .insert_non_send_resource(event_loop.create_proxy());
 
     let return_from_run = app.world.resource::<WinitSettings>().return_from_run;
+
     trace!("Entering winit event loop");
 
     let event_handler = move |event: Event<'_, ()>,
@@ -321,7 +353,8 @@ pub fn winit_runner_with(mut app: App) {
                 let window = if let Some(window) = windows.get_mut(window_id) {
                     window
                 } else {
-                    warn!("Skipped event for unknown Window Id {:?}", winit_window_id);
+                    // If we're here, this window was previously opened
+                    info!("Skipped event for closed window: {:?}", window_id);
                     return;
                 };
                 winit_state.low_power_event = true;
@@ -561,7 +594,11 @@ pub fn winit_runner_with(mut app: App) {
                     *control_flow = match winit_config.update_mode(focused) {
                         Continuous => ControlFlow::Poll,
                         Reactive { max_wait } | ReactiveLowPower { max_wait } => {
-                            ControlFlow::WaitUntil(now + *max_wait)
+                            if let Some(instant) = now.checked_add(*max_wait) {
+                                ControlFlow::WaitUntil(instant)
+                            } else {
+                                ControlFlow::Wait
+                            }
                         }
                     };
                 }
@@ -603,34 +640,39 @@ fn handle_create_window_events(
     let mut windows = world.resource_mut::<Windows>();
     let create_window_events = world.resource::<Events<CreateWindow>>();
     let mut window_created_events = world.resource_mut::<Events<WindowCreated>>();
+    #[cfg(not(any(target_os = "windows", target_feature = "x11")))]
+    let mut window_resized_events = world.resource_mut::<Events<WindowResized>>();
     for create_window_event in create_window_event_reader.iter(&create_window_events) {
         let window = winit_windows.create_window(
             event_loop,
             create_window_event.id,
             &create_window_event.descriptor,
         );
+        // This event is already sent on windows, x11, and xwayland.
+        // TODO: we aren't yet sure about native wayland, so we might be able to exclude it,
+        // but sending a duplicate event isn't problematic, as windows already does this.
+        #[cfg(not(any(target_os = "windows", target_feature = "x11")))]
+        window_resized_events.send(WindowResized {
+            id: create_window_event.id,
+            width: window.width(),
+            height: window.height(),
+        });
         windows.add(window);
         window_created_events.send(WindowCreated {
             id: create_window_event.id,
         });
-    }
-}
 
-fn handle_initial_window_events(world: &mut World, event_loop: &EventLoop<()>) {
-    let world = world.cell();
-    let mut winit_windows = world.non_send_resource_mut::<WinitWindows>();
-    let mut windows = world.resource_mut::<Windows>();
-    let mut create_window_events = world.resource_mut::<Events<CreateWindow>>();
-    let mut window_created_events = world.resource_mut::<Events<WindowCreated>>();
-    for create_window_event in create_window_events.drain() {
-        let window = winit_windows.create_window(
-            event_loop,
-            create_window_event.id,
-            &create_window_event.descriptor,
-        );
-        windows.add(window);
-        window_created_events.send(WindowCreated {
-            id: create_window_event.id,
-        });
+        #[cfg(target_arch = "wasm32")]
+        {
+            let channel = world.resource_mut::<web_resize::CanvasParentResizeEventChannel>();
+            if create_window_event.descriptor.fit_canvas_to_parent {
+                let selector = if let Some(selector) = &create_window_event.descriptor.canvas {
+                    selector
+                } else {
+                    web_resize::WINIT_CANVAS_SELECTOR
+                };
+                channel.listen_to_selector(create_window_event.id, selector);
+            }
+        }
     }
 }
