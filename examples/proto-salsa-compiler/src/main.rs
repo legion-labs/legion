@@ -56,44 +56,44 @@ mod tests {
     pub fn setup() -> DatabaseImpl {
         let mut db = DatabaseImpl::default();
 
-        db.set_input_file(
+        db.set_read(
             "TextureA.meta".to_string(),
             "Default:TextureA.jpg".to_string(),
         );
-        db.set_input_file("TextureA.jpg".to_string(), "Texture A".to_string());
+        db.set_read("TextureA.jpg".to_string(), "Texture A".to_string());
 
-        db.set_input_file(
+        db.set_read(
             "TextureB.meta".to_string(),
             "Default:TextureB.png".to_string(),
         );
-        db.set_input_file("TextureB.png".to_string(), "Texture B".to_string());
+        db.set_read("TextureB.png".to_string(), "Texture B".to_string());
 
-        db.set_input_file(
+        db.set_read(
             "TextureC.meta".to_string(),
             "English:TextureCEn.jpg\nFrench:TextureCFr.png".to_string(),
         );
-        db.set_input_file(
+        db.set_read(
             "TextureCEn.jpg".to_string(),
             "Texture in English".to_string(),
         );
-        db.set_input_file(
+        db.set_read(
             "TextureCFr.png".to_string(),
             "Texture en Français".to_string(),
         );
 
-        db.set_input_file(
+        db.set_read(
             "Atlas.entity".to_string(),
             "TextureA.meta,TextureB.meta,TextureC.meta".to_string(),
         );
 
-        db.set_input_file(
+        db.set_read(
             "MyWorld.entity".to_string(),
             r#"compile_atlas(Atlas.entity);compile_collision(Car.entity);compile_collision(Tree.entity)"#
                 .to_string(),
         );
 
-        db.set_input_file("Car.entity".to_string(), "5,5,5,10,10,10".to_string());
-        db.set_input_file("Tree.entity".to_string(), "30,30,30,50,60,70".to_string());
+        db.set_read("Car.entity".to_string(), "5,5,5,10,10,10".to_string());
+        db.set_read("Tree.entity".to_string(), "30,30,30,50,60,70".to_string());
 
         db
     }
@@ -110,7 +110,7 @@ mod tests {
         let db = setup();
 
         let build_params = BuildParams::new(Platform::PS5, Target::Client, Locale::English);
-        let atlas_content = db.input_file("Atlas.entity".to_string());
+        let atlas_content = db.read("Atlas.entity".to_string());
         println!("Atlas: {}", db.compile_atlas(atlas_content, build_params));
 
         db.package_see_ps5();

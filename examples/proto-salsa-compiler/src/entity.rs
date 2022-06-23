@@ -8,7 +8,7 @@ pub trait EntityCompiler: Inputs + ResourceCompiler {
 }
 
 pub fn compile_entity(db: &dyn EntityCompiler, name: String, build_params: BuildParams) -> String {
-    let resources_to_compile = db.input_file(name);
+    let resources_to_compile = db.read(name);
 
     let split_resources: Vec<&str> = resources_to_compile.split(',').collect();
     for resource in split_resources {

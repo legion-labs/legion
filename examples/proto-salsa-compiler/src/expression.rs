@@ -59,7 +59,7 @@ pub fn execute_expression(
                     let arg = stack.pop();
 
                     if let Some(token::Token::Identifier(arg_name)) = arg {
-                        let textures_in_atlas = db.input_file(arg_name);
+                        let textures_in_atlas = db.read(arg_name);
                         stack.push(token::Token::Identifier(
                             db.compile_atlas(textures_in_atlas, build_params.clone()),
                         ));
@@ -69,18 +69,18 @@ pub fn execute_expression(
                     let arg = stack.pop();
 
                     if let Some(token::Token::Identifier(arg_name)) = arg {
-                        let collision_content = db.input_file(arg_name);
+                        let collision_content = db.read(arg_name);
                         stack.push(token::Token::Identifier(
                             db.compile_collision(Arc::new(collision_content))
                                 .to_string(),
                         ));
                     }
                 }
-                "input_file" => {
+                "read" => {
                     let arg = stack.pop();
 
                     if let Some(token::Token::Identifier(arg_name)) = arg {
-                        stack.push(token::Token::Identifier(db.input_file(arg_name)));
+                        stack.push(token::Token::Identifier(db.read(arg_name)));
                     }
                 }
                 _ => {
@@ -115,7 +115,7 @@ mod tests {
             target: Target::Client,
         };
 
-        let result = execute_expression("input_file(Atlas.entity)", &build_params, &db).unwrap();
+        let result = execute_expression("read(Atlas.entity)", &build_params, &db).unwrap();
 
         assert_eq!(result, "TextureA.meta,TextureB.meta,TextureC.meta");
     }

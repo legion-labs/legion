@@ -17,7 +17,7 @@ pub fn meta_get_resource_path(
     meta_file: String,
     build_params: BuildParams,
 ) -> Result<String, CompilerError> {
-    let meta_content = db.input_file(meta_file.to_string());
+    let meta_content = db.read(meta_file.to_string());
     let split_meta: Vec<&str> = meta_content.split('\n').collect();
 
     for meta in split_meta {

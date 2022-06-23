@@ -39,14 +39,14 @@ pub fn compile_texture(
 
 pub fn compile_jpg(db: &dyn TextureCompiler, name: String, compression: CompressionType) -> String {
     let mut result = "(Jpg ".to_owned();
-    result.push_str(db.input_file(name).as_str());
+    result.push_str(db.read(name).as_str());
     result.push_str(format!(" compressed {})", compression).as_str());
     result
 }
 
 pub fn compile_png(db: &dyn TextureCompiler, name: String, compression: CompressionType) -> String {
     let mut result = "(Png ".to_owned();
-    result.push_str(db.input_file(name).as_str());
+    result.push_str(db.read(name).as_str());
     result.push_str(format!(" compressed {})", compression).as_str());
     result
 }

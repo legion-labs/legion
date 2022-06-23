@@ -25,9 +25,9 @@ impl<'a> ShuntingYard<'a> {
         }
     }
 
-    /// calculate returns a 64-bit floating value after
-    /// parsing the Reverse Polish Notation represented
-    /// by the output_queue.
+    /// Parse towards a Reverse Polish Notation represented
+    /// by the `output_queue`.
+    /// Return the parsing tokens
     pub fn parse(&mut self, raw_input: &'a str) -> Result<Vec<token::Token>, Vec<String>> {
         // Clear out everything
         self.output_queue.clear();
@@ -140,7 +140,7 @@ impl<'a> ShuntingYard<'a> {
 }
 
 impl<'a> std::string::ToString for ShuntingYard<'a> {
-    /// to_string returns the string representation of the Shunting Yard
+    /// `to_string` returns the string representation of the Shunting Yard
     /// algorithm in Reverse Polish Notation.
     fn to_string(&self) -> String {
         let mut result = String::new(); // String to output the result
