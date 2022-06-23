@@ -1,24 +1,24 @@
 use atlas::AtlasStorage;
 use entity::EntityStorage;
 use material::MaterialStorage;
-use proto_salsa_compiler::{BuildParams, Locale, Platform, Target};
 
-use crate::entity::EntityCompiler;
-use crate::inputs::{Inputs, InputsStorage};
-use crate::resource::ResourceCompiler;
+use crate::inputs::InputsStorage;
 use crate::texture::TextureStorage;
 use crate::{
-    atlas::AtlasCompiler, meta::MetaStorage, package::PackageCompiler, package::PackageStorage,
-    resource::ResourceStorage,
+    collision::CollisionStorage, expression::ResourceStorage, meta::MetaStorage,
+    navmesh::NavmeshStorage, package::PackageStorage,
 };
 
 mod atlas;
+mod collision;
 mod entity;
+mod expression;
 mod inputs;
 mod material;
 mod meta;
+mod navmesh;
 mod package;
-mod resource;
+mod rust_yard;
 mod texture;
 
 #[salsa::database(
@@ -29,7 +29,9 @@ mod texture;
     PackageStorage,
     EntityStorage,
     MetaStorage,
-    ResourceStorage
+    ResourceStorage,
+    NavmeshStorage,
+    CollisionStorage
 )]
 #[derive(Default)]
 pub struct DatabaseImpl {
@@ -39,54 +41,109 @@ pub struct DatabaseImpl {
 /// This impl tells salsa where to find the salsa runtime.
 impl salsa::Database for DatabaseImpl {}
 
-fn setup() -> DatabaseImpl {
-    let mut db = DatabaseImpl::default();
+fn main() {}
 
-    db.set_input_file(
-        "TextureA.meta".to_string(),
-        "Default:TextureA.jpg".to_string(),
-    );
-    db.set_input_file("TextureA.jpg".to_string(), "Texture A".to_string());
+#[cfg(test)]
+mod tests {
+    use proto_salsa_compiler::{BuildParams, Locale, Platform, Target};
 
-    db.set_input_file(
-        "TextureB.meta".to_string(),
-        "Default:TextureB.png".to_string(),
-    );
-    db.set_input_file("TextureB.png".to_string(), "Texture B".to_string());
+    use crate::collision::AABBCollision;
+    use crate::inputs::Inputs;
+    use crate::navmesh::NavmeshCompiler;
+    use crate::DatabaseImpl;
+    use crate::{atlas::AtlasCompiler, package::PackageCompiler};
 
-    db.set_input_file(
-        "TextureC.meta".to_string(),
-        "English:TextureCEn.jpg\nFrench:TextureCFr.png".to_string(),
-    );
-    db.set_input_file(
-        "TextureCEn.jpg".to_string(),
-        "Texture in English".to_string(),
-    );
-    db.set_input_file(
-        "TextureCFr.png".to_string(),
-        "Texture en Français".to_string(),
-    );
+    pub fn setup() -> DatabaseImpl {
+        let mut db = DatabaseImpl::default();
 
-    db.set_input_file(
-        "Atlas.entity".to_string(),
-        "TextureA.meta,TextureB.meta,TextureC.meta".to_string(),
-    );
+        db.set_input_file(
+            "TextureA.meta".to_string(),
+            "Default:TextureA.jpg".to_string(),
+        );
+        db.set_input_file("TextureA.jpg".to_string(), "Texture A".to_string());
 
-    db.set_input_file(
-        "MyWorld.entity".to_string(),
-        "compile_atlas(Atlas.entity".to_string(),
-    );
+        db.set_input_file(
+            "TextureB.meta".to_string(),
+            "Default:TextureB.png".to_string(),
+        );
+        db.set_input_file("TextureB.png".to_string(), "Texture B".to_string());
 
-    db
-}
+        db.set_input_file(
+            "TextureC.meta".to_string(),
+            "English:TextureCEn.jpg\nFrench:TextureCFr.png".to_string(),
+        );
+        db.set_input_file(
+            "TextureCEn.jpg".to_string(),
+            "Texture in English".to_string(),
+        );
+        db.set_input_file(
+            "TextureCFr.png".to_string(),
+            "Texture en Français".to_string(),
+        );
 
-fn main() {
-    let db = setup();
+        db.set_input_file(
+            "Atlas.entity".to_string(),
+            "TextureA.meta,TextureB.meta,TextureC.meta".to_string(),
+        );
 
-    let build_params = BuildParams::new(Platform::PS5, Target::Client, Locale::English);
+        db.set_input_file(
+            "MyWorld.entity".to_string(),
+            r#"compile_atlas(Atlas.entity);compile_collision(Car.entity);compile_collision(Tree.entity)"#
+                .to_string(),
+        );
 
-    let atlas_content = db.input_file("Atlas.entity".to_string());
-    println!("Atlas: {}", db.compile_atlas(atlas_content, build_params));
+        db.set_input_file("Car.entity".to_string(), "5,5,5,10,10,10".to_string());
+        db.set_input_file("Tree.entity".to_string(), "30,30,30,50,60,70".to_string());
 
-    db.package_see_ps5();
+        db
+    }
+
+    #[test]
+    fn compile_all() {
+        let db = setup();
+
+        db.package_see_ps5();
+    }
+
+    #[test]
+    fn incremental_compilation() {
+        let db = setup();
+
+        let build_params = BuildParams::new(Platform::PS5, Target::Client, Locale::English);
+        let atlas_content = db.input_file("Atlas.entity".to_string());
+        println!("Atlas: {}", db.compile_atlas(atlas_content, build_params));
+
+        db.package_see_ps5();
+    }
+
+    #[test]
+    fn navmesh_add_object() {
+        let db = setup();
+
+        db.compile_navmesh(AABBCollision {
+            min_x: 0,
+            min_y: 0,
+            min_z: 0,
+            max_x: 10,
+            max_y: 10,
+            max_z: 10,
+        });
+    }
+
+    #[test]
+    fn navmesh_remove_object() {
+        let db = setup();
+
+        db.compile_navmesh(AABBCollision {
+            min_x: 0,
+            min_y: 0,
+            min_z: 0,
+            max_x: 10,
+            max_y: 10,
+            max_z: 10,
+        });
+    }
+
+    #[test]
+    fn navmesh_move_object() {}
 }

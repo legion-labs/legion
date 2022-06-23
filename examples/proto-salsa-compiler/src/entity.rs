@@ -1,6 +1,6 @@
 use proto_salsa_compiler::BuildParams;
 
-use crate::{inputs::Inputs, resource::ResourceCompiler};
+use crate::{expression::ResourceCompiler, inputs::Inputs};
 
 #[salsa::query_group(EntityStorage)]
 pub trait EntityCompiler: Inputs + ResourceCompiler {
@@ -12,7 +12,7 @@ pub fn compile_entity(db: &dyn EntityCompiler, name: String, build_params: Build
 
     let split_resources: Vec<&str> = resources_to_compile.split(',').collect();
     for resource in split_resources {
-        db.add_runtime_dependencdy(resource.to_string(), build_params.clone());
+        db.add_runtime_dependency(resource.to_string(), build_params.clone());
     }
 
     // This compiler is a passthrough for us

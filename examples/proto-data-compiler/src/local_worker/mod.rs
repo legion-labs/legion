@@ -51,7 +51,7 @@ impl LocalWorker {
         data_execution_provider: Arc<dyn DataExecutionProvider>,
     ) {
         loop {
-            if self.continue_execution.load(Ordering::Relaxed) == false {
+            if !self.continue_execution.load(Ordering::Relaxed) {
                 return;
             }
 
