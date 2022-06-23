@@ -13,13 +13,13 @@ use lgn_content_store::{
 use lgn_tracing::info;
 
 use super::Device;
-use crate::{new_resource_type_and_id_indexer, ResourceTypeAndId, ResourceTypeAndIdIndexer};
+use crate::ResourceTypeAndId;
 
 /// Storage device that builds resources on demand. Resources are accessed
 /// through a manifest access table.
 pub(crate) struct BuildDevice {
     volatile_provider: Arc<Provider>,
-    runtime_manifest: ResourceIndex<ResourceTypeAndIdIndexer>,
+    runtime_manifest: ResourceIndex<ResourceTypeAndId>,
     source_manifest_id: SharedTreeIdentifier,
     databuild_bin: PathBuf,
     output_db_addr: String,
@@ -40,11 +40,8 @@ impl BuildDevice {
         branch_name: &str,
         force_recompile: bool,
     ) -> Self {
-        let mut runtime_manifest = ResourceIndex::new_exclusive(
-            Arc::clone(&volatile_provider),
-            new_resource_type_and_id_indexer(),
-        )
-        .await;
+        let mut runtime_manifest =
+            ResourceIndex::new_exclusive(Arc::clone(&volatile_provider)).await;
         if let Some(runtime_manifest_id) = runtime_manifest_id {
             runtime_manifest.set_id(runtime_manifest_id);
         }
@@ -61,7 +58,7 @@ impl BuildDevice {
     }
 
     async fn load_internal(&self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {
-        if let Ok(Some(resource_id)) = self.runtime_manifest.get_identifier(&type_id.into()).await {
+        if let Ok(Some(resource_id)) = self.runtime_manifest.get_identifier(type_id).await {
             if let Ok(resource_bytes) = self
                 .volatile_provider
                 .read_resource_as_bytes(&resource_id)

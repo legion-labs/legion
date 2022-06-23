@@ -19,8 +19,8 @@ use lgn_content_store::{
     Config,
 };
 use lgn_data_runtime::{
-    new_resource_type_and_id_indexer, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
-    AssetRegistryScheduling, ResourceLoadEvent,
+    AssetRegistry, AssetRegistryEvent, AssetRegistryOptions, AssetRegistryScheduling,
+    ResourceLoadEvent,
 };
 use lgn_ecs::prelude::*;
 use lgn_tracing::{error, info};
@@ -96,17 +96,14 @@ impl AssetRegistryPlugin {
 
         if load_all_assets_from_manifest {
             if let Ok(resources) = world.resource::<TokioAsyncRuntime>().block_on(async {
-                let manifest = ResourceIndex::new_shared_with_id(
-                    data_provider,
-                    new_resource_type_and_id_indexer(),
-                    manifest_id.clone(),
-                );
+                let manifest =
+                    ResourceIndex::new_shared_with_id(data_provider, manifest_id.clone());
                 manifest.enumerate_resources().await
             }) {
                 let mut config = world.resource_mut::<AssetRegistrySettings>();
 
-                for (index_key, _resource_id) in resources {
-                    config.assets_to_load.push(index_key.into());
+                for (type_id, _resource_id) in resources {
+                    config.assets_to_load.push(type_id);
                 }
             }
         }

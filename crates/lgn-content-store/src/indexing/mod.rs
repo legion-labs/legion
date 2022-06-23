@@ -1,5 +1,6 @@
 //! Indexing facilities backed by the content-store.
 
+mod as_index_key;
 mod composite_indexer;
 mod errors;
 mod graphviz_visitor;
@@ -22,6 +23,7 @@ use async_trait::async_trait;
 use futures::Stream;
 use tokio_stream::StreamExt;
 
+pub use as_index_key::AsIndexKey;
 pub use composite_indexer::CompositeIndexer;
 pub use errors::{Error, Result};
 pub use graphviz_visitor::GraphvizVisitor;

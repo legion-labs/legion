@@ -9,7 +9,7 @@ use std::{
     sync::RwLock,
 };
 
-use lgn_content_store::indexing::{CompositeIndexer, IndexKey, StaticIndexer};
+use lgn_content_store::indexing::{AsIndexKey, CompositeIndexer, IndexKey, StaticIndexer};
 use lgn_data_model::TypeReflection;
 use lgn_utils::DefaultHash;
 use once_cell::sync::OnceCell;
@@ -136,6 +136,14 @@ impl From<IndexKey> for ResourceType {
     }
 }
 
+impl AsIndexKey for ResourceType {
+    type Indexer = StaticIndexer;
+
+    fn new_indexer() -> Self::Indexer {
+        StaticIndexer::new(std::mem::size_of::<Self>())
+    }
+}
+
 /// Id of a runtime asset or source or derived resource.
 ///
 /// We currently use fully random 128-bit UUIDs, to ensure uniqueness without
@@ -216,6 +224,14 @@ impl From<ResourceId> for IndexKey {
 impl From<IndexKey> for ResourceId {
     fn from(key: IndexKey) -> Self {
         Self::from_raw(key.into())
+    }
+}
+
+impl AsIndexKey for ResourceId {
+    type Indexer = StaticIndexer;
+
+    fn new_indexer() -> Self::Indexer {
+        StaticIndexer::new(std::mem::size_of::<Self>())
     }
 }
 
@@ -330,6 +346,14 @@ impl From<&IndexKey> for ResourceTypeAndId {
     }
 }
 
+impl AsIndexKey for ResourceTypeAndId {
+    type Indexer = CompositeIndexer<StaticIndexer, StaticIndexer>;
+
+    fn new_indexer() -> Self::Indexer {
+        CompositeIndexer::new(ResourceType::new_indexer(), ResourceId::new_indexer())
+    }
+}
+
 impl fmt::Display for ResourceTypeAndId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("({},{})", self.kind, self.id))
@@ -371,17 +395,6 @@ impl<'de> Deserialize<'de> for ResourceTypeAndId {
             Ok(Self { kind, id })
         }
     }
-}
-
-/// Content store indexer that can be used to index by `ResourceTypeAndId`
-pub type ResourceTypeAndIdIndexer = CompositeIndexer<StaticIndexer, StaticIndexer>;
-
-/// Create a `new ResourceTypeAndIdIndexer`
-pub fn new_resource_type_and_id_indexer() -> ResourceTypeAndIdIndexer {
-    CompositeIndexer::new(
-        StaticIndexer::new(std::mem::size_of::<ResourceType>()),
-        StaticIndexer::new(std::mem::size_of::<ResourceId>()),
-    )
 }
 
 /// Trait describing resource type name.

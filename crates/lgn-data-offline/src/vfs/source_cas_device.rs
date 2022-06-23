@@ -23,11 +23,8 @@ impl SourceCasDevice {
         persistent_provider: Arc<Provider>,
         source_manifest_id: SharedTreeIdentifier,
     ) -> Self {
-        let source_manifest = ResourceIndex::new_shared_with_id(
-            Arc::clone(&persistent_provider),
-            new_resource_type_and_id_indexer(),
-            source_manifest_id,
-        );
+        let source_manifest =
+            ResourceIndex::new_shared_with_id(Arc::clone(&persistent_provider), source_manifest_id);
         Self {
             persistent_provider,
             source_manifest,

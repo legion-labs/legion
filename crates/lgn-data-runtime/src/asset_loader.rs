@@ -690,17 +690,12 @@ mod tests {
     use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
     use crate::{
         asset_loader::{HandleMap, LoaderRequest, LoaderResult},
-        new_resource_type_and_id_indexer, test_asset, vfs, Handle, ResourceDescriptor, ResourceId,
-        ResourceTypeAndId,
+        test_asset, vfs, Handle, ResourceDescriptor, ResourceId, ResourceTypeAndId,
     };
 
     async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest = ResourceIndex::new_exclusive(
-            Arc::clone(&data_provider),
-            new_resource_type_and_id_indexer(),
-        )
-        .await;
+        let mut manifest = ResourceIndex::new_exclusive(Arc::clone(&data_provider)).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -712,10 +707,7 @@ mod tests {
                 .await
                 .unwrap();
 
-            manifest
-                .add_resource(&type_id.into(), provider_id)
-                .await
-                .unwrap();
+            manifest.add_resource(type_id, provider_id).await.unwrap();
 
             type_id
         };
@@ -782,11 +774,7 @@ mod tests {
     #[tokio::test]
     async fn load_no_dependencies() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest = ResourceIndex::new_exclusive(
-            Arc::clone(&data_provider),
-            new_resource_type_and_id_indexer(),
-        )
-        .await;
+        let mut manifest = ResourceIndex::new_exclusive(Arc::clone(&data_provider)).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -797,10 +785,7 @@ mod tests {
                 .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
-            manifest
-                .add_resource(&type_id.into(), provider_id)
-                .await
-                .unwrap();
+            manifest.add_resource(type_id, provider_id).await.unwrap();
             type_id
         };
 
@@ -856,11 +841,7 @@ mod tests {
     #[tokio::test]
     async fn load_failed_dependency() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest = ResourceIndex::new_exclusive(
-            Arc::clone(&data_provider),
-            new_resource_type_and_id_indexer(),
-        )
-        .await;
+        let mut manifest = ResourceIndex::new_exclusive(Arc::clone(&data_provider)).await;
 
         let parent_id = ResourceTypeAndId {
             kind: test_asset::TestAsset::TYPE,
@@ -872,10 +853,7 @@ mod tests {
                 .write_resource_from_bytes(&test_asset::tests::BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
-            manifest
-                .add_resource(&parent_id.into(), provider_id)
-                .await
-                .unwrap();
+            manifest.add_resource(parent_id, provider_id).await.unwrap();
             parent_id
         };
 
@@ -919,11 +897,7 @@ mod tests {
     #[tokio::test]
     async fn load_with_dependency() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest = ResourceIndex::new_exclusive(
-            Arc::clone(&data_provider),
-            new_resource_type_and_id_indexer(),
-        )
-        .await;
+        let mut manifest = ResourceIndex::new_exclusive(Arc::clone(&data_provider)).await;
 
         let parent_content = "parent";
 
@@ -939,7 +913,7 @@ mod tests {
         let asset_id = {
             manifest
                 .add_resource(
-                    &child_id.into(),
+                    child_id,
                     data_provider
                         .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
                         .await
@@ -951,10 +925,7 @@ mod tests {
                 .write_resource_from_bytes(&test_asset::tests::BINARY_PARENT_ASSETFILE)
                 .await
                 .unwrap();
-            manifest
-                .add_resource(&parent_id.into(), provider_id)
-                .await
-                .unwrap();
+            manifest.add_resource(parent_id, provider_id).await.unwrap();
 
             parent_id
         };
@@ -1038,11 +1009,7 @@ mod tests {
     #[tokio::test]
     async fn reload_no_dependencies() {
         let data_provider = Arc::new(Provider::new_in_memory());
-        let mut manifest = ResourceIndex::new_exclusive(
-            Arc::clone(&data_provider),
-            new_resource_type_and_id_indexer(),
-        )
-        .await;
+        let mut manifest = ResourceIndex::new_exclusive(Arc::clone(&data_provider)).await;
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
@@ -1053,10 +1020,7 @@ mod tests {
                 .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
-            manifest
-                .add_resource(&type_id.into(), provider_id)
-                .await
-                .unwrap();
+            manifest.add_resource(type_id, provider_id).await.unwrap();
             type_id
         };
 

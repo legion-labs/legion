@@ -2,9 +2,9 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use lgn_content_store::{
     indexing::{
-        BasicIndexer, IndexKey, IndexKeyDisplayFormat, ResourceIdentifier, ResourceIndex,
-        ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
-        TreeIdentifier, TreeLeafNode,
+        AsIndexKey, BasicIndexer, IndexKey, IndexKeyDisplayFormat, ResourceIdentifier,
+        ResourceIndex, ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer,
+        TreeDiffSide, TreeIdentifier, TreeLeafNode,
     },
     Provider,
 };
@@ -16,14 +16,14 @@ use crate::{
 };
 
 /// Represents a workspace.
-pub struct Workspace<MainIndexer>
+pub struct Workspace<MainIndexType>
 where
-    MainIndexer: BasicIndexer + Clone + Sync,
+    MainIndexType: AsIndexKey,
 {
     index: Box<dyn Index>,
     transaction: Arc<Provider>,
     branch_name: BranchName,
-    main_index: ResourceIndex<MainIndexer>,
+    main_index: ResourceIndex<MainIndexType>,
     path_index: ResourceIndex<StringPathIndexer>,
 }
 
@@ -58,9 +58,9 @@ impl Staging {
     }
 }
 
-impl<MainIndexer> Workspace<MainIndexer>
+impl<MainIndexType> Workspace<MainIndexType>
 where
-    MainIndexer: BasicIndexer + Clone + Sync,
+    MainIndexType: AsIndexKey,
 {
     /// Load an existing workspace at the specified location.
     ///
@@ -80,12 +80,10 @@ where
         let transaction = Arc::new(persistent_provider.begin_transaction_in_memory());
         let main_index = ResourceIndex::new_shared_with_raw_id(
             Arc::clone(&transaction),
-            main_indexer,
             commit.main_index_tree_id,
         );
         let path_index = ResourceIndex::new_exclusive_with_id(
             Arc::clone(&transaction),
-            StringPathIndexer::default(),
             commit.path_index_tree_id,
         );
         Ok(Self {
@@ -136,7 +134,6 @@ where
         let commit = self.get_current_commit().await?;
         Ok(ResourceIndex::new_exclusive_with_id(
             Arc::clone(self.main_index.provider()),
-            self.main_index.indexer().clone(),
             commit.main_index_tree_id,
         ))
     }

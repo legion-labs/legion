@@ -74,7 +74,6 @@ impl BuildManager {
         let indexer = new_resource_type_and_id_indexer();
         let start_manifest = ResourceIndex::new_exclusive_with_id(
             Arc::clone(&data_provider),
-            indexer.clone(),
             self.runtime_manifest_id.read(),
         )
         .enumerate_resources()
@@ -92,7 +91,6 @@ impl BuildManager {
                     .await;
                 let runtime_manifest = ResourceIndex::new_exclusive_with_id(
                     Arc::clone(&data_provider),
-                    indexer.clone(),
                     runtime_manifest_id,
                 )
                 .enumerate_resources()
@@ -100,19 +98,16 @@ impl BuildManager {
 
                 let mut added_resources = Vec::new();
                 let mut changed_resources = Vec::new();
-                for (index_key, resource_id) in runtime_manifest {
-                    if let Some((_index_key, old_resource_id)) =
-                        start_manifest.iter().find(|(key, _id)| key == &index_key)
+                for (type_id, resource_id) in runtime_manifest {
+                    if let Some((_index_key, old_resource_id)) = start_manifest
+                        .iter()
+                        .find(|(start_type_id, _id)| start_type_id == &type_id)
                     {
                         if &resource_id != old_resource_id {
-                            changed_resources.push((
-                                index_key,
-                                resource_id,
-                                old_resource_id.clone(),
-                            ));
+                            changed_resources.push((type_id, resource_id, old_resource_id.clone()));
                         }
                     } else {
-                        added_resources.push((index_key, resource_id));
+                        added_resources.push((type_id, resource_id));
                     }
                 }
 
@@ -125,17 +120,14 @@ impl BuildManager {
 
                 let mut runtime_manifest = ResourceIndex::new_exclusive_with_id(
                     Arc::clone(&data_provider),
-                    indexer.clone(),
                     self.runtime_manifest_id.read(),
                 );
-                for (index_key, resource_id) in added_resources {
-                    runtime_manifest
-                        .add_resource(&index_key, resource_id)
-                        .await?;
+                for (type_id, resource_id) in added_resources {
+                    runtime_manifest.add_resource(type_id, resource_id).await?;
                 }
-                for (index_key, resource_id, old_resource_id) in &changed_resources {
+                for (type_id, resource_id, old_resource_id) in &changed_resources {
                     let replaced_id = runtime_manifest
-                        .replace_resource(index_key, resource_id.clone())
+                        .replace_resource(type_id, resource_id.clone())
                         .await?;
                     assert_eq!(&replaced_id, old_resource_id);
 
