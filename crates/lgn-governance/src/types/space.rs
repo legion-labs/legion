@@ -6,6 +6,9 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "tabled")]
+use tabled::Tabled;
+
 use super::{Error, Result};
 
 /// A space identifier.
@@ -29,7 +32,7 @@ impl FromStr for SpaceId {
             return Err(Error::InvalidSpaceId(s.to_string()));
         }
 
-        if s.contains(|c: char| !matches!(c, '0'..='9' | 'a'..='z' | '_')) {
+        if s.contains(|c: char| !matches!(c, '0'..='9' | 'a'..='z' | '_' | '-')) {
             return Err(Error::InvalidSpaceId(s.to_string()));
         }
 
@@ -51,6 +54,7 @@ impl From<crate::api::space::SpaceId> for SpaceId {
 
 /// A space.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "tabled", derive(Tabled))]
 pub struct Space {
     pub id: SpaceId,
     pub description: String,
@@ -80,6 +84,27 @@ impl From<crate::api::space::Space> for Space {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpaceUpdate {
+    pub description: Option<String>,
+}
+
+impl From<SpaceUpdate> for crate::api::space::SpaceUpdate {
+    fn from(space: SpaceUpdate) -> Self {
+        Self {
+            description: space.description,
+        }
+    }
+}
+
+impl From<crate::api::space::SpaceUpdate> for SpaceUpdate {
+    fn from(space: crate::api::space::SpaceUpdate) -> Self {
+        Self {
+            description: space.description,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,14 +118,14 @@ mod tests {
         let space_id = SpaceId::from_str("some_space_id").unwrap();
         assert_eq!(space_id.0, "some_space_id");
 
-        let space_id = SpaceId::from_str("i_contain_numb3rs").unwrap();
-        assert_eq!(space_id.0, "i_contain_numb3rs");
+        let space_id = SpaceId::from_str("i_contain_numb-3rs").unwrap();
+        assert_eq!(space_id.0, "i_contain_numb-3rs");
 
         // Build a few invalid space ids.
         assert!(SpaceId::from_str("").is_err());
         assert!(SpaceId::from_str("a").is_err());
         assert!(SpaceId::from_str("ABC").is_err());
-        assert!(SpaceId::from_str("abc-d").is_err());
+        assert!(SpaceId::from_str("abc~d").is_err());
         assert!(SpaceId::from_str("ab c").is_err());
     }
 }

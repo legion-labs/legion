@@ -23,7 +23,7 @@ paths:
           description: The stack was already initialized.
   /v1/users/{user-id}/:
     parameters:
-      - $ref: "#/components/parameters/user_id"
+      - $ref: "#/components/parameters/extended_user_id"
     get:
       description: Get the user information. Requires administrative privileges or that you call the API for yourself.
       operationId: getUserInfo
@@ -34,12 +34,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserInfo"
+        "404":
+          description: The user with the specified id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtendedUserId"
+  /v1/users/{user-id}/email/:
+    parameters:
+      - $ref: "#/components/parameters/extended_user_id"
+    get:
+      description: Resolve a user by its email address.
+      operationId: resolveUserId
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserId"
+        "404":
+          description: The user with the specified id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtendedUserId"
   /v1/users/{user-id}/spaces/:
     parameters:
-      - $ref: "#/components/parameters/user_id"
+      - $ref: "#/components/parameters/extended_user_id"
     get:
       description: List all the spaces that the current user has access to.
-      operationId: listCurrentUserSpaces
+      operationId: listUserSpaces
       responses:
         "200":
           description: Ok.
@@ -47,6 +72,111 @@ paths:
             application/json:
               schema:
                 $ref: "space.yaml#/components/schemas/SpaceList"
+        "404":
+          description: The user with the specified id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtendedUserId"
+  /v1/users/{user-id}/roles/:
+    parameters:
+      - $ref: "#/components/parameters/extended_user_id"
+    get:
+      description: List all the roles that the current user has.
+      operationId: listUserRoles
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "role.yaml#/components/schemas/RoleAssignationList"
+        "404":
+          description: The user with the specified id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtendedUserId"
+    patch:
+      description: Add or remove roles.
+      operationId: patchUserRoles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "role.yaml#/components/schemas/RoleAssignationPatch"
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "role.yaml#/components/schemas/RoleAssignationList"
+        "404":
+          description: The user with the specified id was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtendedUserId"
+  /v1/users-aliases/:
+    get:
+      description: List all the users aliases that are registered in the system.
+      operationId: listUsersAliases
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAliasAssociationList"
+  /v1/users-aliases/{user-alias}:
+    parameters:
+      - $ref: "#/components/parameters/user_alias"
+    post:
+      description: Create a new user alias.
+      operationId: registerUserAlias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtendedUserId"
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAliasAssociationList"
+        "404":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtendedUserId"
+        "409":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAlias"
+    delete:
+      description: Delete an existing user alias.
+      operationId: unregisterUserAlias
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAliasAssociationList"
+        "404":
+          description: The alias does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAlias"
 components:
   parameters:
     user_id:
@@ -56,10 +186,48 @@ components:
       required: true
       schema:
         $ref: "#/components/schemas/UserId"
+    extended_user_id:
+      name: user-id
+      in: path
+      description: An extended user identifier.
+      required: true
+      schema:
+        $ref: "#/components/schemas/ExtendedUserId"
+    user_alias:
+      name: user-alias
+      in: path
+      description: The user alias.
+      required: true
+      schema:
+        $ref: "#/components/schemas/UserAlias"
   schemas:
     UserId:
       description: An identifier to an unique user.
       type: string
+    ExtendedUserId:
+      description: An identifier to an unique user or its email address.
+      type: string
+    UserAlias:
+      description: A user alias.
+      type: string
+    UserAliasAssociation:
+      description: A user alias association.
+      type: object
+      properties:
+        alias:
+          description: The alias.
+          $ref: "#/components/schemas/UserAlias"
+        user_id:
+          description: The user identifier.
+          $ref: "#/components/schemas/UserId"
+      required:
+        - alias
+        - user_id
+    UserAliasAssociationList:
+      description: A list of user alias associations.
+      type: array
+      items:
+        $ref: "#/components/schemas/UserAliasAssociation"
     UserInfo:
       description: Information about a user.
       type: object

@@ -17,7 +17,7 @@ use sqlx::ConnectOptions;
 
 pub use errors::{Error, Result};
 
-use crate::types::UserId;
+use crate::types::{ExtendedUserId, UserId};
 pub use permissions_cache::{PermissionsCache, PermissionsProvider};
 
 /// A Server implementation.
@@ -44,6 +44,46 @@ pub struct ServerMySqlOptions {
 pub struct ServerAwsCognitoOptions {
     pub region: Option<Cow<'static, str>>,
     pub user_pool_id: String,
+}
+
+/// A macro for checking global permissions in a server handler.
+#[macro_export]
+macro_rules! check_user_global_permissions {
+    ($self:expr, $user_id:expr, $($permission:ident),+) => {{
+        $self.permissions_cache
+            .check_user_permissions(&$user_id, None, &[$(crate::types::PermissionId::$permission),+])
+            .await?;
+    }};
+}
+
+/// A macro for checking global permissions in a server handler.
+#[macro_export]
+macro_rules! check_user_space_permissions {
+    ($self:expr, $user_id:expr, $space_id:expr, $($permission:ident),+) => {{
+        $self.permissions_cache
+            .check_user_permissions(&$user_id, Some(&$space_id), &[$(crate::types::PermissionId::$permission),+])
+            .await?;
+    }};
+}
+
+/// A macro for checking global permissions in a server handler.
+#[macro_export]
+macro_rules! user_has_global_permissions {
+    ($self:expr, $user_id:expr, $($permission:ident),+) => {{
+        $self.permissions_cache
+            .user_has_permissions(&$user_id, None, &[$(crate::types::PermissionId::$permission),+])
+            .await?
+    }};
+}
+
+/// A macro for checking global permissions in a server handler.
+#[macro_export]
+macro_rules! user_has_space_permissions {
+    ($self:expr, $user_id:expr, $space_id:expr, $($permission:ident),+) => {{
+        $self.permissions_cache
+            .user_has_permissions(&$user_id, Some(&$space_id), &[$(crate::types::PermissionId::$permission),+])
+            .await?
+    }};
 }
 
 impl Server {
@@ -100,5 +140,33 @@ impl Server {
                 })
             })
             .and_then(|s| s.parse().map_err(Into::into))
+    }
+
+    async fn resolve_api_extended_user_id(
+        &self,
+        extended_user_id: crate::api::user::ExtendedUserId,
+        caller_user_id: &UserId,
+    ) -> Result<Option<UserId>> {
+        let extended_user_id: ExtendedUserId = extended_user_id.try_into()?;
+
+        match extended_user_id {
+            ExtendedUserId::UserId(user_id) => Ok(Some(user_id)),
+            ExtendedUserId::Email(email) => self
+                .aws_cognito_dal
+                .resolve_username_by("email", &email)
+                .await
+                .map(Some),
+            ExtendedUserId::Alias(user_alias) => {
+                match self.mysql_dal.resolve_user_alias(&user_alias).await {
+                    Ok(user_id) => Ok(Some(user_id)),
+                    Err(Error::DoesNotExist) => Ok(None),
+                    Err(err) => Err(Error::Unexpected(format!(
+                        "failed to resolve user alias: {}",
+                        err
+                    ))),
+                }
+            }
+            ExtendedUserId::MySelf => Ok(Some(caller_user_id.clone())),
+        }
     }
 }
