@@ -6,7 +6,6 @@ mod atlas;
 mod collision;
 pub mod compiler;
 mod database;
-mod entity;
 mod expression;
 mod material;
 mod meta;
@@ -114,8 +113,7 @@ pub mod tests {
 
         db.set_read(
             "MyWorld.entity".to_string(),
-            r#"atlas(read(Atlas.atlas));collision(read(Car.coll));collision(read(Tree.coll));navmesh(collisions())"#
-                .to_string(),
+            r#"atlas(read(Atlas.atlas));exec(read(Car.coll));exec(read(Tree.coll))"#.to_string(),
         );
 
         db.set_read("Car.coll".to_string(), "aabb(5,5,5,10,10,10)".to_string());

@@ -1,6 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
-use crate::compiler::Compiler;
+use crate::{compiler::Compiler, BuildParams};
 
 // Using i64 because float equality doesn't exist in Rust.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -93,6 +93,23 @@ pub fn compile_aabb(
     }
 }
 
+pub fn query_collisions(
+    db: &dyn Compiler,
+    expressions: String,
+    build_params: Arc<BuildParams>,
+) -> Arc<Vec<AABBCollision>> {
+    let values = db.run(expressions, build_params);
+
+    let mut ret: Vec<AABBCollision> = Vec::new();
+    for value in values {
+        if let Some(aabb) = value.downcast_ref::<AABBCollision>() {
+            println!("{}", aabb);
+            ret.push(aabb.clone());
+        }
+    }
+    Arc::new(ret)
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
@@ -105,9 +122,7 @@ mod tests {
 
         let build_params = Arc::new(BuildParams::default());
 
-        let aabb_expression = db
-            .execute_expression("aabb(0,1,2,3,4,5)".to_string(), build_params)
-            .unwrap();
+        let aabb_expression = db.execute_expression("aabb(0,1,2,3,4,5)".to_string(), build_params);
 
         let aabb = aabb_expression.downcast_ref::<AABBCollision>().unwrap();
 
@@ -117,5 +132,47 @@ mod tests {
         assert_eq!(aabb.max_x, 3);
         assert_eq!(aabb.max_y, 4);
         assert_eq!(aabb.max_z, 5);
+    }
+
+    #[test]
+    fn test_collisions() {
+        let db = setup();
+        let build_params = Arc::new(BuildParams::default());
+
+        let expression = "collisions(read(Car.coll))";
+
+        let aabb_expression = db.execute_expression(expression.to_string(), build_params);
+
+        let aabb = aabb_expression
+            .downcast_ref::<Vec<AABBCollision>>()
+            .unwrap();
+
+        assert_eq!(aabb[0].min_x, 5);
+        assert_eq!(aabb[0].min_y, 5);
+        assert_eq!(aabb[0].min_z, 5);
+        assert_eq!(aabb[0].max_x, 10);
+        assert_eq!(aabb[0].max_y, 10);
+        assert_eq!(aabb[0].max_z, 10);
+    }
+
+    #[test]
+    fn collisions_myworld() {
+        let db = setup();
+        let build_params = Arc::new(BuildParams::default());
+
+        let expression = "collisions(read(MyWorld.entity))";
+
+        let collisions_expression = db.execute_expression(expression.to_string(), build_params);
+
+        let collisions = collisions_expression
+            .downcast_ref::<Vec<AABBCollision>>()
+            .unwrap();
+
+        assert_eq!(collisions[0].min_x, 5);
+        assert_eq!(collisions[0].min_y, 5);
+        assert_eq!(collisions[0].min_z, 5);
+        assert_eq!(collisions[0].max_x, 10);
+        assert_eq!(collisions[0].max_y, 10);
+        assert_eq!(collisions[0].max_z, 10);
     }
 }

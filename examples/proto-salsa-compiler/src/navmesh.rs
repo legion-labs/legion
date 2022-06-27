@@ -1,29 +1,9 @@
 use std::sync::Arc;
 
-use crate::{
-    collision::AABBCollision,
-    compiler::{AnyEq, Compiler},
-    BuildParams,
-};
+use crate::{collision::AABBCollision, compiler::Compiler};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Navmesh(AABBCollision);
-
-pub fn query_collisions(
-    db: &dyn Compiler,
-    expressions: String,
-    build_params: Arc<BuildParams>,
-) -> Vec<AABBCollision> {
-    let values = db.compile_entity(expressions, build_params);
-
-    let mut ret: Vec<AABBCollision> = Vec::new();
-    for value in values {
-        if let Some(aabb) = value.downcast_ref::<AABBCollision>() {
-            ret.push(aabb.clone());
-        }
-    }
-    ret
-}
 
 pub fn compile_navmesh(_db: &dyn Compiler, collisions: Arc<Vec<AABBCollision>>) -> Navmesh {
     let all_collisions = collisions
@@ -37,7 +17,9 @@ pub fn compile_navmesh(_db: &dyn Compiler, collisions: Arc<Vec<AABBCollision>>) 
 mod tests {
     use std::sync::Arc;
 
-    use crate::{collision::AABBCollision, compiler::Compiler, tests::setup, BuildParams};
+    use crate::{
+        collision::AABBCollision, compiler::Compiler, navmesh::Navmesh, tests::setup, BuildParams,
+    };
 
     #[test]
     fn navmesh_simple() {
@@ -92,26 +74,22 @@ mod tests {
     }
 
     #[test]
-    fn test_collisions() {
+    fn navmesh_myworld() {
         let db = setup();
         let build_params = Arc::new(BuildParams::default());
 
-        let expression = "query_collisions(read(Car.coll))";
+        let expression = "navmesh(collisions(read(MyWorld.entity)))";
 
-        let aabb_expression = db
-            .execute_expression(expression.to_string(), build_params)
-            .unwrap();
+        let navmesh_expression = db.execute_expression(expression.to_string(), build_params);
 
-        let aabb = aabb_expression
-            .downcast_ref::<Vec<AABBCollision>>()
-            .unwrap();
+        let navmesh = navmesh_expression.downcast_ref::<Navmesh>().unwrap();
 
-        assert_eq!(aabb[0].min_x, 5);
-        assert_eq!(aabb[0].min_y, 5);
-        assert_eq!(aabb[0].min_z, 5);
-        assert_eq!(aabb[0].max_x, 10);
-        assert_eq!(aabb[0].max_y, 10);
-        assert_eq!(aabb[0].max_z, 10);
+        assert_eq!(navmesh.0.min_x, 5);
+        assert_eq!(navmesh.0.min_y, 5);
+        assert_eq!(navmesh.0.min_z, 5);
+        assert_eq!(navmesh.0.max_x, 50);
+        assert_eq!(navmesh.0.max_y, 60);
+        assert_eq!(navmesh.0.max_z, 70);
     }
 
     #[test]

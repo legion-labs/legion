@@ -13,7 +13,6 @@ pub fn compile_atlas(
     for expression in expressions {
         let texture_path = db
             .execute_expression(expression.to_string(), build_params.clone())
-            .unwrap()
             .downcast_ref::<String>()
             .unwrap()
             .clone();

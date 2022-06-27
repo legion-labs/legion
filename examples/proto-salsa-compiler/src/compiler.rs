@@ -4,12 +4,11 @@ use downcast_rs::{impl_downcast, Downcast};
 
 use crate::{
     atlas::compile_atlas,
-    collision::{compile_aabb, AABBCollision},
-    entity::compile_entity,
-    expression::execute_expression,
+    collision::{compile_aabb, query_collisions, AABBCollision},
+    expression::{execute_expression, run},
     material::compile_material,
     meta::meta_get_resource_path,
-    navmesh::{compile_navmesh, query_collisions, Navmesh},
+    navmesh::{compile_navmesh, Navmesh},
     package::{package, package_sea_ps5, package_see_ps5},
     runtime_dependency::add_runtime_dependency,
     texture::{compile_jpg, compile_png, compile_texture, CompressionType},
@@ -66,17 +65,13 @@ pub trait Compiler<'a> {
         max_z: Arc<String>,
     ) -> AABBCollision;
 
-    fn compile_entity(
-        &self,
-        expressions: String,
-        build_params: Arc<BuildParams>,
-    ) -> Vec<Arc<Box<dyn AnyEq>>>;
+    fn run(&self, expressions: String, build_params: Arc<BuildParams>) -> Vec<Arc<Box<dyn AnyEq>>>;
 
     fn execute_expression(
         &self,
         expression: String,
         build_params: Arc<BuildParams>,
-    ) -> Result<Arc<Box<dyn AnyEq>>, CompilerError>;
+    ) -> Arc<Box<dyn AnyEq>>;
 
     fn meta_get_resource_path(
         &self,
@@ -88,7 +83,7 @@ pub trait Compiler<'a> {
         &self,
         expressions: String,
         build_params: Arc<BuildParams>,
-    ) -> Vec<AABBCollision>;
+    ) -> Arc<Vec<AABBCollision>>;
 
     fn compile_navmesh(&self, collisions: Arc<Vec<AABBCollision>>) -> Navmesh;
 

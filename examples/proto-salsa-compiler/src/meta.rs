@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{compiler::Compiler, BuildParams, CompilerError};
+use crate::{compiler::Compiler, BuildParams};
 
 // Only supporting locale for now, but it would be the same for platform & target specifiers
 pub fn meta_get_resource_path(

@@ -8,8 +8,7 @@ pub fn add_runtime_dependency(
     build_params: Arc<BuildParams>,
 ) -> i8 {
     // Todo: Spawn a task to parallelize this build.
-    db.execute_expression(resource_path_id, build_params)
-        .unwrap();
+    db.execute_expression(resource_path_id, build_params);
     // This return value is a firewall so the caller never gets invalidated on a runtime dependency.
     0
 }
