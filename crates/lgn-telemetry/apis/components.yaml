@@ -54,9 +54,13 @@ components:
         process_id:
           type: string
         dependencies_metadata:
-          $ref: "#/components/schemas/ContainerMetadata"
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDefinedType"
         objects_metadata:
-          $ref: "#/components/schemas/ContainerMetadata"
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDefinedType"
         tags:
           type: array
           items:
@@ -68,16 +72,6 @@ components:
         - process_id
         - tags
         - properties
-    ContainerMetadata:
-      description: The container metadata.
-      type: object
-      properties:
-        types:
-          type: array
-          items:
-            $ref: "#/components/schemas/UserDefinedType"
-      required:
-        - types
     UserDefinedType:
       description: The user defined type.
       type: object

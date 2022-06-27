@@ -20,11 +20,21 @@ impl TryFrom<crate::api::components::Stream> for Stream {
             stream_id: stream.stream_id,
             process_id: stream.process_id,
             dependencies_metadata: match stream.dependencies_metadata {
-                Some(metadata) => Some(metadata.try_into()?),
+                Some(metadata) => Some(ContainerMetadata {
+                    types: metadata
+                        .into_iter()
+                        .map(TryInto::try_into)
+                        .collect::<Result<_>>()?,
+                }),
                 None => None,
             },
             objects_metadata: match stream.objects_metadata {
-                Some(metadata) => Some(metadata.try_into()?),
+                Some(metadata) => Some(ContainerMetadata {
+                    types: metadata
+                        .into_iter()
+                        .map(TryInto::try_into)
+                        .collect::<Result<_>>()?,
+                }),
                 None => None,
             },
             tags: stream.tags,
@@ -38,8 +48,12 @@ impl From<Stream> for crate::api::components::Stream {
         Self {
             stream_id: stream.stream_id,
             process_id: stream.process_id,
-            dependencies_metadata: stream.dependencies_metadata.map(Into::into),
-            objects_metadata: stream.objects_metadata.map(Into::into),
+            dependencies_metadata: stream
+                .dependencies_metadata
+                .map(|m| m.types.into_iter().map(Into::into).collect()),
+            objects_metadata: stream
+                .objects_metadata
+                .map(|m| m.types.into_iter().map(Into::into).collect()),
             tags: stream.tags,
             __additional_properties: stream.properties.into_iter().collect(),
         }
@@ -64,28 +78,6 @@ impl ContainerMetadata {
     pub fn encode(self) -> Vec<u8> {
         let metadata: lgn_telemetry_proto::telemetry::ContainerMetadata = self.into();
         metadata.encode_to_vec()
-    }
-}
-
-impl TryFrom<crate::api::components::ContainerMetadata> for ContainerMetadata {
-    type Error = anyhow::Error;
-
-    fn try_from(metadata: crate::api::components::ContainerMetadata) -> Result<Self> {
-        Ok(Self {
-            types: metadata
-                .types
-                .into_iter()
-                .map(TryInto::try_into)
-                .collect::<Result<_>>()?,
-        })
-    }
-}
-
-impl From<ContainerMetadata> for crate::api::components::ContainerMetadata {
-    fn from(metadata: ContainerMetadata) -> Self {
-        Self {
-            types: metadata.types.into_iter().map(Into::into).collect(),
-        }
     }
 }
 
