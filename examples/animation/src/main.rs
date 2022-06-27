@@ -28,7 +28,7 @@ use lgn_graphics_data::{
     offline::{CameraSetup, Light, Visual},
     LightType,
 };
-use lgn_graphics_renderer::components::Mesh;
+
 use lgn_math::prelude::{Quat, Vec3};
 use lgn_physics::offline::PhysicsSceneSettings;
 
@@ -172,7 +172,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         project,
         "84510591-4ccd-4818-bf73-15375e6b140a",
         "/scene/models/skeleton.mod",
-        Mesh::new_cube(0.1),
+        lgn_graphics_renderer::resources::Mesh::new_cube(0.1),
     )
     .await;
 
@@ -674,7 +674,7 @@ async fn create_offline_model(
     project: &mut Project,
     resource_id: &str,
     resource_path: &str,
-    mesh: Mesh,
+    mesh: lgn_graphics_renderer::resources::Mesh,
 ) -> ResourcePathId {
     let kind = lgn_graphics_data::offline::Model::TYPE;
     let id = resource_id

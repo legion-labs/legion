@@ -3,8 +3,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use lgn_data_runtime::{
-    from_binary_reader, AssetRegistryError, AssetRegistryReader, ComponentInstaller, LoadRequest,
-    Resource, ResourceInstaller, ResourceTypeAndId,
+    from_binary_reader, AssetRegistry, AssetRegistryError, AssetRegistryReader, ComponentInstaller,
+    LoadRequest, Resource, ResourceInstaller, ResourceTypeAndId,
 };
 use lgn_ecs::system::EntityCommands;
 use lgn_graphics_api::{
@@ -18,7 +18,7 @@ use crate::{
     core::{GpuUploadManager, TransferError, UploadGPUResource, UploadGPUTexture},
 };
 
-use super::{PersistentDescriptorSetManager, TextureSlot};
+use super::{PersistentDescriptorSetManager, TextureSlot, MISSING_MODEL_RESOURCE_ID};
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum TextureManagerError {
@@ -136,8 +136,13 @@ impl ComponentInstaller for TextureInstaller {
         // Visual Test
 
         if let Some(visual) = component.downcast_ref::<lgn_graphics_data::runtime::Visual>() {
+            // The data might not contain a valid resource ID but we set a default model at runtime in order to visualize the visual.
+            let model_resource_id = visual
+                .renderable_geometry
+                .as_ref()
+                .map_or(MISSING_MODEL_RESOURCE_ID, |r| r.id());
             entity_command.insert(VisualComponent::new(
-                visual.renderable_geometry.as_ref().map(|r| r.id()),
+                model_resource_id,
                 visual.color,
                 visual.color_blend,
             ));
@@ -227,6 +232,8 @@ impl TextureManager {
             }),
         }
     }
+
+    pub fn install_default_resources(&self, _asset_registry: &AssetRegistry) {}
 
     async fn install_texture(
         &self,

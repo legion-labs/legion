@@ -15,6 +15,3 @@ pub use render_surface::*;
 
 mod visual_component;
 pub use visual_component::*;
-
-mod model_component;
-pub use model_component::*;

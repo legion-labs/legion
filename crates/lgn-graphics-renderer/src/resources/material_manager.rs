@@ -16,6 +16,24 @@ use super::{
     SharedResourcesManager, TextureSlot, UnifiedStaticBuffer,
 };
 
+macro_rules! declare_material_resource_id {
+    ($name:ident, $uuid:expr) => {
+        #[allow(unsafe_code)]
+        pub const $name: ResourceTypeAndId = ResourceTypeAndId {
+            kind: lgn_graphics_data::runtime::Material::TYPE,
+            id: unsafe { ResourceId::from_raw_unchecked(u128::from_le_bytes($uuid)) },
+        };
+    };
+}
+
+declare_material_resource_id!(
+    DEFAULT_MATERIAL_RESOURCE_ID,
+    [
+        0x0B, 0x4C, 0xDD, 0x33, 0x32, 0x17, 0x49, 0x19, 0x8B, 0x18, 0xD5, 0x43, 0x6D, 0x6A, 0x5E,
+        0x9D
+    ]
+);
+
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum MaterialManagerError {
     #[error(transparent)]
@@ -92,8 +110,8 @@ impl ResourceInstaller for MaterialInstaller {
         let render_material = self
             .material_manager
             .install_material(
-                &request.asset_registry,
-                &material_data,
+                request.asset_registry.as_ref(),
+                material_data,
                 &resource_id.to_string(),
             )
             .await
@@ -152,6 +170,8 @@ impl MaterialManager {
     pub fn get_default_material(&self) -> &RenderMaterial {
         &self.inner.default_material
     }
+
+    pub fn install_default_resources(&self, _asset_registry: &AssetRegistry) {}
 
     async fn build_gpu_data(
         asset_registry: &AssetRegistry,
@@ -349,13 +369,13 @@ impl MaterialManager {
 
     async fn install_material(
         &self,
-        asset_registry: &Arc<AssetRegistry>,
-        material_data: &lgn_graphics_data::runtime::Material,
+        asset_registry: &AssetRegistry,
+        material_data: lgn_graphics_data::runtime::Material,
         _name: &str,
     ) -> Result<RenderMaterial, MaterialManagerError> {
         let gpu_material_data = Self::build_gpu_data(
-            asset_registry.as_ref(),
-            material_data,
+            asset_registry,
+            &material_data,
             &self.inner.shared_resources_manager,
             &self.inner.sampler_manager,
         )

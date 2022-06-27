@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use lgn_data_runtime::AssetRegistry;
 use lgn_graphics_data::Color;
 use strum::IntoEnumIterator;
 
@@ -64,6 +65,8 @@ impl SharedResourcesManager {
             }),
         }
     }
+
+    pub fn install_default_resources(&self, _asset_registry: &AssetRegistry) {}
 
     pub fn default_texture_slot(&self, shared_texture_id: SharedTextureId) -> TextureSlot {
         self.inner.default_textures[shared_texture_id as usize].bindless_slot

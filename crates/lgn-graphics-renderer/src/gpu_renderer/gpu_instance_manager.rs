@@ -1,6 +1,7 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use lgn_app::App;
+use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::{
     prelude::{Changed, Entity, Query, RemovedComponents, Res},
     schedule::{SystemLabel, SystemSet},
@@ -18,9 +19,8 @@ use crate::{
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        DefaultMeshType, GpuDataAllocation, GpuDataManager, MeshManager, MissingVisualTracker,
-        ModelManager, StaticBufferAllocation, StaticBufferView, UnifiedStaticBuffer,
-        UpdateUnifiedStaticBufferCommand,
+        GpuDataAllocation, GpuDataManager, MeshManager, RenderModel, StaticBufferAllocation,
+        StaticBufferView, UnifiedStaticBuffer, UpdateUnifiedStaticBufferCommand,
     },
     Renderer,
 };
@@ -191,11 +191,10 @@ impl GpuInstanceManager {
         &mut self,
         entity: Entity,
         visual: &VisualComponent,
-        model_manager: &ModelManager,
         mesh_manager: &MeshManager,
-        missing_visuals_tracker: &mut MissingVisualTracker,
         render_commands: &mut RenderCommandBuilder,
         picking_context: &mut PickingIdContext<'_>,
+        asset_registry: &AssetRegistry,
     ) {
         assert!(!self.entity_to_gpu_instance_block.contains_key(&entity));
 
@@ -220,18 +219,14 @@ impl GpuInstanceManager {
         // Model (might no be ready. it returns a default model)
         // TODO(vdbdd): should be managed at call site (default model depending on some criterias)
         //
-        if let Some(model_resource_id) = visual.model_resource_id() {
-            missing_visuals_tracker.add_resource_entity_dependency(*model_resource_id, entity);
-        }
 
-        let default_model = model_manager.get_default_model(DefaultMeshType::Cube);
-        let model = visual
-            .model_resource_id()
-            .map_or(default_model, |model_resource_id| {
-                model_manager
-                    .get_model_meta_data(model_resource_id)
-                    .unwrap_or(default_model)
-            });
+        let render_model_handle = asset_registry
+            .lookup::<RenderModel>(visual.model_resource_id())
+            .expect("Must been loaded");
+        let render_model_guard = render_model_handle.get().unwrap();
+        let render_model = &*render_model_guard;
+
+        // let default_model = model_manager.get_default_model(DefaultMeshType::Cube);
 
         //
         // Gpu instances
@@ -239,12 +234,12 @@ impl GpuInstanceManager {
 
         let mut gpu_instance_ids = Vec::new();
         let mut gpu_instance_keys = Vec::new();
-
-        for (mesh_index, mesh) in model.mesh_instances.iter().enumerate() {
+        let mesh_reader = mesh_manager.read();
+        for (mesh_index, mesh) in render_model.mesh_instances().iter().enumerate() {
             //
             // Mesh
             //
-            let mesh_meta_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
+            let render_mesh = mesh_reader.get_render_mesh(mesh.mesh_id);
 
             //
             // Material (might not be valid)
@@ -255,7 +250,7 @@ impl GpuInstanceManager {
             //
 
             let instance_vas = GpuInstanceVas {
-                submesh_va: mesh_meta_data.mesh_description_offset,
+                submesh_va: render_mesh.mesh_description_offset,
                 material_va: mesh.material_va as u32,
                 color_va: self.color_manager.gpuheap_addr_for_key(&entity) as u32,
                 transform_va: self.transform_manager.gpuheap_addr_for_key(&entity) as u32,
@@ -291,7 +286,7 @@ impl GpuInstanceManager {
             self.added_render_elements.push(RenderElement::new(
                 gpu_instance_id,
                 mesh.material_id,
-                mesh_manager.get_mesh_meta_data(mesh.mesh_id),
+                render_mesh,
             ));
         }
 
@@ -348,6 +343,7 @@ impl GpuInstanceManager {
 )]
 fn update_gpu_instances(
     renderer: Res<'_, Renderer>,
+    asset_registry: Res<'_, Arc<AssetRegistry>>,
     instance_query: Query<
         '_,
         '_,
@@ -358,12 +354,8 @@ fn update_gpu_instances(
     removed_transform_components: RemovedComponents<'_, GlobalTransform>,
 ) {
     let picking_manager = renderer.render_resources().get::<PickingManager>();
-    let model_manager = renderer.render_resources().get::<ModelManager>();
     let mesh_manager = renderer.render_resources().get::<MeshManager>();
     let mut instance_manager = renderer.render_resources().get_mut::<GpuInstanceManager>();
-    let mut missing_visuals_tracker = renderer
-        .render_resources()
-        .get_mut::<MissingVisualTracker>();
 
     //
     // Clear transient containers
@@ -404,11 +396,10 @@ fn update_gpu_instances(
             instance_manager.add_gpu_instance_block(
                 entity,
                 visual,
-                &model_manager,
                 &mesh_manager,
-                &mut missing_visuals_tracker,
                 &mut render_commands,
                 &mut picking_context,
+                asset_registry.as_ref(),
             );
         }
     }
