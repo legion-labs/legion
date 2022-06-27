@@ -133,20 +133,4 @@ pub mod tests {
 
         db.package_see_ps5();
     }
-
-    #[test]
-    fn composed_expression() {
-        let db = setup();
-
-        let build_params = Arc::new(BuildParams::default());
-
-        let compiled_atlas = db
-            .execute_expression("atlas(read(Atlas.atlas))".to_string(), build_params)
-            .unwrap();
-
-        assert_eq!(
-            compiled_atlas.downcast_ref::<String>().unwrap(),
-            "(Jpg Texture A compressed BC4) + (Png Texture B compressed BC4) + (Jpg Texture in English compressed BC4) + "
-        );
-    }
 }

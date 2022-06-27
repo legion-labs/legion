@@ -45,18 +45,17 @@ pub fn execute_expression(
                         db.compile_atlas(content, build_params.clone()),
                     )));
                 }
-                /*"collision" => {
-                    let arg = stack.pop();
-
-                    if let Some(token::Token::Identifier(content)) = arg {
-                        stack.push(token::Token::Identifier(Arc::new(Box::new(
-                            db.compile_collision(Arc::new(
-                                content.downcast_ref::<String>().unwrap().clone(),
-                            ))
-                            .to_string(),
-                        ))));
-                    }
-                }*/
+                "query_collisions" => {
+                    let content = stack
+                        .pop_back()
+                        .unwrap()
+                        .downcast_ref::<String>()
+                        .unwrap()
+                        .clone();
+                    stack.push_front(Arc::new(Box::new(
+                        db.query_collisions(content, build_params.clone()),
+                    )));
+                }
                 "meta" => {
                     let content = stack
                         .pop_back()
@@ -132,6 +131,22 @@ mod tests {
         assert_eq!(
             result.downcast_ref::<String>().unwrap(),
             "meta(read(TextureA.meta));meta(read(TextureB.meta));meta(read(TextureC.meta))"
+        );
+    }
+
+    #[test]
+    fn composed_expression() {
+        let db = setup();
+
+        let build_params = Arc::new(BuildParams::default());
+
+        let compiled_atlas = db
+            .execute_expression("atlas(read(Atlas.atlas))".to_string(), build_params)
+            .unwrap();
+
+        assert_eq!(
+            compiled_atlas.downcast_ref::<String>().unwrap(),
+            "(Jpg Texture A compressed BC4) + (Png Texture B compressed BC4) + (Jpg Texture in English compressed BC4) + "
         );
     }
 }

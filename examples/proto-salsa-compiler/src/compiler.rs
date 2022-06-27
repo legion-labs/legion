@@ -68,7 +68,7 @@ pub trait Compiler<'a> {
 
     fn compile_entity(
         &self,
-        name: String,
+        expressions: String,
         build_params: Arc<BuildParams>,
     ) -> Vec<Arc<Box<dyn AnyEq>>>;
 
@@ -84,8 +84,13 @@ pub trait Compiler<'a> {
         build_params: Arc<BuildParams>,
     ) -> String;
 
-    fn query_collisions(&self, quadrant: Arc<AABBCollision>) -> Vec<AABBCollision>;
-    fn compile_navmesh(&self, quadrant: Arc<AABBCollision>) -> Navmesh;
+    fn query_collisions(
+        &self,
+        expressions: String,
+        build_params: Arc<BuildParams>,
+    ) -> Vec<AABBCollision>;
+
+    fn compile_navmesh(&self, collisions: Arc<Vec<AABBCollision>>) -> Navmesh;
 
     // European countries
     fn package_see_ps5(&self) -> ContentAddr;
