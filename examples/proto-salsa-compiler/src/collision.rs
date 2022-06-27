@@ -92,3 +92,30 @@ pub fn compile_aabb(
         max_z: max_z.parse::<i64>().unwrap(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use crate::{collision::AABBCollision, compiler::Compiler, tests::setup, BuildParams};
+
+    #[test]
+    fn compile_aabb() {
+        let db = setup();
+
+        let build_params = Arc::new(BuildParams::default());
+
+        let aabb_expression = db
+            .execute_expression("aabb(0,1,2,3,4,5)".to_string(), build_params)
+            .unwrap();
+
+        let aabb = aabb_expression.downcast_ref::<AABBCollision>().unwrap();
+
+        assert_eq!(aabb.min_x, 0);
+        assert_eq!(aabb.min_y, 1);
+        assert_eq!(aabb.min_z, 2);
+        assert_eq!(aabb.max_x, 3);
+        assert_eq!(aabb.max_y, 4);
+        assert_eq!(aabb.max_z, 5);
+    }
+}

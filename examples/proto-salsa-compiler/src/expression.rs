@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 use crate::compiler::AnyEq;
@@ -17,7 +18,7 @@ pub fn execute_expression(
     let tokens = shunting_yard.parse(expression.as_str()).unwrap();
     println!("{}", shunting_yard.to_string());
 
-    let mut stack: Vec<Arc<Box<dyn AnyEq>>> = Vec::new();
+    let mut stack: VecDeque<Arc<Box<dyn AnyEq>>> = VecDeque::new();
 
     // Iterate over the tokens and calculate a result
     for token in tokens {
@@ -26,21 +27,21 @@ pub fn execute_expression(
             match identifier_string.as_str() {
                 "read" => {
                     let file_name = stack
-                        .pop()
+                        .pop_back()
                         .unwrap()
                         .downcast_ref::<String>()
                         .unwrap()
                         .clone();
-                    stack.push(Arc::new(Box::new(db.read(file_name))));
+                    stack.push_front(Arc::new(Box::new(db.read(file_name))));
                 }
                 "atlas" => {
                     let content = stack
-                        .pop()
+                        .pop_back()
                         .unwrap()
                         .downcast_ref::<Vec<String>>()
                         .unwrap()
                         .clone();
-                    stack.push(Arc::new(Box::new(
+                    stack.push_front(Arc::new(Box::new(
                         db.compile_atlas(content, build_params.clone()),
                     )));
                 }
@@ -58,24 +59,24 @@ pub fn execute_expression(
                 }*/
                 "meta" => {
                     let content = stack
-                        .pop()
+                        .pop_back()
                         .unwrap()
                         .downcast_ref::<String>()
                         .unwrap()
                         .clone();
-                    stack.push(Arc::new(Box::new(
+                    stack.push_front(Arc::new(Box::new(
                         db.meta_get_resource_path(content, build_params.clone()),
                     )));
                 }
                 "aabb" => {
-                    let min_x = stack.pop().unwrap();
-                    let min_y = stack.pop().unwrap();
-                    let min_z = stack.pop().unwrap();
-                    let max_x = stack.pop().unwrap();
-                    let max_y = stack.pop().unwrap();
-                    let max_z = stack.pop().unwrap();
+                    let min_x = stack.pop_back().unwrap();
+                    let min_y = stack.pop_back().unwrap();
+                    let min_z = stack.pop_back().unwrap();
+                    let max_x = stack.pop_back().unwrap();
+                    let max_y = stack.pop_back().unwrap();
+                    let max_z = stack.pop_back().unwrap();
 
-                    stack.push(Arc::new(Box::new(db.compile_aabb(
+                    stack.push_front(Arc::new(Box::new(db.compile_aabb(
                         Arc::new(min_x.downcast_ref::<String>().unwrap().clone()),
                         Arc::new(min_y.downcast_ref::<String>().unwrap().clone()),
                         Arc::new(min_z.downcast_ref::<String>().unwrap().clone()),
@@ -86,25 +87,25 @@ pub fn execute_expression(
                 }
                 "entity" => {
                     let content = stack
-                        .pop()
+                        .pop_back()
                         .unwrap()
                         .downcast_ref::<String>()
                         .unwrap()
                         .clone();
-                    stack.push(Arc::new(Box::new(
+                    stack.push_front(Arc::new(Box::new(
                         db.compile_entity(content, build_params.clone()),
                     )));
                 }
 
                 _ => {
                     // No function name match, we assume this is a function argument
-                    stack.push(identifier.clone());
+                    stack.push_front(identifier.clone());
                 }
             }
         }
     }
 
-    let computed = stack.pop();
+    let computed = stack.pop_back();
     if let Some(result_identifier) = computed {
         Ok(result_identifier)
     } else {

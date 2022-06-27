@@ -114,13 +114,13 @@ pub mod tests {
 
         db.set_read(
             "MyWorld.entity".to_string(),
-            r#"atlas(entity(read(Atlas.entity)));collision(entity(read(Car.entity)));collision(entity(read(Tree.entity)))"#
+            r#"atlas(entity(read(Atlas.entity)));collision(read(Car.coll));collision(read(Tree.coll));navmesh(collisions())"#
                 .to_string(),
         );
 
-        db.set_read("Car.entity".to_string(), "aabb(5,5,5,10,10,10)".to_string());
+        db.set_read("Car.coll".to_string(), "aabb(5,5,5,10,10,10)".to_string());
         db.set_read(
-            "Tree.entity".to_string(),
+            "Tree.coll".to_string(),
             "aabb(30,30,30,50,60,70)".to_string(),
         );
 

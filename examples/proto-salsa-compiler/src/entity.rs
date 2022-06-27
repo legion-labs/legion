@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{BuildParams, CompilerError};
+use crate::BuildParams;
 
 use crate::compiler::Compiler;
 
@@ -9,7 +9,7 @@ pub fn compile_entity(
     resources_to_compile: String,
     build_params: Arc<BuildParams>,
 ) -> Vec<String> {
-    // This compiler returns a vector of strings splitted by ;
+    // This compiler executes the embedded expressions.
     let expressions: Vec<&str> = resources_to_compile.split(';').collect();
 
     let mut ret = Vec::new();
