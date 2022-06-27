@@ -119,7 +119,7 @@ use crate::resources::{
 
 use crate::{
     components::{apply_camera_setups, camera_control, RenderSurface, VisualComponent},
-    labels::CommandBufferLabel,
+    labels::RendererLabel,
 };
 
 pub const UP_VECTOR: Vec3 = Vec3::Z;
@@ -333,7 +333,9 @@ impl Plugin for RendererPlugin {
 
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
-            install_default_resources.after(AssetRegistryScheduling::AssetRegistryCreated),
+            install_default_resources
+                .label(RendererLabel::DefaultResourcesInstalled)
+                .after(AssetRegistryScheduling::AssetRegistryCreated),
         );
 
         // Plugins are optional
@@ -379,7 +381,7 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(
             RenderStage::Render,
-            render_update.label(CommandBufferLabel::Generate),
+            render_update.label(RendererLabel::Generate),
         );
 
         //

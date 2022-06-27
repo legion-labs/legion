@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use lgn_app::App;
-use lgn_data_runtime::AssetRegistry;
+
 use lgn_ecs::{
     prelude::{Changed, Entity, Query, RemovedComponents, Res},
     schedule::{SystemLabel, SystemSet},
@@ -19,8 +19,8 @@ use crate::{
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
-        GpuDataAllocation, GpuDataManager, MeshManager, RenderModel, StaticBufferAllocation,
-        StaticBufferView, UnifiedStaticBuffer, UpdateUnifiedStaticBufferCommand,
+        GpuDataAllocation, GpuDataManager, MeshManager, StaticBufferAllocation, StaticBufferView,
+        UnifiedStaticBuffer, UpdateUnifiedStaticBufferCommand,
     },
     Renderer,
 };
@@ -194,7 +194,6 @@ impl GpuInstanceManager {
         mesh_manager: &MeshManager,
         render_commands: &mut RenderCommandBuilder,
         picking_context: &mut PickingIdContext<'_>,
-        asset_registry: &AssetRegistry,
     ) {
         assert!(!self.entity_to_gpu_instance_block.contains_key(&entity));
 
@@ -220,9 +219,7 @@ impl GpuInstanceManager {
         // TODO(vdbdd): should be managed at call site (default model depending on some criterias)
         //
 
-        let render_model_handle = asset_registry
-            .lookup::<RenderModel>(visual.model_resource_id())
-            .expect("Must been loaded");
+        let render_model_handle = visual.render_model_handle();
         let render_model_guard = render_model_handle.get().unwrap();
         let render_model = &*render_model_guard;
 
@@ -341,7 +338,6 @@ impl GpuInstanceManager {
 )]
 fn update_gpu_instances(
     renderer: Res<'_, Renderer>,
-    asset_registry: Res<'_, Arc<AssetRegistry>>,
     instance_query: Query<
         '_,
         '_,
@@ -397,7 +393,6 @@ fn update_gpu_instances(
                 &mesh_manager,
                 &mut render_commands,
                 &mut picking_context,
-                asset_registry.as_ref(),
             );
         }
     }

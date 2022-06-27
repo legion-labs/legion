@@ -15,7 +15,7 @@ use crate::{
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurfaces,
     },
-    CommandBufferLabel, RenderStage,
+    RenderStage, RendererLabel,
 };
 
 pub struct PickingPlugin {}
@@ -41,7 +41,7 @@ impl Plugin for PickingPlugin {
         app.add_system_to_stage(
             RenderStage::Render,
             update_picking_components
-                .after(CommandBufferLabel::Generate)
+                .after(RendererLabel::Generate)
                 .label(PickingSystemLabel::PickedComponent),
         );
 

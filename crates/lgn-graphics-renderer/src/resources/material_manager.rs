@@ -2,6 +2,8 @@ use crossbeam::atomic::AtomicCell;
 
 use std::sync::Arc;
 
+use uuid::uuid;
+
 use lgn_data_runtime::{activate_reference, from_binary_reader, prelude::*};
 
 use lgn_graphics_api::{AddressMode, CompareOp, FilterType, MipMapMode, SamplerDef};
@@ -23,17 +25,14 @@ macro_rules! declare_material_resource_id {
         #[allow(unsafe_code)]
         pub const $name: ResourceTypeAndId = ResourceTypeAndId {
             kind: lgn_graphics_data::runtime::Material::TYPE,
-            id: unsafe { ResourceId::from_raw_unchecked(u128::from_le_bytes($uuid)) },
+            id: ResourceId::from_uuid(uuid!($uuid)),
         };
     };
 }
 
 declare_material_resource_id!(
     DEFAULT_MATERIAL_RESOURCE_ID,
-    [
-        0x0B, 0x4C, 0xDD, 0x33, 0x32, 0x17, 0x49, 0x19, 0x8B, 0x18, 0xD5, 0x43, 0x6D, 0x6A, 0x5E,
-        0x9D
-    ]
+    "1bb6f07f-f573-41e6-9ada-27a838d369c2"
 );
 
 #[derive(thiserror::Error, Debug, Clone)]
