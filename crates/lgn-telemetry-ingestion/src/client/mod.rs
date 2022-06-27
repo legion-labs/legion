@@ -4,9 +4,8 @@ use errors::Result;
 use http::{Request, Response};
 use hyper::service::Service;
 use lgn_telemetry::{
-    api::components::{Process, Stream},
     encode_block_and_payload,
-    types::{Block, BlockPayload},
+    types::{Block, BlockPayload, Process, Stream},
 };
 
 /// A client for the ingestion service.
@@ -46,7 +45,7 @@ where
             .client
             .insert_process(InsertProcessRequest {
                 space_id: self.space_id.clone(),
-                body: process,
+                body: process.into(),
             })
             .await?
         {
@@ -66,7 +65,7 @@ where
             .client
             .insert_stream(InsertStreamRequest {
                 space_id: self.space_id.clone(),
-                body: stream,
+                body: stream.into(),
             })
             .await?
         {

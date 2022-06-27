@@ -4,12 +4,8 @@ mod sql;
 
 use async_trait::async_trait;
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry::{
-    api::components::{ContainerMetadata, Process, Stream},
-    types::{Block, BlockPayload},
-};
+use lgn_telemetry::types::{Block, BlockPayload, Process, Stream};
 use lgn_tracing::{async_span_scope, info};
-use prost::Message;
 use std::sync::Arc;
 
 use super::provider::IngestionProvider;
@@ -48,7 +44,7 @@ impl IngestionProvider for DataLakeProvider {
 
         let mut connection = self.connection.db_pool.acquire().await?;
 
-        let encoded_payload = encode_payload(payload);
+        let encoded_payload = payload.encode();
         let payload_size = encoded_payload.len();
         if payload_size >= 128 * 1024 {
             self.connection
@@ -122,15 +118,15 @@ impl IngestionProvider for DataLakeProvider {
         let mut connection = self.connection.db_pool.acquire().await?;
 
         let dependencies_metadata = match stream.dependencies_metadata {
-            Some(metadata) => encode_metadata(metadata),
+            Some(metadata) => metadata.encode(),
             None => Vec::new(),
         };
         let objects_metadata = match stream.objects_metadata {
-            Some(metadata) => encode_metadata(metadata),
+            Some(metadata) => metadata.encode(),
             None => Vec::new(),
         };
         let tags = stream.tags.join(" ");
-        let properties = serde_json::to_string(&stream.__additional_properties).unwrap();
+        let properties = serde_json::to_string(&stream.properties).unwrap();
 
         info!("new stream {} [{}]", stream.stream_id, tags);
 
@@ -146,16 +142,4 @@ impl IngestionProvider for DataLakeProvider {
 
         Ok(())
     }
-}
-
-// TODO: See if we want to keep the protobuf encoding or not.
-fn encode_metadata(metadata: ContainerMetadata) -> Vec<u8> {
-    let metadata: lgn_telemetry_proto::telemetry::ContainerMetadata = metadata.into();
-    metadata.encode_to_vec()
-}
-
-// TODO: See if we want to keep the protobuf encoding or not.
-fn encode_payload(payload: BlockPayload) -> Vec<u8> {
-    let payload: lgn_telemetry_proto::telemetry::BlockPayload = payload.into();
-    payload.encode_to_vec()
 }

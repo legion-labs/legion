@@ -22,6 +22,15 @@ pub struct BlockPayload {
     pub objects: Vec<u8>,
 }
 
+impl BlockPayload {
+    // TODO: See if we want to keep the protobuf encoding or not.
+    pub fn encode(&self) -> Vec<u8> {
+        Vec::new()
+        // let payload: lgn_telemetry_proto::telemetry::BlockPayload = payload.into();
+        // payload.encode_to_vec()
+    }
+}
+
 /// The `BlockMedatada` saved in the database.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockMetadata {

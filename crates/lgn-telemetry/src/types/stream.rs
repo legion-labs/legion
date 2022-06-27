@@ -1,21 +1,30 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Stream {
     pub stream_id: String,
     pub process_id: String,
     pub dependencies_metadata: Option<ContainerMetadata>,
     pub objects_metadata: Option<ContainerMetadata>,
     pub tags: Vec<String>,
-    pub properties: BTreeMap<String, String>,
+    pub properties: HashMap<String, String>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ContainerMetadata {
     pub types: Vec<UserDefinedType>,
 }
 
-#[derive(Clone, PartialEq)]
+impl ContainerMetadata {
+    // TODO: See if we want to keep the protobuf encoding or not.
+    pub fn encode(&self) -> Vec<u8> {
+        Vec::new()
+        // let metadata: lgn_telemetry_proto::telemetry::ContainerMetadata = metadata.into();
+        // metadata.encode_to_vec()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct UserDefinedType {
     pub name: String,
     pub size: u32,
@@ -23,7 +32,7 @@ pub struct UserDefinedType {
     pub is_reference: bool,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UdtMember {
     pub name: String,
     pub type_name: String,
@@ -40,7 +49,7 @@ impl From<crate::api::components::Stream> for Stream {
             dependencies_metadata: stream.dependencies_metadata.map(Into::into),
             objects_metadata: stream.objects_metadata.map(Into::into),
             tags: stream.tags,
-            properties: stream.__additional_properties,
+            properties: stream.__additional_properties.into_iter().collect(),
         }
     }
 }
@@ -53,7 +62,7 @@ impl From<Stream> for crate::api::components::Stream {
             dependencies_metadata: stream.dependencies_metadata.map(Into::into),
             objects_metadata: stream.objects_metadata.map(Into::into),
             tags: stream.tags,
-            __additional_properties: stream.properties,
+            __additional_properties: stream.properties.into_iter().collect(),
         }
     }
 }

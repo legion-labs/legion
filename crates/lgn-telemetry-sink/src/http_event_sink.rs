@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use lgn_auth::{Authenticator, ClientTokenSet};
 use tonic::codegen::http::Uri;
 
-use lgn_telemetry::api::components::{Process as ProcessInfo, Stream as StreamProto};
+use lgn_telemetry::types::{Process as ProcessInfo, Stream as StreamInfo};
 use lgn_tracing::{
     event::EventSink,
     logs::{LogBlock, LogMetadata, LogStream},
@@ -25,7 +25,7 @@ use crate::stream_info::get_stream_info;
 #[derive(Debug)]
 enum SinkEvent {
     Startup(ProcessInfo),
-    InitStream(StreamProto),
+    InitStream(StreamInfo),
     ProcessLogBlock(Arc<LogBlock>),
     ProcessMetricsBlock(Arc<MetricsBlock>),
     ProcessThreadBlock(Arc<ThreadBlock>),

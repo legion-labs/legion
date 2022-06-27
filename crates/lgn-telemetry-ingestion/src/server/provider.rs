@@ -1,9 +1,6 @@
 use crate::server::Result;
 use async_trait::async_trait;
-use lgn_telemetry::{
-    api::components::{Process, Stream},
-    types::{Block, BlockPayload},
-};
+use lgn_telemetry::types::{Block, BlockPayload, Process, Stream};
 
 #[async_trait]
 pub trait IngestionProvider {
