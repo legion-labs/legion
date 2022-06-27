@@ -24,14 +24,14 @@ impl DescriptorHeapManager {
         }
     }
 
-    pub fn begin_frame(&mut self, frame_index: usize) {
+    pub fn begin_frame(&mut self) {
         let mut pool = self.descriptor_pools.lock();
-        pool.begin_frame(frame_index, DescriptorPool::begin_frame);
+        pool.begin_frame(DescriptorPool::begin_frame);
     }
 
-    pub fn end_frame(&mut self, frame_index: usize) {
+    pub fn end_frame(&mut self) {
         let mut pool = self.descriptor_pools.lock();
-        pool.end_frame(frame_index, |_| ());
+        pool.end_frame(|_| ());
     }
 
     pub fn descriptor_heap(&self) -> &DescriptorHeap {

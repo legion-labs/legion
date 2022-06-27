@@ -108,11 +108,7 @@ impl Drop for DeviceContextInner {
 }
 
 impl DeviceContextInner {
-    pub fn new(
-        instance: &Instance<'_>,
-        windowing_mode: ExtensionMode,
-        num_buffered_frames: u64,
-    ) -> GfxResult<Self> {
+    pub fn new(instance: &Instance<'_>, windowing_mode: ExtensionMode) -> GfxResult<Self> {
         #[cfg(debug_assertions)]
         #[cfg(feature = "track-device-contexts")]
         let all_contexts = {
@@ -127,7 +123,7 @@ impl DeviceContextInner {
 
         Ok(Self {
             device_info,
-            deferred_dropper: DeferredDropper::new(num_buffered_frames),
+            deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
             current_cpu_frame: AtomicU64::new(0),
 
@@ -197,11 +193,7 @@ impl Drop for DeviceContext {
 
 impl DeviceContext {
     pub fn new(instance: &Instance<'_>, api_def: &ApiDef) -> GfxResult<Self> {
-        let inner = Arc::new(DeviceContextInner::new(
-            instance,
-            api_def.windowing_mode,
-            api_def.num_buffered_frames,
-        )?);
+        let inner = Arc::new(DeviceContextInner::new(instance, api_def.windowing_mode)?);
 
         Ok(Self {
             inner,
@@ -278,12 +270,12 @@ impl DeviceContext {
         ShaderModule::new(self, data)
     }
 
-    pub fn deferred_dropper(&self) -> &DeferredDropper {
+    pub(crate) fn deferred_dropper(&self) -> &DeferredDropper {
         &self.inner.deferred_dropper
     }
 
     pub fn free_gpu_memory(&self) {
-        self.inner.deferred_dropper.free_gpu_memory();
+        self.inner.deferred_dropper.flush();
     }
 
     pub fn device_info(&self) -> &DeviceInfo {

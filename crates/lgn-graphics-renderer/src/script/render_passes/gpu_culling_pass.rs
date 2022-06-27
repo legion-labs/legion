@@ -18,7 +18,7 @@ use crate::{
     },
     gpu_renderer::{GpuInstanceManager, MeshRenderer},
     resources::{PipelineDef, PipelineHandle, PipelineManager, UnifiedStaticBuffer},
-    RenderContext, RenderScope,
+    RenderContext,
 };
 
 pub struct GpuCullingPass;
@@ -180,15 +180,11 @@ impl GpuCullingPass {
                         .execute(move |context, execute_context, cmd_buffer| {
                             let mut mesh_renderer =
                                 execute_context.render_resources.get_mut::<MeshRenderer>();
-                            let render_scope =
-                                execute_context.render_resources.get::<RenderScope>();
 
-                            let frame_index = render_scope.frame_idx() as usize;
-                            let readback =
-                                mesh_renderer.culling_buffers.stats_buffer.begin_readback(
-                                    frame_index,
-                                    execute_context.render_context.device_context,
-                                );
+                            let readback = mesh_renderer
+                                .culling_buffers
+                                .stats_buffer
+                                .begin_readback(execute_context.render_context.device_context);
 
                             readback.read_gpu_data(
                                 0,
@@ -349,7 +345,6 @@ impl GpuCullingPass {
                     compute_pass_builder.execute(|_, execute_context, cmd_buffer| {
                         let mut mesh_renderer =
                             execute_context.render_resources.get_mut::<MeshRenderer>();
-                        let render_scope = execute_context.render_resources.get::<RenderScope>();
 
                         // TODO(jsg): Should we manage readback buffers in the graph as well?
                         if let Some(readback) = &mesh_renderer.culling_buffers.stats_buffer_readback
@@ -365,11 +360,10 @@ impl GpuCullingPass {
                         );
 
                         if let Some(readback) = readback {
-                            let frame_index = render_scope.frame_idx() as usize;
                             mesh_renderer
                                 .culling_buffers
                                 .stats_buffer
-                                .end_readback(frame_index, readback);
+                                .end_readback(readback);
                         }
                     })
                 })

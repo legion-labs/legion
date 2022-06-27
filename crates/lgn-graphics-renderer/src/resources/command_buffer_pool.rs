@@ -79,14 +79,14 @@ impl TransientCommandBufferManager {
         }
     }
 
-    pub fn begin_frame(&self, frame_index: usize) {
+    pub fn begin_frame(&self) {
         let mut command_buffer_pools = self.inner.command_buffer_pools.lock();
-        command_buffer_pools.begin_frame(frame_index, CommandBufferPool::begin_frame);
+        command_buffer_pools.begin_frame(CommandBufferPool::begin_frame);
     }
 
-    pub fn end_frame(&self, frame_index: usize) {
+    pub fn end_frame(&self) {
         let mut command_buffer_pools = self.inner.command_buffer_pools.lock();
-        command_buffer_pools.end_frame(frame_index, CommandBufferPool::end_frame);
+        command_buffer_pools.end_frame(CommandBufferPool::end_frame);
     }
 
     pub fn acquire(&self) -> Handle<CommandBufferPool> {
