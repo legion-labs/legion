@@ -1,3 +1,5 @@
+use crossbeam::atomic::AtomicCell;
+
 use std::sync::Arc;
 
 use lgn_data_runtime::{activate_reference, from_binary_reader, prelude::*};
@@ -8,13 +10,31 @@ use lgn_math::Vec4;
 
 use crate::{
     core::{GpuUploadManager, RenderCommandBuilder, TransferError},
-    resources::SharedTextureId,
+    resources::DefaultTextureId,
 };
 
 use super::{
     GpuDataManager, IndexAllocator, RenderTexture, SamplerManager, SamplerSlot,
-    SharedResourcesManager, TextureSlot, UnifiedStaticBuffer,
+    SharedResourcesManager, TextureManager, TextureSlot, UnifiedStaticBuffer,
 };
+
+macro_rules! declare_material_resource_id {
+    ($name:ident, $uuid:expr) => {
+        #[allow(unsafe_code)]
+        pub const $name: ResourceTypeAndId = ResourceTypeAndId {
+            kind: lgn_graphics_data::runtime::Material::TYPE,
+            id: unsafe { ResourceId::from_raw_unchecked(u128::from_le_bytes($uuid)) },
+        };
+    };
+}
+
+declare_material_resource_id!(
+    DEFAULT_MATERIAL_RESOURCE_ID,
+    [
+        0x0B, 0x4C, 0xDD, 0x33, 0x32, 0x17, 0x49, 0x19, 0x8B, 0x18, 0xD5, 0x43, 0x6D, 0x6A, 0x5E,
+        0x9D
+    ]
+);
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum MaterialManagerError {
@@ -92,8 +112,8 @@ impl ResourceInstaller for MaterialInstaller {
         let render_material = self
             .material_manager
             .install_material(
-                &request.asset_registry,
-                &material_data,
+                request.asset_registry.as_ref(),
+                material_data,
                 &resource_id.to_string(),
             )
             .await
@@ -106,11 +126,13 @@ impl ResourceInstaller for MaterialInstaller {
 const MATERIAL_BLOCK_SIZE: u32 = 2048;
 
 struct Inner {
+    texture_manager: TextureManager,
     shared_resources_manager: SharedResourcesManager,
     sampler_manager: SamplerManager,
     index_allocator: parking_lot::RwLock<IndexAllocator>,
     gpu_material_data_manager: tokio::sync::RwLock<GpuMaterialDataManager>,
     default_material: RenderMaterial,
+    default_material_handle: AtomicCell<Option<Handle<RenderMaterial>>>,
 }
 
 #[derive(Clone)]
@@ -124,6 +146,7 @@ impl MaterialManager {
         gpu_upload_manager: &GpuUploadManager,
         render_commands: &mut RenderCommandBuilder,
         shared_resources_manager: &SharedResourcesManager,
+        texture_manager: &TextureManager,
         sampler_manager: &SamplerManager,
     ) -> Self {
         let mut index_allocator = IndexAllocator::new(MATERIAL_BLOCK_SIZE);
@@ -136,15 +159,18 @@ impl MaterialManager {
             &mut gpu_material_data_manager,
             render_commands,
             shared_resources_manager,
+            texture_manager,
         );
 
         Self {
             inner: Arc::new(Inner {
+                texture_manager: texture_manager.clone(),
                 shared_resources_manager: shared_resources_manager.clone(),
                 sampler_manager: sampler_manager.clone(),
                 index_allocator: parking_lot::RwLock::new(index_allocator),
                 gpu_material_data_manager: tokio::sync::RwLock::new(gpu_material_data_manager),
                 default_material,
+                default_material_handle: AtomicCell::new(None),
             }),
         }
     }
@@ -153,8 +179,20 @@ impl MaterialManager {
         &self.inner.default_material
     }
 
+    pub fn install_default_resources(&self, asset_registry: &AssetRegistry) {
+        let handle = Handle::<RenderMaterial>::from(
+            asset_registry
+                .set_resource(
+                    DEFAULT_MATERIAL_RESOURCE_ID,
+                    Box::new(self.get_default_material().clone()),
+                )
+                .unwrap(),
+        );
+        self.inner.default_material_handle.store(Some(handle));
+    }
+
     async fn build_gpu_data(
-        asset_registry: &AssetRegistry,
+        texture_manager: &TextureManager,
         material_data: &lgn_graphics_data::runtime::Material,
         shared_resources_manager: &SharedResourcesManager,
         sampler_manager: &SamplerManager,
@@ -173,10 +211,9 @@ impl MaterialManager {
         gpu_data.set_base_roughness(material_data.base_roughness.into());
         gpu_data.set_albedo_texture(
             Self::get_texture_slot(
-                asset_registry,
                 material_data.albedo.as_ref(),
-                SharedTextureId::Albedo,
-                shared_resources_manager,
+                DefaultTextureId::Albedo,
+                texture_manager,
             )
             .await?
             .index()
@@ -184,10 +221,9 @@ impl MaterialManager {
         );
         gpu_data.set_normal_texture(
             Self::get_texture_slot(
-                asset_registry,
                 material_data.normal.as_ref(),
-                SharedTextureId::Normal,
-                shared_resources_manager,
+                DefaultTextureId::Normal,
+                texture_manager,
             )
             .await?
             .index()
@@ -195,10 +231,9 @@ impl MaterialManager {
         );
         gpu_data.set_metalness_texture(
             Self::get_texture_slot(
-                asset_registry,
                 material_data.metalness.as_ref(),
-                SharedTextureId::Metalness,
-                shared_resources_manager,
+                DefaultTextureId::Metalness,
+                texture_manager,
             )
             .await?
             .index()
@@ -206,10 +241,9 @@ impl MaterialManager {
         );
         gpu_data.set_roughness_texture(
             Self::get_texture_slot(
-                asset_registry,
                 material_data.roughness.as_ref(),
-                SharedTextureId::Roughness,
-                shared_resources_manager,
+                DefaultTextureId::Roughness,
+                texture_manager,
             )
             .await?
             .index()
@@ -229,17 +263,18 @@ impl MaterialManager {
     }
 
     async fn get_texture_slot(
-        _asset_registry: &AssetRegistry,
         texture_id: Option<&BinTextureReferenceType>,
-        default_shared_id: SharedTextureId,
-        shared_resources_manager: &SharedResourcesManager,
+        default_texture_id: DefaultTextureId,
+        texture_manager: &TextureManager,
     ) -> Result<TextureSlot, AssetRegistryError> {
         let texture_slot = if let Some(texture_id) = texture_id {
             let render_texture_handle = texture_id.get_active_handle::<RenderTexture>().unwrap();
             let render_texture = render_texture_handle.get().unwrap();
             render_texture.bindless_slot()
         } else {
-            shared_resources_manager.default_texture_slot(default_shared_id)
+            texture_manager
+                .get_default_texture(default_texture_id)
+                .bindless_slot()
         };
         Ok(texture_slot)
     }
@@ -294,6 +329,7 @@ impl MaterialManager {
         gpu_material_data_manager: &mut GpuMaterialDataManager,
         render_commands: &mut RenderCommandBuilder,
         shared_resources_manager: &SharedResourcesManager,
+        texture_manager: &TextureManager,
     ) -> RenderMaterial {
         let mut default_material_data = crate::cgen::cgen_type::MaterialData::default();
 
@@ -302,26 +338,30 @@ impl MaterialManager {
         default_material_data.set_reflectance(0.5.into());
         default_material_data.set_base_roughness(0.4.into());
         default_material_data.set_albedo_texture(
-            shared_resources_manager
-                .default_texture_slot(SharedTextureId::Albedo)
+            texture_manager
+                .get_default_texture(DefaultTextureId::Albedo)
+                .bindless_slot()
                 .index()
                 .into(),
         );
         default_material_data.set_normal_texture(
-            shared_resources_manager
-                .default_texture_slot(SharedTextureId::Normal)
+            texture_manager
+                .get_default_texture(DefaultTextureId::Normal)
+                .bindless_slot()
                 .index()
                 .into(),
         );
         default_material_data.set_metalness_texture(
-            shared_resources_manager
-                .default_texture_slot(SharedTextureId::Metalness)
+            texture_manager
+                .get_default_texture(DefaultTextureId::Metalness)
+                .bindless_slot()
                 .index()
                 .into(),
         );
         default_material_data.set_roughness_texture(
-            shared_resources_manager
-                .default_texture_slot(SharedTextureId::Roughness)
+            texture_manager
+                .get_default_texture(DefaultTextureId::Roughness)
+                .bindless_slot()
                 .index()
                 .into(),
         );
@@ -349,13 +389,13 @@ impl MaterialManager {
 
     async fn install_material(
         &self,
-        asset_registry: &Arc<AssetRegistry>,
-        material_data: &lgn_graphics_data::runtime::Material,
+        _asset_registry: &AssetRegistry,
+        material_data: lgn_graphics_data::runtime::Material,
         _name: &str,
     ) -> Result<RenderMaterial, MaterialManagerError> {
         let gpu_material_data = Self::build_gpu_data(
-            asset_registry.as_ref(),
-            material_data,
+            &self.inner.texture_manager,
+            &material_data,
             &self.inner.shared_resources_manager,
             &self.inner.sampler_manager,
         )

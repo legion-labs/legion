@@ -17,7 +17,7 @@ use lgn_graphics_data::{
     offline::{CameraSetup, Light, Visual},
     LightType,
 };
-use lgn_graphics_renderer::components::Mesh;
+
 use lgn_math::prelude::{Quat, Vec3};
 use lgn_physics::{
     offline::{PhysicsRigidBox, PhysicsRigidConvexMesh, PhysicsRigidSphere, PhysicsSceneSettings},
@@ -162,7 +162,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         project,
         "c26b19b2-e80a-4db5-a53c-ba24492d8015",
         "/scene/models/cube.mod",
-        Mesh::new_cube(0.5),
+        lgn_graphics_renderer::resources::Mesh::new_cube(0.5),
     )
     .await;
 
@@ -170,7 +170,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         project,
         "53db2f32-ce66-4e01-b06f-960aaa7712e4",
         "/scene/models/sphere.mod",
-        Mesh::new_sphere(0.25, 64, 64),
+        lgn_graphics_renderer::resources::Mesh::new_sphere(0.25, 64, 64),
     )
     .await;
 
@@ -178,7 +178,7 @@ async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
         project,
         "5e0d46c5-78da-4c5e-8204-a2c859ec5c09",
         "/scene/models/pyramid.mod",
-        Mesh::new_pyramid(1.0, 0.5),
+        lgn_graphics_renderer::resources::Mesh::new_pyramid(1.0, 0.5),
     )
     .await;
 
@@ -427,7 +427,7 @@ async fn create_offline_model(
     project: &mut Project,
     resource_id: &str,
     resource_path: &str,
-    mesh: Mesh,
+    mesh: lgn_graphics_renderer::resources::Mesh,
 ) -> ResourcePathId {
     let kind = lgn_graphics_data::offline::Model::TYPE;
     let id = resource_id
