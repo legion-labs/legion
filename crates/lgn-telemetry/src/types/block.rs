@@ -16,6 +16,42 @@ pub struct Block {
     pub nb_objects: i32,
 }
 
+impl From<Block> for crate::api::components::Block {
+    fn from(block: Block) -> Self {
+        Self {
+            block_id: block.block_id,
+            stream_id: block.stream_id,
+            begin_time: block
+                .begin_time
+                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
+            end_time: block
+                .end_time
+                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
+            begin_ticks: block.begin_ticks.to_string(),
+            end_ticks: block.end_ticks.to_string(),
+            nb_objects: block.nb_objects.to_string(),
+        }
+    }
+}
+
+impl TryFrom<crate::api::components::Block> for Block {
+    type Error = anyhow::Error;
+
+    fn try_from(block: crate::api::components::Block) -> Result<Self> {
+        Ok(Self {
+            block_id: block.block_id,
+            stream_id: block.stream_id,
+            begin_time: chrono::DateTime::parse_from_rfc3339(&block.begin_time)?
+                .with_timezone(&chrono::Utc),
+            end_time: chrono::DateTime::parse_from_rfc3339(&block.end_time)?
+                .with_timezone(&chrono::Utc),
+            begin_ticks: block.begin_ticks.parse()?,
+            end_ticks: block.end_ticks.parse()?,
+            nb_objects: block.nb_objects.parse()?,
+        })
+    }
+}
+
 /// The `BlockPayload` sent along with the `Block`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockPayload {
@@ -76,7 +112,10 @@ pub struct BlockMetadata {
 /// # Errors
 ///
 /// This function will return an error if encoding fails.
-pub fn encode_block_and_payload(block: &Block, payload: BlockPayload) -> Result<Vec<u8>> {
+pub fn encode_block_and_payload(block: Block, payload: BlockPayload) -> Result<Vec<u8>> {
+    // The encoded block must match the unreal client and only contain numbers as string.
+    let block: crate::api::components::Block = block.into();
+
     let mut buffer = Vec::new();
     let block_bytes = serde_json::to_vec(&block)?;
     buffer.push(2); // utf8
@@ -97,7 +136,7 @@ pub fn encode_block_and_payload(block: &Block, payload: BlockPayload) -> Result<
 pub fn decode_block_and_payload(data: &[u8]) -> Result<(Block, BlockPayload)> {
     let mut offset = 0;
     let block_text = parse_string(data, &mut offset)?;
-    let block: Block = serde_json::from_str(&block_text)?;
+    let block: crate::api::components::Block = serde_json::from_str(&block_text)?;
 
     let dependencies = read_binary_chunk(data, &mut offset)?;
     let objects = read_binary_chunk(data, &mut offset)?;
@@ -110,7 +149,7 @@ pub fn decode_block_and_payload(data: &[u8]) -> Result<(Block, BlockPayload)> {
         warn!("decode_block_and_payload: data was not parsed completely");
     }
 
-    Ok((block, payload))
+    Ok((block.try_into()?, payload))
 }
 
 #[cfg(test)]

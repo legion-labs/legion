@@ -130,7 +130,7 @@ impl HttpEventSink {
             return;
         }
         match buffer.encode() {
-            Ok((block, payload)) => match client.insert_block(&block, payload).await {
+            Ok((block, payload)) => match client.insert_block(block, payload).await {
                 Ok(_response) => {}
                 Err(e) => {
                     println!("insert_block failed: {}", e);

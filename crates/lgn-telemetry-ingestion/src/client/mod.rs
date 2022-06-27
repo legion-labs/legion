@@ -78,7 +78,7 @@ where
     /// # Errors
     ///
     /// This function will return an error if the call fails.
-    pub async fn insert_block(&self, block: &Block, payload: BlockPayload) -> Result<()> {
+    pub async fn insert_block(&self, block: Block, payload: BlockPayload) -> Result<()> {
         use crate::api::ingestion::client::{InsertBlockRequest, InsertBlockResponse};
 
         let bytes = encode_block_and_payload(block, payload)?;
