@@ -6,6 +6,7 @@ use crossbeam::atomic::AtomicCell;
 use lgn_graphics_data::Color;
 use strum::EnumCount;
 use strum::IntoEnumIterator;
+use uuid::uuid;
 
 use lgn_data_runtime::{
     from_binary_reader, AssetRegistry, AssetRegistryError, AssetRegistryReader, ComponentInstaller,
@@ -34,41 +35,23 @@ macro_rules! declare_texture_resource_id {
         #[allow(unsafe_code)]
         pub const $name: ResourceTypeAndId = ResourceTypeAndId {
             kind: lgn_graphics_data::runtime::BinTexture::TYPE,
-            id: unsafe { ResourceId::from_raw_unchecked(u128::from_le_bytes($uuid)) },
+            id: ResourceId::from_uuid(uuid!($uuid)),
         };
     };
 }
 
-declare_texture_resource_id!(
-    ALBEDO_RESOURCE_ID,
-    [
-        0x1A, 0x44, 0x7E, 0x3C, 0x84, 0x7A, 0x40, 0x37, 0xB3, 0x22, 0x90, 0x75, 0x87, 0x3B, 0x2A,
-        0x9E
-    ]
-);
+declare_texture_resource_id!(ALBEDO_RESOURCE_ID, "96f640c3-adc1-4a00-9114-9a5fc5a44d55");
 
-declare_texture_resource_id!(
-    NORMAL_RESOURCE_ID,
-    [
-        0xD8, 0x9A, 0xC5, 0x19, 0x2C, 0x0F, 0x4E, 0x79, 0x9B, 0xEA, 0x18, 0xD2, 0x73, 0x31, 0xA2,
-        0x81
-    ]
-);
+declare_texture_resource_id!(NORMAL_RESOURCE_ID, "1ca43c76-817e-4286-8f21-b08087b458d5");
 
 declare_texture_resource_id!(
     METALNESS_RESOURCE_ID,
-    [
-        0xE8, 0xB9, 0x1B, 0xB2, 0x19, 0x71, 0x4A, 0x21, 0x97, 0x99, 0x71, 0xE6, 0x67, 0x72, 0x3B,
-        0xBF
-    ]
+    "50fc31f2-454b-4e6a-9c4b-cb0b5783d7f4"
 );
 
 declare_texture_resource_id!(
     ROUGHNESS_RESOURCE_ID,
-    [
-        0x8C, 0xA0, 0xC4, 0x36, 0x68, 0x81, 0x48, 0x51, 0x89, 0xE2, 0x6C, 0x21, 0xD8, 0x02, 0xDE,
-        0xDC
-    ]
+    "756e99f7-e94d-4744-ada0-c84880f7da74"
 );
 
 pub const DEFAULT_TEXTURE_RESOURCE_IDS: [ResourceTypeAndId; DefaultTextureId::COUNT] = [

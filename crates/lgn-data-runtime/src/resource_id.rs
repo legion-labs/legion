@@ -45,13 +45,12 @@ impl ResourceId {
         Self(std::num::NonZeroU128::new(id).unwrap())
     }
 
-    /// Initialize from an existing, serialized, source.
-    ///
-    /// # Safety
-    ///
-    /// If 'id' is equal to zero, it is undefined behaviour.
-    pub const unsafe fn from_raw_unchecked(id: u128) -> Self {
-        Self(std::num::NonZeroU128::new_unchecked(id))
+    /// Creates an id from a UUID.
+    pub const fn from_uuid(id: Uuid) -> Self {
+        Self(match std::num::NonZeroU128::new(id.as_u128()) {
+            Some(val) => val,
+            None => panic!(),
+        })
     }
 
     /// Initialize by hashing the contents of an object. We set 'Sha1' as UUID
