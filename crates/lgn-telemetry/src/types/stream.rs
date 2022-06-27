@@ -60,8 +60,9 @@ impl From<Stream> for crate::api::components::Stream {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq, prost::Message)]
 pub struct ContainerMetadata {
+    #[prost(message, repeated, tag = "1")]
     pub types: Vec<UserDefinedType>,
 }
 
@@ -73,35 +74,23 @@ impl ContainerMetadata {
     ///
     /// This function will return an error if the decoding fails.
     pub fn decode(buffer: &[u8]) -> Result<Self> {
-        Ok(lgn_telemetry_proto::telemetry::ContainerMetadata::decode(buffer)?.into())
+        Ok(Message::decode(buffer)?)
     }
+
     pub fn encode(self) -> Vec<u8> {
-        let metadata: lgn_telemetry_proto::telemetry::ContainerMetadata = self.into();
-        metadata.encode_to_vec()
+        self.encode_to_vec()
     }
 }
 
-impl From<ContainerMetadata> for lgn_telemetry_proto::telemetry::ContainerMetadata {
-    fn from(metadata: ContainerMetadata) -> Self {
-        Self {
-            types: metadata.types.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-impl From<lgn_telemetry_proto::telemetry::ContainerMetadata> for ContainerMetadata {
-    fn from(metadata: lgn_telemetry_proto::telemetry::ContainerMetadata) -> Self {
-        Self {
-            types: metadata.types.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq, prost::Message)]
 pub struct UserDefinedType {
+    #[prost(string, tag = "1")]
     pub name: String,
+    #[prost(uint32, tag = "2")]
     pub size: u32,
+    #[prost(message, repeated, tag = "3")]
     pub members: Vec<UdtMember>,
+    #[prost(bool, tag = "4")]
     pub is_reference: bool,
 }
 
@@ -133,34 +122,17 @@ impl From<UserDefinedType> for crate::api::components::UserDefinedType {
     }
 }
 
-impl From<UserDefinedType> for lgn_telemetry_proto::telemetry::UserDefinedType {
-    fn from(type_: UserDefinedType) -> Self {
-        Self {
-            name: type_.name,
-            size: type_.size,
-            members: type_.members.into_iter().map(Into::into).collect(),
-            is_reference: type_.is_reference,
-        }
-    }
-}
-
-impl From<lgn_telemetry_proto::telemetry::UserDefinedType> for UserDefinedType {
-    fn from(type_: lgn_telemetry_proto::telemetry::UserDefinedType) -> Self {
-        Self {
-            name: type_.name,
-            size: type_.size,
-            members: type_.members.into_iter().map(Into::into).collect(),
-            is_reference: type_.is_reference,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq, prost::Message)]
 pub struct UdtMember {
+    #[prost(string, tag = "1")]
     pub name: String,
+    #[prost(string, tag = "2")]
     pub type_name: String,
+    #[prost(uint32, tag = "3")]
     pub offset: u32,
+    #[prost(uint32, tag = "4")]
     pub size: u32,
+    #[prost(bool, tag = "5")]
     pub is_reference: bool,
 }
 
@@ -185,30 +157,6 @@ impl From<UdtMember> for crate::api::components::UdtMember {
             type_name: member.type_name,
             offset: member.offset.to_string(),
             size: member.size.to_string(),
-            is_reference: member.is_reference,
-        }
-    }
-}
-
-impl From<UdtMember> for lgn_telemetry_proto::telemetry::UdtMember {
-    fn from(member: UdtMember) -> Self {
-        Self {
-            name: member.name,
-            type_name: member.type_name,
-            offset: member.offset,
-            size: member.size,
-            is_reference: member.is_reference,
-        }
-    }
-}
-
-impl From<lgn_telemetry_proto::telemetry::UdtMember> for UdtMember {
-    fn from(member: lgn_telemetry_proto::telemetry::UdtMember) -> Self {
-        Self {
-            name: member.name,
-            type_name: member.type_name,
-            offset: member.offset,
-            size: member.size,
             is_reference: member.is_reference,
         }
     }

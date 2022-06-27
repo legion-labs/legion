@@ -11,6 +11,7 @@ pub struct Block {
     pub stream_id: String,
     pub begin_time: chrono::DateTime<chrono::Utc>,
     pub end_time: chrono::DateTime<chrono::Utc>,
+    /// We send both RFC3339 times and ticks to be able to calibrate the tick frequency
     pub begin_ticks: i64,
     pub end_ticks: i64,
     pub nb_objects: i32,
@@ -53,9 +54,11 @@ impl TryFrom<crate::api::components::Block> for Block {
 }
 
 /// The `BlockPayload` sent along with the `Block`.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq, prost::Message)]
 pub struct BlockPayload {
+    #[prost(bytes = "vec", tag = "1")]
     pub dependencies: Vec<u8>,
+    #[prost(bytes = "vec", tag = "2")]
     pub objects: Vec<u8>,
 }
 
@@ -67,30 +70,11 @@ impl BlockPayload {
     ///
     /// This function will return an error if the decoding fails.
     pub fn decode(buffer: &[u8]) -> Result<Self> {
-        Ok(lgn_telemetry_proto::telemetry::BlockPayload::decode(buffer)?.into())
+        Ok(Message::decode(buffer)?)
     }
 
     pub fn encode(self) -> Vec<u8> {
-        let payload: lgn_telemetry_proto::telemetry::BlockPayload = self.into();
-        payload.encode_to_vec()
-    }
-}
-
-impl From<BlockPayload> for lgn_telemetry_proto::telemetry::BlockPayload {
-    fn from(payload: BlockPayload) -> Self {
-        Self {
-            dependencies: payload.dependencies,
-            objects: payload.objects,
-        }
-    }
-}
-
-impl From<lgn_telemetry_proto::telemetry::BlockPayload> for BlockPayload {
-    fn from(payload: lgn_telemetry_proto::telemetry::BlockPayload) -> Self {
-        Self {
-            dependencies: payload.dependencies,
-            objects: payload.objects,
-        }
+        self.encode_to_vec()
     }
 }
 
@@ -175,7 +159,7 @@ mod tests {
             dependencies: b"123".to_vec(),
             objects: b"456".to_vec(),
         };
-        let data = encode_block_and_payload(&block, payload.clone()).unwrap();
+        let data = encode_block_and_payload(block.clone(), payload.clone()).unwrap();
 
         let (block2, payload2) = decode_block_and_payload(&data).unwrap();
         assert_eq!(block, block2);
