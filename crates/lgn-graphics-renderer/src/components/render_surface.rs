@@ -339,11 +339,7 @@ impl RenderSurface {
                 tiling: TextureTiling::Optimal,
             };
 
-            let prev_final_target = std::mem::replace(
-                &mut self.final_target,
-                device_context.create_texture(final_target_desc, "FinalTarget"),
-            );
-            deferred_drop.drop(prev_final_target);
+            self.final_target = device_context.create_texture(final_target_desc, "FinalTarget");
 
             self.final_target_srv =
                 self.final_target

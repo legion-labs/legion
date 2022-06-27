@@ -186,11 +186,7 @@ impl RenderViewportRendererData {
             tiling: TextureTiling::Optimal,
         };
 
-        let prev_view_target = std::mem::replace(
-            &mut self.view_target,
-            device_context.create_texture(view_desc, "ViewBuffer"),
-        );
-        deferred_drop.drop(prev_view_target);
+        self.view_target = device_context.create_texture(view_desc, "ViewBuffer");
 
         self.view_target_srv =
             self.view_target
@@ -200,17 +196,8 @@ impl RenderViewportRendererData {
 
         let hzb_desc = Self::make_hzb_desc(&extents);
 
-        let prev_hzb_0 = std::mem::replace(
-            &mut self.hzb[0],
-            device_context.create_texture(hzb_desc, "HZB 0"),
-        );
-        deferred_drop.drop(prev_hzb_0);
-
-        let prev_hzb_1 = std::mem::replace(
-            &mut self.hzb[1],
-            device_context.create_texture(hzb_desc, "HZB 1"),
-        );
-        deferred_drop.drop(prev_hzb_1);
+        self.hzb[0] = device_context.create_texture(hzb_desc, "HZB 0");
+        self.hzb[1] = device_context.create_texture(hzb_desc, "HZB 1");
 
         self.hzb_cleared = false;
     }

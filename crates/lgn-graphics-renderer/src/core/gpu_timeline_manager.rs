@@ -80,44 +80,6 @@ impl<T> GPUTimelineCallback for GenericGPUTimelineCallback<T> {
     }
 }
 
-//
-// Texture
-//
-struct TextureCallback {
-    texture: Texture,
-}
-
-impl GPUTimelineCallback for TextureCallback {
-    fn execute(self: Box<Self>) {
-        drop(self.texture);
-    }
-}
-
-impl From<Texture> for Box<dyn GPUTimelineCallback> {
-    fn from(texture: Texture) -> Self {
-        Box::new(TextureCallback { texture })
-    }
-}
-
-//
-// Buffer
-//
-struct BufferCallback {
-    buffer: Buffer,
-}
-
-impl GPUTimelineCallback for BufferCallback {
-    fn execute(self: Box<Self>) {
-        drop(self.buffer);
-    }
-}
-
-impl From<Buffer> for Box<dyn GPUTimelineCallback> {
-    fn from(buffer: Buffer) -> Self {
-        Box::new(BufferCallback { buffer })
-    }
-}
-
 struct CallbackBucket(pub Vec<Box<dyn GPUTimelineCallback>>);
 
 struct Inner {
