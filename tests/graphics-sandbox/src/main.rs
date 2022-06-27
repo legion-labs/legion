@@ -34,7 +34,7 @@ use lgn_input::{
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
-use lgn_tracing::{flush_monitor::FlushMonitor, LevelFilter};
+use lgn_tracing::{flush_monitor::FlushMonitor, warn, LevelFilter};
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowCloseRequested, WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
@@ -80,8 +80,8 @@ struct Args {
     #[clap(short, long)]
     snapshot: bool,
     /// Name of the setup to launch
-    #[clap(long, default_value = "simple-scene")]
-    setup_name: String,
+    #[clap(long)]
+    setup_name: Option<String>,
     /// Root object to load, usually a world
     #[clap(long)]
     root: Option<String>,
@@ -98,14 +98,19 @@ fn main() {
 
     let mut app = App::new(telemetry_guard_builder);
 
-    let root_asset = args
-        .root
-        .as_deref()
-        .unwrap_or("(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)")
-        .parse::<ResourceTypeAndId>()
-        .ok();
+    let root_asset = if args.setup_name.is_none() {
+        args.root
+            .as_deref()
+            .unwrap_or("(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)")
+            .parse::<ResourceTypeAndId>()
+            .ok()
+    } else {
+        None
+    };
+
     let project_folder =
         lgn_config::get_or("editor_srv.project_dir", PathBuf::from("tests/sample-data")).unwrap();
+
     let asset_registry_settings = AssetRegistrySettings::new(
         Some(project_folder.join("runtime").join("game.manifest")),
         root_asset.into_iter().collect::<Vec<_>>(),
@@ -134,7 +139,10 @@ fn main() {
 
     if args.snapshot {
         app.insert_resource(SnapshotDescriptor {
-            setup_name: args.setup_name.clone(),
+            setup_name: args
+                .setup_name
+                .clone()
+                .unwrap_or_else(|| "default".to_owned()),
             width: args.width,
             height: args.height,
         })
@@ -153,24 +161,30 @@ fn main() {
 
     app.add_system_to_stage(CoreStage::Last, check_keyboard_events);
 
-    match args.setup_name.as_str() {
-        "light_test" => {
+    match args.setup_name.as_deref() {
+        Some("light-test") => {
             app.add_startup_system_to_stage(
                 StartupStage::PostStartup,
                 init_light_test.after(RendererLabel::DefaultResourcesInstalled),
             );
         }
 
-        "stress_test" => {
+        Some("stress-test") => {
             app.add_plugin(MetaCubePlugin::new());
         }
 
-        _ => {
+        Some("simple-scene") => {
             app.add_startup_system_to_stage(
                 StartupStage::PostStartup,
                 init_scene.after(RendererLabel::DefaultResourcesInstalled),
             );
         }
+
+        Some(_) => {
+            warn!("Unknow setup: {}", args.setup_name.unwrap());
+        }
+
+        None => (),
     }
 
     app.run();
