@@ -25,15 +25,12 @@ components:
         cpu_brand:
           type: string
         tsc_frequency:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
         start_time:
           type: string
           format: date-time
         start_ticks:
-          type: integer
-          format: int64
+          type: string
         parent_process_id:
           type: string
       required:
@@ -88,8 +85,7 @@ components:
         name:
           type: string
         size:
-          type: integer
-          minimum: 0
+          type: string
         members:
           type: array
           items:
@@ -110,11 +106,9 @@ components:
         type_name:
           type: string
         offset:
-          type: integer
-          minimum: 0
+          type: string
         size:
-          type: integer
-          minimum: 0
+          type: string
         is_reference:
           type: boolean
       required:

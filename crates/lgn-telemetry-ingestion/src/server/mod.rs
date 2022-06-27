@@ -42,7 +42,9 @@ impl Api for Server {
         &self,
         request: InsertProcessRequest,
     ) -> lgn_online::server::Result<InsertProcessResponse> {
-        self.provider.insert_process(request.body.into()).await?;
+        self.provider
+            .insert_process(request.body.try_into()?)
+            .await?;
         Ok(InsertProcessResponse::Status200 {})
     }
 
@@ -50,7 +52,9 @@ impl Api for Server {
         &self,
         request: InsertStreamRequest,
     ) -> lgn_online::server::Result<InsertStreamResponse> {
-        self.provider.insert_stream(request.body.into()).await?;
+        self.provider
+            .insert_stream(request.body.try_into()?)
+            .await?;
         Ok(InsertStreamResponse::Status200 {})
     }
 }

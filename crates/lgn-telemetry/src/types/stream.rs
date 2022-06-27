@@ -12,16 +12,24 @@ pub struct Stream {
     pub properties: HashMap<String, String>,
 }
 
-impl From<crate::api::components::Stream> for Stream {
-    fn from(stream: crate::api::components::Stream) -> Self {
-        Self {
+impl TryFrom<crate::api::components::Stream> for Stream {
+    type Error = anyhow::Error;
+
+    fn try_from(stream: crate::api::components::Stream) -> Result<Self> {
+        Ok(Self {
             stream_id: stream.stream_id,
             process_id: stream.process_id,
-            dependencies_metadata: stream.dependencies_metadata.map(Into::into),
-            objects_metadata: stream.objects_metadata.map(Into::into),
+            dependencies_metadata: match stream.dependencies_metadata {
+                Some(metadata) => Some(metadata.try_into()?),
+                None => None,
+            },
+            objects_metadata: match stream.objects_metadata {
+                Some(metadata) => Some(metadata.try_into()?),
+                None => None,
+            },
             tags: stream.tags,
             properties: stream.__additional_properties.into_iter().collect(),
-        }
+        })
     }
 }
 
@@ -59,11 +67,17 @@ impl ContainerMetadata {
     }
 }
 
-impl From<crate::api::components::ContainerMetadata> for ContainerMetadata {
-    fn from(metadata: crate::api::components::ContainerMetadata) -> Self {
-        Self {
-            types: metadata.types.into_iter().map(Into::into).collect(),
-        }
+impl TryFrom<crate::api::components::ContainerMetadata> for ContainerMetadata {
+    type Error = anyhow::Error;
+
+    fn try_from(metadata: crate::api::components::ContainerMetadata) -> Result<Self> {
+        Ok(Self {
+            types: metadata
+                .types
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_>>()?,
+        })
     }
 }
 
@@ -99,14 +113,20 @@ pub struct UserDefinedType {
     pub is_reference: bool,
 }
 
-impl From<crate::api::components::UserDefinedType> for UserDefinedType {
-    fn from(type_: crate::api::components::UserDefinedType) -> Self {
-        Self {
+impl TryFrom<crate::api::components::UserDefinedType> for UserDefinedType {
+    type Error = anyhow::Error;
+
+    fn try_from(type_: crate::api::components::UserDefinedType) -> Result<Self> {
+        Ok(Self {
             name: type_.name,
-            size: type_.size,
-            members: type_.members.into_iter().map(Into::into).collect(),
+            size: type_.size.parse()?,
+            members: type_
+                .members
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_>>()?,
             is_reference: type_.is_reference,
-        }
+        })
     }
 }
 
@@ -114,7 +134,7 @@ impl From<UserDefinedType> for crate::api::components::UserDefinedType {
     fn from(type_: UserDefinedType) -> Self {
         Self {
             name: type_.name,
-            size: type_.size,
+            size: type_.size.to_string(),
             members: type_.members.into_iter().map(Into::into).collect(),
             is_reference: type_.is_reference,
         }
@@ -152,15 +172,17 @@ pub struct UdtMember {
     pub is_reference: bool,
 }
 
-impl From<crate::api::components::UdtMember> for UdtMember {
-    fn from(member: crate::api::components::UdtMember) -> Self {
-        Self {
+impl TryFrom<crate::api::components::UdtMember> for UdtMember {
+    type Error = anyhow::Error;
+
+    fn try_from(member: crate::api::components::UdtMember) -> Result<Self> {
+        Ok(Self {
             name: member.name,
             type_name: member.type_name,
-            offset: member.offset,
-            size: member.size,
+            offset: member.offset.parse()?,
+            size: member.size.parse()?,
             is_reference: member.is_reference,
-        }
+        })
     }
 }
 
@@ -169,8 +191,8 @@ impl From<UdtMember> for crate::api::components::UdtMember {
         Self {
             name: member.name,
             type_name: member.type_name,
-            offset: member.offset,
-            size: member.size,
+            offset: member.offset.to_string(),
+            size: member.size.to_string(),
             is_reference: member.is_reference,
         }
     }

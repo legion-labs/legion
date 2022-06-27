@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Process {
     pub process_id: String,
@@ -13,9 +15,11 @@ pub struct Process {
     pub parent_process_id: String,
 }
 
-impl From<crate::api::components::Process> for Process {
-    fn from(process: crate::api::components::Process) -> Self {
-        Process {
+impl TryFrom<crate::api::components::Process> for Process {
+    type Error = anyhow::Error;
+
+    fn try_from(process: crate::api::components::Process) -> Result<Self> {
+        Ok(Process {
             process_id: process.process_id,
             exe: process.exe,
             username: process.username,
@@ -23,11 +27,11 @@ impl From<crate::api::components::Process> for Process {
             computer: process.computer,
             distro: process.distro,
             cpu_brand: process.cpu_brand,
-            tsc_frequency: process.tsc_frequency,
+            tsc_frequency: process.tsc_frequency.parse()?,
             start_time: process.start_time,
-            start_ticks: process.start_ticks,
+            start_ticks: process.start_ticks.parse()?,
             parent_process_id: process.parent_process_id,
-        }
+        })
     }
 }
 
@@ -41,9 +45,9 @@ impl From<Process> for crate::api::components::Process {
             computer: process.computer,
             distro: process.distro,
             cpu_brand: process.cpu_brand,
-            tsc_frequency: process.tsc_frequency,
+            tsc_frequency: process.tsc_frequency.to_string(),
             start_time: process.start_time,
-            start_ticks: process.start_ticks,
+            start_ticks: process.start_ticks.to_string(),
             parent_process_id: process.parent_process_id,
         }
     }
