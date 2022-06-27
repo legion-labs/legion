@@ -191,9 +191,10 @@ impl RenderViewportRendererData {
 
         let hzb_desc = Self::make_hzb_desc(&extents);
 
-        self.hzb[0] = device_context.create_texture(hzb_desc, "HZB 0");
-        self.hzb[1] = device_context.create_texture(hzb_desc, "HZB 1");
-
+        self.hzb = [
+            device_context.create_texture(hzb_desc, "HZB 0"),
+            device_context.create_texture(hzb_desc, "HZB 1"),
+        ];
         self.hzb_cleared = false;
     }
 
