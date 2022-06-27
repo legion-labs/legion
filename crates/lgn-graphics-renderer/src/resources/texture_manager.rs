@@ -26,9 +26,7 @@ use crate::{
     core::{GpuUploadManager, TransferError, UploadGPUResource, UploadGPUTexture},
 };
 
-use super::{
-    PersistentDescriptorSetManager, SharedTextureId, TextureSlot, MISSING_MODEL_RESOURCE_ID,
-};
+use super::{PersistentDescriptorSetManager, TextureSlot, MISSING_MODEL_RESOURCE_ID};
 
 macro_rules! declare_texture_resource_id {
     ($name:ident, $uuid:expr) => {
@@ -72,12 +70,20 @@ declare_texture_resource_id!(
     ]
 );
 
-pub const DEFAULT_TEXTURE_RESOURCE_IDS: [ResourceTypeAndId; SharedTextureId::COUNT] = [
+pub const DEFAULT_TEXTURE_RESOURCE_IDS: [ResourceTypeAndId; DefaultTextureId::COUNT] = [
     ALBEDO_RESOURCE_ID,
     NORMAL_RESOURCE_ID,
     METALNESS_RESOURCE_ID,
     ROUGHNESS_RESOURCE_ID,
 ];
+
+#[derive(Clone, Copy, strum::EnumCount, strum::EnumIter)]
+pub enum DefaultTextureId {
+    Albedo,
+    Normal,
+    Metalness,
+    Roughness,
+}
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum TextureManagerError {
@@ -286,13 +292,13 @@ impl TextureManager {
         persistent_descriptor_set_manager: &PersistentDescriptorSetManager,
         upload_manager: &GpuUploadManager,
     ) -> Self {
-        let default_textures = SharedTextureId::iter()
+        let default_textures = DefaultTextureId::iter()
             .map(|shared_texture_id| {
                 let (texture_def, texture_data, name) = match shared_texture_id {
-                    SharedTextureId::Albedo => Self::create_albedo_texture(),
-                    SharedTextureId::Normal => Self::create_normal_texture(),
-                    SharedTextureId::Metalness => Self::create_metalness_texture(),
-                    SharedTextureId::Roughness => Self::create_roughness_texture(),
+                    DefaultTextureId::Albedo => Self::create_albedo_texture(),
+                    DefaultTextureId::Normal => Self::create_normal_texture(),
+                    DefaultTextureId::Metalness => Self::create_metalness_texture(),
+                    DefaultTextureId::Roughness => Self::create_roughness_texture(),
                 };
 
                 let texture = device_context.create_texture(texture_def, &name);
@@ -326,13 +332,13 @@ impl TextureManager {
         }
     }
 
-    pub fn get_default_texture(&self, default_texture_id: SharedTextureId) -> &RenderTexture {
+    pub fn get_default_texture(&self, default_texture_id: DefaultTextureId) -> &RenderTexture {
         &self.inner.default_textures[default_texture_id as usize]
     }
 
     pub fn install_default_resources(&self, asset_registry: &AssetRegistry) {
-        let mut default_texture_handles = Vec::with_capacity(SharedTextureId::COUNT);
-        SharedTextureId::iter()
+        let mut default_texture_handles = Vec::with_capacity(DefaultTextureId::COUNT);
+        DefaultTextureId::iter()
             .enumerate()
             .for_each(|(index, default_texture_type)| {
                 let handle = asset_registry

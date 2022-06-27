@@ -208,17 +208,15 @@ impl Plugin for RendererPlugin {
         let sampler_manager =
             SamplerManager::new(device_context, &persistent_descriptor_set_manager);
 
-        let shared_resources_manager = SharedResourcesManager::new(
-            &mut render_commands,
-            device_context,
-            &mut persistent_descriptor_set_manager,
-        );
+        let shared_resources_manager =
+            SharedResourcesManager::new(device_context, &mut persistent_descriptor_set_manager);
 
         let material_manager = MaterialManager::new(
             &gpu_heap,
             &gpu_upload_manager,
             &mut render_commands,
             &shared_resources_manager,
+            &texture_manager,
             &sampler_manager,
         );
 
