@@ -42,12 +42,12 @@ fn test_parse_span_interops() {
 
     let mut block = stream.replace_block(Arc::new(ThreadBlock::new(1024, stream_id)));
     Arc::get_mut(&mut block).unwrap().close();
-    let encoded = block.encode().unwrap();
+    let (encoded, payload) = block.encode().unwrap();
     assert_eq!(encoded.nb_objects, 2);
 
     let stream_info = get_stream_info(&stream);
     let mut nb_span_entries = 0;
-    parse_block(&stream_info, &encoded.payload.unwrap(), |_val| {
+    parse_block(&stream_info.into(), &payload.into(), |_val| {
         //if let Some((_time, _msg)) = log_entry_from_value(&val).unwrap() {
         nb_span_entries += 1;
         //}

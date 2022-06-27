@@ -262,7 +262,6 @@ dependencies = [
  "hyper",
  "lgn-api-codegen",
  "lgn-online",
- "lgn-telemetry-sink",
  "lgn-tracing",
  "serde",
  "serde_json",
@@ -3944,12 +3943,37 @@ dependencies = [
  "anyhow",
  "askama",
  "bytes",
+ "convert_case",
+ "http",
+ "indexmap",
+ "insta",
+ "lazy_static",
+ "openapiv3",
+ "regex",
+ "rust-format",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "thiserror",
+ "which",
+]
+
+[[package]]
+name = "lgn-api-codegen-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "askama",
+ "bytes",
  "clap 3.1.18",
  "convert_case",
  "http",
  "indexmap",
  "insta",
  "lazy_static",
+ "lgn-api-codegen",
+ "lgn-telemetry-sink",
  "lgn-tracing",
  "openapiv3",
  "regex",
@@ -5450,9 +5474,7 @@ dependencies = [
 name = "lgn-telemetry-proto"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "base64 0.13.0",
- "lz4",
  "prost",
  "tokio",
  "tonic",
