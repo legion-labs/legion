@@ -200,6 +200,7 @@ impl Plugin for RendererPlugin {
 
         let texture_manager = TextureManager::new(
             device_context,
+            &mut render_commands,
             &persistent_descriptor_set_manager,
             &gpu_upload_manager,
         );
@@ -482,14 +483,14 @@ fn install_default_resources(
     asset_registry: Res<'_, Arc<AssetRegistry>>,
     renderer: Res<'_, Renderer>,
 ) {
+    let texture_manager = renderer.render_resources().get::<TextureManager>();
+    texture_manager.install_default_resources(&asset_registry);
+
     let material_manager = renderer.render_resources().get::<MaterialManager>();
     material_manager.install_default_resources(&asset_registry);
 
     let model_manager = renderer.render_resources().get::<ModelManager>();
     model_manager.install_default_resources(&asset_registry);
-
-    let shared_resources = renderer.render_resources().get::<SharedResourcesManager>();
-    shared_resources.install_default_resources(&asset_registry);
 }
 
 #[allow(clippy::needless_pass_by_value)]

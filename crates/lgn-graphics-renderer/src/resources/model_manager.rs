@@ -157,12 +157,6 @@ impl RenderModel {
     }
 }
 
-impl Drop for RenderModel {
-    fn drop(&mut self) {
-        todo!()
-    }
-}
-
 pub struct MeshInstance {
     pub mesh_id: RenderMeshId,
     pub material_id: MaterialId,
@@ -216,7 +210,7 @@ impl ResourceInstaller for ModelInstaller {
 
 struct Inner {
     mesh_manager: MeshManager,
-    default_models: Vec<(ResourceTypeAndId, RenderModel)>,
+    default_models: Vec<RenderModel>,
     default_model_handles: AtomicCell<Vec<Handle<RenderModel>>>,
 }
 
@@ -228,31 +222,18 @@ pub struct ModelManager {
 impl ModelManager {
     pub fn new(mesh_manager: &MeshManager, material_manager: &MaterialManager) -> Self {
         let default_material = material_manager.get_default_material();
-
-        let default_model_ids = DefaultMeshType::iter()
-            .map(|_| ResourceTypeAndId {
-                kind: lgn_graphics_data::runtime::Model::TYPE,
-                id: ResourceId::new(),
-            })
-            .collect::<Vec<_>>();
-
         let mut default_models = Vec::new();
 
         for default_mesh_type in DefaultMeshType::iter() {
-            let resource_id = default_model_ids[default_mesh_type as usize];
-
-            default_models.push((
-                resource_id,
-                RenderModel {
-                    inner: Arc::new(RenderModelInner {
-                        mesh_instances: vec![MeshInstance {
-                            mesh_id: mesh_manager.get_default_mesh_id(default_mesh_type),
-                            material_id: default_material.material_id(),
-                            material_va: default_material.gpuheap_addr(),
-                        }],
-                    }),
-                },
-            ));
+            default_models.push(RenderModel {
+                inner: Arc::new(RenderModelInner {
+                    mesh_instances: vec![MeshInstance {
+                        mesh_id: mesh_manager.get_default_mesh_id(default_mesh_type),
+                        material_id: default_material.material_id(),
+                        material_va: default_material.gpuheap_addr(),
+                    }],
+                }),
+            });
         }
 
         Self {
@@ -265,7 +246,7 @@ impl ModelManager {
     }
 
     pub fn get_default_model(&self, default_mesh_type: DefaultMeshType) -> &RenderModel {
-        &self.inner.default_models[default_mesh_type as usize].1
+        &self.inner.default_models[default_mesh_type as usize]
     }
 
     pub fn install_default_resources(&self, asset_registry: &AssetRegistry) {
