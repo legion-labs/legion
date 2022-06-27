@@ -15,6 +15,7 @@ use crate::{
     lighting::RenderLight,
     picking::{ManipulatorManager, PickingState},
     resources::{DefaultMeshType, MeshManager, MeshMetaData},
+    RenderScope,
 };
 
 pub struct PickingPass;
@@ -37,8 +38,10 @@ impl PickingPass {
                             .debug_stuff
                             .picking_renderpass.write();
                         let picking_manager = render_context.picking_manager;
+                        let render_scope =
+                            execute_context.render_resources.get::<RenderScope>();
 
-                        let frame_index = execute_context.render_context.device_context.current_cpu_frame() as usize;
+                        let frame_index = render_scope.frame_idx() as usize;
                         let mut count: usize = 0;
                         let mut count_readback = picking_renderpass
                             .count_buffer
@@ -206,6 +209,8 @@ impl PickingPass {
                             .debug_stuff
                             .picking_renderpass.write();
                         let picking_manager = render_context.picking_manager;
+                        let render_scope =
+                            execute_context.render_resources.get::<RenderScope>();
 
                         let mut count_readback = execute_context.count_readback.transfer();
                         let mut picked_readback = execute_context.picked_readback.transfer();
@@ -222,7 +227,7 @@ impl PickingPass {
                             picked_readback.sent_to_gpu(picking_manager.frame_no_for_picking());
                         }
 
-                        let frame_index = execute_context.render_context.device_context.current_cpu_frame() as usize;
+                        let frame_index = render_scope.frame_idx() as usize;
                         picking_renderpass.count_buffer.end_readback(frame_index, count_readback);
                         picking_renderpass
                             .picked_buffer
