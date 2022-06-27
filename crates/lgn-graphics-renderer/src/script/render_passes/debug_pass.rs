@@ -16,8 +16,7 @@ use crate::{
     debug_display::{DebugDisplay, DebugPrimitiveType},
     picking::ManipulatorManager,
     resources::{
-        DefaultMeshType, MeshManager, ModelManager, PipelineDef, PipelineHandle, PipelineManager,
-        RenderMesh,
+        DefaultMeshType, MeshManager, PipelineDef, PipelineHandle, PipelineManager, RenderMesh,
     },
     RenderContext,
 };
@@ -47,7 +46,6 @@ impl DebugPass {
                     let render_context = &execute_context.render_context;
 
                     let mesh_manager = execute_context.render_resources.get::<MeshManager>();
-                    let model_manager = execute_context.render_resources.get::<ModelManager>();
 
                     cmd_buffer
                         .cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
@@ -64,7 +62,6 @@ impl DebugPass {
                         cmd_buffer,
                         render_context.picked_drawables,
                         &mesh_manager,
-                        &model_manager,
                         wire_pso_depth_handle,
                         solid_pso_depth_handle,
                     );
@@ -247,7 +244,6 @@ impl DebugPass {
         cmd_buffer: &mut CommandBuffer,
         picked_visuals: &[(&VisualComponent, &GlobalTransform)],
         mesh_manager: &MeshManager,
-        model_manager: &ModelManager,
         wire_pso_depth_handle: PipelineHandle,
         solid_pso_depth_handle: PipelineHandle,
     ) {
@@ -266,12 +262,12 @@ impl DebugPass {
                     let wireframe_cube =
                         mesh_reader.get_default_mesh(DefaultMeshType::WireframeCube);
                     // TODO(vdbdd): Fix that asap with the real model
-                    let tmp_render_model = model_manager.get_default_model(DefaultMeshType::Cube);
 
                     for (visual_component, transform) in picked_visuals.iter() {
-                        let _model_resource_id = visual_component.model_resource_id();
+                        let render_model = visual_component.render_model_handle();
+                        let render_model = render_model.get().unwrap();
 
-                        for mesh in tmp_render_model.mesh_instances() {
+                        for mesh in render_model.mesh_instances() {
                             cmd_buffer.cmd_bind_pipeline(wire_pso_depth_pipeline);
 
                             let mesh = mesh_reader.get_render_mesh(mesh.mesh_id);

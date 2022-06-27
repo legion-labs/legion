@@ -155,9 +155,11 @@ impl SceneInstance {
 
                 if let Some(installer) = asset_registry.get_component_installer(component.type_id())
                 {
-                    if let Err(err) =
-                        installer.install_component(component.as_ref(), &mut entity_command)
-                    {
+                    if let Err(err) = installer.install_component(
+                        asset_registry,
+                        component.as_ref(),
+                        &mut entity_command,
+                    ) {
                         lgn_tracing::error!("Failed to install component: {}", err);
                     }
                 }

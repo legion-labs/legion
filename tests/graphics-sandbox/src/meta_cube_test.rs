@@ -1,12 +1,21 @@
-use std::{fs::File, io, path::Path};
+use std::{fs::File, io, path::Path, sync::Arc};
 
-use lgn_app::{App, CoreStage, Plugin};
-use lgn_ecs::prelude::{Commands, Entity, Query, Res};
-use lgn_graphics_renderer::{components::VisualComponent, resources::CUBE_MODEL_RESOURCE_ID};
+use lgn_app::{App, CoreStage, Plugin, StartupStage};
+use lgn_data_runtime::{AssetRegistry, AssetRegistryScheduling};
+use lgn_ecs::{
+    prelude::{Commands, Entity, Query, Res},
+    schedule::ParallelSystemDescriptorCoercion,
+};
+use lgn_graphics_renderer::{
+    components::VisualComponent,
+    resources::{RenderModel, CUBE_MODEL_RESOURCE_ID},
+};
 use lgn_math::{Quat, Vec3};
 use lgn_tracing::span_fn;
 use lgn_transform::prelude::{GlobalTransform, Transform, TransformBundle};
 use png::OutputInfo;
+
+const META_CUBE_SIZE: usize = 10;
 
 #[derive(Default)]
 pub struct MetaCubePlugin {
@@ -14,8 +23,10 @@ pub struct MetaCubePlugin {
 }
 
 impl MetaCubePlugin {
-    pub fn new(meta_cube_size: usize) -> Self {
-        Self { meta_cube_size }
+    pub fn new() -> Self {
+        Self {
+            meta_cube_size: META_CUBE_SIZE,
+        }
     }
 }
 
@@ -26,14 +37,21 @@ impl Plugin for MetaCubePlugin {
 
             app.add_system_to_stage(CoreStage::PostUpdate, modify_transform_data);
 
-            app.add_startup_system(init_stress_test);
+            app.add_startup_system_to_stage(
+                StartupStage::PostStartup,
+                init_stress_test.after(AssetRegistryScheduling::AssetRegistryCreated),
+            );
         }
     }
 }
 
 #[allow(clippy::needless_pass_by_value)]
-fn init_stress_test(commands: Commands<'_, '_>, meta_cube: Res<'_, MetaCubeResource>) {
-    meta_cube.initialize(commands);
+fn init_stress_test(
+    commands: Commands<'_, '_>,
+    meta_cube: Res<'_, MetaCubeResource>,
+    asset_registry: Res<'_, Arc<AssetRegistry>>,
+) {
+    meta_cube.initialize(commands, asset_registry.as_ref());
 }
 
 #[span_fn]
@@ -79,7 +97,7 @@ impl MetaCubeResource {
     }
 
     #[allow(clippy::cast_precision_loss)]
-    fn initialize(&self, mut commands: Commands<'_, '_>) {
+    fn initialize(&self, mut commands: Commands<'_, '_>, asset_registry: &AssetRegistry) {
         let ref_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("refs")
@@ -88,6 +106,10 @@ impl MetaCubeResource {
             .with_extension("png");
 
         let random_color = load_image(&ref_path).unwrap();
+
+        let render_model_handle = asset_registry
+            .lookup::<RenderModel>(&CUBE_MODEL_RESOURCE_ID)
+            .expect("Must be loaded");
 
         for x in 0..self.meta_cube_size {
             for y in 0..self.meta_cube_size {
@@ -108,7 +130,7 @@ impl MetaCubeResource {
                             z as f32 * 2.0,
                         )))
                         .insert(VisualComponent::new(
-                            CUBE_MODEL_RESOURCE_ID,
+                            &render_model_handle,
                             (r, g, b).into(),
                             1.0,
                         ));

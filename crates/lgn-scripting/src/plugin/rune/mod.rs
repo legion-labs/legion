@@ -59,6 +59,7 @@ impl ScriptComponentInstaller {
 impl lgn_data_runtime::ComponentInstaller for ScriptComponentInstaller {
     fn install_component(
         &self,
+        _asset_registry: &AssetRegistry,
         component: &dyn lgn_data_runtime::Component,
         commands: &mut EntityCommands<'_, '_, '_>,
     ) -> Result<(), lgn_data_runtime::AssetRegistryError> {

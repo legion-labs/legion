@@ -26,6 +26,7 @@ use crate::{
     core::{GpuUploadManager, TransferError, UploadGPUResource, UploadGPUTexture},
 };
 
+use super::RenderModel;
 use super::{PersistentDescriptorSetManager, TextureSlot, MISSING_MODEL_RESOURCE_ID};
 
 macro_rules! declare_texture_resource_id {
@@ -195,6 +196,7 @@ impl ComponentInstaller for TextureInstaller {
     /// Consume a resource return the installed version
     fn install_component(
         &self,
+        asset_registry: &AssetRegistry,
         component: &dyn lgn_data_runtime::Component,
         entity_command: &mut EntityCommands<'_, '_, '_>,
     ) -> Result<(), AssetRegistryError> {
@@ -206,8 +208,13 @@ impl ComponentInstaller for TextureInstaller {
                 .renderable_geometry
                 .as_ref()
                 .map_or(MISSING_MODEL_RESOURCE_ID, |r| r.id());
+
+            let render_model_handle = asset_registry
+                .lookup::<RenderModel>(&model_resource_id)
+                .expect("Must be loaded");
+
             entity_command.insert(VisualComponent::new(
-                model_resource_id,
+                &render_model_handle,
                 visual.color,
                 visual.color_blend,
             ));
