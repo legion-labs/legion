@@ -5,7 +5,7 @@ use instant::Duration;
 /// # Examples
 ///
 /// ```
-/// # use lgn_core::*;
+/// # use lgn_time::*;
 /// use std::time::Duration;
 /// let mut stopwatch = Stopwatch::new();
 /// assert_eq!(stopwatch.elapsed_secs(), 0.0);
@@ -32,7 +32,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// let stopwatch = Stopwatch::new();
     /// assert_eq!(stopwatch.elapsed_secs(), 0.0);
     /// assert_eq!(stopwatch.paused(), false);
@@ -46,7 +46,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// use std::time::Duration;
     /// let mut stopwatch = Stopwatch::new();
     /// stopwatch.tick(Duration::from_secs(1));
@@ -66,7 +66,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// use std::time::Duration;
     /// let mut stopwatch = Stopwatch::new();
     /// stopwatch.tick(Duration::from_secs(1));
@@ -85,7 +85,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// use std::time::Duration;
     /// let mut stopwatch = Stopwatch::new();
     /// stopwatch.set_elapsed(Duration::from_secs_f32(1.0));
@@ -102,7 +102,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// use std::time::Duration;
     /// let mut stopwatch = Stopwatch::new();
     /// stopwatch.tick(Duration::from_secs_f32(1.5));
@@ -120,7 +120,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// use std::time::Duration;
     /// let mut stopwatch = Stopwatch::new();
     /// stopwatch.pause();
@@ -137,7 +137,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// use std::time::Duration;
     /// let mut stopwatch = Stopwatch::new();
     /// stopwatch.pause();
@@ -156,7 +156,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// let mut stopwatch = Stopwatch::new();
     /// assert!(!stopwatch.paused());
     /// stopwatch.pause();
@@ -173,7 +173,7 @@ impl Stopwatch {
     ///
     /// # Examples
     /// ```
-    /// # use lgn_core::*;
+    /// # use lgn_time::*;
     /// use std::time::Duration;
     /// let mut stopwatch = Stopwatch::new();
     /// stopwatch.tick(Duration::from_secs_f32(1.5));

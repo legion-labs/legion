@@ -36,6 +36,7 @@ lgn-scripting-data = { path = "../lgn-scripting-data", version = "0.1.0", featur
 ] }
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
+lgn-time = { path = "../lgn-time", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }

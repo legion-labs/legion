@@ -6,13 +6,13 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
 use lgn_api::{ApiPlugin, ApiPluginSettings};
-use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
 use lgn_config::RichPathBuf;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_ecs::prelude::Local;
+use lgn_ecs::prelude::{EventWriter, Local};
 use lgn_graphics_renderer::RendererPlugin;
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
@@ -25,6 +25,7 @@ use lgn_scripting_data::ScriptingDataPlugin;
 use lgn_source_control::{BranchName, RepositoryName};
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
+use lgn_time::TimePlugin;
 use lgn_tracing::{debug, info, warn, LevelFilter};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
@@ -271,6 +272,7 @@ fn main() {
         .add_plugin(ScheduleRunnerPlugin::default())
         .insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
+        .add_plugin(TimePlugin::default())
         .add_plugin(AsyncPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             Some(&game_manifest_path),
@@ -307,7 +309,8 @@ fn main() {
         .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
         .add_plugin(WindowPlugin {
             add_primary_window: false,
-            exit_on_close: false,
+            exit_on_all_closed: false,
+            close_when_requested: false,
         });
 
     if let Some(test_name) = args.test {

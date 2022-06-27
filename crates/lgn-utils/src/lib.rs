@@ -14,6 +14,9 @@ pub mod trust_cell;
 mod default;
 pub use default::default;
 
+mod float_ord;
+pub use float_ord::*;
+
 mod hash;
 pub use hash::*;
 

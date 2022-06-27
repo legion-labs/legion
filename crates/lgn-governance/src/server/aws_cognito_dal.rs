@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::HashMap};
 use aws_sdk_cognitoidentityprovider::Region;
 use chrono::{TimeZone, Utc};
 
-use crate::types::UserInfo;
+use crate::types::{UserId, UserInfo};
 
 use super::{Error, Result};
 
@@ -50,6 +50,27 @@ impl AwsCognitoDal {
             user_pool_id,
             client,
         })
+    }
+
+    pub async fn resolve_username_by(&self, attribute: &str, email: &str) -> Result<UserId> {
+        let resp = self
+            .client
+            .list_users()
+            .filter(format!("{}=\"{}\"", attribute, email))
+            .limit(1)
+            .user_pool_id(self.user_pool_id.clone())
+            .send()
+            .await
+            .map_err::<aws_sdk_cognitoidentityprovider::Error, _>(Into::into)?;
+
+        resp.users
+            .ok_or(Error::DoesNotExist)?
+            .into_iter()
+            .next()
+            .and_then(|user| user.username)
+            .map(|username| username.parse())
+            .transpose()?
+            .ok_or(Error::DoesNotExist)
     }
 
     pub async fn get_user_info(&self, username: &str) -> Result<UserInfo> {

@@ -1,4 +1,4 @@
-use lgn_app::EventReader;
+use lgn_ecs::event::EventReader;
 use lgn_ecs::system::ResMut;
 use lgn_math::Vec2;
 use lgn_utils::HashMap;

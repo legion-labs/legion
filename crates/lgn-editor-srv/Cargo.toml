@@ -27,6 +27,7 @@ lgn-resource-registry = { path = "../lgn-resource-registry", version = "0.1.0" }
 lgn-scene-plugin = { path = "../lgn-scene-plugin", version = "0.1.0" }
 lgn-source-control = { path = "../lgn-source-control", version = "0.1.0" }
 lgn-streamer = { path = "../lgn-streamer", version = "0.1.0" }
+lgn-time = { path = "../lgn-time", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }

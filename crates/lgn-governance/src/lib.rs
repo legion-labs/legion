@@ -7,6 +7,8 @@ pub mod api;
 pub mod client;
 mod config;
 mod errors;
+#[cfg(feature = "client")]
+pub mod formatter;
 pub mod server;
 pub mod types;
 

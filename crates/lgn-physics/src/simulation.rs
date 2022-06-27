@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
-use lgn_core::prelude::Time;
 use lgn_ecs::prelude::{Query, Res, ResMut};
+use lgn_time::prelude::Time;
 use lgn_tracing::prelude::error;
 use lgn_transform::prelude::{GlobalTransform, Transform};
 use physx::prelude::{Owner, RigidActor, RigidDynamic, Scene, ScratchBuffer};
