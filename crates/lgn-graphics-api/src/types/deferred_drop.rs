@@ -16,11 +16,12 @@ pub struct DeferredDropper {
 }
 
 impl DeferredDropper {
-    pub fn new(render_frame_capacity: u64) -> Self {
+    pub fn new(render_frame_capacity: usize) -> Self {
         let (tx, rx) = mpsc::channel();
         Self {
             inner: Arc::new(Mutex::new(RefCell::new(DeferredDropperInner {
                 render_frame_capacity,
+                render_frame_index: 0,
                 buckets: (0..render_frame_capacity)
                     .map(|_x| ObjectBucket(Vec::new()))
                     .collect(),
@@ -36,14 +37,13 @@ impl DeferredDropper {
         Drc::new(inner.sender.clone(), data)
     }
 
-    pub fn flush(&self, frame_index: usize) {
+    pub fn flush(&self) {
         let guard = self.inner.lock().unwrap();
         let mut inner = guard.borrow_mut();
 
         // Flush queue in the 'current frame' bucket.
         {
-            let current_render_frame = (frame_index) % inner.render_frame_capacity as usize;
-
+            let current_render_frame = inner.render_frame_index;
             while let Ok(object) = inner.receiver.try_recv() {
                 inner.buckets[current_render_frame].0.push(object);
             }
@@ -51,21 +51,10 @@ impl DeferredDropper {
         // Move to the next frame. Now, we can safely free the memory. The GPU should
         // not have any implicit reference on some API objects/memory.
         {
-            let next_render_frame = (frame_index + 1) % inner.render_frame_capacity as usize;
+            let next_render_frame = (inner.render_frame_index + 1) % inner.render_frame_capacity;
 
             inner.buckets[next_render_frame].0.drain(..);
-        }
-    }
-
-    pub fn free_gpu_memory(&self) {
-        let render_frame_capacity = {
-            let guard = self.inner.lock().unwrap();
-            let inner = guard.borrow_mut();
-            inner.render_frame_capacity
-        };
-
-        for i in 0..render_frame_capacity as usize {
-            self.flush(i);
+            inner.render_frame_index = next_render_frame;
         }
     }
 
@@ -99,7 +88,8 @@ pub struct ObjectBucket(pub Vec<Box<dyn Any>>);
 
 #[derive(Debug)]
 struct DeferredDropperInner {
-    pub render_frame_capacity: u64,
+    pub render_frame_capacity: usize,
+    pub render_frame_index: usize,
     pub buckets: Vec<ObjectBucket>,
     pub sender: Sender<Box<dyn Any>>,
     pub receiver: Receiver<Box<dyn Any>>,
@@ -139,10 +129,6 @@ impl<T> Drc<T> {
 
     fn inner(&self) -> &DrcInner<T> {
         unsafe { self.ptr.as_ref() }
-    }
-
-    pub fn strong_count(&self) -> usize {
-        self.inner().strong.load(Ordering::Relaxed)
     }
 
     unsafe fn drop_slow(&mut self) {

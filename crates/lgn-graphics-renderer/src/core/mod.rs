@@ -30,6 +30,3 @@ pub(crate) use visibility::*;
 
 mod services;
 pub(crate) use services::*;
-
-mod gpu_timeline_manager;
-pub(crate) use gpu_timeline_manager::*;
