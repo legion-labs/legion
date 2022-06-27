@@ -9,9 +9,6 @@ pub fn package(
         let build_params = BuildParams::new(Platform::PS5, Target::Client, language);
         for content in &content_to_package {
             let results = db.compile_entity(content.clone(), build_params.clone());
-            for result in results {
-                println!("{}", result);
-            }
         }
     }
 

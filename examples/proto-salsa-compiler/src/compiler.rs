@@ -1,4 +1,4 @@
-use std::{any::Any, sync::Arc};
+use std::sync::Arc;
 
 use downcast_rs::{impl_downcast, Downcast};
 
@@ -54,11 +54,7 @@ pub trait Compiler<'a> {
 
     fn compile_material(&self) -> String;
 
-    fn compile_atlas(
-        &self,
-        textures_in_atlas: Vec<String>,
-        build_params: Arc<BuildParams>,
-    ) -> String;
+    fn compile_atlas(&self, textures_in_atlas: String, build_params: Arc<BuildParams>) -> String;
 
     fn compile_aabb(
         &self,
@@ -70,7 +66,11 @@ pub trait Compiler<'a> {
         max_z: Arc<String>,
     ) -> AABBCollision;
 
-    fn compile_entity(&self, name: String, build_params: Arc<BuildParams>) -> Vec<String>;
+    fn compile_entity(
+        &self,
+        name: String,
+        build_params: Arc<BuildParams>,
+    ) -> Vec<Arc<Box<dyn AnyEq>>>;
 
     fn execute_expression(
         &self,

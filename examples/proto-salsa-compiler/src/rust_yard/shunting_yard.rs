@@ -175,43 +175,38 @@ mod tests {
     #[test]
     fn test_parse_simple() {
         let mut shunting_yard = ShuntingYard::new();
-        shunting_yard.parse("compile_atlas()").unwrap();
-        assert_eq!(shunting_yard.to_string(), "compile_atlas");
+        shunting_yard.parse("atlas()").unwrap();
+        assert_eq!(shunting_yard.to_string(), "at;as");
     }
 
     #[test]
     fn test_parse_nested() {
         let mut shunting_yard = ShuntingYard::new();
-        shunting_yard.parse("compile_atlas(load())").unwrap();
+        shunting_yard.parse("atlas(read())").unwrap();
         println!("{}", shunting_yard.to_string());
-        assert_eq!(shunting_yard.to_string(), "load compile_atlas");
+        assert_eq!(shunting_yard.to_string(), "read atlas");
     }
 
     #[test]
     fn test_parse_argument() {
         let mut shunting_yard = ShuntingYard::new();
-        shunting_yard.parse("compile_atlas(atlas.entity)").unwrap();
-        assert_eq!(shunting_yard.to_string(), "atlas.entity compile_atlas");
+        shunting_yard.parse("atlas(atlas.atlas)").unwrap();
+        assert_eq!(shunting_yard.to_string(), "atlas.atlas atlas");
     }
 
     #[test]
     fn test_parse_arguments() {
         let mut shunting_yard = ShuntingYard::new();
-        shunting_yard
-            .parse("compile_atlas(atlas.entity, 0, 9)")
-            .unwrap();
-        assert_eq!(shunting_yard.to_string(), "atlas.entity 0 9 compile_atlas");
+        shunting_yard.parse("atlas(atlas.atlas, 0, 9)").unwrap();
+        assert_eq!(shunting_yard.to_string(), "atlas.atlas 0 9 atlas");
     }
 
     #[test]
     fn test_parse_nested_arguments() {
         let mut shunting_yard = ShuntingYard::new();
         shunting_yard
-            .parse("compile_atlas(load(atlas.entity), 0, 9)")
+            .parse("atlas(read(atlas.atlas), 0, 9)")
             .unwrap();
-        assert_eq!(
-            shunting_yard.to_string(),
-            "atlas.entity load 0 9 compile_atlas"
-        );
+        assert_eq!(shunting_yard.to_string(), "atlas.atlas read 0 9 atlas");
     }
 }

@@ -107,14 +107,14 @@ pub mod tests {
         );
 
         db.set_read(
-            "Atlas.entity".to_string(),
+            "Atlas.atlas".to_string(),
             "meta(read(TextureA.meta));meta(read(TextureB.meta));meta(read(TextureC.meta))"
                 .to_string(),
         );
 
         db.set_read(
             "MyWorld.entity".to_string(),
-            r#"atlas(entity(read(Atlas.entity)));collision(read(Car.coll));collision(read(Tree.coll));navmesh(collisions())"#
+            r#"atlas(read(Atlas.atlas));collision(read(Car.coll));collision(read(Tree.coll));navmesh(collisions())"#
                 .to_string(),
         );
 
@@ -141,10 +141,7 @@ pub mod tests {
         let build_params = Arc::new(BuildParams::default());
 
         let compiled_atlas = db
-            .execute_expression(
-                "atlas(entity(read(Atlas.entity)))".to_string(),
-                build_params,
-            )
+            .execute_expression("atlas(read(Atlas.atlas))".to_string(), build_params)
             .unwrap();
 
         assert_eq!(

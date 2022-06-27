@@ -38,7 +38,7 @@ pub fn execute_expression(
                     let content = stack
                         .pop_back()
                         .unwrap()
-                        .downcast_ref::<Vec<String>>()
+                        .downcast_ref::<String>()
                         .unwrap()
                         .clone();
                     stack.push_front(Arc::new(Box::new(
@@ -127,7 +127,7 @@ mod tests {
         let build_params = Arc::new(BuildParams::default());
 
         let result = db
-            .execute_expression("read(Atlas.entity)".to_string(), build_params)
+            .execute_expression("read(Atlas.atlas)".to_string(), build_params)
             .unwrap();
         assert_eq!(
             result.downcast_ref::<String>().unwrap(),
