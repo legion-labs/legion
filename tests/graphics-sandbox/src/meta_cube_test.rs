@@ -1,13 +1,14 @@
 use std::{fs::File, io, path::Path, sync::Arc};
 
 use lgn_app::{App, CoreStage, Plugin, StartupStage};
-use lgn_data_runtime::{AssetRegistry, AssetRegistryScheduling};
+use lgn_data_runtime::AssetRegistry;
 use lgn_ecs::{
     prelude::{Commands, Entity, Query, Res},
     schedule::ParallelSystemDescriptorCoercion,
 };
 use lgn_graphics_renderer::{
     components::VisualComponent,
+    labels::RendererLabel,
     resources::{RenderModel, CUBE_MODEL_RESOURCE_ID},
 };
 use lgn_math::{Quat, Vec3};
@@ -39,7 +40,7 @@ impl Plugin for MetaCubePlugin {
 
             app.add_startup_system_to_stage(
                 StartupStage::PostStartup,
-                init_stress_test.after(AssetRegistryScheduling::AssetRegistryCreated),
+                init_stress_test.after(RendererLabel::DefaultResourcesInstalled),
             );
         }
     }

@@ -9,7 +9,7 @@ use clap::Parser;
 use lgn_app::{prelude::*, AppExit, Events, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
-use lgn_data_runtime::{AssetRegistry, AssetRegistryScheduling, ResourceTypeAndId};
+use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_data::{Color, GraphicsPlugin};
@@ -18,6 +18,7 @@ use lgn_graphics_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, RenderSurfaces, VisualComponent,
     },
+    labels::RendererLabel,
     resources::{
         PipelineManager, RenderModel, CONE_MODEL_RESOURCE_ID, CUBE_MODEL_RESOURCE_ID,
         CYLINDER_MODEL_RESOURCE_ID, PLANE_MODEL_RESOURCE_ID, PYRAMID_MODEL_RESOURCE_ID,
@@ -156,7 +157,7 @@ fn main() {
         "light_test" => {
             app.add_startup_system_to_stage(
                 StartupStage::PostStartup,
-                init_light_test.after(AssetRegistryScheduling::AssetRegistryCreated),
+                init_light_test.after(RendererLabel::DefaultResourcesInstalled),
             );
         }
 
@@ -167,7 +168,7 @@ fn main() {
         _ => {
             app.add_startup_system_to_stage(
                 StartupStage::PostStartup,
-                init_scene.after(AssetRegistryScheduling::AssetRegistryCreated),
+                init_scene.after(RendererLabel::DefaultResourcesInstalled),
             );
         }
     }
