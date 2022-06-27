@@ -1,4 +1,4 @@
-use crate::{AssetRegistryError, Component};
+use crate::{AssetRegistry, AssetRegistryError, Component};
 use lgn_ecs::system::EntityCommands;
 
 /// Trait to implement a `Component` installer
@@ -7,6 +7,7 @@ pub trait ComponentInstaller: Send + Sync {
     /// return a `AssetRegistryError` if it failed to install the component
     fn install_component(
         &self,
+        _asset_registry: &AssetRegistry,
         _component: &dyn Component,
         _commands: &mut EntityCommands<'_, '_, '_>,
     ) -> Result<(), AssetRegistryError> {
@@ -23,6 +24,7 @@ macro_rules! implement_default_component_installer {
         impl lgn_data_runtime::ComponentInstaller for $installer {
             fn install_component(
                 &self,
+                _asset_registry: &lgn_data_runtime::AssetRegistry,
                 component: &dyn lgn_data_runtime::Component,
                 commands: &mut EntityCommands<'_, '_, '_>,
             ) -> Result<(), lgn_data_runtime::AssetRegistryError> {

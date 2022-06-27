@@ -11,6 +11,8 @@ use lgn_data_runtime::{
 
 use strum::{EnumCount, IntoEnumIterator};
 
+use uuid::uuid;
+
 use crate::core::TransferError;
 
 use super::{
@@ -32,97 +34,64 @@ macro_rules! declare_model_resource_id {
         #[allow(unsafe_code)]
         pub const $name: ResourceTypeAndId = ResourceTypeAndId {
             kind: lgn_graphics_data::runtime::Model::TYPE,
-            id: unsafe { ResourceId::from_raw_unchecked(u128::from_le_bytes($uuid)) },
+            id: ResourceId::from_uuid(uuid!($uuid)),
         };
     };
 }
 
 declare_model_resource_id!(
     PLANE_MODEL_RESOURCE_ID,
-    [
-        0x36, 0x0F, 0xCA, 0x12, 0xBC, 0xFC, 0x43, 0xB1, 0xA3, 0x98, 0xFC, 0xB6, 0x05, 0xBD, 0x6A,
-        0x95,
-    ]
+    "7d2db6d7-dd85-4468-ad6f-ebc9eb6dab9f"
 );
 
 declare_model_resource_id!(
     CUBE_MODEL_RESOURCE_ID,
-    [
-        0x43, 0x39, 0x8C, 0x28, 0x7B, 0x16, 0x45, 0xB3, 0x8C, 0x61, 0xCD, 0xBF, 0x84, 0xC6, 0x32,
-        0xFA
-    ]
+    "5a1496c5-e21c-4ccf-9f17-024574bbd545"
 );
 
 declare_model_resource_id!(
     PYRAMID_MODEL_RESOURCE_ID,
-    [
-        0x2D, 0x63, 0x0F, 0x4D, 0xD7, 0x87, 0x49, 0x13, 0x9A, 0xE8, 0x8F, 0x43, 0xAC, 0x78, 0xCC,
-        0x02
-    ]
+    "d66ab2e5-e2aa-41bb-8f4d-c80cfae4c61b"
 );
 
 declare_model_resource_id!(
     WIREFRAMECUBE_MODEL_RESOURCE_ID,
-    [
-        0x94, 0x88, 0x00, 0xAB, 0x14, 0x82, 0x42, 0xC4, 0x84, 0x58, 0xEC, 0xD2, 0x60, 0x7A, 0xB6,
-        0x1A
-    ]
+    "473c61b7-2882-414d-858f-f56d94b24231"
 );
 
 declare_model_resource_id!(
     GROUNDPLANE_MODEL_RESOURCE_ID,
-    [
-        0xF6, 0x01, 0x17, 0xEF, 0x1D, 0xDE, 0x4F, 0xD1, 0xAD, 0x8A, 0xD3, 0xDF, 0xFC, 0x9A, 0x2E,
-        0x6A
-    ]
+    "dfef30e7-ab46-4e34-91d1-fe49742c08bf"
 );
 
 declare_model_resource_id!(
     TORUS_MODEL_RESOURCE_ID,
-    [
-        0x76, 0x87, 0x8B, 0x61, 0xFC, 0xC5, 0x43, 0x83, 0xBA, 0xC4, 0x73, 0xF1, 0xB5, 0x50, 0x5A,
-        0x39
-    ]
+    "ce2ee4dc-c3b8-4f78-b231-584de7609551"
 );
 
 declare_model_resource_id!(
     CONE_MODEL_RESOURCE_ID,
-    [
-        0xA3, 0x4A, 0xDE, 0xB0, 0x5C, 0x39, 0x42, 0x6A, 0xB0, 0x08, 0xD0, 0x3A, 0x2B, 0xCC, 0x09,
-        0xE8
-    ]
+    "507bf54a-4e20-459e-8e56-ab19d1b0c5aa"
 );
 
 declare_model_resource_id!(
     CYLINDER_MODEL_RESOURCE_ID,
-    [
-        0x6E, 0x80, 0x18, 0xDD, 0x88, 0xE4, 0x4E, 0x9D, 0xA8, 0xB3, 0x94, 0x4F, 0xC7, 0xC6, 0x0E,
-        0xDC
-    ]
+    "6220657c-e087-4fcb-83c6-433ccaac02dd"
 );
 
 declare_model_resource_id!(
     SPHERE_MODEL_RESOURCE_ID,
-    [
-        0xC5, 0xE6, 0x56, 0x71, 0x74, 0x6E, 0x4B, 0xA2, 0xAE, 0x19, 0x8C, 0xB5, 0x70, 0x82, 0x16,
-        0x90,
-    ]
+    "908569e5-9182-4abb-bd21-a604f72dd4cb"
 );
 
 declare_model_resource_id!(
     ARROW_MODEL_RESOURCE_ID,
-    [
-        0x07, 0x00, 0x7A, 0x8A, 0x8C, 0x16, 0x41, 0x77, 0x89, 0x5A, 0x74, 0x9B, 0x6F, 0x7A, 0x08,
-        0x01
-    ]
+    "8458fe11-c253-49bf-bde5-07da4aec3878"
 );
 
 declare_model_resource_id!(
     ROTATIONRING_MODEL_RESOURCE_ID,
-    [
-        0x9E, 0xB0, 0xB5, 0x1A, 0xC5, 0xDD, 0x45, 0x96, 0xA6, 0xD4, 0xB2, 0x06, 0xD7, 0xC5, 0x79,
-        0x2E
-    ]
+    "0cee2298-e0f0-4330-8849-cfffee9222dc"
 );
 
 pub const MISSING_MODEL_RESOURCE_ID: ResourceTypeAndId = CUBE_MODEL_RESOURCE_ID;
@@ -298,109 +267,3 @@ impl ModelManager {
         })
     }
 }
-
-// #[allow(clippy::needless_pass_by_value)]
-// pub(crate) fn update_models(
-//     renderer: ResMut<'_, Renderer>,
-//     asset_registry: Res<'_, Arc<AssetRegistry>>,
-//     updated_models: Query<'_, '_, &ModelComponent, Changed<ModelComponent>>,
-// ) {
-//     let mut mesh_manager = renderer.render_resources().get_mut::<MeshManager>();
-//     let mut model_manager = renderer.render_resources().get_mut::<ModelManager>();
-//     let material_manager = renderer.render_resources().get::<MaterialManager>();
-//     let mut missing_visuals_tracker = renderer
-//         .render_resources()
-//         .get_mut::<MissingVisualTracker>();
-
-//     let mut render_commands = renderer.render_command_builder();
-
-//     for updated_model in updated_models.iter() {
-//         let model_resource_id = &updated_model.resource.id();
-
-//         missing_visuals_tracker.add_changed_resource(*model_resource_id);
-
-//         let mut mesh_instances = Vec::new();
-
-//         for mesh in &updated_model.meshes {
-//             let mesh_id = mesh_manager.add_mesh(&mut render_commands, mesh);
-
-//             let render_material = if let Some(material_resource_id) = &mesh.material_id {
-//                 let render_material_guard = asset_registry
-//                     .lookup::<RenderMaterial>(&material_resource_id.id())
-//                     .expect("Must be installed");
-
-//                 let render_material = render_material_guard.get().unwrap().clone();
-
-//                 render_material
-//             } else {
-//                 material_manager.get_default_material().clone()
-//             };
-
-//             mesh_instances.push(MeshInstance {
-//                 mesh_id,
-//                 material_id: render_material.material_id(),
-//                 material_va: render_material.gpuheap_addr(),
-//             });
-//         }
-
-//         model_manager.add_model(*model_resource_id, ModelMetaData { mesh_instances });
-//     }
-// }
-
-// #[allow(clippy::needless_pass_by_value)]
-// fn debug_bounding_spheres(
-//     debug_display: Res<'_, DebugDisplay>,
-//     bump_allocator_pool: Res<'_, BumpAllocatorPool>,
-//     renderer: Res<'_, Renderer>,
-//     renderer_options: Res<'_, RendererOptions>,
-//     visuals: Query<'_, '_, (&VisualComponent, &Transform)>,
-// ) {
-//     let mesh_manager = renderer.render_resources().get_mut::<MeshManager>();
-//     let model_manager = renderer.render_resources().get_mut::<ModelManager>();
-
-//     if !renderer_options.show_bounding_spheres {
-//         return;
-//     }
-
-//     bump_allocator_pool.scoped_bump(|bump| {
-//         debug_display.create_display_list(bump, |builder| {
-//             for (visual, transform) in visuals.iter() {
-//                 if let Some(model_resource_id) = visual.model_resource_id() {
-//                     if let Some(model) = model_manager.get_model_meta_data(model_resource_id) {
-//                         for mesh in &model.mesh_instances {
-//                             let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-//                             builder.add_default_mesh(
-//                                 &GlobalTransform::identity()
-//                                     .with_translation(
-//                                         transform.translation
-//                                             + mesh_data.bounding_sphere.truncate(),
-//                                     )
-//                                     .with_scale(
-//                                         Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w,
-//                                     )
-//                                     .with_rotation(transform.rotation),
-//                                 DefaultMeshType::Sphere,
-//                                 Color::WHITE,
-//                             );
-//                         }
-//                     }
-//                 } else {
-//                     let model = model_manager.get_default_model(DefaultMeshType::Cube);
-//                     for mesh in &model.mesh_instances {
-//                         let mesh_data = mesh_manager.get_mesh_meta_data(mesh.mesh_id);
-//                         builder.add_default_mesh(
-//                             &GlobalTransform::identity()
-//                                 .with_translation(
-//                                     transform.translation + mesh_data.bounding_sphere.truncate(),
-//                                 )
-//                                 .with_scale(Vec3::new(4.0, 4.0, 4.0) * mesh_data.bounding_sphere.w)
-//                                 .with_rotation(transform.rotation),
-//                             DefaultMeshType::Sphere,
-//                             Color::WHITE,
-//                         );
-//                     }
-//                 }
-//             }
-//         });
-//     });
-// }

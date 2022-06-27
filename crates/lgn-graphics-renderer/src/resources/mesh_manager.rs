@@ -184,23 +184,6 @@ impl MeshManager {
         self.inner.default_mesh_ids[default_mesh_type as usize]
     }
 
-    // pub fn get_default_mesh(&self, default_mesh_type: DefaultMeshType) -> RenderMeshGuard<'_> {
-    //     let mesh_id = self.get_default_mesh_id(default_mesh_type);
-    //     self.get_render_mesh(mesh_id)
-    // }
-
-    // pub fn get_render_mesh(&self, mesh_id: RenderMeshId) -> RenderMeshGuard<'_> {
-    //     self.try_get_render_mesh(mesh_id).unwrap()
-    // }
-
-    // pub fn try_get_render_mesh(&self, mesh_id: RenderMeshId) -> Option<RenderMeshGuard<'_>> {
-    //     let render_meshes_guard = self.inner.render_meshes.read();
-
-    //     RenderMeshGuard{
-    //         render_meshes_guard
-    //     }
-    // }
-
     pub fn read(&self) -> RenderMeshReader<'_> {
         let render_meshes_guard = self.inner.render_meshes.read();
         RenderMeshReader {

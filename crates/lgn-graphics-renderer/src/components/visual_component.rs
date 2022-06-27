@@ -1,4 +1,4 @@
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::Handle;
 use lgn_ecs::prelude::*;
 use lgn_graphics_data::Color;
 use lgn_transform::prelude::GlobalTransform;
@@ -7,22 +7,23 @@ use lgn_utils::HashMap;
 use crate::{
     core::{PrimaryTableView, RenderObjectId},
     features::RenderVisual,
+    resources::RenderModel,
 };
 
 #[derive(Component)]
 pub struct VisualComponent {
     color: Color,
     color_blend: f32,
-    model_resource_id: ResourceTypeAndId,
+    render_model_handle: Handle<RenderModel>,
     render_object_id: Option<RenderObjectId>,
 }
 
 impl VisualComponent {
-    pub fn new(model_resource_id: ResourceTypeAndId, color: Color, color_blend: f32) -> Self {
+    pub fn new(render_model_handle: &Handle<RenderModel>, color: Color, color_blend: f32) -> Self {
         Self {
             color,
             color_blend,
-            model_resource_id,
+            render_model_handle: render_model_handle.clone(),
             render_object_id: None,
         }
     }
@@ -35,8 +36,8 @@ impl VisualComponent {
         self.color_blend
     }
 
-    pub fn model_resource_id(&self) -> &ResourceTypeAndId {
-        &self.model_resource_id
+    pub fn render_model_handle(&self) -> &Handle<RenderModel> {
+        &self.render_model_handle
     }
 }
 

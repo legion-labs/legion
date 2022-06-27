@@ -2,14 +2,14 @@
 
 #![allow(clippy::needless_pass_by_value)]
 
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use clap::Parser;
 
 use lgn_app::{prelude::*, AppExit, Events, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
-use lgn_data_runtime::ResourceTypeAndId;
+use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
 use lgn_ecs::prelude::*;
 use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_data::{Color, GraphicsPlugin};
@@ -18,8 +18,9 @@ use lgn_graphics_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, RenderSurfaces, VisualComponent,
     },
+    labels::RendererLabel,
     resources::{
-        PipelineManager, CONE_MODEL_RESOURCE_ID, CUBE_MODEL_RESOURCE_ID,
+        PipelineManager, RenderModel, CONE_MODEL_RESOURCE_ID, CUBE_MODEL_RESOURCE_ID,
         CYLINDER_MODEL_RESOURCE_ID, PLANE_MODEL_RESOURCE_ID, PYRAMID_MODEL_RESOURCE_ID,
         SPHERE_MODEL_RESOURCE_ID, TORUS_MODEL_RESOURCE_ID,
     },
@@ -33,7 +34,7 @@ use lgn_input::{
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
-use lgn_tracing::{flush_monitor::FlushMonitor, LevelFilter};
+use lgn_tracing::{flush_monitor::FlushMonitor, warn, LevelFilter};
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowCloseRequested, WindowDescriptor, WindowPlugin, Windows};
 use lgn_winit::{WinitPlugin, WinitSettings, WinitWindows};
@@ -79,17 +80,11 @@ struct Args {
     #[clap(short, long)]
     snapshot: bool,
     /// Name of the setup to launch
-    #[clap(long, default_value = "simple-scene")]
-    setup_name: String,
-    /// Use asset registry data instead of a hardcoded scene
     #[clap(long)]
-    use_asset_registry: bool,
+    setup_name: Option<String>,
     /// Root object to load, usually a world
     #[clap(long)]
     root: Option<String>,
-    /// Dimensions of meta cube
-    #[clap(long, default_value_t = 0)]
-    meta_cube_size: usize,
 }
 
 fn main() {
@@ -103,27 +98,29 @@ fn main() {
 
     let mut app = App::new(telemetry_guard_builder);
 
-    if args.use_asset_registry {
-        let root_asset = args
-            .root
+    let root_asset = if args.setup_name.is_none() {
+        args.root
             .as_deref()
             .unwrap_or("(1d9ddd99aad89045,af7e6ef0-c271-565b-c27a-b8cd93c3546a)")
             .parse::<ResourceTypeAndId>()
-            .ok();
-        let project_folder =
-            lgn_config::get_or("editor_srv.project_dir", PathBuf::from("tests/sample-data"))
-                .unwrap();
-        let asset_registry_settings = AssetRegistrySettings::new(
-            Some(project_folder.join("runtime").join("game.manifest")),
-            root_asset.into_iter().collect::<Vec<_>>(),
-        );
-        app.insert_resource(asset_registry_settings)
-            .add_plugin(lgn_async::AsyncPlugin::default())
-            .add_plugin(AssetRegistryPlugin::default())
-            .add_plugin(GraphicsPlugin::default())
-            .add_plugin(SampleDataPlugin::default())
-            .add_plugin(ScenePlugin::new(root_asset));
-    }
+            .ok()
+    } else {
+        None
+    };
+
+    let project_folder =
+        lgn_config::get_or("editor_srv.project_dir", PathBuf::from("tests/sample-data")).unwrap();
+
+    let asset_registry_settings = AssetRegistrySettings::new(
+        Some(project_folder.join("runtime").join("game.manifest")),
+        root_asset.into_iter().collect::<Vec<_>>(),
+    );
+    app.insert_resource(asset_registry_settings)
+        .add_plugin(lgn_async::AsyncPlugin::default())
+        .add_plugin(AssetRegistryPlugin::default())
+        .add_plugin(GraphicsPlugin::default())
+        .add_plugin(SampleDataPlugin::default())
+        .add_plugin(ScenePlugin::new(root_asset));
 
     app.add_plugin(CorePlugin::default())
         .add_plugin(RendererPlugin::default())
@@ -142,7 +139,10 @@ fn main() {
 
     if args.snapshot {
         app.insert_resource(SnapshotDescriptor {
-            setup_name: args.setup_name.clone(),
+            setup_name: args
+                .setup_name
+                .clone()
+                .unwrap_or_else(|| "default".to_owned()),
             width: args.width,
             height: args.height,
         })
@@ -161,13 +161,30 @@ fn main() {
 
     app.add_system_to_stage(CoreStage::Last, check_keyboard_events);
 
-    if args.use_asset_registry {
-    } else if args.setup_name.eq("light_test") {
-        app.add_startup_system(init_light_test);
-    } else if args.meta_cube_size != 0 {
-        app.add_plugin(MetaCubePlugin::new(args.meta_cube_size));
-    } else {
-        app.add_startup_system(init_scene);
+    match args.setup_name.as_deref() {
+        Some("light-test") => {
+            app.add_startup_system_to_stage(
+                StartupStage::PostStartup,
+                init_light_test.after(RendererLabel::DefaultResourcesInstalled),
+            );
+        }
+
+        Some("stress-test") => {
+            app.add_plugin(MetaCubePlugin::new());
+        }
+
+        Some("simple-scene") => {
+            app.add_startup_system_to_stage(
+                StartupStage::PostStartup,
+                init_scene.after(RendererLabel::DefaultResourcesInstalled),
+            );
+        }
+
+        Some(_) => {
+            warn!("Unknow setup: {}", args.setup_name.unwrap());
+        }
+
+        None => (),
     }
 
     app.run();
@@ -232,7 +249,7 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands<'_, '_>) {
+fn init_light_test(mut commands: Commands<'_, '_>, asset_registry: Res<'_, Arc<AssetRegistry>>) {
     // sphere 1
     commands
         .spawn()
@@ -240,7 +257,9 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
             -0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            SPHERE_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&SPHERE_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (255, 0, 0).into(),
             1.0,
         ));
@@ -252,7 +271,9 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
             0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            SPHERE_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&SPHERE_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (0, 255, 0).into(),
             1.0,
         ));
@@ -264,7 +285,9 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
             0.0, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            SPHERE_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&SPHERE_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (0, 0, 255).into(),
             1.0,
         ));
@@ -327,14 +350,16 @@ fn init_light_test(mut commands: Commands<'_, '_>) {
         });
 }
 
-fn init_scene(mut commands: Commands<'_, '_>) {
+fn init_scene(mut commands: Commands<'_, '_>, asset_registry: Res<'_, Arc<AssetRegistry>>) {
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.0, 0.0, 0.1,
         )))
         .insert(VisualComponent::new(
-            PLANE_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&PLANE_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (255, 0, 0).into(),
             1.0,
         ));
@@ -345,7 +370,9 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             -0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            CUBE_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&CUBE_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (0, 255, 0).into(),
             1.0,
         ));
@@ -356,7 +383,9 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            PYRAMID_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&PYRAMID_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (0, 0, 255).into(),
             1.0,
         ));
@@ -367,7 +396,9 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             1.0, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            SPHERE_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&SPHERE_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (255, 0, 255).into(),
             1.0,
         ));
@@ -378,7 +409,9 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             -1.0, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            CYLINDER_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&CYLINDER_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (0, 255, 255).into(),
             1.0,
         ));
@@ -389,7 +422,9 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             1.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            TORUS_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&TORUS_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (255, 255, 0).into(),
             1.0,
         ));
@@ -400,7 +435,9 @@ fn init_scene(mut commands: Commands<'_, '_>) {
             -1.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            CONE_MODEL_RESOURCE_ID,
+            &asset_registry
+                .lookup::<RenderModel>(&CONE_MODEL_RESOURCE_ID)
+                .expect("Must be loaded"),
             (128, 128, 255).into(),
             1.0,
         ));
