@@ -12,7 +12,7 @@ use lgn_telemetry::{
 /// A client for the ingestion service.
 pub struct Client<Inner> {
     client: crate::api::ingestion::client::Client<Inner>,
-    space_id: lgn_governance::types::SpaceId,
+    space_id: String,
 }
 
 impl<Inner> Client<Inner> {
@@ -20,7 +20,7 @@ impl<Inner> Client<Inner> {
     pub fn new(inner: Inner, base_uri: http::Uri) -> Self {
         Self {
             client: crate::api::ingestion::client::Client::new(inner, base_uri),
-            space_id: "default".parse().unwrap(),
+            space_id: "default".to_string(),
         }
     }
 }
@@ -45,7 +45,7 @@ where
         match self
             .client
             .insert_process(InsertProcessRequest {
-                space_id: self.space_id.clone().into(),
+                space_id: self.space_id.clone(),
                 body: process,
             })
             .await?
@@ -65,7 +65,7 @@ where
         match self
             .client
             .insert_stream(InsertStreamRequest {
-                space_id: self.space_id.clone().into(),
+                space_id: self.space_id.clone(),
                 body: stream,
             })
             .await?
@@ -87,7 +87,7 @@ where
         match self
             .client
             .insert_block(InsertBlockRequest {
-                space_id: self.space_id.clone().into(),
+                space_id: self.space_id.clone(),
                 body: bytes.into(),
             })
             .await?

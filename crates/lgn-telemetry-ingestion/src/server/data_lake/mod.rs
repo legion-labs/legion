@@ -67,9 +67,17 @@ impl IngestionProvider for DataLakeProvider {
         sqlx::query("INSERT INTO blocks VALUES(?,?,?,?,?,?,?,?);")
             .bind(block.block_id.clone())
             .bind(block.stream_id)
-            .bind(block.begin_time)
+            .bind(
+                block
+                    .begin_time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
+            )
             .bind(block.begin_ticks as i64)
-            .bind(block.end_time)
+            .bind(
+                block
+                    .end_time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
+            )
             .bind(block.end_ticks as i64)
             .bind(block.nb_objects)
             .bind(payload_size as i64)
@@ -95,7 +103,11 @@ impl IngestionProvider for DataLakeProvider {
             .bind(process.distro)
             .bind(process.cpu_brand)
             .bind(process.tsc_frequency as i64)
-            .bind(process.start_time)
+            .bind(
+                process
+                    .start_time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
+            )
             .bind(process.start_ticks as i64)
             .bind(current_date.format("%Y-%m-%d").to_string())
             .bind(process.parent_process_id.clone())

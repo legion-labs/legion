@@ -6,7 +6,7 @@ info:
 paths:
   /v1/spaces/{space-id}/telemetry/ingestion/process:
     parameters:
-      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/space_id"
     put:
       description: Insert a new process.
       operationId: insertProcess
@@ -21,7 +21,7 @@ paths:
           description: Ok.
   /v1/spaces/{space-id}/telemetry/ingestion/stream:
     parameters:
-      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/space_id"
     put:
       description: Insert a new stream.
       operationId: insertStream
@@ -36,7 +36,7 @@ paths:
           description: Ok.
   /v1/spaces/{space-id}/telemetry/ingestion/block:
     parameters:
-      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "#/components/parameters/space_id"
     put:
       description: Insert a new block.
       operationId: insertBlock
@@ -50,3 +50,12 @@ paths:
       responses:
         "200":
           description: Ok.
+components:
+  parameters:
+    space_id:
+      name: space-id
+      in: path
+      description: The space identifier.
+      required: true
+      schema:
+        type: string
