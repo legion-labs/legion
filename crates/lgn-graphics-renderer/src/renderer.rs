@@ -84,6 +84,20 @@ impl Drop for Renderer {
     }
 }
 
+pub struct BeginFrameClientFn {
+    func: Box<dyn FnMut(&RenderResources, usize)>,
+}
+
+#[allow(unsafe_code)]
+unsafe impl Send for BeginFrameClientFn {}
+
+pub struct EndFrameClientFn {
+    func: Box<dyn FnMut(&RenderResources, usize)>,
+}
+
+#[allow(unsafe_code)]
+unsafe impl Send for EndFrameClientFn {}
+
 pub(crate) struct RenderScope {
     frame_idx: u64,
     render_frame_idx: u64,
@@ -91,10 +105,51 @@ pub(crate) struct RenderScope {
     frame_fences: Vec<Fence>,
     frame_start: time::Instant,
     frame_time: time::Duration,
+    begin_frame_clients: Vec<BeginFrameClientFn>,
+    end_frame_clients: Vec<EndFrameClientFn>,
+}
+
+pub(crate) struct RenderScopeBuilder {
+    begin_frame_clients: Vec<BeginFrameClientFn>,
+    end_frame_clients: Vec<EndFrameClientFn>,
+}
+
+impl RenderScopeBuilder {
+    pub fn add_begin_frame<F: 'static>(mut self, f: F) -> Self
+    where
+        F: FnMut(&RenderResources, usize),
+    {
+        self.begin_frame_clients
+            .push(BeginFrameClientFn { func: Box::new(f) });
+        self
+    }
+
+    pub fn add_end_frame<F: 'static>(mut self, f: F) -> Self
+    where
+        F: FnMut(&RenderResources, usize),
+    {
+        self.end_frame_clients
+            .push(EndFrameClientFn { func: Box::new(f) });
+        self
+    }
+
+    pub fn build(self, num_render_frames: u64, device_context: &DeviceContext) -> RenderScope {
+        RenderScope::new(
+            num_render_frames,
+            device_context,
+            self.begin_frame_clients,
+            self.end_frame_clients,
+        )
+    }
 }
 
 impl RenderScope {
-    pub fn new(num_render_frames: u64, device_context: &DeviceContext) -> Self {
+    fn new(
+        num_render_frames: u64,
+        device_context: &DeviceContext,
+        begin_frame_clients: Vec<BeginFrameClientFn>,
+        end_frame_clients: Vec<EndFrameClientFn>,
+    ) -> Self {
         Self {
             frame_idx: 0,
             render_frame_idx: 0,
@@ -104,11 +159,20 @@ impl RenderScope {
                 .collect(),
             frame_start: time::Instant::now(),
             frame_time: time::Duration::default(),
+            begin_frame_clients,
+            end_frame_clients,
+        }
+    }
+
+    pub fn builder() -> RenderScopeBuilder {
+        RenderScopeBuilder {
+            begin_frame_clients: vec![],
+            end_frame_clients: vec![],
         }
     }
 
     #[span_fn]
-    pub fn begin_frame(&mut self) {
+    pub fn begin_frame(&mut self, render_resources: &RenderResources) {
         //
         // Update frame indices
         //
@@ -124,10 +188,24 @@ impl RenderScope {
         }
 
         self.frame_start = time::Instant::now();
+
+        for begin_frame_client in &mut self.begin_frame_clients {
+            let func = &mut begin_frame_client.func;
+            func(render_resources, self.frame_idx as usize);
+        }
     }
 
     #[span_fn]
-    pub(crate) fn end_frame(&mut self, graphics_queue: &GraphicsQueue) {
+    pub(crate) fn end_frame(
+        &mut self,
+        render_resources: &RenderResources,
+        graphics_queue: &GraphicsQueue,
+    ) {
+        for end_frame_client in &mut self.end_frame_clients {
+            let func = &mut end_frame_client.func;
+            func(render_resources, self.frame_idx as usize);
+        }
+
         let frame_fence = &self.frame_fences[self.render_frame_idx as usize];
 
         graphics_queue

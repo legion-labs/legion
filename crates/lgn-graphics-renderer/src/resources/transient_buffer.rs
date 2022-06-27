@@ -218,17 +218,17 @@ impl TransientBufferManager {
         }
     }
 
-    pub fn begin_frame(&mut self) {
+    pub fn begin_frame(&mut self, frame_index: usize) {
         let mut inner = self.inner.lock().unwrap();
 
         assert!(inner.frame_pool.is_empty());
 
         inner
             .transient_buffers
-            .begin_frame(TransientBuffer::begin_frame);
+            .begin_frame(frame_index, TransientBuffer::begin_frame);
     }
 
-    pub fn end_frame(&mut self) {
+    pub fn end_frame(&mut self, frame_index: usize) {
         let mut inner = self.inner.lock().unwrap();
 
         let mut frame_pool = std::mem::take(&mut inner.frame_pool);
@@ -237,7 +237,7 @@ impl TransientBufferManager {
             inner.transient_buffers.release(handle);
         });
 
-        inner.transient_buffers.end_frame(|_| ());
+        inner.transient_buffers.end_frame(frame_index, |_| ());
     }
 
     fn acquire_page(

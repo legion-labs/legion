@@ -39,6 +39,9 @@ pub struct ApiDef {
 
     /// Don't enable Window interop extensions
     pub windowing_mode: ExtensionMode,
+
+    /// Number of buffered frames
+    pub num_buffered_frames: u64,
 }
 
 impl Default for ApiDef {
@@ -52,6 +55,7 @@ impl Default for ApiDef {
             app_name: "Legion Application".to_string(),
             validation_mode,
             windowing_mode: ExtensionMode::Enabled,
+            num_buffered_frames: 3,
         }
     }
 }

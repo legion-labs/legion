@@ -18,10 +18,10 @@ use crate::components::{
     EcsToRenderViewport, EcsToRenderVisual,
 };
 use crate::core::{
-    RenderCamera, RenderCommandQueuePool, RenderFeatures, RenderFeaturesBuilder,
-    RenderGraphPersistentState, RenderLayerBuilder, RenderLayers, RenderObjects, RenderViewport,
-    RenderViewportPrivateDataHandler, RenderViewportRendererData, RENDER_LAYER_DEPTH,
-    RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
+    GPUTimelineManager, RenderCamera, RenderCommandQueuePool, RenderFeatures,
+    RenderFeaturesBuilder, RenderGraphPersistentState, RenderLayerBuilder, RenderLayers,
+    RenderObjects, RenderViewport, RenderViewportPrivateDataHandler, RenderViewportRendererData,
+    RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
 use crate::features::{ModelFeature, RenderVisual};
 use crate::lighting::{RenderLight, RenderLightTestData};
@@ -167,11 +167,13 @@ impl Plugin for RendererPlugin {
         //
         // Init in dependency order
         //
-        let gfx_api = GfxApiArc::new(ApiDef::default());
+        let gfx_api = GfxApiArc::new(ApiDef {
+            num_buffered_frames: NUM_RENDER_FRAMES,
+            ..ApiDef::default()
+        });
         let device_context = gfx_api.device_context();
         let graphics_queue = GraphicsQueue::new(device_context);
         let cgen_registry = Arc::new(cgen::initialize(device_context));
-        let render_scope = RenderScope::new(NUM_RENDER_FRAMES, device_context);
         let upload_manager = GpuUploadManager::new();
         let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
@@ -240,6 +242,49 @@ impl Plugin for RendererPlugin {
         let light_manager = LightingManager::new();
 
         let renderdoc_manager = RenderDocManager::default();
+
+        let gpu_timeline_manager = GPUTimelineManager::new(NUM_RENDER_FRAMES);
+
+        let render_scope_builder = RenderScope::builder()
+            .add_begin_frame(|render_resources, frame_index| {
+                let gpu_timeline_manager = render_resources.get::<GPUTimelineManager>();
+                gpu_timeline_manager.flush(frame_index);
+            })
+            .add_begin_frame(|render_resources, frame_index| {
+                let gfx_api = render_resources.get::<GfxApiArc>();
+                gfx_api
+                    .device_context()
+                    .deferred_dropper()
+                    .flush(frame_index);
+            })
+            .add_begin_frame(|render_resources, frame_index| {
+                let mut descriptor_heap_manager =
+                    render_resources.get_mut::<DescriptorHeapManager>();
+                descriptor_heap_manager.begin_frame(frame_index);
+            })
+            .add_end_frame(|render_resources, frame_index| {
+                let mut descriptor_heap_manager =
+                    render_resources.get_mut::<DescriptorHeapManager>();
+                descriptor_heap_manager.end_frame(frame_index);
+            })
+            .add_begin_frame(|render_resources, frame_index| {
+                let mut transient_buffer = render_resources.get_mut::<TransientBufferManager>();
+                transient_buffer.begin_frame(frame_index);
+            })
+            .add_end_frame(|render_resources, frame_index| {
+                let mut transient_buffer = render_resources.get_mut::<TransientBufferManager>();
+                transient_buffer.end_frame(frame_index);
+            })
+            .add_begin_frame(|render_resources, frame_index| {
+                let transient_commandbuffer_manager =
+                    render_resources.get::<TransientCommandBufferManager>();
+                transient_commandbuffer_manager.begin_frame(frame_index);
+            })
+            .add_end_frame(|render_resources, frame_index| {
+                let transient_commandbuffer_manager =
+                    render_resources.get::<TransientCommandBufferManager>();
+                transient_commandbuffer_manager.end_frame(frame_index);
+            });
 
         let render_objects = RenderObjectsBuilder::default()
             // Lights
@@ -403,6 +448,8 @@ impl Plugin for RendererPlugin {
 
         let render_graph_persistent_state = RenderGraphPersistentState::new();
 
+        let render_scope = render_scope_builder.build(NUM_RENDER_FRAMES, device_context);
+
         let render_resources_builder = RenderResourcesBuilder::new();
         let render_resources = render_resources_builder
             .insert(render_scope)
@@ -430,6 +477,7 @@ impl Plugin for RendererPlugin {
             .insert(render_features)
             .insert(render_graph_persistent_state)
             .insert(Herd::new())
+            .insert(gpu_timeline_manager)
             .finalize();
 
         app.add_system_to_stage(CoreStage::Last, on_app_exit);
@@ -517,6 +565,11 @@ fn on_app_exit(mut app_exit: EventReader<'_, '_, AppExit>, renderer: Res<'_, Ren
         let mut render_objects = renderer.render_resources().get_mut::<RenderObjects>();
         render_objects.sync_update();
         render_objects.begin_frame();
+
+        renderer
+            .render_resources()
+            .get_mut::<GPUTimelineManager>()
+            .destroy();
     }
 }
 
@@ -622,112 +675,116 @@ fn render_update(
             span_scope!("render_thread");
 
             let mut herd = render_resources.get_mut::<Herd>();
-            let mut render_scope = render_resources.get_mut::<RenderScope>();
-            let mut descriptor_heap_manager = render_resources.get_mut::<DescriptorHeapManager>();
-            let device_context = render_resources.get::<GfxApiArc>().device_context().clone();
-            let static_buffer = render_resources.get::<UnifiedStaticBuffer>();
-            let mut transient_buffer = render_resources.get_mut::<TransientBufferManager>();
-            let transient_commandbuffer_manager =
-                render_resources.get::<TransientCommandBufferManager>();
 
             //
             // Begin frame (before commands)
             //
 
             herd.reset();
-            render_scope.begin_frame();
-            descriptor_heap_manager.begin_frame();
-
-            device_context.free_gpu_memory();
-            device_context.inc_current_cpu_frame();
-
-            transient_buffer.begin_frame();
-            transient_commandbuffer_manager.begin_frame();
-
-            render_resources.get::<RenderObjects>().begin_frame();
-
-            //
-            // Update
-            //
-            render_resources
-                .get_mut::<RenderCommandManager>()
-                .apply(&render_resources);
-
-            persistent_descriptor_set_manager.frame_update();
-            pipeline_manager.frame_update(&device_context);
-
-            let mut transient_commandbuffer_allocator =
-                TransientCommandBufferAllocator::new(&transient_commandbuffer_manager);
-
-            let graphics_queue = render_resources.get::<GraphicsQueue>();
-
-            let mut transient_buffer_allocator =
-                TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
-
-            render_resources.get_mut::<GpuUploadManager>().upload(
-                &mut transient_commandbuffer_allocator,
-                &mut transient_buffer_allocator,
-                &graphics_queue,
-            );
-
-            //
-            // Render
-            //
-
-            let mut renderdoc_manager = render_resources.get_mut::<RenderDocManager>();
-            renderdoc_manager.start_frame_capture();
 
             {
-                let descriptor_pool =
-                    descriptor_heap_manager.acquire_descriptor_pool(default_descriptor_heap_size());
+                let mut render_scope = render_resources.get_mut::<RenderScope>();
+                render_scope.begin_frame(&render_resources);
+            }
+            {
+                let render_scope = render_resources.get::<RenderScope>();
+                let device_context = render_resources.get::<GfxApiArc>().device_context().clone();
+                let transient_buffer = render_resources.get::<TransientBufferManager>();
+                let transient_commandbuffer_manager =
+                    render_resources.get::<TransientCommandBufferManager>();
 
-                let herd_member = herd.get();
-                let bump = herd_member.as_bump();
+                device_context.inc_current_cpu_frame();
+
+                render_resources.get::<RenderObjects>().begin_frame();
+
+                //
+                // Update
+                //
+                render_resources
+                    .get_mut::<RenderCommandManager>()
+                    .apply(&render_resources);
+
+                persistent_descriptor_set_manager.frame_update();
+                pipeline_manager.frame_update(&device_context);
+
+                let mut transient_commandbuffer_allocator =
+                    TransientCommandBufferAllocator::new(&transient_commandbuffer_manager);
+
+                let mut transient_buffer_allocator =
+                    TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
+
+                let graphics_queue = render_resources.get::<GraphicsQueue>();
+                render_resources.get_mut::<GpuUploadManager>().upload(
+                    &mut transient_commandbuffer_allocator,
+                    &mut transient_buffer_allocator,
+                    &graphics_queue,
+                );
+
+                //
+                // Render
+                //
+
+                let mut renderdoc_manager = render_resources.get_mut::<RenderDocManager>();
+                renderdoc_manager.start_frame_capture();
 
                 {
-                    let render_layers = render_resources.get::<RenderLayers>();
-                    let features = render_resources.get::<RenderFeatures>();
+                    let descriptor_heap_manager =
+                        render_resources.get_mut::<DescriptorHeapManager>();
+                    let static_buffer = render_resources.get::<UnifiedStaticBuffer>();
 
-                    let render_context = RenderContext::new(
-                        &device_context,
-                        &graphics_queue,
-                        &descriptor_pool,
-                        &mut pipeline_manager,
-                        &mut transient_commandbuffer_allocator,
-                        &mut transient_buffer_allocator,
-                        &static_buffer,
-                        &herd,
-                        bump,
-                        &picking_manager,
-                        &debug_display,
-                        picked_drawables.as_slice(),
-                        manipulator_drawables.as_slice(),
-                        &egui,
-                    );
+                    let descriptor_pool = descriptor_heap_manager
+                        .acquire_descriptor_pool(default_descriptor_heap_size());
 
-                    SurfaceRenderer::render_surfaces(
-                        render_scope.frame_idx(),
-                        &mut render_surfaces,
-                        &render_resources,
-                        render_context,
-                        &mut persistent_descriptor_set_manager,
-                        &render_layers,
-                        &features,
-                    );
+                    let herd_member = herd.get();
+                    let bump = herd_member.as_bump();
+
+                    {
+                        let render_layers = render_resources.get::<RenderLayers>();
+                        let features = render_resources.get::<RenderFeatures>();
+
+                        let render_context = RenderContext::new(
+                            &device_context,
+                            &graphics_queue,
+                            &descriptor_pool,
+                            &mut pipeline_manager,
+                            &mut transient_commandbuffer_allocator,
+                            &mut transient_buffer_allocator,
+                            &static_buffer,
+                            &herd,
+                            bump,
+                            &picking_manager,
+                            &debug_display,
+                            picked_drawables.as_slice(),
+                            manipulator_drawables.as_slice(),
+                            &egui,
+                        );
+
+                        SurfaceRenderer::render_surfaces(
+                            render_scope.frame_idx(),
+                            &mut render_surfaces,
+                            &render_resources,
+                            render_context,
+                            &mut persistent_descriptor_set_manager,
+                            &render_layers,
+                            &features,
+                        );
+                    }
+
+                    descriptor_heap_manager.release_descriptor_pool(descriptor_pool);
+                    drop(transient_buffer_allocator);
+                    drop(transient_commandbuffer_allocator);
+
+                    debug_display.end_frame();
                 }
 
-                descriptor_heap_manager.release_descriptor_pool(descriptor_pool);
-                drop(transient_buffer_allocator);
-                drop(transient_commandbuffer_allocator);
-
-                descriptor_heap_manager.end_frame();
-                debug_display.end_frame();
-                render_scope.end_frame(&graphics_queue);
-                transient_buffer.end_frame();
-                transient_commandbuffer_manager.end_frame();
+                renderdoc_manager.end_frame_capture();
             }
 
-            renderdoc_manager.end_frame_capture();
+            {
+                let mut render_scope = render_resources.get_mut::<RenderScope>();
+                let graphics_queue = render_resources.get::<GraphicsQueue>();
+                render_scope.end_frame(&render_resources, &graphics_queue);
+            }
         });
     });
 }
