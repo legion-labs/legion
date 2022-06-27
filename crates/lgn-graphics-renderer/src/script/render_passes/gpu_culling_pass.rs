@@ -181,10 +181,16 @@ impl GpuCullingPass {
                             let mut mesh_renderer =
                                 execute_context.render_resources.get_mut::<MeshRenderer>();
 
-                            let readback = mesh_renderer
-                                .culling_buffers
-                                .stats_buffer
-                                .begin_readback(execute_context.render_context.device_context);
+                            let frame_index = execute_context
+                                .render_context
+                                .device_context
+                                .current_cpu_frame()
+                                as usize;
+                            let readback =
+                                mesh_renderer.culling_buffers.stats_buffer.begin_readback(
+                                    frame_index,
+                                    execute_context.render_context.device_context,
+                                );
 
                             readback.read_gpu_data(
                                 0,
@@ -360,10 +366,15 @@ impl GpuCullingPass {
                         );
 
                         if let Some(readback) = readback {
+                            let frame_index = execute_context
+                                .render_context
+                                .device_context
+                                .current_cpu_frame()
+                                as usize;
                             mesh_renderer
                                 .culling_buffers
                                 .stats_buffer
-                                .end_readback(readback);
+                                .end_readback(frame_index, readback);
                         }
                     })
                 })

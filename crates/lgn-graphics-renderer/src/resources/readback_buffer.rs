@@ -105,17 +105,18 @@ impl GpuBufferWithReadback {
 
     pub(crate) fn begin_readback(
         &mut self,
+        frame_index: usize,
         device_context: &DeviceContext,
     ) -> Handle<ReadbackBuffer> {
-        self.readback_pool.begin_frame(|_| ());
+        self.readback_pool.begin_frame(frame_index, |_| ());
         self.readback_pool.acquire_or_create(|| {
             ReadbackBuffer::new(device_context, self.buffer.definition().size)
         })
     }
 
-    pub(crate) fn end_readback(&mut self, buffer: Handle<ReadbackBuffer>) {
+    pub(crate) fn end_readback(&mut self, frame_index: usize, buffer: Handle<ReadbackBuffer>) {
         self.readback_pool.release(buffer);
-        self.readback_pool.end_frame(|_| ());
+        self.readback_pool.end_frame(frame_index, |_| ());
     }
 
     pub(crate) fn buffer(&self) -> &Buffer {
