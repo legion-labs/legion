@@ -4104,35 +4104,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "lgn-compiler-gltf2mat"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "gltf",
- "lgn-content-store",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "lgn-graphics-data",
- "tokio",
-]
-
-[[package]]
-name = "lgn-compiler-gltf2model"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "gltf",
- "lgn-content-store",
- "lgn-data-compiler",
- "lgn-data-offline",
- "lgn-data-runtime",
- "lgn-graphics-data",
- "tokio",
-]
-
-[[package]]
-name = "lgn-compiler-gltf2tex"
+name = "lgn-compiler-gltf"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -4141,6 +4113,8 @@ dependencies = [
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
+ "lgn-telemetry-sink",
+ "lgn-tracing",
  "tokio",
 ]
 
@@ -4652,6 +4626,7 @@ name = "lgn-data-transaction"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "crossbeam-channel",
  "erased-serde",
  "futures-lite",
  "generic-data",
@@ -5519,9 +5494,7 @@ name = "lgn-ubercompiler"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "lgn-compiler-gltf2mat",
- "lgn-compiler-gltf2model",
- "lgn-compiler-gltf2tex",
+ "lgn-compiler-gltf",
  "lgn-compiler-material",
  "lgn-compiler-png2tex",
  "lgn-compiler-psd2tex",
@@ -7817,6 +7790,7 @@ dependencies = [
  "bincode",
  "clap 3.1.18",
  "generic-data",
+ "gltf",
  "lgn-config",
  "lgn-content-store",
  "lgn-data-build",

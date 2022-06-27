@@ -103,7 +103,7 @@ async fn compile_intermediate() {
             kind: TextResource::TYPE,
             id: ResourceId::new(),
         };
-        let mut resource = TextResource::new_named("test_resource");
+        let mut resource = TextResource::new_with_id("test_resource", source);
         resource.content = source_magic_value.clone();
 
         let source_manifest_id =

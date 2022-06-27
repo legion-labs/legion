@@ -255,6 +255,12 @@ pub enum AssetRegistryScheduling {
     AssetRegistryCreated,
 }
 
+/// Message to notifying `AssetRegistry` Operation
+pub enum AssetRegistryMessage {
+    /// Sent when resources changed
+    ChangedResources(Vec<ResourceTypeAndId>),
+}
+
 /// Async reader type for `AssetRegistry`/`AssetLoader`
 pub type AssetRegistryReader = Pin<Box<dyn tokio::io::AsyncRead + Send>>;
 
@@ -264,11 +270,14 @@ impl AssetRegistry {
     }
 
     /// Trigger a reload of a given primary resource.
-    pub async fn reload(&self, resource_id: ResourceTypeAndId) {
+    /// # Errors
+    /// Return `AssetRegistryError` on failure
+    pub async fn reload(
+        &self,
+        resource_id: ResourceTypeAndId,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
         let future = self.new_load_request(resource_id);
-        if let Err(err) = future.await {
-            lgn_tracing::error!("Reload failed: {}", err);
-        }
+        future.await
     }
 
     pub(crate) fn mark_for_cleanup(&self, key: AssetRegistryHandleKey) {
@@ -291,6 +300,7 @@ impl AssetRegistry {
         Some(self.lookup_untyped(resource_id)?.into())
     }
 
+    // TODO: replace with Arc<Inner>
     fn arc_self(&self) -> Arc<Self> {
         let registry = unsafe { Arc::from_raw(self as *const Self) };
         let result = registry.clone();

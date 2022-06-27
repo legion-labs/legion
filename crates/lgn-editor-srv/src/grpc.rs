@@ -16,6 +16,7 @@ use tonic::{Request, Response, Status};
 #[derive(Debug, Clone)]
 pub(crate) enum EditorEvent {
     SelectionChanged(Vec<ResourceTypeAndId>),
+    #[allow(dead_code)] // TODO
     ResourceChanged(Vec<ResourceTypeAndId>),
 }
 

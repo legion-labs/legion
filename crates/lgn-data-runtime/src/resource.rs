@@ -41,8 +41,8 @@ pub async fn from_binary_reader<'de, T: Resource + Default + serde::Deserialize<
 /// Write a Resource to a binary stream
 /// # Errors
 /// Return `AssetRegistryError` on failure
-pub fn to_binary_writer(
-    resource: &dyn Resource,
+pub fn to_binary_writer<T: Resource + serde::Serialize>(
+    resource: &T,
     writer: &mut dyn std::io::Write,
 ) -> Result<(), AssetRegistryError> {
     let mut bincode_ser = bincode::Serializer::new(
@@ -51,8 +51,9 @@ pub fn to_binary_writer(
             .allow_trailing_bytes()
             .with_fixint_encoding(),
     );
-    let mut serializer = <dyn erased_serde::Serializer>::erase(&mut bincode_ser);
-    lgn_data_model::utils::serialize_property_by_name(resource.as_reflect(), "", &mut serializer)?;
+    resource
+        .serialize(&mut bincode_ser)
+        .map_err(|_err| AssetRegistryError::Generic("bincode serialize error".into()))?;
 
     Ok(())
 }

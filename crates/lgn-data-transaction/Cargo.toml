@@ -26,6 +26,7 @@ thiserror = "1.0"
 tokio = { version = "1.13", features = ["full", "tracing"] }
 async-trait = "0.1"
 futures-lite = "1.12"
+crossbeam-channel = "0.5.1"
 
 [dev-dependencies]
 lgn-compiler-testentity = { path = "../../tests/testentity-compiler" }

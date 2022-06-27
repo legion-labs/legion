@@ -161,11 +161,9 @@ impl fmt::Debug for CompilerRegistry {
 impl CompilerRegistry {
     /// Returns a reference to the compiler
     pub fn find_compiler(&self, transform: Transform) -> Option<(&dyn CompilerStub, Transform)> {
-        if let Some(compiler_index) = self
-            .infos
-            .iter()
-            .position(|info| info.transform == transform)
-        {
+        if let Some(compiler_index) = self.infos.iter().position(|info| {
+            info.transform == transform || info.transform.is_wildcard_for(&transform)
+        }) {
             let stub_index = self.indices[compiler_index];
             return Some((self.compilers[stub_index].as_ref(), transform));
         }

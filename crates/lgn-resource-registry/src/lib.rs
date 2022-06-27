@@ -102,13 +102,14 @@ impl ResourceRegistryPlugin {
                     .await
                     .expect("the editor requires valid build manager");
 
-            Arc::new(Mutex::new(TransactionManager::new(
+            TransactionManager::new(
                 Arc::new(Mutex::new(project)),
                 build_manager,
                 selection_manager.clone(),
-            )))
+            )
         });
 
-        world.insert_resource(transaction_manager);
+        world.insert_resource(transaction_manager.get_notification_receiver());
+        world.insert_resource(Arc::new(Mutex::new(transaction_manager)));
     }
 }

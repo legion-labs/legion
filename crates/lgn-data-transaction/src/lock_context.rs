@@ -69,20 +69,24 @@ impl<'a> LockContext<'a> {
             changed.get_or_insert(Vec::new()).push(id);
         }
 
-        /*for resource_id in &self.changed_resources {
+        for resource_id in changed.iter().flatten() {
             match self
                 .build
                 .build_all_derived(*resource_id, &self.project)
                 .await
             {
-                Ok((runtime_path_id, _built_resources)) => {
-                    self.asset_registry.reload(runtime_path_id.resource_id());
+                Ok((runtime_path_id, built_resources)) => {
+                    lgn_tracing::info!(
+                        "Rebuilt {} ({} deps)",
+                        runtime_path_id,
+                        built_resources.len()
+                    );
                 }
                 Err(e) => {
-                    error!("Error building resource derivations {:?}", e);
+                    lgn_tracing::error!("Error building resource derivations {:?}", e);
                 }
             }
-        }*/
+        }
 
         Ok(changed)
     }

@@ -12,14 +12,15 @@ use std::{
     sync::Arc,
 };
 
-use generic_data::offline::{TestComponent, TestEntity};
 use lgn_content_store::Provider;
 use lgn_data_offline::{Project, ResourcePathName, SourceResource};
-use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, Resource, ResourceDescriptor, ResourceId, ResourceType,
-    ResourceTypeAndId,
+use lgn_data_runtime::prelude::*;
+use lgn_graphics_data::{
+    offline::Gltf,
+    offline::Psd,
+    offline::{Png, Visual},
 };
-use lgn_graphics_data::offline::{Gltf, Png, Psd};
+use lgn_math::Vec3;
 use lgn_source_control::{BranchName, RepositoryIndex, RepositoryName};
 use lgn_tracing::{error, info};
 use lgn_utils::DefaultHasher;
@@ -293,7 +294,6 @@ async fn create_or_find_default(
 ) -> HashMap<ResourcePathName, ResourceTypeAndId> {
     let mut ids = HashMap::<ResourcePathName, ResourceTypeAndId>::default();
     build_resource_from_raw(file_paths, in_resources, project, &mut ids).await;
-    build_test_entity(project, &mut ids).await;
     ids
 }
 
@@ -334,50 +334,6 @@ async fn build_resource_from_raw(
         };
         ids.insert(name.clone(), id);
     }
-}
-
-async fn build_test_entity(
-    project: &mut Project,
-    ids: &mut HashMap<ResourcePathName, ResourceTypeAndId>,
-) {
-    // Create TestEntity Generic DataContainer
-    let name: ResourcePathName = "/entity/TEST_ENTITY_NAME.dc".into();
-    let id = {
-        if let Ok(id) = project.find_resource(&name).await {
-            id
-        } else {
-            let id = ResourceTypeAndId {
-                kind: TestEntity::TYPE,
-                id: ResourceId::from_str("D8FE06A0-1317-46F5-902B-266B0EAE6FA8").unwrap(),
-            };
-            let mut test_entity = TestEntity::new_with_id(name.as_str(), id);
-            test_entity.test_string = "Editable String Value".into();
-            test_entity.test_float32 = 1.0;
-            test_entity.test_float64 = 2.0;
-            test_entity.test_int = 1337;
-            test_entity.test_position = lgn_math::Vec3::new(0.0, 100.0, 0.0);
-
-            (0..3).for_each(|i| {
-                test_entity
-                    .test_sub_type
-                    .test_components
-                    .push(Box::new(TestComponent { test_i32: i }));
-            });
-            test_entity.test_option_set = Some(generic_data::offline::TestSubType2::default());
-            test_entity.test_option_primitive_set = Some(lgn_math::Vec3::default());
-
-            if project.exists(id).await {
-                project.delete_resource(id).await.unwrap();
-            }
-
-            project
-                .add_resource_with_id(id, &test_entity)
-                .await
-                .unwrap();
-            id
-        }
-    };
-    ids.insert(name, id);
 }
 
 fn path_to_resource_name(path: &Path) -> ResourcePathName {
@@ -502,7 +458,9 @@ async fn load_gltf_resource(
     project: &mut Project,
     source_control_content_provider: &Arc<Provider>,
 ) -> Option<ResourceTypeAndId> {
+    lgn_tracing::info!("Loading Gltf {}", name);
     let raw_data = fs::read(file).ok()?;
+    lgn_tracing::info!("Uploading raw gltf to content store");
     let content_id = source_control_content_provider
         .write(&raw_data)
         .await
@@ -510,7 +468,133 @@ async fn load_gltf_resource(
 
     let mut resource = Gltf::new_with_id(name.as_str(), resource_id);
     resource.content_id = content_id.to_string();
-
     project.save_resource(resource_id, &resource).await.unwrap();
+
+    lgn_tracing::info!("Parsing Gltf");
+    let gltf = gltf::Gltf::from_slice_without_validation(&raw_data).unwrap();
+    lgn_tracing::info!("Creating hierarchy");
+    {
+        let root_name = String::from("Root");
+        let root_id = ResourceTypeAndId {
+            kind: sample_data::offline::Entity::TYPE,
+            id: {
+                let mut hasher = DefaultHasher::new();
+                resource_id.hash(&mut hasher);
+                root_name.hash(&mut hasher);
+                let id = hasher.finish();
+                ResourceId::from_raw(u128::from(id) | (u128::from(id) << 64))
+            },
+        };
+
+        let mut root_entity = sample_data::offline::Entity::new_with_id(
+            &format!("/!{}/{}", resource_id, root_name),
+            root_id,
+        );
+        root_entity.components.push(Box::new(offline_data::Name {
+            name: root_name.clone(),
+        }));
+        root_entity
+            .components
+            .push(Box::new(sample_data::offline::Transform::default()));
+
+        if !project.exists(root_id).await {
+            project
+                .add_resource_with_id(root_id, &root_entity)
+                .await
+                .unwrap();
+        }
+
+        for (idx, node) in gltf.document.nodes().enumerate() {
+            let child_name = node.name().map_or(idx.to_string(), Into::into);
+            let child_id = ResourceTypeAndId {
+                kind: sample_data::offline::Entity::TYPE,
+                id: {
+                    let mut hasher = DefaultHasher::new();
+                    resource_id.hash(&mut hasher);
+                    child_name.hash(&mut hasher);
+                    let id = hasher.finish();
+                    ResourceId::from_raw(u128::from(id) | (u128::from(id) << 64))
+                },
+            };
+
+            root_entity
+                .children
+                .push(ResourcePathId::from(child_id).push(sample_data::runtime::Entity::TYPE));
+
+            let mut child = sample_data::offline::Entity::new_with_id(
+                &format!("/!{}/{}", root_id, child_name),
+                child_id,
+            );
+            child.parent =
+                Some(ResourcePathId::from(root_id).push(sample_data::runtime::Entity::TYPE));
+
+            child
+                .components
+                .push(Box::new(sample_data::offline::Name { name: child_name }));
+
+            let (position, rotation, scale) = node.transform().decomposed();
+            child
+                .components
+                .push(Box::new(sample_data::offline::Transform {
+                    position: Vec3::new(position[0], position[1], -position[2]),
+                    rotation: lgn_math::Quat::from_xyzw(
+                        rotation[0],
+                        rotation[1],
+                        -rotation[2],
+                        -rotation[3],
+                    ),
+                    scale: scale.into(),
+                }));
+            if let Some(mesh) = node.mesh() {
+                let visual = Box::new(lgn_graphics_data::offline::Visual {
+                    renderable_geometry: Some(ResourcePathId::from(resource_id).push_named(
+                        lgn_graphics_data::runtime::Model::TYPE,
+                        mesh.name().unwrap(),
+                    )),
+                    color_blend: 0.0,
+                    ..Visual::default()
+                });
+                child.components.push(visual);
+            }
+
+            if project.exists(child_id).await {
+                project.save_resource(child_id, &child).await.unwrap();
+            } else {
+                project
+                    .add_resource_with_id(child_id, &child)
+                    .await
+                    .unwrap();
+            }
+        }
+
+        let mut gltf_loader = offline_data::GltfLoader::default();
+        for mesh in gltf.document.meshes() {
+            gltf_loader
+                .models
+                .push(ResourcePathId::from(resource_id).push_named(
+                    lgn_graphics_data::runtime::Model::TYPE,
+                    mesh.name().unwrap(),
+                ));
+        }
+
+        let (materials, texture_references) =
+            lgn_graphics_data::gltf_utils::extract_materials_from_document(
+                &gltf.document,
+                resource_id,
+            );
+
+        gltf_loader.textures.extend(texture_references);
+
+        for (_material, material_name) in &materials {
+            gltf_loader.materials.push(
+                ResourcePathId::from(resource_id)
+                    .push_named(lgn_graphics_data::runtime::Material::TYPE, material_name), //.push(lgn_graphics_data::runtime::Material::TYPE),
+            );
+        }
+        root_entity.components.push(Box::new(gltf_loader));
+
+        project.save_resource(root_id, &root_entity).await.unwrap();
+    }
+
     Some(resource_id)
 }

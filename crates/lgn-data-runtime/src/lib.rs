@@ -99,9 +99,9 @@ pub use resource_installer::*;
 pub mod prelude {
     #[doc(hidden)]
     pub use crate::{
-        AssetRegistry, AssetRegistryError, AssetRegistryOptions, AssetRegistryReader, Component,
-        ComponentInstaller, EditHandle, EditHandleUntyped, Handle, HandleUntyped, LoadRequest,
-        Resource, ResourceDescriptor, ResourceId, ResourceInstaller, ResourcePathId, ResourceType,
-        ResourceTypeAndId, Transform,
+        AssetRegistry, AssetRegistryError, AssetRegistryMessage, AssetRegistryOptions,
+        AssetRegistryReader, Component, ComponentInstaller, EditHandle, EditHandleUntyped, Handle,
+        HandleUntyped, LoadRequest, Resource, ResourceDescriptor, ResourceId, ResourceInstaller,
+        ResourcePathId, ResourceType, ResourceTypeAndId, Transform,
     };
 }

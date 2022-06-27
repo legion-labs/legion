@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     env,
     hash::{Hash, Hasher},
     io,
@@ -451,18 +451,34 @@ impl DataBuild {
             };
 
             let mut compiler_details = HashMap::new();
-            for t in unique_transforms {
-                let (transform, res_path_id) = t;
-                let (compiler, transform) = self
-                    .compilers
-                    .compilers()
-                    .find_compiler(transform)
-                    .ok_or(Error::CompilerNotFound(transform, res_path_id))?;
-                let compiler_hash = compiler
-                    .compiler_hash(transform, env)
-                    .await
-                    .map_err(|e| Error::Io(e.into()))?;
-                compiler_details.insert(transform, (compiler, compiler_hash));
+            for (transform, res_path_id) in unique_transforms {
+                // Insert a identity compiler if one exists
+                let identity_transform = transform.as_identity();
+                if let Some((identity_compiler, _transform)) =
+                    self.compilers.compilers().find_compiler(identity_transform)
+                {
+                    if let Entry::Vacant(e) = compiler_details.entry(identity_transform) {
+                        let compiler_hash = identity_compiler
+                            .compiler_hash(identity_transform, env)
+                            .await
+                            .map_err(|e| Error::Io(e.into()))?;
+                        e.insert((identity_compiler, compiler_hash));
+                    }
+                } else if let Entry::Vacant(e) = compiler_details.entry(transform) {
+                    let (compiler, _transform) = self
+                        .compilers
+                        .compilers()
+                        .find_compiler(transform)
+                        .ok_or_else(|| {
+                            lgn_tracing::error!("Compiler not found {}", transform);
+                            Error::CompilerNotFound(transform, res_path_id)
+                        })?;
+                    let compiler_hash = compiler
+                        .compiler_hash(transform, env)
+                        .await
+                        .map_err(|e| Error::Io(e.into()))?;
+                    e.insert((compiler, compiler_hash));
+                }
             }
             compiler_details
         };
@@ -477,7 +493,7 @@ impl DataBuild {
         // in the future this should be improved.
         //
         let mut accumulated_dependencies = vec![];
-        let mut node_hash = HashMap::<_, (AssetHash, AssetHash)>::new();
+        let mut node_hash = HashMap::<_, (AssetHash, AssetHash, ResourcePathId)>::new();
 
         let mut compiled_at_node = HashMap::<ResourcePathId, _>::new();
         let mut compiled = HashSet::<petgraph::graph::NodeIndex>::new();
@@ -579,36 +595,54 @@ impl DataBuild {
             let mut new_work = vec![];
             let num_ready = ready.len();
             for compile_node_index in ready {
-                let compile_node = build_graph.node_weight(compile_node_index).unwrap();
+                let source_node = build_graph.node_weight(compile_node_index).unwrap().clone();
                 info!(
                     "Progress({:?}): {:?} is ready",
-                    compile_node_index, compile_node
+                    compile_node_index, source_node
                 );
+
+                let compile_node = if let Some(transform) = source_node.last_transform() {
+                    // If there's no compiler for this operation but there's an Identity transform on the source, use it instead
+                    if compiler_details.get(&transform).is_none()
+                        && compiler_details.get(&transform.as_identity()).is_some()
+                    {
+                        ResourcePathId::from(source_node.source_resource())
+                            .push(source_node.source_resource().kind)
+                    } else {
+                        source_node.clone()
+                    }
+                } else {
+                    // If it's a source node but there's an Identity compiler, replace with Identity transform
+                    let identity_transform = ResourcePathId::from(source_node.source_resource())
+                        .push(source_node.source_resource().kind);
+                    if let Some((_compiler, _compiler_hash)) =
+                        compiler_details.get(&identity_transform.last_transform().unwrap())
+                    {
+                        identity_transform
+                    } else {
+                        source_node.clone()
+                    }
+                };
+
                 // compile non-source dependencies.
                 if let Some(direct_dependency) = compile_node.direct_dependency() {
-                    let mut n =
-                        build_graph.neighbors_directed(compile_node_index, petgraph::Incoming);
-                    let direct_dependency_index = n.next().unwrap();
-
-                    // only one direct dependency supported now. it's ok for the path
-                    // but it needs to be revisited for source (if this ever applies to source).
-                    assert!(n.next().is_none());
-
-                    assert_eq!(
-                        &direct_dependency,
-                        build_graph.node_weight(direct_dependency_index).unwrap()
-                    );
-
-                    let transform = compile_node.last_transform().unwrap();
-
-                    //  'name' is dropped as we always compile input as a whole.
-                    let expected_name = compile_node.name();
                     let compile_node = compile_node.to_unnamed();
 
                     // check if the unnamed ResourcePathId has been already compiled and early out.
                     if let Some(node_index) = compiled_at_node.get(&compile_node) {
-                        node_hash.insert(compile_node_index, *node_hash.get(node_index).unwrap());
+                        node_hash.insert(
+                            compile_node_index,
+                            node_hash.get(node_index).unwrap().clone(),
+                        );
+
+                        let unnamed = source_node.to_unnamed();
+                        info!(
+                            "Source({:?}) Completed '{}' (reusing result from {:?})",
+                            compile_node_index, source_node, node_index
+                        );
                         compiled.insert(compile_node_index);
+                        compiling_unnamed.remove(&unnamed);
+                        compiled_unnamed.insert(unnamed);
                         continue;
                     }
 
@@ -629,13 +663,6 @@ impl DataBuild {
                         .find_dependencies(&direct_dependency)
                         .unwrap_or_default();
 
-                    let (compiler, compiler_hash) = *compiler_details.get(&transform).unwrap();
-
-                    // todo: not sure if transform is the right thing here. resource_path_id better?
-                    // transform is already defined by the compiler_hash so it seems redundant.
-                    let context_hash =
-                        compute_context_hash(transform, compiler_hash, Self::version());
-
                     let source_hash = {
                         if direct_dependency.is_source() {
                             //
@@ -654,19 +681,24 @@ impl DataBuild {
                             // resource should not read any other resources - but right now
                             // `accumulated_dependencies` allows to read much more.
                             //
-                            let (dep_context_hash, dep_source_hash) =
+                            let mut n = build_graph
+                                .neighbors_directed(compile_node_index, petgraph::Incoming);
+                            let direct_dependency_index = n.next().unwrap();
+                            let (dep_context_hash, dep_source_hash, dep_path) =
                                 node_hash.get(&direct_dependency_index).unwrap();
 
                             // we can assume there are results of compilation of the `direct_dependency`
                             let compiled = self
                                 .output_index
-                                .find_compiled(
-                                    &direct_dependency.to_unnamed(),
-                                    *dep_context_hash,
-                                    *dep_source_hash,
-                                )
+                                .find_compiled(dep_path, *dep_context_hash, *dep_source_hash)
                                 .await
-                                .unwrap()
+                                .ok_or_else(|| {
+                                    lgn_tracing::error!(
+                                        "Output not present for {}",
+                                        &direct_dependency
+                                    );
+                                    Error::OutputNotPresent(direct_dependency.clone(), "".into())
+                                })?
                                 .0;
                             // can we assume there is a result of a requested name?
                             // probably no, this should return a compile error.
@@ -687,7 +719,22 @@ impl DataBuild {
                         }
                     };
 
-                    node_hash.insert(compile_node_index, (context_hash, source_hash));
+                    // Find the compiler and compiler_hash from the last transform
+                    let transform = compile_node.last_transform().unwrap();
+                    let (compiler, context_hash) =
+                        if let Some((compiler, compiler_hash)) = compiler_details.get(&transform) {
+                            (
+                                *compiler,
+                                compute_context_hash(transform, *compiler_hash, Self::version()),
+                            )
+                        } else {
+                            return Err(Error::CompilerNotFound(transform, compile_node.clone()));
+                        };
+
+                    node_hash.insert(
+                        compile_node_index,
+                        (context_hash, source_hash, compile_node.clone()),
+                    );
 
                     let output_index = &self.output_index;
                     let data_content_provider = Arc::clone(&self.data_content_provider);
@@ -703,7 +750,9 @@ impl DataBuild {
                     > = async move {
                         info!(
                             "Compiling({:?}) {} ({:?}) ...",
-                            compile_node_index, compile_node, expected_name
+                            compile_node_index,
+                            compile_node,
+                            compile_node.name()
                         );
                         let start = std::time::Instant::now();
 
@@ -723,7 +772,10 @@ impl DataBuild {
                             resources.clone(),
                         )
                         .await
-                        .map_err(|e| (compile_node_index, e))?;
+                        .map_err(|e| {
+                            lgn_tracing::error!("Failed to compile: {}", e);
+                            (compile_node_index, e)
+                        })?;
 
                         info!(
                             "Compiled({:?}) {:?} ended in {:?}.",

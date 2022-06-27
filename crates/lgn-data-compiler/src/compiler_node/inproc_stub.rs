@@ -33,7 +33,9 @@ impl CompilerStub for InProcessCompilerStub {
         transform: Transform,
         env: &CompilationEnv,
     ) -> io::Result<CompilerHash> {
-        if transform != *self.descriptor.transform {
+        if transform != *self.descriptor.transform
+            && !self.descriptor.transform.is_wildcard_for(&transform)
+        {
             return Err(io::Error::new(io::ErrorKind::Other, "Transform mismatch"));
         }
         let hash = self

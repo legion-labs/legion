@@ -103,36 +103,21 @@ impl EditorPlugin {
         entities: Query<'_, '_, (Entity, &ResourceMetaInfo)>,
         mut event_reader: EventReader<'_, '_, PickingEvent>,
         keys: Res<'_, Input<KeyCode>>,
-        event_sender: Res<'_, broadcast::Sender<EditorEvent>>,
     ) {
         if keys.pressed(KeyCode::LControl) && keys.just_pressed(KeyCode::Z) {
             let transaction_manager = transaction_manager.clone();
-            let event_sender = event_sender.clone();
             tokio_runtime.start_detached(async move {
                 let mut transaction_manager = transaction_manager.lock().await;
-                match transaction_manager.undo_transaction().await {
-                    Ok(Some(changed)) => {
-                        if let Err(err) = event_sender.send(EditorEvent::ResourceChanged(changed)) {
-                            warn!("Failed to send EditorEvent: {}", err);
-                        }
-                    }
-                    Err(err) => error!("Undo transaction failed: {}", err),
-                    Ok(_) => {}
+                if let Err(err) = transaction_manager.undo_transaction().await {
+                    error!("Undo transaction failed: {}", err);
                 }
             });
         } else if keys.pressed(KeyCode::LControl) && keys.just_pressed(KeyCode::Y) {
             let transaction_manager = transaction_manager.clone();
-            let event_sender = event_sender.clone();
             tokio_runtime.start_detached(async move {
                 let mut transaction_manager = transaction_manager.lock().await;
-                match transaction_manager.redo_transaction().await {
-                    Ok(Some(changed)) => {
-                        if let Err(err) = event_sender.send(EditorEvent::ResourceChanged(changed)) {
-                            warn!("Failed to send EditorEvent: {}", err);
-                        }
-                    }
-                    Err(err) => error!("Redo transaction failed: {}", err),
-                    Ok(_) => {}
+                if let Err(err) = transaction_manager.redo_transaction().await {
+                    error!("Redo transaction failed: {}", err);
                 }
             });
         }
@@ -176,7 +161,6 @@ impl EditorPlugin {
                         let scale_value = serde_json::json!(transform.scale).to_string();
 
                         let transaction_manager = transaction_manager.clone();
-                        let event_sender = event_sender.clone();
 
                         tokio_runtime.start_detached(async move {
                             let mut transaction_manager = transaction_manager.lock().await;
@@ -196,13 +180,6 @@ impl EditorPlugin {
                                         ],
                                     ));
                                 match transaction_manager.commit_transaction(transaction).await {
-                                    Ok(Some(changed)) => {
-                                        if let Err(err) =
-                                            event_sender.send(EditorEvent::ResourceChanged(changed))
-                                        {
-                                            warn!("Failed to send EditorEvent: {}", err);
-                                        }
-                                    }
                                     Ok(_) => {}
                                     Err(err) => {
                                         error!("ApplyTransform transaction failed: {}", err);

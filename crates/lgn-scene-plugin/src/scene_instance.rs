@@ -1,9 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use lgn_data_runtime::{AssetRegistry, Handle, ResourceDescriptor, ResourceTypeAndId};
+use futures::FutureExt;
+use lgn_data_runtime::prelude::*;
 use lgn_ecs::prelude::Commands;
 use lgn_hierarchy::prelude::{BuildChildren, Parent};
 use lgn_tracing::warn;
+use tokio::task::JoinHandle;
 
 use crate::ResourceMetaInfo;
 
@@ -31,6 +33,26 @@ impl SceneInstance {
         resource_id: &ResourceTypeAndId,
     ) -> Option<&lgn_ecs::entity::Entity> {
         self.id_to_entity_map.get(resource_id)
+    }
+
+    pub(crate) fn notify_changed_resources(
+        &mut self,
+        changed: &[ResourceTypeAndId],
+        asset_registry: &Arc<AssetRegistry>,
+    ) -> Vec<(
+        ResourceTypeAndId,
+        JoinHandle<Result<HandleUntyped, AssetRegistryError>>,
+    )> {
+        let mut results = Vec::new();
+        for resource_id in changed.iter().copied() {
+            if self.id_to_entity_map.contains_key(&resource_id) {
+                let asset_registry = asset_registry.clone();
+                let handle: JoinHandle<Result<HandleUntyped, AssetRegistryError>> =
+                    tokio::spawn(async move { asset_registry.reload(resource_id).await }.boxed());
+                results.push((resource_id, handle));
+            }
+        }
+        results
     }
 
     pub(crate) fn unspawn_all(&mut self, commands: &mut Commands<'_, '_>) {
@@ -167,85 +189,18 @@ impl SceneInstance {
             entity_command.insert(local_transform.unwrap_or_default());
             entity_command.insert(lgn_transform::prelude::GlobalTransform::identity());
 
-            /*for component in &runtime_entity.components {
-                if let Some(visual) = component.downcast_ref::<runtime_data::Visual>() {
-                    entity.insert(VisualComponent::new(
-                        visual
-                            .renderable_geometry
-                            .as_ref()
-                            .map(ModelReferenceType::id),
-                        visual.color,
-                        visual.color_blend,
-                    ));
-                } else if let Some(gi) =
-                    component.downcast_ref::<runtime_data::GlobalIllumination>()
-                {
-                    entity.insert(gi.clone());
-                } else if let Some(nav_mesh) = component.downcast_ref::<runtime_data::NavMesh>() {
-                    entity.insert(nav_mesh.clone());
-                } else if let Some(view) = component.downcast_ref::<runtime_data::View>() {
-                    entity.insert(view.clone());
-                } else if let Some(_gltf_loader) =
-                    component.downcast_ref::<runtime_data::GltfLoader>()
-                {
-                    // nothing to do
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidBox>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidCapsule>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidConvexMesh>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidHeightField>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidPlane>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidSphere>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsRigidTriangleMesh>()
-                {
-                    entity.insert(physics.clone());
-                } else if let Some(physics_settings) =
-                    component.downcast_ref::<lgn_physics::runtime::PhysicsSceneSettings>()
-                {
-                    entity.insert(physics_settings.clone());
-                } else if let Some(camera_setup) =
-                    component.downcast_ref::<lgn_graphics_data::runtime::CameraSetup>()
-                {
-                    entity.insert(camera_setup.clone());
-                } else if let Some(animation_data) =
-                    component.downcast_ref::<lgn_animation::runtime::AnimationTrack>()
-                {
-                    let runtime_animation_data = RuntimeAnimationClip::new(animation_data);
-                    entity.insert(runtime_animation_data);
-                } else {
-                    error!(
-                        "Unhandle component type {} in entity {}",
-                        component.get_type().get_type_name(),
-                        resource_id,
-                    );
-                }
-            }
-
-            }*/
-
             if let Some(parent) = runtime_entity.parent.as_ref() {
                 if let Some(parent_ecs_entity) = self.id_to_entity_map.get(&parent.id()) {
                     entity_command.insert(Parent(*parent_ecs_entity));
                 }
             }
+
+            lgn_tracing::info!(
+                "Spawned Entity: {} -> ECS id: {:?}| {}",
+                resource_id.id,
+                entity_id,
+                name,
+            );
         }
     }
 }
