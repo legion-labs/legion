@@ -182,7 +182,6 @@ impl RenderViewportRendererData {
         };
 
         self.view_target = device_context.create_texture(view_desc, "ViewBuffer");
-
         self.view_target_srv =
             self.view_target
                 .create_view(TextureViewDef::as_shader_resource_view(
