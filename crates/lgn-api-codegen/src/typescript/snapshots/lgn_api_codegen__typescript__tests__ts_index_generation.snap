@@ -1,8 +1,10 @@
 ---
 source: crates/lgn-api-codegen/src/typescript/mod.rs
+assertion_line: 193
 expression: content
 ---
 // Auto-generated file
+
 import qs from "qs";
 
 declare global {
