@@ -18,7 +18,11 @@ use lgn_graphics_renderer::{
         LightComponent, LightType, RenderSurface, RenderSurfaceCreatedForWindow,
         RenderSurfaceExtents, RenderSurfaces, VisualComponent,
     },
-    resources::{DefaultMeshType, ModelManager, PipelineManager},
+    resources::{
+        PipelineManager, CONE_MODEL_RESOURCE_ID, CUBE_MODEL_RESOURCE_ID,
+        CYLINDER_MODEL_RESOURCE_ID, PLANE_MODEL_RESOURCE_ID, PYRAMID_MODEL_RESOURCE_ID,
+        SPHERE_MODEL_RESOURCE_ID, TORUS_MODEL_RESOURCE_ID,
+    },
     {Renderer, RendererPlugin},
 };
 use lgn_hierarchy::HierarchyPlugin;
@@ -228,9 +232,7 @@ fn presenter_snapshot_system(
     frame_counter.frame_count += 1;
 }
 
-fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
-    let model_manager = renderer.render_resources().get_mut::<ModelManager>();
-
+fn init_light_test(mut commands: Commands<'_, '_>) {
     // sphere 1
     commands
         .spawn()
@@ -238,7 +240,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
             -0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
+            SPHERE_MODEL_RESOURCE_ID,
             (255, 0, 0).into(),
             1.0,
         ));
@@ -250,7 +252,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
             0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
+            SPHERE_MODEL_RESOURCE_ID,
             (0, 255, 0).into(),
             1.0,
         ));
@@ -262,7 +264,7 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
             0.0, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
+            SPHERE_MODEL_RESOURCE_ID,
             (0, 0, 255).into(),
             1.0,
         ));
@@ -325,16 +327,14 @@ fn init_light_test(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) 
         });
 }
 
-fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
-    let model_manager = renderer.render_resources().get_mut::<ModelManager>();
-
+fn init_scene(mut commands: Commands<'_, '_>) {
     commands
         .spawn()
         .insert_bundle(TransformBundle::from_transform(Transform::from_xyz(
             0.0, 0.0, 0.1,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Plane)),
+            PLANE_MODEL_RESOURCE_ID,
             (255, 0, 0).into(),
             1.0,
         ));
@@ -345,7 +345,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             -0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Cube)),
+            CUBE_MODEL_RESOURCE_ID,
             (0, 255, 0).into(),
             1.0,
         ));
@@ -356,7 +356,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             0.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Pyramid)),
+            PYRAMID_MODEL_RESOURCE_ID,
             (0, 0, 255).into(),
             1.0,
         ));
@@ -367,7 +367,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             1.0, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Sphere)),
+            SPHERE_MODEL_RESOURCE_ID,
             (255, 0, 255).into(),
             1.0,
         ));
@@ -378,7 +378,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             -1.0, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Cylinder)),
+            CYLINDER_MODEL_RESOURCE_ID,
             (0, 255, 255).into(),
             1.0,
         ));
@@ -389,7 +389,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             1.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Torus)),
+            TORUS_MODEL_RESOURCE_ID,
             (255, 255, 0).into(),
             1.0,
         ));
@@ -400,7 +400,7 @@ fn init_scene(mut commands: Commands<'_, '_>, renderer: Res<'_, Renderer>) {
             -1.5, 0.0, 0.0,
         )))
         .insert(VisualComponent::new(
-            Some(*model_manager.default_model_id(DefaultMeshType::Cone)),
+            CONE_MODEL_RESOURCE_ID,
             (128, 128, 255).into(),
             1.0,
         ));

@@ -13,16 +13,12 @@ use crate::{
 pub struct VisualComponent {
     color: Color,
     color_blend: f32,
-    model_resource_id: Option<ResourceTypeAndId>,
+    model_resource_id: ResourceTypeAndId,
     render_object_id: Option<RenderObjectId>,
 }
 
 impl VisualComponent {
-    pub fn new(
-        model_resource_id: Option<ResourceTypeAndId>,
-        color: Color,
-        color_blend: f32,
-    ) -> Self {
+    pub fn new(model_resource_id: ResourceTypeAndId, color: Color, color_blend: f32) -> Self {
         Self {
             color,
             color_blend,
@@ -39,8 +35,8 @@ impl VisualComponent {
         self.color_blend
     }
 
-    pub fn model_resource_id(&self) -> Option<&ResourceTypeAndId> {
-        self.model_resource_id.as_ref()
+    pub fn model_resource_id(&self) -> &ResourceTypeAndId {
+        &self.model_resource_id
     }
 }
 

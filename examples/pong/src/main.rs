@@ -24,7 +24,8 @@ use lgn_graphics_data::{
     offline::{Light, Visual},
     LightType,
 };
-use lgn_graphics_renderer::components::Mesh;
+
+use lgn_graphics_renderer::resources::Mesh;
 use lgn_math::prelude::Vec3;
 use lgn_scripting_data::ScriptType;
 use lgn_source_control::{BranchName, RepositoryName};

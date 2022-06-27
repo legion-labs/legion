@@ -4872,6 +4872,7 @@ dependencies = [
  "bitflags",
  "bumpalo",
  "bumpalo-herd",
+ "crossbeam",
  "crossbeam-channel",
  "egui",
  "lgn-app",

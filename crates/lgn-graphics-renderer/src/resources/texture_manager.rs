@@ -2,9 +2,15 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
+use crossbeam::atomic::AtomicCell;
+use lgn_graphics_data::Color;
+use strum::EnumCount;
+use strum::IntoEnumIterator;
+
 use lgn_data_runtime::{
-    from_binary_reader, AssetRegistryError, AssetRegistryReader, ComponentInstaller, LoadRequest,
-    Resource, ResourceInstaller, ResourceTypeAndId,
+    from_binary_reader, AssetRegistry, AssetRegistryError, AssetRegistryReader, ComponentInstaller,
+    Handle, LoadRequest, Resource, ResourceDescriptor, ResourceId, ResourceInstaller,
+    ResourceTypeAndId,
 };
 use lgn_ecs::system::EntityCommands;
 use lgn_graphics_api::{
@@ -13,12 +19,71 @@ use lgn_graphics_api::{
 };
 use lgn_graphics_data::{runtime::BinTexture, TextureFormat};
 
+use crate::core::RenderCommandBuilder;
+use crate::core::UploadTextureCommand;
 use crate::{
     components::{LightComponent, VisualComponent},
     core::{GpuUploadManager, TransferError, UploadGPUResource, UploadGPUTexture},
 };
 
-use super::{PersistentDescriptorSetManager, TextureSlot};
+use super::{PersistentDescriptorSetManager, TextureSlot, MISSING_MODEL_RESOURCE_ID};
+
+macro_rules! declare_texture_resource_id {
+    ($name:ident, $uuid:expr) => {
+        #[allow(unsafe_code)]
+        pub const $name: ResourceTypeAndId = ResourceTypeAndId {
+            kind: lgn_graphics_data::runtime::BinTexture::TYPE,
+            id: unsafe { ResourceId::from_raw_unchecked(u128::from_le_bytes($uuid)) },
+        };
+    };
+}
+
+declare_texture_resource_id!(
+    ALBEDO_RESOURCE_ID,
+    [
+        0x1A, 0x44, 0x7E, 0x3C, 0x84, 0x7A, 0x40, 0x37, 0xB3, 0x22, 0x90, 0x75, 0x87, 0x3B, 0x2A,
+        0x9E
+    ]
+);
+
+declare_texture_resource_id!(
+    NORMAL_RESOURCE_ID,
+    [
+        0xD8, 0x9A, 0xC5, 0x19, 0x2C, 0x0F, 0x4E, 0x79, 0x9B, 0xEA, 0x18, 0xD2, 0x73, 0x31, 0xA2,
+        0x81
+    ]
+);
+
+declare_texture_resource_id!(
+    METALNESS_RESOURCE_ID,
+    [
+        0xE8, 0xB9, 0x1B, 0xB2, 0x19, 0x71, 0x4A, 0x21, 0x97, 0x99, 0x71, 0xE6, 0x67, 0x72, 0x3B,
+        0xBF
+    ]
+);
+
+declare_texture_resource_id!(
+    ROUGHNESS_RESOURCE_ID,
+    [
+        0x8C, 0xA0, 0xC4, 0x36, 0x68, 0x81, 0x48, 0x51, 0x89, 0xE2, 0x6C, 0x21, 0xD8, 0x02, 0xDE,
+        0xDC
+    ]
+);
+
+pub const DEFAULT_TEXTURE_RESOURCE_IDS: [ResourceTypeAndId; DefaultTextureId::COUNT] = [
+    ALBEDO_RESOURCE_ID,
+    NORMAL_RESOURCE_ID,
+    METALNESS_RESOURCE_ID,
+    ROUGHNESS_RESOURCE_ID,
+];
+
+#[derive(Clone, Copy, strum::EnumCount, strum::EnumIter)]
+pub enum DefaultTextureId {
+    Albedo,
+    Normal,
+    Metalness,
+    Roughness,
+}
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum TextureManagerError {
@@ -136,8 +201,13 @@ impl ComponentInstaller for TextureInstaller {
         // Visual Test
 
         if let Some(visual) = component.downcast_ref::<lgn_graphics_data::runtime::Visual>() {
+            // The data might not contain a valid resource ID but we set a default model at runtime in order to visualize the visual.
+            let model_resource_id = visual
+                .renderable_geometry
+                .as_ref()
+                .map_or(MISSING_MODEL_RESOURCE_ID, |r| r.id());
             entity_command.insert(VisualComponent::new(
-                visual.renderable_geometry.as_ref().map(|r| r.id()),
+                model_resource_id,
                 visual.color,
                 visual.color_blend,
             ));
@@ -206,6 +276,8 @@ struct Inner {
     device_context: DeviceContext,
     persistent_descriptor_set_manager: PersistentDescriptorSetManager,
     upload_manager: GpuUploadManager,
+    default_textures: Vec<RenderTexture>,
+    default_texture_handles: AtomicCell<Vec<Handle<RenderTexture>>>,
 }
 
 #[derive(Clone)]
@@ -216,16 +288,70 @@ pub struct TextureManager {
 impl TextureManager {
     pub fn new(
         device_context: &DeviceContext,
+        render_commands: &mut RenderCommandBuilder,
         persistent_descriptor_set_manager: &PersistentDescriptorSetManager,
         upload_manager: &GpuUploadManager,
     ) -> Self {
+        let default_textures = DefaultTextureId::iter()
+            .map(|shared_texture_id| {
+                let (texture_def, texture_data, name) = match shared_texture_id {
+                    DefaultTextureId::Albedo => Self::create_albedo_texture(),
+                    DefaultTextureId::Normal => Self::create_normal_texture(),
+                    DefaultTextureId::Metalness => Self::create_metalness_texture(),
+                    DefaultTextureId::Roughness => Self::create_roughness_texture(),
+                };
+
+                let texture = device_context.create_texture(texture_def, &name);
+                let texture_view = texture.create_view(TextureViewDef::as_shader_resource_view(
+                    texture.definition(),
+                ));
+
+                render_commands.push(UploadTextureCommand {
+                    src_data: texture_data.clone(),
+                    dst_texture: texture.clone(),
+                });
+
+                RenderTexture {
+                    bindless_slot: persistent_descriptor_set_manager
+                        .allocate_texture_slot(&texture_view),
+                    data: texture_data,
+                    gpu_texture: texture,
+                    default_gpu_view: texture_view,
+                }
+            })
+            .collect::<Vec<_>>();
+
         Self {
             inner: Arc::new(Inner {
                 device_context: device_context.clone(),
                 persistent_descriptor_set_manager: persistent_descriptor_set_manager.clone(),
                 upload_manager: upload_manager.clone(),
+                default_textures,
+                default_texture_handles: AtomicCell::new(Vec::new()),
             }),
         }
+    }
+
+    pub fn get_default_texture(&self, default_texture_id: DefaultTextureId) -> &RenderTexture {
+        &self.inner.default_textures[default_texture_id as usize]
+    }
+
+    pub fn install_default_resources(&self, asset_registry: &AssetRegistry) {
+        let mut default_texture_handles = Vec::with_capacity(DefaultTextureId::COUNT);
+        DefaultTextureId::iter()
+            .enumerate()
+            .for_each(|(index, default_texture_type)| {
+                let handle = asset_registry
+                    .set_resource(
+                        DEFAULT_TEXTURE_RESOURCE_IDS[index],
+                        Box::new(self.get_default_texture(default_texture_type).clone()),
+                    )
+                    .unwrap();
+                default_texture_handles.push(Handle::<RenderTexture>::from(handle));
+            });
+        self.inner
+            .default_texture_handles
+            .store(default_texture_handles);
     }
 
     async fn install_texture(
@@ -304,5 +430,126 @@ impl TextureManager {
             memory_usage: MemoryUsage::GpuOnly,
             tiling: TextureTiling::Optimal,
         }
+    }
+
+    fn create_albedo_texture() -> (TextureDef, TextureData, String) {
+        let texture_def = TextureDef {
+            extents: Extents3D {
+                width: 2,
+                height: 2,
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count: 1,
+            format: Format::R8G8B8A8_SRGB,
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Linear,
+        };
+
+        let mut texture_data = [Color::default(); 4];
+
+        // https://colorpicker.me/#9b0eab
+        texture_data[0] = Color::new(155, 14, 171, 255);
+        texture_data[1] = Color::new(155, 14, 171, 255);
+        texture_data[2] = Color::new(155, 14, 171, 255);
+        texture_data[3] = Color::new(155, 14, 171, 255);
+
+        (
+            texture_def,
+            TextureData::from_slice(&texture_data),
+            "default_albedo".to_string(),
+        )
+    }
+
+    fn create_normal_texture() -> (TextureDef, TextureData, String) {
+        let texture_def = TextureDef {
+            extents: Extents3D {
+                width: 2,
+                height: 2,
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count: 1,
+            format: Format::R8G8B8A8_UNORM,
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Linear,
+        };
+
+        let mut texture_data = [Color::default(); 4];
+
+        texture_data[0] = Color::new(127, 127, 255, 255);
+        texture_data[1] = Color::new(127, 127, 255, 255);
+        texture_data[2] = Color::new(127, 127, 255, 255);
+        texture_data[3] = Color::new(127, 127, 255, 255);
+
+        (
+            texture_def,
+            TextureData::from_slice(&texture_data),
+            "default_normal".to_string(),
+        )
+    }
+
+    fn create_metalness_texture() -> (TextureDef, TextureData, String) {
+        let texture_def = TextureDef {
+            extents: Extents3D {
+                width: 2,
+                height: 2,
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count: 1,
+            format: Format::R8_UNORM,
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Linear,
+        };
+
+        let mut texture_data = [0_u8; 4];
+
+        texture_data[0] = 0;
+        texture_data[1] = 0;
+        texture_data[2] = 0;
+        texture_data[3] = 0;
+
+        (
+            texture_def,
+            TextureData::from_slice(&texture_data),
+            "Metalness".to_string(),
+        )
+    }
+
+    fn create_roughness_texture() -> (TextureDef, TextureData, String) {
+        let texture_def = TextureDef {
+            extents: Extents3D {
+                width: 2,
+                height: 2,
+                depth: 1,
+            },
+            array_length: 1,
+            mip_count: 1,
+            format: Format::R8_UNORM,
+            usage_flags: ResourceUsage::AS_SHADER_RESOURCE | ResourceUsage::AS_TRANSFERABLE,
+            resource_flags: ResourceFlags::empty(),
+            memory_usage: MemoryUsage::GpuOnly,
+            tiling: TextureTiling::Linear,
+        };
+
+        let mut texture_data = [0_u8; 4];
+
+        texture_data[0] = 240;
+        texture_data[1] = 240;
+        texture_data[2] = 240;
+        texture_data[3] = 240;
+
+        (
+            texture_def,
+            TextureData::from_slice(&texture_data),
+            "Roughness".to_string(),
+        )
     }
 }

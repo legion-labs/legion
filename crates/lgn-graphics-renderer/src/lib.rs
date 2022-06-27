@@ -42,7 +42,9 @@ use gpu_renderer::GpuInstanceManager;
 pub use labels::*;
 
 mod renderer;
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor};
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryOptions, AssetRegistryScheduling, ResourceDescriptor,
+};
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
     ApiDef, DescriptorHeapDef, DeviceContext, Queue, QueueType, BACKBUFFER_COUNT,
@@ -102,7 +104,7 @@ use crate::{
     resources::MeshManager,
     RenderStage,
 };
-use lgn_app::{App, AppExit, CoreStage, Events, Plugin};
+use lgn_app::{App, AppExit, CoreStage, Events, Plugin, StartupStage};
 
 use lgn_ecs::prelude::*;
 use lgn_math::{const_vec3, Vec3};
@@ -112,8 +114,8 @@ use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 use crate::debug_display::DebugDisplay;
 
 use crate::resources::{
-    ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions, SamplerManager,
-    SharedResourcesManager, TransientBufferManager, UnifiedStaticBuffer,
+    ui_renderer_options, MaterialManager, RendererOptions, SamplerManager, SharedResourcesManager,
+    TransientBufferManager, UnifiedStaticBuffer,
 };
 
 use crate::{
@@ -194,11 +196,11 @@ impl Plugin for RendererPlugin {
             NUM_RENDER_FRAMES,
         );
 
-        let mut mesh_manager = MeshManager::new(&gpu_heap);
-        mesh_manager.initialize_default_meshes(&mut render_commands);
+        let mesh_manager = MeshManager::new(&gpu_heap, &gpu_upload_manager, &mut render_commands);
 
         let texture_manager = TextureManager::new(
             device_context,
+            &mut render_commands,
             &persistent_descriptor_set_manager,
             &gpu_upload_manager,
         );
@@ -206,17 +208,15 @@ impl Plugin for RendererPlugin {
         let sampler_manager =
             SamplerManager::new(device_context, &persistent_descriptor_set_manager);
 
-        let shared_resources_manager = SharedResourcesManager::new(
-            &mut render_commands,
-            device_context,
-            &mut persistent_descriptor_set_manager,
-        );
+        let shared_resources_manager =
+            SharedResourcesManager::new(device_context, &mut persistent_descriptor_set_manager);
 
         let material_manager = MaterialManager::new(
             &gpu_heap,
             &gpu_upload_manager,
             &mut render_commands,
             &shared_resources_manager,
+            &texture_manager,
             &sampler_manager,
         );
 
@@ -244,12 +244,8 @@ impl Plugin for RendererPlugin {
         let manipulation_manager = ManipulatorManager::new();
         let picking_manager = PickingManager::new(4096);
         let model_manager = ModelManager::new(&mesh_manager, &material_manager);
-        let missing_visuals_tracker = MissingVisualTracker::default();
-
         let light_manager = LightingManager::new();
-
         let renderdoc_manager = RenderDocManager::default();
-
         let render_objects = RenderObjectsBuilder::default()
             // Lights
             .add_primary_table::<RenderLight>()
@@ -273,12 +269,6 @@ impl Plugin for RendererPlugin {
         //
         app.add_stage_after(
             CoreStage::PostUpdate,
-            RenderStage::Resource,
-            SystemStage::parallel(),
-        );
-
-        app.add_stage_after(
-            RenderStage::Resource,
             RenderStage::Prepare,
             SystemStage::parallel(),
         );
@@ -332,23 +322,20 @@ impl Plugin for RendererPlugin {
             .insert_resource(cgen_registry_list)
             .insert_resource(RenderSurfaces::new())
             .insert_resource(DebugDisplay::default())
-            .insert_resource(shared_resources_manager)
             .insert_resource(RendererOptions::default())
             .insert_resource(CameraOptions::default())
             .insert_resource(picking_manager.clone());
 
         // Init ecs
         MeshRenderer::init_ecs(app);
-        ModelManager::init_ecs(app);
-        MissingVisualTracker::init_ecs(app);
         GpuInstanceManager::init_ecs(app);
 
-        if app
-            .world
-            .contains_resource::<lgn_asset_registry::AssetRegistrySettings>()
-        {
-            app.add_startup_system(register_installers);
-        }
+        app.add_startup_system(register_installers);
+
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            install_default_resources.after(AssetRegistryScheduling::AssetRegistryCreated),
+        );
 
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());
@@ -430,12 +417,12 @@ impl Plugin for RendererPlugin {
             .insert(texture_manager)
             .insert(material_manager)
             .insert(sampler_manager)
-            .insert(missing_visuals_tracker)
             .insert(render_layers)
             .insert(render_features)
             .insert(render_graph_persistent_state)
             .insert(Herd::new())
             .insert(persistent_descriptor_set_manager)
+            .insert(shared_resources_manager)
             .finalize();
 
         app.add_system_to_stage(CoreStage::Last, on_app_exit);
@@ -461,12 +448,12 @@ fn register_installers(
     let asset_registry_options = asset_registry_options.into_inner();
 
     let texture_manager = renderer.render_resources().get::<TextureManager>();
-
     let texture_installer = Arc::new(resources::TextureInstaller::new(&texture_manager));
     asset_registry_options.add_resource_installer(
         lgn_graphics_data::runtime::BinTexture::TYPE,
         texture_installer.clone(),
     );
+
     asset_registry_options.add_component_installer(
         &[
             std::any::TypeId::of::<lgn_graphics_data::runtime::Visual>(),
@@ -476,19 +463,35 @@ fn register_installers(
         texture_installer,
     );
 
-    asset_registry_options.add_resource_installer(
-        lgn_graphics_data::runtime::Model::TYPE,
-        Arc::new(resources::ModelInstaller::new()),
-    );
-
     let material_manager = renderer.render_resources().get::<MaterialManager>();
     asset_registry_options.add_resource_installer(
         lgn_graphics_data::runtime::Material::TYPE,
         Arc::new(resources::MaterialInstaller::new(&material_manager)),
     );
+
+    let model_manager = renderer.render_resources().get::<ModelManager>();
+    asset_registry_options.add_resource_installer(
+        lgn_graphics_data::runtime::Model::TYPE,
+        Arc::new(resources::ModelInstaller::new(&model_manager)),
+    );
 }
 
-#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
+#[allow(clippy::needless_pass_by_value)]
+fn install_default_resources(
+    asset_registry: Res<'_, Arc<AssetRegistry>>,
+    renderer: Res<'_, Renderer>,
+) {
+    let texture_manager = renderer.render_resources().get::<TextureManager>();
+    texture_manager.install_default_resources(&asset_registry);
+
+    let material_manager = renderer.render_resources().get::<MaterialManager>();
+    material_manager.install_default_resources(&asset_registry);
+
+    let model_manager = renderer.render_resources().get::<ModelManager>();
+    model_manager.install_default_resources(&asset_registry);
+}
+
+#[allow(clippy::needless_pass_by_value)]
 fn on_window_created(
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
