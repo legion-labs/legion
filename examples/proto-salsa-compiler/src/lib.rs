@@ -128,20 +128,6 @@ pub mod tests {
     }
 
     #[test]
-    fn compile_atlas() {
-        let db = setup();
-
-        let build_params = Arc::new(BuildParams::default());
-        let compiled_atlas = db
-            .execute_expression(
-                "atlas(entity(read(Atlas.entity)))".to_string(),
-                build_params,
-            )
-            .unwrap();
-        println!("Atlas: {}", compiled_atlas[0]);
-    }
-
-    #[test]
     fn compile_all() {
         let db = setup();
 
@@ -149,7 +135,7 @@ pub mod tests {
     }
 
     #[test]
-    fn incremental_compilation() {
+    fn composed_expression() {
         let db = setup();
 
         let build_params = Arc::new(BuildParams::default());
@@ -160,7 +146,10 @@ pub mod tests {
                 build_params,
             )
             .unwrap();
-        println!("Atlas: {}", compiled_atlas[0]);
+        println!(
+            "Atlas: {}",
+            compiled_atlas.as_any().downcast_ref::<String>().unwrap()
+        );
 
         db.package_see_ps5();
     }

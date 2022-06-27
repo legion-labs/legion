@@ -1,4 +1,6 @@
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
+
+use downcast_rs::{impl_downcast, Downcast};
 
 use crate::{
     atlas::compile_atlas,
@@ -14,8 +16,39 @@ use crate::{
     BuildParams, CompilerError, ContentAddr, Locale,
 };
 
+pub trait AnyEq: Downcast {
+    // Perform the test.
+    fn equals_a(&self, _: &dyn AnyEq) -> bool;
+}
+impl_downcast!(AnyEq);
+
+impl PartialEq for dyn AnyEq + '_ {
+    fn eq(&self, other: &Self) -> bool {
+        self.equals_a(other)
+    }
+}
+
+impl Eq for dyn AnyEq + '_ {
+    fn assert_receiver_is_total_eq(&self) {}
+}
+
+// Implement A for all 'static types implementing PartialEq.
+impl<T: 'static + PartialEq> AnyEq for T {
+    fn equals_a(&self, other: &dyn AnyEq) -> bool {
+        // Do a type-safe casting. If the types are different,
+        // return false, otherwise test the values for equality.
+        other.downcast_ref::<T>().map_or(false, |a| self == a)
+    }
+}
+
+impl std::fmt::Debug for dyn AnyEq + '_ {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
 #[salsa::query_group(CompilerStorage)]
-pub trait Compiler {
+pub trait Compiler<'a> {
     #[salsa::input]
     fn read(&self, name: String) -> String;
 
@@ -29,13 +62,13 @@ pub trait Compiler {
 
     fn compile_collision(&self, name: Arc<String>) -> AABBCollision;
 
-    fn compile_entity(&self, name: String, build_params: Arc<BuildParams>) -> String;
+    fn compile_entity(&self, name: String, build_params: Arc<BuildParams>) -> Vec<String>;
 
     fn execute_expression(
         &self,
         expression: String,
         build_params: Arc<BuildParams>,
-    ) -> Result<Vec<String>, CompilerError>;
+    ) -> Result<Arc<Box<dyn AnyEq>>, CompilerError>;
 
     fn meta_get_resource_path(
         &self,

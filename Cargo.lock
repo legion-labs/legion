@@ -7185,6 +7185,7 @@ dependencies = [
 name = "proto-salsa-compiler"
 version = "0.1.0"
 dependencies = [
+ "downcast-rs",
  "salsa",
  "strum 0.24.1",
  "strum_macros 0.24.0",

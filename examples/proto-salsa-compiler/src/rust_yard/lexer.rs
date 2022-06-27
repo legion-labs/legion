@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::peekable_string_iterator as peek;
 use super::token;
 
@@ -26,6 +28,7 @@ impl<'a> Lexer<'a> {
         self.iter.set_input(raw_input);
         self.consume_input();
     }
+
     // Recursively consume the input
     fn consume_input(&mut self) {
         // Should we skip advancing if a sub method has done it for us?
@@ -44,7 +47,8 @@ impl<'a> Lexer<'a> {
             Some(c) if c == ',' => self.ast.push(token::Token::Comma),
             Some(c) if char_is_identifier(c) => {
                 let ident = self.consume_identifier();
-                self.ast.push(token::Token::Identifier(ident));
+                self.ast
+                    .push(token::Token::Identifier(Arc::new(Box::new(ident))));
                 skip_advance = true;
             }
             _ => return,

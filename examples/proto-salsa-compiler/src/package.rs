@@ -10,10 +10,7 @@ pub fn package(
     for language in languages {
         let build_params = BuildParams::new(Platform::PS5, Target::Client, language);
         for content in &content_to_package {
-            all_content.push_str(
-                db.compile_entity(content.to_string(), build_params.clone())
-                    .as_str(),
-            );
+            //all_content.push_str(db.compile_entity(content.to_string(), build_params.clone()));
         }
     }
 

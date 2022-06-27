@@ -5,14 +5,12 @@ use crate::{compiler::Compiler, texture::CompressionType, BuildParams};
 pub fn compile_atlas(
     db: &dyn Compiler,
     atlas_textures_path: Vec<String>,
-    build_params: Arc<BuildParams>,
+    _build_params: Arc<BuildParams>,
 ) -> String {
     let mut atlas = String::new();
     for texture_path in atlas_textures_path {
         // In a proper build system, BC4 would also come from the meta.
-        atlas.push_str(
-            (db.compile_texture(texture_path.to_string(), CompressionType::BC4) + " + ").as_str(),
-        );
+        atlas.push_str((db.compile_texture(texture_path, CompressionType::BC4) + " + ").as_str());
     }
     atlas.clone()
 }

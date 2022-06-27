@@ -10,7 +10,7 @@ use super::{lexer, token};
 /// to a 64-bit floating point value
 pub struct ShuntingYard<'a> {
     lexer: lexer::Lexer<'a>,
-    output_queue: Vec<token::Token>,
+    pub output_queue: Vec<token::Token>,
     stack: Vec<token::Token>,
     errors: Vec<String>,
 }
@@ -122,7 +122,9 @@ impl<'a> ShuntingYard<'a> {
         // Loop over each item in the AST and print a String representation of it
         for tok in &self.lexer.ast {
             match *tok {
-                token::Token::Identifier(ref f) => result.push_str(&f.clone()[..]),
+                token::Token::Identifier(ref f) => {
+                    result.push_str(&f.as_any().downcast_ref::<String>().unwrap().clone()[..]);
+                }
                 token::Token::LeftParenthesis => result.push('('),
                 token::Token::RightParenthesis => result.push(')'),
                 token::Token::Comma => result.push(','),
@@ -148,7 +150,9 @@ impl<'a> std::string::ToString for ShuntingYard<'a> {
         // Iterate over the output queue and print each one to the result
         for tok in &self.output_queue {
             match *tok {
-                token::Token::Identifier(ref f) => result.push_str(&f.clone()[..]),
+                token::Token::Identifier(ref f) => {
+                    result.push_str(&f.as_any().downcast_ref::<String>().unwrap().clone()[..]);
+                }
                 token::Token::LeftParenthesis => result.push('('),
                 token::Token::RightParenthesis => result.push(')'),
                 token::Token::Comma => result.push(','),
