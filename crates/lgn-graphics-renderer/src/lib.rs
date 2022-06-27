@@ -482,9 +482,6 @@ fn install_default_resources(
     asset_registry: Res<'_, Arc<AssetRegistry>>,
     renderer: Res<'_, Renderer>,
 ) {
-    let texture_manager = renderer.render_resources().get::<TextureManager>();
-    texture_manager.install_default_resources(&asset_registry);
-
     let material_manager = renderer.render_resources().get::<MaterialManager>();
     material_manager.install_default_resources(&asset_registry);
 

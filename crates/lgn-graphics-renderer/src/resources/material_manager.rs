@@ -1,3 +1,4 @@
+use crossbeam::atomic::AtomicCell;
 use std::sync::Arc;
 
 use lgn_data_runtime::{activate_reference, from_binary_reader, prelude::*};
@@ -129,6 +130,7 @@ struct Inner {
     index_allocator: parking_lot::RwLock<IndexAllocator>,
     gpu_material_data_manager: tokio::sync::RwLock<GpuMaterialDataManager>,
     default_material: RenderMaterial,
+    default_material_handle: AtomicCell<Option<Handle<RenderMaterial>>>,
 }
 
 #[derive(Clone)]
@@ -163,6 +165,7 @@ impl MaterialManager {
                 index_allocator: parking_lot::RwLock::new(index_allocator),
                 gpu_material_data_manager: tokio::sync::RwLock::new(gpu_material_data_manager),
                 default_material,
+                default_material_handle: AtomicCell::new(None),
             }),
         }
     }
@@ -171,7 +174,17 @@ impl MaterialManager {
         &self.inner.default_material
     }
 
-    pub fn install_default_resources(&self, _asset_registry: &AssetRegistry) {}
+    pub fn install_default_resources(&self, asset_registry: &AssetRegistry) {
+        let handle = Handle::<RenderMaterial>::from(
+            asset_registry
+                .set_resource(
+                    DEFAULT_MATERIAL_RESOURCE_ID,
+                    Box::new(self.get_default_material().clone()),
+                )
+                .unwrap(),
+        );
+        self.inner.default_material_handle.store(Some(handle));
+    }
 
     async fn build_gpu_data(
         asset_registry: &AssetRegistry,

@@ -226,8 +226,6 @@ impl GpuInstanceManager {
         let render_model_guard = render_model_handle.get().unwrap();
         let render_model = &*render_model_guard;
 
-        // let default_model = model_manager.get_default_model(DefaultMeshType::Cube);
-
         //
         // Gpu instances
         //
