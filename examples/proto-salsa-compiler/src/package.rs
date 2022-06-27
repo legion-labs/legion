@@ -5,12 +5,13 @@ pub fn package(
     languages: Vec<Locale>,
     content_to_package: Vec<String>,
 ) -> ContentAddr {
-    let mut all_content = String::new();
-
     for language in languages {
         let build_params = BuildParams::new(Platform::PS5, Target::Client, language);
         for content in &content_to_package {
-            //all_content.push_str(db.compile_entity(content.to_string(), build_params.clone()));
+            let results = db.compile_entity(content.clone(), build_params.clone());
+            for result in results {
+                println!("{}", result);
+            }
         }
     }
 

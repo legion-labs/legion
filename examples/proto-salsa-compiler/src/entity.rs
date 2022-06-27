@@ -1,17 +1,26 @@
 use std::sync::Arc;
 
-use crate::BuildParams;
+use crate::{BuildParams, CompilerError};
 
 use crate::compiler::Compiler;
 
 pub fn compile_entity(
-    _db: &dyn Compiler,
+    db: &dyn Compiler,
     resources_to_compile: String,
-    _build_params: Arc<BuildParams>,
+    build_params: Arc<BuildParams>,
 ) -> Vec<String> {
     // This compiler returns a vector of strings splitted by ;
-    resources_to_compile
-        .split(';')
-        .map(|val| val.to_string())
-        .collect()
+    let expressions: Vec<&str> = resources_to_compile.split(';').collect();
+
+    let mut ret = Vec::new();
+    for expression in expressions {
+        ret.push(
+            db.execute_expression(expression.to_string(), build_params.clone())
+                .unwrap()
+                .downcast_ref::<String>()
+                .unwrap()
+                .clone(),
+        );
+    }
+    ret
 }

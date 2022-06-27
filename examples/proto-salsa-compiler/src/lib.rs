@@ -114,7 +114,7 @@ pub mod tests {
 
         db.set_read(
             "MyWorld.entity".to_string(),
-            r#"atlas(read(Atlas.entity));collision(read(Car.entity));collision(read(Tree.entity))"#
+            r#"atlas(entity(read(Atlas.entity)));collision(entity(read(Car.entity)));collision(entity(read(Tree.entity)))"#
                 .to_string(),
         );
 
@@ -146,11 +146,10 @@ pub mod tests {
                 build_params,
             )
             .unwrap();
-        println!(
-            "Atlas: {}",
-            compiled_atlas.as_any().downcast_ref::<String>().unwrap()
-        );
 
-        db.package_see_ps5();
+        assert_eq!(
+            compiled_atlas.downcast_ref::<String>().unwrap(),
+            "(Jpg Texture A compressed BC4) + (Png Texture B compressed BC4) + (Jpg Texture in English compressed BC4) + "
+        );
     }
 }

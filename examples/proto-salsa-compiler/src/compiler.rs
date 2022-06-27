@@ -4,7 +4,7 @@ use downcast_rs::{impl_downcast, Downcast};
 
 use crate::{
     atlas::compile_atlas,
-    collision::{compile_collision, AABBCollision},
+    collision::{compile_aabb, AABBCollision},
     entity::compile_entity,
     expression::execute_expression,
     material::compile_material,
@@ -43,7 +43,7 @@ impl<T: 'static + PartialEq> AnyEq for T {
 
 impl std::fmt::Debug for dyn AnyEq + '_ {
     fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        Ok(())
     }
 }
 
@@ -60,7 +60,15 @@ pub trait Compiler<'a> {
         build_params: Arc<BuildParams>,
     ) -> String;
 
-    fn compile_collision(&self, name: Arc<String>) -> AABBCollision;
+    fn compile_aabb(
+        &self,
+        min_x: Arc<String>,
+        min_y: Arc<String>,
+        min_z: Arc<String>,
+        max_x: Arc<String>,
+        max_y: Arc<String>,
+        max_z: Arc<String>,
+    ) -> AABBCollision;
 
     fn compile_entity(&self, name: String, build_params: Arc<BuildParams>) -> Vec<String>;
 
@@ -74,7 +82,7 @@ pub trait Compiler<'a> {
         &self,
         meta_content: String,
         build_params: Arc<BuildParams>,
-    ) -> Result<String, CompilerError>;
+    ) -> String;
 
     fn query_collisions(&self, quadrant: Arc<AABBCollision>) -> Vec<AABBCollision>;
     fn compile_navmesh(&self, quadrant: Arc<AABBCollision>) -> Navmesh;

@@ -10,7 +10,7 @@ use super::{lexer, token};
 /// to a 64-bit floating point value
 pub struct ShuntingYard<'a> {
     lexer: lexer::Lexer<'a>,
-    pub output_queue: Vec<token::Token>,
+    output_queue: Vec<token::Token>,
     stack: Vec<token::Token>,
     errors: Vec<String>,
 }
@@ -123,7 +123,7 @@ impl<'a> ShuntingYard<'a> {
         for tok in &self.lexer.ast {
             match *tok {
                 token::Token::Identifier(ref f) => {
-                    result.push_str(&f.as_any().downcast_ref::<String>().unwrap().clone()[..]);
+                    result.push_str(&f.downcast_ref::<String>().unwrap().clone()[..]);
                 }
                 token::Token::LeftParenthesis => result.push('('),
                 token::Token::RightParenthesis => result.push(')'),
@@ -151,7 +151,7 @@ impl<'a> std::string::ToString for ShuntingYard<'a> {
         for tok in &self.output_queue {
             match *tok {
                 token::Token::Identifier(ref f) => {
-                    result.push_str(&f.as_any().downcast_ref::<String>().unwrap().clone()[..]);
+                    result.push_str(&f.downcast_ref::<String>().unwrap().clone()[..]);
                 }
                 token::Token::LeftParenthesis => result.push('('),
                 token::Token::RightParenthesis => result.push(')'),

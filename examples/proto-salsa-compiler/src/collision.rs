@@ -73,16 +73,22 @@ impl Display for AABBCollision {
     }
 }
 
-pub fn compile_collision(_db: &dyn Compiler, raw_data: Arc<String>) -> AABBCollision {
-    let split_resources: Vec<&str> = raw_data.split(',').collect();
-
+pub fn compile_aabb(
+    _db: &dyn Compiler,
+    min_x: Arc<String>,
+    min_y: Arc<String>,
+    min_z: Arc<String>,
+    max_x: Arc<String>,
+    max_y: Arc<String>,
+    max_z: Arc<String>,
+) -> AABBCollision {
     AABBCollision {
         // Should handle this parsing much better.
-        min_x: split_resources[0].parse::<i64>().unwrap(),
-        min_y: split_resources[1].parse::<i64>().unwrap(),
-        min_z: split_resources[2].parse::<i64>().unwrap(),
-        max_x: split_resources[3].parse::<i64>().unwrap(),
-        max_y: split_resources[4].parse::<i64>().unwrap(),
-        max_z: split_resources[5].parse::<i64>().unwrap(),
+        min_x: min_x.parse::<i64>().unwrap(),
+        min_y: min_y.parse::<i64>().unwrap(),
+        min_z: min_z.parse::<i64>().unwrap(),
+        max_x: max_x.parse::<i64>().unwrap(),
+        max_y: max_y.parse::<i64>().unwrap(),
+        max_z: max_z.parse::<i64>().unwrap(),
     }
 }
