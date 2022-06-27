@@ -294,7 +294,6 @@ impl Plugin for RendererPlugin {
             .add_primary_table::<RenderViewport>()
             .add_secondary_table_with_handler::<RenderViewport, RenderViewportRendererData>(
                 Box::new(RenderViewportPrivateDataHandler::new(
-                    gpu_timeline_manager.clone(),
                     device_context.clone(),
                 )),
             )
@@ -529,7 +528,6 @@ fn on_window_resized(
         let render_surface = render_surfaces.try_get_from_window_id_mut(ev.id);
         if let Some(render_surface) = render_surface {
             render_surface.resize(
-                &mut renderer.render_resources().get_mut::<GPUTimelineManager>(),
                 device_context,
                 RenderSurfaceExtents::new(wnd.physical_width(), wnd.physical_height()),
             );

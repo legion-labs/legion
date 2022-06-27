@@ -3,8 +3,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use lgn_graphics_api::{Buffer, Texture};
-
 #[derive(Clone)]
 pub struct GPUTimelineManager {
     inner: Arc<Mutex<RefCell<Inner>>>,
@@ -23,6 +21,7 @@ impl GPUTimelineManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn drop<T: Into<Box<dyn GPUTimelineCallback>>>(&self, dropper: T) {
         let guard = self.inner.lock().unwrap();
         let mut inner = guard.borrow_mut();

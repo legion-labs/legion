@@ -6,7 +6,7 @@ use lgn_graphics_api::{
 };
 use uuid::Uuid;
 
-use crate::core::{GPUTimelineManager, RenderObjectId, SecondaryTableHandler};
+use crate::core::{RenderObjectId, SecondaryTableHandler};
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ViewportId(Uuid);
@@ -166,12 +166,7 @@ impl RenderViewportRendererData {
         [&self.hzb[0], &self.hzb[1]]
     }
 
-    pub fn resize(
-        &mut self,
-        deferred_drop: &GPUTimelineManager,
-        device_context: &DeviceContext,
-        extents: Extents3D,
-    ) {
+    pub fn resize(&mut self, device_context: &DeviceContext, extents: Extents3D) {
         let view_desc = TextureDef {
             extents,
             array_length: 1,
@@ -298,7 +293,6 @@ impl RenderViewportRendererData {
 }
 
 pub struct RenderViewportPrivateDataHandler {
-    deferred_drop: GPUTimelineManager,
     device_context: DeviceContext,
 }
 
@@ -321,11 +315,7 @@ impl SecondaryTableHandler<RenderViewport, RenderViewportRendererData>
                 .definition()
                 .extents
         {
-            render_viewport_private_data.resize(
-                &self.deferred_drop,
-                &self.device_context,
-                viewport_extents,
-            );
+            render_viewport_private_data.resize(&self.device_context, viewport_extents);
         }
     }
 
@@ -338,10 +328,7 @@ impl SecondaryTableHandler<RenderViewport, RenderViewportRendererData>
 }
 
 impl RenderViewportPrivateDataHandler {
-    pub fn new(deferred_drop: GPUTimelineManager, device_context: DeviceContext) -> Self {
-        Self {
-            deferred_drop,
-            device_context,
-        }
+    pub fn new(device_context: DeviceContext) -> Self {
+        Self { device_context }
     }
 }

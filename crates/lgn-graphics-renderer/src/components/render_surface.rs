@@ -14,9 +14,9 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use crate::core::{
-    as_render_object, GPUTimelineManager, InsertRenderObjectCommand, PrimaryTableCommandBuilder,
-    PrimaryTableView, RemoveRenderObjectCommand, RenderObjectId, RenderViewport,
-    RenderViewportRendererData, UpdateRenderObjectCommand, Viewport, ViewportId,
+    as_render_object, InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
+    RemoveRenderObjectCommand, RenderObjectId, RenderViewport, RenderViewportRendererData,
+    UpdateRenderObjectCommand, Viewport, ViewportId,
 };
 use crate::render_pass::PickingRenderPass;
 use crate::{RenderContext, Renderer};
@@ -314,7 +314,6 @@ impl RenderSurface {
 
     pub fn resize(
         &mut self,
-        deferred_drop: &mut GPUTimelineManager,
         device_context: &DeviceContext,
         render_surface_extents: RenderSurfaceExtents,
     ) {
