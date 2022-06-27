@@ -23,8 +23,8 @@ required-features = ["client"]
 
 [features]
 default = ["server", "client"]
-server = ["clap", "lgn-cli-utils"]
-client = ["clap", "lgn-cli-utils"]
+server = ["clap", "lgn-cli-utils", "lgn-telemetry-sink"]
+client = ["clap", "lgn-cli-utils", "lgn-telemetry-sink"]
 
 [dependencies]
 anyhow = "1"
@@ -44,7 +44,7 @@ lgn-cli-utils = { path = "../lgn-cli-utils", version = "0.1.0", optional = true 
 lgn-auth = { path = "../lgn-auth", version = "0.1.0" }
 lgn-config = { path = "../lgn-config", version = "0.1.0" }
 lgn-online = { path = "../lgn-online", version = "0.1.0" }
-# lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0", optional = true }
+lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0", optional = true }
 lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
 log = "0.4"
 lru_time_cache = "0.11"
