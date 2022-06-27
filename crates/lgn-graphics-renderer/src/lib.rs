@@ -675,15 +675,19 @@ fn render_update(
             span_scope!("render_thread");
 
             let mut herd = render_resources.get_mut::<Herd>();
-            let mut render_scope = render_resources.get_mut::<RenderScope>();
 
             //
             // Begin frame (before commands)
             //
 
             herd.reset();
-            render_scope.begin_frame(&render_resources);
+
             {
+                let mut render_scope = render_resources.get_mut::<RenderScope>();
+                render_scope.begin_frame(&render_resources);
+            }
+            {
+                let render_scope = render_resources.get::<RenderScope>();
                 let device_context = render_resources.get::<GfxApiArc>().device_context().clone();
                 let transient_buffer = render_resources.get::<TransientBufferManager>();
                 let transient_commandbuffer_manager =
@@ -776,8 +780,11 @@ fn render_update(
                 renderdoc_manager.end_frame_capture();
             }
 
-            let graphics_queue = render_resources.get::<GraphicsQueue>();
-            render_scope.end_frame(&render_resources, &graphics_queue);
+            {
+                let mut render_scope = render_resources.get_mut::<RenderScope>();
+                let graphics_queue = render_resources.get::<GraphicsQueue>();
+                render_scope.end_frame(&render_resources, &graphics_queue);
+            }
         });
     });
 }
