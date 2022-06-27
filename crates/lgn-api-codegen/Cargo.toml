@@ -16,7 +16,6 @@ path = "src/bin/cli.rs"
 
 [dependencies]
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 openapiv3 = "1"
 thiserror = "1"
 serde = "1"

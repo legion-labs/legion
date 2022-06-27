@@ -48,6 +48,9 @@ use crate::lakehouse::jit_lakehouse::JitLakehouse;
 use crate::log_entry::Searchable;
 use crate::metrics::MetricHandler;
 
+type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
+type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
 
 struct RequestGuard {
@@ -108,7 +111,7 @@ impl AnalyticsService {
     }
 
     #[span_fn]
-    async fn find_process_impl(&self, process_id: &str) -> Result<lgn_telemetry_sink::ProcessInfo> {
+    async fn find_process_impl(&self, process_id: &str) -> Result<ProcessInfo> {
         let mut connection = self.pool.acquire().await?;
         find_process(&mut connection, process_id).await
     }
@@ -132,10 +135,7 @@ impl AnalyticsService {
     }
 
     #[span_fn]
-    async fn list_process_streams_impl(
-        &self,
-        process_id: &str,
-    ) -> Result<Vec<lgn_telemetry_sink::StreamInfo>> {
+    async fn list_process_streams_impl(&self, process_id: &str) -> Result<Vec<StreamInfo>> {
         let mut connection = self.pool.acquire().await?;
         find_process_streams(&mut connection, process_id).await
     }
@@ -152,8 +152,8 @@ impl AnalyticsService {
     #[span_fn]
     async fn compute_spans_lod(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
@@ -178,8 +178,8 @@ impl AnalyticsService {
     #[span_fn]
     async fn block_spans_impl(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
         lod_id: u32,
     ) -> Result<BlockSpansReply> {
@@ -203,7 +203,7 @@ impl AnalyticsService {
     #[span_fn]
     async fn process_log_impl(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
+        process: &ProcessInfo,
         begin: u64,
         end: u64,
         search: &Option<String>,

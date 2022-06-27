@@ -10,10 +10,7 @@ use async_trait::async_trait;
 use lgn_auth::{Authenticator, ClientTokenSet};
 use tonic::codegen::http::Uri;
 
-use lgn_telemetry_proto::{
-    ingestion::telemetry_ingestion_client::TelemetryIngestionClient,
-    telemetry::{Process as ProcessInfo, Stream as StreamProto},
-};
+use lgn_telemetry::api::components::{Process as ProcessInfo, Stream as StreamProto};
 use lgn_tracing::{
     event::EventSink,
     logs::{LogBlock, LogMetadata, LogStream},
@@ -64,28 +61,28 @@ impl Authenticator for StaticApiKey {
     }
 }
 
-type AuthClientType = TelemetryIngestionClient<
-    lgn_online::client::AuthenticatedClient<lgn_online::grpc::GrpcClient, StaticApiKey>,
+type AuthClientType = lgn_telemetry_ingestion::client::Client<
+    lgn_online::client::AuthenticatedClient<lgn_online::client::HyperClient, StaticApiKey>,
 >;
 
-fn connect_grpc_client(uri: Uri) -> AuthClientType {
-    let grpc_client = lgn_online::grpc::GrpcClient::new(uri);
+fn connect_http_client(uri: Uri) -> AuthClientType {
+    let hyper_client = lgn_online::client::HyperClient::default();
     let auth_client = lgn_online::client::AuthenticatedClient::new(
-        grpc_client,
+        hyper_client,
         Some(StaticApiKey {}),
         &Vec::new(),
     );
-    TelemetryIngestionClient::new(auth_client)
+    lgn_telemetry_ingestion::client::Client::new(auth_client, uri)
 }
 
-pub struct GRPCEventSink {
+pub struct HttpEventSink {
     thread: Option<std::thread::JoinHandle<()>>,
     // TODO: simplify this?
     sender: Mutex<Option<std::sync::mpsc::Sender<SinkEvent>>>,
     queue_size: Arc<AtomicIsize>,
 }
 
-impl Drop for GRPCEventSink {
+impl Drop for HttpEventSink {
     fn drop(&mut self) {
         let mut sender_guard = self.sender.lock().unwrap();
         *sender_guard = None;
@@ -95,7 +92,7 @@ impl Drop for GRPCEventSink {
     }
 }
 
-impl GRPCEventSink {
+impl HttpEventSink {
     pub fn new(addr_server: &str, max_queue_size: isize) -> Self {
         let addr = addr_server.to_owned();
         let (sender, receiver) = std::sync::mpsc::channel::<SinkEvent>();
@@ -133,7 +130,7 @@ impl GRPCEventSink {
             return;
         }
         match buffer.encode() {
-            Ok(encoded_block) => match client.insert_block(encoded_block).await {
+            Ok((block, payload)) => match client.insert_block(&block, payload).await {
                 Ok(_response) => {}
                 Err(e) => {
                     println!("insert_block failed: {}", e);
@@ -158,7 +155,7 @@ impl GRPCEventSink {
         }
         let uri = parsed_uri.unwrap();
         // eagerly connect, a new process message is sure to follow if it's not already in queue
-        let mut client_store = Some(connect_grpc_client(uri.clone()));
+        let mut client_store = Some(connect_http_client(uri.clone()));
         if let Some(process_id) = lgn_tracing::dispatch::process_id() {
             info!("log: https://analytics.legionengine.com/log/{}", process_id);
             info!(
@@ -175,7 +172,7 @@ impl GRPCEventSink {
                 Ok(message) => {
                     let mut client = match client_store {
                         Some(c) => c,
-                        None => connect_grpc_client(uri.clone()),
+                        None => connect_http_client(uri.clone()),
                     };
                     client_store = None;
 
@@ -244,7 +241,7 @@ impl GRPCEventSink {
     }
 }
 
-impl EventSink for GRPCEventSink {
+impl EventSink for HttpEventSink {
     fn on_startup(&self, process_info: lgn_tracing::ProcessInfo) {
         self.send(SinkEvent::Startup(ProcessInfo {
             process_id: process_info.process_id,

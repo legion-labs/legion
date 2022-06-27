@@ -1,5 +1,6 @@
 mod errors;
 
+use async_trait::async_trait;
 pub use errors::{Error, ErrorExt, Result};
 
 use std::{sync::Arc, time::Duration};
@@ -7,12 +8,7 @@ use std::{sync::Arc, time::Duration};
 use axum::{error_handling::HandleErrorLayer, BoxError, Router};
 use http::{header, Method, StatusCode};
 use lgn_auth::{
-    jwt::{
-        signature_validation::{
-            BoxedSignatureValidation, NoSignatureValidation, SignatureValidationExt,
-        },
-        RequestAuthorizer, Validation,
-    },
+    jwt::{self, signature_validation::SignatureValidationExt},
     UserInfo,
 };
 use tower::ServiceBuilder;
@@ -22,6 +18,11 @@ use tower_http::{
 };
 
 use crate::Config;
+
+pub struct JwtAuthOptions {
+    /// The signature validation function.
+    signature_validation: jwt::Validation<jwt::signature_validation::BoxedSignatureValidation>,
+}
 
 pub struct RouterOptions {
     /// The list of origins that are allowed to make requests, for CORS.
@@ -42,9 +43,30 @@ pub struct RouterOptions {
     ///
     /// If this is `None`, a default function returning `true` will be used.
     ready_fn: Option<Box<dyn Fn() -> bool + Send + Sync>>,
+}
 
-    /// The signature validation function.
-    signature_validation: Validation<BoxedSignatureValidation>,
+impl JwtAuthOptions {
+    /// Instantiates a new `JwtAuthOptions` with the default values suitable for
+    /// development.
+    pub fn new_for_development() -> Self {
+        Self {
+            signature_validation: jwt::Validation::new(
+                jwt::signature_validation::NoSignatureValidation.into_boxed(),
+            ),
+        }
+    }
+
+    /// Instantiates a new `JwtAuthOptions` with the online configuration.
+    pub async fn from_online_config() -> crate::Result<Self> {
+        let signature_validation = Config::load()?
+            .signature_validation
+            .instantiate_validation()
+            .await?;
+
+        Ok(Self {
+            signature_validation,
+        })
+    }
 }
 
 impl RouterOptions {
@@ -56,27 +78,17 @@ impl RouterOptions {
             allow_credentials: false,
             health_fn: None,
             ready_fn: None,
-            signature_validation: Validation::new(NoSignatureValidation.into_boxed()),
         }
     }
 
     /// Instantiates a new `RouterOptions` with the specified CORS origins.
-    pub async fn new(
-        allow_origins: Vec<http::HeaderValue>,
-        allow_credentials: bool,
-    ) -> crate::Result<Self> {
-        let signature_validation = Config::load()?
-            .signature_validation
-            .instantiate_validation()
-            .await?;
-
-        Ok(Self {
+    pub async fn new(allow_origins: Vec<http::HeaderValue>, allow_credentials: bool) -> Self {
+        Self {
             allow_origin: AllowOrigin::list(allow_origins),
             allow_credentials,
             health_fn: None,
             ready_fn: None,
-            signature_validation,
-        })
+        }
     }
 
     /// Set the health function to use to determine service health.
@@ -105,10 +117,17 @@ macro_rules! with_api_server {
 }
 
 /// An extension trait that adds convenience methods to `Router`.
+#[async_trait]
 pub trait RouterExt: Sized {
-    fn apply_router_options(self, options: RouterOptions) -> Router;
+    #[must_use]
+    fn apply_jwt_auth(self, options: JwtAuthOptions) -> Self;
 
-    fn apply_development_router_options(self) -> Router {
+    #[must_use]
+    fn apply_router_options(self, options: RouterOptions) -> Self;
+
+    #[must_use]
+    fn apply_development_router_options(mut self) -> Self {
+        self = self.apply_jwt_auth(JwtAuthOptions::new_for_development());
         self.apply_router_options(RouterOptions::new_for_development())
     }
 }
@@ -120,18 +139,22 @@ pub trait RouterExt: Sized {
 ///
 /// Namely, it sets up the CORS headers, authentication and adds the health
 /// check routes.
+#[async_trait]
 impl RouterExt for Router {
-    fn apply_router_options(mut self, options: RouterOptions) -> Router {
+    fn apply_jwt_auth(mut self, options: JwtAuthOptions) -> Self {
+        let auth = RequireAuthorizationLayer::custom(
+            jwt::RequestAuthorizer::<UserInfo, _, _>::new(options.signature_validation),
+        );
+
+        self = self.layer(auth);
+        self
+    }
+
+    fn apply_router_options(mut self, options: RouterOptions) -> Self {
         // Note: only routes that were added BEFORE the layer will benefit from
         // it.
         // Make sure to register all API routes before calling this function or
         // the routes won't have neither CORS nor authentication!
-
-        let auth = RequireAuthorizationLayer::custom(RequestAuthorizer::<UserInfo, _, _>::new(
-            options.signature_validation,
-        ));
-
-        self = self.layer(auth);
 
         let cors = CorsLayer::new()
             .allow_origin(options.allow_origin)

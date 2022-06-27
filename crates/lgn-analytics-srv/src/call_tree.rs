@@ -12,6 +12,8 @@ use lgn_telemetry_proto::analytics::SpanEventType;
 use lgn_telemetry_proto::analytics::SpanTrack;
 use lgn_tracing::prelude::*;
 
+type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+
 #[derive(Debug)]
 pub struct ProcessedThreadBlock {
     pub scopes: ScopeHashMap,
@@ -186,7 +188,7 @@ pub(crate) async fn process_thread_block(
     pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
     convert_ticks: ConvertTicks,
-    stream: &lgn_telemetry_sink::StreamInfo,
+    stream: &StreamInfo,
     block_id: &str,
 ) -> Result<ProcessedThreadBlock> {
     let block = {

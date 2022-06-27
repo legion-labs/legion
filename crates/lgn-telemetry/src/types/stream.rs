@@ -119,3 +119,55 @@ impl From<UdtMember> for crate::api::components::UdtMember {
         }
     }
 }
+
+impl From<crate::api::components::Stream> for lgn_telemetry_proto::telemetry::Stream {
+    fn from(stream: crate::api::components::Stream) -> Self {
+        Self {
+            stream_id: stream.stream_id,
+            process_id: stream.process_id,
+            dependencies_metadata: stream.dependencies_metadata.map(Into::into),
+            objects_metadata: stream.objects_metadata.map(Into::into),
+            tags: stream.tags,
+            properties: stream
+                .__additional_properties
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        }
+    }
+}
+
+impl From<crate::api::components::ContainerMetadata>
+    for lgn_telemetry_proto::telemetry::ContainerMetadata
+{
+    fn from(metadata: crate::api::components::ContainerMetadata) -> Self {
+        Self {
+            types: metadata.types.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl From<crate::api::components::UserDefinedType>
+    for lgn_telemetry_proto::telemetry::UserDefinedType
+{
+    fn from(type_: crate::api::components::UserDefinedType) -> Self {
+        Self {
+            name: type_.name,
+            size: type_.size,
+            members: type_.members.into_iter().map(Into::into).collect(),
+            is_reference: type_.is_reference,
+        }
+    }
+}
+
+impl From<crate::api::components::UdtMember> for lgn_telemetry_proto::telemetry::UdtMember {
+    fn from(member: crate::api::components::UdtMember) -> Self {
+        Self {
+            name: member.name,
+            type_name: member.type_name,
+            offset: member.offset,
+            size: member.size,
+            is_reference: member.is_reference,
+        }
+    }
+}

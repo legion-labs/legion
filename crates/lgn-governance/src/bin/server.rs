@@ -6,7 +6,7 @@ use axum::Router;
 use clap::Parser;
 use lgn_governance::server::{Server, ServerAwsCognitoOptions, ServerMySqlOptions, ServerOptions};
 use lgn_online::server::RouterExt;
-use lgn_telemetry_sink::TelemetryGuardBuilder;
+// use lgn_telemetry_sink::TelemetryGuardBuilder;
 use lgn_tracing::{async_span_scope, debug, info, LevelFilter};
 
 #[derive(Parser, Debug)]
@@ -43,13 +43,13 @@ struct Args {
 async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
 
-    let _telemetry_guard = TelemetryGuardBuilder::default()
-        .with_local_sink_max_level(if args.debug {
-            LevelFilter::Debug
-        } else {
-            LevelFilter::Info
-        })
-        .build();
+    // let _telemetry_guard = TelemetryGuardBuilder::default()
+    //     .with_local_sink_max_level(if args.debug {
+    //         LevelFilter::Debug
+    //     } else {
+    //         LevelFilter::Info
+    //     })
+    //     .build();
 
     async_span_scope!("lgn-governance-srv::main");
 

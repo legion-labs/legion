@@ -1,7 +1,5 @@
-use crate::data_lake_connection::DataLakeConnection;
-use crate::sql_migration::execute_migration;
-use crate::sql_migration::read_schema_version;
-use crate::sql_migration::LATEST_SCHEMA_VERSION;
+use super::sql::{execute_migration, read_schema_version, LATEST_SCHEMA_VERSION};
+use super::DataLakeConnection;
 use anyhow::{bail, Context, Result};
 use lgn_blob_storage::{AwsS3BlobStorage, AwsS3Url};
 use lgn_tracing::prelude::*;
@@ -9,6 +7,33 @@ use sqlx::migrate::MigrateDatabase;
 use sqlx::Row;
 use std::str::FromStr;
 use std::sync::Arc;
+
+impl DataLakeConnection {
+    /// Create a new `DataLakeConnection` from a remote database and s3 url.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the creation fails.
+    pub async fn new_remote(db_uri: &str, s3_url: &str) -> Result<DataLakeConnection> {
+        info!("connecting to blob storage");
+        let blob_storage = AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url)?).await;
+        if !sqlx::Any::database_exists(db_uri)
+            .await
+            .with_context(|| String::from("Searching for telemetry database"))?
+        {
+            sqlx::Any::create_database(db_uri)
+                .await
+                .with_context(|| String::from("Creating telemetry database"))?;
+        }
+        let pool = sqlx::any::AnyPoolOptions::new()
+            .connect(db_uri)
+            .await
+            .with_context(|| String::from("Connecting to telemetry database"))?;
+        let mut connection = pool.acquire().await?;
+        migrate_db(&mut connection).await?;
+        Ok(DataLakeConnection::new(pool, Arc::new(blob_storage)))
+    }
+}
 
 async fn acquire_lock(connection: &mut sqlx::AnyConnection, name: &str) -> Result<()> {
     let row = sqlx::query("SELECT GET_LOCK(?, -1) as result;")
@@ -54,24 +79,4 @@ async fn migrate_db(connection: &mut sqlx::AnyConnection) -> Result<()> {
     }
     assert_eq!(current_version, LATEST_SCHEMA_VERSION);
     Ok(())
-}
-
-pub async fn connect_to_remote_data_lake(db_uri: &str, s3_url: &str) -> Result<DataLakeConnection> {
-    info!("connecting to blob storage");
-    let blob_storage = AwsS3BlobStorage::new(AwsS3Url::from_str(s3_url)?).await;
-    if !sqlx::Any::database_exists(db_uri)
-        .await
-        .with_context(|| String::from("Searching for telemetry database"))?
-    {
-        sqlx::Any::create_database(db_uri)
-            .await
-            .with_context(|| String::from("Creating telemetry database"))?;
-    }
-    let pool = sqlx::any::AnyPoolOptions::new()
-        .connect(db_uri)
-        .await
-        .with_context(|| String::from("Connecting to telemetry database"))?;
-    let mut connection = pool.acquire().await?;
-    migrate_db(&mut connection).await?;
-    Ok(DataLakeConnection::new(pool, Arc::new(blob_storage)))
 }

@@ -2,8 +2,8 @@
 
 use clap::{Parser, Subcommand};
 use lgn_governance::Config;
-use lgn_telemetry_sink::TelemetryGuardBuilder;
-use lgn_tracing::{async_span_scope, LevelFilter};
+// use lgn_telemetry_sink::TelemetryGuardBuilder;
+// use lgn_tracing::{async_span_scope, LevelFilter};
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -31,15 +31,15 @@ enum Commands {
 async fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
 
-    let _telemetry_guard = TelemetryGuardBuilder::default()
-        .with_local_sink_max_level(if args.debug {
-            LevelFilter::Debug
-        } else {
-            LevelFilter::Info
-        })
-        .build();
+    // let _telemetry_guard = TelemetryGuardBuilder::default()
+    //     .with_local_sink_max_level(if args.debug {
+    //         LevelFilter::Debug
+    //     } else {
+    //         LevelFilter::Info
+    //     })
+    //     .build();
 
-    async_span_scope!("lgc::main");
+    // async_span_scope!("lgc::main");
 
     let config = Config::load()?;
     let client = config.instantiate_client().await?;

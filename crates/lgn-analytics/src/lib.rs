@@ -10,8 +10,8 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use lgn_blob_storage::BlobStorage;
+use lgn_telemetry::decompress;
 use lgn_telemetry_proto::analytics::LogEntry;
-use lgn_telemetry_proto::decompress;
 use lgn_telemetry_proto::telemetry::{
     BlockMetadata, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
@@ -114,16 +114,16 @@ pub async fn list_recent_processes(
 ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
-        "SELECT process_id, 
-                exe, 
-                username, 
-                realname, 
-                computer, 
-                distro, 
-                cpu_brand, 
-                tsc_frequency, 
-                start_time, 
-                start_ticks, 
+        "SELECT process_id,
+                exe,
+                username,
+                realname,
+                computer,
+                distro,
+                cpu_brand,
+                tsc_frequency,
+                start_time,
+                start_ticks,
                 parent_process_id,
                 (SELECT count(*) FROM processes as p WHERE p.parent_process_id = processes.process_id) as child_count,
                 (
@@ -179,16 +179,16 @@ pub async fn search_processes(
 ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
-        "SELECT process_id, 
-                exe, 
-                username, 
-                realname, 
-                computer, 
-                distro, 
-                cpu_brand, 
-                tsc_frequency, 
-                start_time, 
-                start_ticks, 
+        "SELECT process_id,
+                exe,
+                username,
+                realname,
+                computer,
+                distro,
+                cpu_brand,
+                tsc_frequency,
+                start_time,
+                start_ticks,
                 parent_process_id,
                 (SELECT count(*) FROM processes as p WHERE p.parent_process_id = processes.process_id) as child_count,
                 (
@@ -372,7 +372,7 @@ pub async fn find_process_blocks(
         FROM streams S
         LEFT JOIN blocks B
         ON S.stream_id = B.stream_id
-        WHERE S.process_id = ?  
+        WHERE S.process_id = ?
         AND S.tags like ?
         AND B.block_id IS NOT NULL",
     )

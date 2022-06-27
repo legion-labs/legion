@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: "Telemetry Ingestion API"
+  description: "The OpenAPI specification for the telemetry ingestion service."
+  version: 1.0.0
+paths:
+  /v1/spaces/{space-id}/telemetry/ingestion/process:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+    put:
+      description: Insert a new process.
+      operationId: insertProcess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../../lgn-telemetry/apis/components.yaml#/components/schemas/Process"
+      responses:
+        "200":
+          description: Ok.
+  /v1/spaces/{space-id}/telemetry/ingestion/stream:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+    put:
+      description: Insert a new stream.
+      operationId: insertStream
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../../lgn-telemetry/apis/components.yaml#/components/schemas/Stream"
+      responses:
+        "200":
+          description: Ok.
+  /v1/spaces/{space-id}/telemetry/ingestion/block:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+    put:
+      description: Insert a new block.
+      operationId: insertBlock
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: byte
+      responses:
+        "200":
+          description: Ok.

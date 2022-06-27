@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
-use lgn_telemetry_proto::telemetry::{
+use lgn_telemetry::api::components::{
     ContainerMetadata, Stream as StreamProto, UdtMember as UdtMemberProto,
     UserDefinedType as UserDefinedTypeProto,
 };
@@ -23,7 +23,11 @@ where
         dependencies_metadata: Some(dependencies_meta),
         objects_metadata: Some(obj_meta),
         tags: stream.tags().to_owned(),
-        properties: stream.properties().clone(),
+        __additional_properties: stream
+            .properties()
+            .clone()
+            .into_iter()
+            .collect::<BTreeMap<String, String>>(),
     }
 }
 

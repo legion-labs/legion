@@ -348,7 +348,7 @@ impl Dispatch {
         std::env::set_var("LGN_TELEMETRY_PARENT_PROCESS", &self.process_id);
 
         let start_ticks = now();
-        let start_time = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, false);
+        let start_time = Utc::now();
         let cpuid = CpuId::new();
         let cpu_brand = cpuid
             .get_processor_brand_string()

@@ -58,8 +58,7 @@ pub struct ProcessInfo {
     pub distro: String,
     pub cpu_brand: String,
     pub tsc_frequency: u64,
-    /// RFC 3339
-    pub start_time: String,
+    pub start_time: chrono::DateTime<chrono::Utc>,
     pub start_ticks: i64,
     pub parent_process_id: String,
 }

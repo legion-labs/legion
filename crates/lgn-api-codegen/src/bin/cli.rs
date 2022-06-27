@@ -9,8 +9,6 @@ use clap::{ArgEnum, Parser};
 use lgn_api_codegen::{
     generate, Language as InternalLanguage, RustOptions, TypeScriptAliasMappings, TypeScriptOptions,
 };
-use lgn_telemetry_sink::TelemetryGuardBuilder;
-use lgn_tracing::LevelFilter;
 
 #[derive(Debug, Copy, Clone, ArgEnum)]
 pub enum Language {
@@ -76,11 +74,6 @@ struct Args {
 #[allow(clippy::let_unit_value)]
 fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
-
-    let _telemetry_guard = TelemetryGuardBuilder::default()
-        .with_local_sink_enabled(args.debug)
-        .with_local_sink_max_level(LevelFilter::Debug)
-        .build();
 
     let internal_language = match args.language {
         Language::Rust => InternalLanguage::Rust(RustOptions::default()),

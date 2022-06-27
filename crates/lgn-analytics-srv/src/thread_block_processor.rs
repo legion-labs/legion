@@ -7,6 +7,8 @@ use lgn_tracing::prelude::*;
 use lgn_tracing::warn;
 use lgn_tracing_transit::{Object, Value};
 
+type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+
 pub trait ThreadBlockProcessor {
     fn on_begin_thread_scope(
         &mut self,
@@ -75,7 +77,7 @@ where
 #[span_fn]
 pub fn parse_thread_block_payload<Proc: ThreadBlockProcessor>(
     payload: &lgn_telemetry_proto::telemetry::BlockPayload,
-    stream: &lgn_telemetry_sink::StreamInfo,
+    stream: &StreamInfo,
     processor: &mut Proc,
 ) -> Result<()> {
     parse_block(stream, payload, |val| {
@@ -155,7 +157,7 @@ pub fn parse_thread_block_payload<Proc: ThreadBlockProcessor>(
 pub async fn parse_thread_block<Proc: ThreadBlockProcessor>(
     pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
-    stream: &lgn_telemetry_sink::StreamInfo,
+    stream: &StreamInfo,
     block_id: String,
     processor: &mut Proc,
 ) -> Result<()> {

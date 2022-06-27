@@ -24,6 +24,9 @@ use super::{
     },
 };
 
+type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
+type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+
 pub struct RemoteJitLakehouse {
     pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
@@ -175,8 +178,8 @@ impl RemoteJitLakehouse {
 
     async fn write_call_tree(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
         spans_key: String,
         scopes_key: String,
@@ -239,11 +242,7 @@ impl RemoteJitLakehouse {
         Ok((scopes, tree))
     }
 
-    fn get_table_keys(
-        &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        block_id: &str,
-    ) -> (String, String) {
+    fn get_table_keys(&self, process: &ProcessInfo, block_id: &str) -> (String, String) {
         let spans_key = format!(
             "{}spans/process_id={}/block_id={}/spans.parquet",
             &self.tables_uri.root, &process.process_id, block_id
@@ -266,8 +265,8 @@ impl JitLakehouse for RemoteJitLakehouse {
 
     async fn get_thread_block(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply> {
         let (spans_key, scopes_key) = self.get_table_keys(process, block_id);
@@ -304,8 +303,8 @@ impl JitLakehouse for RemoteJitLakehouse {
 
     async fn get_call_tree(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
     ) -> Result<(ScopeHashMap, TabularSpanTree)> {
         let (spans_key, scopes_key) = self.get_table_keys(process, block_id);
