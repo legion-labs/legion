@@ -24,8 +24,8 @@ use super::{
     },
 };
 
-type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
-type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+type ProcessInfo = lgn_telemetry::types::Process;
+type StreamInfo = lgn_telemetry::types::Stream;
 
 pub struct RemoteJitLakehouse {
     pool: sqlx::any::AnyPool,

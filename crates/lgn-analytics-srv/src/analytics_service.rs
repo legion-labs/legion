@@ -48,8 +48,8 @@ use crate::lakehouse::jit_lakehouse::JitLakehouse;
 use crate::log_entry::Searchable;
 use crate::metrics::MetricHandler;
 
-type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
-type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+type ProcessInfo = lgn_telemetry::types::Process;
+type StreamInfo = lgn_telemetry::types::Stream;
 
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
 
@@ -144,7 +144,7 @@ impl AnalyticsService {
     async fn list_stream_blocks_impl(
         &self,
         stream_id: &str,
-    ) -> Result<Vec<lgn_telemetry_proto::telemetry::BlockMetadata>> {
+    ) -> Result<Vec<lgn_telemetry::types::BlockMetadata>> {
         let mut connection = self.pool.acquire().await?;
         find_stream_blocks(&mut connection, stream_id).await
     }

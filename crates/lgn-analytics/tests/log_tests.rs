@@ -1,6 +1,6 @@
 use lgn_analytics::log_entry_from_value;
 use lgn_analytics::parse_block;
-use lgn_telemetry_proto::telemetry::Process as ProcessInfo;
+use lgn_telemetry::types::Process as ProcessInfo;
 use lgn_telemetry_sink::stream_block::StreamBlock;
 use lgn_telemetry_sink::stream_info::get_stream_info;
 use lgn_telemetry_sink::TelemetryGuard;

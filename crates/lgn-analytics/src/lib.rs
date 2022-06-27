@@ -11,13 +11,12 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use lgn_blob_storage::BlobStorage;
 use lgn_telemetry::decompress;
-use lgn_telemetry_proto::analytics::LogEntry;
-use lgn_telemetry_proto::telemetry::{
+use lgn_telemetry::types::{
     BlockMetadata, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
+use lgn_telemetry_proto::analytics::LogEntry;
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
-use prost::Message;
 use sqlx::any::AnyRow;
 use sqlx::Row;
 
@@ -294,13 +293,12 @@ pub async fn find_process_streams_tagged(
     for r in rows {
         let stream_id: String = r.get("stream_id");
         let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
-        let dependencies_metadata = lgn_telemetry_proto::telemetry::ContainerMetadata::decode(
-            &*dependencies_metadata_buffer,
-        )
-        .with_context(|| "decoding dependencies metadata")?;
+        let dependencies_metadata =
+            lgn_telemetry::types::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+                .with_context(|| "decoding dependencies metadata")?;
         let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
         let objects_metadata =
-            lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+            lgn_telemetry::types::ContainerMetadata::decode(&*objects_metadata_buffer)
                 .with_context(|| "decoding objects metadata")?;
         let tags_str: String = r.get("tags");
         let properties_str: String = r.get("properties");
@@ -337,13 +335,12 @@ pub async fn find_process_streams(
     for r in rows {
         let stream_id: String = r.get("stream_id");
         let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
-        let dependencies_metadata = lgn_telemetry_proto::telemetry::ContainerMetadata::decode(
-            &*dependencies_metadata_buffer,
-        )
-        .with_context(|| "decoding dependencies metadata")?;
+        let dependencies_metadata =
+            lgn_telemetry::types::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+                .with_context(|| "decoding dependencies metadata")?;
         let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
         let objects_metadata =
-            lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+            lgn_telemetry::types::ContainerMetadata::decode(&*objects_metadata_buffer)
                 .with_context(|| "decoding objects metadata")?;
         let tags_str: String = r.get("tags");
         let properties_str: String = r.get("properties");
@@ -429,11 +426,11 @@ pub async fn find_stream(
     .with_context(|| "find_stream")?;
     let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
     let dependencies_metadata =
-        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+        lgn_telemetry::types::ContainerMetadata::decode(&*dependencies_metadata_buffer)
             .with_context(|| "decoding dependencies metadata")?;
     let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
     let objects_metadata =
-        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+        lgn_telemetry::types::ContainerMetadata::decode(&*objects_metadata_buffer)
             .with_context(|| "decoding objects metadata")?;
     let tags_str: String = row.get("tags");
     let properties_str: String = row.get("properties");
@@ -467,11 +464,11 @@ pub async fn find_block_stream(
     .with_context(|| "find_block_stream")?;
     let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
     let dependencies_metadata =
-        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+        lgn_telemetry::types::ContainerMetadata::decode(&*dependencies_metadata_buffer)
             .with_context(|| "decoding dependencies metadata")?;
     let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
     let objects_metadata =
-        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+        lgn_telemetry::types::ContainerMetadata::decode(&*objects_metadata_buffer)
             .with_context(|| "decoding objects metadata")?;
     let tags_str: String = row.get("tags");
     let properties_str: String = row.get("properties");
@@ -575,7 +572,7 @@ pub async fn fetch_block_payload(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     block_id: String,
-) -> Result<lgn_telemetry_proto::telemetry::BlockPayload> {
+) -> Result<lgn_telemetry::types::BlockPayload> {
     let opt_row = sqlx::query("SELECT payload FROM payloads where block_id = ?;")
         .bind(&block_id)
         .fetch_optional(connection)
@@ -593,7 +590,7 @@ pub async fn fetch_block_payload(
 
     {
         span_scope!("decode");
-        let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
+        let payload = lgn_telemetry::types::BlockPayload::decode(&*buffer)
             .with_context(|| format!("reading payload {}", &block_id))?;
         Ok(payload)
     }
@@ -630,7 +627,7 @@ fn container_metadata_as_transit_udt_vec(
 #[span_fn]
 pub fn parse_block<F>(
     stream: &StreamInfo,
-    payload: &lgn_telemetry_proto::telemetry::BlockPayload,
+    payload: &lgn_telemetry::types::BlockPayload,
     fun: F,
 ) -> Result<()>
 where

@@ -2,6 +2,7 @@ use crate::read_binary_chunk;
 use anyhow::Result;
 use lgn_tracing::warn;
 use lgn_tracing_transit::parse_string::parse_string;
+use prost::Message;
 
 /// The `Block` as sent by the instrumented applications.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -22,12 +23,38 @@ pub struct BlockPayload {
     pub objects: Vec<u8>,
 }
 
+// TODO: See if we want to keep the protobuf encoding or not.
 impl BlockPayload {
-    // TODO: See if we want to keep the protobuf encoding or not.
-    pub fn encode(&self) -> Vec<u8> {
-        Vec::new()
-        // let payload: lgn_telemetry_proto::telemetry::BlockPayload = payload.into();
-        // payload.encode_to_vec()
+    /// Decodes a bytes buffer into a `BlockPayload` using protobuf.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the decoding fails.
+    pub fn decode(buffer: &[u8]) -> Result<Self> {
+        Ok(lgn_telemetry_proto::telemetry::BlockPayload::decode(buffer)?.into())
+    }
+
+    pub fn encode(self) -> Vec<u8> {
+        let payload: lgn_telemetry_proto::telemetry::BlockPayload = self.into();
+        payload.encode_to_vec()
+    }
+}
+
+impl From<BlockPayload> for lgn_telemetry_proto::telemetry::BlockPayload {
+    fn from(payload: BlockPayload) -> Self {
+        Self {
+            dependencies: payload.dependencies,
+            objects: payload.objects,
+        }
+    }
+}
+
+impl From<lgn_telemetry_proto::telemetry::BlockPayload> for BlockPayload {
+    fn from(payload: lgn_telemetry_proto::telemetry::BlockPayload) -> Self {
+        Self {
+            dependencies: payload.dependencies,
+            objects: payload.objects,
+        }
     }
 }
 
@@ -42,15 +69,6 @@ pub struct BlockMetadata {
     pub end_ticks: i64,
     pub nb_objects: i32,
     pub payload_size: i64,
-}
-
-impl From<BlockPayload> for lgn_telemetry_proto::telemetry::BlockPayload {
-    fn from(payload: BlockPayload) -> Self {
-        Self {
-            dependencies: payload.dependencies,
-            objects: payload.objects,
-        }
-    }
 }
 
 /// Encode a block information and its payload into a buffer.

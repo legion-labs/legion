@@ -5438,6 +5438,7 @@ dependencies = [
  "lgn-tracing",
  "lgn-tracing-transit",
  "lz4",
+ "prost",
  "serde",
  "serde_json",
  "serde_qs",

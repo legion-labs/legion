@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::telemetry::Process as ProcessInfo;
+use lgn_telemetry::types::Process as ProcessInfo;
 
 pub async fn print_process_log(
     connection: &mut sqlx::AnyConnection,

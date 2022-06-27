@@ -12,7 +12,7 @@ use lgn_telemetry_proto::analytics::SpanEventType;
 use lgn_telemetry_proto::analytics::SpanTrack;
 use lgn_tracing::prelude::*;
 
-type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+type StreamInfo = lgn_telemetry::types::Stream;
 
 #[derive(Debug)]
 pub struct ProcessedThreadBlock {

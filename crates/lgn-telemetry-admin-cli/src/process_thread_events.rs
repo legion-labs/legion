@@ -5,7 +5,7 @@ use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_tracing_transit::prelude::*;
 
-type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
+type ProcessInfo = lgn_telemetry::types::Process;
 
 pub async fn print_process_thread_events(
     connection: &mut sqlx::AnyConnection,

@@ -24,8 +24,8 @@ use tokio::io::AsyncReadExt;
 
 use super::scope_table::write_scopes_parquet;
 
-type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
-type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
+type ProcessInfo = lgn_telemetry::types::Process;
+type StreamInfo = lgn_telemetry::types::Stream;
 
 pub struct LocalJitLakehouse {
     pool: sqlx::any::AnyPool,
