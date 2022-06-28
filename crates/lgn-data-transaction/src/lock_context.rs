@@ -1,9 +1,8 @@
-use std::collections::{btree_map::Entry, HashSet};
+use std::collections::hash_map::HashMap;
 use std::sync::Arc;
 
-use lgn_data_offline::resource::{Project, ResourceHandles};
-use lgn_data_runtime::{AssetRegistry, HandleUntyped, ResourceTypeAndId};
-use lgn_tracing::error;
+use lgn_data_offline::Project;
+use lgn_data_runtime::prelude::*;
 use tokio::sync::MutexGuard;
 
 use crate::{BuildManager, Error, SelectionManager, TransactionManager};
@@ -12,16 +11,12 @@ use crate::{BuildManager, Error, SelectionManager, TransactionManager};
 pub struct LockContext<'a> {
     /// Lock on the `Project`
     pub project: MutexGuard<'a, Project>,
-    /// Lock on the LoadedResources
-    pub(crate) loaded_resource_handles: MutexGuard<'a, ResourceHandles>,
-    /// Reference to the Asset Registry
-    pub asset_registry: Arc<AssetRegistry>,
     /// Reference to build manager.
     pub build: MutexGuard<'a, BuildManager>,
     /// Reference to SelectionManager
     pub selection_manager: Arc<SelectionManager>,
     // List of Resource changed during the lock (that need saving)
-    pub(crate) changed_resources: HashSet<ResourceTypeAndId>,
+    pub(crate) edited_resources: HashMap<ResourceTypeAndId, Box<dyn Resource>>,
 }
 
 impl<'a> LockContext<'a> {
@@ -29,63 +24,52 @@ impl<'a> LockContext<'a> {
     pub async fn new(transaction_manager: &'a TransactionManager) -> LockContext<'a> {
         Self {
             project: transaction_manager.project.lock().await,
-            asset_registry: transaction_manager.asset_registry.clone(),
             build: transaction_manager.build_manager.lock().await,
             selection_manager: transaction_manager.selection_manager.clone(),
-            loaded_resource_handles: transaction_manager.loaded_resource_handles.lock().await,
-            changed_resources: HashSet::new(),
+            edited_resources: HashMap::new(),
         }
     }
 
     /// Get an Handle to a Resource, load it if not in memory yet
-    pub async fn get_or_load(
+    pub async fn new_resource(
         &mut self,
         resource_id: ResourceTypeAndId,
-    ) -> Result<HandleUntyped, Error> {
-        Ok(match self.loaded_resource_handles.entry(resource_id) {
-            Entry::Occupied(e) => e.get().clone(),
-            Entry::Vacant(e) => {
-                let handle = self
-                    .project
-                    .load_resource(resource_id, &self.asset_registry)
-                    .await
-                    .map_err(|err| Error::Project(resource_id, err))?;
-                e.insert(handle.clone());
-                handle
-            }
-        })
+    ) -> Result<&mut dyn Resource, Error> {
+        Ok(self
+            .edited_resources
+            .entry(resource_id)
+            .or_insert_with(|| resource_id.kind.new_instance())
+            .as_mut())
     }
 
-    /// Load or reload a Resource from its id
-    pub async fn reload(&mut self, resource_id: ResourceTypeAndId) -> Result<(), Error> {
-        let handle = self
-            .project
-            .load_resource(resource_id, &self.asset_registry)
-            .await
-            .map_err(|err| Error::Project(resource_id, err))?;
-
-        self.loaded_resource_handles.insert(resource_id, handle);
-        Ok(())
-    }
-
-    /// Unload a Resource from its id
-    pub async fn unload(&mut self, resource_id: ResourceTypeAndId) {
-        self.loaded_resource_handles.remove(resource_id);
-    }
-
-    pub(crate) async fn save_changed_resources(&mut self) -> Result<(), Error> {
-        for resource_id in &self.changed_resources {
-            if let Some(handle) = self.loaded_resource_handles.get(*resource_id) {
-                self.project
-                    .save_resource(*resource_id, handle, &self.asset_registry)
-                    .await
-                    .map_err(|err| Error::Project(*resource_id, err))?;
-
-                self.asset_registry.reload(*resource_id);
-            }
+    /// Get an Handle to a Resource, load it if not in memory yet
+    pub async fn edit_resource(
+        &mut self,
+        resource_id: ResourceTypeAndId,
+    ) -> Result<&mut dyn Resource, Error> {
+        #[allow(clippy::map_entry)]
+        if !self.edited_resources.contains_key(&resource_id) {
+            let resource = self.project.load_resource_untyped(resource_id).await?;
+            self.edited_resources.insert(resource_id, resource);
         }
 
-        for resource_id in &self.changed_resources {
+        if let Some(handle) = self.edited_resources.get_mut(&resource_id) {
+            return Ok(handle.as_mut());
+        }
+        Err(Error::InvalidResource(resource_id))
+    }
+
+    pub(crate) async fn save_changed_resources(
+        &mut self,
+    ) -> Result<Option<Vec<ResourceTypeAndId>>, Error> {
+        let mut changed: Option<Vec<ResourceTypeAndId>> = None;
+        for (id, resource) in self.edited_resources.drain() {
+            self.project.save_resource(id, resource.as_ref()).await?;
+
+            changed.get_or_insert(Vec::new()).push(id);
+        }
+
+        /*for resource_id in &self.changed_resources {
             match self
                 .build
                 .build_all_derived(*resource_id, &self.project)
@@ -98,8 +82,8 @@ impl<'a> LockContext<'a> {
                     error!("Error building resource derivations {:?}", e);
                 }
             }
-        }
+        }*/
 
-        Ok(())
+        Ok(changed)
     }
 }

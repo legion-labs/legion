@@ -92,8 +92,7 @@ use lgn_content_store::{
 use lgn_data_model::ReflectionError;
 use lgn_data_offline::vfs::AddDeviceSourceCas;
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId,
-    ResourceProcessorError, Transform,
+    AssetRegistry, AssetRegistryError, AssetRegistryOptions, ResourcePathId, Transform,
 };
 use serde::{Deserialize, Serialize};
 
@@ -116,7 +115,7 @@ use crate::{
 ///
 /// * Invalidate all `data compilers`.
 /// * Invalidate all `build index` files.
-pub const DATA_BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const DATA_BUILD_VERSION: &str = "0.2.0";
 
 /// *Data Compiler's* output.
 ///
@@ -182,7 +181,11 @@ pub struct CompilerContext<'a> {
     /// Compilation environment.
     pub env: &'a CompilationEnv,
     /// Content-addressable storage of compilation output.
-    pub provider: Arc<Provider>,
+    /// Anything that is a derived resource and can be reconstructed should go here.
+    pub volatile_provider: Arc<Provider>,
+    /// Content-addressable storage for any source data payload.
+    /// Anything that is a source data provided/created/imported by the user should go here.
+    pub persistent_provider: Arc<Provider>,
 }
 
 impl CompilerContext<'_> {
@@ -194,13 +197,13 @@ impl CompilerContext<'_> {
     /// Stores `compiled_content` in the content store.
     ///
     /// Returned [`CompiledResource`] contains details about stored content.
-    pub async fn store(
+    pub async fn store_volatile(
         &mut self,
         compiled_content: &[u8],
         path: ResourcePathId,
     ) -> Result<CompiledResource, CompilerError> {
         let content_id = self
-            .provider
+            .volatile_provider
             .write_resource_from_bytes(compiled_content)
             .await?;
         Ok(CompiledResource { path, content_id })
@@ -308,10 +311,6 @@ pub enum CompilerError {
 
     /// AssetRegistry fallthrough
     #[error(transparent)]
-    ResourceProcessor(#[from] ResourceProcessorError),
-
-    /// AssetRegistry fallthrough
-    #[error(transparent)]
     AssetRegistry(#[from] AssetRegistryError),
 
     /// Infallible
@@ -366,7 +365,8 @@ impl CompilerDescriptor {
         dependencies: &[ResourcePathId],
         _derived_deps: &[CompiledResource],
         registry: Arc<AssetRegistry>,
-        provider: Arc<Provider>,
+        volatile_provider: Arc<Provider>,
+        persistent_provider: Arc<Provider>,
         env: &CompilationEnv,
     ) -> Result<CompilationOutput, CompilerError> {
         let transform = compile_path
@@ -383,7 +383,8 @@ impl CompilerDescriptor {
             dependencies,
             registry,
             env,
-            provider,
+            volatile_provider,
+            persistent_provider,
         };
 
         compiler.compile(context).await
@@ -534,7 +535,8 @@ async fn run(command: Commands, compilers: CompilerRegistry) -> Result<(), Compi
                     &dependencies,
                     &derived_deps,
                     shell.registry(),
-                    data_provider,
+                    data_provider,   // volatile
+                    source_provider, // persistent
                     &source_manifest_id,
                     &runtime_manifest_id,
                     &env,

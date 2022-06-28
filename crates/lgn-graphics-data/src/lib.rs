@@ -24,22 +24,13 @@ pub use common::*;
 pub mod plugin;
 pub use plugin::*;
 
-#[cfg(feature = "runtime")]
-#[path = "runtime/texture.rs"]
-pub mod runtime_texture;
+#[cfg(feature = "offline")]
+#[path = "offline/png_utils.rs"]
+pub mod png_utils;
+#[cfg(feature = "offline")]
+#[path = "offline/psd_utils.rs"]
+pub mod psd_utils;
 
 #[cfg(feature = "offline")]
-#[path = "offline/png.rs"]
-pub mod offline_png;
-
-#[cfg(feature = "offline")]
-#[path = "offline/psd.rs"]
-pub mod offline_psd;
-
-#[cfg(feature = "offline")]
-#[path = "offline/texture.rs"]
-pub mod offline_texture;
-
-#[cfg(feature = "offline")]
-#[path = "offline/gltf.rs"]
-pub mod offline_gltf;
+#[path = "offline/gltf_utils.rs"]
+pub mod gltf_utils;

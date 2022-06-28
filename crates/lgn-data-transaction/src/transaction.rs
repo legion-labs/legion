@@ -54,7 +54,7 @@ impl Transaction {
             Err(op_err)
         } else {
             // All the ops complete, the the resources
-            context.save_changed_resources().await?;
+            let changed = context.save_changed_resources().await?;
             let mut log = format!(
                 "Transaction Applied: {} / {}ops",
                 &self.id,
@@ -68,11 +68,7 @@ impl Transaction {
             }
 
             info!("{}", &log);
-            if !context.changed_resources.is_empty() {
-                Ok(Some(context.changed_resources.into_iter().collect()))
-            } else {
-                Ok(None)
-            }
+            Ok(changed)
         }
     }
 
@@ -101,17 +97,13 @@ impl Transaction {
             Err(op_err)
         } else {
             // All the ops complete, the the resources
-            context.save_changed_resources().await?;
+            let changed = context.save_changed_resources().await?;
             info!(
                 "Transaction Rollbacked: {} / {}ops",
                 &self.id,
                 self.operations.len()
             );
-            if !context.changed_resources.is_empty() {
-                Ok(Some(context.changed_resources.into_iter().collect()))
-            } else {
-                Ok(None)
-            }
+            Ok(changed)
         }
     }
 

@@ -14,7 +14,8 @@ use crate::{
     gpu_renderer::{GpuInstanceManager, MeshRenderer},
     lighting::RenderLight,
     picking::{ManipulatorManager, PickingState},
-    resources::{DefaultMeshType, MeshManager, MeshMetaData},
+    resources::{DefaultMeshType, MeshManager, RenderMesh},
+    RenderScope,
 };
 
 pub struct PickingPass;
@@ -37,14 +38,17 @@ impl PickingPass {
                             .debug_stuff
                             .picking_renderpass.write();
                         let picking_manager = render_context.picking_manager;
+                        let render_scope =
+                            execute_context.render_resources.get::<RenderScope>();
 
+                        let frame_index = render_scope.frame_idx() as usize;
                         let mut count: usize = 0;
                         let mut count_readback = picking_renderpass
                             .count_buffer
-                            .begin_readback(render_context.device_context);
+                            .begin_readback(frame_index, render_context.device_context);
                         let mut picked_readback = picking_renderpass
                             .picked_buffer
-                            .begin_readback(render_context.device_context);
+                            .begin_readback(frame_index, render_context.device_context);
 
                         count_readback.read_gpu_data(
                             0,
@@ -155,6 +159,7 @@ impl PickingPass {
 
                                 let view_transform = render_camera.view_transform();
                                 let projection = render_camera.build_projection(render_viewport.extents().width as f32, render_viewport.extents().height as f32);
+                                let mesh_reader = mesh_manager.read();
                                 for (transform, manipulator) in manipulator_meshes.iter() {
                                     if manipulator.active {
                                         let picking_distance = 50.0;
@@ -170,7 +175,7 @@ impl PickingPass {
                                             &custom_world,
                                             manipulator.picking_id,
                                             picking_distance,
-                                            mesh_manager
+                                            mesh_reader
                                                 .get_default_mesh(manipulator.default_mesh_type),
                                             cmd_buffer,
                                         );
@@ -191,7 +196,7 @@ impl PickingPass {
                                         &custom_world,
                                         render_light.picking_id,
                                         picking_distance,
-                                        mesh_manager.get_default_mesh(DefaultMeshType::Sphere),
+                                        mesh_reader.get_default_mesh(DefaultMeshType::Sphere),
                                         cmd_buffer,
                                     );
                                 }
@@ -205,6 +210,8 @@ impl PickingPass {
                             .debug_stuff
                             .picking_renderpass.write();
                         let picking_manager = render_context.picking_manager;
+                        let render_scope =
+                            execute_context.render_resources.get::<RenderScope>();
 
                         let mut count_readback = execute_context.count_readback.transfer();
                         let mut picked_readback = execute_context.picked_readback.transfer();
@@ -221,10 +228,11 @@ impl PickingPass {
                             picked_readback.sent_to_gpu(picking_manager.frame_no_for_picking());
                         }
 
-                        picking_renderpass.count_buffer.end_readback(count_readback);
+                        let frame_index = render_scope.frame_idx() as usize;
+                        picking_renderpass.count_buffer.end_readback(frame_index, count_readback);
                         picking_renderpass
                             .picked_buffer
-                            .end_readback(picked_readback);
+                            .end_readback(frame_index, picked_readback);
                     })
                 })
         })
@@ -234,7 +242,7 @@ impl PickingPass {
         custom_world: &GlobalTransform,
         picking_id: u32,
         picking_distance: f32,
-        mesh: &MeshMetaData,
+        mesh: &RenderMesh,
         cmd_buffer: &mut CommandBuffer,
     ) {
         let mut push_constant_data = cgen::cgen_type::PickingPushConstantData::default();

@@ -28,7 +28,7 @@ use struct_meta_info::StructMetaInfo;
 use syn::ItemUse;
 
 /// Type of Generation
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum GenerationType {
     /// Generate code for Offline (tools, editor)
     OfflineFormat,
@@ -112,14 +112,14 @@ fn generate_for_directory(
                 writeln!(codegen_file, "mod {} {{", sub_mod_name)?;
                 codegen_file.write_all(&content)?;
                 writeln!(codegen_file, "}}")?;
-                writeln!(codegen_file, "pub use {}::*;\n", sub_mod_name)?;
+                writeln!(codegen_file, "pub use self::{}::*;\n", sub_mod_name)?;
             }
 
             // Add Registration/Loader code
             let out_token = if gen_type == GenerationType::OfflineFormat {
-                resource_codegen::generate_registration_code(&processed_sub_mods)
+                resource_codegen::generate_registration_code(&processed_sub_mods, gen_type)
             } else {
-                runtime_codegen::generate_registration_code(&processed_sub_mods)
+                runtime_codegen::generate_registration_code(&processed_sub_mods, gen_type)
             };
             codegen_file.write_all(out_token.to_string().as_bytes())?;
 
@@ -153,12 +153,17 @@ fn extract_meta_infos(source_path: &std::path::Path) -> ModuleMetaInfo {
     let src = std::fs::read_to_string(source_path).expect("Read file");
     let ast = syn::parse_file(&src).expect("Unable to parse file");
 
+    let package_path = source_path.parent().unwrap().parent().unwrap();
+
+    // Extract name of the runtime and offline crate from their Cargo.toml files
+    let crate_name = extract_crate_name(package_path);
+
     // Gather info about the structs
     let struct_meta_infos: Vec<StructMetaInfo> = ast
         .items
         .iter()
         .filter_map(|item| match &item {
-            syn::Item::Struct(item_struct) => Some(StructMetaInfo::new(item_struct)),
+            syn::Item::Struct(item_struct) => Some(StructMetaInfo::new(item_struct, &crate_name)),
             _ => None,
         })
         .collect();
@@ -218,12 +223,18 @@ fn generate_data_definition(
     let imports = quote::quote! {
         #[allow(clippy::wildcard_imports)]
         use crate::*;
+        use lgn_data_runtime::ResourceDescriptor;
         #(use #imports;)*
     };
     cursor.write_all(imports.to_string().as_bytes())?;
 
     // Generate struct code
     structs.iter().try_for_each(|meta_info| {
+        // Skip struct if not the right generation.
+        if meta_info.should_skip(gen_type) {
+            return Ok(());
+        }
+
         let out_token = struct_codegen::generate_reflection(meta_info, gen_type);
         cursor.write_all(out_token.to_string().as_bytes())?;
 
@@ -285,7 +296,7 @@ pub fn generate_data_compiler_code(
 
     for item in &ast.items {
         if let syn::Item::Struct(item_struct) = &item {
-            let meta_info = crate::struct_meta_info::StructMetaInfo::new(item_struct);
+            let meta_info = crate::struct_meta_info::StructMetaInfo::new(item_struct, &crate_name);
             if meta_info.is_resource {
                 let gen_path =
                     std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join(Path::new(

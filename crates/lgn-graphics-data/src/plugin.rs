@@ -8,30 +8,24 @@ pub struct GraphicsPlugin;
 
 impl Plugin for GraphicsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(add_loaders);
+        app.add_startup_system(init_plugin);
     }
 }
 
 #[allow(unused_variables)]
-fn add_loaders(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
+fn init_plugin(asset_registry: NonSendMut<'_, AssetRegistryOptions>) {
     let asset_registry = asset_registry.into_inner();
+    register_types(asset_registry);
+}
+
+pub fn register_types(asset_registry: &mut AssetRegistryOptions) {
     #[cfg(feature = "offline")]
     {
-        crate::offline::add_loaders(asset_registry)
-            .add_loader_mut::<crate::offline_psd::PsdFile>()
-            .add_loader_mut::<crate::offline_png::PngFile>()
-            .add_loader_mut::<crate::offline_texture::Texture>()
-            .add_loader_mut::<crate::offline_gltf::GltfFile>()
-            .add_processor_mut::<crate::offline_psd::PsdFile>()
-            .add_processor_mut::<crate::offline_png::PngFile>()
-            .add_processor_mut::<crate::offline_texture::Texture>()
-            .add_processor_mut::<crate::offline_gltf::GltfFile>();
+        crate::offline::register_types(asset_registry);
     }
 
     #[cfg(feature = "runtime")]
     {
-        crate::runtime::add_loaders(asset_registry)
-            .add_loader_mut::<crate::runtime_texture::Texture>()
-            .add_loader_mut::<crate::runtime::Model>();
+        crate::runtime::register_types(asset_registry);
     }
 }

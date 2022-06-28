@@ -21,15 +21,14 @@ impl<T> GpuSafePool<T> {
         }
     }
 
-    pub(crate) fn begin_frame(&mut self, func: impl Fn(&mut T)) {
-        let next_cpu_frame = (self.cur_cpu_frame + 1) % self.num_cpu_frames as u64;
-        self.available
-            .append(&mut self.in_use[next_cpu_frame as usize]);
+    pub(crate) fn begin_frame(&mut self, frame_index: usize, func: impl Fn(&mut T)) {
+        let next_cpu_frame = (frame_index + 1) % self.num_cpu_frames as usize;
+        self.available.append(&mut self.in_use[next_cpu_frame]);
         self.available.iter_mut().for_each(func);
-        self.cur_cpu_frame = next_cpu_frame;
+        self.cur_cpu_frame = next_cpu_frame as u64;
     }
 
-    pub(crate) fn end_frame(&mut self, func: impl Fn(&mut T)) {
+    pub(crate) fn end_frame(&mut self, _frame_index: usize, func: impl Fn(&mut T)) {
         assert_eq!(self.acquired_count, 0);
         self.in_use[self.cur_cpu_frame as usize]
             .iter_mut()

@@ -7,13 +7,18 @@ use std::{
 
 use async_trait::async_trait;
 use lgn_content_store::{
-    indexing::{ResourceIndex, ResourceReader, SharedTreeIdentifier, TreeIdentifier},
+    indexing::{
+        ResourceIdentifier, ResourceIndex, ResourceReader, SharedTreeIdentifier, TreeIdentifier,
+    },
     Provider,
 };
 use lgn_tracing::info;
 
 use super::Device;
-use crate::{new_resource_type_and_id_indexer, ResourceTypeAndId, ResourceTypeAndIdIndexer};
+use crate::{
+    new_resource_type_and_id_indexer, AssetRegistryReader, ResourceTypeAndId,
+    ResourceTypeAndIdIndexer,
+};
 
 /// Storage device that builds resources on demand. Resources are accessed
 /// through a manifest access table.
@@ -83,6 +88,32 @@ impl Device for BuildDevice {
         } else {
             self.load_internal(type_id).await
         }
+    }
+
+    async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader> {
+        let resource_id: Result<Option<ResourceIdentifier>, _> = if self.force_recompile {
+            let manifest_id = self.build_resource(type_id).ok()?;
+            let mut new_manifest = ResourceIndex::<ResourceTypeAndIdIndexer>::new_exclusive(
+                Arc::clone(&self.volatile_provider),
+                new_resource_type_and_id_indexer(),
+            )
+            .await;
+            new_manifest.set_id(manifest_id);
+            new_manifest.get_identifier(&type_id.into()).await
+        } else {
+            self.runtime_manifest.get_identifier(&type_id.into()).await
+        };
+
+        if let Ok(Some(resource_id)) = resource_id {
+            if let Ok(reader) = self
+                .volatile_provider
+                .get_reader(resource_id.as_identifier())
+                .await
+            {
+                return Some(Box::pin(reader) as AssetRegistryReader);
+            }
+        }
+        None
     }
 
     async fn reload(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>> {

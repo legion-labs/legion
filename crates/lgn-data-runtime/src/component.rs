@@ -8,8 +8,6 @@ use lgn_data_model::{implement_box_dyn_reflection, TypeReflection};
 pub trait Component: Any + Sync + Send + TypeReflection {
     /// Compare to dynamic Component instance is they are the same
     fn eq(&self, other: &dyn Component) -> bool;
-    /// Activate all the references of a Component
-    fn activate_references(&mut self, _registry: &crate::AssetRegistry) {}
     /// Return new clone of a Component
     fn clone_dyn(&self) -> Box<dyn Component>;
 }
@@ -38,6 +36,20 @@ impl dyn Component {
             #[allow(unsafe_code)]
             unsafe {
                 Some(&*((self as *const dyn Component).cast::<T>()))
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Returns some reference to the boxed value if it is of type `T`, or
+    /// `None` if it isn't.
+    #[inline]
+    pub fn downcast_mut<T: Component>(&mut self) -> Option<&mut T> {
+        if self.is::<T>() {
+            #[allow(unsafe_code)]
+            unsafe {
+                Some(&mut *((self as *mut dyn Component).cast::<T>()))
             }
         } else {
             None

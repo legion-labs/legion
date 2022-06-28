@@ -21,6 +21,8 @@ impl VulkanCommandPool {
         let mut command_pool_create_flags = ash::vk::CommandPoolCreateFlags::empty();
         if command_pool_def.transient {
             command_pool_create_flags |= ash::vk::CommandPoolCreateFlags::TRANSIENT;
+        } else {
+            command_pool_create_flags |= ash::vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER;
         }
 
         let pool_create_info = ash::vk::CommandPoolCreateInfo::builder()

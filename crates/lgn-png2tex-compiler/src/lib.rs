@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 // crate-specific lint exceptions:
 //#![allow()]
 use async_trait::async_trait;
@@ -8,8 +10,8 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
-use lgn_graphics_data::{offline_texture::TextureProcessor, rgba_from_source, ColorChannels};
+use lgn_data_runtime::prelude::*;
+use lgn_graphics_data::{rgba_from_source, ColorChannels};
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -17,8 +19,8 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &Transform::new(
-        lgn_graphics_data::offline_png::PngFile::TYPE,
-        lgn_graphics_data::offline_texture::Texture::TYPE,
+        lgn_graphics_data::offline::Png::TYPE,
+        lgn_graphics_data::runtime::RawTexture::TYPE,
     ),
     compiler_creator: || Box::new(Png2TexCompiler {}),
 };
@@ -27,8 +29,9 @@ struct Png2TexCompiler();
 
 #[async_trait]
 impl Compiler for Png2TexCompiler {
-    async fn init(&self, options: AssetRegistryOptions) -> AssetRegistryOptions {
-        options.add_loader::<lgn_graphics_data::offline_png::PngFile>()
+    async fn init(&self, mut options: AssetRegistryOptions) -> AssetRegistryOptions {
+        lgn_graphics_data::register_types(&mut options);
+        options
     }
 
     async fn hash(
@@ -47,23 +50,24 @@ impl Compiler for Png2TexCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let asset_registry = context.registry();
 
-        let resource_handle = asset_registry
-            .load_async::<lgn_graphics_data::offline_png::PngFile>(context.source.resource_id())
-            .await;
-
-        if let Some(err) = asset_registry.retrieve_err(resource_handle.id()) {
-            return Err(CompilerError::CompilationError(err.to_string()));
-        }
-
         let content = {
-            let png_file = resource_handle.get(&asset_registry).ok_or_else(|| {
-                CompilerError::CompilationError(format!(
-                    "Failed to retrieve resource '{}'",
-                    context.source.resource_id()
-                ))
-            })?;
+            let png_file = asset_registry
+                .load_async::<lgn_graphics_data::offline::Png>(context.source.resource_id())
+                .await?;
 
-            let decoder = png::Decoder::new(png_file.content.as_slice());
+            // minimize lock
+            let content_id = {
+                let png_file = png_file.get().unwrap();
+                png_file.content_id.clone()
+            };
+
+            let identifier = lgn_content_store::Identifier::from_str(&content_id)
+                .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
+
+            // TODO: aganea - should we read from a Device directly?
+            let raw_data = context.persistent_provider.read(&identifier).await?;
+
+            let decoder = png::Decoder::new(raw_data.as_slice());
             let mut reader = decoder.read_info().map_err(|err| {
                 CompilerError::CompilationError(format!(
                     "Failed to read png info for resource {} ({})",
@@ -87,8 +91,8 @@ impl Compiler for Png2TexCompiler {
                     png::ColorType::GrayscaleAlpha => ColorChannels::Ra,
                     png::ColorType::Rgba => ColorChannels::Rgba,
                 };
-                Ok(lgn_graphics_data::offline_texture::Texture {
-                    kind: lgn_graphics_data::offline_texture::TextureType::_2D,
+                Ok(lgn_graphics_data::runtime::RawTexture {
+                    kind: lgn_graphics_data::TextureType::_2D,
                     width: info.width,
                     height: info.height,
                     rgba: rgba_from_source(info.width, info.height, color_channels, &img_data),
@@ -101,15 +105,12 @@ impl Compiler for Png2TexCompiler {
             }?;
 
             let mut content = vec![];
-            let texture_proc = TextureProcessor {};
-            texture_proc
-                .write_resource(&texture, &mut content)
-                .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
+            lgn_data_runtime::to_binary_writer(&texture, &mut content)?;
             content
         };
 
         let output = context
-            .store(&content, context.target_unnamed.clone())
+            .store_volatile(&content, context.target_unnamed.clone())
             .await?;
 
         Ok(CompilationOutput {

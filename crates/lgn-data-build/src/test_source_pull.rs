@@ -2,12 +2,11 @@
 mod tests {
     use std::{path::PathBuf, sync::Arc};
 
+    use generic_data::offline::TestResource;
     use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-    use lgn_data_offline::resource::{Project, ResourcePathName};
-    use lgn_data_runtime::{
-        AssetRegistry, AssetRegistryOptions, ResourceDescriptor, ResourcePathId,
-    };
+    use lgn_data_offline::{Project, SourceResource};
+    use lgn_data_runtime::prelude::*;
     use tempfile::TempDir;
 
     use crate::DataBuildOptions;
@@ -31,10 +30,9 @@ mod tests {
     }
 
     async fn setup_registry() -> Arc<AssetRegistry> {
-        AssetRegistryOptions::new()
-            .add_processor::<refs_resource::TestResource>()
-            .create()
-            .await
+        let mut options = AssetRegistryOptions::new();
+        generic_data::register_types(&mut options);
+        options.create().await
     }
 
     #[tokio::test]
@@ -42,7 +40,7 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
             setup_dir(&work_dir);
-        let resources = setup_registry().await;
+        let _resources = setup_registry().await;
 
         let mut project = Project::new_with_remote_mock(
             &project_dir,
@@ -53,14 +51,7 @@ mod tests {
 
         let resource = ResourcePathId::from({
             let resource_id = project
-                .add_resource(
-                    ResourcePathName::new("resource"),
-                    refs_resource::TestResource::TYPE,
-                    &resources
-                        .new_resource(refs_resource::TestResource::TYPE)
-                        .unwrap(),
-                    &resources,
-                )
+                .add_resource(&TestResource::new_named("resource"))
                 .await
                 .unwrap();
             resource_id
@@ -89,7 +80,7 @@ mod tests {
         let work_dir = tempfile::tempdir().unwrap();
         let (project_dir, output_dir, source_control_content_provider, data_content_provider) =
             setup_dir(&work_dir);
-        let resources = setup_registry().await;
+        let _resources = setup_registry().await;
 
         let mut project = Project::new_with_remote_mock(
             &project_dir,
@@ -100,37 +91,14 @@ mod tests {
 
         let (child_id, parent_id) = {
             let child_id = project
-                .add_resource(
-                    ResourcePathName::new("child"),
-                    refs_resource::TestResource::TYPE,
-                    &resources
-                        .new_resource(refs_resource::TestResource::TYPE)
-                        .unwrap(),
-                    &resources,
-                )
+                .add_resource(&TestResource::new_named("child"))
                 .await
                 .unwrap();
 
-            let parent_handle = {
-                let res = resources
-                    .new_resource(refs_resource::TestResource::TYPE)
-                    .unwrap();
-                let mut edit = res
-                    .instantiate::<refs_resource::TestResource>(&resources)
-                    .unwrap();
-                edit.build_deps.push(ResourcePathId::from(child_id));
-                res.apply(edit, &resources);
-                res
-            };
-            let parent_id = project
-                .add_resource(
-                    ResourcePathName::new("parent"),
-                    refs_resource::TestResource::TYPE,
-                    &parent_handle,
-                    &resources,
-                )
-                .await
-                .unwrap();
+            let mut parent = TestResource::new_named("parent");
+            parent.build_deps.push(ResourcePathId::from(child_id));
+
+            let parent_id = project.add_resource(&parent).await.unwrap();
 
             (
                 ResourcePathId::from(child_id),

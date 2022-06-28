@@ -1,8 +1,8 @@
 (
-    albedo: "runtime_texture(offline_texture(image/old_brass_albedo.png), 'Albedo')",
-    normal: "runtime_texture(offline_texture(image/old_brass_normal.png), 'Normal')",
-    roughness: "runtime_texture(offline_texture(image/old_brass_roughness.png), 'Roughness')",
-    metalness: "runtime_texture(offline_texture(image/old_brass_metalness.png), 'Metalness')",
+    albedo: "bintexture(rawtexture(image/old_brass_albedo.png), 'Albedo')",
+    normal: "bintexture(rawtexture(image/old_brass_normal.png), 'Normal')",
+    roughness: "bintexture(rawtexture(image/old_brass_roughness.png), 'Roughness')",
+    metalness: "bintexture(rawtexture(image/old_brass_metalness.png), 'Metalness')",
     base_albedo: 1375666431,
     base_metalness: 0.0,
     base_roughness: 0.0,

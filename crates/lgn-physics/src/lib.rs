@@ -36,9 +36,17 @@ mod rigid_actors;
 mod settings;
 mod simulation;
 
+use std::sync::Arc;
+
 use lgn_app::prelude::{App, CoreStage, Plugin};
-use lgn_ecs::prelude::{
-    Commands, Entity, ParallelSystemDescriptorCoercion, Query, Res, ResMut, SystemSet, SystemStage,
+use lgn_data_runtime::{implement_default_component_installer, AssetRegistryOptions};
+use lgn_ecs::{
+    prelude::{
+        Commands, Entity, NonSendMut, ParallelSystemDescriptorCoercion, Query, Res, ResMut,
+        SystemStage,
+    },
+    schedule::SystemSet,
+    system::EntityCommands,
 };
 use lgn_graphics_renderer::labels::RenderStage;
 use lgn_tracing::prelude::{error, warn};
@@ -88,6 +96,21 @@ type PxScene = physx::scene::PxScene<
 >;
 
 #[derive(Default)]
+pub(crate) struct PhysicsInstaller {}
+
+implement_default_component_installer!(
+    PhysicsInstaller,
+    crate::runtime::PhysicsRigidBox,
+    crate::runtime::PhysicsRigidCapsule,
+    crate::runtime::PhysicsRigidConvexMesh,
+    crate::runtime::PhysicsRigidHeightField,
+    crate::runtime::PhysicsRigidPlane,
+    crate::runtime::PhysicsRigidSphere,
+    crate::runtime::PhysicsRigidTriangleMesh,
+    crate::runtime::PhysicsSceneSettings
+);
+
+#[derive(Default)]
 pub struct PhysicsPlugin {}
 
 impl Plugin for PhysicsPlugin {
@@ -118,6 +141,7 @@ impl Plugin for PhysicsPlugin {
                     .with_system(create_rigid_actors::<runtime::PhysicsRigidTriangleMesh>),
             )
             .add_system_to_stage(CoreStage::Last, cleanup_rigid_actors);
+        app.insert_resource(Arc::new(PhysicsInstaller::default()));
 
         // simulation
         app.init_resource::<SimulationMemory>()
@@ -132,7 +156,28 @@ impl Plugin for PhysicsPlugin {
 }
 
 impl PhysicsPlugin {
-    fn setup(settings: Res<'_, PhysicsSettings>, mut commands: Commands<'_, '_>) {
+    #[allow(clippy::needless_pass_by_value)]
+    fn setup(
+        settings: Res<'_, PhysicsSettings>,
+        mut commands: Commands<'_, '_>,
+        asset_registry_options: NonSendMut<'_, AssetRegistryOptions>,
+        physics_installer: Res<'_, Arc<PhysicsInstaller>>,
+    ) {
+        let asset_registry_options = asset_registry_options.into_inner();
+        asset_registry_options.add_component_installer(
+            &[
+                std::any::TypeId::of::<crate::runtime::PhysicsRigidBox>(),
+                std::any::TypeId::of::<crate::runtime::PhysicsRigidCapsule>(),
+                std::any::TypeId::of::<crate::runtime::PhysicsRigidConvexMesh>(),
+                std::any::TypeId::of::<crate::runtime::PhysicsRigidHeightField>(),
+                std::any::TypeId::of::<crate::runtime::PhysicsRigidPlane>(),
+                std::any::TypeId::of::<crate::runtime::PhysicsRigidSphere>(),
+                std::any::TypeId::of::<crate::runtime::PhysicsRigidTriangleMesh>(),
+                std::any::TypeId::of::<crate::runtime::PhysicsSceneSettings>(),
+            ],
+            physics_installer.clone(),
+        );
+
         let mut physics = Self::create_physics_foundation(
             settings.enable_visual_debugger,
             settings.length_tolerance,

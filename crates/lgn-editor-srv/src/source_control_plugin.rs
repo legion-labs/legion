@@ -27,14 +27,14 @@ use editor_srv::{
 };
 use lgn_api::SharedRouter;
 use lgn_app::prelude::*;
-use lgn_data_offline::resource::ChangeType;
+use lgn_data_offline::ChangeType;
 use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
 use lgn_data_transaction::{LockContext, TransactionManager};
 use lgn_ecs::{
     prelude::{IntoExclusiveSystem, Res, ResMut},
     schedule::ExclusiveSystemDescriptorCoercion,
 };
-use lgn_graphics_data::offline_gltf::GltfFile;
+use lgn_graphics_data::offline::Gltf;
 use lgn_online::server::{Error, Result};
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_tracing::error;
@@ -643,7 +643,7 @@ impl Api for Server {
     }
 
     async fn sync_latest(&self, _request: SyncLatestRequest) -> Result<SyncLatestResponse> {
-        let (resource_to_build, resource_to_unload) = {
+        let (resource_to_build, _resource_to_unload) = {
             let mut resource_to_build = Vec::new();
             let mut resource_to_unload = Vec::new();
 
@@ -670,22 +670,16 @@ impl Api for Server {
         let transaction_manager = self.transaction_manager.lock().await;
         for resource_id in resource_to_build {
             if resource_id.kind == sample_data::offline::Entity::TYPE {
-                {
-                    let mut ctx = LockContext::new(&transaction_manager).await;
-                    if let Err(err) = ctx.reload(resource_id).await {
-                        error!("Failed to reload resource {}: {}", resource_id, err);
-                    }
-                }
                 if let Err(err) = transaction_manager.build_by_id(resource_id).await {
                     error!("Failed to compile resource {}: {}", resource_id, err);
                 }
             }
         }
 
-        for resource_id in resource_to_unload {
+        /*for resource_id in resource_to_unload {
             let mut ctx = LockContext::new(&transaction_manager).await;
             ctx.unload(resource_id).await;
-        }
+        }*/
 
         Ok(SyncLatestResponse::Status204)
     }
@@ -710,16 +704,18 @@ impl Api for Server {
             }
         }
 
-        for id in need_rebuild {
+        /*for id in need_rebuild {
             match ctx.build.build_all_derived(id, &ctx.project).await {
                 Ok((runtime_path_id, _built_resources)) => {
-                    ctx.asset_registry.reload(runtime_path_id.resource_id());
+                    ctx.asset_registry
+                        .reload(runtime_path_id.resource_id())
+                        .await;
                 }
                 Err(e) => {
                     lgn_tracing::error!("Error building resource derivations {:?}", e);
                 }
             }
-        }
+        }*/
 
         Ok(RevertResourcesResponse::Status204)
     }
@@ -734,21 +730,20 @@ impl Api for Server {
             Ok(id) => id,
         };
 
-        if id.kind != GltfFile::TYPE {
+        if id.kind != Gltf::TYPE {
             return Err(Error::internal(
-                "pull_asset supports GltfFile only at the moment",
+                "pull_asset supports Gltf only at the moment",
             ));
         }
+        let _gltf_file = ctx
+            .project
+            .load_resource::<Gltf>(id)
+            .await
+            .map_err(|err| Error::internal(err.to_string()))?;
 
-        let resource = ctx.asset_registry.load_sync::<GltfFile>(id);
-
-        if let Some(gltf_file) = resource.get(&ctx.asset_registry) {
-            return Ok(PullAssetsResponse::Status200(PullAssetsSucceeded {
-                size: gltf_file.bytes().len() as u32,
-                content: gltf_file.bytes().to_vec().into(),
-            }));
-        }
-
-        return Ok(PullAssetsResponse::Status404);
+        return Ok(PullAssetsResponse::Status200(PullAssetsSucceeded {
+            size: 0,                // TODO: gltf_file.bytes().len() as u32,
+            content: vec![].into(), // TODO: gltf_file.bytes().to_vec().into(),
+        }));
     }
 }

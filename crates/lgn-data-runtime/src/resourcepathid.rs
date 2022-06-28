@@ -68,7 +68,7 @@ impl FromStr for Transform {
 ///
 /// ```no_run
 /// use std::sync::Arc;
-/// use lgn_data_offline::resource::{Project, ResourcePathName, ResourceRegistryOptions};
+/// use lgn_data_offline::{Project, ResourcePathName, ResourceRegistryOptions};
 /// use lgn_data_runtime::ResourceType;
 /// use lgn_data_runtime::ResourcePathId;
 /// use lgn_content_store::Provider;
@@ -462,87 +462,4 @@ pub fn extract_resource_dependencies(
         return Some(result);
     }
     None
-}
-
-#[cfg(test)]
-mod tests {
-
-    use std::str::FromStr;
-
-    use crate::{
-        test_resource, ResourceDescriptor, ResourceId, ResourcePathId, ResourceType,
-        ResourceTypeAndId, Transform,
-    };
-
-    #[test]
-    fn simple_path() {
-        let source = ResourceTypeAndId {
-            kind: test_resource::TestResource::TYPE,
-            id: ResourceId::new(),
-        };
-
-        let path_a = ResourcePathId::from(source);
-        let path_b = path_a.push(test_resource::TestResource::TYPE);
-
-        let name_a = path_a.to_string();
-        assert_eq!(path_a, ResourcePathId::from_str(&name_a).unwrap());
-
-        let name_b = path_b.to_string();
-        assert_eq!(path_b, ResourcePathId::from_str(&name_b).unwrap());
-    }
-
-    #[test]
-    fn transform() {
-        let source = Transform::new(
-            test_resource::TestResource::TYPE,
-            test_resource::TestResource::TYPE,
-        );
-
-        let text = source.to_string();
-        assert!(text.len() > 1);
-        assert!(text.contains('-'));
-
-        let parsed = Transform::from_str(&text).expect("parsed Transform");
-        assert_eq!(source, parsed);
-    }
-
-    #[test]
-    fn named_path() {
-        let source = ResourceTypeAndId {
-            kind: test_resource::TestResource::TYPE,
-            id: ResourceId::new(),
-        };
-
-        let source = ResourcePathId::from(source);
-        let source_hello = source.push_named(test_resource::TestResource::TYPE, "hello");
-
-        let hello_text = source_hello.to_string();
-        assert_eq!(source_hello, ResourcePathId::from_str(&hello_text).unwrap());
-    }
-
-    #[test]
-    fn transform_iter() {
-        let foo_type = ResourceType::new(b"foo");
-        let bar_type = ResourceType::new(b"bar");
-        let source = ResourceTypeAndId {
-            kind: foo_type,
-            id: ResourceId::new(),
-        };
-
-        let source_only = ResourcePathId::from(source);
-        assert_eq!(source_only.transforms().next(), None);
-
-        let path = ResourcePathId::from(source)
-            .push(bar_type)
-            .push_named(foo_type, "test_name");
-
-        let mut transform_iter = path.transforms();
-        assert_eq!(transform_iter.next(), Some((foo_type, bar_type, None)));
-        assert_eq!(
-            transform_iter.next(),
-            Some((bar_type, foo_type, Some(&"test_name".to_string())))
-        );
-        assert_eq!(transform_iter.next(), None);
-        assert_eq!(transform_iter.next(), None);
-    }
 }

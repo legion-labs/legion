@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use lgn_data_offline::resource::ResourcePathName;
+use lgn_data_offline::{offline::Metadata, ResourcePathName};
 use lgn_data_runtime::{
     Component, ResourceDescriptor, ResourcePathId, ResourceType, ResourceTypeAndId,
 };
+use lgn_graphics_data::AlphaMode;
 use lgn_tracing::{error, info};
 use sample_data::offline as offline_data;
 
@@ -125,7 +126,9 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                     components.push(Box::new(Into::<offline_data::Transform>::into(raw)));
                 }
                 raw_data::Component::Visual(raw) => {
-                    components.push(Box::new(offline_data::Visual::from_raw(raw, references)));
+                    components.push(Box::new(lgn_graphics_data::offline::Visual::from_raw(
+                        raw, references,
+                    )));
                 }
                 raw_data::Component::GlobalIllumination(raw) => {
                     components.push(Box::new(Into::<offline_data::GlobalIllumination>::into(
@@ -139,7 +142,9 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
                     components.push(Box::new(Into::<offline_data::View>::into(raw)));
                 }
                 raw_data::Component::Light(raw) => {
-                    components.push(Box::new(Into::<offline_data::Light>::into(raw)));
+                    components.push(Box::new(Into::<lgn_graphics_data::offline::Light>::into(
+                        raw,
+                    )));
                 }
                 raw_data::Component::GltfLoader(raw) => {
                     components.push(Box::new(offline_data::GltfLoader::from_raw(
@@ -150,6 +155,7 @@ impl FromRaw<raw_data::Entity> for offline_data::Entity {
         }
 
         Self {
+            meta: Metadata::new_default::<Self>(),
             children,
             parent,
             components,
@@ -167,7 +173,7 @@ impl From<raw_data::Transform> for offline_data::Transform {
     }
 }
 
-impl FromRaw<raw_data::Visual> for offline_data::Visual {
+impl FromRaw<raw_data::Visual> for lgn_graphics_data::offline::Visual {
     fn from_raw(
         raw: raw_data::Visual,
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
@@ -192,7 +198,7 @@ impl FromRaw<raw_data::Visual> for offline_data::Visual {
     }
 }
 
-impl From<raw_data::GIContribution> for sample_data::GIContribution {
+impl From<raw_data::GIContribution> for lgn_graphics_data::GIContribution {
     fn from(raw: raw_data::GIContribution) -> Self {
         match raw {
             raw_data::GIContribution::Default => Self::Default,
@@ -253,7 +259,7 @@ impl From<raw_data::ProjectionType> for sample_data::ProjectionType {
     }
 }
 
-impl From<raw_data::Light> for offline_data::Light {
+impl From<raw_data::Light> for lgn_graphics_data::offline::Light {
     fn from(raw: raw_data::Light) -> Self {
         Self {
             light_type: raw.light_type,
@@ -304,6 +310,7 @@ impl FromRaw<raw_data::Instance> for offline_data::Instance {
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
+            meta: Metadata::new_default::<Self>(),
             original: lookup_asset_path(references, &raw.original),
         }
     }
@@ -317,6 +324,7 @@ impl FromRaw<raw_data::Material> for lgn_graphics_data::offline::Material {
         references: &HashMap<ResourcePathName, ResourceTypeAndId>,
     ) -> Self {
         Self {
+            meta: Metadata::new_default::<Self>(),
             albedo: lookup_asset_path(references, &raw.albedo),
             normal: lookup_asset_path(references, &raw.normal),
             roughness: lookup_asset_path(references, &raw.roughness),
@@ -325,6 +333,7 @@ impl FromRaw<raw_data::Material> for lgn_graphics_data::offline::Material {
             base_metalness: raw.base_metalness,
             base_roughness: raw.base_roughness,
             reflectance: raw.reflectance,
+            alpha_mode: AlphaMode::Opaque,
             sampler: None,
         }
     }

@@ -27,11 +27,10 @@ pub fn remote_compilers(
 
 #[cfg(test)]
 mod tests {
-    use lgn_data_runtime::{
-        ResourceDescriptor, ResourceId, ResourcePathId, ResourceTypeAndId, Transform,
-    };
+    use lgn_data_runtime::prelude::*;
 
     use super::CompilerRegistryOptions;
+    use generic_data::offline::{IntegerAsset, TextResource};
     use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
 
     #[tokio::test]
@@ -58,10 +57,10 @@ mod tests {
         };
 
         let source = ResourceTypeAndId {
-            kind: text_resource::TextResource::TYPE,
+            kind: TextResource::TYPE,
             id: ResourceId::new(),
         };
-        let destination = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
+        let destination = ResourcePathId::from(source).push(IntegerAsset::TYPE);
 
         let transform = Transform::new(source.kind, destination.content_type());
 

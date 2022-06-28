@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 // crate-specific lint exceptions:
 //#![allow()]
 use async_trait::async_trait;
@@ -8,8 +10,8 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
-use lgn_graphics_data::{offline_psd::PsdFile, offline_texture::TextureProcessor};
+use lgn_data_runtime::prelude::*;
+use lgn_graphics_data::psd_utils::PsdFile;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -17,8 +19,8 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &Transform::new(
-        lgn_graphics_data::offline_psd::PsdFile::TYPE,
-        lgn_graphics_data::offline_texture::Texture::TYPE,
+        lgn_graphics_data::offline::Psd::TYPE,
+        lgn_graphics_data::runtime::RawTexture::TYPE,
     ),
     compiler_creator: || Box::new(Psd2TextCompiler {}),
 };
@@ -27,8 +29,9 @@ struct Psd2TextCompiler();
 
 #[async_trait]
 impl Compiler for Psd2TextCompiler {
-    async fn init(&self, options: AssetRegistryOptions) -> AssetRegistryOptions {
-        options.add_loader::<lgn_graphics_data::offline_psd::PsdFile>()
+    async fn init(&self, mut options: AssetRegistryOptions) -> AssetRegistryOptions {
+        lgn_graphics_data::register_types(&mut options);
+        options
     }
 
     async fn hash(
@@ -49,21 +52,28 @@ impl Compiler for Psd2TextCompiler {
 
         let outputs = {
             let resource = resources
-                .load_async::<lgn_graphics_data::offline_psd::PsdFile>(context.source.resource_id())
-                .await;
+                .load_async::<lgn_graphics_data::offline::Psd>(context.source.resource_id())
+                .await?;
 
-            let resource = resource.get(&resources).unwrap();
+            // minimize lock
+            let content_id = {
+                let resource = resource.get().unwrap();
+                resource.content_id.clone()
+            };
+
+            let identifier = lgn_content_store::Identifier::from_str(&content_id)
+                .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
+
+            // TODO: aganea - should we read from a Device directly?
+            let raw_psd = context.persistent_provider.read(&identifier).await?;
+            let psd_file = PsdFile::from_bytes(&raw_psd)?;
 
             let mut compiled_resources = vec![];
-            let texture_proc = TextureProcessor {};
 
             let compiled_content = {
-                let final_image = resource.final_texture().ok_or_else(|| {
-                    CompilerError::CompilationError("Failed to generate texture".into())
-                })?;
+                let final_image = psd_file.final_texture();
                 let mut content = vec![];
-                texture_proc
-                    .write_resource(&final_image, &mut content)
+                lgn_data_runtime::to_binary_writer(&final_image, &mut content)
                     .unwrap_or_else(|_| panic!("writing to file {}", context.source.resource_id()));
                 content
             };
@@ -72,16 +82,13 @@ impl Compiler for Psd2TextCompiler {
             let compile_layer = |psd: &PsdFile, layer_name| -> Vec<u8> {
                 let image = psd.layer_texture(layer_name).unwrap();
                 let mut layer_content = vec![];
-                texture_proc
-                    .write_resource(&image, &mut layer_content)
+                lgn_data_runtime::to_binary_writer(&image, &mut layer_content)
                     .unwrap_or_else(|_| panic!("writing to file, from layer {}", layer_name));
                 layer_content
             };
 
-            for layer_name in resource.layer_list().ok_or_else(|| {
-                CompilerError::CompilationError("Failed to extract layer names".into())
-            })? {
-                let pixels = compile_layer(&resource, layer_name);
+            for layer_name in psd_file.layer_list() {
+                let pixels = compile_layer(&psd_file, layer_name);
                 compiled_resources.push((context.target_unnamed.new_named(layer_name), pixels));
             }
             compiled_resources
@@ -89,7 +96,7 @@ impl Compiler for Psd2TextCompiler {
 
         let mut compiled_resources = vec![];
         for (id, content) in outputs {
-            compiled_resources.push(context.store(&content, id).await?);
+            compiled_resources.push(context.store_volatile(&content, id).await?);
         }
 
         Ok(CompilationOutput {

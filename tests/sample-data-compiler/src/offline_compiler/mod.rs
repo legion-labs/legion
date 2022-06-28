@@ -11,7 +11,7 @@ use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::{
     compiler_api::CompilationEnv, compiler_node::CompilerRegistryOptions, Locale, Platform, Target,
 };
-use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_offline::{Project, ResourcePathName};
 use lgn_data_runtime::{ResourceDescriptor, ResourcePathId};
 use lgn_tracing::info;
 use sample_data::offline as offline_data;
@@ -27,9 +27,9 @@ pub fn find_derived_path(path: &ResourcePathId) -> ResourcePathId {
         lgn_graphics_data::offline::Model::TYPE => {
             path.push(lgn_graphics_data::runtime::Model::TYPE)
         }
-        lgn_graphics_data::offline_psd::PsdFile::TYPE => path
-            .push(lgn_graphics_data::offline_texture::Texture::TYPE)
-            .push(lgn_graphics_data::runtime_texture::Texture::TYPE),
+        lgn_graphics_data::offline::Psd::TYPE => path
+            .push(lgn_graphics_data::runtime::RawTexture::TYPE)
+            .push(lgn_graphics_data::runtime::BinTexture::TYPE),
         lgn_graphics_data::offline::Material::TYPE => {
             path.push(lgn_graphics_data::runtime::Material::TYPE)
         }
@@ -111,7 +111,7 @@ pub async fn build(
                 p.content_type(),
                 runtime_data::Entity::TYPE
                     | runtime_data::Instance::TYPE
-                    | lgn_graphics_data::runtime_texture::Texture::TYPE
+                    | lgn_graphics_data::runtime::BinTexture::TYPE
                     | lgn_graphics_data::runtime::Material::TYPE
                     | lgn_graphics_data::runtime::Model::TYPE
             )

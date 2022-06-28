@@ -1,9 +1,6 @@
 use lgn_graphics_api::CommandBuffer;
 
-use crate::{
-    components::MeshTopology,
-    resources::{MaterialId, MeshMetaData},
-};
+use crate::resources::{MaterialId, MeshTopology, RenderMesh};
 
 use super::GpuInstanceId;
 
@@ -16,11 +13,7 @@ pub struct RenderElement {
 }
 
 impl RenderElement {
-    pub fn new(
-        gpu_instance_id: GpuInstanceId,
-        material_id: MaterialId,
-        mesh: &MeshMetaData,
-    ) -> Self {
+    pub fn new(gpu_instance_id: GpuInstanceId, material_id: MaterialId, mesh: &RenderMesh) -> Self {
         assert_eq!(mesh.topology, MeshTopology::TriangleList);
         Self {
             gpu_instance_id,

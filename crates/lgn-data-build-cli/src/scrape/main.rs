@@ -198,7 +198,7 @@ use std::{
 
 use clap::{Parser, Subcommand};
 use lgn_data_build::{DataBuild, DataBuildOptions};
-use lgn_data_offline::resource::{Project, ResourcePathName};
+use lgn_data_offline::{Project, ResourcePathName};
 use lgn_data_runtime::{ResourcePathId, ResourceType, ResourceTypeAndId};
 
 mod config;

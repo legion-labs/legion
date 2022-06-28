@@ -337,7 +337,9 @@ impl RenderSurface {
                 memory_usage: MemoryUsage::GpuOnly,
                 tiling: TextureTiling::Optimal,
             };
+
             self.final_target = device_context.create_texture(final_target_desc, "FinalTarget");
+
             self.final_target_srv =
                 self.final_target
                     .create_view(TextureViewDef::as_shader_resource_view(

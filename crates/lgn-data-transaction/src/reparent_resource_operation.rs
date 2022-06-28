@@ -1,7 +1,7 @@
 //! Transaction Operation to Rename a Resource
 
 use async_trait::async_trait;
-use lgn_data_offline::resource::ResourcePathName;
+use lgn_data_offline::ResourcePathName;
 use lgn_data_runtime::ResourceTypeAndId;
 
 use crate::{Error, LockContext, TransactionOperation};
@@ -29,11 +29,7 @@ impl ReparentResourceOperation {
 impl TransactionOperation for ReparentResourceOperation {
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
         // Extract the raw name and check if it's a relative name (with the /!(PARENT_GUID)/
-        let raw_name = ctx
-            .project
-            .raw_resource_name(self.resource_id)
-            .await
-            .map_err(|err| Error::Project(self.resource_id, err))?;
+        let raw_name = ctx.project.raw_resource_name(self.resource_id).await?;
 
         // Check if the parent is a resource or just a path
         let parent_id = ctx.project.find_resource(&self.new_path).await.ok();
@@ -54,10 +50,8 @@ impl TransactionOperation for ReparentResourceOperation {
         self.old_path = Some(
             ctx.project
                 .rename_resource(self.resource_id, &raw_path)
-                .await
-                .map_err(|err| Error::Project(self.resource_id, err))?,
+                .await?,
         );
-        ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
 
@@ -65,9 +59,7 @@ impl TransactionOperation for ReparentResourceOperation {
         if let Some(old_path) = &self.old_path {
             ctx.project
                 .rename_resource(self.resource_id, old_path)
-                .await
-                .map_err(|err| Error::Project(self.resource_id, err))?;
-            ctx.changed_resources.insert(self.resource_id);
+                .await?;
         }
         Ok(())
     }

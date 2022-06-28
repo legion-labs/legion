@@ -35,7 +35,9 @@ impl IndexBlock {
 
     pub fn release_index(&mut self, index: u32) {
         assert!(
-            index >= self.base_index && index < self.base_index + self.indexes.capacity() as u32
+            index >= self.base_index
+                && index < self.base_index + self.indexes.capacity() as u32
+                && !self.indexes.contains(&index)
         );
         self.indexes.push(index);
     }
@@ -54,18 +56,12 @@ impl IndexAllocator {
         }
     }
 
-    pub fn acquire_index(&mut self) -> u32 {
+    pub fn allocate(&mut self) -> u32 {
         let block = self.acquire_index_block_mut();
         block.acquire_index()
     }
 
-    pub fn release_indexes(&mut self, indexes: &[u32]) {
-        for index in indexes {
-            self.release_index(*index);
-        }
-    }
-
-    pub fn release_index(&mut self, index: u32) {
+    pub fn free(&mut self, index: u32) {
         let block_id = index / self.block_size;
         let block = &mut self.index_blocks[block_id as usize];
         block.release_index(index);

@@ -1,7 +1,10 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{member_meta_info::MemberMetaInfo, struct_meta_info::StructMetaInfo, GenerationType};
+use crate::{
+    attributes::NO_DEFAULT_TYPE_ATTR, member_meta_info::MemberMetaInfo,
+    struct_meta_info::StructMetaInfo, GenerationType,
+};
 
 /// Generate fields members definition
 fn generate_fields(members: &[MemberMetaInfo], gen_type: GenerationType) -> Vec<TokenStream> {
@@ -98,6 +101,7 @@ pub(crate) fn generate_reflection(
     gen_type: GenerationType,
 ) -> TokenStream {
     let type_identifier = &struct_meta_info.name;
+    let type_string = format!("{}", type_identifier);
     let fields = generate_fields(&struct_meta_info.members, gen_type);
     let fields_defaults = generate_defaults(&struct_meta_info.members, gen_type);
     let default_instance = format_ident!(
@@ -117,6 +121,34 @@ pub(crate) fn generate_reflection(
 
     let attribute_impl = struct_meta_info.attributes.generate_descriptor_impl();
 
+    let (default_impl, default_value) = if !struct_meta_info
+        .attributes
+        .values
+        .contains_key(NO_DEFAULT_TYPE_ATTR)
+    {
+        let default = quote! {
+            #[allow(clippy::derivable_impls)]
+            impl Default for #type_identifier {
+                fn default() -> Self {
+                    Self {
+                        #(#fields_defaults)*
+                    }
+                }
+            }
+            lazy_static::lazy_static! {
+                #[allow(clippy::needless_update)]
+                static ref #default_instance: #type_identifier = #type_identifier::default();
+            }
+        };
+        let default_value = quote! {};
+
+        (default, default_value)
+    } else {
+        let default = quote! {};
+        let default_value =
+            quote! { , Err(lgn_data_model::ReflectionError::UnsupportedDefault(#type_string))};
+        (default, default_value)
+    };
     quote! {
         #[derive(serde::Serialize, serde::Deserialize, PartialEq, Clone)]
         #dynamic_derive
@@ -127,20 +159,9 @@ pub(crate) fn generate_reflection(
         impl #type_identifier {
             #[allow(dead_code)]
             const SIGNATURE_HASH: u64 = #signature_hash;
-            #[allow(dead_code)]
-            pub fn get_default_instance() -> &'static Self {
-                &#default_instance
-            }
         }
 
-        #[allow(clippy::derivable_impls)]
-        impl Default for #type_identifier {
-            fn default() -> Self {
-                Self {
-                    #(#fields_defaults)*
-                }
-            }
-        }
+        #default_impl
 
         impl lgn_data_model::TypeReflection for #type_identifier {
 
@@ -151,11 +172,14 @@ pub(crate) fn generate_reflection(
             #[allow(unused_mut)]
             #[allow(clippy::let_and_return)]
             fn get_type_def() -> lgn_data_model::TypeDefinition {
-                lgn_data_model::implement_struct_descriptor!(#type_identifier,
+                lgn_data_model::implement_struct_descriptor!(
+                    #type_identifier,
                     #attribute_impl,
                     vec![
                     #(#fields_descriptors)*
-                ]);
+                    ]
+                    #default_value
+                );
                 lgn_data_model::TypeDefinition::Struct(&TYPE_DESCRIPTOR)
             }
             fn get_option_def() -> lgn_data_model::TypeDefinition {
@@ -168,9 +192,5 @@ pub(crate) fn generate_reflection(
             }
         }
 
-        lazy_static::lazy_static! {
-            #[allow(clippy::needless_update)]
-            static ref #default_instance: #type_identifier = #type_identifier::default();
-        }
     }
 }

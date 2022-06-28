@@ -4,11 +4,9 @@
 //#![allow()]
 
 mod asset_entities;
-mod asset_handles;
 mod config;
 mod errors;
 mod events;
-mod loading_states;
 
 use std::{path::Path, sync::Arc};
 
@@ -19,8 +17,7 @@ use lgn_content_store::{
     Config,
 };
 use lgn_data_runtime::{
-    new_resource_type_and_id_indexer, AssetRegistry, AssetRegistryEvent, AssetRegistryOptions,
-    AssetRegistryScheduling, ResourceLoadEvent,
+    new_resource_type_and_id_indexer, AssetRegistry, AssetRegistryOptions, AssetRegistryScheduling,
 };
 use lgn_ecs::prelude::*;
 use lgn_tracing::{error, info};
@@ -31,19 +28,14 @@ pub use crate::{
     errors::{Error, Result},
     events::AssetRegistryRequest,
 };
-use crate::{
-    asset_handles::AssetHandles,
-    loading_states::{AssetLoadingStates, LoadingState},
-};
 
 #[derive(Default)]
 pub struct AssetRegistryPlugin {}
 
 impl Plugin for AssetRegistryPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AssetLoadingStates>()
-            .init_resource::<AssetHandles>()
-            .init_resource::<AssetToEntityMap>()
+        //app.init_resource::<AssetLoadingStates>()
+        app.init_resource::<AssetToEntityMap>()
             .add_startup_system_to_stage(
                 StartupStage::PreStartup,
                 Self::pre_setup.exclusive_system(),
@@ -57,9 +49,7 @@ impl Plugin for AssetRegistryPlugin {
             .add_startup_system_to_stage(StartupStage::PostStartup, Self::preload_assets)
             .add_system(Self::update_registry)
             .add_system(Self::update_assets)
-            .add_system(Self::handle_load_events)
             .add_system(Self::handle_requests)
-            .add_event::<AssetRegistryEvent>()
             .add_event::<AssetRegistryRequest>();
     }
 }
@@ -122,25 +112,31 @@ impl AssetRegistryPlugin {
         let async_rt = world.resource::<TokioAsyncRuntime>();
         let registry = async_rt.block_on(async { registry_options.create().await });
 
-        let load_events = registry.subscribe_to_load_events();
-        world.insert_resource(load_events);
-
         world.insert_resource(registry);
     }
 
     // Request load for all assets specified in config.
     #[allow(clippy::needless_pass_by_value)]
     fn preload_assets(
-        config: ResMut<'_, AssetRegistrySettings>,
-        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
-        mut asset_handles: ResMut<'_, AssetHandles>,
-        registry: Res<'_, Arc<AssetRegistry>>,
+        _config: ResMut<'_, AssetRegistrySettings>,
+        _tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
+        //mut _asset_loading_states: ResMut<'_, AssetLoadingStates>,
+        _asset_registry: Res<'_, Arc<AssetRegistry>>,
         mut commands: Commands<'_, '_>,
     ) {
-        for asset_id in config.assets_to_load.iter().copied() {
+        /*for resource_id in config.assets_to_load.iter().copied() {
+            let asset_registry = asset_registry.clone();
+            tokio_runtime.start_detached(async move {
+                if let Err(err) = asset_registry.load_async_untyped(resource_id).await {
+                    lgn_tracing::error!("Load failed: {}", err);
+                }
+            });
+        }*/
+
+        /*for asset_id in &config.assets_to_load {
             asset_loading_states.insert(asset_id, LoadingState::Pending);
             asset_handles.insert(asset_id, registry.load_untyped(asset_id));
-        }
+        }*/
 
         // Can clean up AssetRegistrySettings, no longer needed
         commands.remove_resource::<AssetRegistrySettings>();
@@ -152,13 +148,12 @@ impl AssetRegistryPlugin {
     }
 
     #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
-    fn update_assets(
-        registry: Res<'_, Arc<AssetRegistry>>,
-        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
-        asset_handles: ResMut<'_, AssetHandles>,
-        mut event_writer: EventWriter<'_, '_, AssetRegistryEvent>,
+    fn update_assets(//registry: Res<'_, Arc<AssetRegistry>>,
+        //mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
+        //asset_handles: ResMut<'_, AssetHandles>,
+        //mut event_writer: EventWriter<'_, '_, AssetRegistryEvent>,
     ) {
-        for (asset_id, loading_state) in asset_loading_states.iter_mut() {
+        /*for (asset_id, loading_state) in asset_loading_states.iter_mut() {
             match loading_state {
                 LoadingState::Pending => {
                     let handle = asset_handles.get(*asset_id).unwrap();
@@ -175,13 +170,13 @@ impl AssetRegistryPlugin {
         }
 
         drop(registry);
-        drop(asset_handles);
+        drop(asset_handles);*/
     }
 
+    /*
     fn handle_load_events(
-        mut load_events_rx: ResMut<'_, tokio::sync::mpsc::UnboundedReceiver<ResourceLoadEvent>>,
-        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
-        mut asset_handles: ResMut<'_, AssetHandles>,
+        mut _load_events_rx: ResMut<'_, tokio::sync::mpsc::UnboundedReceiver<ResourceLoadEvent>>,
+        //mut _asset_loading_states: ResMut<'_, AssetLoadingStates>,
     ) {
         while let Ok(event) = load_events_rx.try_recv() {
             match event {
@@ -215,15 +210,14 @@ impl AssetRegistryPlugin {
                 }
             }
         }
-
-        drop(load_events_rx);
-    }
+        //drop(load_events_rx);
+    }*/
 
     fn handle_requests(
         mut events: EventReader<'_, '_, AssetRegistryRequest>,
         registry: Res<'_, Arc<AssetRegistry>>,
-        mut asset_loading_states: ResMut<'_, AssetLoadingStates>,
-        mut asset_handles: ResMut<'_, AssetHandles>,
+        //mut _asset_loading_states: ResMut<'_, AssetLoadingStates>,
+        //mut _asset_handles: ResMut<'_, AssetHandles>,
         manifest_id: Res<'_, SharedTreeIdentifier>,
     ) {
         for event in events.iter() {
@@ -232,10 +226,10 @@ impl AssetRegistryPlugin {
                     info!("received request to load manifest \"{}\"", new_manifest_id);
                     manifest_id.write(new_manifest_id.clone());
                 }
-                AssetRegistryRequest::LoadAsset(asset_id) => {
-                    info!("received request to load asset \"{}\"", asset_id);
-                    asset_loading_states.insert(*asset_id, LoadingState::Pending);
-                    asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
+                AssetRegistryRequest::LoadAsset(_asset_id) => {
+                    //info!("received request to load asset \"{}\"", asset_id);
+                    //asset_loading_states.insert(*asset_id, LoadingState::Pending);
+                    //asset_handles.insert(*asset_id, registry.load_untyped(*asset_id));
                 }
             }
         }

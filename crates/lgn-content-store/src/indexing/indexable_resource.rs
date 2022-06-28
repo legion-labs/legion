@@ -28,7 +28,7 @@ impl FromStr for ResourceIdentifier {
 }
 
 impl ResourceIdentifier {
-    pub(crate) fn as_identifier(&self) -> &Identifier {
+    pub fn as_identifier(&self) -> &Identifier {
         &self.0
     }
 }
