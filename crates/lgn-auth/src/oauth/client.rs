@@ -474,7 +474,7 @@ impl Authenticator for OAuthClient {
         if let Some(refresh_token) = client_token_set.refresh_token {
             let token_response = self
                 .client
-                .exchange_refresh_token(&RefreshToken::new(refresh_token))
+                .exchange_refresh_token(&RefreshToken::new(refresh_token.clone()))
                 .request_async(async_http_client)
                 .await
                 .map_err(|error| Error::Internal(format!("couldn't get token set: {}", error)))?;
@@ -483,8 +483,14 @@ impl Authenticator for OAuthClient {
 
             let mut client_token_set: ClientTokenSet = token_response.try_into()?;
 
-            if let Some(ref scopes) = scopes {
-                client_token_set.set_scopes(scopes);
+            if let Some(scopes) = scopes {
+                client_token_set.scopes = Some(scopes);
+            }
+
+            // Make sure we keep the refresh token if the reply doesn't contain
+            // one, which it apparently does not when using a refresh token.
+            if client_token_set.refresh_token.is_none() {
+                client_token_set.refresh_token = Some(refresh_token);
             }
 
             Ok(client_token_set)

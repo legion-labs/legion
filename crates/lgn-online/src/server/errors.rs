@@ -29,6 +29,20 @@ impl Error {
         }
     }
 
+    pub fn not_found(msg: impl Into<String>) -> Self {
+        Error {
+            status_code: StatusCode::NOT_FOUND,
+            msg: msg.into(),
+        }
+    }
+
+    pub fn conflict(msg: impl Into<String>) -> Self {
+        Error {
+            status_code: StatusCode::CONFLICT,
+            msg: msg.into(),
+        }
+    }
+
     pub fn unauthorized(msg: impl Into<String>) -> Self {
         Error {
             status_code: StatusCode::UNAUTHORIZED,

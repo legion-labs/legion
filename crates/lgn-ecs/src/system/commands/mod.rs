@@ -1,8 +1,8 @@
 mod command_queue;
+mod parallel_scope;
 
-use std::{any, marker::PhantomData};
+use std::marker::PhantomData;
 
-pub use command_queue::CommandQueue;
 use lgn_tracing::{error, warn};
 
 use super::Resource;
@@ -12,6 +12,9 @@ use crate::{
     entity::{Entities, Entity},
     world::{FromWorld, World},
 };
+
+pub use command_queue::CommandQueue;
+pub use parallel_scope::*;
 
 /// A [`World`] mutation.
 pub trait Command: Send + Sync + 'static {
@@ -56,8 +59,12 @@ impl<'w, 's> Commands<'w, 's> {
         }
     }
 
-    /// Creates a new empty [`Entity`] and returns an [`EntityCommands`] builder
-    /// for it.
+    /// Create a new `Commands` from a queue and an [`Entities`] reference.
+    pub fn new_from_entities(queue: &'s mut CommandQueue, entities: &'w Entities) -> Self {
+        Self { queue, entities }
+    }
+
+    /// Creates a new empty [`Entity`] and returns an [`EntityCommands`] builder for it.
     ///
     /// To directly spawn an entity with a [`Bundle`] included, you can use
     /// [`spawn_bundle`](Self::spawn_bundle) instead of
@@ -300,10 +307,10 @@ impl<'w, 's> Commands<'w, 's> {
     /// #     high_score: u32,
     /// # }
     /// #
-    /// # fn system(mut commands: Commands) {
+    /// # fn initialise_scoreboard(mut commands: Commands) {
     /// commands.init_resource::<Scoreboard>();
     /// # }
-    /// # lgn_ecs::system::assert_is_system(system);
+    /// # lgn_ecs::system::assert_is_system(initialise_scoreboard);
     /// ```
     pub fn init_resource<R: Resource + FromWorld>(&mut self) {
         self.queue.push(InitResource::<R> {
@@ -743,9 +750,7 @@ where
 {
     fn write(self, world: &mut World) {
         if let Some(mut entity_mut) = world.get_entity_mut(self.entity) {
-            if entity_mut.remove::<T>().is_none() {
-                warn!("{} couldn't be removed from world, this might cause some tasks to be unnecessarily spawned", any::type_name::<T>());
-            }
+            entity_mut.remove::<T>();
         }
     }
 }

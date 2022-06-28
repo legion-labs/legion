@@ -1,6 +1,8 @@
-use std::{any::TypeId, fmt::Debug, hash::Hash};
-
-use thiserror::Error;
+use std::{
+    any::TypeId,
+    fmt::{self, Debug},
+    hash::Hash,
+};
 
 use crate::{
     schedule::{
@@ -292,15 +294,15 @@ where
         Ok(())
     }
 
-    /// Schedule a state change that replaces the full stack with the given
-    /// state. This will fail if there is a scheduled operation, or if the
-    /// given `state` matches the current state
+    /// Schedule a state change that replaces the full stack with the given state.
+    /// This will fail if there is a scheduled operation, pending transition, or if the given
+    /// `state` matches the current state
     pub fn replace(&mut self, state: T) -> Result<(), StateError> {
         if self.stack.last().unwrap() == &state {
             return Err(StateError::AlreadyInState);
         }
 
-        if self.scheduled.is_some() {
+        if self.scheduled.is_some() || self.transition.is_some() {
             return Err(StateError::StateAlreadyQueued);
         }
 
@@ -326,7 +328,7 @@ where
             return Err(StateError::AlreadyInState);
         }
 
-        if self.scheduled.is_some() {
+        if self.scheduled.is_some() || self.transition.is_some() {
             return Err(StateError::StateAlreadyQueued);
         }
 
@@ -348,7 +350,7 @@ where
     /// Same as [`Self::set`], but does a pop operation instead of a set
     /// operation
     pub fn pop(&mut self) -> Result<(), StateError> {
-        if self.scheduled.is_some() {
+        if self.scheduled.is_some() || self.transition.is_some() {
             return Err(StateError::StateAlreadyQueued);
         }
 
@@ -371,9 +373,9 @@ where
     }
 
     /// Schedule a state change that restarts the active state.
-    /// This will fail if there is a scheduled operation
+    /// This will fail if there is a scheduled operation or a pending transition
     pub fn restart(&mut self) -> Result<(), StateError> {
-        if self.scheduled.is_some() {
+        if self.scheduled.is_some() || self.transition.is_some() {
             return Err(StateError::StateAlreadyQueued);
         }
 
@@ -403,14 +405,30 @@ where
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum StateError {
-    #[error("Attempted to change the state to the current state.")]
     AlreadyInState,
-    #[error("Attempted to queue a state change, but there was already a state queued.")]
     StateAlreadyQueued,
-    #[error("Attempted to queue a pop, but there is nothing to pop.")]
     StackEmpty,
+}
+
+impl std::error::Error for StateError {}
+
+impl fmt::Display for StateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StateError::AlreadyInState => {
+                write!(f, "Attempted to change the state to the current state.")
+            }
+            StateError::StateAlreadyQueued => write!(
+                f,
+                "Attempted to queue a state change, but there was already a state queued."
+            ),
+            StateError::StackEmpty => {
+                write!(f, "Attempted to queue a pop, but there is nothing to pop.")
+            }
+        }
+    }
 }
 
 fn should_run_adapter<T: StateData>(

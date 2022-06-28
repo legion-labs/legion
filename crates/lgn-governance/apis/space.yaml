@@ -18,10 +18,13 @@ paths:
     post:
       description: Create a new space.
       operationId: createSpace
-      body:
+      requestBody:
         description: The space to create.
-        schema:
-          $ref: "#/components/schemas/NewSpace"
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewSpace"
       responses:
         "201":
           description: The space was created.
@@ -38,13 +41,32 @@ paths:
   /v1/spaces/{space-id}/:
     parameters:
       - $ref: "#/components/parameters/space_id"
+    get:
+      description: Get the specified space.
+      operationId: getSpace
+      responses:
+        "200":
+          description: The space was found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Space"
+        "404":
+          description: The space was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceId"
     put:
       description: Update the specified space.
       operationId: updateSpace
-      body:
-        description: The space to update.
-        schema:
-          $ref: "#/components/schemas/UpdateSpace"
+      requestBody:
+        description: The space to create.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpaceUpdate"
       responses:
         "200":
           description: The space was updated.
@@ -54,16 +76,32 @@ paths:
                 $ref: "#/components/schemas/Space"
         "404":
           description: The space was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceId"
     delete:
       description: Delete the specified space.
       operationId: deleteSpace
       responses:
-        "204":
+        "200":
           description: The space was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Space"
         "404":
           description: The space was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceId"
         "409":
           description: The space is being used and cannot be deleted at this time.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Space"
   /v1/spaces/{space-id}/cordon/:
     parameters:
       - $ref: "#/components/parameters/space_id"
@@ -79,6 +117,10 @@ paths:
                 $ref: "#/components/schemas/Space"
         "404":
           description: The space was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceId"
   /v1/spaces/{space-id}/uncordon/:
     parameters:
       - $ref: "#/components/parameters/space_id"
@@ -94,6 +136,10 @@ paths:
                 $ref: "#/components/schemas/Space"
         "404":
           description: The space was not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpaceId"
 components:
   parameters:
     space_id:
@@ -142,11 +188,9 @@ components:
       required:
         - id
         - description
-    UpdateSpace:
+    SpaceUpdate:
       type: object
       description: The new space values.
       properties:
         description:
           type: string
-      required:
-        - description

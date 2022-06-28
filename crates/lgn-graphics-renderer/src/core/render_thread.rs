@@ -1,7 +1,7 @@
 #![allow(unused)]
 
 use crossbeam_channel::{bounded, Receiver, Sender};
-use lgn_tasks::{ComputeTaskPool, Scope, TaskPoolBuilder};
+use lgn_tasks::{Scope, TaskPool, TaskPoolBuilder};
 use lgn_tracing::{async_span_scope, span_fn, span_scope};
 
 pub enum RenderThreadCommand {
@@ -14,7 +14,7 @@ pub enum RenderThreadResult {
 }
 
 struct RenderThreadContext {
-    render_task_pool: ComputeTaskPool,
+    render_task_pool: TaskPool,
     command_receiver: Receiver<RenderThreadCommand>,
     result_sender: Sender<RenderThreadResult>,
 }
@@ -25,13 +25,11 @@ impl RenderThreadContext {
         result_sender: Sender<RenderThreadResult>,
     ) -> Self {
         Self {
-            render_task_pool: ComputeTaskPool(
-                TaskPoolBuilder::default()
-                    // TODO: #1461 use a real thread count
-                    .num_threads(6)
-                    .thread_name("Render Task Pool".to_string())
-                    .build(),
-            ),
+            render_task_pool: TaskPoolBuilder::default()
+                // TODO: #1461 use a real thread count
+                .num_threads(6)
+                .thread_name("Render Task Pool".to_string())
+                .build(),
             command_receiver,
             result_sender,
         }

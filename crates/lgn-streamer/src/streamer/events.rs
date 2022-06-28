@@ -126,8 +126,8 @@ pub struct GamepadConnection {
 
 impl From<&GamepadConnection> for GamepadEventRaw {
     fn from(gamepad_connection: &GamepadConnection) -> Self {
-        Self(
-            Gamepad(gamepad_connection.pad_id),
+        Self::new(
+            Gamepad::new(gamepad_connection.pad_id),
             GamepadEventType::Connected,
         )
     }
@@ -141,8 +141,8 @@ pub struct GamepadDisconnection {
 
 impl From<&GamepadDisconnection> for GamepadEventRaw {
     fn from(gamepad_disconnection: &GamepadDisconnection) -> Self {
-        Self(
-            Gamepad(gamepad_disconnection.pad_id),
+        Self::new(
+            Gamepad::new(gamepad_disconnection.pad_id),
             GamepadEventType::Disconnected,
         )
     }
@@ -158,8 +158,8 @@ pub struct GamepadButtonChange {
 
 impl From<&GamepadButtonChange> for GamepadEventRaw {
     fn from(gamepad_button_change: &GamepadButtonChange) -> Self {
-        Self(
-            Gamepad(gamepad_button_change.pad_id),
+        Self::new(
+            Gamepad::new(gamepad_button_change.pad_id),
             GamepadEventType::ButtonChanged(
                 gamepad_button_change.button,
                 gamepad_button_change.value,
@@ -178,8 +178,8 @@ pub struct GamepadAxisChange {
 
 impl From<&GamepadAxisChange> for GamepadEventRaw {
     fn from(gamepad_axis_change: &GamepadAxisChange) -> Self {
-        Self(
-            Gamepad(gamepad_axis_change.pad_id),
+        Self::new(
+            Gamepad::new(gamepad_axis_change.pad_id),
             GamepadEventType::AxisChanged(gamepad_axis_change.axis, gamepad_axis_change.value),
         )
     }
