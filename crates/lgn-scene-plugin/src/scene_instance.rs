@@ -1,16 +1,9 @@
-use std::collections::HashMap;
 use crate::ResourceMetaInfo;
-use lgn_animation::components::{AnimationClip, GraphDefinition};
-use lgn_asset_registry::AssetToEntityMap;
-use lgn_core::Name;
 use lgn_data_runtime::{AssetRegistry, Handle, ResourceDescriptor, ResourceTypeAndId};
-use lgn_ecs::prelude::{Commands, Query};
-use lgn_graphics_data::runtime::ModelReferenceType;
-use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};
-use lgn_hierarchy::prelude::{BuildChildren, Children, Parent};
-use lgn_tracing::{error, info, warn};
-use lgn_transform::components::{GlobalTransform, Transform};
-use sample_data::runtime as runtime_data;
+use lgn_ecs::prelude::Commands;
+use lgn_hierarchy::prelude::{BuildChildren, Parent};
+use lgn_tracing::warn;
+use std::collections::HashMap;
 
 pub struct SceneInstance {
     root_resource: ResourceTypeAndId,

@@ -29,10 +29,7 @@ use lgn_graphics_data::{
 use lgn_math::prelude::{Quat, Vec3};
 use lgn_source_control::{BranchName, RepositoryName};
 use lgn_tracing::{info, LevelFilter};
-use sample_data::{
-    offline::{Light, Transform, Visual},
-    LightType,
-};
+use sample_data::offline::Transform;
 use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
