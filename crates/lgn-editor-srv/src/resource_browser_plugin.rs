@@ -6,6 +6,8 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::{str::FromStr, sync::Arc};
 
+use async_trait::async_trait;
+use axum::Router;
 use lgn_app::prelude::*;
 use lgn_async::TokioAsyncRuntime;
 use lgn_data_model::json_utils::get_property_as_json_string;
@@ -19,31 +21,31 @@ use lgn_data_transaction::{
     TransactionManager, UpdatePropertyOperation,
 };
 use lgn_ecs::prelude::*;
-use lgn_editor_proto::{
-    property_inspector::UpdateResourcePropertiesRequest,
+
+use editor_srv::resource_browser::server::{
+    self, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
+    CreateResourceRequest, CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
+    GetActiveScenesRequest, GetActiveScenesResponse, GetResourceTypeNamesRequest,
+    GetResourceTypeNamesResponse, GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse,
+    ListAssetsRequest, ListAssetsResponse, OpenSceneRequest, OpenSceneResponse,
+    RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
+    ReparentResourceResponse, SearchResourcesRequest, SearchResourcesResponse,
+};
+use lgn_online::server::{Error, Result};
+
+use editor_srv::{
+    common::ResourceDescription,
     resource_browser::{
-        Asset, CloneResourceRequest, CloneResourceResponse, CloseSceneRequest, CloseSceneResponse,
-        DeleteResourceRequest, DeleteResourceResponse, GetActiveScenesRequest,
-        GetActiveScenesResponse, GetResourceTypeNamesRequest, GetResourceTypeNamesResponse,
-        GetRuntimeSceneInfoRequest, GetRuntimeSceneInfoResponse, ImportResourceRequest,
-        ImportResourceResponse, ListAssetsRequest, ListAssetsResponse, OpenSceneRequest,
-        OpenSceneResponse, RenameResourceRequest, RenameResourceResponse, ReparentResourceRequest,
-        ReparentResourceResponse, SearchResourcesRequest,
+        Api, Asset, CloneResource200Response, CreateResource200Response,
+        GetActiveScenes200Response, GetResourceTypeNames200Response,
+        GetRuntimeSceneInfo200Response, ListAssets200Response, NextSearchToken,
     },
 };
-//use lgn_graphics_data::offline::GltfFile;
 use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_scene_plugin::SceneMessage;
 use lgn_tracing::{error, info, span_scope, warn};
 use serde_json::json;
 use tokio::sync::Mutex;
-use tonic::{codegen::http::status, Request, Response, Status};
-
-pub(crate) struct ResourceBrowserRPC {
-    pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
-    pub(crate) uploads_folder: PathBuf,
-    pub(crate) scene_events_tx: crossbeam_channel::Sender<SceneMessage>,
-}
 
 pub(crate) struct ResourceBrowserSettings {
     default_scene: String,
@@ -60,10 +62,10 @@ pub(crate) struct ResourceBrowserPlugin {
     active_scenes: HashSet<ResourceTypeAndId>,
 }
 
-fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Status> {
+fn parse_resource_id(value: &str) -> Result<ResourceTypeAndId, Error> {
     value
         .parse::<ResourceTypeAndId>()
-        .map_err(|_err| Status::internal(format!("Invalid ResourceID format: {}", value)))
+        .map_err(|_err| Error::bad_request(format!("Invalid ResourceID format: {}", value)))
 }
 
 #[derive(Debug)]
@@ -119,11 +121,6 @@ impl IndexSnapshot {
     }
 }
 
-use lgn_editor_proto::resource_browser::{
-    resource_browser_server::{ResourceBrowser, ResourceBrowserServer},
-    CreateResourceRequest, CreateResourceResponse, ResourceDescription, SearchResourcesResponse,
-};
-
 impl Plugin for ResourceBrowserPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system_to_stage(
@@ -131,14 +128,14 @@ impl Plugin for ResourceBrowserPlugin {
             Self::post_setup
                 .exclusive_system()
                 .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(lgn_grpc::GRPCPluginScheduling::StartRpcServer)
+                .before(lgn_api::ApiPluginScheduling::StartServer)
         );
         app.add_system(Self::handle_events);
         app.add_startup_system_to_stage(
             StartupStage::PostStartup,
             Self::load_default_scene
                 .exclusive_system()
-                .after(lgn_grpc::GRPCPluginScheduling::StartRpcServer),
+                .after(lgn_api::ApiPluginScheduling::StartServer),
         );
     }
 }
@@ -151,25 +148,30 @@ pub enum SelectionOperation {
     Remove = 2,
 }
 
-impl ResourceBrowserPlugin {
-    #[allow(clippy::needless_pass_by_value)]
-    fn post_setup(world: &mut World) {
+impl Server {
+    pub fn new(world: &mut World) -> Self {
         let (scene_events_tx, scene_events_rx) = crossbeam_channel::unbounded::<SceneMessage>();
         world.insert_resource(scene_events_rx);
 
         let transaction_manager = world.resource::<Arc<Mutex<TransactionManager>>>();
         let settings = world.resource::<ResourceRegistrySettings>();
 
-        let resource_browser_service = ResourceBrowserServer::new(ResourceBrowserRPC {
+        Self {
             transaction_manager: transaction_manager.clone(),
             uploads_folder: settings.root_folder().join("uploads"),
             scene_events_tx,
-        });
-
-        {
-            let mut grpc_settings = world.resource_mut::<lgn_grpc::GRPCPluginSettings>();
-            grpc_settings.register_service(resource_browser_service);
         }
+    }
+}
+
+impl ResourceBrowserPlugin {
+    fn post_setup(world: &mut World) {
+        let server = Arc::new(Server::new(world));
+
+        world
+            .resource_mut::<lgn_api::SharedRouter>()
+            .into_inner()
+            .register_routes(server::register_routes, server);
     }
 
     #[allow(clippy::needless_pass_by_value)]
@@ -324,26 +326,31 @@ fn update_entity_parenting(
 }
 
 // Works for both .gltf and .glb (doesn't support external references anymore)
-fn create_gltf_resource(_gltf_path: &Path) -> Result<PathBuf, Status> {
+fn create_gltf_resource(_gltf_path: &Path) -> Result<PathBuf> {
     panic!("unimplemented");
-    /*let raw_data = std::fs::read(gltf_path)?;
+    /*let raw_data = std::fs::read(gltf_path).map_err(|err| Error::internal(err.to_string()))?;
     let gltf_file = GltfFile::from_bytes(raw_data);
     let path = gltf_path.with_extension("temp");
-    let mut file = std::fs::File::create(&path).map_err(|err| Status::internal(err.to_string()))?;
+    let mut file = std::fs::File::create(&path).map_err(|err| Error::internal(err.to_string()))?;
     gltf_file
         .write(&mut file)
-        .map_err(|err| Status::internal(err.to_string()))?;
+        .map_err(|err| Error::internal(err.to_string()))?;
     Ok(path)*/
 }
 
-#[tonic::async_trait]
-impl ResourceBrowser for ResourceBrowserRPC {
+pub(crate) struct Server {
+    pub(crate) transaction_manager: Arc<Mutex<TransactionManager>>,
+    pub(crate) uploads_folder: PathBuf,
+    pub(crate) scene_events_tx: crossbeam_channel::Sender<SceneMessage>,
+}
+
+#[async_trait]
+impl Api for Server {
     /// Search for all resources
     async fn search_resources(
         &self,
-        request: Request<SearchResourcesRequest>,
-    ) -> Result<Response<SearchResourcesResponse>, Status> {
-        let request = request.get_ref();
+        request: SearchResourcesRequest,
+    ) -> Result<SearchResourcesResponse> {
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
         let resources = ctx.project.resource_list().await;
@@ -357,14 +364,14 @@ impl ResourceBrowser for ResourceBrowserRPC {
                 .to_string();
 
             // Basic Filter
-            if !request.search_token.is_empty() && !path.contains(&request.search_token) {
+            if !request.token.0.is_empty() && !path.contains(&request.token.0) {
                 continue;
             }
 
             descriptors.push(ResourceDescription {
-                id: ResourceTypeAndId::to_string(&resource_id),
+                id: editor_srv::common::ResourceId(ResourceTypeAndId::to_string(&resource_id)),
                 path,
-                r#type: resource_id
+                type_: resource_id
                     .kind
                     .as_pretty()
                     .trim_start_matches("offline_")
@@ -373,21 +380,21 @@ impl ResourceBrowser for ResourceBrowserRPC {
             });
         }
 
-        Ok(Response::new(SearchResourcesResponse {
+        let next_search_token = NextSearchToken {
             next_search_token: "".to_string(),
-            total: descriptors.len() as u64,
+            total: u64::try_from(descriptors.len()).unwrap(),
             resource_descriptions: descriptors,
-        }))
+        };
+
+        Ok(SearchResourcesResponse::Status200(next_search_token))
     }
 
     /// Create a new resource
     async fn create_resource(
         &self,
-        request: Request<CreateResourceRequest>,
-    ) -> Result<Response<CreateResourceResponse>, Status> {
-        let request = request.into_inner();
-
-        let resource_type = request.resource_type.as_str();
+        request: CreateResourceRequest,
+    ) -> Result<CreateResourceResponse> {
+        let resource_type = request.body.resource_type.as_str();
 
         let new_resource_id = ResourceTypeAndId {
             kind: ResourceType::new(
@@ -401,14 +408,15 @@ impl ResourceBrowser for ResourceBrowserRPC {
             id: ResourceId::new(),
         };
 
-        let name = request.resource_name.as_ref().map_or(
-            request.resource_type.trim_start_matches("offline_"),
+        let name = request.body.resource_name.as_ref().map_or(
+            request.body.resource_type.trim_start_matches("offline_"),
             String::as_str,
         );
 
         let mut parent_id: Option<ResourceTypeAndId> = None;
-        let mut resource_path = if let Some(parent_id_str) = &request.parent_resource_id {
-            parent_id = Some(parse_resource_id(parent_id_str)?);
+        let mut resource_path = if let Some(parent_id_str) = &request.body.parent_resource_id {
+            parent_id = Some(parse_resource_id(&parent_id_str.0)?);
+
             let mut res_name = ResourcePathName::new(format!("!{}", parent_id.unwrap()));
             res_name.push(name);
             res_name
@@ -417,6 +425,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         };
 
         let mut content_path = request
+            .body
             .upload_id
             .as_ref()
             .map(|upload_id| self.uploads_folder.join(upload_id).join(name));
@@ -424,7 +433,10 @@ impl ResourceBrowser for ResourceBrowserRPC {
         match resource_type {
             "gltf" | "glb" => {
                 if let Some(tmp_content_path) = content_path {
-                    content_path = Some(create_gltf_resource(&tmp_content_path)?);
+                    content_path =
+                        Some(create_gltf_resource(&tmp_content_path).map_err(|err| {
+                            Error::internal(format!("failed to create gltf resource: {}", err))
+                        })?);
                 }
             }
             _ => (),
@@ -444,7 +456,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         }
 
         // Add Init Values
-        for init_value in request.init_values {
+        for init_value in request.body.init_values {
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 new_resource_id,
                 &[(init_value.property_path, init_value.json_value)],
@@ -455,58 +467,44 @@ impl ResourceBrowser for ResourceBrowserRPC {
         transaction_manager
             .commit_transaction(transaction)
             .await
-            .map_err(|err| {
-                error!(
-                    "Failed to create new resource type '{}': {}",
-                    resource_type, err
-                );
-                Status::internal(err.to_string())
-            })?;
+            .map_err(|err| Error::internal(format!("failed to commit transaction: {}", err)))?;
 
         // Remove uploads folder after successful upload
-        if let Some(upload_id) = &request.upload_id {
-            if let Err(err) = std::fs::remove_dir_all(self.uploads_folder.join(upload_id)) {
-                error!(
-                    "Failed to clean-up folder for upload_id '{}': {}",
-                    upload_id, err
-                );
-            }
+        if let Some(upload_id) = &request.body.upload_id {
+            std::fs::remove_dir_all(self.uploads_folder.join(upload_id))
+                .map_err(|err| Error::internal(format!("failed to remove dir: {}", err)))?;
         }
 
-        Ok(Response::new(CreateResourceResponse {
-            new_id: new_resource_id.to_string(),
-        }))
+        Ok(CreateResourceResponse::Status200(
+            CreateResource200Response {
+                new_id: editor_srv::common::ResourceId(new_resource_id.to_string()),
+            },
+        ))
     }
 
     /// Get the list of all the resources types available (for creation dialog)
     async fn get_resource_type_names(
         &self,
-        _request: Request<GetResourceTypeNamesRequest>,
-    ) -> Result<Response<GetResourceTypeNamesResponse>, Status> {
+        _request: GetResourceTypeNamesRequest,
+    ) -> Result<GetResourceTypeNamesResponse> {
         let res_types = ResourceType::get_resource_types();
-        Ok(Response::new(GetResourceTypeNamesResponse {
-            resource_types: res_types
-                .into_iter()
-                .map(|(_k, v)| String::from(v))
-                .collect(),
-        }))
-    }
 
-    /// Import a new resource from an existing local file
-    async fn import_resource(
-        &self,
-        _request: Request<ImportResourceRequest>,
-    ) -> Result<Response<ImportResourceResponse>, Status> {
-        Err(Status::internal(""))
+        Ok(GetResourceTypeNamesResponse::Status200(
+            GetResourceTypeNames200Response {
+                resource_types: res_types
+                    .into_iter()
+                    .map(|(_k, v)| String::from(v))
+                    .collect(),
+            },
+        ))
     }
 
     /// Delete a Resource
     async fn delete_resource(
         &self,
-        request: Request<DeleteResourceRequest>,
-    ) -> Result<Response<DeleteResourceResponse>, Status> {
-        let request = request.get_ref();
-        let resource_id = parse_resource_id(request.id.as_str())?;
+        request: DeleteResourceRequest,
+    ) -> Result<DeleteResourceResponse> {
+        let resource_id = parse_resource_id(request.body.id.as_str())?;
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
@@ -558,40 +556,68 @@ impl ResourceBrowser for ResourceBrowserRPC {
         transaction_manager
             .commit_transaction(transaction)
             .await
-            .map_err(|err| Status::internal(err.to_string()))?;
+            .map_err(|err| Error::internal(format!("delete transaction failed: {}", err)))?;
 
-        Ok(Response::new(DeleteResourceResponse {}))
+        Ok(DeleteResourceResponse::Status204)
     }
 
     /// Rename a Resource
     async fn rename_resource(
         &self,
-        request: Request<RenameResourceRequest>,
-    ) -> Result<Response<RenameResourceResponse>, Status> {
-        let request = request.get_ref();
-        let resource_id = parse_resource_id(request.id.as_str())?;
+        request: RenameResourceRequest,
+    ) -> Result<RenameResourceResponse> {
+        let resource_id = parse_resource_id(request.body.id.as_str())?;
+
         let mut transaction = Transaction::new().add_operation(RenameResourceOperation::new(
             resource_id,
-            ResourcePathName::new(request.new_path.as_str()),
+            ResourcePathName::new(request.body.new_path.as_str()),
         ));
         {
             let mut transaction_manager = self.transaction_manager.lock().await;
             transaction_manager
                 .commit_transaction(transaction)
                 .await
-                .map_err(|err| Status::internal(err.to_string()))?;
+                .map_err(|err| Error::internal(format!("rename transaction failed: {}", err)))?;
         }
 
-        Ok(Response::new(RenameResourceResponse {}))
+        Ok(RenameResourceResponse::Status204)
+    }
+
+    async fn list_assets(&self, request: ListAssetsRequest) -> Result<ListAssetsResponse> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let ctx = LockContext::new(&transaction_manager).await;
+        let mut asset_types = Vec::new();
+        for asset_type in &request.asset_types {
+            asset_types.push(
+                ResourceType::from_str(asset_type.0.as_str())
+                    .map_err(|err| Error::internal(format!("list assets failed: {}", err)))?,
+            );
+        }
+        let resources = ctx.project.resource_list().await;
+        let mut assets = Vec::new();
+        for resource_id in resources {
+            if asset_types.contains(&resource_id.kind) {
+                let path: String = ctx
+                    .project
+                    .resource_name(resource_id)
+                    .await
+                    .unwrap_or_else(|_err| "".into())
+                    .to_string();
+                assets.push(Asset {
+                    id: ResourceTypeAndId::to_string(&resource_id),
+                    asset_name: path,
+                });
+            }
+        }
+
+        Ok(ListAssetsResponse::Status200(ListAssets200Response {
+            assets,
+        }))
     }
 
     /// Clone a Resource
-    async fn clone_resource(
-        &self,
-        request: Request<CloneResourceRequest>,
-    ) -> Result<Response<CloneResourceResponse>, Status> {
-        let request = request.into_inner();
-        let source_resource_id = parse_resource_id(request.source_id.as_str())?;
+    async fn clone_resource(&self, request: CloneResourceRequest) -> Result<CloneResourceResponse> {
+        let source_resource_id = parse_resource_id(request.body.source_id.as_str())?;
 
         // Build Entity->Parent mapping table. TODO: This should be cached within a index somewhere at one point
         let index_snapshot = {
@@ -602,8 +628,8 @@ impl ResourceBrowser for ResourceBrowserRPC {
 
         // Are we cloning into another target
         let target_parent_id: Option<ResourceTypeAndId> =
-            if let Some(target) = &request.target_parent_id {
-                Some(parse_resource_id(target.as_str())?)
+            if let Some(target) = &request.body.target_parent_id {
+                Some(parse_resource_id(target)?)
             } else {
                 None
             };
@@ -668,7 +694,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let clone_id = clone_mapping.get(&source_resource_id).unwrap();
 
         // Add Init Values
-        for init_value in request.init_values {
+        for init_value in request.body.init_values {
             transaction = transaction.add_operation(UpdatePropertyOperation::new(
                 *clone_id,
                 &[(init_value.property_path, init_value.json_value)],
@@ -680,40 +706,40 @@ impl ResourceBrowser for ResourceBrowserRPC {
             transaction_manager
                 .commit_transaction(transaction)
                 .await
-                .map_err(|err| Status::internal(err.to_string()))?;
+                .map_err(|err| Error::internal(format!("clone transaction failed: {}", err)))?;
 
             let guard = LockContext::new(&transaction_manager).await;
             guard
                 .project
                 .resource_name(*clone_id)
                 .await
-                .map_err(|err| Status::internal(err.to_string()))?
+                .map_err(|err| Error::internal(format!("clone transaction failed: {}", err)))?
                 .as_str()
                 .to_string()
         };
 
-        Ok(Response::new(CloneResourceResponse {
-            new_resource: Some(ResourceDescription {
-                id: clone_id.to_string(),
+        Ok(CloneResourceResponse::Status200(CloneResource200Response {
+            new_resource: ResourceDescription {
+                id: editor_srv::common::ResourceId(clone_id.to_string()),
                 path,
-                r#type: clone_id
+                type_: clone_id
                     .kind
                     .as_pretty()
                     .trim_start_matches("offline_")
                     .into(),
                 version: 1,
-            }),
+            },
         }))
     }
 
     /// Reparent a Resource
     async fn reparent_resource(
         &self,
-        request: Request<ReparentResourceRequest>,
-    ) -> Result<Response<ReparentResourceResponse>, Status> {
-        let request = request.get_ref();
-        let resource_id = parse_resource_id(request.id.as_str())?;
-        let mut new_path = ResourcePathName::new(&request.new_path);
+        request: ReparentResourceRequest,
+    ) -> Result<ReparentResourceResponse> {
+        let resource_id = parse_resource_id(request.body.id.as_str())?;
+
+        let mut new_path = ResourcePathName::new(&request.body.new_path);
 
         let index_snapshot = {
             let transaction_manager = self.transaction_manager.lock().await;
@@ -723,7 +749,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         let new_parent = index_snapshot.name_to_entity.get(&new_path).copied();
         if let Some(new_parent) = new_parent {
             if new_parent == resource_id {
-                return Err(Status::internal("cannot parent to itself"));
+                return Err(Error::bad_request("cannot parent to itself".to_string()));
             }
             new_path = ResourcePathName::new(format!("/!{}", new_parent));
         }
@@ -736,7 +762,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
 
         // Ignore same reparenting
         if old_parent == new_parent {
-            return Ok(Response::new(ReparentResourceResponse {}));
+            return Ok(ReparentResourceResponse::Status204);
         }
 
         let mut transaction = Transaction::new().add_operation(ReparentResourceOperation::new(
@@ -752,22 +778,18 @@ impl ResourceBrowser for ResourceBrowserRPC {
             transaction_manager
                 .commit_transaction(transaction)
                 .await
-                .map_err(|err| Status::internal(err.to_string()))?;
+                .map_err(|err| Error::internal(format!("reparent transaction failed: {}", err)))?;
         }
 
-        Ok(Response::new(ReparentResourceResponse {}))
+        Ok(ReparentResourceResponse::Status204)
     }
 
     /// Open a Scene
-    async fn open_scene(
-        &self,
-        request: Request<OpenSceneRequest>,
-    ) -> Result<Response<OpenSceneResponse>, Status> {
-        let request = request.get_ref();
-        let mut resource_id = parse_resource_id(request.id.as_str())?;
+    async fn open_scene(&self, request: OpenSceneRequest) -> Result<OpenSceneResponse> {
+        let mut resource_id = parse_resource_id(request.scene_id.0.as_str())?;
 
         if resource_id.kind != sample_data::offline::Entity::TYPE {
-            return Err(Status::internal(format!(
+            return Err(Error::internal(format!(
                 "Expected Entity in OpenScene. Resource {} is a {}",
                 resource_id,
                 resource_id.kind.as_pretty()
@@ -779,7 +801,7 @@ impl ResourceBrowser for ResourceBrowserRPC {
         transaction_manager
             .add_scene(resource_id)
             .await
-            .map_err(|err| Status::internal(err.to_string()))?;
+            .map_err(|err| Error::internal(err.to_string()))?;
 
         // Get runtime entity id
         if resource_id.kind == sample_data::offline::Entity::TYPE {
@@ -794,16 +816,12 @@ impl ResourceBrowser for ResourceBrowserRPC {
             warn!("Failed to OpenScene for {}: {}", resource_id, err);
         }
 
-        Ok(Response::new(OpenSceneResponse {}))
+        Ok(OpenSceneResponse::Status204)
     }
 
     /// Close a Scene
-    async fn close_scene(
-        &self,
-        request: Request<CloseSceneRequest>,
-    ) -> Result<Response<CloseSceneResponse>, Status> {
-        let request = request.get_ref();
-        let mut resource_id = parse_resource_id(request.id.as_str())?;
+    async fn close_scene(&self, request: CloseSceneRequest) -> Result<CloseSceneResponse> {
+        let mut resource_id = parse_resource_id(request.scene_id.0.as_str())?;
 
         let mut transaction_manager = self.transaction_manager.lock().await;
         transaction_manager.remove_scene(resource_id).await;
@@ -821,34 +839,35 @@ impl ResourceBrowser for ResourceBrowserRPC {
         {
             warn!("Failed to Close Scene for {}: {}", resource_id, err);
         }
-        Ok(Response::new(CloseSceneResponse {}))
+        Ok(CloseSceneResponse::Status204)
     }
 
     /// Get active scenes
     async fn get_active_scenes(
         &self,
-        _request: Request<GetActiveScenesRequest>,
-    ) -> Result<Response<GetActiveScenesResponse>, Status> {
+        _request: GetActiveScenesRequest,
+    ) -> Result<GetActiveScenesResponse> {
         let transaction_manager = self.transaction_manager.lock().await;
 
-        Ok(Response::new(GetActiveScenesResponse {
-            scene_ids: transaction_manager
-                .get_active_scenes()
-                .iter()
-                .map(std::string::ToString::to_string)
-                .collect(),
-        }))
+        Ok(GetActiveScenesResponse::Status200(
+            GetActiveScenes200Response {
+                scene_ids: transaction_manager
+                    .get_active_scenes()
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect(),
+            },
+        ))
     }
 
     async fn get_runtime_scene_info(
         &self,
-        request: Request<GetRuntimeSceneInfoRequest>,
-    ) -> Result<Response<GetRuntimeSceneInfoResponse>, Status> {
-        let request = request.get_ref();
-        let resource_id = parse_resource_id(request.resource_id.as_str())?;
+        request: GetRuntimeSceneInfoRequest,
+    ) -> Result<GetRuntimeSceneInfoResponse> {
+        let resource_id = parse_resource_id(request.resource_id.0.as_str())?;
 
         if resource_id.kind != sample_data::offline::Entity::TYPE {
-            return Err(Status::internal(format!(
+            return Err(Error::internal(format!(
                 "Expected Entity in GetRuntimeSceneInfo. Resource {} is a {}",
                 resource_id,
                 resource_id.kind.as_pretty()
@@ -872,43 +891,11 @@ impl ResourceBrowser for ResourceBrowserRPC {
             asset_id
         );
 
-        Ok(Response::new(GetRuntimeSceneInfoResponse {
-            manifest_id: manifest_id.to_string(),
-            asset_id: asset_id.to_string(),
-        }))
-    }
-
-    async fn list_assets(
-        &self,
-        request: Request<ListAssetsRequest>,
-    ) -> Result<Response<ListAssetsResponse>, Status> {
-        let transaction_manager = self.transaction_manager.lock().await;
-        let ctx = LockContext::new(&transaction_manager).await;
-        let request = request.get_ref();
-        let mut asset_types = Vec::new();
-        for asset_type in &request.asset_types {
-            asset_types.push(
-                ResourceType::from_str(asset_type.as_str())
-                    .map_err(|err| Status::internal(err.to_string()))?,
-            );
-        }
-        let resources = ctx.project.resource_list().await;
-        let mut assets = Vec::new();
-        for resource_id in resources {
-            if asset_types.contains(&resource_id.kind) {
-                let path: String = ctx
-                    .project
-                    .resource_name(resource_id)
-                    .await
-                    .unwrap_or_else(|_err| "".into())
-                    .to_string();
-                assets.push(Asset {
-                    id: ResourceTypeAndId::to_string(&resource_id),
-                    asset_name: path,
-                });
-            }
-        }
-
-        Ok(Response::new(ListAssetsResponse { assets }))
+        Ok(GetRuntimeSceneInfoResponse::Status200(
+            GetRuntimeSceneInfo200Response {
+                manifest_id: manifest_id.to_string(),
+                asset_id: asset_id.to_string(),
+            },
+        ))
     }
 }

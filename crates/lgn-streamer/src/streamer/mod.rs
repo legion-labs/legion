@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use bytes::Bytes;
-use lgn_app::{AppExit, Events};
+use lgn_app::AppExit;
 use lgn_async::TokioAsyncRuntime;
 use lgn_codec_api::stream_encoder::StreamEncoder;
-use lgn_ecs::prelude::*;
+use lgn_ecs::{event::Events, prelude::*};
 use lgn_graphics_renderer::{
     components::{RenderSurfaceCreatedForWindow, RenderSurfaces},
     resources::PipelineManager,
@@ -132,7 +132,7 @@ pub(crate) fn handle_stream_events(
             StreamEvent::ConnectionClosed(window_id, _) => {
                 window_close_requested_events.send(WindowCloseRequested { id: window_id });
                 streamer_windows.remove_mapping(&window_id);
-                window_list.remove(&window_id);
+                window_list.remove(window_id);
                 info!(
                     "Connection was closed for WindowId {}: closing window",
                     window_id,

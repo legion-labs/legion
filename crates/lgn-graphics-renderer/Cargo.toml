@@ -22,6 +22,7 @@ lgn-input = { path = "../lgn-input", version = "0.1.0" }
 lgn-math = { path = "../lgn-math", version = "0.1.0" }
 lgn-pso-compiler = { path = "../lgn-pso-compiler", version = "0.1.0" }
 lgn-tasks = { path = "../lgn-tasks", version = "0.1.0" }
+lgn-time = { path = "../lgn-time", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
 lgn-utils = { path = "../lgn-utils", version = "0.1.0" }
 lgn-window = { path = "../lgn-window", version = "0.1.0" }

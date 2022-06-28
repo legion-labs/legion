@@ -71,7 +71,7 @@
   $: collapsed = $propertyGridStore.get(propertyBagKey) === true;
 
   function addVectorSubProperty() {
-    const index = property.subProperties.length;
+    const index = property.sub_properties.length;
 
     dispatch("addVectorSubProperty", {
       path: [...pathParts, property.name].join("."),
@@ -115,7 +115,7 @@
       return;
     }
 
-    const subPropertyIndex = parentProperty.subProperties.findIndex(
+    const subPropertyIndex = parentProperty.sub_properties.findIndex(
       (subProperty) => subProperty.name === property.name
     );
 
@@ -132,8 +132,10 @@
       index: subPropertyIndex,
     });
 
-    parentProperty.subProperties.splice(subPropertyIndex, 1);
-    parentProperty.subProperties = parentProperty.subProperties;
+    // eslint-disable-next-line camelcase
+    parentProperty.sub_properties.splice(subPropertyIndex, 1);
+    // eslint-disable-next-line camelcase
+    parentProperty.sub_properties = parentProperty.sub_properties;
   }
 
   function beautifyComponentName(name: string) {
@@ -228,7 +230,7 @@
     </div>
   {/if}
   <div hidden={collapsed}>
-    {#each property.subProperties as subProperty, index (`${subProperty.name}-${index}`)}
+    {#each property.sub_properties as subProperty, index (`${subProperty.name}-${index}`)}
       {#if !subProperty.attributes.hidden}
         <PropertyContainer
           on:displayable={(e) => onChildDisplayable(e.detail)}

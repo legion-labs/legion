@@ -1,6 +1,6 @@
 use crate::components::RuntimeAnimationClip;
-use lgn_core::Time;
 use lgn_ecs::prelude::{Query, Res};
+use lgn_time::Time;
 
 pub(crate) fn update(
     mut animations: Query<'_, '_, &mut RuntimeAnimationClip>,

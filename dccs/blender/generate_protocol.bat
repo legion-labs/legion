@@ -1,2 +1,1 @@
-python -m grpc_tools.protoc -Icrates/lgn-editor-proto/protos/ --python_out=dccs/blender/generated --grpc_python_out=dccs/blender/generated crates/lgn-editor-proto/protos/resource_browser.proto
 python -m grpc_tools.protoc -Icrates/lgn-editor-proto/protos/ --python_out=dccs/blender/generated --grpc_python_out=dccs/blender/generated crates/lgn-editor-proto/protos/source_control.proto

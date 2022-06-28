@@ -8,7 +8,24 @@ use std::{
     sync::Arc,
 };
 
+use async_trait::async_trait;
 use bytes::BytesMut;
+use editor_srv::{
+    common::ResourceDescription,
+    source_control::{
+        server::{
+            register_routes, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
+            ContentUploadCancelRequest, ContentUploadCancelResponse, ContentUploadInitRequest,
+            ContentUploadInitResponse, ContentUploadRequest, ContentUploadResponse,
+            GetStagedResourcesRequest, GetStagedResourcesResponse, PullAssetsRequest,
+            PullAssetsResponse, RevertResourcesRequest, RevertResourcesResponse, SyncLatestRequest,
+            SyncLatestResponse,
+        },
+        Api, ContentUploadInitSucceeded, ContentUploadSucceeded, ContentUploadSucceededStatus,
+        PullAssetsSucceeded, StagedResource, StagedResourceChangeType, StagedResources,
+    },
+};
+use lgn_api::SharedRouter;
 use lgn_app::prelude::*;
 use lgn_data_offline::ChangeType;
 use lgn_data_runtime::{ResourceDescriptor, ResourceTypeAndId};
@@ -17,23 +34,14 @@ use lgn_ecs::{
     prelude::{IntoExclusiveSystem, Res, ResMut},
     schedule::ExclusiveSystemDescriptorCoercion,
 };
-use lgn_editor_proto::source_control::{
-    source_control_server::{SourceControl, SourceControlServer},
-    staged_resource, upload_raw_file_response, CancelUploadRawFileRequest,
-    CancelUploadRawFileResponse, CommitStagedResourcesRequest, CommitStagedResourcesResponse,
-    GetStagedResourcesRequest, GetStagedResourcesResponse, InitUploadRawFileRequest,
-    InitUploadRawFileResponse, PullAssetRequest, PullAssetResponse, ResourceDescription,
-    RevertResourcesRequest, RevertResourcesResponse, StagedResource, SyncLatestResponse,
-    SyncLatestResquest, UploadRawFileProgress, UploadRawFileRequest, UploadRawFileResponse,
-    UploadStatus,
-};
-use lgn_grpc::{GRPCPluginScheduling, GRPCPluginSettings};
-use lgn_resource_registry::{ResourceRegistryPluginScheduling, ResourceRegistrySettings};
+use lgn_graphics_data::offline::Gltf;
+use lgn_online::server::{Error, Result};
+use lgn_resource_registry::ResourceRegistrySettings;
 use lgn_tracing::error;
 use thiserror::Error;
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
-use tonic::{codegen::StdError, Request, Response, Status};
+use tonic::codegen::StdError;
 use uuid::Uuid;
 
 #[derive(Error, Debug)]
@@ -285,7 +293,7 @@ impl RawFilesStreamer {
         let content_len = content.len();
         let max_chunk_size = self.max_chunk_size() as usize;
 
-        if content_len > max_chunk_size as usize {
+        if content_len > max_chunk_size {
             return Err(SourceControlError::ContentSize {
                 content_len,
                 max_chunk_size,
@@ -386,7 +394,7 @@ impl SharedRawFilesStreamer {
                                 .await
                                 .map_err(|error| {
                                     format!(
-                                        "Couldn't send file upload stream error message: {}",
+                                        "couldn't send file upload stream error message: {}",
                                         error
                                     )
                                 })
@@ -419,32 +427,8 @@ impl Clone for SharedRawFilesStreamer {
     }
 }
 
-pub(crate) struct SourceControlRPC {
-    streamer: SharedRawFilesStreamer,
-    uploads_folder: PathBuf,
-    transaction_manager: Arc<Mutex<TransactionManager>>,
-}
-
 #[derive(Default)]
 pub(crate) struct SourceControlPlugin;
-
-impl SourceControlPlugin {
-    #[allow(clippy::needless_pass_by_value)]
-    fn setup(
-        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
-        settings: Res<'_, ResourceRegistrySettings>,
-        streamer: Res<'_, SharedRawFilesStreamer>,
-        mut grpc_settings: ResMut<'_, GRPCPluginSettings>,
-    ) {
-        let property_inspector = SourceControlServer::new(SourceControlRPC {
-            streamer: streamer.clone(),
-            uploads_folder: settings.root_folder().join("uploads"),
-            transaction_manager: transaction_manager.clone(),
-        });
-
-        grpc_settings.register_service(property_inspector);
-    }
-}
 
 impl Plugin for SourceControlPlugin {
     fn build(&self, app: &mut App) {
@@ -452,129 +436,213 @@ impl Plugin for SourceControlPlugin {
             StartupStage::PostStartup,
             Self::setup
                 .exclusive_system()
-                .after(ResourceRegistryPluginScheduling::ResourceRegistryCreated)
-                .before(GRPCPluginScheduling::StartRpcServer),
+                .after(lgn_resource_registry::ResourceRegistryPluginScheduling::ResourceRegistryCreated)
+                .before(lgn_api::ApiPluginScheduling::StartServer),
         );
     }
 }
 
-#[tonic::async_trait]
-impl SourceControl for SourceControlRPC {
-    async fn init_upload_raw_file(
+impl SourceControlPlugin {
+    #[allow(clippy::needless_pass_by_value)]
+    fn setup(
+        mut router: ResMut<'_, SharedRouter>,
+        transaction_manager: Res<'_, Arc<Mutex<TransactionManager>>>,
+        settings: Res<'_, ResourceRegistrySettings>,
+        streamer: Res<'_, SharedRawFilesStreamer>,
+    ) {
+        let server = Arc::new(Server::new(
+            streamer.clone(),
+            settings.root_folder().join("uploads"),
+            transaction_manager.clone(),
+        ));
+
+        router.register_routes(register_routes, server);
+    }
+}
+
+pub(crate) struct Server {
+    streamer: SharedRawFilesStreamer,
+    uploads_folder: PathBuf,
+    #[allow(dead_code)]
+    transaction_manager: Arc<Mutex<TransactionManager>>,
+}
+
+impl Server {
+    pub(crate) fn new(
+        streamer: SharedRawFilesStreamer,
+        uploads_folder: PathBuf,
+        transaction_manager: Arc<Mutex<TransactionManager>>,
+    ) -> Self {
+        Self {
+            streamer,
+            uploads_folder,
+            transaction_manager,
+        }
+    }
+}
+
+#[async_trait]
+impl Api for Server {
+    async fn content_upload_init(
         &self,
-        request: Request<InitUploadRawFileRequest>,
-    ) -> Result<Response<InitUploadRawFileResponse>, Status> {
-        let message = request.into_inner();
-
-        let size = message.size;
-
-        if size > self.streamer.max_size().await {
-            return Ok(Response::new(InitUploadRawFileResponse {
-                status: UploadStatus::Rejected as i32,
-                id: None,
-            }));
+        request: ContentUploadInitRequest,
+    ) -> Result<ContentUploadInitResponse> {
+        if request.body.size > self.streamer.max_size().await {
+            return Ok(ContentUploadInitResponse::Status400);
         }
 
         let file_id = self
             .streamer
-            .insert(self.uploads_folder.as_path(), &message.name, size)
+            .insert(
+                self.uploads_folder.as_path(),
+                &request.body.name,
+                request.body.size,
+            )
             .await
             .map_err(|_error| {
-                Status::internal(format!("Couldn't create file for {}", message.name))
+                Error::internal(format!("couldn't create file for {}", request.body.name))
             })?;
 
-        Ok(Response::new(InitUploadRawFileResponse {
-            status: UploadStatus::Queued as i32,
-            id: Some(file_id.into()),
-        }))
+        Ok(ContentUploadInitResponse::Status200(
+            ContentUploadInitSucceeded { id: file_id.into() },
+        ))
     }
 
-    type UploadRawFileStream = ReceiverStream<Result<UploadRawFileResponse, Status>>;
-
-    async fn upload_raw_file(
-        &self,
-        request: Request<UploadRawFileRequest>,
-    ) -> Result<Response<Self::UploadRawFileStream>, Status> {
-        let message = request.into_inner();
-
+    async fn content_upload(&self, request: ContentUploadRequest) -> Result<ContentUploadResponse> {
         let streamer = self.streamer.clone();
 
-        let (tx, rx) = mpsc::channel(32);
+        // Unfortunately it's not possible to have bidirectional streaming client -> server -> client
+        // so we do receive the whole file and then chunk it and save it progressively.
+        // When bidirectional streaming will be achievable we will receive only chunks of files.
+        let mut stream = streamer
+            .stream(request.transaction_id.0.clone().into(), request.body.0)
+            .await
+            .unwrap();
 
-        tokio::spawn(async move {
-            // Unfortunately it's not possible to have bidirectional streaming client -> server -> client
-            // so we do receive the whole file and then chunk it and save it progressively.
-            // When bidirectional streaming will be achievable we will receive only chunks of files.
-            let mut stream = streamer
-                .stream(message.id.clone().into(), message.content)
-                .await
-                .unwrap();
+        let mut last_status = None;
 
-            while let Some(status) = stream.next().await {
-                let response = match status {
-                    RawFileStatus::Done => Ok(UploadRawFileResponse {
-                        response: Some(upload_raw_file_response::Response::Progress(
-                            UploadRawFileProgress {
-                                id: message.id.clone(),
-                                completion: None,
-                                status: UploadStatus::Done as i32,
-                            },
-                        )),
-                    }),
-                    RawFileStatus::InProgress { completion } => Ok(UploadRawFileResponse {
-                        response: Some(upload_raw_file_response::Response::Progress(
-                            UploadRawFileProgress {
-                                id: message.id.clone(),
-                                completion: Some(completion),
-                                status: UploadStatus::Started as i32,
-                            },
-                        )),
-                    }),
-                    RawFileStatus::Error { error } => Ok(UploadRawFileResponse {
-                        response: Some(upload_raw_file_response::Response::Error(
-                            error.to_string(),
-                        )),
-                    }),
-                };
+        while let Some(status) = stream.next().await {
+            match status {
+                RawFileStatus::Error {
+                    error: SourceControlError::UnknownId(_),
+                } => {
+                    return Ok(ContentUploadResponse::Status404);
+                }
+                RawFileStatus::Error {
+                    error: SourceControlError::ContentSize { .. },
+                } => {
+                    return Ok(ContentUploadResponse::Status400);
+                }
+                RawFileStatus::Error { error } => {
+                    return Err(Error::internal(error.to_string()));
+                }
+                RawFileStatus::InProgress { completion } => {
+                    last_status = Some((
+                        ContentUploadSucceededStatus::InProgress,
+                        completion.round() as u32,
+                    ));
+                }
+                RawFileStatus::Done => {
+                    last_status = Some((ContentUploadSucceededStatus::Done, 100));
+                }
+            };
+        }
 
-                tx.send(response).await.unwrap();
-            }
-        });
-
-        Ok(Response::new(ReceiverStream::new(rx)))
+        if let Some((status, completion)) = last_status {
+            Ok(ContentUploadResponse::Status200(ContentUploadSucceeded {
+                id: request.transaction_id.0,
+                status,
+                completion,
+            }))
+        } else {
+            Err(Error::internal(
+                "didn't receive any status from upload stream",
+            ))
+        }
     }
 
-    async fn cancel_upload_raw_file(
+    async fn content_upload_cancel(
         &self,
-        request: Request<CancelUploadRawFileRequest>,
-    ) -> Result<Response<CancelUploadRawFileResponse>, Status> {
-        let message = request.into_inner();
+        request: ContentUploadCancelRequest,
+    ) -> Result<ContentUploadCancelResponse> {
+        let canceled = self.streamer.cancel(&request.transaction_id.0.into()).await;
 
-        let canceled = self.streamer.cancel(&message.id.into()).await;
+        Ok(if canceled {
+            ContentUploadCancelResponse::Status204
+        } else {
+            ContentUploadCancelResponse::Status404
+        })
+    }
 
-        Ok(Response::new(CancelUploadRawFileResponse { ok: canceled }))
+    async fn get_staged_resources(
+        &self,
+        _request: GetStagedResourcesRequest,
+    ) -> Result<GetStagedResourcesResponse> {
+        let transaction_manager = self.transaction_manager.lock().await;
+        let mut ctx = LockContext::new(&transaction_manager).await;
+        let changes = ctx
+            .project
+            .get_pending_changes()
+            .await
+            .map_err(|err| Error::internal(err.to_string()))?;
+
+        let mut entries = Vec::new();
+
+        for (resource_type_id, change_type) in changes {
+            let path = if let ChangeType::Delete = change_type {
+                ctx.project
+                    .deleted_resource_info(resource_type_id)
+                    .await
+                    .unwrap_or_else(|_err| "(error)".into())
+            } else {
+                ctx.project
+                    .resource_name(resource_type_id)
+                    .await
+                    .unwrap_or_else(|_err| "(error)".into())
+            };
+
+            entries.push(StagedResource {
+                info: ResourceDescription {
+                    id: editor_srv::common::ResourceId(ResourceTypeAndId::to_string(
+                        &resource_type_id,
+                    )),
+                    path: path.to_string(),
+                    type_: resource_type_id
+                        .kind
+                        .as_pretty()
+                        .trim_start_matches("offline_")
+                        .into(),
+                    version: 1,
+                },
+                change_type: match change_type {
+                    ChangeType::Add => StagedResourceChangeType::Add,
+                    ChangeType::Edit => StagedResourceChangeType::Edit,
+                    ChangeType::Delete => StagedResourceChangeType::Delete,
+                },
+            });
+        }
+
+        Ok(GetStagedResourcesResponse::Status200(StagedResources(
+            entries,
+        )))
     }
 
     async fn commit_staged_resources(
         &self,
-        request: Request<CommitStagedResourcesRequest>,
-    ) -> Result<Response<CommitStagedResourcesResponse>, Status> {
-        let request = request.into_inner();
+        request: CommitStagedResourcesRequest,
+    ) -> Result<CommitStagedResourcesResponse> {
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
+
         ctx.project
-            .commit(&request.message)
+            .commit(&request.body.message)
             .await
-            .map_err(|err| Status::internal(err.to_string()))?;
-        Ok(Response::new(CommitStagedResourcesResponse {}))
+            .map_err(|err| Error::internal(err.to_string()))?;
+
+        Ok(CommitStagedResourcesResponse::Status204)
     }
 
-    async fn sync_latest(
-        &self,
-        request: Request<SyncLatestResquest>,
-    ) -> Result<Response<SyncLatestResponse>, Status> {
-        let _request = request.into_inner();
-
+    async fn sync_latest(&self, _request: SyncLatestRequest) -> Result<SyncLatestResponse> {
         let (resource_to_build, _resource_to_unload) = {
             let mut resource_to_build = Vec::new();
             let mut resource_to_unload = Vec::new();
@@ -583,7 +651,7 @@ impl SourceControl for SourceControlRPC {
             let mut ctx = LockContext::new(&transaction_manager).await;
             let changes = ctx.project.sync_latest().await.map_err(|err| {
                 error!("Failed to get changes: {}", err);
-                Status::internal(err.to_string())
+                Error::internal(err.to_string())
             })?;
 
             for (resource_id, change_type) in changes {
@@ -608,67 +676,24 @@ impl SourceControl for SourceControlRPC {
             }
         }
 
-        Ok(Response::new(SyncLatestResponse {}))
-    }
+        /*for resource_id in resource_to_unload {
+            let mut ctx = LockContext::new(&transaction_manager).await;
+            ctx.unload(resource_id).await;
+        }*/
 
-    async fn get_staged_resources(
-        &self,
-        _request: Request<GetStagedResourcesRequest>,
-    ) -> Result<Response<GetStagedResourcesResponse>, Status> {
-        let transaction_manager = self.transaction_manager.lock().await;
-        let mut ctx = LockContext::new(&transaction_manager).await;
-        let changes = ctx
-            .project
-            .get_pending_changes()
-            .await
-            .map_err(|err| Status::internal(err.to_string()))?;
-
-        let mut entries = Vec::<StagedResource>::new();
-        for (resource_type_id, change_type) in changes {
-            let path = if let ChangeType::Delete = change_type {
-                ctx.project
-                    .deleted_resource_info(resource_type_id)
-                    .await
-                    .unwrap_or_else(|_err| "(error)".into())
-            } else {
-                ctx.project
-                    .resource_name(resource_type_id)
-                    .await
-                    .unwrap_or_else(|_err| "(error)".into())
-            };
-
-            entries.push(StagedResource {
-                info: Some(ResourceDescription {
-                    id: ResourceTypeAndId::to_string(&resource_type_id),
-                    path: path.to_string(),
-                    r#type: resource_type_id
-                        .kind
-                        .as_pretty()
-                        .trim_start_matches("offline_")
-                        .into(),
-                    version: 1,
-                }),
-                change_type: match change_type {
-                    ChangeType::Add => staged_resource::ChangeType::Add as i32,
-                    ChangeType::Edit => staged_resource::ChangeType::Edit as i32,
-                    ChangeType::Delete => staged_resource::ChangeType::Delete as i32,
-                },
-            });
-        }
-
-        Ok(Response::new(GetStagedResourcesResponse { entries }))
+        Ok(SyncLatestResponse::Status204)
     }
 
     async fn revert_resources(
         &self,
-        request: Request<RevertResourcesRequest>,
-    ) -> Result<Response<RevertResourcesResponse>, Status> {
-        let request = request.into_inner();
+        request: RevertResourcesRequest,
+    ) -> Result<RevertResourcesResponse> {
         let transaction_manager = self.transaction_manager.lock().await;
         let mut ctx = LockContext::new(&transaction_manager).await;
 
         let mut need_rebuild = Vec::new();
-        for id in &request.ids {
+
+        for id in &request.body.0 {
             if let Ok(id) = ResourceTypeAndId::from_str(id) {
                 match ctx.project.revert_resource(id).await {
                     Ok(()) => need_rebuild.push(id),
@@ -692,32 +717,33 @@ impl SourceControl for SourceControlRPC {
             }
         }*/
 
-        Ok(Response::new(RevertResourcesResponse {}))
+        Ok(RevertResourcesResponse::Status204)
     }
 
-    async fn pull_asset(
-        &self,
-        _request: Request<PullAssetRequest>,
-    ) -> Result<Response<PullAssetResponse>, Status> {
-        panic!("unimplemented()");
-        /*let message = request.into_inner();
+    async fn pull_assets(&self, request: PullAssetsRequest) -> Result<PullAssetsResponse> {
         let transaction_manager = self.transaction_manager.lock().await;
         let ctx = LockContext::new(&transaction_manager).await;
-        let id = ResourceTypeAndId::from_str(message.id.as_str()).map_err(Status::unknown)?;
-        if id.kind != GltfFile::TYPE {
-            return Err(Status::internal(
-                "pull_asset supports GltfFile only at the moment",
+        let id = match ResourceTypeAndId::from_str(request.property_id.0.as_str()) {
+            Err(_err) => {
+                return Ok(PullAssetsResponse::Status400);
+            }
+            Ok(id) => id,
+        };
+
+        if id.kind != Gltf::TYPE {
+            return Err(Error::internal(
+                "pull_asset supports Gltf only at the moment",
             ));
         }
-        let gltf_file = ctx
+        let _gltf_file = ctx
             .project
-            .load_resource::<GltfFile>(id.id)
+            .load_resource::<Gltf>(id)
             .await
-            .map_err(|err| Status::internal(err.to_string()))?;
+            .map_err(|err| Error::internal(err.to_string()))?;
 
-        return Ok(Response::new(PullAssetResponse {
-            size: gltf_file.bytes().len() as u32,
-            content: gltf_file.bytes().to_vec(),
-        }));*/
+        return Ok(PullAssetsResponse::Status200(PullAssetsSucceeded {
+            size: 0,                // TODO: gltf_file.bytes().len() as u32,
+            content: vec![].into(), // TODO: gltf_file.bytes().to_vec().into(),
+        }));
     }
 }

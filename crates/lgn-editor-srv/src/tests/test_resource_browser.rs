@@ -4,6 +4,24 @@ use lgn_content_store::{
     indexing::{empty_tree_id, SharedTreeIdentifier},
     Provider,
 };
+
+use lgn_governance::api::space::SpaceId;
+use lgn_governance::api::workspace::WorkspaceId;
+
+use editor_srv::{
+    common::ResourceId,
+    resource_browser::{
+        server::{
+            CloneResourceRequest, CloneResourceResponse, CreateResourceRequest,
+            CreateResourceResponse, DeleteResourceRequest, DeleteResourceResponse,
+            GetResourceTypeNamesRequest, GetResourceTypeNamesResponse, ListAssetsRequest,
+            ListAssetsResponse, RenameResourceRequest, RenameResourceResponse,
+            ReparentResourceRequest, ReparentResourceResponse,
+        },
+        Api, CloneResourceBody, CreateResourceBody, DeleteResourceBody, InitPropertyValue,
+        RenameResourceBody, ReparentResourceBody,
+    },
+};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{vfs::AddDeviceSourceCas, Project};
@@ -13,16 +31,10 @@ use lgn_data_runtime::{
 use lgn_data_transaction::{
     ArrayOperation, BuildManager, SelectionManager, Transaction, TransactionManager,
 };
-use lgn_editor_proto::resource_browser::{
-    resource_browser_server::ResourceBrowser, CloneResourceRequest, CreateResourceRequest,
-    DeleteResourceRequest, GetResourceTypeNamesRequest, InitPropertyValue, RenameResourceRequest,
-    ReparentResourceRequest,
-};
 use lgn_math::Vec3;
 use lgn_scene_plugin::SceneMessage;
 use serde_json::json;
 use tokio::sync::Mutex;
-use tonic::Request;
 
 /*fn add_scripting_component(root_entity_id: &ResourceTypeAndId) -> Transaction {
     let script_id = ResourceTypeAndId {
@@ -136,52 +148,89 @@ async fn test_resource_browser() -> anyhow::Result<()> {
     {
         let (scene_events_tx, _rx) = crossbeam_channel::unbounded::<SceneMessage>();
         let (transaction_manager, _asset_registry) = setup_project(&project_dir).await;
-        let resource_browser = crate::resource_browser_plugin::ResourceBrowserRPC {
+        let resource_browser_server = crate::resource_browser_plugin::Server {
             transaction_manager: transaction_manager.clone(),
             uploads_folder: "".into(),
             scene_events_tx,
         };
 
         // Read all Resource Type registered
-        let response = resource_browser
-            .get_resource_type_names(Request::new(GetResourceTypeNamesRequest {}))
-            .await?
-            .into_inner();
+        let (parts, _) = http::Request::new("").into_parts();
+
+        let resource_types = if let GetResourceTypeNamesResponse::Status200(data) =
+            resource_browser_server
+                .get_resource_type_names(GetResourceTypeNamesRequest {
+                    space_id: SpaceId("0".to_string()),
+                    workspace_id: WorkspaceId("0".to_string()),
+                    parts,
+                })
+                .await?
+        {
+            data.resource_types
+        } else {
+            panic!("Could not retrieve list of resource type names");
+        };
 
         // Validate that sceneEntity should be in the list
         assert!(
-            response
-                .resource_types
+            resource_types
                 .iter()
                 .filter(|res_type| res_type.as_str() == sample_data::offline::Entity::TYPENAME)
                 .count()
                 == 1
         );
 
-        // Create new resource
-        let root_entity_id = resource_browser
-            .create_resource(Request::new(CreateResourceRequest {
-                resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                resource_name: Some("root_entity_".into()),
-                parent_resource_id: None,
-                init_values: vec![InitPropertyValue {
-                    property_path: "components[Transform].position".into(),
-                    json_value: json!(Vec3::ZERO).to_string(),
-                }],
-                upload_id: None,
-            }))
-            .await?
-            .into_inner()
-            .new_id;
+        let (parts, body) = http::Request::new(CreateResourceBody {
+            resource_type: sample_data::offline::Entity::TYPENAME.into(),
+            resource_name: Some("root_entity_".into()),
+            parent_resource_id: None,
+            init_values: vec![InitPropertyValue {
+                property_path: "components[Transform].position".into(),
+                json_value: json!(Vec3::ZERO).to_string(),
+            }],
+            upload_id: None,
+        })
+        .into_parts();
 
-        let root_entity_id = ResourceTypeAndId::from_str(&root_entity_id).unwrap();
+        // Create new resource
+        let root_entity_id = if let CreateResourceResponse::Status200(data) =
+            resource_browser_server
+                .create_resource(CreateResourceRequest {
+                    space_id: SpaceId("0".to_string()),
+                    workspace_id: WorkspaceId("0".to_string()),
+                    body,
+                    parts,
+                })
+                .await?
+        {
+            data.new_id
+        } else {
+            panic!("Resource creation failed");
+        };
+
+        let root_entity_id = ResourceTypeAndId::from_str(&root_entity_id.0).unwrap();
+
         // Rename the created resource
-        resource_browser
-            .rename_resource(Request::new(RenameResourceRequest {
-                id: root_entity_id.to_string(),
-                new_path: "root_entity".into(),
-            }))
-            .await?;
+
+        let (parts, body) = http::Request::new(RenameResourceBody {
+            id: root_entity_id.to_string(),
+            new_path: "root_entity".into(),
+        })
+        .into_parts();
+
+        if let RenameResourceResponse::Status204 = resource_browser_server
+            .rename_resource(RenameResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("Resource creation failed")
+        }
 
         // Add Script + ScriptComponent
         /*{
@@ -206,47 +255,83 @@ async fn test_resource_browser() -> anyhow::Result<()> {
 
             #[allow(clippy::needless_range_loop)]
             for i in 0..3u16 {
-                let child_id = resource_browser
-                    .create_resource(Request::new(CreateResourceRequest {
-                        resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                        resource_name: Some("child".into()),
-                        parent_resource_id: Some(root_entity_id.to_string()),
-                        init_values: vec![InitPropertyValue {
-                            property_path: "components[Transform].position".into(),
-                            json_value: json!(Vec3::new(offsets[i as usize], 0.0, 0.0,))
-                                .to_string(),
-                        }],
-                        upload_id: None,
-                    }))
-                    .await
-                    .unwrap()
-                    .into_inner()
-                    .new_id;
+                let (parts, body) = http::Request::new(CreateResourceBody {
+                    resource_type: sample_data::offline::Entity::TYPENAME.into(),
+                    resource_name: Some("child".into()),
+                    parent_resource_id: Some(ResourceId(root_entity_id.to_string())),
+                    init_values: vec![InitPropertyValue {
+                        property_path: "components[Transform].position".into(),
+                        json_value: json!(Vec3::new(offsets[i as usize], 0.0, 0.0,)).to_string(),
+                    }],
+                    upload_id: None,
+                })
+                .into_parts();
+
+                let child_id = if let CreateResourceResponse::Status200(data) =
+                    resource_browser_server
+                        .create_resource(CreateResourceRequest {
+                            space_id: SpaceId("0".to_string()),
+                            workspace_id: WorkspaceId("0".to_string()),
+                            body,
+                            parts,
+                        })
+                        .await
+                        .unwrap()
+                {
+                    data.new_id
+                } else {
+                    panic!("Resource creation failed");
+                };
 
                 // Test Renaming the child
                 if i == 0 {
-                    resource_browser
-                        .rename_resource(Request::new(RenameResourceRequest {
-                            id: child_id.clone(),
-                            new_path: "renamed_child".into(),
-                        }))
-                        .await?;
+                    let (parts, body) = http::Request::new(RenameResourceBody {
+                        id: child_id.0.clone(),
+                        new_path: "renamed_child".into(),
+                    })
+                    .into_parts();
+
+                    if let RenameResourceResponse::Status204 = resource_browser_server
+                        .rename_resource(RenameResourceRequest {
+                            space_id: SpaceId("0".to_string()),
+                            workspace_id: WorkspaceId("0".to_string()),
+                            body,
+                            parts,
+                        })
+                        .await
+                        .unwrap()
+                    {
+                    } else {
+                        panic!("Rename resource failed");
+                    }
                 }
 
-                let sub_child_id = resource_browser
-                    .create_resource(Request::new(CreateResourceRequest {
-                        resource_type: sample_data::offline::Entity::TYPENAME.into(),
-                        resource_name: Some("subchild".into()),
-                        parent_resource_id: Some(child_id.clone()),
-                        init_values: Vec::new(),
-                        upload_id: None,
-                    }))
-                    .await
-                    .unwrap()
-                    .into_inner()
-                    .new_id;
+                let (parts, body) = http::Request::new(CreateResourceBody {
+                    resource_type: sample_data::offline::Entity::TYPENAME.into(),
+                    resource_name: Some("subchild".into()),
+                    parent_resource_id: Some(child_id.clone()),
+                    init_values: Vec::new(),
+                    upload_id: None,
+                })
+                .into_parts();
 
-                let sub_child_id = ResourceTypeAndId::from_str(&sub_child_id).unwrap();
+                let sub_child_id = if let CreateResourceResponse::Status200(data) =
+                    resource_browser_server
+                        .create_resource(CreateResourceRequest {
+                            space_id: SpaceId("0".to_string()),
+                            workspace_id: WorkspaceId("0".to_string()),
+                            body,
+                            parts,
+                        })
+                        .await
+                        .unwrap()
+                {
+                    data.new_id
+                } else {
+                    panic!("Resource creation failed");
+                };
+
+                let sub_child_id = ResourceTypeAndId::from_str(&sub_child_id.0).unwrap();
                 let transaction = Transaction::new()
                     .add_operation(ArrayOperation::insert_element(
                         sub_child_id,
@@ -279,28 +364,51 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         }
 
         // Clone Hierarchy
-        let clone_id = resource_browser
-            .clone_resource(Request::new(CloneResourceRequest {
-                source_id: root_entity_id.to_string(),
-                target_parent_id: None, // Same Parent
-                init_values: vec![InitPropertyValue {
-                    property_path: "components[Transform].position".into(),
-                    json_value: json!(Vec3::new(0.0, 0.0, 2.0,)).to_string(),
-                }],
-            }))
-            .await?
-            .into_inner()
-            .new_resource
+        let (parts, body) = http::Request::new(CloneResourceBody {
+            source_id: root_entity_id.to_string(),
+            target_parent_id: None, // Same Parent
+            init_values: vec![InitPropertyValue {
+                property_path: "components[Transform].position".into(),
+                json_value: json!(Vec3::new(0.0, 0.0, 2.0,)).to_string(),
+            }],
+        })
+        .into_parts();
+
+        let clone_id = if let CloneResourceResponse::Status200(data) = resource_browser_server
+            .clone_resource(CloneResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
             .unwrap()
-            .id;
+        {
+            data.new_resource.id
+        } else {
+            panic!("Clone resource failed");
+        };
 
         // Reparent under entity
-        resource_browser
-            .reparent_resource(Request::new(ReparentResourceRequest {
-                id: clone_id.clone(),
-                new_path: "/root_entity".into(),
-            }))
-            .await?;
+        let (parts, body) = http::Request::new(ReparentResourceBody {
+            id: clone_id.0.clone(),
+            new_path: "/root_entity".into(),
+        })
+        .into_parts();
+
+        if let ReparentResourceResponse::Status204 = resource_browser_server
+            .reparent_resource(ReparentResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("Reparent resource failed")
+        }
 
         /*
         // Reparent under folder entity
@@ -313,21 +421,64 @@ async fn test_resource_browser() -> anyhow::Result<()> {
         */
 
         // Reparent under root
-        resource_browser
-            .reparent_resource(Request::new(ReparentResourceRequest {
-                id: clone_id.clone(),
-                new_path: "/".into(),
-            }))
-            .await?;
+        let (parts, body) = http::Request::new(ReparentResourceBody {
+            id: clone_id.0.clone(),
+            new_path: "/".into(),
+        })
+        .into_parts();
+
+        if let ReparentResourceResponse::Status204 = resource_browser_server
+            .reparent_resource(ReparentResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("Reparent resource failed")
+        }
+
+        let (parts, body) = http::Request::new(DeleteResourceBody { id: clone_id.0 }).into_parts();
+
+        if let DeleteResourceResponse::Status204 = resource_browser_server
+            .delete_resource(DeleteResourceRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                body,
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("Resource creation failed")
+        }
 
         // Delete Clone
-        resource_browser
-            .delete_resource(Request::new(DeleteResourceRequest { id: clone_id }))
-            .await?;
-
         {
             let mut guard = transaction_manager.lock().await;
             guard.undo_transaction().await?; // Undo delete
+        }
+
+        // List entities
+        let (parts, _) =
+            http::Request::new(vec![sample_data::offline::Entity::TYPE.to_string()]).into_parts();
+
+        if let ListAssetsResponse::Status200(_response) = resource_browser_server
+            .list_assets(ListAssetsRequest {
+                space_id: SpaceId("0".to_string()),
+                workspace_id: WorkspaceId("0".to_string()),
+                asset_types: Vec::new(),
+                parts,
+            })
+            .await
+            .unwrap()
+        {
+        } else {
+            panic!("List assets failed")
         }
     }
     Ok(())

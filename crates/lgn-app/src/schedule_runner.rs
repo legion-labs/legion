@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::{cell::RefCell, rc::Rc};
 
 use instant::{Duration, Instant};
-use lgn_ecs::event::Events;
+use lgn_ecs::event::{Events, ManualEventReader};
 use lgn_tracing::{imetric, info, span_scope};
 
 #[cfg(target_arch = "wasm32")]
@@ -12,7 +12,6 @@ use wasm_bindgen::{prelude::*, JsCast};
 use crate::{
     app::{App, AppExit},
     plugin::Plugin,
-    ManualEventReader,
 };
 
 /// Determines the method used to run an [`App`]'s [`Schedule`](lgn_ecs::schedule::Schedule).

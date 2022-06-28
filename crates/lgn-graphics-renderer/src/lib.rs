@@ -104,9 +104,8 @@ use crate::{
     resources::MeshManager,
     RenderStage,
 };
-use lgn_app::{App, AppExit, CoreStage, Events, Plugin, StartupStage};
-
-use lgn_ecs::prelude::*;
+use lgn_app::{App, AppExit, CoreStage, Plugin, StartupStage};
+use lgn_ecs::{event::Events, prelude::*};
 use lgn_math::{const_vec3, Vec3};
 use lgn_transform::components::GlobalTransform;
 use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
@@ -570,7 +569,6 @@ fn on_app_exit(mut app_exit: EventReader<'_, '_, AppExit>, renderer: Res<'_, Ren
     clippy::type_complexity
 )]
 fn render_update(
-    task_pool: Res<'_, ComputeTaskPool>,
     resources: (
         Res<'_, Renderer>,
         ResMut<'_, PipelineManager>,
@@ -660,7 +658,7 @@ fn render_update(
     // Run render thread
     //
 
-    task_pool.scope(|scope| {
+    ComputeTaskPool::get().scope(|scope| {
         scope.spawn(async move {
             span_scope!("render_thread");
 

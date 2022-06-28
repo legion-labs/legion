@@ -1,0 +1,352 @@
+openapi: 3.0.3
+info:
+  title: "Resource Browser API"
+  description: "The OpenAPI specification for the Legion Labs resource browser."
+  version: 1.0.0
+paths:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/search/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/token"
+      - $ref: "#/components/parameters/root_resource_id"
+    get:
+      description: Search Resources
+      operationId: SearchResources
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NextSearchToken"
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resource-types/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    get:
+      description: Get the list of all the resources types available (for creation dialog)
+      operationId: GetResourceTypeNames
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resource_types:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - resource_types
+    post:
+      description: Create a resource
+      operationId: CreateResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resource_type:
+                  type: string
+                resource_name:
+                  type: string
+                parent_resource_id:
+                  $ref: "./common.yaml#/schemas/ResourceId"
+                init_values:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/InitPropertyValue"
+                upload_id:
+                  type: string
+              required:
+                - resource_type
+                - init_values
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_id:
+                    $ref: "./common.yaml#/schemas/ResourceId"
+                required:
+                  - new_id
+    delete:
+      description: Delete a resource
+      operationId: DeleteResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+              required:
+                - id
+      responses:
+        "204":
+          description: Ok.
+    put:
+      description: Rename a resource
+      operationId: RenameResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                new_path:
+                  type: string
+              required:
+                - id
+                - new_path
+      responses:
+        "204":
+          description: Ok.
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/clone/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Clone a resource
+      operationId: CloneResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source_id:
+                  type: string
+                target_parent_id:
+                  type: string
+                init_values:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/InitPropertyValue"
+              required:
+                - source_id
+                - init_values
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_resource:
+                    $ref: "common.yaml#/schemas/ResourceDescription"
+                required:
+                  - new_resource
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/reparent/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    post:
+      description: Reparent a resource
+      operationId: ReparentResource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                new_path:
+                  type: string
+              required:
+                - id
+                - new_path
+      responses:
+        "204":
+          description: Ok.
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}/open/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/scene_id"
+    post:
+      description: Open a Scene
+      operationId: OpenScene
+      responses:
+        "204":
+          description: Ok.
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scenes/{scene-id}/close/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/scene_id"
+    post:
+      description: Close a Scene
+      operationId: CloseScene
+      responses:
+        "204":
+          description: Ok.
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/scene-ids/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+    get:
+      description: Get active scenes
+      operationId: GetActiveScenes
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scene_ids:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - scene_ids
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/resources/{resource-id}/scenes/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "./common.yaml#/parameters/resource_id"
+    get:
+      description: Get runtime scenes info
+      operationId: GetRuntimeSceneInfo
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  manifest_id:
+                    type: string
+                  asset_id:
+                    type: string
+                required:
+                  - manifest_id
+                  - asset_id
+
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/assets/:
+    parameters:
+      - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
+      - $ref: "../../lgn-governance/apis/workspace.yaml#/components/parameters/workspace_id"
+      - $ref: "#/components/parameters/asset_types"
+    get:
+      description: List assets by type
+      operationId: listAssets
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  assets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Asset"
+                required:
+                  - assets
+
+components:
+  parameters:
+    asset_types:
+      name: asset-types
+      in: query
+      required: true
+      schema:
+        type: array
+        items:
+          $ref: "#/components/schemas/AssetType"
+    token:
+      name: token
+      in: query
+      description: The resource to search for.
+      required: true
+      schema:
+        $ref: "#/components/schemas/Token"
+    scene_id:
+      name: scene-id
+      in: path
+      description: The scene id
+      required: true
+      schema:
+        $ref: "#/components/schemas/SceneId"
+    root_resource_id:
+      name: root-resource-id
+      in: query
+      description: An optional root resource id
+      schema:
+        $ref: "#/components/schemas/RootResourceId"
+  schemas:
+    Token:
+      description: Token to search for
+      type: string
+    AssetType:
+      type: string
+    RootResourceId:
+      type: string
+    SceneId:
+      description: Scene ID
+      type: string
+    NextSearchToken:
+      description: The following search token
+      type: object
+      properties:
+        next_search_token:
+          type: string
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+        resource_descriptions:
+          type: array
+          items:
+            $ref: "common.yaml#/schemas/ResourceDescription"
+      required:
+        - next_search_token
+        - total
+        - resource_descriptions
+    InitPropertyValue:
+      description: Init Property value
+      type: object
+      properties:
+        property_path:
+          type: string
+        json_value:
+          type: string
+      required:
+        - property_path
+        - json_value
+    Asset:
+      description: A filtered asset information
+      type: object
+      properties:
+        id:
+          type: string
+        asset_name:
+          type: string
+      required:
+        - id
+        - asset_name

@@ -3,6 +3,7 @@
 // crate-specific lint exceptions:
 #![allow(clippy::implicit_hasher, clippy::missing_errors_doc)]
 
+pub mod api;
 pub mod client;
 pub mod cloud;
 pub mod codegen;

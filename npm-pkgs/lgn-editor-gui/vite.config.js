@@ -6,7 +6,6 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 import { loadAll } from "@lgn/config";
 import viteApiCodegen from "@lgn/vite-plugin-api-codegen";
-import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
 // import viteWasmPack from "@lgn/vite-plugin-wasm";
 
@@ -17,9 +16,6 @@ const testEnvironment = "jsdom";
 const plugins = [
   tsconfigPaths({
     extensions: [".ts", ".svelte"],
-  }),
-  viteTsProto({
-    modules: [{ name: "@lgn/proto-editor", glob: "*.proto" }],
   }),
   viteApiCodegen({
     aliasMappings: {
@@ -41,6 +37,16 @@ const plugins = [
         path: "../../crates/lgn-runtime-srv/apis",
         names: ["runtime"],
         filename: "runtime",
+      },
+      {
+        path: "../../crates/lgn-editor-srv/apis",
+        names: [
+          "editor",
+          "property_inspector",
+          "resource_browser",
+          "source_control",
+        ],
+        filename: "editor",
       },
     ],
   }),

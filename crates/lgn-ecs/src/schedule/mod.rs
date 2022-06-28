@@ -16,20 +16,21 @@ mod system_set;
 
 use std::fmt::Debug;
 
+use lgn_tracing::span_scope;
+use lgn_utils::HashMap;
+
+use crate::{system::IntoSystem, world::World};
+
 pub use executor::*;
 pub use executor_parallel::*;
 pub use graph_utils::GraphNode;
 pub use label::*;
-use lgn_tracing::span_scope;
-use lgn_utils::HashMap;
 pub use run_criteria::*;
 pub use stage::*;
 pub use state::*;
 pub use system_container::*;
 pub use system_descriptor::*;
 pub use system_set::*;
-
-use crate::{system::System, world::World};
 
 /// A container of [`Stage`]s set to be run in a linear order.
 ///
@@ -79,7 +80,7 @@ impl Schedule {
     }
 
     #[must_use]
-    pub fn with_run_criteria<S: System<In = (), Out = ShouldRun>>(mut self, system: S) -> Self {
+    pub fn with_run_criteria<S: IntoSystem<(), ShouldRun, P>, P>(mut self, system: S) -> Self {
         self.set_run_criteria(system);
         self
     }
@@ -96,11 +97,9 @@ impl Schedule {
         self
     }
 
-    pub fn set_run_criteria<S: System<In = (), Out = ShouldRun>>(
-        &mut self,
-        system: S,
-    ) -> &mut Self {
-        self.run_criteria.set(Box::new(system));
+    pub fn set_run_criteria<S: IntoSystem<(), ShouldRun, P>, P>(&mut self, system: S) -> &mut Self {
+        self.run_criteria
+            .set(Box::new(IntoSystem::into_system(system)));
         self
     }
 

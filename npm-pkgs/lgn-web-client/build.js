@@ -16,6 +16,16 @@ apiCodegen({
       names: ["log"],
       filename: "log",
     },
+    {
+      path: "../../crates/lgn-editor-srv/apis",
+      names: [
+        "editor",
+        "property_inspector",
+        "resource_browser",
+        "source_control",
+      ],
+      filename: "editor",
+    },
   ],
 })
   .buildStart()

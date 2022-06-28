@@ -40,7 +40,7 @@ impl Plugin for ScenePlugin {
 
         if let Some(scene_id) = self.startup_scene {
             app.world
-                .get_resource_mut::<lgn_app::Events<SceneMessage>>()
+                .get_resource_mut::<lgn_ecs::event::Events<SceneMessage>>()
                 .unwrap()
                 .send(SceneMessage::OpenScene(scene_id));
         }

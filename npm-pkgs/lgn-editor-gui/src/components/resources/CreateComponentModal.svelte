@@ -2,7 +2,7 @@
   import { form as createForm, field } from "svelte-forms";
   import { required } from "svelte-forms/validators";
 
-  import type { GetAvailableDynTraitsResponse } from "@lgn/proto-editor/dist/property_inspector";
+  import type { PropertyInspector } from "@lgn/api/editor";
   import Button from "@lgn/web-client/src/components/Button.svelte";
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
@@ -18,7 +18,9 @@
   const { loading } = createComponentStore;
 
   const dynTraitTypesStore =
-    createAsyncStoreOrchestrator<GetAvailableDynTraitsResponse>();
+    createAsyncStoreOrchestrator<
+      PropertyInspector.GetAvailableDynTraitsResponse["value"]
+    >();
 
   const type = field<{ value: string; item: string } | "">("type", "", [
     required(),
@@ -75,7 +77,7 @@
       <Field field={type}>
         <div slot="label">Component Type</div>
         <div slot="input">
-          {#await dynTraitTypesStore.run(getAvailableComponentTypes) then { availableTraits }}
+          {#await dynTraitTypesStore.run(getAvailableComponentTypes) then availableTraits}
             <Select
               bind:value={$type.value}
               options={availableTraits.map((traitType) => ({
