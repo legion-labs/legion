@@ -1,11 +1,16 @@
 use std::collections::HashMap;
-
-use lgn_data_runtime::{AssetRegistry, Handle, ResourceDescriptor, ResourceTypeAndId};
-use lgn_ecs::prelude::Commands;
-use lgn_hierarchy::prelude::{BuildChildren, Parent};
-use lgn_tracing::warn;
-
 use crate::ResourceMetaInfo;
+use lgn_animation::components::{AnimationClip, GraphDefinition};
+use lgn_asset_registry::AssetToEntityMap;
+use lgn_core::Name;
+use lgn_data_runtime::{AssetRegistry, Handle, ResourceDescriptor, ResourceTypeAndId};
+use lgn_ecs::prelude::{Commands, Query};
+use lgn_graphics_data::runtime::ModelReferenceType;
+use lgn_graphics_renderer::components::{LightComponent, LightType, VisualComponent};
+use lgn_hierarchy::prelude::{BuildChildren, Children, Parent};
+use lgn_tracing::{error, info, warn};
+use lgn_transform::components::{GlobalTransform, Transform};
+use sample_data::runtime as runtime_data;
 
 pub struct SceneInstance {
     root_resource: ResourceTypeAndId,
@@ -230,8 +235,13 @@ impl SceneInstance {
                 } else if let Some(animation_data) =
                     component.downcast_ref::<lgn_animation::runtime::AnimationTrack>()
                 {
-                    let runtime_animation_data = RuntimeAnimationClip::new(animation_data);
+                    let runtime_animation_data = AnimationClip::new(animation_data);
                     entity.insert(runtime_animation_data);
+                } else if let Some(anim_graph) =
+                    component.downcast_ref::<lgn_animation::runtime::EditorGraphDefinition>()
+                {
+                    let runtime_anim_graph: GraphDefinition = GraphDefinition::new(anim_graph);
+                    entity.insert(runtime_anim_graph);
                 } else {
                     error!(
                         "Unhandle component type {} in entity {}",
