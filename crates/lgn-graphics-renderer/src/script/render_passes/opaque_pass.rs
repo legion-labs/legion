@@ -6,7 +6,8 @@ use crate::{
         RenderGraphBuilder, RenderGraphContext, RenderGraphExecuteContext, RenderGraphLoadState,
         RenderGraphResourceId, RenderGraphViewId, TmpDrawContext, RENDER_LAYER_OPAQUE,
     },
-    gpu_renderer::{GpuInstanceManager, MeshRenderer},
+    features::MeshInstanceManager,
+    gpu_renderer::MeshRenderer,
     resources::UnifiedStaticBuffer,
 };
 
@@ -85,7 +86,7 @@ impl OpaqueLayerPass {
             0,
             &[execute_context
                 .render_resources
-                .get::<GpuInstanceManager>()
+                .get::<MeshInstanceManager>()
                 .vertex_buffer_binding()],
         );
 

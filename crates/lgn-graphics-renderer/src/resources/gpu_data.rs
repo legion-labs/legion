@@ -89,6 +89,22 @@ impl<K: Ord + Copy, T> GpuDataManager<K, T> {
         });
     }
 
+    pub fn sync_update_gpu_data(&self, key: &K, data: &T) {
+        assert!(self.data_map.contains_key(key));
+
+        let gpu_data_allocation = self.data_map.get(key).unwrap();
+
+        let mut binary_writer = BinaryWriter::new();
+        binary_writer.write(data);
+
+        self.gpu_upload_manager
+            .push(UploadGPUResource::Buffer(UploadGPUBuffer {
+                src_data: binary_writer.take(),
+                dst_buffer: self.gpu_heap.buffer().clone(),
+                dst_offset: gpu_data_allocation.gpuheap_addr,
+            }));
+    }
+
     pub async fn async_update_gpu_data(&self, key: &K, data: &T) -> Result<(), TransferError> {
         assert!(self.data_map.contains_key(key));
 

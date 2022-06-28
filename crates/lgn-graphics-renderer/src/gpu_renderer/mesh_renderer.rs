@@ -29,8 +29,8 @@ use crate::{
 };
 
 use super::{
-    GpuInstanceId, GpuInstanceManager, GpuInstanceManagerLabel, RenderElement, RenderLayerBatches,
-    RenderStateSet,
+    GpuInstanceId, GpuInstanceManagerLabel, GpuInstanceManagerOld, RenderElement,
+    RenderLayerBatches, RenderStateSet,
 };
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
@@ -62,12 +62,12 @@ impl MeshRenderer {
 
         // TODO(vdbdd): merge those systems
 
-        app.add_system_to_stage(
-            RenderStage::Prepare,
-            update_render_elements
-                .after(GpuInstanceManagerLabel::UpdateDone)
-                .label(MeshRendererLabel::UpdateDone),
-        );
+        // app.add_system_to_stage(
+        //     RenderStage::Prepare,
+        //     update_render_elements
+        //         .after(GpuInstanceManagerLabel::UpdateDone)
+        //         .label(MeshRendererLabel::UpdateDone),
+        // );
     }
 }
 
@@ -80,7 +80,7 @@ fn initialize_psos(pipeline_manager: Res<'_, PipelineManager>, renderer: Res<'_,
 #[allow(clippy::needless_pass_by_value)]
 fn update_render_elements(renderer: Res<'_, Renderer>) {
     let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
-    let instance_manager = renderer.render_resources().get::<GpuInstanceManager>();
+    let instance_manager = renderer.render_resources().get::<GpuInstanceManagerOld>();
     instance_manager.for_each_removed_gpu_instance_id(|gpu_instance_id| {
         mesh_renderer.unregister_element(*gpu_instance_id);
     });
@@ -191,13 +191,13 @@ impl MeshRenderer {
         self.tmp_pipeline_handles[layer_id]
     }
 
-    fn register_material(&mut self, _material_id: MaterialId) {
+    pub(crate) fn register_material(&mut self, _material_id: MaterialId) {
         for (index, layer) in &mut self.render_layer_batches.iter_mut().enumerate() {
             layer.register_state(0, self.tmp_batch_ids[index]);
         }
     }
 
-    fn register_element(&mut self, element: &RenderElement) {
+    pub(crate) fn register_element(&mut self, element: &RenderElement) {
         let new_index = self.gpu_instance_data.len() as u32;
         let gpu_instance_index = element.gpu_instance_id().index();
         if gpu_instance_index >= self.instance_data_indices.len() as u32 {

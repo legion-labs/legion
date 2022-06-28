@@ -6,7 +6,8 @@ use crate::core::{
     DebugStuff, PrepareRenderContext, RenderCamera, RenderFeatures, RenderLayers, RenderObjects,
     RenderViewport, RenderViewportRendererData, VisibilityContext,
 };
-use crate::gpu_renderer::GpuInstanceManager;
+use crate::features::MeshInstanceManager;
+// use crate::gpu_renderer::GpuInstanceManager;
 use crate::lighting::LightingManager;
 use crate::resources::PersistentDescriptorSetManager;
 use crate::script::render_passes::{
@@ -50,7 +51,7 @@ impl SurfaceRenderer {
             let static_buffer_ro_view = render_context.static_buffer.read_only_view();
             frame_descriptor_set.set_static_buffer(static_buffer_ro_view);
 
-            let instance_manager = render_resources.get::<GpuInstanceManager>();
+            let instance_manager = render_resources.get::<MeshInstanceManager>();
             let va_table_address_buffer = instance_manager.structured_buffer_view();
             frame_descriptor_set.set_va_table_address_buffer(va_table_address_buffer);
 

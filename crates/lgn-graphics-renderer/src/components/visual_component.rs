@@ -16,6 +16,7 @@ pub struct VisualComponent {
     color_blend: f32,
     render_model_handle: Handle<RenderModel>,
     render_object_id: Option<RenderObjectId>,
+    picking_id: u32,
 }
 
 impl VisualComponent {
@@ -25,6 +26,7 @@ impl VisualComponent {
             color_blend,
             render_model_handle: render_model_handle.clone(),
             render_object_id: None,
+            picking_id: 0,
         }
     }
 
@@ -34,6 +36,10 @@ impl VisualComponent {
 
     pub fn color_blend(&self) -> f32 {
         self.color_blend
+    }
+
+    pub fn picking_id(&self) -> u32 {
+        self.picking_id
     }
 
     pub fn render_model_handle(&self) -> &Handle<RenderModel> {

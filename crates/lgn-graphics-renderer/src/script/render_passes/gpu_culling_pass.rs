@@ -16,7 +16,8 @@ use crate::{
         RenderGraphResourceDef, RenderGraphResourceId, RenderGraphTextureDef, RenderGraphViewId,
         RENDER_LAYER_DEPTH,
     },
-    gpu_renderer::{GpuInstanceManager, MeshRenderer},
+    features::MeshInstanceManager,
+    gpu_renderer::MeshRenderer,
     resources::{PipelineDef, PipelineHandle, PipelineManager, UnifiedStaticBuffer},
     RenderContext,
 };
@@ -552,7 +553,7 @@ impl GpuCullingPass {
             0,
             &[execute_context
                 .render_resources
-                .get::<GpuInstanceManager>()
+                .get::<MeshInstanceManager>()
                 .vertex_buffer_binding()],
         );
 

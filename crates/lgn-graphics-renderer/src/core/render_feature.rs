@@ -17,7 +17,7 @@ impl RenderFeatureId {
     }
 }
 
-pub trait RenderFeature: 'static + Send + Sync {
+pub trait RenderFeature: 'static + Send {
     fn get_render_list_requirement(
         &self,
         _visible_view: &VisibleView,

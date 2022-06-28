@@ -23,7 +23,7 @@ use crate::core::{
     RenderViewportPrivateDataHandler, RenderViewportRendererData, RENDER_LAYER_DEPTH,
     RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
-use crate::features::{ModelFeature, RenderVisual};
+use crate::features::{MeshInstanceManager, ModelFeature, RenderVisual};
 use crate::lighting::{RenderLight, RenderLightTestData};
 use crate::surface_renderer::SurfaceRenderer;
 
@@ -37,7 +37,7 @@ use cgen::*;
 
 pub mod labels;
 
-use gpu_renderer::GpuInstanceManager;
+// use gpu_renderer::GpuInstanceManager;
 
 pub use labels::*;
 
@@ -240,13 +240,15 @@ impl Plugin for RendererPlugin {
         );
 
         let mesh_renderer = MeshRenderer::new(device_context, &gpu_heap, &render_layers);
-        let instance_manager = GpuInstanceManager::new(&gpu_heap, &gpu_upload_manager);
+        // let instance_manager = GpuInstanceManager::new(&gpu_heap, &gpu_upload_manager);
+        let instance_manager = MeshInstanceManager::new(&gpu_heap, &gpu_upload_manager);
         let manipulation_manager = ManipulatorManager::new();
         let picking_manager = PickingManager::new(4096);
         let model_manager = ModelManager::new(&mesh_manager, &material_manager);
         let light_manager = LightingManager::new();
         let renderdoc_manager = RenderDocManager::default();
-        let render_objects = RenderObjectsBuilder::default()
+        let mut render_objects_builder = RenderObjectsBuilder::default();
+        render_objects_builder
             // Lights
             .add_primary_table::<RenderLight>()
             .add_secondary_table::<RenderLight, RenderLightTestData>()
@@ -257,12 +259,8 @@ impl Plugin for RendererPlugin {
                     device_context.clone(),
                 )),
             )
-            // Visual
-            .add_primary_table::<RenderVisual>()
             // Camera
-            .add_primary_table::<RenderCamera>()
-            // Done!
-            .finalize();
+            .add_primary_table::<RenderCamera>();
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -286,34 +284,6 @@ impl Plugin for RendererPlugin {
         app.add_startup_system(tmp_create_camera);
 
         //
-        // RenderObjects
-        //
-
-        // Lights
-        app.insert_resource(EcsToRenderLight::new(
-            render_objects.primary_table_view::<RenderLight>(),
-        ))
-        .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
-
-        // Viewports
-        app.insert_resource(EcsToRenderViewport::new(
-            render_objects.primary_table_view::<RenderViewport>(),
-        ))
-        .add_system_to_stage(RenderStage::Prepare, reflect_viewports);
-
-        // Model
-        app.insert_resource(EcsToRenderVisual::new(
-            render_objects.primary_table_view::<RenderVisual>(),
-        ))
-        .add_system_to_stage(RenderStage::Prepare, reflect_visual_components);
-
-        // Camera
-        app.insert_resource(EcsToRenderCamera::new(
-            render_objects.primary_table_view::<RenderCamera>(),
-        ))
-        .add_system_to_stage(RenderStage::Prepare, reflect_camera_components);
-
-        //
         // Resources
         //
 
@@ -328,7 +298,7 @@ impl Plugin for RendererPlugin {
 
         // Init ecs
         MeshRenderer::init_ecs(app);
-        GpuInstanceManager::init_ecs(app);
+        // GpuInstanceManager::init_ecs(app);
 
         app.add_startup_system(register_installers);
 
@@ -391,11 +361,18 @@ impl Plugin for RendererPlugin {
 
         let render_features_builder = RenderFeaturesBuilder::new();
         let render_features = render_features_builder
-            .insert(ModelFeature::new())
+            .insert(ModelFeature::new(
+                device_context,
+                &mut render_objects_builder,
+                &gpu_heap,
+                &gpu_upload_manager,
+                &mesh_manager,
+                &render_layers,
+            ))
             .finalize();
 
         let render_graph_persistent_state = RenderGraphPersistentState::new();
-
+        let render_objects = render_objects_builder.finalize();
         let render_resources_builder = RenderResourcesBuilder::new();
         let render_resources = render_resources_builder
             .insert(render_scope)
@@ -432,13 +409,44 @@ impl Plugin for RendererPlugin {
         let renderer = Renderer::new(
             NUM_RENDER_FRAMES,
             render_command_queue_pool,
-            render_resources,
+            render_resources.clone(),
             graphics_queue,
             gfx_api,
         );
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
+
+        //
+        // ECS <-> RenderObjects
+        //
+        {
+            let render_objects = render_resources.get::<RenderObjects>();
+
+            // Lights
+            app.insert_resource(EcsToRenderLight::new(
+                render_objects.primary_table_view::<RenderLight>(),
+            ))
+            .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+
+            // Viewports
+            app.insert_resource(EcsToRenderViewport::new(
+                render_objects.primary_table_view::<RenderViewport>(),
+            ))
+            .add_system_to_stage(RenderStage::Prepare, reflect_viewports);
+
+            // Model
+            app.insert_resource(EcsToRenderVisual::new(
+                render_objects.primary_table_view::<RenderVisual>(),
+            ))
+            .add_system_to_stage(RenderStage::Prepare, reflect_visual_components);
+
+            // Camera
+            app.insert_resource(EcsToRenderCamera::new(
+                render_objects.primary_table_view::<RenderCamera>(),
+            ))
+            .add_system_to_stage(RenderStage::Prepare, reflect_camera_components);
+        }
     }
 }
 
@@ -562,7 +570,7 @@ fn on_app_exit(mut app_exit: EventReader<'_, '_, AppExit>, renderer: Res<'_, Ren
 
         let mut render_objects = renderer.render_resources().get_mut::<RenderObjects>();
         render_objects.sync_update();
-        render_objects.begin_frame();
+        render_objects.begin_frame(renderer.render_resources());
     }
 }
 
@@ -688,7 +696,9 @@ fn render_update(
             transient_buffer.begin_frame();
             transient_commandbuffer_manager.begin_frame();
 
-            render_resources.get::<RenderObjects>().begin_frame();
+            render_resources
+                .get::<RenderObjects>()
+                .begin_frame(&render_resources);
 
             //
             // Update

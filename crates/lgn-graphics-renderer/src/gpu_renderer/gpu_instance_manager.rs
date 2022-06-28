@@ -15,7 +15,9 @@ use lgn_transform::prelude::GlobalTransform;
 use crate::{
     cgen,
     components::VisualComponent,
-    core::{BinaryWriter, GpuUploadManager, RenderCommandBuilder},
+    core::{
+        BinaryWriter, GpuUploadManager, RenderCommandBuilder, UploadGPUBuffer, UploadGPUResource,
+    },
     labels::RenderStage,
     picking::{PickingIdContext, PickingManager},
     resources::{
@@ -58,7 +60,7 @@ pub enum GpuInstanceManagerLabel {
     UpdateDone,
 }
 
-struct GpuInstanceVas {
+pub(crate) struct GpuInstanceVas {
     pub submesh_va: u32,
     pub material_va: u32,
     pub color_va: u32,
@@ -66,18 +68,18 @@ struct GpuInstanceVas {
     pub picking_data_va: u32,
 }
 
-struct GpuInstanceBlock {
+pub struct GpuInstanceBlock {
     gpu_instance_ids: Vec<GpuInstanceId>,
     gpu_instance_keys: Vec<GpuInstanceKey>,
 }
 
-struct GpuVaTableForGpuInstance {
+pub struct GpuVaTableForGpuInstance {
     static_allocation: StaticBufferAllocation,
     static_buffer_view: StaticBufferView,
 }
 
 impl GpuVaTableForGpuInstance {
-    pub fn new(gpu_heap: &UnifiedStaticBuffer) -> Self {
+    pub(crate) fn new(gpu_heap: &UnifiedStaticBuffer) -> Self {
         let element_count = 1024 * 1024;
         let element_size = std::mem::size_of::<u32>() as u64;
         let static_allocation = gpu_heap.allocate(
@@ -97,7 +99,7 @@ impl GpuVaTableForGpuInstance {
         }
     }
 
-    pub fn set_va_table_address_for_gpu_instance(
+    pub(crate) fn set_va_table_address_for_gpu_instance(
         &self,
         render_commands: &mut RenderCommandBuilder,
         gpu_data_allocation: GpuDataAllocation,
@@ -116,16 +118,36 @@ impl GpuVaTableForGpuInstance {
         });
     }
 
-    pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
+    pub(crate) fn sync_set_va_table_address_for_gpu_instance(
+        &self,
+        gpu_upload: &GpuUploadManager,
+        gpu_data_allocation: GpuDataAllocation,
+    ) {
+        let offset_for_gpu_instance =
+            self.static_allocation.byte_offset() + u64::from(gpu_data_allocation.index()) * 4;
+
+        let va = u32::try_from(gpu_data_allocation.gpuheap_addr()).unwrap();
+
+        let mut binary_writer = BinaryWriter::new();
+        binary_writer.write(&va);
+
+        gpu_upload.push(UploadGPUResource::Buffer(UploadGPUBuffer {
+            src_data: binary_writer.take(),
+            dst_buffer: self.static_allocation.buffer().clone(),
+            dst_offset: offset_for_gpu_instance,
+        }));
+    }
+
+    pub(crate) fn vertex_buffer_binding(&self) -> VertexBufferBinding {
         self.static_allocation.vertex_buffer_binding()
     }
 
-    pub fn structured_buffer_view(&self) -> &BufferView {
+    pub(crate) fn structured_buffer_view(&self) -> &BufferView {
         self.static_buffer_view.buffer_view()
     }
 }
 
-pub(crate) struct GpuInstanceManager {
+pub(crate) struct GpuInstanceManagerOld {
     transform_manager: GpuEntityTransformManager,
     color_manager: GpuEntityColorManager,
     picking_data_manager: GpuPickingDataManager,
@@ -136,7 +158,7 @@ pub(crate) struct GpuInstanceManager {
     removed_gpu_instance_ids: Vec<GpuInstanceId>,
 }
 
-impl GpuInstanceManager {
+impl GpuInstanceManagerOld {
     pub fn new(gpu_heap: &UnifiedStaticBuffer, gpu_upload_manager: &GpuUploadManager) -> Self {
         Self {
             // TODO(vdbdd): as soon as we have a stable ID, we can move the transforms in their own manager.
@@ -152,18 +174,18 @@ impl GpuInstanceManager {
     }
 
     pub fn init_ecs(app: &mut App) {
-        app.add_system_set_to_stage(
-            RenderStage::Prepare,
-            SystemSet::new()
-                .with_system(update_gpu_instances)
-                .label(GpuInstanceManagerLabel::UpdateDone),
-        );
-        app.add_system_set_to_stage(
-            RenderStage::Prepare,
-            SystemSet::new()
-                .with_system(upload_transform_data)
-                .after(GpuInstanceManagerLabel::UpdateDone),
-        );
+        // app.add_system_set_to_stage(
+        //     RenderStage::Prepare,
+        //     SystemSet::new()
+        //         .with_system(update_gpu_instances)
+        //         .label(GpuInstanceManagerLabel::UpdateDone),
+        // );
+        // app.add_system_set_to_stage(
+        //     RenderStage::Prepare,
+        //     SystemSet::new()
+        //         .with_system(upload_transform_data)
+        //         .after(GpuInstanceManagerLabel::UpdateDone),
+        // );
     }
 
     pub fn vertex_buffer_binding(&self) -> VertexBufferBinding {
@@ -349,7 +371,9 @@ fn update_gpu_instances(
 ) {
     let picking_manager = renderer.render_resources().get::<PickingManager>();
     let mesh_manager = renderer.render_resources().get::<MeshManager>();
-    let mut instance_manager = renderer.render_resources().get_mut::<GpuInstanceManager>();
+    let mut instance_manager = renderer
+        .render_resources()
+        .get_mut::<GpuInstanceManagerOld>();
 
     //
     // Clear transient containers
@@ -419,7 +443,7 @@ fn upload_transform_data(
     renderer: Res<'_, Renderer>,
     query: Query<'_, '_, (Entity, &GlobalTransform, &VisualComponent), Changed<GlobalTransform>>,
 ) {
-    let instance_manager = renderer.render_resources().get::<GpuInstanceManager>();
+    let instance_manager = renderer.render_resources().get::<GpuInstanceManagerOld>();
     let mut render_commands = renderer.render_command_builder();
 
     for (entity, transform, _) in query.iter() {
