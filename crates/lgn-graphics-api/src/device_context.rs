@@ -1,10 +1,15 @@
 #[cfg(target_os = "windows")]
 use std::ffi::c_void;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+
 #[cfg(debug_assertions)]
 #[cfg(feature = "track-device-contexts")]
 use std::sync::Mutex;
+
+#[cfg(debug_assertions)]
+#[cfg(feature = "track-device-contexts")]
+use std::sync::atomic::AtomicU64;
 
 use lgn_tracing::trace;
 use raw_window_handle::HasRawWindowHandle;

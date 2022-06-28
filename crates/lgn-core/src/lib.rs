@@ -35,10 +35,5 @@ impl Plugin for CorePlugin {
             .cloned()
             .unwrap_or_default()
             .create_default_pools();
-
-        let bump_allocator_pool = BumpAllocatorPool::new();
-        app.insert_resource(bump_allocator_pool)
-            .add_system_to_stage(CoreStage::First, begin_frame)
-            .add_system_to_stage(CoreStage::Last, end_frame);
     }
 }
