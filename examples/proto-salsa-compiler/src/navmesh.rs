@@ -93,11 +93,104 @@ mod tests {
     }
 
     #[test]
-    fn navmesh_add_object() {}
+    fn navmesh_add_object() {
+        let mut db = setup();
+        let build_params = Arc::new(BuildParams::default());
+
+        let expression = "navmesh(collisions(read(MyWorld.entity)))";
+
+        let navmesh_expression =
+            db.execute_expression(expression.to_string(), build_params.clone());
+        let navmesh = navmesh_expression.downcast_ref::<Navmesh>().unwrap();
+
+        assert_eq!(navmesh.0.min_x, 5);
+        assert_eq!(navmesh.0.min_y, 5);
+        assert_eq!(navmesh.0.min_z, 5);
+        assert_eq!(navmesh.0.max_x, 50);
+        assert_eq!(navmesh.0.max_y, 60);
+        assert_eq!(navmesh.0.max_z, 70);
+
+        db.set_read(
+            "MyWorld.entity".to_string(),
+            r#"atlas(read(Atlas.atlas));exec(read(Car.coll));exec(read(Tree.coll));aabb(4,4,4,10,10,10)"#.to_string(),
+        );
+
+        let navmesh_expression = db.execute_expression(expression.to_string(), build_params);
+        let navmesh = navmesh_expression.downcast_ref::<Navmesh>().unwrap();
+
+        assert_eq!(navmesh.0.min_x, 4);
+        assert_eq!(navmesh.0.min_y, 4);
+        assert_eq!(navmesh.0.min_z, 4);
+        assert_eq!(navmesh.0.max_x, 50);
+        assert_eq!(navmesh.0.max_y, 60);
+        assert_eq!(navmesh.0.max_z, 70);
+    }
 
     #[test]
-    fn navmesh_remove_object() {}
+    fn navmesh_remove_object() {
+        let mut db = setup();
+        let build_params = Arc::new(BuildParams::default());
+
+        let expression = "navmesh(collisions(read(MyWorld.entity)))";
+
+        let navmesh_expression =
+            db.execute_expression(expression.to_string(), build_params.clone());
+        let navmesh = navmesh_expression.downcast_ref::<Navmesh>().unwrap();
+
+        assert_eq!(navmesh.0.min_x, 5);
+        assert_eq!(navmesh.0.min_y, 5);
+        assert_eq!(navmesh.0.min_z, 5);
+        assert_eq!(navmesh.0.max_x, 50);
+        assert_eq!(navmesh.0.max_y, 60);
+        assert_eq!(navmesh.0.max_z, 70);
+
+        db.set_read(
+            "MyWorld.entity".to_string(),
+            r#"atlas(read(Atlas.atlas));exec(read(Car.coll))"#.to_string(),
+        );
+
+        let navmesh_expression = db.execute_expression(expression.to_string(), build_params);
+        let navmesh = navmesh_expression.downcast_ref::<Navmesh>().unwrap();
+
+        assert_eq!(navmesh.0.min_x, 5);
+        assert_eq!(navmesh.0.min_y, 5);
+        assert_eq!(navmesh.0.min_z, 5);
+        assert_eq!(navmesh.0.max_x, 10);
+        assert_eq!(navmesh.0.max_y, 10);
+        assert_eq!(navmesh.0.max_z, 10);
+    }
 
     #[test]
-    fn navmesh_move_object() {}
+    fn navmesh_move_object() {
+        let mut db = setup();
+        let build_params = Arc::new(BuildParams::default());
+
+        let expression = "navmesh(collisions(read(MyWorld.entity)))";
+
+        let navmesh_expression =
+            db.execute_expression(expression.to_string(), build_params.clone());
+        let navmesh = navmesh_expression.downcast_ref::<Navmesh>().unwrap();
+
+        assert_eq!(navmesh.0.min_x, 5);
+        assert_eq!(navmesh.0.min_y, 5);
+        assert_eq!(navmesh.0.min_z, 5);
+        assert_eq!(navmesh.0.max_x, 50);
+        assert_eq!(navmesh.0.max_y, 60);
+        assert_eq!(navmesh.0.max_z, 70);
+
+        db.set_read(
+            "Car.coll".to_string(),
+            r#"aabb(6,6,6,15,15,15)"#.to_string(),
+        );
+
+        let navmesh_expression = db.execute_expression(expression.to_string(), build_params);
+        let navmesh = navmesh_expression.downcast_ref::<Navmesh>().unwrap();
+
+        assert_eq!(navmesh.0.min_x, 6);
+        assert_eq!(navmesh.0.min_y, 6);
+        assert_eq!(navmesh.0.min_z, 6);
+        assert_eq!(navmesh.0.max_x, 50);
+        assert_eq!(navmesh.0.max_y, 60);
+        assert_eq!(navmesh.0.max_z, 70);
+    }
 }

@@ -176,7 +176,7 @@ mod tests {
     fn test_parse_simple() {
         let mut shunting_yard = ShuntingYard::new();
         shunting_yard.parse("atlas()").unwrap();
-        assert_eq!(shunting_yard.to_string(), "at;as");
+        assert_eq!(shunting_yard.to_string(), "atlas");
     }
 
     #[test]

@@ -11,14 +11,13 @@ use service::{
 
 pub struct AtlasCompiler;
 #[async_trait]
-impl Compiler for AtlasCompiler {
+impl Compiler for AtlasCompiler {  
     async fn compile(
         &self,
         compilation_inputs: CompilationInputs,
         context: &mut CompilerContext,
     ) -> Result<(), CompilerError> {
         thread::sleep(time::Duration::from_secs(1)); // Emulates work being done
-
         if compilation_inputs.output_id.source_resource.clone() == ResourceGuid::TextureAtlas {
             let all_textures = context
                 .load_many(&[

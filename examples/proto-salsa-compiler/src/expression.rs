@@ -7,7 +7,6 @@ use crate::compiler::Compiler;
 use crate::rust_yard::token;
 use crate::rust_yard::ShuntingYard;
 use crate::BuildParams;
-use crate::CompilerError;
 
 pub fn execute_expression(
     db: &dyn Compiler,

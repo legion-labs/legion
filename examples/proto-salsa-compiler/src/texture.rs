@@ -1,6 +1,6 @@
 use strum_macros::{Display, EnumString};
 
-use crate::compiler::Compiler;
+use crate::{compiler::Compiler, BuildParams, ContentAddr};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EnumString, Display)]
 pub enum CompressionType {

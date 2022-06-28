@@ -12,7 +12,7 @@ use crate::{
     package::{package, package_sea_ps5, package_see_ps5},
     runtime_dependency::add_runtime_dependency,
     texture::{compile_jpg, compile_png, compile_texture, CompressionType},
-    BuildParams, CompilerError, ContentAddr, Locale,
+    BuildParams, ContentAddr, Locale,
 };
 
 pub trait AnyEq: Downcast {
