@@ -6,7 +6,7 @@ use std;
 
 use super::{lexer, token};
 
-/// The ShuntingYard struct transforms an expression
+/// The `ShuntingYard` struct transforms an expression
 /// to a 64-bit floating point value
 pub struct ShuntingYard<'a> {
     lexer: lexer::Lexer<'a>,
@@ -114,7 +114,7 @@ impl<'a> ShuntingYard<'a> {
         }
     }
 
-    /// to_string_ast returns the string representation of the
+    /// `to_string_ast` returns the string representation of the
     /// Lexer tokens.
     pub fn to_string_ast(&self) -> String {
         let mut result = String::new(); // String to output the result to

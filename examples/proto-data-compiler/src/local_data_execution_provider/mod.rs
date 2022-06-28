@@ -40,7 +40,7 @@ impl DataExecutionProvider for LocalDataExecutionProvider {
         }
     }
     fn debug(&self) -> std::fmt::Result {
-        todo!()
+        Ok(())
     }
 
     async fn compilation_completed(
