@@ -205,7 +205,8 @@ impl SceneInstance {
                 } else if let Some(animation_data) =
                     component.downcast_ref::<lgn_animation::runtime::AnimationTrack>()
                 {
-                    let runtime_animation_data = AnimationClip::new(animation_data);
+                    let mut skeletons = Vec::new();
+                    let runtime_animation_data = AnimationClip::new(animation_data, &mut skeletons);
                     entity.insert(runtime_animation_data);
                 } else if let Some(anim_graph) =
                     component.downcast_ref::<lgn_animation::runtime::EditorGraphDefinition>()

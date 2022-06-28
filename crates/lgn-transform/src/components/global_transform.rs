@@ -231,6 +231,16 @@ impl GlobalTransform {
         value
     }
 
+    /// Returns a [`GlobalTransform`] of this [`GlobalTransform`] added to `value`.
+    #[inline]
+    #[must_use]
+    pub fn add(&self, mut value: Self) -> Self {
+        value.translation += self.translation;
+        value.scale += self.scale;
+        // Add support for rotation
+        value
+    }
+
     #[doc(hidden)]
     #[inline]
     pub fn apply_non_uniform_scale(&mut self, scale: Vec3) {

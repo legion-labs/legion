@@ -1,7 +1,6 @@
-use crate::{animation_pose::Pose, animation_skeleton::Skeleton};
+use crate::animation_skeleton::Skeleton;
 
 pub struct PoseBuffer {
-    pose: Pose,
     is_used: bool,
 }
 pub struct PoseBufferPool {

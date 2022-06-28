@@ -7,7 +7,7 @@ pub struct AnimationClipNode {
 }
 
 impl Node for AnimationClipNode {
-    fn update(&mut self, delta_time: f32) {
+    fn update_time(&mut self, delta_time: f32) {
         self.clip.time_since_last_tick += delta_time;
 
         let current_key_frame_idx = self.clip.current_key_frame_index;
@@ -18,6 +18,10 @@ impl Node for AnimationClipNode {
             self.clip.duration_key_frames[current_key_frame_idx],
         ) {
             self.clip.time_since_last_tick -= self.clip.duration_key_frames[current_key_frame_idx];
+
+            for mut pose in &mut self.clip.poses {
+                pose.current_root_position = pose.current_root_position.add(pose.root_motion);
+            }
 
             if self.clip.looping && current_key_frame_idx == self.clip.poses.len() - 1 {
                 self.clip.current_key_frame_index = 0;

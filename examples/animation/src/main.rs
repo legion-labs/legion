@@ -211,7 +211,7 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.4, 0.0, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
@@ -305,7 +305,7 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.4, 0.2, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
@@ -399,7 +399,7 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.4, 0.4, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
@@ -493,7 +493,7 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.4, 0.2, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
@@ -588,6 +588,28 @@ async fn create_offline_data(
         duration_key_frames: vec![1.0, 1.0, 1.0, 1.0, 1.0],
         time_since_last_tick: 0.0,
         looping: true,
+        root_motion: vec![
+            AnimationTransformBundle {
+                translation: Vec3::new(0.4, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::new(0.0, 0.0, 0.0),
+            },
+            AnimationTransformBundle {
+                translation: Vec3::new(0.4, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::new(0.0, 0.0, 0.0),
+            },
+            AnimationTransformBundle {
+                translation: Vec3::new(0.4, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::new(0.0, 0.0, 0.0),
+            },
+            AnimationTransformBundle {
+                translation: Vec3::new(0.4, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::new(0.0, 0.0, 0.0),
+            },
+        ],
         bone_ids: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
         parent_indices: vec![-1, 0, 0, 2, 3, 4, 5, 0, 7, 8, 9, 0, 11, 12, 13], // Stores the bone idx of every bones parent, if -1: root bone
     });
@@ -598,7 +620,7 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 root
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.4, 0.0, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
@@ -692,7 +714,7 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.4, 0.0, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
@@ -786,7 +808,7 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 root
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.4, 0.0, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
@@ -880,7 +902,7 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 root
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.4, 0.0, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
@@ -975,6 +997,28 @@ async fn create_offline_data(
         duration_key_frames: vec![1.0, 1.0, 1.0, 1.0, 1.0],
         time_since_last_tick: 0.0,
         looping: true,
+        root_motion: vec![
+            AnimationTransformBundle {
+                translation: Vec3::new(0.0, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::new(0.0, 0.0, 0.0),
+            },
+            AnimationTransformBundle {
+                translation: Vec3::new(0.0, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::new(0.0, 0.0, 0.0),
+            },
+            AnimationTransformBundle {
+                translation: Vec3::new(0.0, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::new(0.0, 0.0, 0.0),
+            },
+            AnimationTransformBundle {
+                translation: Vec3::new(0.0, 0.0, 0.0),
+                rotation: Quat::IDENTITY,
+                scale: Vec3::new(0.0, 0.0, 0.0),
+            },
+        ],
         bone_ids: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
         parent_indices: vec![-1, 0, 0, 2, 3, 4, 5, 0, 7, 8, 9, 0, 11, 12, 13], // Stores the bone idx of every bones parent, if -1: root bone
     });
@@ -997,11 +1041,11 @@ async fn create_offline_data(
                 states: vec![
                     AnimationClipNode {
                         id: 1,
-                        track: *waving_anim,
+                        track: *idle_anim,
                     },
                     AnimationClipNode {
                         id: 2,
-                        track: *idle_anim,
+                        track: *waving_anim,
                     },
                 ],
                 connections: vec![
@@ -1010,8 +1054,8 @@ async fn create_offline_data(
                         child_node_id: 1,
                     },
                     Connection {
-                        parent_node_id: 1,
-                        child_node_id: 0,
+                        parent_node_id: 0,
+                        child_node_id: 1,
                     },
                 ],
             }),

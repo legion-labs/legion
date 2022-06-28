@@ -3911,6 +3911,7 @@ dependencies = [
  "lgn-ecs",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
+ "lgn-input",
  "lgn-math",
  "lgn-tracing",
  "lgn-transform",

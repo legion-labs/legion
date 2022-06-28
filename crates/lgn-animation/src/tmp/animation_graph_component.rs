@@ -1,7 +1,6 @@
 use crate::{
-    animation_pose::Pose, tmp::animation_graph_context::GraphContext,
-    tmp::animation_graph_resources::GraphVariation, tmp::animation_task_system::TaskSystem,
-    tmp::graph_instance::GraphInstance,
+    tmp::animation_graph_context::GraphContext, tmp::animation_graph_resources::GraphVariation,
+    tmp::animation_task_system::TaskSystem, tmp::graph_instance::GraphInstance,
 };
 use lgn_transform::components::Transform;
 
@@ -11,7 +10,6 @@ pub struct AnimationGraphComponent {
     task_system: TaskSystem,
     root_motion_delta: Transform,
     graph_context: GraphContext,
-    pose: Pose,
 }
 
 impl AnimationGraphComponent {

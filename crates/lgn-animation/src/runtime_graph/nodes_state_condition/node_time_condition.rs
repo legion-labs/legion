@@ -10,7 +10,7 @@ pub struct TimeConditionNode {
 }
 
 impl BoolValueNode for TimeConditionNode {
-    fn verify_condition(&mut self, delta_time: f32) -> bool {
+    fn verify_time_condition(&mut self, delta_time: f32) -> bool {
         self.time_since_last_verification += delta_time;
         if self.time_since_last_verification >= self.required_elapsed_time {
             self.time_since_last_verification -= self.required_elapsed_time;

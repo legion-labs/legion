@@ -1,12 +1,13 @@
 use crate::animation_pose::Pose;
 use crate::animation_skeleton::Skeleton;
 use crate::runtime::{AnimationTrack, AnimationTransformBundleVec};
-
 use lgn_ecs::component::Component;
+use lgn_math::{Quat, Vec3};
 use lgn_transform::{
     components::{GlobalTransform, Transform},
     TransformBundle,
 };
+use std::sync::Arc;
 
 #[derive(Component, Clone)]
 pub struct AnimationClip {
@@ -20,7 +21,7 @@ pub struct AnimationClip {
 
 impl AnimationClip {
     #[must_use]
-    pub fn new(raw_animation_track: &AnimationTrack) -> Self {
+    pub fn new(raw_animation_track: &AnimationTrack, skeletons: &mut Vec<Arc<Skeleton>>) -> Self {
         let mut bone_ids: Vec<Option<usize>> = Vec::new();
         raw_animation_track
             .bone_ids
@@ -37,17 +38,33 @@ impl AnimationClip {
                     parent_indices.push(None);
                 }
             });
-        let skeleton = Skeleton {
-            bone_ids,
-            parent_indices,
-        };
+
+        let mut idx = find_skeleton(skeletons, &parent_indices);
+        if idx.is_none() {
+            skeletons.push(Arc::new(Skeleton {
+                bone_ids,
+                parent_indices,
+            }));
+            idx = Some(skeletons.len() - 1);
+        }
+
         let converted_transforms = convert_raw_pose_data(&raw_animation_track.key_frames);
         let mut converted_poses = Vec::new();
 
         for pose_transforms in converted_transforms {
             converted_poses.push(Pose {
-                skeleton: skeleton.clone(),
+                skeleton: Arc::clone(&skeletons[idx.unwrap()]),
                 transforms: pose_transforms,
+                root_motion: GlobalTransform {
+                    translation: Vec3::new(0.4, 0.0, 0.0),
+                    rotation: Quat::IDENTITY,
+                    scale: Vec3::new(0.0, 0.0, 0.0),
+                },
+                current_root_position: GlobalTransform {
+                    translation: Vec3::new(0.0, 0.0, 0.0),
+                    rotation: Quat::IDENTITY,
+                    scale: Vec3::new(0.0, 0.0, 0.0),
+                },
             });
         }
 
@@ -62,6 +79,28 @@ impl AnimationClip {
             poses: converted_poses,
         }
     }
+}
+
+fn find_skeleton(
+    skeletons: &[Arc<Skeleton>],
+    parent_indices: &Vec<Option<usize>>,
+) -> Option<usize> {
+    let mut found = true;
+    for (skeleton_id, skeleton) in skeletons.iter().enumerate() {
+        if skeleton.parent_indices.len() != parent_indices.len() {
+            found = false;
+        } else {
+            (0..skeleton.parent_indices.len()).for_each(|i| {
+                if skeletons[skeleton_id].parent_indices[i] != parent_indices[i] {
+                    found = false;
+                }
+            });
+        }
+        if found {
+            return Some(skeleton_id);
+        }
+    }
+    None
 }
 
 fn convert_raw_pose_data(

@@ -51,6 +51,7 @@ pub(crate) fn display_animation(
                     let debug_color = Color::new(bone_depth * color_interval, 255, 52, 255);
                     builder.add_default_mesh(
                         &clip.poses[clip.current_key_frame_index].transforms[n_bone].global,
+                        // .add(clip.poses[clip.current_key_frame_index].current_root_position),
                         DefaultMeshType::Sphere,
                         debug_color,
                     );

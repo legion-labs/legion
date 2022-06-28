@@ -23,6 +23,7 @@ struct AnimationTrack {
     duration_key_frames: Vec<f32>,
     time_since_last_tick: f32,
     looping: bool,
+    root_motion: Vec<AnimationTransformBundle>,
 
     // Skeleton
     bone_ids: Vec<i32>,

@@ -9,7 +9,7 @@ pub struct TransitionNode {
 }
 
 impl Node for TransitionNode {
-    fn update(&mut self, time: f32) {}
+    fn update_time(&mut self, _time: f32) {}
 }
 
 impl TransitionNode {

@@ -6,7 +6,7 @@ pub struct StateNode {
 }
 
 impl Node for StateNode {
-    fn update(&mut self, _time: f32) {}
+    fn update_time(&mut self, _time: f32) {}
 }
 
 impl StateNode {}

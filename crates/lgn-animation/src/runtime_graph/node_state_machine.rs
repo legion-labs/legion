@@ -1,3 +1,5 @@
+use lgn_input::keyboard::KeyboardInput;
+
 use crate::runtime_graph::{
     node::Node, node_state::StateNode, node_transition::TransitionNode,
     nodes_state_condition::value_nodes::node_bool_value::BoolValueNode,
@@ -21,9 +23,9 @@ pub struct StateMachineNode {
 }
 
 impl Node for StateMachineNode {
-    fn update(&mut self, time: f32) {
+    fn update_time(&mut self, time: f32) {
         for transition in &mut self.states[self.active_state_idx].transitions {
-            if transition.condition_node.verify_condition(time) {
+            if transition.condition_node.verify_time_condition(time) {
                 self.active_state_idx = transition.transition_node.target_node_id;
                 break;
             }
@@ -33,7 +35,25 @@ impl Node for StateMachineNode {
         self.states[self.active_state_idx]
             .state_node
             .child_node
-            .update(time);
+            .update_time(time);
+    }
+
+    fn update_key_event(&mut self, key_event: &KeyboardInput) {
+        for transition in &mut self.states[self.active_state_idx].transitions {
+            if !key_event.state.is_pressed() {
+                self.active_state_idx = 0;
+                break;
+            }
+
+            if transition
+                .condition_node
+                .verify_key_event_condition(key_event.key_code.unwrap())
+            {
+                // if keyboard_input_event.state.is_pressed()
+                self.active_state_idx = transition.transition_node.target_node_id;
+                break;
+            }
+        }
     }
 
     fn get_active_state(&self) -> Option<&StateInfo> {

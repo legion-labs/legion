@@ -22,6 +22,7 @@ lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-graphics-renderer = { path = "../lgn-graphics-renderer", version = "0.1.0" }
 lgn-graphics-data = { path = "../lgn-graphics-data", version = "0.1.0" }
 lgn-transform = { path = "../lgn-transform", version = "0.1.0" }
+lgn-input = { path = "../lgn-input", version = " 0.1.0" }
 
 # other
 chrono = "0.4"

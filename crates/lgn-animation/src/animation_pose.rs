@@ -3,13 +3,16 @@ use lgn_transform::{
     prelude::{GlobalTransform, Transform},
     TransformBundle,
 };
+use std::sync::Arc;
 
 use crate::animation_skeleton::Skeleton;
 
 #[derive(Clone)]
 pub struct Pose {
-    pub(crate) skeleton: Skeleton,
+    pub(crate) skeleton: Arc<Skeleton>,
     pub(crate) transforms: Vec<TransformBundle>,
+    pub(crate) root_motion: GlobalTransform,
+    pub(crate) current_root_position: GlobalTransform,
 }
 
 impl Pose {
@@ -55,6 +58,14 @@ impl Pose {
             }
         }
     }
+
+    // fn apply_root_motion(&mut self) {
+    //     for n_bone in 0..self.skeleton.bone_ids.len() {
+    //         self.transforms[n_bone].global = self.transforms[n_bone]
+    //             .global
+    //             .add(self.root_motion.add(self.current_root_position));
+    //     }
+    // }
 
     fn is_root_bone(&self, bone_index: usize) -> bool {
         self.skeleton.parent_indices[bone_index].is_none()
