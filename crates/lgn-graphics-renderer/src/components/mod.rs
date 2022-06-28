@@ -7,9 +7,6 @@ pub use light_component::*;
 mod manipulator_component;
 pub use manipulator_component::*;
 
-mod material_component;
-pub use material_component::*;
-
 mod picked_component;
 pub use picked_component::*;
 
@@ -18,9 +15,3 @@ pub use render_surface::*;
 
 mod visual_component;
 pub use visual_component::*;
-
-mod texture_component;
-pub use texture_component::*;
-
-mod model_component;
-pub use model_component::*;

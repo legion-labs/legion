@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::ResourceTypeAndId;
+use crate::{AssetRegistryReader, ResourceTypeAndId};
 
 // FIXME: this should return `Box<dyn io::Read>` instead of `Vec<u8>`.
 /// Device that can load/reload resources
@@ -8,6 +8,8 @@ use crate::ResourceTypeAndId;
 pub trait Device: Send + Sync {
     /// Load a resource
     async fn load(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;
+    /// Get an async reader to a resource
+    async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader>;
     /// Reload a resource
     async fn reload(&mut self, type_id: ResourceTypeAndId) -> Option<Vec<u8>>;
 }

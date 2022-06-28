@@ -41,8 +41,10 @@ use gpu_renderer::GpuInstanceManager;
 
 pub use labels::*;
 
-mod asset_to_ecs;
 mod renderer;
+use lgn_data_runtime::{
+    AssetRegistry, AssetRegistryOptions, AssetRegistryScheduling, ResourceDescriptor,
+};
 use lgn_embedded_fs::EMBEDDED_FS;
 use lgn_graphics_api::{
     ApiDef, DescriptorHeapDef, DeviceContext, Queue, QueueType, BACKBUFFER_COUNT,
@@ -102,8 +104,7 @@ use crate::{
     resources::MeshManager,
     RenderStage,
 };
-
-use lgn_app::{App, AppExit, CoreStage, Plugin};
+use lgn_app::{App, AppExit, CoreStage, Plugin, StartupStage};
 use lgn_ecs::{event::Events, prelude::*};
 use lgn_math::{const_vec3, Vec3};
 use lgn_transform::components::GlobalTransform;
@@ -112,13 +113,13 @@ use lgn_window::{WindowCloseRequested, WindowCreated, WindowResized, Windows};
 use crate::debug_display::DebugDisplay;
 
 use crate::resources::{
-    ui_renderer_options, MaterialManager, MissingVisualTracker, RendererOptions, SamplerManager,
-    SharedResourcesManager, TransientBufferManager, UnifiedStaticBuffer,
+    ui_renderer_options, MaterialManager, RendererOptions, SamplerManager, SharedResourcesManager,
+    TransientBufferManager, UnifiedStaticBuffer,
 };
 
 use crate::{
     components::{apply_camera_setups, camera_control, RenderSurface, VisualComponent},
-    labels::CommandBufferLabel,
+    labels::RendererLabel,
 };
 
 pub const UP_VECTOR: Vec3 = Vec3::Z;
@@ -172,8 +173,8 @@ impl Plugin for RendererPlugin {
         let graphics_queue = GraphicsQueue::new(device_context);
         let cgen_registry = Arc::new(cgen::initialize(device_context));
         let render_scope = RenderScope::new(NUM_RENDER_FRAMES, device_context);
-        let upload_manager = GpuUploadManager::new();
-        let static_buffer = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
+        let gpu_upload_manager = GpuUploadManager::new(device_context);
+        let gpu_heap = UnifiedStaticBuffer::new(device_context, 64 * 1024 * 1024);
         let transient_buffer = TransientBufferManager::new(device_context, NUM_RENDER_FRAMES);
         let render_command_queue_pool = RenderCommandQueuePool::new();
         let render_command_manager = RenderCommandManager::new(&render_command_queue_pool);
@@ -194,20 +195,28 @@ impl Plugin for RendererPlugin {
             NUM_RENDER_FRAMES,
         );
 
-        let mut mesh_manager = MeshManager::new(static_buffer.allocator());
-        mesh_manager.initialize_default_meshes(&mut render_commands);
+        let mesh_manager = MeshManager::new(&gpu_heap, &gpu_upload_manager, &mut render_commands);
 
-        let texture_manager = TextureManager::new(device_context);
-
-        let material_manager = MaterialManager::new(static_buffer.allocator());
+        let texture_manager = TextureManager::new(
+            device_context,
+            &mut render_commands,
+            &persistent_descriptor_set_manager,
+            &gpu_upload_manager,
+        );
 
         let sampler_manager =
-            SamplerManager::new(device_context, &mut persistent_descriptor_set_manager);
+            SamplerManager::new(device_context, &persistent_descriptor_set_manager);
 
-        let shared_resources_manager = SharedResourcesManager::new(
+        let shared_resources_manager =
+            SharedResourcesManager::new(device_context, &mut persistent_descriptor_set_manager);
+
+        let material_manager = MaterialManager::new(
+            &gpu_heap,
+            &gpu_upload_manager,
             &mut render_commands,
-            device_context,
-            &mut persistent_descriptor_set_manager,
+            &shared_resources_manager,
+            &texture_manager,
+            &sampler_manager,
         );
 
         let render_layers_builder = RenderLayerBuilder::default();
@@ -229,18 +238,13 @@ impl Plugin for RendererPlugin {
             RENDER_LAYER_PICKING
         );
 
-        let mesh_renderer =
-            MeshRenderer::new(device_context, static_buffer.allocator(), &render_layers);
-        let instance_manager = GpuInstanceManager::new(static_buffer.allocator());
+        let mesh_renderer = MeshRenderer::new(device_context, &gpu_heap, &render_layers);
+        let instance_manager = GpuInstanceManager::new(&gpu_heap, &gpu_upload_manager);
         let manipulation_manager = ManipulatorManager::new();
         let picking_manager = PickingManager::new(4096);
         let model_manager = ModelManager::new(&mesh_manager, &material_manager);
-        let missing_visuals_tracker = MissingVisualTracker::default();
-
         let light_manager = LightingManager::new();
-
         let renderdoc_manager = RenderDocManager::default();
-
         let render_objects = RenderObjectsBuilder::default()
             // Lights
             .add_primary_table::<RenderLight>()
@@ -264,12 +268,6 @@ impl Plugin for RendererPlugin {
         //
         app.add_stage_after(
             CoreStage::PostUpdate,
-            RenderStage::Resource,
-            SystemStage::parallel(),
-        );
-
-        app.add_stage_after(
-            RenderStage::Resource,
             RenderStage::Prepare,
             SystemStage::parallel(),
         );
@@ -323,28 +321,22 @@ impl Plugin for RendererPlugin {
             .insert_resource(cgen_registry_list)
             .insert_resource(RenderSurfaces::new())
             .insert_resource(DebugDisplay::default())
-            .insert_resource(persistent_descriptor_set_manager)
-            .insert_resource(shared_resources_manager)
-            .insert_resource(texture_manager)
             .insert_resource(RendererOptions::default())
             .insert_resource(CameraOptions::default())
             .insert_resource(picking_manager.clone());
 
         // Init ecs
-        TextureManager::init_ecs(app);
-        MaterialManager::init_ecs(app);
         MeshRenderer::init_ecs(app);
-        ModelManager::init_ecs(app);
-        MissingVisualTracker::init_ecs(app);
         GpuInstanceManager::init_ecs(app);
 
-        // Only Init AssetRegistry event handler if there's AssetRegistryEvent already registered
-        if app
-            .world
-            .contains_resource::<Events<lgn_data_runtime::AssetRegistryEvent>>()
-        {
-            app.add_system_to_stage(RenderStage::Resource, asset_to_ecs::process_load_events);
-        }
+        app.add_startup_system(register_installers);
+
+        app.add_startup_system_to_stage(
+            StartupStage::PostStartup,
+            install_default_resources
+                .label(RendererLabel::DefaultResourcesInstalled)
+                .after(AssetRegistryScheduling::AssetRegistryCreated),
+        );
 
         // Plugins are optional
         app.add_plugin(EguiPlugin::default());
@@ -389,7 +381,7 @@ impl Plugin for RendererPlugin {
         //
         app.add_system_to_stage(
             RenderStage::Render,
-            render_update.label(CommandBufferLabel::Generate),
+            render_update.label(RendererLabel::Generate),
         );
 
         //
@@ -408,8 +400,8 @@ impl Plugin for RendererPlugin {
             .insert(render_scope)
             .insert(gfx_api.clone())
             .insert(render_command_manager)
-            .insert(upload_manager)
-            .insert(static_buffer)
+            .insert(gpu_upload_manager)
+            .insert(gpu_heap)
             .insert(transient_buffer)
             .insert(descriptor_heap_manager)
             .insert(transient_commandbuffer_manager)
@@ -423,13 +415,15 @@ impl Plugin for RendererPlugin {
             .insert(picking_manager)
             .insert(model_manager)
             .insert(mesh_manager)
+            .insert(texture_manager)
             .insert(material_manager)
             .insert(sampler_manager)
-            .insert(missing_visuals_tracker)
             .insert(render_layers)
             .insert(render_features)
             .insert(render_graph_persistent_state)
             .insert(Herd::new())
+            .insert(persistent_descriptor_set_manager)
+            .insert(shared_resources_manager)
             .finalize();
 
         app.add_system_to_stage(CoreStage::Last, on_app_exit);
@@ -447,7 +441,58 @@ impl Plugin for RendererPlugin {
     }
 }
 
-#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
+#[allow(clippy::needless_pass_by_value)]
+fn register_installers(
+    asset_registry_options: NonSendMut<'_, AssetRegistryOptions>,
+    renderer: Res<'_, Renderer>,
+) {
+    let asset_registry_options = asset_registry_options.into_inner();
+
+    let texture_manager = renderer.render_resources().get::<TextureManager>();
+    let texture_installer = Arc::new(resources::TextureInstaller::new(&texture_manager));
+    asset_registry_options.add_resource_installer(
+        lgn_graphics_data::runtime::BinTexture::TYPE,
+        texture_installer.clone(),
+    );
+
+    asset_registry_options.add_component_installer(
+        &[
+            std::any::TypeId::of::<lgn_graphics_data::runtime::Visual>(),
+            std::any::TypeId::of::<lgn_graphics_data::runtime::Light>(),
+            std::any::TypeId::of::<lgn_graphics_data::runtime::CameraSetup>(),
+        ],
+        texture_installer,
+    );
+
+    let material_manager = renderer.render_resources().get::<MaterialManager>();
+    asset_registry_options.add_resource_installer(
+        lgn_graphics_data::runtime::Material::TYPE,
+        Arc::new(resources::MaterialInstaller::new(&material_manager)),
+    );
+
+    let model_manager = renderer.render_resources().get::<ModelManager>();
+    asset_registry_options.add_resource_installer(
+        lgn_graphics_data::runtime::Model::TYPE,
+        Arc::new(resources::ModelInstaller::new(&model_manager)),
+    );
+}
+
+#[allow(clippy::needless_pass_by_value)]
+fn install_default_resources(
+    asset_registry: Res<'_, Arc<AssetRegistry>>,
+    renderer: Res<'_, Renderer>,
+) {
+    let texture_manager = renderer.render_resources().get::<TextureManager>();
+    texture_manager.install_default_resources(&asset_registry);
+
+    let material_manager = renderer.render_resources().get::<MaterialManager>();
+    material_manager.install_default_resources(&asset_registry);
+
+    let model_manager = renderer.render_resources().get::<ModelManager>();
+    model_manager.install_default_resources(&asset_registry);
+}
+
+#[allow(clippy::needless_pass_by_value)]
 fn on_window_created(
     mut event_window_created: EventReader<'_, '_, WindowCreated>,
     window_list: Res<'_, Windows>,
@@ -532,7 +577,6 @@ fn render_update(
         ResMut<'_, PickingManager>,
         ResMut<'_, Egui>,
         ResMut<'_, DebugDisplay>,
-        ResMut<'_, PersistentDescriptorSetManager>,
         ResMut<'_, RenderSurfaces>,
         EventReader<'_, '_, KeyboardInput>,
     ),
@@ -547,9 +591,8 @@ fn render_update(
     let picking_manager = resources.2;
     let mut egui = resources.3;
     let mut debug_display = resources.4;
-    let mut persistent_descriptor_set_manager = resources.5;
-    let mut render_surfaces = resources.6;
-    let mut keyboard_input_events = resources.7;
+    let mut render_surfaces = resources.5;
+    let mut keyboard_input_events = resources.6;
 
     // queries
     let q_picked_drawables = queries.0;
@@ -639,7 +682,6 @@ fn render_update(
             descriptor_heap_manager.begin_frame();
 
             device_context.free_gpu_memory();
-            device_context.inc_current_cpu_frame();
 
             transient_buffer.begin_frame();
             transient_commandbuffer_manager.begin_frame();
@@ -653,6 +695,9 @@ fn render_update(
                 .get_mut::<RenderCommandManager>()
                 .apply(&render_resources);
 
+            let mut persistent_descriptor_set_manager =
+                render_resources.get_mut::<PersistentDescriptorSetManager>();
+
             persistent_descriptor_set_manager.frame_update();
             pipeline_manager.frame_update(&device_context);
 
@@ -664,7 +709,7 @@ fn render_update(
             let mut transient_buffer_allocator =
                 TransientBufferAllocator::new(&transient_buffer, 64 * 1024);
 
-            render_resources.get_mut::<GpuUploadManager>().upload(
+            render_resources.get::<GpuUploadManager>().upload(
                 &mut transient_commandbuffer_allocator,
                 &mut transient_buffer_allocator,
                 &graphics_queue,

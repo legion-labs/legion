@@ -147,7 +147,7 @@ pub(crate) fn generate_reflection(
             let enum_attributes = enum_meta_info.attributes.generate_descriptor_impl();
 
             quote! {
-                #[derive(PartialEq, Clone, Copy)]
+                #[derive(PartialEq, Clone, Copy, Debug)]
                 #[non_exhaustive]
                 #[repr(u32)]
                 pub enum #enum_name {

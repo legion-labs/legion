@@ -141,7 +141,7 @@ use thiserror::Error;
 pub enum Error {
     /// Project-related error.
     #[error("Project-related error: '{0}")]
-    Project(#[from] lgn_data_offline::resource::Error),
+    Project(#[from] lgn_data_offline::Error),
 
     /// Not found.
     #[error("Not found at '{0}'.")]
@@ -192,7 +192,6 @@ pub enum Error {
     Database(#[source] sqlx::Error),
 }
 
-mod asset_file_writer;
 mod databuild;
 mod options;
 mod output_index;

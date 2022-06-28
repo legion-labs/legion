@@ -6,7 +6,7 @@ use lgn_content_store::{
         ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
         TreeIdentifier, TreeLeafNode,
     },
-    Provider,
+    ContentAsyncReadWithOriginAndSize, Provider,
 };
 use tokio_stream::StreamExt;
 
@@ -227,6 +227,25 @@ where
         } else {
             Err(Error::resource_not_found_by_id(id.clone()))
         }
+    }
+
+    pub async fn get_reader(
+        &self,
+        id: &IndexKey,
+    ) -> Result<(ContentAsyncReadWithOriginAndSize, ResourceIdentifier)> {
+        if let Some(resource_id) = self
+            .get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
+            .await?
+        {
+            if let Ok(reader) = self
+                .transaction
+                .get_reader(resource_id.as_identifier())
+                .await
+            {
+                return Ok((reader, resource_id));
+            }
+        }
+        Err(Error::ResourceNotFoundById { id: id.clone() })
     }
 
     pub async fn load_resource_by_path(&self, path: &str) -> Result<(Vec<u8>, ResourceIdentifier)> {

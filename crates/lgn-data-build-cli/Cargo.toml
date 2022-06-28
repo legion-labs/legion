@@ -33,8 +33,5 @@ lgn-data-runtime = { path = "../lgn-data-runtime", version = "0.1.0" }
 
 [dev-dependencies]
 tempfile = "3.2.0"
-refs-resource = { path = "../lgn-data-offline/test-refs-resource", version = "0.1.0" }
-text-resource = { path = "../lgn-data-offline/test-text-resource", version = "0.1.0" }
-integer-asset = { path = "../lgn-data-runtime/test-integer-asset", version = "0.1.0" }
-refs-asset = { path = "../lgn-data-runtime/test-refs-asset", version = "0.1.0" }
+generic-data = { path = "../../tests/generic-data", features = ["offline"] }
 serial_test = "0.6"

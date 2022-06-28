@@ -2,12 +2,14 @@
 
 use std::collections::HashMap;
 use std::io::Cursor;
+use std::str::FromStr;
 
-use generic_data::offline::{TestComponent, TestEntity, TestEntityProcessor, TestSubType2};
+use generic_data::offline::{TestComponent, TestEntity, TestResource, TestSubType2};
 use lgn_data_model::collector::{collect_properties, ItemInfo, PropertyCollector};
 use lgn_data_model::json_utils::{get_property_as_json_string, set_property_from_json_string};
 use lgn_data_model::{ReflectionError, TypeReflection};
-use lgn_data_runtime::AssetLoader;
+use lgn_data_offline::offline::Metadata;
+use lgn_data_runtime::prelude::*;
 use lgn_math::prelude::*;
 
 #[test]
@@ -23,8 +25,9 @@ fn test_default_implementation() {
     assert_eq!(entity.test_blob, vec![0, 1, 2, 3]);
 }
 
-#[test]
-fn test_json_serialization() {
+#[tokio::test]
+async fn test_json_serialization() {
+    TestEntity::register_resource_type();
     let json_data = r#"
         {
             "test_string" : "Value read from json",
@@ -37,11 +40,15 @@ fn test_json_serialization() {
             "test_blob" : [3,2,1,0]
         }"#;
 
-    let mut file = Cursor::new(json_data);
+    let meta_data = Metadata::new_default::<TestEntity>();
+    let mut meta = serde_json::to_string(&meta_data).unwrap();
+    meta.push_str(json_data);
 
-    let mut processor = TestEntityProcessor {};
-    let entity = processor.load(&mut file).unwrap();
-    let entity = entity.downcast_ref::<TestEntity>().unwrap();
+    let file = Cursor::new(meta);
+    let mut reader = Box::pin(file) as AssetRegistryReader;
+    let entity = lgn_data_offline::from_json_reader::<TestEntity>(&mut reader)
+        .await
+        .unwrap();
 
     assert_eq!(entity.test_string.as_str(), "Value read from json");
     assert_eq!(entity.test_position, Vec3::new(2.0, 2.0, 2.0));
@@ -193,9 +200,82 @@ fn test_collector() {
     let entity = TestEntity::default();
     let output = collect_properties::<PropertyBag>(&entity).unwrap();
     assert_eq!(output.ptype, "TestEntity");
-    assert_eq!(output.sub_properties.len(), 13);
-    assert_eq!(output.sub_properties[0].name, "test_string");
-    assert_eq!(output.sub_properties[0].ptype, "String");
-    assert_eq!(output.sub_properties[1].name, "GroupTest1");
-    assert_eq!(output.sub_properties[1].ptype, "_group_");
+    assert_eq!(output.sub_properties.len(), 14);
+    assert_eq!(output.sub_properties[0].name, "meta");
+    assert_eq!(output.sub_properties[0].ptype, "Metadata");
+    assert_eq!(output.sub_properties[1].name, "test_string");
+    assert_eq!(output.sub_properties[1].ptype, "String");
+    assert_eq!(output.sub_properties[2].name, "GroupTest1");
+    assert_eq!(output.sub_properties[2].ptype, "_group_");
+}
+
+#[test]
+fn simple_path() {
+    let _a = ResourceType::new(TestResource::TYPENAME.as_bytes());
+
+    let source = ResourceTypeAndId {
+        kind: TestResource::TYPE,
+        id: ResourceId::new(),
+    };
+
+    let path_a = ResourcePathId::from(source);
+    let path_b = path_a.push(TestResource::TYPE);
+
+    let name_a = path_a.to_string();
+    assert_eq!(path_a, ResourcePathId::from_str(&name_a).unwrap());
+
+    let name_b = path_b.to_string();
+    assert_eq!(path_b, ResourcePathId::from_str(&name_b).unwrap());
+}
+
+#[test]
+fn test_transform() {
+    let source = Transform::new(TestResource::TYPE, TestResource::TYPE);
+
+    let text = source.to_string();
+    assert!(text.len() > 1);
+    assert!(text.contains('-'));
+
+    let parsed = Transform::from_str(&text).expect("parsed Transform");
+    assert_eq!(source, parsed);
+}
+
+#[test]
+fn test_named_path() {
+    let source = ResourceTypeAndId {
+        kind: TestResource::TYPE,
+        id: ResourceId::new(),
+    };
+
+    let source = ResourcePathId::from(source);
+    let source_hello = source.push_named(TestResource::TYPE, "hello");
+
+    let hello_text = source_hello.to_string();
+    assert_eq!(source_hello, ResourcePathId::from_str(&hello_text).unwrap());
+}
+
+#[test]
+fn test_transform_iter() {
+    let foo_type = ResourceType::new(b"foo");
+    let bar_type = ResourceType::new(b"bar");
+    let source = ResourceTypeAndId {
+        kind: foo_type,
+        id: ResourceId::new(),
+    };
+
+    let source_only = ResourcePathId::from(source);
+    assert_eq!(source_only.transforms().next(), None);
+
+    let path = ResourcePathId::from(source)
+        .push(bar_type)
+        .push_named(foo_type, "test_name");
+
+    let mut transform_iter = path.transforms();
+    assert_eq!(transform_iter.next(), Some((foo_type, bar_type, None)));
+    assert_eq!(
+        transform_iter.next(),
+        Some((bar_type, foo_type, Some(&"test_name".to_string())))
+    );
+    assert_eq!(transform_iter.next(), None);
+    assert_eq!(transform_iter.next(), None);
 }

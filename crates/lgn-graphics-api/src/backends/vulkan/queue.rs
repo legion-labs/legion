@@ -85,7 +85,6 @@ impl Queue {
         wait_semaphores: &[&Semaphore],
         signal_semaphores: &[&Semaphore],
         signal_fence: Option<&Fence>,
-        current_cpu_frame: u64,
     ) {
         let mut command_buffer_list = Vec::with_capacity(command_buffers.len());
         for command_buffer in command_buffers.iter() {
@@ -93,20 +92,12 @@ impl Queue {
         }
 
         let mut wait_semaphore_list = Vec::with_capacity(wait_semaphores.len());
-        let mut timeline_submit_list = Vec::with_capacity(wait_semaphores.len());
+        let mut timeline_wait_submit_list = Vec::with_capacity(wait_semaphores.len());
         let mut wait_dst_stage_mask = Vec::with_capacity(wait_semaphores.len());
 
         for wait_semaphore in wait_semaphores {
-            let timeline = wait_semaphore
-                .definition()
-                .usage_flags
-                .intersects(SemaphoreUsage::TIMELINE);
-
-            // Don't wait on a semaphore that will never signal
-            //TODO: Assert or fail here?
-            if timeline || wait_semaphore.signal_available() {
-                timeline_submit_list.push(current_cpu_frame);
-
+            if wait_semaphore.signal_available() {
+                timeline_wait_submit_list.push(wait_semaphore.next_timeline_value());
                 wait_semaphore_list.push(wait_semaphore.vk_semaphore());
                 wait_dst_stage_mask.push(vk::PipelineStageFlags::ALL_COMMANDS);
 
@@ -115,7 +106,7 @@ impl Queue {
         }
 
         let mut signal_semaphore_list = Vec::with_capacity(signal_semaphores.len());
-        let mut signal_submit_list = Vec::with_capacity(signal_semaphores.len());
+        let mut timeline_signal_submit_list = Vec::with_capacity(signal_semaphores.len());
 
         for signal_semaphore in signal_semaphores {
             let timeline = signal_semaphore
@@ -126,7 +117,7 @@ impl Queue {
             // Don't signal a semaphore if something is already going to signal it
             //TODO: Assert or fail here?
             if timeline || !signal_semaphore.signal_available() {
-                signal_submit_list.push(current_cpu_frame);
+                timeline_signal_submit_list.push(signal_semaphore.next_timeline_value());
 
                 signal_semaphore_list.push(signal_semaphore.vk_semaphore());
                 signal_semaphore.set_signal_available(true);
@@ -134,8 +125,8 @@ impl Queue {
         }
 
         let mut timeline_submit_info = vk::TimelineSemaphoreSubmitInfo::builder()
-            .wait_semaphore_values(&timeline_submit_list)
-            .signal_semaphore_values(&signal_submit_list);
+            .wait_semaphore_values(&timeline_wait_submit_list)
+            .signal_semaphore_values(&timeline_signal_submit_list);
 
         let submit_info = vk::SubmitInfo::builder()
             .wait_semaphores(&wait_semaphore_list)

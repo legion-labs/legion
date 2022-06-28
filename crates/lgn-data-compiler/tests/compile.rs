@@ -1,18 +1,10 @@
 use std::sync::Arc;
 
-use binary_resource::BinaryResource;
-use integer_asset::{IntegerAsset, IntegerAssetLoader};
-use lgn_content_store::{
-    indexing::{ResourceExists, ResourceReader},
-    Config,
-};
+use generic_data::offline::{BinaryResource, IntegerAsset, MultiTextResource, TextResource};
+use lgn_content_store::{indexing::ResourceExists, Config};
 use lgn_data_compiler::compiler_cmd::{list_compilers, CompilerCompileCmd};
-use lgn_data_runtime::{
-    AssetLoader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
-    ResourceTypeAndId,
-};
-use multitext_resource::{MultiTextResource, MultiTextResourceProc};
-use text_resource::TextResource;
+use lgn_data_offline::{from_json_reader, SourceResource};
+use lgn_data_runtime::prelude::*;
 
 mod common;
 
@@ -34,24 +26,17 @@ async fn compile_atoi() {
     );
 
     let source_magic_value = String::from("47");
-
     let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
-            kind: text_resource::TextResource::TYPE,
+            kind: TextResource::TYPE,
             id: ResourceId::new(),
         };
-
-        let mut proc = text_resource::TextResourceProc {};
-
-        let mut resource = proc.new_resource();
-        let mut resource = resource
-            .downcast_mut::<TextResource>()
-            .expect("valid resource");
-
+        let mut resource = TextResource::new_named("test_resource");
         resource.content = source_magic_value.clone();
 
         let source_manifest_id =
-            common::write_resource(source, persistent_content_provider, &proc, resource).await;
+            common::write_resource(source, Arc::clone(&persistent_content_provider), &resource)
+                .await;
 
         (source, source_manifest_id)
     };
@@ -60,7 +45,7 @@ async fn compile_atoi() {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
 
-        let compile_path = ResourcePathId::from(source).push(integer_asset::IntegerAsset::TYPE);
+        let compile_path = ResourcePathId::from(source).push(IntegerAsset::TYPE);
         let command = CompilerCompileCmd::new(
             &exe_path,
             &compile_path,
@@ -88,16 +73,16 @@ async fn compile_atoi() {
         .await
         .unwrap());
 
-    let resource_content = volatile_content_provider
-        .read_resource_as_bytes(content_id)
+    let reader = volatile_content_provider
+        .get_reader(content_id.as_identifier())
         .await
         .expect("asset content");
 
-    let mut loader = IntegerAssetLoader {};
-    let asset = loader
-        .load(&mut &resource_content[..])
+    IntegerAsset::register_resource_type();
+    let mut reader = Box::pin(reader) as AssetRegistryReader;
+    let asset = from_json_reader::<IntegerAsset>(&mut reader)
+        .await
         .expect("loaded assets");
-    let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 
     let stringified = asset.magic_value.to_string();
     assert_eq!(source_magic_value, stringified);
@@ -115,19 +100,15 @@ async fn compile_intermediate() {
 
     let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
-            kind: text_resource::TextResource::TYPE,
+            kind: TextResource::TYPE,
             id: ResourceId::new(),
         };
-        let mut proc = text_resource::TextResourceProc {};
-        let mut resource = proc.new_resource();
-        let mut resource = resource
-            .downcast_mut::<TextResource>()
-            .expect("valid resource");
-
+        let mut resource = TextResource::new_named("test_resource");
         resource.content = source_magic_value.clone();
 
         let source_manifest_id =
-            common::write_resource(source, persistent_content_provider, &proc, resource).await;
+            common::write_resource(source, Arc::clone(&persistent_content_provider), &resource)
+                .await;
 
         (source, source_manifest_id)
     };
@@ -135,7 +116,7 @@ async fn compile_intermediate() {
     let intermediate_info = {
         let exe_path = common::compiler_exe("test-reverse");
         assert!(exe_path.exists());
-        let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
+        let compile_path = ResourcePathId::from(source).push(TextResource::TYPE);
         let command = CompilerCompileCmd::new(
             &exe_path,
             &compile_path,
@@ -155,8 +136,8 @@ async fn compile_intermediate() {
         let exe_path = common::compiler_exe("test-atoi");
         assert!(exe_path.exists());
         let compile_path = ResourcePathId::from(source)
-            .push(text_resource::TextResource::TYPE)
-            .push(integer_asset::IntegerAsset::TYPE);
+            .push(TextResource::TYPE)
+            .push(IntegerAsset::TYPE);
         let command = CompilerCompileCmd::new(
             &exe_path,
             &compile_path,
@@ -183,16 +164,16 @@ async fn compile_intermediate() {
         .await
         .unwrap());
 
-    let resource_content = volatile_content_provider
-        .read_resource_as_bytes(content_id)
+    let reader = volatile_content_provider
+        .get_reader(content_id.as_identifier())
         .await
         .expect("asset content");
 
-    let mut loader = IntegerAssetLoader {};
-    let asset = loader
-        .load(&mut &resource_content[..])
+    IntegerAsset::register_resource_type();
+    let mut reader = Box::pin(reader) as AssetRegistryReader;
+    let asset = from_json_reader::<IntegerAsset>(&mut reader)
+        .await
         .expect("loaded assets");
-    let asset = asset.downcast_ref::<IntegerAsset>().unwrap();
 
     let stringified = asset.magic_value.to_string();
     assert_eq!(
@@ -213,29 +194,25 @@ async fn compile_multi_resource() {
 
     let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
-            kind: multitext_resource::MultiTextResource::TYPE,
+            kind: MultiTextResource::TYPE,
             id: ResourceId::new(),
         };
-        let mut proc = MultiTextResourceProc {};
-        let mut resource = proc.new_resource();
-        let mut resource = resource
-            .downcast_mut::<MultiTextResource>()
-            .expect("valid resource");
-
+        let mut resource = MultiTextResource::new_named("test_resource");
         resource.text_list = source_text_list.clone();
 
         let source_manifest_id =
-            common::write_resource(source, persistent_content_provider, &proc, resource).await;
+            common::write_resource(source, Arc::clone(&persistent_content_provider), &resource)
+                .await;
 
         (source, source_manifest_id)
     };
 
-    let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
+    let compile_path = ResourcePathId::from(source).push(TextResource::TYPE);
 
     let compiled_resources = {
         let exe_path = common::compiler_exe("test-split");
         assert!(exe_path.exists());
-        let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
+        let compile_path = ResourcePathId::from(source).push(TextResource::TYPE);
         let command = CompilerCompileCmd::new(
             &exe_path,
             &compile_path,
@@ -275,15 +252,17 @@ async fn compile_multi_resource() {
             .resource_exists(&resource.content_id)
             .await
             .unwrap());
-        let resource_content = volatile_content_provider
-            .read_resource_as_bytes(&resource.content_id)
+        let reader = volatile_content_provider
+            .get_reader(resource.content_id.as_identifier())
             .await
             .expect("asset content");
-        let mut proc = text_resource::TextResourceProc {};
-        let resource = proc
-            .read_resource(&mut &resource_content[..])
+
+        TextResource::register_resource_type();
+        let mut reader = Box::pin(reader) as AssetRegistryReader;
+        let resource = from_json_reader::<TextResource>(&mut reader)
+            .await
             .expect("loaded resource");
-        let resource = resource.downcast_ref::<TextResource>().unwrap();
+
         assert_eq!(&resource.content, source_text);
     }
 }
@@ -301,21 +280,16 @@ async fn compile_base64() {
 
     let (source, source_manifest_id) = {
         let source = ResourceTypeAndId {
-            kind: binary_resource::BinaryResource::TYPE,
+            kind: BinaryResource::TYPE,
             id: ResourceId::new(),
         };
 
-        let mut proc = binary_resource::BinaryResourceProc {};
-
-        let mut resource = proc.new_resource();
-        let mut resource = resource
-            .downcast_mut::<BinaryResource>()
-            .expect("valid resource");
-
+        let mut resource = BinaryResource::new_named("test_resource");
         resource.content = source_binary_value;
 
         let source_manifest_id =
-            common::write_resource(source, persistent_content_provider, &proc, resource).await;
+            common::write_resource(source, Arc::clone(&persistent_content_provider), &resource)
+                .await;
 
         (source, source_manifest_id)
     };
@@ -324,7 +298,7 @@ async fn compile_base64() {
         let exe_path = common::compiler_exe("test-base64");
         assert!(exe_path.exists());
 
-        let compile_path = ResourcePathId::from(source).push(text_resource::TextResource::TYPE);
+        let compile_path = ResourcePathId::from(source).push(TextResource::TYPE);
         let command = CompilerCompileCmd::new(
             &exe_path,
             &compile_path,
@@ -352,11 +326,15 @@ async fn compile_base64() {
         .await
         .unwrap());
 
-    let resource_content = volatile_content_provider
-        .read_resource_as_bytes(content_id)
+    let reader = volatile_content_provider
+        .get_reader(content_id.as_identifier())
         .await
         .expect("asset content");
 
-    let base64str = String::from_utf8_lossy(&resource_content);
+    TextResource::register_resource_type();
+    let mut reader = Box::pin(reader) as AssetRegistryReader;
+    let text_resource = from_json_reader::<TextResource>(&mut reader).await.unwrap();
+
+    let base64str = text_resource.content;
     assert_eq!(base64str, expected_base64_value);
 }

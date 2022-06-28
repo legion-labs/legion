@@ -66,7 +66,13 @@ impl Semaphore {
         self.inner.backend_semaphore.vk_semaphore
     }
 
-    pub fn vk_semaphore_ref(&self) -> &ash::vk::Semaphore {
-        &self.inner.backend_semaphore.vk_semaphore
+    pub fn backend_timeline_value(&self) -> u64 {
+        unsafe {
+            self.inner
+                .device_context
+                .vk_device()
+                .get_semaphore_counter_value(self.vk_semaphore())
+                .unwrap()
+        }
     }
 }

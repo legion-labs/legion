@@ -90,14 +90,9 @@ impl ArrayOperation {
 impl TransactionOperation for ArrayOperation {
     #[allow(unsafe_code)]
     async fn apply_operation(&mut self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let resource_handle = ctx.get_or_load(self.resource_id).await?;
+        let edit = ctx.edit_resource(self.resource_id).await?;
 
-        let mut reflection = ctx
-            .asset_registry
-            .get_resource_reflection_mut(self.resource_id.kind, &resource_handle)
-            .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
-
-        let array_value = find_property_mut(reflection.as_reflect_mut(), self.array_path.as_str())
+        let array_value = find_property_mut(edit.as_reflect_mut(), self.array_path.as_str())
             .map_err(|err| Error::Reflection(self.resource_id, err))?;
         if let TypeDefinition::Array(array_desc) = array_value.type_def {
             match &mut self.operation_type {
@@ -105,12 +100,7 @@ impl TransactionOperation for ArrayOperation {
                     // If a Json value is specify, use it
                     let json_value = if let Some(json_value) = json_value {
                         let mut json_value = serde_json::from_str::<serde_json::Value>(json_value)
-                            .map_err(|err| {
-                                Error::Reflection(
-                                    self.resource_id,
-                                    lgn_data_model::ReflectionError::ErrorSerde(err),
-                                )
-                            })?;
+                            .map_err(|err| Error::Reflection(self.resource_id, err.into()))?;
 
                         // If we insert a BoxDyn, we cannot apply the json_values as is because there's potentially
                         // missing fields. We spawn a new instance using the BoxDescriptor, apply the Values
@@ -132,12 +122,7 @@ impl TransactionOperation for ArrayOperation {
 
                                         *values =
                                             serde_json::from_str(&merged_json).map_err(|err| {
-                                                Error::Reflection(
-                                                    self.resource_id,
-                                                    lgn_data_model::ReflectionError::ErrorSerde(
-                                                        err,
-                                                    ),
-                                                )
+                                                Error::Reflection(self.resource_id, err.into())
                                             })?;
                                     }
                                 }
@@ -154,14 +139,8 @@ impl TransactionOperation for ArrayOperation {
                                 &mut json,
                             ))
                             .map_err(|err| Error::Reflection(self.resource_id, err))?;
-                        serde_json::from_slice::<serde_json::Value>(buffer.as_slice()).map_err(
-                            |err| {
-                                Error::Reflection(
-                                    self.resource_id,
-                                    lgn_data_model::ReflectionError::ErrorSerde(err),
-                                )
-                            },
-                        )?
+                        serde_json::from_slice::<serde_json::Value>(buffer.as_slice())
+                            .map_err(|err| Error::Reflection(self.resource_id, err.into()))?
                     };
 
                     (array_desc.insert_element)(
@@ -213,20 +192,14 @@ impl TransactionOperation for ArrayOperation {
                 }
             }
         }
-        ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
 
     #[allow(unsafe_code)]
     async fn rollback_operation(&self, ctx: &mut LockContext<'_>) -> Result<(), Error> {
-        let handle = ctx.get_or_load(self.resource_id).await?;
+        let edit = ctx.edit_resource(self.resource_id).await?;
 
-        let mut reflection = ctx
-            .asset_registry
-            .get_resource_reflection_mut(self.resource_id.kind, &handle)
-            .ok_or(Error::InvalidTypeReflection(self.resource_id))?;
-
-        let array_value = find_property_mut(reflection.as_reflect_mut(), self.array_path.as_str())
+        let array_value = find_property_mut(edit.as_reflect_mut(), self.array_path.as_str())
             .map_err(|err| Error::Reflection(self.resource_id, err))?;
 
         if let TypeDefinition::Array(array_desc) = array_value.type_def {
@@ -273,8 +246,6 @@ impl TransactionOperation for ArrayOperation {
                 }
             }
         }
-
-        ctx.changed_resources.insert(self.resource_id);
         Ok(())
     }
 }

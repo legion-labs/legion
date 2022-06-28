@@ -3,16 +3,19 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use lgn_app::{App, Plugin};
-use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, ResourceDescriptor, ResourceTypeAndId};
+use lgn_async::TokioAsyncRuntime;
+use lgn_data_runtime::prelude::*;
 
 use lgn_ecs::prelude::*;
 
 mod scene_instance;
-use lgn_hierarchy::Children;
-use scene_instance::SceneInstance;
+mod scene_manager;
+pub use scene_manager::*;
+
+use sample_data::runtime::Entity;
 
 /// Message Scene Management
 pub enum SceneMessage {
@@ -20,7 +23,10 @@ pub enum SceneMessage {
     CloseScene(ResourceTypeAndId),
 }
 
-pub type ActiveScenes = HashMap<ResourceTypeAndId, SceneInstance>;
+#[derive(Component)]
+pub struct ResourceMetaInfo {
+    pub id: ResourceTypeAndId,
+}
 
 pub struct ScenePlugin {
     startup_scene: Option<ResourceTypeAndId>,
@@ -28,15 +34,16 @@ pub struct ScenePlugin {
 
 impl Plugin for ScenePlugin {
     fn build(&self, app: &mut App) {
-        let mut active_scenes = ActiveScenes::default();
-        if let Some(startup_scene) = self.startup_scene {
-            active_scenes.insert(startup_scene, SceneInstance::new(startup_scene));
-        }
-
-        app.add_system(Self::process_load_events)
-            .add_system(Self::handle_scene_messages)
-            .insert_resource(active_scenes)
+        app.add_system(Self::handle_scene_messages)
+            .insert_resource(SceneManager::new())
             .add_event::<SceneMessage>();
+
+        if let Some(scene_id) = self.startup_scene {
+            app.world
+                .get_resource_mut::<lgn_ecs::event::Events<SceneMessage>>()
+                .unwrap()
+                .send(SceneMessage::OpenScene(scene_id));
+        }
     }
 }
 
@@ -50,71 +57,35 @@ impl ScenePlugin {
     fn handle_scene_messages(
         asset_registry: Res<'_, Arc<AssetRegistry>>,
         mut scene_events: EventReader<'_, '_, SceneMessage>,
-        mut active_scenes: ResMut<'_, ActiveScenes>,
+        scene_manager: Res<'_, Arc<SceneManager>>,
+        tokio_runtime: ResMut<'_, TokioAsyncRuntime>,
         mut commands: Commands<'_, '_>,
-        entity_with_children_query: Query<'_, '_, &Children>,
     ) {
         for event in scene_events.iter() {
             match event {
                 SceneMessage::OpenScene(resource_id) => {
-                    let scene = active_scenes
-                        .entry(*resource_id)
-                        .or_insert_with(|| SceneInstance::new(*resource_id));
-
-                    // Spawn the Scene if it's already loaded
-                    if asset_registry.is_loaded(*resource_id) {
-                        scene.spawn_entity_hierarchy(
-                            *resource_id,
-                            &asset_registry,
-                            &mut commands,
-                            &entity_with_children_query,
-                        );
-                    }
+                    let asset_registry = asset_registry.clone();
+                    let resource_id = *resource_id;
+                    let scene_manager = scene_manager.clone();
+                    tokio_runtime.start_detached(async move {
+                        match asset_registry.load_async::<Entity>(resource_id).await {
+                            Ok(handle) => {
+                                scene_manager.add_pending(handle);
+                                println!("ok");
+                            }
+                            Err(err) => lgn_tracing::error!(
+                                "Error Loading {}: {}",
+                                resource_id,
+                                err.to_string()
+                            ),
+                        }
+                    });
                 }
                 SceneMessage::CloseScene(resource_id) => {
-                    if let Some(mut scene) = active_scenes.remove(resource_id) {
-                        scene.asset_to_entity_map.clear_all(&mut commands);
-                    }
+                    scene_manager.close_scene(resource_id, &mut commands);
                 }
             }
         }
-    }
-
-    #[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
-    fn process_load_events(
-        asset_registry: Res<'_, Arc<AssetRegistry>>,
-        mut asset_loaded_events: EventReader<'_, '_, AssetRegistryEvent>,
-        mut active_scenes: ResMut<'_, ActiveScenes>,
-        mut commands: Commands<'_, '_>,
-        entity_with_children_query: Query<'_, '_, &Children>,
-    ) {
-        for asset_loaded_event in asset_loaded_events.iter() {
-            match asset_loaded_event {
-                AssetRegistryEvent::AssetLoaded(handle)
-                    if handle.id().kind == sample_data::runtime::Entity::TYPE =>
-                {
-                    active_scenes
-                        .iter_mut()
-                        .filter_map(|(_scene_top_resource, scene)| {
-                            if handle.id() == scene.root_resource
-                                || scene.asset_to_entity_map.get(handle.id()).is_some()
-                            {
-                                Some(scene)
-                            } else {
-                                None
-                            }
-                        })
-                        .for_each(|scene| {
-                            scene.spawn_entity_hierarchy(
-                                handle.id(),
-                                &asset_registry,
-                                &mut commands,
-                                &entity_with_children_query,
-                            );
-                        });
-                }
-                AssetRegistryEvent::AssetLoaded(_) => (),
-            }
-        }
+        scene_manager.update(&asset_registry, &mut commands);
     }
 }

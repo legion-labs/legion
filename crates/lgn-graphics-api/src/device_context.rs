@@ -72,7 +72,6 @@ pub(crate) struct DeviceContextInner {
     device_info: DeviceInfo,
     deferred_dropper: DeferredDropper,
     destroyed: AtomicBool,
-    current_cpu_frame: AtomicU64,
 
     #[cfg(debug_assertions)]
     #[cfg(feature = "track-device-contexts")]
@@ -125,8 +124,6 @@ impl DeviceContextInner {
             device_info,
             deferred_dropper: DeferredDropper::new(3),
             destroyed: AtomicBool::new(false),
-            current_cpu_frame: AtomicU64::new(0),
-
             backend_device_context,
 
             #[cfg(debug_assertions)]
@@ -280,14 +277,6 @@ impl DeviceContext {
 
     pub fn device_info(&self) -> &DeviceInfo {
         &self.inner.device_info
-    }
-
-    pub fn inc_current_cpu_frame(&self) {
-        self.inner.current_cpu_frame.fetch_add(1, Ordering::Relaxed);
-    }
-
-    pub fn current_cpu_frame(&self) -> u64 {
-        self.inner.current_cpu_frame.load(Ordering::Relaxed)
     }
 
     pub fn set_texture_name<T: AsRef<str>>(&self, texture: &Texture, name: T) {

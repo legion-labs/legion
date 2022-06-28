@@ -5,7 +5,7 @@ use std::{
 
 use lgn_content_store::Provider;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::Project;
 use lgn_data_runtime::AssetRegistry;
 
 use crate::{DataBuild, Error};
@@ -23,7 +23,7 @@ use crate::{DataBuild, Error};
 /// # use std::sync::Arc;
 /// # use lgn_data_build::DataBuildOptions;
 /// # use lgn_content_store::{Provider, ProviderConfig};
-/// # use lgn_data_offline::resource::Project;
+/// # use lgn_data_offline::Project;
 /// # use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 /// # tokio_test::block_on(async {
 /// let source_control_content_provider = Arc::new(Provider::new_in_memory());

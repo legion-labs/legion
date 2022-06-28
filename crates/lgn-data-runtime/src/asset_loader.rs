@@ -1,685 +1,69 @@
 #![allow(clippy::type_complexity)]
 
-use std::{
-    collections::{HashMap, HashSet},
-    io,
-    ops::Deref,
-    sync::Arc,
-    time::Duration,
-};
-
-use byteorder::{LittleEndian, ReadBytesExt};
-use flurry::TryInsertError;
-use lgn_tracing::{error, info};
-use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    vfs, AssetLoader, AssetRegistryError, HandleUntyped, ReferenceUntyped, Resource, ResourceId,
+    vfs, AssetRegistryError, AssetRegistryReader, HandleUntyped, LoadRequest, ResourceInstaller,
     ResourceType, ResourceTypeAndId,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
-struct AssetReference {
-    primary: ResourceTypeAndId,
-    secondary: ResourceTypeAndId,
-}
-
-/// The intermediate output of asset loading process.
-///
-/// Contains the result of loading a single file.
-struct LoadOutput {
-    /// None here means the asset was already loaded before so it doesn't have
-    /// to be loaded again. It will still contribute to reference count
-    /// though.
-    assets: Vec<(ResourceTypeAndId, Option<Box<dyn Resource>>)>,
-    load_dependencies: Vec<AssetReference>,
-}
-
-pub(crate) enum LoaderResult {
-    Loaded(HandleUntyped, Box<dyn Resource>, Option<LoadId>),
-    Unloaded(ResourceTypeAndId),
-    LoadError(HandleUntyped, Option<LoadId>, AssetRegistryError),
-    Reloaded(HandleUntyped, Box<dyn Resource>),
-}
-
-#[derive(Debug)]
-pub(crate) enum LoaderRequest {
-    Load(HandleUntyped, Option<LoadId>),
-    Reload(HandleUntyped),
-    Unload(ResourceTypeAndId),
-    Terminate,
-}
-
-/// State of a load request in progress.
-struct LoadState {
-    primary_handle: HandleUntyped,
-    /// If load_id is available it means the load was triggered by the user.
-    /// Otherwise it is a load of a dependent Resource.
-    load_id: Option<LoadId>,
-    /// List of Resources in asset file identified by `primary_id`.
-    /// None indicates a skipped secondary resource that was already loaded
-    /// through another resource file.
-    assets: Vec<(HandleUntyped, Option<Box<dyn Resource>>)>,
-    /// The list of Resources that need to be loaded before the LoadState can be
-    /// considered completed.
-    references: Vec<HandleUntyped>,
-    /// Specify if it's a reload
-    reload: bool,
-}
-
-struct HandleMap {
-    unload_tx: crossbeam_channel::Sender<ResourceTypeAndId>,
-    handles: flurry::HashMap<ResourceTypeAndId, ReferenceUntyped>,
-}
-
-impl HandleMap {
-    fn new(unload_tx: crossbeam_channel::Sender<ResourceTypeAndId>) -> Arc<Self> {
-        Arc::new(Self {
-            unload_tx,
-            handles: flurry::HashMap::new(),
-        })
-    }
-
-    fn create_handle(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        let handle = HandleUntyped::new_handle(type_id, self.unload_tx.clone());
-
-        let handles = self.handles.pin();
-
-        let weak_ref = HandleUntyped::downgrade(&handle);
-        match handles.try_insert(type_id, weak_ref) {
-            Ok(_) => handle,
-            Err(TryInsertError {
-                current,
-                not_inserted: _,
-            }) => {
-                if let Some(weak) = current.upgrade() {
-                    handle.forget();
-                    weak
-                } else {
-                    handles.insert(type_id, HandleUntyped::downgrade(&handle));
-                    handle
-                }
-            }
-        }
-    }
-}
-
-impl Deref for HandleMap {
-    type Target = flurry::HashMap<ResourceTypeAndId, ReferenceUntyped>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.handles
-    }
-}
-
-pub(crate) fn create_loader(
-    devices: Vec<Box<(dyn vfs::Device + Send)>>,
-) -> (AssetLoaderStub, AssetLoaderIO) {
-    let (result_tx, result_rx) = crossbeam_channel::unbounded::<LoaderResult>();
-    let (request_tx, request_rx) = tokio::sync::mpsc::unbounded_channel::<LoaderRequest>();
-
-    let unload_channel = crossbeam_channel::unbounded();
-    let handles = HandleMap::new(unload_channel.0);
-
-    let io = AssetLoaderIO::new(
-        devices,
-        request_tx.clone(),
-        request_rx,
-        result_tx,
-        handles.clone(),
-    );
-    let loader = AssetLoaderStub::new(request_tx, result_rx, unload_channel.1, handles);
-    (loader, io)
-}
-
-pub(crate) struct AssetLoaderStub {
-    unload_channel_rx: crossbeam_channel::Receiver<ResourceTypeAndId>,
-    handles: Arc<HandleMap>,
-    request_tx: tokio::sync::mpsc::UnboundedSender<LoaderRequest>,
-    result_rx: crossbeam_channel::Receiver<LoaderResult>,
-}
-
-type LoadId = u32;
-
-impl AssetLoaderStub {
-    fn new(
-        request_tx: tokio::sync::mpsc::UnboundedSender<LoaderRequest>,
-        result_rx: crossbeam_channel::Receiver<LoaderResult>,
-        unload_channel_rx: crossbeam_channel::Receiver<ResourceTypeAndId>,
-        handles: Arc<HandleMap>,
-    ) -> Self {
-        Self {
-            unload_channel_rx,
-            handles,
-            request_tx,
-            result_rx,
-        }
-    }
-
-    pub(crate) fn get_handle(&self, type_id: ResourceTypeAndId) -> Option<HandleUntyped> {
-        self.handles
-            .pin()
-            .get(&type_id)
-            .and_then(ReferenceUntyped::upgrade)
-    }
-
-    pub(crate) fn get_or_create_handle(&self, type_id: ResourceTypeAndId) -> HandleUntyped {
-        if let Some(handle) = self.get_handle(type_id) {
-            return handle;
-        }
-
-        self.handles.create_handle(type_id)
-    }
-
-    pub(crate) fn collect_dropped_handles(&self) -> Vec<ResourceTypeAndId> {
-        let mut all_removed = vec![];
-        for unload_id in self.unload_channel_rx.try_iter() {
-            let handles = self.handles.pin();
-            if let Some(removed) = handles.get(&unload_id) {
-                if removed.strong_count() == 0 {
-                    // Ignore handle that were revived
-                    lgn_tracing::debug!("Dropping Handle for {:?}", unload_id);
-                    handles.remove(&unload_id);
-                    all_removed.push(unload_id);
-                } else {
-                    lgn_tracing::debug!("Ignoring revived Handle for {:?}", unload_id);
-                }
-            }
-        }
-        all_removed
-    }
-
-    pub(crate) fn terminate(&self) {
-        if let Err(err) = self.request_tx.send(LoaderRequest::Terminate) {
-            lgn_tracing::warn!("Failed to terminate AssetLoader: {}", err);
-        }
-    }
-
-    pub(crate) fn load(&self, resource_id: ResourceTypeAndId) -> HandleUntyped {
-        let handle = self.get_or_create_handle(resource_id);
-
-        // todo: for now, this is a made up number to track the id of the load request
-        // as we don't currently have load notifications it doesn't mean much.
-        // this would have to be changed in order to add load notifications.
-        let load_id = 7;
-        self.request_tx
-            .send(LoaderRequest::Load(handle.clone(), Some(load_id)))
-            .unwrap();
-        handle
-    }
-
-    pub(crate) fn reload(&self, resource_id: ResourceTypeAndId) -> bool {
-        self.get_handle(resource_id).map_or(false, |handle| {
-            self.request_tx.send(LoaderRequest::Reload(handle)).unwrap();
-            true
-        })
-    }
-
-    pub(crate) fn try_result(&self) -> Option<LoaderResult> {
-        self.result_rx.try_recv().ok()
-    }
-
-    pub(crate) fn unload(&self, type_id: ResourceTypeAndId) {
-        self.request_tx
-            .send(LoaderRequest::Unload(type_id))
-            .unwrap();
-    }
-}
-
-const ASSET_FILE_TYPENAME: &[u8; 4] = b"asft";
-
 pub(crate) struct AssetLoaderIO {
-    loaders: HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
-
-    handles: Arc<HandleMap>,
-
-    /// List of load requests waiting for all references to be loaded.
-    processing_list: Vec<LoadState>,
-
-    loaded_resources: HashSet<ResourceTypeAndId>,
-
     devices: Vec<Box<(dyn vfs::Device + Send)>>,
-
-    /// Loopback for load requests.
-    request_tx: tokio::sync::mpsc::UnboundedSender<LoaderRequest>,
-
-    /// Entry point for load requests.
-    request_rx: Option<tokio::sync::mpsc::UnboundedReceiver<LoaderRequest>>,
-
-    /// Output of loader results.
-    result_tx: crossbeam_channel::Sender<LoaderResult>,
+    installers: HashMap<ResourceType, Arc<dyn ResourceInstaller>>,
 }
 
 impl AssetLoaderIO {
-    fn new(
+    pub(crate) fn new(
         devices: Vec<Box<(dyn vfs::Device + Send)>>,
-        request_tx: tokio::sync::mpsc::UnboundedSender<LoaderRequest>,
-        request_rx: tokio::sync::mpsc::UnboundedReceiver<LoaderRequest>,
-        result_tx: crossbeam_channel::Sender<LoaderResult>,
-        handles: Arc<HandleMap>,
+        installers: HashMap<ResourceType, Arc<dyn ResourceInstaller>>,
     ) -> Self {
         Self {
-            loaders: HashMap::new(),
-            handles,
-            processing_list: Vec::new(),
-            loaded_resources: HashSet::new(),
             devices,
-            request_tx,
-            request_rx: Some(request_rx),
-            result_tx,
+            installers,
         }
     }
 
-    pub(crate) fn register_loader(
-        &mut self,
-        kind: ResourceType,
-        loader: Box<dyn AssetLoader + Send + Sync>,
-    ) {
-        self.loaders.insert(kind, loader);
+    pub(crate) async fn load_from_stream(
+        &self,
+        resource_id: ResourceTypeAndId,
+        mut reader: AssetRegistryReader,
+        request: &mut LoadRequest,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
+        lgn_tracing::debug!("Loading Request {:?}", resource_id);
+        let installer = self.installers.get(&resource_id.kind).ok_or(
+            AssetRegistryError::ResourceInstallerNotFound(resource_id.kind),
+        )?;
+
+        let new_resource = installer
+            .install_from_stream(resource_id, request, &mut reader)
+            .await?;
+
+        let handle = request
+            .asset_registry
+            .set_resource(resource_id, new_resource)?;
+
+        Ok(handle)
     }
 
-    async fn load_resource(
-        &mut self,
-        type_id: ResourceTypeAndId,
-    ) -> Result<Vec<u8>, AssetRegistryError> {
-        let start = std::time::Instant::now();
-
-        for device in &mut self.devices {
-            let res = device.load(type_id).await;
-            if let Some(content) = res {
-                info!(
-                    "Loaded {:?} {} in {:?}",
-                    type_id,
-                    content.len(),
-                    start.elapsed(),
-                );
-                return Ok(content);
+    /// Load a resource using async framework
+    pub(crate) async fn load_from_device(
+        &self,
+        resource_id: ResourceTypeAndId,
+        request: &mut LoadRequest,
+    ) -> Result<HandleUntyped, AssetRegistryError> {
+        for device in &self.devices {
+            if let Some(reader) = device.get_reader(resource_id).await {
+                return self.load_from_stream(resource_id, reader, request).await;
             }
         }
-        Err(AssetRegistryError::ResourceNotFound(type_id))
-    }
-
-    async fn reload_resource(
-        &mut self,
-        type_id: ResourceTypeAndId,
-    ) -> Result<Vec<u8>, AssetRegistryError> {
-        for device in &mut self.devices {
-            if let Some(content) = device.reload(type_id).await {
-                return Ok(content);
-            }
-        }
-
-        // fallback to loading existing resources.
-        self.load_resource(type_id).await
-    }
-
-    async fn process_reload(
-        &mut self,
-        primary_handle: &HandleUntyped,
-    ) -> Result<(), AssetRegistryError> {
-        let primary_id = primary_handle.id();
-        let asset_data = self.reload_resource(primary_id).await?;
-
-        let load_func = {
-            if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
-                Self::load_raw
-            } else {
-                Self::load_asset_file
-            }
-        };
-
-        let output =
-            load_func(primary_handle, &mut &asset_data[..], &mut self.loaders).map_err(|err| {
-                error!("Error loading {:?}: {}", primary_handle.id(), err);
-                err
-            })?;
-
-        let references = output
-            .load_dependencies
-            .iter()
-            .filter(|reference| !self.loaded_resources.contains(&reference.primary))
-            .map(|reference| self.handles.create_handle(reference.primary))
-            .collect::<Vec<_>>();
-
-        for reference in &references {
-            self.request_tx
-                .send(LoaderRequest::Reload(reference.clone()))
-                .unwrap();
-        }
-
-        self.processing_list.push(LoadState {
-            primary_handle: primary_handle.clone(),
-            load_id: None,
-            assets: output
-                .assets
-                .into_iter()
-                .map(|(secondary_id, boxed)| {
-                    let handle = self.handles.create_handle(secondary_id);
-                    (handle, boxed)
-                })
-                .collect::<Vec<_>>(),
-            references,
-            reload: self.loaded_resources.contains(&primary_id),
-        });
-
-        Ok(())
-    }
-
-    async fn process_load(
-        &mut self,
-        primary_handle: HandleUntyped,
-        load_id: Option<u32>,
-    ) -> Result<(), (HandleUntyped, Option<LoadId>, AssetRegistryError)> {
-        let primary_id = primary_handle.id();
-
-        if self.loaded_resources.contains(&primary_id)
-            || self
-                .processing_list
-                .iter()
-                .any(|state| state.primary_handle == primary_handle)
-        {
-            // todo: we should create a LoadState based on existing load state?
-            // this way the load result will be notified when the resource is actually
-            // loaded.
-            return Ok(());
-        }
-        let asset_data = self
-            .load_resource(primary_id)
-            .await
-            .map_err(|e| (primary_handle.clone(), load_id, e))?;
-
-        let load_func = {
-            if asset_data.len() < 4 || &asset_data[0..4] != ASSET_FILE_TYPENAME {
-                Self::load_raw
-            } else {
-                Self::load_asset_file
-            }
-        };
-
-        let output = load_func(&primary_handle, &mut &asset_data[..], &mut self.loaders)
-            .map_err(|e| (primary_handle.clone(), load_id, e))?;
-
-        let references = output
-            .load_dependencies
-            .iter()
-            .map(|reference| self.handles.create_handle(reference.primary))
-            .collect::<Vec<_>>();
-
-        for reference in &references {
-            self.request_tx
-                .send(LoaderRequest::Load(reference.clone(), None))
-                .unwrap();
-        }
-        self.processing_list.push(LoadState {
-            primary_handle,
-            load_id,
-            assets: output
-                .assets
-                .into_iter()
-                .map(|(secondary_id, boxed)| {
-                    let handle = self.handles.create_handle(secondary_id);
-                    (handle, boxed)
-                })
-                .collect::<Vec<_>>(),
-            references,
-            reload: false,
-        });
-        Ok(())
-    }
-
-    fn process_unload(&mut self, resource_id: ResourceTypeAndId) {
-        self.loaded_resources.remove(&resource_id);
-        self.result_tx
-            .send(LoaderResult::Unloaded(resource_id))
-            .unwrap();
-    }
-
-    #[allow(clippy::needless_pass_by_value)]
-    async fn process_request(
-        &mut self,
-        request: LoaderRequest,
-    ) -> Result<(), (HandleUntyped, Option<LoadId>, AssetRegistryError)> {
-        match request {
-            LoaderRequest::Load(primary_handle, load_id) => {
-                self.process_load(primary_handle, load_id).await
-            }
-            LoaderRequest::Reload(primary_handle) => self
-                .process_reload(&primary_handle)
-                .await
-                .map_err(|e| (primary_handle, None, e)),
-            LoaderRequest::Unload(resource_id) => {
-                self.process_unload(resource_id);
-                Ok(())
-            }
-            LoaderRequest::Terminate => {
-                self.request_rx = None;
-                Ok(())
-            }
-        }
-    }
-
-    pub(crate) async fn wait(&mut self, timeout: Duration) -> Option<usize> {
-        // process new pending requests
-        let mut errors = vec![];
-        loop {
-            match &mut self.request_rx {
-                None => return None,
-                Some(request_rx) => match tokio::time::timeout(timeout, request_rx.recv()).await {
-                    Ok(None) => return None, // disconnected
-                    Ok(Some(request)) => {
-                        if let Err(error) = self.process_request(request).await {
-                            errors.push(error);
-                        }
-                    }
-                    Err(_) => break,
-                },
-            }
-        }
-
-        // todo: propagate errors to dependent assets before sending results.
-        for (load_failed, load_id, err) in errors {
-            let resource_id = load_failed.id();
-            self.result_tx
-                .send(LoaderResult::LoadError(load_failed, load_id, err))
-                .unwrap();
-
-            self.processing_list.iter_mut().for_each(|load_state| {
-                load_state
-                    .references
-                    .retain(|handle| handle.id() != resource_id);
-            });
-        }
-
-        // check for completion.
-        for index in (0..self.processing_list.len()).rev() {
-            let pending = &self.processing_list[index];
-            let is_reload = pending.reload;
-            let finished = pending
-                .references
-                .iter()
-                .all(|reference| self.loaded_resources.contains(&reference.id()));
-            if finished {
-                let mut loaded = self.processing_list.swap_remove(index);
-
-                for (asset_id, asset) in &mut loaded.assets {
-                    if let Some(boxed) = asset {
-                        let loader = self.loaders.get_mut(&asset_id.id().kind).unwrap();
-                        loader.load_init(boxed.as_mut());
-                    }
-                    // if there is no boxed asset here, it means it was already
-                    // loaded before.
-                }
-
-                for (handle, _) in &loaded.assets {
-                    self.loaded_resources.insert(handle.id());
-                }
-
-                // send primary asset with load_id. all secondary assets without to not cause
-                // load notification.
-                let mut asset_iter = loaded.assets.into_iter();
-                let primary_asset = asset_iter.next().unwrap().1.unwrap();
-                if is_reload {
-                    self.result_tx
-                        .send(LoaderResult::Reloaded(loaded.primary_handle, primary_asset))
-                        .unwrap();
-                } else {
-                    self.result_tx
-                        .send(LoaderResult::Loaded(
-                            loaded.primary_handle,
-                            primary_asset,
-                            loaded.load_id,
-                        ))
-                        .unwrap();
-                }
-
-                for (id, asset) in asset_iter {
-                    if let Some(asset) = asset {
-                        self.result_tx
-                            .send(LoaderResult::Loaded(id, asset, None))
-                            .unwrap();
-                    }
-                }
-            }
-        }
-
-        Some(self.processing_list.len())
-    }
-
-    fn load_raw(
-        handle: &HandleUntyped,
-        reader: &mut dyn io::Read,
-        loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
-    ) -> Result<LoadOutput, AssetRegistryError> {
-        let type_id = handle.id();
-        let mut content = Vec::new();
-        reader
-            .read_to_end(&mut content)
-            .map_err(|err| AssetRegistryError::ResourceIOError(type_id, err))?;
-
-        let asset_type = type_id.kind;
-        let loader = loaders
-            .get_mut(&asset_type)
-            .ok_or(AssetRegistryError::AssetLoaderNotFound(asset_type))?;
-
-        let boxed_asset = loader
-            .load(&mut &content[..])
-            .map_err(|err| AssetRegistryError::AssetLoaderFailed(type_id, err))?;
-
-        Ok(LoadOutput {
-            assets: vec![(type_id, Some(boxed_asset))],
-            load_dependencies: vec![],
-        })
-    }
-
-    fn load_asset_file(
-        primary_handle: &HandleUntyped,
-        reader: &mut dyn io::Read,
-        loaders: &mut HashMap<ResourceType, Box<dyn AssetLoader + Send + Sync>>,
-    ) -> Result<LoadOutput, AssetRegistryError> {
-        let primary_id = primary_handle.id();
-        const ASSET_FILE_VERSION: u16 = 1;
-
-        let mut typename: [u8; 4] = [0; 4];
-        reader
-            .read_exact(&mut typename)
-            .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?;
-
-        if &typename != ASSET_FILE_TYPENAME {
-            return Err(AssetRegistryError::ResourceTypeMismatch(
-                primary_id,
-                format!("{:?}", typename),
-                format!("{:?}", ASSET_FILE_TYPENAME),
-            ));
-        }
-
-        // asset file header
-        let version = reader
-            .read_u16::<LittleEndian>()
-            .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?;
-
-        if version != ASSET_FILE_VERSION {
-            return Err(AssetRegistryError::ResourceVersionMismatch(
-                primary_id,
-                version,
-                ASSET_FILE_VERSION,
-            ));
-        }
-
-        let reference_count = reader
-            .read_u64::<LittleEndian>()
-            .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?;
-
-        let mut reference_list = Vec::with_capacity(reference_count as usize);
-        for _ in 0..reference_count {
-            let asset_ref = ResourceTypeAndId {
-                kind: ResourceType::from_raw(
-                    reader
-                        .read_u64::<LittleEndian>()
-                        .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?,
-                ),
-                id: ResourceId::from_raw(
-                    reader
-                        .read_u128::<LittleEndian>()
-                        .map_err(|err| AssetRegistryError::ResourceIOError(primary_id, err))?,
-                ),
-            };
-            reference_list.push(AssetReference {
-                primary: asset_ref,
-                secondary: asset_ref,
-            });
-        }
-
-        // section header
-        let asset_type = unsafe {
-            std::mem::transmute::<u64, ResourceType>(
-                reader.read_u64::<LittleEndian>().expect("valid data"),
-            )
-        };
-        assert_eq!(
-            asset_type, primary_id.kind,
-            "The asset must be of primary id's type"
-        );
-
-        let asset_count = reader.read_u64::<LittleEndian>().expect("valid data");
-        assert_eq!(
-            asset_count, 1,
-            "For now, only 1 asset - the primary asset - is expected"
-        );
-
-        let nbytes = reader.read_u64::<LittleEndian>().expect("valid data");
-
-        let mut content = Vec::new();
-        content.resize(nbytes as usize, 0);
-        reader.read_exact(&mut content).expect("valid data");
-
-        let loader = loaders
-            .get_mut(&asset_type)
-            .ok_or(AssetRegistryError::AssetLoaderNotFound(asset_type))?;
-
-        let boxed_asset = loader
-            .load(&mut &content[..])
-            .map_err(|err| AssetRegistryError::AssetLoaderFailed(primary_id, err))?;
-
-        // todo: Do not load what was loaded in another primary-asset.
-        //
-        // There are two cases to consider:
-        //
-        // Non-reload-case: for *secondary assets* make sure that we only load them if
-        // they are not already loaded.
-        //
-        // `let is_loaded = self.asset_refcounts.contains_key(&secondary_id));`
-        //
-        // Reload-case: all *secondary assets* should be loaded again.
-
-        Ok(LoadOutput {
-            assets: vec![(primary_id, Some(boxed_asset))],
-            load_dependencies: reference_list,
-        })
+        Err(AssetRegistryError::ResourceNotFound(resource_id))
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
+    use generic_data::TestAsset;
     use std::{sync::Arc, time::Duration};
 
     use lgn_content_store::{
@@ -687,14 +71,13 @@ mod tests {
         Provider,
     };
 
-    use super::{create_loader, AssetLoaderIO, AssetLoaderStub};
+    use super::AssetLoaderIO;
     use crate::{
-        asset_loader::{HandleMap, LoaderRequest, LoaderResult},
-        new_resource_type_and_id_indexer, test_asset, vfs, Handle, ResourceDescriptor, ResourceId,
+        new_resource_type_and_id_indexer, vfs, Handle, ResourceDescriptor, ResourceId,
         ResourceTypeAndId,
     };
 
-    async fn setup_test() -> (ResourceTypeAndId, AssetLoaderStub, AssetLoaderIO) {
+    async fn setup_test() -> (ResourceTypeAndId, AssetLoaderIO) {
         let data_provider = Arc::new(Provider::new_in_memory());
         let mut manifest = ResourceIndex::new_exclusive(
             Arc::clone(&data_provider),
@@ -704,11 +87,11 @@ mod tests {
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
-                kind: test_asset::TestAsset::TYPE,
+                kind: TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
             let provider_id = data_provider
-                .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
+                .write_resource_from_bytes(&tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
 
@@ -790,11 +173,11 @@ mod tests {
 
         let asset_id = {
             let type_id = ResourceTypeAndId {
-                kind: test_asset::TestAsset::TYPE,
+                kind: TestAsset::TYPE,
                 id: ResourceId::new_explicit(1),
             };
             let provider_id = data_provider
-                .write_resource_from_bytes(&test_asset::tests::BINARY_ASSETFILE)
+                .write_resource_from_bytes(&tests::BINARY_ASSETFILE)
                 .await
                 .unwrap();
             manifest
@@ -817,9 +200,6 @@ mod tests {
                 SharedTreeIdentifier::new(manifest.id()),
             ))],
             request_tx.clone(),
-            request_rx,
-            result_tx,
-            handles,
         );
         loader.register_loader(
             test_asset::TestAsset::TYPE,
@@ -890,9 +270,6 @@ mod tests {
                 SharedTreeIdentifier::new(manifest.id()),
             ))],
             request_tx.clone(),
-            request_rx,
-            result_tx,
-            handles,
         );
         loader.register_loader(
             test_asset::TestAsset::TYPE,
@@ -970,9 +347,6 @@ mod tests {
                 SharedTreeIdentifier::new(manifest.id()),
             ))],
             request_tx.clone(),
-            request_rx,
-            result_tx,
-            handles,
         );
         loader.register_loader(
             test_asset::TestAsset::TYPE,
@@ -1071,9 +445,6 @@ mod tests {
                 SharedTreeIdentifier::new(manifest.id()),
             ))],
             request_tx.clone(),
-            request_rx,
-            result_tx,
-            handles,
         );
         loader.register_loader(
             test_asset::TestAsset::TYPE,
@@ -1119,3 +490,4 @@ mod tests {
         assert!(!loader.loaded_resources.contains(&asset_id));
     }
 }
+*/

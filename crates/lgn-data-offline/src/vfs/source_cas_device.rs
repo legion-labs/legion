@@ -6,10 +6,10 @@ use lgn_content_store::{
     Provider,
 };
 use lgn_data_runtime::{
-    new_resource_type_and_id_indexer, Device, ResourceTypeAndId, ResourceTypeAndIdIndexer,
+    new_resource_type_and_id_indexer, AssetRegistryReader, Device, ResourceTypeAndId,
+    ResourceTypeAndIdIndexer,
 };
-
-use crate::resource::deserialize_and_skip_metadata;
+//use crate::deserialize_and_skip_metadata;
 
 /// Content addressable storage device. Resources are accessed through a
 /// manifest access table.
@@ -44,18 +44,22 @@ impl Device for SourceCasDevice {
                 .read_resource_as_bytes(&resource_id)
                 .await
             {
-                let mut reader = std::io::Cursor::new(resource_bytes);
-
-                // skip over the pre-pended metadata
-                deserialize_and_skip_metadata(&mut reader);
-
-                let pos = reader.position() as usize;
-                let resource_bytes = reader.into_inner();
-
-                return Some(resource_bytes[pos..].to_vec());
+                return Some(resource_bytes);
             }
         }
+        None
+    }
 
+    async fn get_reader(&self, type_id: ResourceTypeAndId) -> Option<AssetRegistryReader> {
+        if let Ok(Some(resource_id)) = self.source_manifest.get_identifier(&type_id.into()).await {
+            if let Ok(reader) = self
+                .persistent_provider
+                .get_reader(resource_id.as_identifier())
+                .await
+            {
+                return Some(Box::pin(reader) as AssetRegistryReader);
+            }
+        }
         None
     }
 

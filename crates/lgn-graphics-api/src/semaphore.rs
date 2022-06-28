@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use crate::ExternalResourceHandle;
 use crate::{
@@ -30,11 +30,12 @@ impl Default for SemaphoreDef {
 
 pub(crate) struct SemaphoreInner {
     semaphore_def: SemaphoreDef,
-    device_context: DeviceContext,
+    pub(crate) device_context: DeviceContext,
 
     // Set to true when an operation is scheduled to signal this semaphore
     // Cleared when an operation is scheduled to consume this semaphore
     signal_available: AtomicBool,
+    next_timeline_value: AtomicU64,
     pub(crate) backend_semaphore: BackendSemaphore,
 }
 
@@ -59,22 +60,45 @@ impl Semaphore {
                 device_context: device_context.clone(),
                 signal_available: AtomicBool::new(false),
                 backend_semaphore: platform_semaphore,
+                next_timeline_value: AtomicU64::new(0),
             }),
         }
     }
 
-    pub fn signal_available(&self) -> bool {
+    pub fn definition(&self) -> &SemaphoreDef {
+        &self.inner.semaphore_def
+    }
+
+    pub fn get_timeline_value(&self) -> u64 {
+        self.backend_timeline_value()
+    }
+
+    pub fn set_next_timeline_value(&self, value: u64) {
+        assert!(
+            self.inner
+                .semaphore_def
+                .usage_flags
+                .intersects(SemaphoreUsage::TIMELINE)
+                && value >= self.inner.next_timeline_value.load(Ordering::SeqCst)
+        );
+        self.inner
+            .next_timeline_value
+            .store(value, Ordering::SeqCst);
+    }
+
+    pub(crate) fn next_timeline_value(&self) -> u64 {
+        self.inner.next_timeline_value.load(Ordering::SeqCst)
+    }
+
+    pub(crate) fn signal_available(&self) -> bool {
         self.inner.signal_available.load(Ordering::Relaxed)
     }
 
+    // it is public because of external nv_access
     pub fn set_signal_available(&self, available: bool) {
         self.inner
             .signal_available
             .store(available, Ordering::Relaxed);
-    }
-
-    pub fn definition(&self) -> SemaphoreDef {
-        self.inner.semaphore_def
     }
 }
 

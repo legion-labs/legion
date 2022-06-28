@@ -1,137 +1,110 @@
+use crate::{AssetRegistry, Resource, ResourceTypeAndId};
 use std::{
+    fmt::{Debug, Formatter},
     marker::PhantomData,
-    sync::{Arc, Weak},
+    ops::{Deref, DerefMut},
+    sync::{Arc, RwLock, RwLockReadGuard},
 };
 
-use crate::{AssetRegistry, Resource, ResourceTypeAndId};
-
-//
-//
-//
-
-/// Arc<Inner> is responsible for sending a 'unload' message when last reference
-/// is dropped.
-#[derive(Debug)]
-struct Inner {
-    type_id: ResourceTypeAndId,
-    unload_tx: Option<crossbeam_channel::Sender<ResourceTypeAndId>>,
+slotmap::new_key_type! {
+    /// Generational handle to a Resource inside a ResourceRegistry
+    pub struct AssetRegistryHandleKey;
 }
-impl Drop for Inner {
-    fn drop(&mut self) {
-        let _ = self.unload_tx.as_ref().map(|tx| tx.send(self.type_id));
+
+pub(crate) struct HandleEntry {
+    pub(crate) id: ResourceTypeAndId,
+    pub(crate) asset: RwLock<Box<dyn Resource>>,
+    registry: std::sync::Weak<AssetRegistry>,
+}
+
+impl HandleEntry {
+    pub(crate) fn new(
+        id: ResourceTypeAndId,
+        asset: Box<dyn Resource>,
+        registry: std::sync::Weak<AssetRegistry>,
+    ) -> Arc<Self> {
+        Arc::new(Self {
+            id,
+            asset: RwLock::new(asset),
+            registry,
+        })
     }
 }
-
-//
-//
-//
-
-/// Non-owning reference to a Resource.
-pub struct ReferenceUntyped {
-    inner: Weak<Inner>,
-}
-
-impl ReferenceUntyped {
-    /// Attempts to upgrade the non-owning reference to an owning
-    /// `HandleUntyped`.
-    ///
-    /// Returns [`None`] if the inner value has since been dropped.
-    pub fn upgrade(&self) -> Option<HandleUntyped> {
-        self.inner.upgrade().map(HandleUntyped::from_inner)
-    }
-
-    /// Gets the number of strong ([`HandleUntyped`] and [`Handle`]) pointers
-    /// pointing to a Resource.
-    pub fn strong_count(&self) -> usize {
-        self.inner.strong_count()
-    }
-}
-
-//
-//
-//
 
 /// Type-less version of [`Handle`].
-#[derive(Debug, Clone)]
 pub struct HandleUntyped {
-    inner: Arc<Inner>,
+    key: AssetRegistryHandleKey,
+    entry: Arc<HandleEntry>,
+}
+
+impl Drop for HandleUntyped {
+    fn drop(&mut self) {
+        // If the refcount is 2, this handle is the last
+        // Notify asset_registry of potential cleanup.
+        if Arc::strong_count(&self.entry) == 2 {
+            if let Some(registry) = self.entry.registry.upgrade() {
+                registry.mark_for_cleanup(self.key);
+            }
+        }
+    }
+}
+
+impl Clone for HandleUntyped {
+    fn clone(&self) -> Self {
+        Self {
+            key: self.key,
+            entry: self.entry.clone(),
+        }
+    }
+}
+
+impl Debug for HandleUntyped {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}{:?}", &self.entry.id, self.key)
+    }
 }
 
 impl PartialEq for HandleUntyped {
     fn eq(&self, other: &Self) -> bool {
-        self.inner.type_id == other.inner.type_id
+        Arc::ptr_eq(&self.entry, &other.entry)
+    }
+}
+
+/// Return a Guarded Ref to a Asset
+pub struct HandleGuard<'a, T: ?Sized + 'a> {
+    _guard: RwLockReadGuard<'a, Box<dyn Resource>>,
+    ptr: *const T,
+}
+
+impl<'a, T: ?Sized + 'a> std::ops::Deref for HandleGuard<'a, T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.ptr }
     }
 }
 
 impl HandleUntyped {
-    pub(crate) fn new_handle(
-        type_id: ResourceTypeAndId,
-        handle_drop_tx: crossbeam_channel::Sender<ResourceTypeAndId>,
-    ) -> Self {
-        Self {
-            inner: Arc::new(Inner {
-                type_id,
-                unload_tx: Some(handle_drop_tx),
-            }),
-        }
-    }
-
-    fn from_inner(inner: Arc<Inner>) -> Self {
-        Self { inner }
-    }
-
-    pub(crate) fn forget(self) {
-        let mut inner = Arc::try_unwrap(self.inner).unwrap();
-        let _discard = inner.unload_tx.take();
-    }
-
-    pub(crate) fn downgrade(this: &Self) -> ReferenceUntyped {
-        ReferenceUntyped {
-            inner: Arc::downgrade(&this.inner),
-        }
+    pub(crate) fn new(key: AssetRegistryHandleKey, entry: Arc<HandleEntry>) -> Self {
+        Self { key, entry }
     }
 
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a, T: Resource>(
-        &'_ self,
-        registry: &'a AssetRegistry,
-    ) -> Option<crate::AssetRegistryGuard<'a, T>> {
-        registry.get::<T>(self.inner.type_id)
-    }
-
-    /// Create a detach clone of a `Resource`
-    pub fn instantiate<T: Resource>(&self, registry: &AssetRegistry) -> Option<Box<T>> {
-        let asset = registry.instantiate(self.inner.type_id)?;
-        if asset.is::<T>() {
-            let value = unsafe { Box::from_raw(Box::into_raw(asset).cast::<T>()) };
-            return Some(value);
+    pub fn get_untyped(&self) -> Option<crate::HandleGuard<'_, dyn Resource>> {
+        if let Ok(guard) = self.entry.asset.read() {
+            let ptr = guard.as_ref() as *const dyn Resource;
+            return Some(HandleGuard { _guard: guard, ptr });
         }
         None
     }
 
-    /// Replace a resource
-    pub fn apply<T: Resource>(&self, value: Box<T>, registry: &AssetRegistry) {
-        registry.apply(self.inner.type_id, value);
+    /// Retrieve the Slotmap key of a Handle
+    pub fn key(&self) -> AssetRegistryHandleKey {
+        self.key
     }
 
-    /// Returns `ResourceId` associated with this handle.
+    /// Retrieve the `ResourceTypeAndId` of a Handle.
     pub fn id(&self) -> ResourceTypeAndId {
-        self.inner.type_id
-    }
-
-    /// Returns true if [`Resource`] load is finished and has succeeded.
-    pub fn is_loaded(&self, registry: &AssetRegistry) -> bool {
-        registry.is_loaded(self.inner.type_id)
-    }
-
-    /// Returns true if [`Resource`] load failed.
-    pub fn is_err(&self, registry: &AssetRegistry) -> bool {
-        registry.is_err(self.inner.type_id)
-    }
-
-    /// Returns a typed Handle
-    pub fn typed<T: Resource>(self) -> Handle<T> {
-        Handle::<T>::from(self)
+        self.entry.id
     }
 }
 
@@ -151,18 +124,9 @@ pub struct Handle<T: Resource> {
     _pd: PhantomData<fn() -> T>,
 }
 
-impl<T: Resource> Clone for Handle<T> {
-    fn clone(&self) -> Self {
-        Self {
-            handle: self.handle.clone(),
-            _pd: PhantomData,
-        }
-    }
-}
-
 impl<T: Resource> PartialEq for Handle<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.handle.inner.type_id == other.handle.inner.type_id
+        self.handle == other.handle
     }
 }
 
@@ -175,48 +139,105 @@ impl<T: Resource> From<HandleUntyped> for Handle<T> {
     }
 }
 
+impl<T: Resource> AsRef<HandleUntyped> for Handle<T> {
+    fn as_ref(&self) -> &HandleUntyped {
+        &self.handle
+    }
+}
+
+impl<T: Resource> Clone for Handle<T> {
+    fn clone(&self) -> Self {
+        Self {
+            handle: self.handle.clone(),
+            _pd: PhantomData,
+        }
+    }
+}
+
+impl<T: Resource> Debug for Handle<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.handle.key)
+    }
+}
+
 impl<T: Resource> Handle<T> {
     /// Retrieve a reference asset `T` from [`AssetRegistry`].
-    pub fn get<'a>(
-        &'_ self,
-        registry: &'a AssetRegistry,
-    ) -> Option<crate::AssetRegistryGuard<'a, T>> {
-        registry.get::<T>(self.handle.inner.type_id)
-    }
-
-    /// Returns an editable copy of a Resource
-    pub fn instantiate(&self, registry: &AssetRegistry) -> Option<Box<T>> {
-        let asset = registry.instantiate(self.handle.inner.type_id)?;
-        if asset.is::<T>() {
-            let value = unsafe { Box::from_raw(Box::into_raw(asset).cast::<T>()) };
-            return Some(value);
+    pub fn get(&self) -> Option<crate::HandleGuard<'_, T>> {
+        let guard = self.handle.entry.asset.read().unwrap();
+        if let Some(ptr) = guard.as_ref().downcast_ref::<T>().map(|c| c as *const T) {
+            return Some(HandleGuard { _guard: guard, ptr });
         }
         None
     }
 
-    /// Apply the change to a Resource
-    pub fn apply(&self, value: Box<T>, registry: &AssetRegistry) {
-        registry.apply(self.handle.inner.type_id, value);
+    pub(crate) fn key(&self) -> AssetRegistryHandleKey {
+        self.handle.key()
     }
 
-    /// Returns `ResourceId` associated with this handle.
+    /// Retrieve the `ResourceTypeAndId` of a Handle.
     pub fn id(&self) -> ResourceTypeAndId {
-        self.handle.inner.type_id
-    }
-
-    /// Returns true if [`Resource`] load is finished and has succeeded.
-    pub fn is_loaded(&self, registry: &AssetRegistry) -> bool {
-        registry.is_loaded(self.handle.inner.type_id)
-    }
-
-    /// Returns true if [`Resource`] load failed.
-    pub fn is_err(&self, registry: &AssetRegistry) -> bool {
-        registry.is_err(self.handle.inner.type_id)
+        self.handle.id()
     }
 }
 
-impl<T: Resource> AsRef<HandleUntyped> for Handle<T> {
-    fn as_ref(&self) -> &HandleUntyped {
-        &self.handle
+/// Editable Handle to a Resource copy that can be committed
+pub struct EditHandleUntyped {
+    pub(crate) handle: HandleUntyped,
+    pub(crate) asset: Box<dyn Resource>,
+}
+
+impl EditHandleUntyped {
+    /// Return a new Editable copy of a Resource that can be commited
+    pub fn new(handle: HandleUntyped, asset: Box<dyn Resource>) -> Self {
+        Self { handle, asset }
+    }
+
+    /// Return the inner dyn Resource
+    pub fn as_resource(&self) -> &dyn Resource {
+        self.asset.as_ref()
+    }
+}
+
+impl Deref for EditHandleUntyped {
+    type Target = dyn Resource;
+    fn deref(&self) -> &Self::Target {
+        self.asset.as_ref()
+    }
+}
+
+impl DerefMut for EditHandleUntyped {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.asset.as_mut()
+    }
+}
+
+/// Editable Handle to a Resource copy that can be committed
+pub struct EditHandle<T: Resource> {
+    pub(crate) handle: Handle<T>,
+    pub(crate) asset: Box<T>,
+}
+
+impl<T: Resource> EditHandle<T> {
+    /// Return a new Editable copy of a Resource that can be commited
+    pub fn new(handle: Handle<T>, asset: Box<T>) -> Self {
+        Self { handle, asset }
+    }
+
+    /// Return the inner dyn Resource
+    pub fn as_resource(&self) -> &dyn Resource {
+        self.asset.as_ref()
+    }
+}
+
+impl<T: Resource> Deref for EditHandle<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        self.asset.as_ref()
+    }
+}
+
+impl<T: Resource> DerefMut for EditHandle<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.asset.as_mut()
     }
 }

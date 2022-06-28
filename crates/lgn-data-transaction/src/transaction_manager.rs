@@ -1,15 +1,8 @@
-use std::{
-    collections::{btree_map::Entry, HashSet},
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 use lgn_content_store::indexing::SharedTreeIdentifier;
-use lgn_data_offline::resource::{Project, ResourceHandles, ResourcePathName};
-use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryError, ResourceId, ResourcePathId, ResourceType, ResourceTypeAndId,
-};
-use lgn_tracing::{info, warn};
+use lgn_data_offline::{Project, ResourcePathName};
+use lgn_data_runtime::{AssetRegistryError, ResourcePathId, ResourceType, ResourceTypeAndId};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -60,13 +53,13 @@ pub enum Error {
     #[error("Invalid resource type '{0}'")]
     InvalidResourceType(ResourceType),
 
-    /// Project failed to flush itself
-    #[error("Failed to open Project '{0}'")]
-    ProjectFailedOpen(String),
-
     /// Project error fallback
-    #[error("Project error resource '{0}': {1}")]
-    Project(ResourceTypeAndId, lgn_data_offline::resource::Error),
+    #[error("Project error resource: '{0}'")]
+    Project(#[from] lgn_data_offline::Error),
+
+    /// AssetRegistry error fallback
+    #[error(transparent)]
+    AssetRegistry(#[from] lgn_data_runtime::AssetRegistryError),
 
     /// Reflection Error fallack
     #[error("Reflection error on resource '{0}': {1}")]
@@ -79,20 +72,14 @@ pub enum Error {
     /// External file loading Error
     #[error("Provided file path '{0}' couldn't be opened")]
     InvalidFilePath(PathBuf),
-
-    /// Project-related error.
-    #[error("Resource kind lookup error for resource '{0}': '{1}")]
-    ResourceTypeLookup(ResourceId, lgn_data_offline::resource::Error),
 }
 
 /// System that manage the current state of the Loaded Offline Data
 pub struct TransactionManager {
     commited_transactions: Vec<Transaction>,
     rollbacked_transactions: Vec<Transaction>,
-    pub(crate) loaded_resource_handles: Arc<Mutex<ResourceHandles>>,
 
     pub(crate) project: Arc<Mutex<Project>>,
-    pub(crate) asset_registry: Arc<AssetRegistry>,
     pub(crate) build_manager: Arc<Mutex<BuildManager>>,
     pub(crate) selection_manager: Arc<SelectionManager>,
     pub(crate) active_scenes: std::collections::HashSet<ResourceTypeAndId>,
@@ -102,7 +89,6 @@ impl TransactionManager {
     /// Create a `DataManager` from a `Project` and `ResourceRegistry`
     pub fn new(
         project: Arc<Mutex<Project>>,
-        asset_registry: Arc<AssetRegistry>,
         build_manager: BuildManager,
         selection_manager: Arc<SelectionManager>,
     ) -> Self {
@@ -110,8 +96,6 @@ impl TransactionManager {
             commited_transactions: Vec::new(),
             rollbacked_transactions: Vec::new(),
             project,
-            asset_registry,
-            loaded_resource_handles: Arc::new(Mutex::new(ResourceHandles::default())),
             build_manager: Arc::new(Mutex::new(build_manager)),
             selection_manager,
             active_scenes: HashSet::new(),
@@ -126,11 +110,11 @@ impl TransactionManager {
         self.active_scenes.insert(resource_id);
         lgn_tracing::info!("Adding scene: {}", resource_id);
         let path_id = self.build_by_id(resource_id).await?;
-        let runtime_id = path_id.resource_id();
+        let _runtime_id = path_id.resource_id();
 
-        if self.asset_registry.get_untyped(runtime_id).is_none() {
-            self.asset_registry.load_untyped(runtime_id);
-        }
+        //if self.asset_registry.get_untyped(runtime_id).is_none() {
+        //    self.asset_registry.load_untyped(runtime_id);
+        //}
         Ok(path_id)
     }
 
@@ -153,13 +137,13 @@ impl TransactionManager {
     ) -> Result<ResourcePathId, Error> {
         let mut ctx = LockContext::new(self).await;
 
-        let (runtime_path_id, changed_assets) = ctx
+        let (runtime_path_id, _changed_assets) = ctx
             .build
             .build_all_derived(resource_id, &ctx.project)
             .await
             .map_err(|err| Error::Databuild(resource_id, err))?;
 
-        // Reload runtime asset (just entity for now)
+        /*// Reload runtime asset (just entity for now)
         for asset_id in changed_assets {
             // Try to reload, if it doesn't exist, load normally
             if asset_id.kind.as_pretty().starts_with("runtime_")
@@ -167,43 +151,8 @@ impl TransactionManager {
             {
                 ctx.asset_registry.load_untyped(asset_id);
             }
-        }
+        }*/
         Ok(runtime_path_id)
-    }
-
-    /// Load all resources from a `Project`
-    pub async fn load_all_resource_type(&mut self, kinds: &[ResourceType]) {
-        let project = self.project.lock().await;
-        let mut resource_handles = self.loaded_resource_handles.lock().await;
-
-        for resource_type_id in project.resource_list().await {
-            if kinds.iter().any(|k| *k == resource_type_id.kind) {
-                if let Entry::Vacant(entry) = resource_handles.entry(resource_type_id) {
-                    let start = std::time::Instant::now();
-                    project
-                        .load_resource(resource_type_id, &self.asset_registry)
-                        .await
-                        .map_or_else(
-                            |err| {
-                                warn!("Failed to load {}: {}", resource_type_id, err);
-                            },
-                            |handle| {
-                                entry.insert(handle);
-                            },
-                        );
-                    info!(
-                        "Loaded resource {} {} in ({:?})",
-                        resource_type_id.id,
-                        resource_type_id.kind.as_pretty(),
-                        start.elapsed(),
-                    );
-                };
-            }
-        }
-        info!(
-            "Loaded all Project resources: {} resources loaded",
-            resource_handles.resource_count()
-        );
     }
 
     /// Commit the current pending `Transaction`

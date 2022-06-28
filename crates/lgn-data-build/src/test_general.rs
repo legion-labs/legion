@@ -4,7 +4,7 @@ mod tests {
 
     use lgn_content_store::Provider;
     use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
-    use lgn_data_offline::resource::Project;
+    use lgn_data_offline::Project;
     use lgn_source_control::{BranchName, LocalRepositoryIndex, RepositoryName};
     use tempfile::TempDir;
 
@@ -98,8 +98,8 @@ mod tests {
         {
             let _build = DataBuildOptions::new(
                 db_uri.clone(),
-                source_control_content_provider,
-                data_content_provider,
+                Arc::clone(&source_control_content_provider),
+                Arc::clone(&data_content_provider),
                 CompilerRegistryOptions::default(),
             )
             .create(&project)

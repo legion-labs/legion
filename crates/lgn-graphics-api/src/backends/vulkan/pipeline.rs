@@ -14,9 +14,6 @@ impl VulkanPipeline {
         device_context: &DeviceContext,
         pipeline_def: GraphicsPipelineDef,
     ) -> Self {
-        //log::trace!("Create pipeline\n{:#?}", pipeline_def);
-
-        //TODO: Cache
         let vk_root_signature = pipeline_def.root_signature;
 
         let mut vk_color_formats: Vec<ash::vk::Format> =

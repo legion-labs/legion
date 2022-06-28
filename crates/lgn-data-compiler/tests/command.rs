@@ -1,14 +1,13 @@
+use generic_data::{offline::RefsAsset, offline::TestResource};
 use std::sync::Arc;
 
 use lgn_content_store::{
-    indexing::{ResourceExists, ResourceReader, TreeIdentifier},
+    indexing::{ResourceExists, TreeIdentifier},
     Config, Provider,
 };
 use lgn_data_compiler::compiler_cmd::{CompilerCompileCmd, CompilerHashCmd, CompilerInfoCmd};
-use lgn_data_runtime::{
-    AssetLoader, ResourceDescriptor, ResourceId, ResourcePathId, ResourceProcessor,
-    ResourceTypeAndId,
-};
+use lgn_data_offline::SourceResource;
+use lgn_data_runtime::prelude::*;
 
 mod common;
 
@@ -17,15 +16,10 @@ async fn create_test_resource(
     persistent_provider: Arc<Provider>,
     content: &str,
 ) -> TreeIdentifier {
-    let mut proc = refs_resource::TestResourceProc {};
-    let mut resource = proc.new_resource();
+    let mut resource = TestResource::new_named("test_resource");
+    resource.content = String::from(content);
 
-    resource
-        .downcast_mut::<refs_resource::TestResource>()
-        .unwrap()
-        .content = String::from(content);
-
-    common::write_resource(id, persistent_provider, &proc, resource.as_ref()).await
+    common::write_resource(id, persistent_provider, &resource).await
 }
 
 #[tokio::test]
@@ -79,7 +73,7 @@ async fn command_compile() {
     let content = "test content";
 
     let source = ResourceTypeAndId {
-        kind: refs_resource::TestResource::TYPE,
+        kind: TestResource::TYPE,
         id: ResourceId::new(),
     };
     let source_manifest_id =
@@ -88,7 +82,7 @@ async fn command_compile() {
     let exe_path = common::compiler_exe("test-refs");
     assert!(exe_path.exists());
 
-    let compile_path = ResourcePathId::from(source).push(refs_asset::RefsAsset::TYPE);
+    let compile_path = ResourcePathId::from(source).push(RefsAsset::TYPE);
     let command = CompilerCompileCmd::new(
         &exe_path,
         &compile_path,
@@ -114,19 +108,17 @@ async fn command_compile() {
         .unwrap());
 
     let resource_content = {
-        let mut loader = refs_asset::RefsAssetLoader::default();
-        let content = volatile_content_provider
-            .read_resource_as_bytes(content_id)
+        let reader = volatile_content_provider
+            .get_reader(content_id.as_identifier())
             .await
             .expect("asset content");
-        let loaded_resource = loader.load(&mut &content[..]).expect("valid data");
-        loaded_resource
-            .as_ref()
-            .downcast_ref::<refs_asset::RefsAsset>()
-            .unwrap()
-            .content
-            .as_bytes()
-            .to_owned()
+
+        RefsAsset::register_resource_type();
+        let mut reader = Box::pin(reader) as AssetRegistryReader;
+        let loaded_resource = lgn_data_offline::from_json_reader::<RefsAsset>(&mut reader)
+            .await
+            .expect("valid data");
+        loaded_resource.content.as_bytes().to_owned()
     };
     let mut reversed = content.as_bytes().to_owned();
     reversed.reverse();
