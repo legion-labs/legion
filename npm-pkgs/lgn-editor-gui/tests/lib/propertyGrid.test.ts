@@ -1,4 +1,4 @@
-import type { ResourceProperty } from "@lgn/proto-editor/dist/property_inspector";
+import type { PropertyInspector } from "@lgn/api/editor";
 
 import {
   buildDefaultPrimitiveProperty,
@@ -31,7 +31,9 @@ describe("formatProperties", () => {
   test("properly formats the properties received from the server", () => {
     expect(
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      formatProperties(propertiesResponse as unknown as ResourceProperty[])
+      formatProperties(
+        propertiesResponse as unknown as PropertyInspector.ResourceProperty[]
+      )
     ).toMatchSnapshot();
   });
 });
@@ -359,7 +361,8 @@ describe("extractOptionPType", () => {
         attributes: {},
         ptype: "Option<String>",
         name: "My resource property",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe("String");
   });
@@ -371,7 +374,8 @@ describe("extractOptionPType", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         ptype: "Vec<String>" as any,
         name: "My resource property",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe(null);
   });
@@ -383,7 +387,8 @@ describe("extractOptionPType", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         ptype: "Option<String" as any,
         name: "My resource property",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe(null);
   });
@@ -396,7 +401,8 @@ describe("extractVecPType", () => {
         attributes: {},
         ptype: "Vec<String>",
         name: "My resource property",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe("String");
   });
@@ -408,7 +414,8 @@ describe("extractVecPType", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         ptype: "Option<String>" as any,
         name: "My resource property",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe(null);
   });
@@ -420,7 +427,8 @@ describe("extractVecPType", () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment
         ptype: "Vec<String" as any,
         name: "My resource property",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe(null);
   });
@@ -583,7 +591,8 @@ describe("propertyIsPrimitive", () => {
         attributes: {},
         name: "My resource property",
         ptype: "Option<String>",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe(false);
   });
@@ -693,7 +702,8 @@ describe("propertyIsComponent", () => {
         attributes: {},
         name: "My resource property",
         ptype: "ComplexStruct",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe(true);
   });
@@ -757,7 +767,8 @@ describe("propertyIsBag", () => {
         attributes: {},
         name: "My resource property",
         ptype: "ComplexStruct",
-        subProperties: [],
+        // eslint-disable-next-line camelcase
+        sub_properties: [],
       })
     ).toBe(true);
   });
@@ -779,7 +790,8 @@ describe("propertyIsBag", () => {
           attributes: {},
           name: "My resource property",
           ptype: "ComplexStruct",
-          subProperties: [],
+          // eslint-disable-next-line camelcase
+          sub_properties: [],
         })
       )
     ).toBe(true);

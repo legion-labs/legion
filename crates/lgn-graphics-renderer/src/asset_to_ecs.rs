@@ -3,10 +3,9 @@ use std::sync::Arc;
 use crate::components::{
     MaterialComponent, Mesh, MeshTopology, ModelComponent, TextureComponent, TextureData,
 };
-use lgn_app::EventReader;
 use lgn_asset_registry::AssetToEntityMap;
 use lgn_data_runtime::{AssetRegistry, AssetRegistryEvent, Handle, ResourceDescriptor};
-use lgn_ecs::prelude::{Commands, Entity, Res, ResMut};
+use lgn_ecs::prelude::{Commands, Entity, EventReader, Res, ResMut};
 use lgn_graphics_data::{
     runtime::{Material, Model},
     runtime_texture::Texture,

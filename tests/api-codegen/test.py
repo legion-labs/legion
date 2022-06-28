@@ -35,6 +35,7 @@ print(response)
 
 response = client.get_cars(api.GetCarsRequest(
     "kd_space",
+    "other_query",
     ["Opel", "Lada"]
 ))
 print(response)

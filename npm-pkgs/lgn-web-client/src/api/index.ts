@@ -1,11 +1,11 @@
-import { Streaming } from "@lgn/apis/streaming";
+import { Streaming } from "@lgn/api/streaming";
 
 import { blobToJson, jsonToBlob } from "../lib/api";
 import { addAuthToClient } from "../lib/client";
 import log from "../lib/log";
 
-const defaultRestEditorServerUrl = "http://[::1]:5051";
-const defaultRestRuntimeServerUrl = "http://[::1]:5052";
+const defaultEditorServerUrl = "http://[::1]:5051";
+const defaultRuntimeServerUrl = "http://[::1]:5052";
 
 export type ServerType = "editor" | "runtime";
 
@@ -24,20 +24,20 @@ function getClientFor(type: ServerType): Streaming.Client {
 }
 
 export function initApiClient({
-  restEditorServerUrl = defaultRestEditorServerUrl,
-  restRuntimeServerUrl = defaultRestRuntimeServerUrl,
+  editorServerUrl = defaultEditorServerUrl,
+  runtimeServerUrl = defaultRuntimeServerUrl,
   accessTokenCookieName,
   fetch,
 }: {
-  restEditorServerUrl?: string;
-  restRuntimeServerUrl?: string;
+  editorServerUrl?: string;
+  runtimeServerUrl?: string;
   accessTokenCookieName?: string;
   fetch?: typeof globalThis.fetch;
 } = {}) {
   if (accessTokenCookieName !== undefined) {
     editorClient = addAuthToClient(
       new Streaming.Client({
-        baseUri: restEditorServerUrl,
+        baseUri: editorServerUrl,
         fetch,
       }),
       accessTokenCookieName
@@ -45,19 +45,19 @@ export function initApiClient({
 
     runtimeClient = addAuthToClient(
       new Streaming.Client({
-        baseUri: restRuntimeServerUrl,
+        baseUri: runtimeServerUrl,
         fetch,
       }),
       accessTokenCookieName
     );
   } else {
     editorClient = new Streaming.Client({
-      baseUri: restEditorServerUrl,
+      baseUri: editorServerUrl,
       fetch,
     });
 
     runtimeClient = new Streaming.Client({
-      baseUri: restRuntimeServerUrl,
+      baseUri: runtimeServerUrl,
       fetch,
     });
   }
@@ -75,11 +75,11 @@ export async function initializeStream(
 ) {
   const client = getClientFor(serverType);
 
-  const response = await client.initializeStream({
-    params: { "space-id": "0", "workspace-id": "0" },
+  const response = await client.initializeStream(
+    { spaceId: "0", workspaceId: "0" },
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    body: jsonToBlob(localSessionDescription.toJSON()),
-  });
+    jsonToBlob(localSessionDescription.toJSON())
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   return new RTCSessionDescription(await blobToJson(response.value));

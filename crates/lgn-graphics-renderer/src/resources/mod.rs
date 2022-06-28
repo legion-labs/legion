@@ -32,7 +32,7 @@ mod pipeline_manager;
 pub use pipeline_manager::*;
 
 mod descriptor_heap_manager;
-pub use descriptor_heap_manager::*;
+pub(crate) use descriptor_heap_manager::*;
 
 mod persistent_descriptor_set_manager;
 pub(crate) use persistent_descriptor_set_manager::*;
@@ -41,10 +41,7 @@ mod model_manager;
 pub use model_manager::*;
 
 mod shared_resources_manager;
-pub use shared_resources_manager::*;
-
-mod missing_visual_tracker;
-pub(crate) use missing_visual_tracker::*;
+pub(crate) use shared_resources_manager::*;
 
 mod renderer_options;
 pub(crate) use renderer_options::*;

@@ -23,7 +23,7 @@ use crate::{
     labels::RenderStage,
     resources::{
         GpuBufferWithReadback, MaterialId, PipelineDef, PipelineHandle, PipelineManager,
-        ReadbackBuffer, UnifiedStaticBufferAllocator,
+        ReadbackBuffer, UnifiedStaticBuffer,
     },
     Renderer,
 };
@@ -135,12 +135,12 @@ pub struct MeshRenderer {
 impl MeshRenderer {
     pub(crate) fn new(
         device_context: &DeviceContext,
-        allocator: &UnifiedStaticBufferAllocator,
+        gpu_heap: &UnifiedStaticBuffer,
         render_layers: &RenderLayers,
     ) -> Self {
         let render_layer_batches = render_layers
             .iter()
-            .map(|_| RenderLayerBatches::new(allocator, false))
+            .map(|_| RenderLayerBatches::new(gpu_heap, false))
             .collect::<Vec<RenderLayerBatches>>();
 
         Self {

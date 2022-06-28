@@ -11,6 +11,11 @@ paths:
       operationId: getCars
       parameters:
         - $ref: "./components.yaml#/parameters/SpaceId"
+        - name: other_query
+          in: query
+          required: true
+          schema:
+            type: string
         - name: names
           in: query
           description: Names to filter by
@@ -150,7 +155,8 @@ paths:
                     type: string
                   time:
                     type: integer
-                    format: uint32
+                    format: int32
+                    minimum: 0
                 additionalProperties: true
   /test-additional-properties-composite-schema:
     get:
@@ -167,7 +173,8 @@ paths:
                     type: string
                   time:
                     type: integer
-                    format: uint32
+                    format: int32
+                    minimum: 0
                 additionalProperties:
                   $ref: "./components.yaml#/schemas/Pet"
   /test-one-of:

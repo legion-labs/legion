@@ -1,28 +1,32 @@
 import apiCodegen from "@lgn/vite-plugin-api-codegen";
 
-async function build() {
-  await Promise.all([
-    apiCodegen({
+apiCodegen({
+  aliasMappings: {
+    "../../crates/lgn-governance/apis/space.yaml": "Space",
+    "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
+  },
+  apiOptions: [
+    {
       path: "../../crates/lgn-streamer/apis",
-      apiNames: ["streaming"],
-      withPackageJson: true,
-      aliasMappings: {
-        "../../crates/lgn-governance/apis/space.yaml": "Space",
-        "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
-      },
+      names: ["streaming"],
       filename: "streaming",
-    }).buildStart(),
-    apiCodegen({
+    },
+    {
       path: "../../crates/lgn-log/apis",
-      apiNames: ["log"],
-      withPackageJson: true,
-      aliasMappings: {
-        "../../crates/lgn-governance/apis/space.yaml": "Space",
-        "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
-      },
+      names: ["log"],
       filename: "log",
-    }).buildStart(),
-  ]);
-}
-
-build().catch(console.error);
+    },
+    {
+      path: "../../crates/lgn-editor-srv/apis",
+      names: [
+        "editor",
+        "property_inspector",
+        "resource_browser",
+        "source_control",
+      ],
+      filename: "editor",
+    },
+  ],
+})
+  .buildStart()
+  .catch(console.error);

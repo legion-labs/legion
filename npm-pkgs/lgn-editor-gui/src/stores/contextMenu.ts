@@ -1,7 +1,6 @@
 import type { Writable } from "svelte/store";
 
-import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
-import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+import type { Common, SourceControl } from "@lgn/api/editor";
 import { createContextMenuStore } from "@lgn/web-client/src/stores/contextMenu";
 import type { Entry } from "@lgn/web-client/src/types/contextMenu";
 
@@ -42,12 +41,12 @@ export const localChangesEntries: Entry[] = [
 
 export type ContextMenuEntryRecord = {
   [resourceBrowserItemContextMenuId]: {
-    item: ResourceDescription | null;
+    item: Common.ResourceDescription | null;
     name: string;
   };
   [resourceBrowserPanelContextMenuId]: { item: null; name: string };
   [localChangesContextMenuId]: {
-    item: StagedResource | null;
+    item: SourceControl.StagedResource | null;
     name: string;
   };
 };

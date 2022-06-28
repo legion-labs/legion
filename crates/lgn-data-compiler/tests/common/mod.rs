@@ -5,10 +5,7 @@ use lgn_content_store::{
     Provider,
 };
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-use lgn_data_offline::resource::{serialize_metadata, ResourcePathName};
-use lgn_data_runtime::{
-    new_resource_type_and_id_indexer, Resource, ResourceProcessor, ResourceTypeAndId,
-};
+use lgn_data_runtime::{new_resource_type_and_id_indexer, Resource, ResourceTypeAndId};
 
 pub fn target_dir() -> PathBuf {
     env::current_exe()
@@ -38,21 +35,13 @@ pub fn test_env() -> CompilationEnv {
 pub async fn write_resource(
     id: ResourceTypeAndId,
     persistent_provider: Arc<Provider>,
-    proc: &impl ResourceProcessor,
     resource: &dyn Resource,
 ) -> TreeIdentifier {
-    let mut bytes = std::io::Cursor::new(Vec::new());
-
-    // pre-pend metadata before serialized resource
-    let name = ResourcePathName::new("test_resource");
-    let dependencies = proc.extract_build_dependencies(resource);
-    serialize_metadata(name, id, dependencies, &mut bytes);
-
-    proc.write_resource(resource, &mut bytes)
-        .expect("write to memory");
+    let mut bytes = Vec::<u8>::new();
+    lgn_data_offline::to_json_writer(resource, &mut bytes).unwrap();
 
     let resource_id = persistent_provider
-        .write_resource_from_bytes(&bytes.into_inner())
+        .write_resource_from_bytes(&bytes)
         .await
         .expect("write to content-store");
 

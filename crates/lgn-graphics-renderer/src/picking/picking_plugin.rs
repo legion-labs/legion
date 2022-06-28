@@ -15,7 +15,7 @@ use crate::{
     components::{
         CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurfaces,
     },
-    CommandBufferLabel, RenderStage,
+    RenderStage, RendererLabel,
 };
 
 pub struct PickingPlugin {}
@@ -41,7 +41,7 @@ impl Plugin for PickingPlugin {
         app.add_system_to_stage(
             RenderStage::Render,
             update_picking_components
-                .after(CommandBufferLabel::Generate)
+                .after(RendererLabel::Generate)
                 .label(PickingSystemLabel::PickedComponent),
         );
 
@@ -160,7 +160,7 @@ fn update_manipulator_component(
     q_cameras: Query<
         '_,
         '_,
-        &CameraComponent,
+        (&CameraComponent, &GlobalTransform),
         (Without<PickedComponent>, Without<ManipulatorComponent>),
     >,
     render_surfaces: Res<'_, RenderSurfaces>,
@@ -221,7 +221,9 @@ fn update_manipulator_component(
                 let (base_local_transform, base_global_transform) =
                     picking_manager.base_picking_transforms();
 
-                let q_cameras = q_cameras.iter().collect::<Vec<&CameraComponent>>();
+                let q_cameras = q_cameras
+                    .iter()
+                    .collect::<Vec<(&CameraComponent, &GlobalTransform)>>();
                 if !q_cameras.is_empty() {
                     for render_surface in render_surfaces.iter() {
                         let mut screen_rect = picking_manager.screen_rect();
@@ -244,7 +246,8 @@ fn update_manipulator_component(
                             &base_local_transform,
                             &base_global_transform,
                             &parent_global_transform,
-                            q_cameras[0],
+                            q_cameras[0].0,
+                            q_cameras[0].1,
                             picking_manager.picked_pos(),
                             screen_rect,
                             picking_manager.current_cursor_pos(),

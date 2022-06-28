@@ -13,6 +13,7 @@ pub(crate) struct Hdr2Rgb {
     export_texture: EncoderResource<Texture>,
     export_semaphore: EncoderResource<Semaphore>,
     stream_encoder: StreamEncoder,
+    counter: u64,
 }
 
 impl Hdr2Rgb {
@@ -54,6 +55,7 @@ impl Hdr2Rgb {
                 },
             ),
             stream_encoder: stream_encoder.clone(),
+            counter: 0,
         }
     }
 
@@ -95,6 +97,10 @@ impl Hdr2Rgb {
 
     pub(crate) fn export_semaphore(&self) -> EncoderResource<Semaphore> {
         self.export_semaphore.clone()
+    }
+
+    pub(crate) fn export_semaphore_value(&self) -> u64 {
+        self.counter
     }
 
     pub fn present(
@@ -167,10 +173,16 @@ impl Hdr2Rgb {
         cmd_buffer.end();
 
         let wait_sem = render_surface.presenter_sem();
+
+        let export_semaphore = self.export_semaphore.external_resource();
+
+        self.counter += 1;
+        export_semaphore.set_next_timeline_value(self.counter);
+
         render_context.graphics_queue.queue_mut().submit(
             &[cmd_buffer],
             &[wait_sem],
-            &[&self.export_semaphore.external_resource()],
+            &[&export_semaphore],
             None,
         );
 

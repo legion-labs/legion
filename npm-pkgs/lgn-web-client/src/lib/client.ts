@@ -1,5 +1,7 @@
 import { grpc } from "@improbable-eng/grpc-web";
 
+import type { ApiClient } from "@lgn/api";
+
 import { authClient } from "./auth";
 import { getCookie } from "./cookie";
 import log from "./log";
@@ -92,19 +94,7 @@ export function enhanceGrpcClient<Client extends object>(
   });
 }
 
-interface ApiClient {
-  addRequestStartInterceptor(
-    interceptor: (
-      ...request: Parameters<typeof globalThis.fetch>
-    ) =>
-      | Promise<Parameters<typeof globalThis.fetch>>
-      | Parameters<typeof globalThis.fetch>
-  ): void;
-}
-// interface XX {
-//   addRequestStartInterceptor(interceptor: (input: RequestInfo | URL, init?: RequestInit | undefined) => [input: RequestInfo | URL, init?: RequestInit | undefined] | Promise<...>): void
-// }
-
+// TODO: Drop and use version from @lgn/api
 /**
  * Automatically appends the auth header to all requests, automatically refreshes the token set
  * if a request is performed when the user is not authenticated.

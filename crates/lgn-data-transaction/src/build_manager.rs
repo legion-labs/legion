@@ -3,7 +3,7 @@ use std::sync::Arc;
 use lgn_content_store::indexing::{ResourceIndex, ResourceWriter, SharedTreeIdentifier};
 use lgn_data_build::{DataBuild, DataBuildOptions, Error};
 use lgn_data_compiler::{compiler_api::CompilationEnv, Locale, Platform, Target};
-use lgn_data_offline::resource::Project;
+use lgn_data_offline::Project;
 use lgn_data_runtime::{
     new_resource_type_and_id_indexer, ResourcePathId, ResourceType, ResourceTypeAndId,
 };

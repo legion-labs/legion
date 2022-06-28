@@ -65,7 +65,7 @@ pub fn fmt_module_path(module_path: &ModulePath) -> ::askama::Result<String> {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn fmt_ts_path(path: &Path, parameters: &[Parameter]) -> ::askama::Result<String> {
+pub fn fmt_path(path: &Path, parameters: &[Parameter]) -> ::askama::Result<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"\{([^/]+)\}").unwrap();
     }
@@ -79,7 +79,7 @@ pub fn fmt_ts_path(path: &Path, parameters: &[Parameter]) -> ::askama::Result<St
                     .iter()
                     .any(|parameter| parameter.name == capture_name)
                 {
-                    return format!("${{input.params[\"{}\"]}}", capture_name);
+                    return format!("${{params[\"{}\"]}}", capture_name.to_case(Case::Camel));
                 }
             }
 
@@ -122,9 +122,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_fmt_ts_path() {
+    fn test_fmt_path() {
         assert_eq!(
-            fmt_ts_path(
+            fmt_path(
                 &"/v1/users/{id}".into(),
                 &[Parameter {
                     name: "id".into(),
@@ -134,10 +134,10 @@ mod tests {
                 }]
             )
             .unwrap(),
-            "/v1/users/${input.params[\"id\"]}"
+            "/v1/users/${params[\"id\"]}"
         );
         assert_eq!(
-            fmt_ts_path(
+            fmt_path(
                 &"/v1/users/{my-id}".into(),
                 &[Parameter {
                     name: "my-id".into(),
@@ -147,10 +147,10 @@ mod tests {
                 }]
             )
             .unwrap(),
-            "/v1/users/${input.params[\"my-id\"]}"
+            "/v1/users/${params[\"myId\"]}"
         );
         assert_eq!(
-            fmt_ts_path(
+            fmt_path(
                 &"/v1/users/{id}/{name}".into(),
                 &[
                     Parameter {
@@ -168,7 +168,7 @@ mod tests {
                 ]
             )
             .unwrap(),
-            "/v1/users/${input.params[\"id\"]}/${input.params[\"name\"]}"
+            "/v1/users/${params[\"id\"]}/${params[\"name\"]}"
         );
     }
 }

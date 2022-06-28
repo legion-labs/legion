@@ -5,15 +5,15 @@ use std::{net::SocketAddr, path::PathBuf, str::FromStr, time::Duration};
 
 use clap::Parser;
 use generic_data::plugin::GenericDataPlugin;
-use lgn_app::{prelude::*, AppExit, EventWriter, ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use lgn_api::{ApiPlugin, ApiPluginSettings};
+use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_async::{AsyncPlugin, TokioAsyncRuntime};
 use lgn_config::RichPathBuf;
 use lgn_core::{CorePlugin, DefaultTaskPoolOptions};
 use lgn_data_runtime::ResourceTypeAndId;
-use lgn_ecs::prelude::Local;
+use lgn_ecs::prelude::{EventWriter, Local};
 use lgn_graphics_renderer::RendererPlugin;
-use lgn_grpc::{GRPCPlugin, GRPCPluginSettings};
 use lgn_hierarchy::HierarchyPlugin;
 use lgn_input::InputPlugin;
 use lgn_log::{BroadcastSink, LogStreamPlugin, TraceEventsReceiver};
@@ -25,13 +25,13 @@ use lgn_scripting_data::ScriptingDataPlugin;
 use lgn_source_control::{BranchName, RepositoryName};
 use lgn_streamer::StreamerPlugin;
 use lgn_telemetry_sink::TelemetryGuardBuilder;
+use lgn_time::TimePlugin;
 use lgn_tracing::{debug, info, warn, LevelFilter};
 use lgn_transform::TransformPlugin;
 use sample_data::SampleDataPlugin;
 use serde::Deserialize;
 use tokio::sync::broadcast;
 
-mod grpc;
 mod plugin;
 mod property_inspector_plugin;
 use lgn_window::WindowPlugin;
@@ -42,6 +42,8 @@ use resource_browser_plugin::{ResourceBrowserPlugin, ResourceBrowserSettings};
 
 mod source_control_plugin;
 use source_control_plugin::SourceControlPlugin;
+
+mod editor;
 
 #[cfg(test)]
 #[path = "tests/test_resource_browser.rs"]
@@ -57,12 +59,9 @@ use plugin::EditorPlugin;
 #[clap(name = "Legion Labs editor server")]
 #[clap(about = "Editor server.", version, author)]
 struct Args {
-    /// The address to listen on (gRpc)
+    /// The address to listen on
     #[clap(long)]
     listen_endpoint: Option<SocketAddr>,
-    /// The address to listen on (Rest)
-    #[clap(long)]
-    rest_listen_endpoint: Option<SocketAddr>,
     /// Path to folder containing the project index
     #[clap(long)]
     project_root: Option<RichPathBuf>,
@@ -91,13 +90,9 @@ struct Args {
 
 #[derive(Debug, Clone, Deserialize)]
 struct Config {
-    /// The endpoint to listen on (gRpc).
+    /// The endpoint to listen on.
     #[serde(default = "Config::default_listen_endpoint")]
     listen_endpoint: SocketAddr,
-
-    /// The endpoint to listen on (Rest).
-    #[serde(default = "Config::default_rest_listen_endpoint")]
-    rest_listen_endpoint: SocketAddr,
 
     /// The project root.
     project_root: Option<RichPathBuf>,
@@ -122,10 +117,6 @@ struct Config {
 
 impl Config {
     fn default_listen_endpoint() -> SocketAddr {
-        "[::1]:50051".parse().unwrap()
-    }
-
-    fn default_rest_listen_endpoint() -> SocketAddr {
         "[::1]:5051".parse().unwrap()
     }
 
@@ -138,7 +129,6 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             listen_endpoint: Self::default_listen_endpoint(),
-            rest_listen_endpoint: Self::default_rest_listen_endpoint(),
             project_root: None,
             scene: None,
             build_output_database_address: Self::default_build_output_database_address(),
@@ -170,14 +160,8 @@ fn main() {
         .unwrap_or_default();
 
     let listen_endpoint = args.listen_endpoint.unwrap_or(config.listen_endpoint);
-    let rest_listen_endpoint = args
-        .rest_listen_endpoint
-        .unwrap_or(config.rest_listen_endpoint);
 
-    info!(
-        "Listening on (gRpc) {} and (rest) {}",
-        listen_endpoint, rest_listen_endpoint
-    );
+    info!("Listening on {}", listen_endpoint);
 
     let project_root = args
         .project_root
@@ -288,6 +272,7 @@ fn main() {
         .add_plugin(ScheduleRunnerPlugin::default())
         .insert_resource(DefaultTaskPoolOptions::new(1..=4))
         .add_plugin(CorePlugin::default())
+        .add_plugin(TimePlugin::default())
         .add_plugin(AsyncPlugin::default())
         .insert_resource(AssetRegistrySettings::new(
             Some(&game_manifest_path),
@@ -303,12 +288,9 @@ fn main() {
             compilation_mode,
         ))
         .add_plugin(ResourceRegistryPlugin::default())
-        .insert_resource(GRPCPluginSettings::hybrid(
-            listen_endpoint,
-            rest_listen_endpoint,
-        ))
+        .insert_resource(ApiPluginSettings::new(listen_endpoint))
         .insert_resource(trace_events_receiver)
-        .add_plugin(GRPCPlugin::hybrid())
+        .add_plugin(ApiPlugin::default())
         .add_plugin(LogStreamPlugin::default())
         .add_plugin(InputPlugin::default())
         .add_plugin(RendererPlugin::default())
@@ -327,7 +309,8 @@ fn main() {
         .add_plugin(lgn_graphics_data::GraphicsPlugin::default())
         .add_plugin(WindowPlugin {
             add_primary_window: false,
-            exit_on_close: false,
+            exit_on_all_closed: false,
+            close_when_requested: false,
         });
 
     if let Some(test_name) = args.test {

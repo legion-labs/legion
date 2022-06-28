@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::{
     borrow::Cow,
     collections::{BTreeSet, HashMap},
@@ -8,6 +9,9 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "tabled")]
+use tabled::Tabled;
 
 use super::{Error, Result};
 
@@ -115,9 +119,14 @@ impl<'a> TryFrom<crate::api::permission::PermissionId> for PermissionId {
 
 /// A permission.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(feature = "tabled", derive(Tabled))]
 pub struct Permission {
     pub id: PermissionId,
     pub description: Cow<'static, str>,
+    #[cfg_attr(
+        feature = "tabled",
+        tabled(display_with = "crate::formatter::optional")
+    )]
     pub parent_id: Option<PermissionId>,
     pub created_at: DateTime<Utc>,
 }
@@ -233,10 +242,21 @@ impl IntoIterator for PermissionList {
 #[serde(transparent)]
 pub struct PermissionSet(pub(crate) BTreeSet<PermissionId>);
 
+impl Display for PermissionSet {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.iter().format(", "))
+    }
+}
+
 impl PermissionSet {
     /// Create a new permission set from the list of built-in permissions.
     pub fn new_built_in() -> Self {
         Self(PermissionId::BUILT_INS.iter().copied().cloned().collect())
+    }
+
+    /// Check if the set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Get a permission by its identifier.

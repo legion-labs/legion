@@ -2,8 +2,11 @@ use async_trait::async_trait;
 use chrono::DateTime;
 use lgn_tracing::prelude::*;
 use sqlx::{
-    any::AnyPoolOptions, error::DatabaseError, migrate::MigrateDatabase, mysql::MySqlDatabaseError,
-    Acquire, Executor, Pool, Row,
+    any::{AnyConnectOptions, AnyPoolOptions},
+    error::DatabaseError,
+    migrate::MigrateDatabase,
+    mysql::MySqlDatabaseError,
+    Acquire, ConnectOptions, Executor, Pool, Row,
 };
 use std::collections::{BTreeSet, VecDeque};
 
@@ -63,8 +66,12 @@ impl SqlDatabaseDriver {
     async fn new_pool(&self) -> Result<Pool<sqlx::Any>> {
         Ok(match &self {
             Self::Sqlite(uri) => {
+                let mut connect_options = uri
+                    .parse::<AnyConnectOptions>()
+                    .map_other_err(format!("failed to parse connection url `{}`", uri))?;
+                connect_options.disable_statement_logging();
                 AnyPoolOptions::new()
-                    .connect(uri)
+                    .connect_with(connect_options)
                     .await
                     .map_other_err(format!(
                         "failed to establish a SQLite connection pool to `{}`",

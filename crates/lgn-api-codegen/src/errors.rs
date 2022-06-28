@@ -2,10 +2,7 @@ use std::path::PathBuf;
 
 use thiserror::Error;
 
-use crate::{
-    api_types::Model,
-    openapi_loader::{OpenApiRef, OpenApiRefLocation},
-};
+use crate::openapi_loader::{OpenApiRef, OpenApiRefLocation};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -21,6 +18,8 @@ pub enum Error {
     Uri(#[from] http::uri::InvalidUri),
     #[error("rust format: {0}")]
     RustFormat(#[from] rust_format::Error),
+    #[error("invalid typescript filename \"index\" is reserved")]
+    TypeScriptFilename,
     #[error("typescript format: {0}")]
     TypeScriptFormat(anyhow::Error),
     #[error("at {0}: {1} are invalid")]
@@ -29,8 +28,6 @@ pub enum Error {
     BrokenReference(OpenApiRef),
     #[error("path is missing operation id: {0}")]
     MissingOperationID(OpenApiRef),
-    #[error("the model `{}` was already registered with a different definition", .0.ref_)]
-    ModelAlreadyRegistered(Model),
     #[error("document already exists at location: {0}")]
     DocumentAlreadyExists(OpenApiRefLocation),
     #[error("at {0}: {1} are not supported")]

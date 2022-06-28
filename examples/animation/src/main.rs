@@ -4,36 +4,33 @@
 // crate-specific lint exceptions:
 //#![allow()]
 
-use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
-
 use clap::{ArgEnum, Parser};
-use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
-use lgn_source_control::{BranchName, RepositoryName};
-
 use lgn_animation::offline::{
-    AnimationTrack, AnimationTransformBundle, AnimationTransformBundleVec,
+    AnimationClipNode, AnimationTrack, AnimationTransformBundle, AnimationTransformBundleVec,
+    Connection, EditorGraphDefinition,
 };
+use lgn_content_store::indexing::{empty_tree_id, SharedTreeIdentifier};
 use lgn_data_build::DataBuildOptions;
 use lgn_data_compiler::compiler_node::CompilerRegistryOptions;
 use lgn_data_offline::{
-    resource::{Project, ResourcePathName},
     vfs::AddDeviceSourceCas,
+    SourceResource, {Project, ResourcePathName},
 };
 use lgn_data_runtime::{
-    AssetRegistry, AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
+    AssetRegistryOptions, Component, ResourceDescriptor, ResourceId, ResourcePathId,
     ResourceTypeAndId,
 };
 use lgn_data_transaction::BuildManager;
-use lgn_graphics_data::offline::CameraSetup;
-use lgn_graphics_renderer::components::Mesh;
-use lgn_math::prelude::{Quat, Vec3};
-use lgn_physics::offline::PhysicsSceneSettings;
-
-use lgn_tracing::{info, LevelFilter};
-use sample_data::{
-    offline::{Light, Transform, Visual},
+use lgn_graphics_data::{
+    offline::{CameraSetup, Light, Visual},
     LightType,
 };
+
+use lgn_math::prelude::{Quat, Vec3};
+use lgn_source_control::{BranchName, RepositoryName};
+use lgn_tracing::{info, LevelFilter};
+use sample_data::offline::Transform;
+use std::{env, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc};
 
 #[derive(Debug, Copy, Clone, PartialEq, ArgEnum)]
 enum CompilersSource {
@@ -99,12 +96,12 @@ async fn main() -> anyhow::Result<()> {
         Arc::clone(&source_control_content_provider),
         project.source_manifest_id(),
     );
-    lgn_graphics_data::offline::add_loaders(&mut asset_registry);
-    generic_data::offline::add_loaders(&mut asset_registry);
-    sample_data::offline::add_loaders(&mut asset_registry);
+    lgn_graphics_data::register_types(&mut asset_registry);
+    generic_data::register_types(&mut asset_registry);
+    sample_data::register_types(&mut asset_registry);
     let asset_registry = asset_registry.create().await;
 
-    let resource_ids = create_offline_data(&mut project, &asset_registry).await;
+    let resource_ids = create_offline_data(&mut project).await;
     project
         .commit("initial commit")
         .await
@@ -167,27 +164,22 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn create_offline_data(
-    project: &mut Project,
-    resource_registry: &AssetRegistry,
-) -> Vec<ResourceTypeAndId> {
+async fn create_offline_data(project: &mut Project) -> Vec<ResourceTypeAndId> {
     let cube_model_id = create_offline_model(
         project,
-        resource_registry,
         "84510591-4ccd-4818-bf73-15375e6b140a",
         "/scene/models/skeleton.mod",
-        Mesh::new_cube(0.1),
+        lgn_graphics_renderer::resources::Mesh::new_cube(0.1),
     )
     .await;
 
     let light_id = create_offline_entity(
         project,
-        resource_registry,
         "85701c5f-f9f8-4ca0-9111-8243c4ea2cd6",
         "/scene/light.ent",
         vec![
             Box::new(Transform {
-                position: (0_f32, 10_f32, 2_f32).into(),
+                position: (0_f32, 0_f32, 10_f32).into(),
                 ..Transform::default()
             }),
             Box::new(Light {
@@ -203,96 +195,97 @@ async fn create_offline_data(
     .await;
 
     let waving_anim = Box::new(AnimationTrack {
+        name: String::from("Waving"),
         key_frames: vec![
             AnimationTransformBundleVec {
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.4, 0.0, 0.0),
+                        translation: Vec3::new(-0.4, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
                     // Bone 2 Head
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.0, 0.35, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.35),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.5, 0.5, 0.5),
                     },
                     // Bone 3 shoulder
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.2, 0.15, 0.0),
+                        translation: Vec3::new(0.2, 0.0, 0.15),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.3, 0.3, 0.3),
                     },
                     // Bone 4 arm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.25, -0.2, 0.0),
+                        translation: Vec3::new(0.25, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 5 arm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, -0.3, 0.0),
+                        translation: Vec3::new(0.3, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 6 elbow
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, -0.3, 0.0),
+                        translation: Vec3::new(0.3, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 7 forearm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, 0.0, 0.0),
+                        translation: Vec3::new(0.3, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 8 hip
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.15, -0.2, 0.0),
+                        translation: Vec3::new(0.15, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.4, 0.4, 0.4),
                     },
                     // Bone 9 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, 0.0),
+                        translation: Vec3::new(0.05, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 10 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, 0.0),
+                        translation: Vec3::new(0.05, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 11 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, 0.0),
+                        translation: Vec3::new(0.05, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 12 hip2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.15, -0.2, 0.0),
+                        translation: Vec3::new(-0.15, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.4, 0.4, 0.4),
                     },
                     // Bone 13 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, 0.0),
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 14 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, 0.0),
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 15 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, 0.0),
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
@@ -302,91 +295,91 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.4, 0.0, 0.2),
+                        translation: Vec3::new(-0.4, 0.2, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
                     // Bone 2 Head
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.0, 0.35, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.35),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.5, 0.5, 0.5),
                     },
                     // Bone 3 shoulder
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.2, 0.15, 0.0),
+                        translation: Vec3::new(0.2, 0.0, 0.15),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.3, 0.3, 0.3),
                     },
                     // Bone 4 arm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.15, -0.3, 0.0),
+                        translation: Vec3::new(0.15, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 5 arm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.15, -0.35, 0.0),
+                        translation: Vec3::new(0.15, 0.0, -0.35),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 6 elbow
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.15, -0.35, 0.0),
+                        translation: Vec3::new(0.15, 0.0, -0.35),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 7 forearm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, -0.2, 0.0),
+                        translation: Vec3::new(0.3, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 8 hip
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.15, -0.2, 0.0),
+                        translation: Vec3::new(0.15, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.4, 0.4, 0.4),
                     },
                     // Bone 9 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, -0.1),
+                        translation: Vec3::new(0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 10 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, -0.1),
+                        translation: Vec3::new(0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 11 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, -0.1),
+                        translation: Vec3::new(0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 12 hip2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.15, -0.2, 0.0),
+                        translation: Vec3::new(-0.15, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.4, 0.4, 0.4),
                     },
                     // Bone 13 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, -0.1),
+                        translation: Vec3::new(-0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 14 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, -0.1),
+                        translation: Vec3::new(-0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 15 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, -0.1),
+                        translation: Vec3::new(-0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
@@ -396,91 +389,91 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.4, 0.0, 0.4),
+                        translation: Vec3::new(-0.4, 0.4, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
                     // Bone 2 Head
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.0, 0.35, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.35),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.5, 0.5, 0.5),
                     },
                     // Bone 3 shoulder
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.2, 0.15, 0.0),
+                        translation: Vec3::new(0.2, 0.0, 0.15),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.3, 0.3, 0.3),
                     },
                     // Bone 4 arm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.25, -0.2, 0.0),
+                        translation: Vec3::new(0.25, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 5 arm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, -0.3, 0.0),
+                        translation: Vec3::new(0.3, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 6 elbow
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, -0.3, 0.0),
+                        translation: Vec3::new(0.3, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 7 forearm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, 0.0, 0.0),
+                        translation: Vec3::new(0.3, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 8 hip
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.15, -0.2, 0.0),
+                        translation: Vec3::new(0.15, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.4, 0.4, 0.4),
                     },
                     // Bone 9 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.2, -0.2),
+                        translation: Vec3::new(0.05, 0.2, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 10 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.2, -0.2),
+                        translation: Vec3::new(0.05, 0.2, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 11 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.2, -0.2),
+                        translation: Vec3::new(0.05, 0.2, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 12 hip2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.15, -0.2, 0.0),
+                        translation: Vec3::new(-0.15, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.4, 0.4, 0.4),
                     },
                     // Bone 13 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.2, -0.2),
+                        translation: Vec3::new(-0.05, 0.2, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 14 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.2, -0.2),
+                        translation: Vec3::new(-0.05, 0.2, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 15 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.2, -0.2),
+                        translation: Vec3::new(-0.05, 0.2, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
@@ -490,91 +483,384 @@ async fn create_offline_data(
                 anim_transform_vec: vec![
                     // Bone 1 body
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.4, 0.0, 0.2),
+                        translation: Vec3::new(-0.4, 0.2, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(2.0, 2.0, 2.0),
                     },
                     // Bone 2 Head
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.0, 0.35, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.35),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.5, 0.5, 0.5),
                     },
                     // Bone 3 shoulder
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.2, 0.15, 0.0),
+                        translation: Vec3::new(0.2, 0.0, 0.15),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.3, 0.3, 0.3),
                     },
                     // Bone 4 arm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, 0.0, 0.0),
+                        translation: Vec3::new(0.3, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 5 arm
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, 0.0, 0.0),
+                        translation: Vec3::new(0.3, 0.0, 0.0),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 6 elbow
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.3, 0.15, 0.0),
+                        translation: Vec3::new(0.3, 0.0, 0.15),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 7 forearm
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.0, 0.3, 0.0),
+                        translation: Vec3::new(0.0, 0.0, 0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 8 hip
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.15, -0.2, 0.0),
+                        translation: Vec3::new(0.15, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.4, 0.4, 0.4),
                     },
                     // Bone 9 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, -0.1),
+                        translation: Vec3::new(0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 10 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, -0.1),
+                        translation: Vec3::new(0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 11 leg
                     AnimationTransformBundle {
-                        translation: Vec3::new(-0.05, -0.3, -0.1),
+                        translation: Vec3::new(0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 12 hip2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.15, -0.2, 0.0),
+                        translation: Vec3::new(-0.15, 0.0, -0.2),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.4, 0.4, 0.4),
                     },
                     // Bone 13 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, -0.1),
+                        translation: Vec3::new(-0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(0.7, 0.7, 0.7),
                     },
                     // Bone 14 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, -0.1),
+                        translation: Vec3::new(-0.05, 0.1, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
                     // Bone 15 leg2
                     AnimationTransformBundle {
-                        translation: Vec3::new(0.05, -0.3, -0.1),
+                        translation: Vec3::new(-0.05, 0.1, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                ],
+            },
+        ],
+        current_key_frame_index: 0,
+        duration_key_frames: vec![1.0, 1.0, 1.0, 1.0, 1.0],
+        time_since_last_tick: 0.0,
+        looping: true,
+        bone_ids: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+        parent_indices: vec![-1, 0, 0, 2, 3, 4, 5, 0, 7, 8, 9, 0, 11, 12, 13], // Stores the bone idx of every bones parent, if -1: root bone
+    });
+    let idle_anim = Box::new(AnimationTrack {
+        name: String::from("Idle"),
+        key_frames: vec![
+            AnimationTransformBundleVec {
+                anim_transform_vec: vec![
+                    // Bone 1 root
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.4, 0.0, 0.0),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(2.0, 2.0, 2.0),
+                    },
+                    // Bone 2 Head
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.0, 0.0, 0.35),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.5, 0.5, 0.5),
+                    },
+                    // Bone 3 shoulder
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.2, 0.0, 0.15),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.3, 0.3, 0.3),
+                    },
+                    // Bone 4 arm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.25, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 5 arm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 6 elbow
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 7 forearm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, 0.0),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 8 hip
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.15, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.4, 0.4, 0.4),
+                    },
+                    // Bone 9 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 10 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 11 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 12 hip2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.15, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.4, 0.4, 0.4),
+                    },
+                    // Bone 13 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 14 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 15 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                ],
+            },
+            AnimationTransformBundleVec {
+                anim_transform_vec: vec![
+                    // Bone 1 body
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.4, 0.0, 0.0),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(2.0, 2.0, 2.0),
+                    },
+                    // Bone 2 Head
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.0, 0.0, 0.35),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.5, 0.5, 0.5),
+                    },
+                    // Bone 3 shoulder
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.2, 0.0, 0.15),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.3, 0.3, 0.3),
+                    },
+                    // Bone 4 arm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.25, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 5 arm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 6 elbow
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 7 forearm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, 0.0),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 8 hip
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.15, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.4, 0.4, 0.4),
+                    },
+                    // Bone 9 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 10 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 11 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 12 hip2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.15, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.4, 0.4, 0.4),
+                    },
+                    // Bone 13 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 14 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 15 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                ],
+            },
+            AnimationTransformBundleVec {
+                anim_transform_vec: vec![
+                    // Bone 1 root
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.4, 0.0, 0.0),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(2.0, 2.0, 2.0),
+                    },
+                    // Bone 2 Head
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.0, 0.0, 0.35),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.5, 0.5, 0.5),
+                    },
+                    // Bone 3 shoulder
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.2, 0.0, 0.15),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.3, 0.3, 0.3),
+                    },
+                    // Bone 4 arm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.25, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 5 arm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 6 elbow
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 7 forearm
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.3, 0.0, 0.0),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 8 hip
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.15, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.4, 0.4, 0.4),
+                    },
+                    // Bone 9 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 10 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 11 leg
+                    AnimationTransformBundle {
+                        translation: Vec3::new(0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 12 hip2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.15, 0.0, -0.2),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.4, 0.4, 0.4),
+                    },
+                    // Bone 13 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(0.7, 0.7, 0.7),
+                    },
+                    // Bone 14 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::new(1.0, 1.0, 1.0),
+                    },
+                    // Bone 15 leg2
+                    AnimationTransformBundle {
+                        translation: Vec3::new(-0.05, 0.0, -0.3),
                         rotation: Quat::IDENTITY,
                         scale: Vec3::new(1.0, 1.0, 1.0),
                     },
@@ -590,7 +876,6 @@ async fn create_offline_data(
     });
     let skeleton = create_offline_entity(
         project,
-        resource_registry,
         "825f5f93-7a86-4616-81aa-ce3e146248ab",
         "/scene/skeleton.ent",
         vec![
@@ -603,25 +888,40 @@ async fn create_offline_data(
                 color: (0x20, 0xFF, 0xFF).into(),
                 ..Visual::default()
             }),
-            Box::new(*waving_anim),
+            Box::new(EditorGraphDefinition {
+                states: vec![
+                    AnimationClipNode {
+                        id: 1,
+                        track: *waving_anim,
+                    },
+                    AnimationClipNode {
+                        id: 2,
+                        track: *idle_anim,
+                    },
+                ],
+                connections: vec![
+                    Connection {
+                        parent_node_id: 0,
+                        child_node_id: 1,
+                    },
+                    Connection {
+                        parent_node_id: 1,
+                        child_node_id: 0,
+                    },
+                ],
+            }),
         ],
         vec![],
     )
     .await;
     let scene_id = create_offline_entity(
         project,
-        resource_registry,
         "09f7380d-51b2-4061-9fe4-52ceccce55e7",
         "/scene.ent",
-        vec![
-            Box::new(CameraSetup {
-                eye: Vec3::new(0.0, 1.2, -3.0),
-                look_at: Vec3::new(0.0, 0.5, 0.0),
-            }),
-            Box::new(PhysicsSceneSettings {
-                gravity: Vec3::new(0.0, -1.0, 0.0),
-            }),
-        ],
+        vec![Box::new(CameraSetup {
+            eye: Vec3::new(0.0, 3.0, 1.2),
+            look_at: Vec3::ZERO,
+        })],
         vec![light_id, skeleton],
     )
     .await;
@@ -631,7 +931,6 @@ async fn create_offline_data(
 
 async fn create_offline_entity(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
     components: Vec<Box<dyn Component>>,
@@ -645,35 +944,31 @@ async fn create_offline_entity(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut entity = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<sample_data::offline::Entity>(type_id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(sample_data::offline::Entity::new_with_id(
+            name.as_str(),
+            type_id,
+        ))
     };
 
-    let mut entity = handle
-        .instantiate::<sample_data::offline::Entity>(resources)
-        .unwrap();
     entity.components.clear();
     entity.components.extend(components.into_iter());
     entity.children.clear();
     entity.children.extend(children.into_iter());
 
-    handle.apply(entity, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(type_id, entity.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(type_id, entity.as_ref())
             .await
             .expect("failed to add new resource");
     }
@@ -684,10 +979,9 @@ async fn create_offline_entity(
 
 async fn create_offline_model(
     project: &mut Project,
-    resources: &AssetRegistry,
     resource_id: &str,
     resource_path: &str,
-    mesh: Mesh,
+    mesh: lgn_graphics_renderer::resources::Mesh,
 ) -> ResourcePathId {
     let kind = lgn_graphics_data::offline::Model::TYPE;
     let id = resource_id
@@ -697,22 +991,19 @@ async fn create_offline_model(
     let name: ResourcePathName = resource_path.into();
 
     let exists = project.exists(type_id).await;
-    let handle = if exists {
+    let mut model = if exists {
         project
-            .load_resource(type_id, resources)
+            .load_resource::<lgn_graphics_data::offline::Model>(type_id)
             .await
             .expect("failed to load resource")
     } else {
-        resources
-            .new_resource_with_id(type_id)
-            .expect("failed to create new resource")
+        Box::new(lgn_graphics_data::offline::Model::new_with_id(
+            name.as_str(),
+            type_id,
+        ))
     };
 
-    let mut model = handle
-        .instantiate::<lgn_graphics_data::offline::Model>(resources)
-        .unwrap();
     model.meshes.clear();
-
     let mesh = lgn_graphics_data::offline::Mesh {
         positions: mesh.positions,
         normals: mesh.normals.unwrap(),
@@ -727,16 +1018,14 @@ async fn create_offline_model(
     };
     model.meshes.push(mesh);
 
-    handle.apply(model, resources);
-
     if exists {
         project
-            .save_resource(type_id, handle, resources)
+            .save_resource(type_id, model.as_ref())
             .await
             .expect("failed to save resource");
     } else {
         project
-            .add_resource_with_id(name, type_id, handle, resources)
+            .add_resource_with_id(type_id, model.as_ref())
             .await
             .expect("failed to add new resource");
     }

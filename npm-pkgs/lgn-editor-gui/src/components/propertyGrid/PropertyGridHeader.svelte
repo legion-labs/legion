@@ -28,7 +28,7 @@
       payload: {
         resourceId: resource.description.id,
         path: componentKey,
-        index: getComponentProperty(resource.properties)?.subProperties.length,
+        index: getComponentProperty(resource.properties)?.sub_properties.length,
       },
     });
   }
@@ -37,13 +37,13 @@
     properties: ResourceProperty[]
   ): ResourceProperty | null {
     properties.forEach((p) => {
-      const c = p.subProperties.find((c) => c.name === componentKey);
+      const c = p.sub_properties.find((c) => c.name === componentKey);
 
       if (c) {
         return c;
       }
 
-      return getComponentProperty(p.subProperties);
+      return getComponentProperty(p.sub_properties);
     });
 
     return null;

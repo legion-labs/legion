@@ -9,12 +9,9 @@ use std::{
     time::SystemTime,
 };
 
-use futures::{
-    future::{select_all, try_join_all},
-    Future, FutureExt,
-};
+use futures::{future::select_all, Future, FutureExt};
 use lgn_content_store::{
-    indexing::{empty_tree_id, ResourceWriter, SharedTreeIdentifier},
+    indexing::{empty_tree_id, SharedTreeIdentifier},
     Provider,
 };
 use lgn_data_compiler::{
@@ -22,16 +19,15 @@ use lgn_data_compiler::{
     compiler_node::{CompilerNode, CompilerStub},
     CompiledResource, CompiledResources,
 };
-use lgn_data_offline::{resource::Project, vfs::AddDeviceSourceCas};
+use lgn_data_offline::{vfs::AddDeviceSourceCas, Project};
 use lgn_data_runtime::{
     AssetRegistry, AssetRegistryOptions, ResourcePathId, ResourceTypeAndId, Transform,
 };
-use lgn_tracing::{async_span_scope, debug, error, info};
+use lgn_tracing::{debug, error, info};
 use lgn_utils::{DefaultHash, DefaultHasher};
 use petgraph::{algo, graph::NodeIndex, Graph};
 
 use crate::{
-    asset_file_writer::write_assetfile,
     output_index::{AssetHash, CompiledResourceInfo, CompiledResourceReference, OutputIndex},
     source_index::SourceIndex,
     DataBuildOptions, Error,
@@ -76,7 +72,7 @@ fn compute_context_hash(
 ///
 /// Data build uses file-based storage to persist the state of data builds and
 /// data compilation. It requires access to offline resources to retrieve
-/// resource metadata - through  [`lgn_data_offline::resource::Project`].
+/// resource metadata - through  [`lgn_data_offline::Project`].
 ///
 /// # Example Usage
 ///
@@ -118,6 +114,7 @@ pub struct DataBuild {
     source_manifest_id: SharedTreeIdentifier,
     runtime_manifest_id: SharedTreeIdentifier,
     data_content_provider: Arc<Provider>,
+    source_control_provider: Arc<Provider>,
     compilers: CompilerNode,
 }
 
@@ -183,6 +180,7 @@ impl DataBuild {
             source_manifest_id: project.source_manifest_id(),
             runtime_manifest_id,
             data_content_provider: Arc::clone(&config.data_content_provider),
+            source_control_provider: Arc::clone(&config.source_control_content_provider),
             compilers: CompilerNode::new(compilers, registry),
         })
     }
@@ -233,23 +231,25 @@ impl DataBuild {
         let start = std::time::Instant::now();
         info!("Compilation of {} Started", compile_path);
 
+        #[allow(unused_variables)]
         let CompileOutput {
             resources,
             references,
             statistics: _stats,
         } = self.compile_path(compile_path, env).await?;
 
-        let assets = self.link(&resources, &references).await?;
-
-        for asset in assets {
+        for asset in resources {
             if let Some(existing) = result
                 .compiled_resources
                 .iter_mut()
-                .find(|existing| existing.path == asset.path)
+                .find(|existing| existing.path == asset.compile_path)
             {
-                *existing = asset;
+                existing.content_id = asset.compiled_content_id;
             } else {
-                result.compiled_resources.push(asset);
+                result.compiled_resources.push(CompiledResource {
+                    path: asset.compiled_path,
+                    content_id: asset.compiled_content_id,
+                });
             }
         }
 
@@ -264,6 +264,7 @@ impl DataBuild {
     async fn compile_node(
         output_index: &OutputIndex,
         data_provider: Arc<Provider>,
+        source_control_provider: Arc<Provider>,
         source_manifest_id: &SharedTreeIdentifier,
         runtime_manifest_id: &SharedTreeIdentifier,
         compile_node: &ResourcePathId,
@@ -314,6 +315,7 @@ impl DataBuild {
                         derived_deps,
                         resources,
                         data_provider,
+                        source_control_provider,
                         source_manifest_id,
                         runtime_manifest_id,
                         env,
@@ -689,6 +691,7 @@ impl DataBuild {
 
                     let output_index = &self.output_index;
                     let data_content_provider = Arc::clone(&self.data_content_provider);
+                    let source_control_provider = Arc::clone(&self.source_control_provider);
                     let source_manifest_id = &self.source_manifest_id;
                     let runtime_manifest_id = &self.runtime_manifest_id;
                     let resources = self.compilers.registry();
@@ -707,6 +710,7 @@ impl DataBuild {
                         let (resource_infos, resource_references, stats) = Self::compile_node(
                             output_index,
                             data_content_provider,
+                            source_control_provider,
                             source_manifest_id,
                             runtime_manifest_id,
                             &compile_node,
@@ -820,115 +824,6 @@ impl DataBuild {
             statistics: compile_stats,
         })
     }
-
-    async fn link_work(
-        &self,
-        resource: &CompiledResourceInfo,
-        references: &[CompiledResourceReference],
-    ) -> Result<CompiledResource, Error> {
-        info!("Linking {:?} ...", resource);
-        let checksum = if let Some(checksum) = self
-            .output_index
-            .find_linked(
-                resource.compiled_path.clone(),
-                resource.context_hash,
-                resource.source_hash,
-            )
-            .await?
-        {
-            checksum
-        } else {
-            //
-            // for now, every derived resource gets an `assetfile` representation.
-            //
-            let asset_id = resource.compiled_path.resource_id();
-
-            let resource_list = std::iter::once((asset_id, resource.compiled_content_id.clone()));
-            let reference_list = references
-                .iter()
-                .filter(|r| r.is_reference_of(resource))
-                .map(|r| {
-                    (
-                        resource.compiled_path.resource_id(),
-                        (
-                            r.compiled_reference.resource_id(),
-                            r.compiled_reference.resource_id(),
-                        ),
-                    )
-                });
-
-            let output = write_assetfile(
-                resource_list,
-                reference_list,
-                &self.source_index.content_store,
-            )
-            .await?;
-
-            let checksum = {
-                async_span_scope!("content_store");
-                self.source_index
-                    .content_store
-                    .write_resource_from_bytes(&output)
-                    .await?
-            };
-            self.output_index
-                .insert_linked(
-                    resource.compiled_path.clone(),
-                    resource.context_hash,
-                    resource.source_hash,
-                    checksum.clone(),
-                )
-                .await?;
-            checksum
-        };
-
-        let asset_file = CompiledResource {
-            path: resource.compiled_path.clone(),
-            content_id: checksum,
-        };
-        Ok(asset_file)
-    }
-
-    /// Create asset files in runtime format containing compiled resources that
-    /// include reference (load-time dependency) information
-    /// based on provided compilation information.
-    /// Currently each resource is linked into a separate *asset file*.
-    async fn link(
-        &mut self,
-        resources: &[CompiledResourceInfo],
-        references: &[CompiledResourceReference],
-    ) -> Result<Vec<CompiledResource>, Error> {
-        let timer = std::time::Instant::now();
-
-        #[allow(clippy::type_complexity)]
-        let work: Vec<
-            Pin<Box<dyn Future<Output = Result<CompiledResource, Error>> + Send>>,
-        > = resources
-            .iter()
-            .map(|resource| {
-                async {
-                    let link_timer = std::time::Instant::now();
-
-                    let asset_file = self.link_work(resource, references).await?;
-                    info!(
-                        "Linked {} into: {} in {:?}",
-                        resource.compiled_path,
-                        asset_file.content_id,
-                        link_timer.elapsed()
-                    );
-                    Ok(asset_file)
-                }
-                .boxed()
-            })
-            .collect::<Vec<_>>();
-
-        let resource_files = try_join_all(work).await?;
-
-        info!("Linking ended in {:?}.", timer.elapsed());
-
-        Ok(resource_files)
-    }
-
     /// Returns the global version of the databuild module.
     pub fn version() -> &'static str {
         DATA_BUILD_VERSION

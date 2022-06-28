@@ -29,7 +29,7 @@ impl MemberMetaInfo {
                 .insert(syn::parse_str("lgn_data_runtime::ResourcePathId").unwrap());
             member
                 .runtime_imports
-                .insert(syn::parse_str("lgn_data_runtime::Reference").unwrap());
+                .insert(syn::parse_str("lgn_data_runtime::ReferenceUntyped").unwrap());
         }
         member
     }

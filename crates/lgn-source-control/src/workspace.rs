@@ -6,7 +6,7 @@ use lgn_content_store::{
         ResourceReader, ResourceWriter, SharedTreeIdentifier, StringPathIndexer, TreeDiffSide,
         TreeIdentifier, TreeLeafNode,
     },
-    Provider,
+    ContentAsyncReadWithOriginAndSize, Provider,
 };
 use tokio_stream::StreamExt;
 
@@ -132,6 +132,15 @@ where
             .await
     }
 
+    async fn get_commit_manifest(&self) -> Result<ResourceIndex<MainIndexer>> {
+        let commit = self.get_current_commit().await?;
+        Ok(ResourceIndex::new_exclusive_with_id(
+            Arc::clone(self.main_index.provider()),
+            self.main_index.indexer().clone(),
+            commit.main_index_tree_id,
+        ))
+    }
+
     pub async fn get_resource_identifier(
         &self,
         id: &IndexKey,
@@ -206,10 +215,7 @@ where
     }
 
     pub async fn load_resource(&self, id: &IndexKey) -> Result<(Vec<u8>, ResourceIdentifier)> {
-        if let Some(resource_id) = self
-            .get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
-            .await?
-        {
+        if let Some(resource_id) = self.get_resource_identifier(id).await? {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
             #[cfg(feature = "verbose")]
             println!(
@@ -223,15 +229,27 @@ where
         }
     }
 
-    pub async fn load_resource_by_path(&self, path: &str) -> Result<(Vec<u8>, ResourceIdentifier)> {
+    pub async fn get_reader(
+        &self,
+        id: &IndexKey,
+    ) -> Result<(ContentAsyncReadWithOriginAndSize, ResourceIdentifier)> {
         if let Some(resource_id) = self
-            .get_resource_identifier_from_index(
-                &self.path_index,
-                &path.into(),
-                IndexKeyDisplayFormat::Utf8,
-            )
+            .get_resource_identifier_from_index(&self.main_index, id, IndexKeyDisplayFormat::Hex)
             .await?
         {
+            if let Ok(reader) = self
+                .transaction
+                .get_reader(resource_id.as_identifier())
+                .await
+            {
+                return Ok((reader, resource_id));
+            }
+        }
+        Err(Error::ResourceNotFoundById { id: id.clone() })
+    }
+
+    pub async fn load_resource_by_path(&self, path: &str) -> Result<(Vec<u8>, ResourceIdentifier)> {
+        if let Some(resource_id) = self.get_resource_identifier_by_path(path).await? {
             let resource_bytes = self.load_resource_by_id(&resource_id).await?;
             #[cfg(feature = "verbose")]
             println!("\nreading resource '{}' -> {}", path, resource_id);
@@ -246,13 +264,8 @@ where
     }
 
     pub async fn get_committed_resources(&self) -> Result<Vec<(IndexKey, ResourceIdentifier)>> {
-        let commit = self.get_current_commit().await?;
-        let commit_manifest = ResourceIndex::new_exclusive_with_id(
-            Arc::clone(self.main_index.provider()),
-            self.main_index.indexer().clone(),
-            commit.main_index_tree_id,
-        );
-        commit_manifest
+        self.get_commit_manifest()
+            .await?
             .enumerate_resources()
             .await
             .map_err(Error::ContentStoreIndexing)
@@ -321,13 +334,24 @@ where
         path: &str,
         contents: &[u8],
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
+        let resource_id = self.transaction.write_resource_from_bytes(contents).await?;
 
+        self.add_resource_internal(id, path, &resource_id).await?;
+
+        Ok(resource_id)
+    }
+
+    async fn add_resource_internal(
+        &mut self,
+        id: &IndexKey,
+        path: &str,
+        resource_id: &ResourceIdentifier,
+    ) -> Result<()> {
         self.main_index
-            .add_resource(id, resource_identifier.clone())
+            .add_resource(id, resource_id.clone())
             .await?;
         self.path_index
-            .add_resource(&path.into(), resource_identifier.clone())
+            .add_resource(&path.into(), resource_id.clone())
             .await?;
 
         #[cfg(feature = "verbose")]
@@ -336,14 +360,14 @@ where
                 "\nadding resource '{}', path: '{}' -> {}",
                 id.format(IndexKeyDisplayFormat::Hex),
                 path,
-                resource_identifier,
+                resource_id,
             );
-            self.dump_all_indices(Some(&resource_identifier)).await;
+            self.dump_all_indices(Some(resource_id)).await;
         }
 
         self.commit_and_restart_transaction().await?;
 
-        Ok(resource_identifier)
+        Ok(())
     }
 
     pub async fn update_resource(
@@ -351,51 +375,65 @@ where
         id: &IndexKey,
         path: &str,
         contents: &[u8],
-        old_identifier: &ResourceIdentifier,
+        old_resource_id: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
+        let resource_id = self.transaction.write_resource_from_bytes(contents).await?;
 
-        if &resource_identifier != old_identifier {
-            // content has changed
-            #[cfg(feature = "verbose")]
-            {
-                println!(
-                    "\nupdating resource '{}', path: '{}' -> {}...",
-                    id.format(IndexKeyDisplayFormat::Hex),
-                    path,
-                    old_identifier,
-                );
-                self.dump_all_indices(Some(old_identifier)).await;
-            }
-
-            // update indices
-            let _replaced_id = self
-                .main_index
-                .replace_resource(id, resource_identifier.clone())
+        if &resource_id != old_resource_id {
+            self.update_resource_internal(id, path, &resource_id, old_resource_id)
                 .await?;
-            let _replaced_id = self
-                .path_index
-                .replace_resource(&path.into(), resource_identifier.clone())
-                .await?;
+        } else {
+            self.commit_and_restart_transaction().await?;
+        }
 
-            // unwrite previous resource content from content-store
-            self.transaction.unwrite_resource(old_identifier).await?;
+        Ok(resource_id)
+    }
 
-            #[cfg(feature = "verbose")]
-            {
-                println!(
-                    "... to resource '{}', path: '{}' -> {}",
-                    id.format(IndexKeyDisplayFormat::Hex),
-                    path,
-                    resource_identifier,
-                );
-                self.dump_all_indices(Some(&resource_identifier)).await;
-            }
+    async fn update_resource_internal(
+        &mut self,
+        id: &IndexKey,
+        path: &str,
+        new_resource_id: &ResourceIdentifier,
+        old_resource_id: &ResourceIdentifier,
+    ) -> Result<()> {
+        #[cfg(feature = "verbose")]
+        {
+            println!(
+                "\nupdating resource '{}', path: '{}' -> {}...",
+                id.format(IndexKeyDisplayFormat::Hex),
+                path,
+                old_resource_id,
+            );
+            self.dump_all_indices(Some(old_resource_id)).await;
+        }
+
+        // update indices
+        let _replaced_id = self
+            .main_index
+            .replace_resource(id, new_resource_id.clone())
+            .await?;
+        let _replaced_id = self
+            .path_index
+            .replace_resource(&path.into(), new_resource_id.clone())
+            .await?;
+
+        // unwrite previous resource content from content-store
+        self.transaction.unwrite_resource(old_resource_id).await?;
+
+        #[cfg(feature = "verbose")]
+        {
+            println!(
+                "... to resource '{}', path: '{}' -> {}",
+                id.format(IndexKeyDisplayFormat::Hex),
+                path,
+                new_resource_id,
+            );
+            self.dump_all_indices(Some(new_resource_id)).await;
         }
 
         self.commit_and_restart_transaction().await?;
 
-        Ok(resource_identifier)
+        Ok(())
     }
 
     pub async fn update_resource_and_path(
@@ -404,11 +442,11 @@ where
         old_path: &str,
         new_path: &str,
         contents: &[u8],
-        old_identifier: &ResourceIdentifier,
+        old_resource_id: &ResourceIdentifier,
     ) -> Result<ResourceIdentifier> {
-        let resource_identifier = self.transaction.write_resource_from_bytes(contents).await?;
+        let resource_id = self.transaction.write_resource_from_bytes(contents).await?;
 
-        if &resource_identifier != old_identifier {
+        if &resource_id != old_resource_id {
             // content has changed
             #[cfg(feature = "verbose")]
             {
@@ -416,27 +454,27 @@ where
                     "\nrenaming resource '{}', path: '{}' -> {}...",
                     id.format(IndexKeyDisplayFormat::Hex),
                     old_path,
-                    old_identifier,
+                    old_resource_id,
                 );
-                self.dump_all_indices(Some(old_identifier)).await;
+                self.dump_all_indices(Some(old_resource_id)).await;
             }
 
             // update indices
             let replaced_id = self
                 .main_index
-                .replace_resource(id, resource_identifier.clone())
+                .replace_resource(id, resource_id.clone())
                 .await?;
-            assert_eq!(&replaced_id, old_identifier);
+            assert_eq!(&replaced_id, old_resource_id);
 
             let removed_id = self.path_index.remove_resource(&old_path.into()).await?;
-            assert_eq!(&removed_id, old_identifier);
+            assert_eq!(&removed_id, old_resource_id);
 
             self.path_index
-                .add_resource(&new_path.into(), resource_identifier.clone())
+                .add_resource(&new_path.into(), resource_id.clone())
                 .await?;
 
             // unwrite previous resource content from content-store
-            self.transaction.unwrite_resource(old_identifier).await?;
+            self.transaction.unwrite_resource(old_resource_id).await?;
 
             #[cfg(feature = "verbose")]
             {
@@ -444,15 +482,15 @@ where
                     "... to resource '{}', path: '{}' -> {}",
                     id.format(IndexKeyDisplayFormat::Hex),
                     new_path,
-                    resource_identifier,
+                    resource_id,
                 );
-                self.dump_all_indices(Some(&resource_identifier)).await;
+                self.dump_all_indices(Some(&resource_id)).await;
             }
         }
 
         self.commit_and_restart_transaction().await?;
 
-        Ok(resource_identifier)
+        Ok(resource_id)
     }
 
     /// Mark some local files for deletion.
@@ -489,34 +527,46 @@ where
         Ok(resource_id)
     }
 
-    /*
-    /// Returns the status of the workspace, according to the staging
-    /// preference.
-    pub async fn status(
-        &self,
-        staging: Staging,
-    ) -> Result<(
-        BTreeMap<CanonicalPath, Change>,
-        BTreeMap<CanonicalPath, Change>,
-    )> {
-        Ok(match staging {
-            Staging::StagedAndUnstaged => (
-                self.get_staged_changes().await?,
-                self.get_unstaged_changes().await?,
-            ),
-            Staging::StagedOnly => (self.get_staged_changes().await?, BTreeMap::new()),
-            Staging::UnstagedOnly => (BTreeMap::new(), self.get_unstaged_changes().await?),
-        })
-    }
-    */
+    pub async fn revert_resource(
+        &mut self,
+        id: &IndexKey,
+        path: &str,
+    ) -> Result<ResourceIdentifier> {
+        let commit_manifest = self.get_commit_manifest().await?;
+        let old_resource_id = self
+            .get_resource_identifier_from_index(&commit_manifest, id, IndexKeyDisplayFormat::Hex)
+            .await?;
 
-    pub async fn revert_resource(&self, _id: &IndexKey, _path: &str) -> Result<ResourceIdentifier> {
-        Err(Error::Unspecified("todo: revert_resource".to_owned()))
+        if let Some(new_resource_id) = self.get_resource_identifier(id).await? {
+            if let Some(old_resource_id) = old_resource_id {
+                // resource existed in last commit
+                if new_resource_id != old_resource_id {
+                    // resource was changed (edited)
+
+                    // for now assume resource was not renamed...
+                    self.update_resource_internal(id, path, &old_resource_id, &new_resource_id)
+                        .await?;
+                }
+
+                Ok(old_resource_id)
+            } else {
+                // resource does not exist in last commit, so it was added
+                self.delete_resource(id, path).await
+            }
+        } else if let Some(old_resource_id) = old_resource_id {
+            // resource was deleted after last commit, re-add it
+            self.add_resource_internal(id, path, &old_resource_id)
+                .await?;
+
+            Ok(old_resource_id)
+        } else {
+            Err(Error::resource_not_found_by_id(id.clone()))
+        }
     }
 
     pub async fn get_pending_changes(&self) -> Result<Vec<(IndexKey, ChangeType)>> {
-        let commit_index_id = self.get_current_commit().await?.main_index_tree_id;
         let main_index_id = self.main_index.id();
+        let commit_index_id = self.get_commit_manifest().await?.id();
 
         let mut leaves = self
             .main_index

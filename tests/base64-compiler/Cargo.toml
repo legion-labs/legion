@@ -16,8 +16,8 @@ doc = false
 [dependencies]
 lgn-data-compiler = { path = "../../crates/lgn-data-compiler", version = "0.1.0" }
 lgn-data-runtime = { path = "../../crates/lgn-data-runtime", version = "0.1.0" }
-text-resource = { path = "../../crates/lgn-data-offline/test-text-resource" }
-binary-resource = { path = "../../crates/lgn-data-offline/test-binary-resource" }
+lgn-data-offline = { path = "../../crates/lgn-data-offline", version = "0.1.0" }
+generic-data = { path = "../generic-data", features = ["offline"] }
 
 async-trait = "0.1"
 base64 = "0.13.0"

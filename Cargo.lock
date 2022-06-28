@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "analytics-srv"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-recursion",
@@ -951,15 +951,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc0455254eb5c6964c4545d8bac815e1a1be4f3afe0ae695ea539c12d728d44b"
 
 [[package]]
-name = "binary-resource"
-version = "0.1.0"
-dependencies = [
- "lgn-data-model",
- "lgn-data-runtime",
- "serde",
-]
-
-[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1222,17 +1213,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "869119e97797867fd90f5e22af7d0bd274bd4635ebb9eb68c04f3f513ae6c412"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "cargo-manifest"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af6d65c7592744998c67947ec771c62687c76f00179a83ffd563c0482046bb98"
-dependencies = [
- "serde",
- "serde_derive",
- "toml",
 ]
 
 [[package]]
@@ -2385,15 +2365,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dolly"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72ca62af80028e899eae554918f89106ae480104b1de01965b454601e1ad87de"
-dependencies = [
- "glam",
-]
-
-[[package]]
 name = "dotenv"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2446,12 +2417,18 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "axum",
  "bytes",
  "clap 3.1.18",
  "crossbeam-channel",
  "erased-serde",
  "generic-data",
+ "http",
+ "hyper",
  "inventory",
+ "lgn-api",
+ "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -2467,10 +2444,9 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-ecs",
- "lgn-editor-proto",
+ "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
  "lgn-log",
@@ -2485,12 +2461,14 @@ dependencies = [
  "lgn-streamer",
  "lgn-tasks",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-window",
  "sample-data",
  "serde",
  "serde_json",
+ "serde_qs",
  "tempfile",
  "thiserror",
  "tokio",
@@ -2936,11 +2914,13 @@ dependencies = [
 name = "generic-data"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "erased-serde",
  "inventory",
  "lazy_static",
  "lgn-app",
+ "lgn-content-store",
  "lgn-data-codegen",
  "lgn-data-model",
  "lgn-data-offline",
@@ -2953,6 +2933,9 @@ dependencies = [
  "memoffset",
  "serde",
  "serde_json",
+ "tempfile",
+ "tokio",
+ "tokio-test",
  "typetag",
 ]
 
@@ -3631,14 +3614,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "integer-asset"
-version = "0.1.0"
-dependencies = [
- "lgn-data-model",
- "lgn-data-runtime",
-]
-
-[[package]]
 name = "integer-encoding"
 version = "1.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3917,12 +3892,27 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-math",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "memoffset",
  "serde",
  "thiserror",
  "typetag",
+]
+
+[[package]]
+name = "lgn-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "futures-lite",
+ "lgn-app",
+ "lgn-async",
+ "lgn-ecs",
+ "lgn-online",
+ "lgn-tracing",
 ]
 
 [[package]]
@@ -3983,7 +3973,9 @@ dependencies = [
 name = "lgn-asset-registry"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "crossbeam-channel",
+ "futures",
  "lgn-app",
  "lgn-async",
  "lgn-config",
@@ -3993,6 +3985,8 @@ dependencies = [
  "lgn-ecs",
  "lgn-math",
  "lgn-tracing",
+ "once_cell",
+ "rand 0.8.5",
  "serde_json",
  "thiserror",
  "tokio",
@@ -4125,6 +4119,8 @@ name = "lgn-compiler-gltf2mat"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "gltf",
+ "lgn-content-store",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4137,6 +4133,8 @@ name = "lgn-compiler-gltf2model"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "gltf",
+ "lgn-content-store",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4149,6 +4147,7 @@ name = "lgn-compiler-gltf2tex"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "lgn-content-store",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4175,6 +4174,7 @@ name = "lgn-compiler-png2tex"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "lgn-content-store",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
@@ -4191,11 +4191,13 @@ name = "lgn-compiler-psd2tex"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "lgn-content-store",
  "lgn-data-compiler",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-graphics-data",
  "lgn-tracing",
+ "psd",
  "serde",
  "serde_json",
  "tokio",
@@ -4265,10 +4267,10 @@ name = "lgn-compiler-test-atoi"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "integer-asset",
+ "generic-data",
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
- "text-resource",
  "tokio",
 ]
 
@@ -4278,10 +4280,10 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "base64 0.13.0",
- "binary-resource",
+ "generic-data",
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
- "text-resource",
  "tokio",
 ]
 
@@ -4290,10 +4292,10 @@ name = "lgn-compiler-test-refs"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "generic-data",
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
- "refs-asset",
- "refs-resource",
  "tokio",
 ]
 
@@ -4302,9 +4304,10 @@ name = "lgn-compiler-test-reverse"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "generic-data",
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
- "text-resource",
  "tokio",
 ]
 
@@ -4313,10 +4316,10 @@ name = "lgn-compiler-test-split"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "generic-data",
  "lgn-data-compiler",
+ "lgn-data-offline",
  "lgn-data-runtime",
- "multitext-resource",
- "text-resource",
  "tokio",
 ]
 
@@ -4347,6 +4350,7 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-tracing",
  "serde",
+ "serde_bytes",
  "serde_json",
  "tokio",
 ]
@@ -4446,7 +4450,6 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "bytemuck",
- "instant",
  "lgn-app",
  "lgn-derive",
  "lgn-ecs",
@@ -4463,8 +4466,8 @@ dependencies = [
  "bincode",
  "byteorder",
  "futures",
+ "generic-data",
  "hex",
- "integer-asset",
  "lgn-compiler-test-atoi",
  "lgn-compiler-test-refs",
  "lgn-compiler-test-reverse",
@@ -4476,17 +4479,13 @@ dependencies = [
  "lgn-source-control",
  "lgn-tracing",
  "lgn-utils",
- "multitext-resource",
  "petgraph",
- "refs-asset",
- "refs-resource",
  "serde",
  "serde_bytes",
  "serde_json",
  "serde_with",
  "sqlx",
  "tempfile",
- "text-resource",
  "thiserror",
  "tokio",
  "tokio-test",
@@ -4498,7 +4497,7 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "clap 3.1.18",
- "integer-asset",
+ "generic-data",
  "lgn-content-store",
  "lgn-data-build",
  "lgn-data-compiler",
@@ -4506,14 +4505,11 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-source-control",
  "proc-macro2",
- "refs-asset",
- "refs-resource",
  "serde",
  "serde_json",
  "serial_test",
  "syn",
  "tempfile",
- "text-resource",
  "tokio",
 ]
 
@@ -4534,25 +4530,20 @@ name = "lgn-data-compiler"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "binary-resource",
  "bincode",
  "clap 3.1.18",
  "erased-serde",
- "integer-asset",
+ "generic-data",
  "lgn-content-store",
  "lgn-data-model",
  "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-tracing",
  "lgn-utils",
- "multitext-resource",
  "rand 0.8.5",
- "refs-asset",
- "refs-resource",
  "serde",
  "serde_json",
  "tempfile",
- "text-resource",
  "thiserror",
  "tokio",
 ]
@@ -4568,7 +4559,7 @@ dependencies = [
  "clap 3.1.18",
  "freelist",
  "futures",
- "integer-asset",
+ "generic-data",
  "lgn-async",
  "lgn-content-store",
  "lgn-data-compiler",
@@ -4581,7 +4572,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "text-resource",
  "thiserror",
  "threadpool",
  "tokio",
@@ -4598,6 +4588,7 @@ dependencies = [
  "lgn-math",
  "lgn-tracing",
  "serde",
+ "serde_bytes",
  "serde_json",
  "thiserror",
 ]
@@ -4612,15 +4603,19 @@ dependencies = [
  "bincode",
  "crossbeam-channel",
  "erased-serde",
+ "generic-data",
  "hex",
  "lazy_static",
  "lgn-content-store",
+ "lgn-data-codegen",
  "lgn-data-model",
  "lgn-data-runtime",
  "lgn-source-control",
  "lgn-tracing",
  "lgn-utils",
+ "memoffset",
  "serde",
+ "serde_bytes",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -4632,36 +4627,34 @@ dependencies = [
 name = "lgn-data-runtime"
 version = "0.1.0"
 dependencies = [
+ "async-recursion",
  "async-trait",
+ "bincode",
  "byteorder",
  "crossbeam-channel",
  "erased-serde",
  "flurry",
+ "futures",
+ "generic-data",
  "hex",
  "inventory",
  "lazy_static",
  "lgn-content-store",
  "lgn-data-model",
- "lgn-data-runtime-macros",
  "lgn-ecs",
  "lgn-tracing",
  "lgn-utils",
+ "memoffset",
  "once_cell",
  "serde",
  "serde_json",
+ "slotmap",
  "thiserror",
  "tokio",
+ "tokio-byteorder",
  "typetag",
  "uuid 1.1.0",
  "xxhash-rust",
-]
-
-[[package]]
-name = "lgn-data-runtime-macros"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -4717,12 +4710,13 @@ dependencies = [
  "fixedbitset",
  "fxhash",
  "lgn-ecs-macros",
+ "lgn-ptr",
  "lgn-tasks",
  "lgn-tracing",
  "lgn-utils",
  "rand 0.8.5",
  "serde",
- "thiserror",
+ "thread_local",
 ]
 
 [[package]]
@@ -4733,17 +4727,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "lgn-editor-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -4806,6 +4789,7 @@ dependencies = [
  "http",
  "http-serde",
  "hyper",
+ "itertools",
  "lazy_static",
  "lgn-api-codegen",
  "lgn-auth",
@@ -4820,7 +4804,9 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
+ "serde_yaml",
  "sqlx",
+ "tabled",
  "thiserror",
  "tokio",
 ]
@@ -4878,6 +4864,7 @@ dependencies = [
 name = "lgn-graphics-data"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "erased-serde",
  "gltf",
@@ -4898,6 +4885,7 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "tbc",
+ "tokio",
  "typetag",
 ]
 
@@ -4906,17 +4894,19 @@ name = "lgn-graphics-renderer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "atomic_refcell",
  "bit-set",
  "bitflags",
  "bumpalo",
  "bumpalo-herd",
+ "crossbeam",
  "crossbeam-channel",
- "dolly",
  "egui",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-core",
+ "lgn-data-model",
  "lgn-data-runtime",
  "lgn-ecs",
  "lgn-embedded-fs",
@@ -4929,6 +4919,7 @@ dependencies = [
  "lgn-math",
  "lgn-pso-compiler",
  "lgn-tasks",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-utils",
@@ -4937,9 +4928,12 @@ dependencies = [
  "paste",
  "renderdoc",
  "slab",
+ "slotmap",
  "smallvec",
  "static_assertions",
  "strum",
+ "thiserror",
+ "tokio",
  "uuid 1.1.0",
 ]
 
@@ -4967,6 +4961,7 @@ dependencies = [
  "lgn-presenter-window",
  "lgn-scene-plugin",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-window",
@@ -4974,21 +4969,6 @@ dependencies = [
  "png 0.17.5",
  "sample-data",
  "tbc",
-]
-
-[[package]]
-name = "lgn-grpc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "futures-lite",
- "lgn-app",
- "lgn-async",
- "lgn-ecs",
- "lgn-online",
- "lgn-tracing",
- "tonic",
 ]
 
 [[package]]
@@ -5022,12 +5002,12 @@ dependencies = [
  "axum",
  "http",
  "hyper",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-async",
  "lgn-ecs",
  "lgn-governance",
- "lgn-grpc",
  "lgn-online",
  "lgn-tracing",
  "serde",
@@ -5040,9 +5020,9 @@ dependencies = [
 name = "lgn-macro-utils"
 version = "0.1.0"
 dependencies = [
- "cargo-manifest",
  "quote",
  "syn",
+ "toml",
 ]
 
 [[package]]
@@ -5115,6 +5095,7 @@ dependencies = [
 name = "lgn-physics"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "crossbeam-channel",
  "egui",
  "erased-serde",
@@ -5129,6 +5110,7 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-math",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "memoffset",
@@ -5188,6 +5170,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "lgn-ptr"
+version = "0.1.0"
+
+[[package]]
 name = "lgn-resource-registry"
 version = "0.1.0"
 dependencies = [
@@ -5212,10 +5198,14 @@ dependencies = [
 name = "lgn-scene-plugin"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "crossbeam-channel",
+ "erased-serde",
+ "futures",
  "lgn-animation",
  "lgn-app",
  "lgn-asset-registry",
+ "lgn-async",
  "lgn-config",
  "lgn-content-store",
  "lgn-core",
@@ -5232,12 +5222,14 @@ dependencies = [
  "lgn-transform",
  "sample-data",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]
 name = "lgn-scripting"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "crossbeam-channel",
  "erased-serde",
@@ -5259,6 +5251,7 @@ dependencies = [
  "rune-modules",
  "serde",
  "serde_json",
+ "tokio",
  "typetag",
 ]
 
@@ -5266,6 +5259,7 @@ dependencies = [
 name = "lgn-scripting-data"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "erased-serde",
  "inventory",
@@ -5273,11 +5267,13 @@ dependencies = [
  "lgn-app",
  "lgn-data-codegen",
  "lgn-data-model",
+ "lgn-data-offline",
  "lgn-data-runtime",
  "lgn-ecs",
  "memoffset",
  "serde",
  "serde_json",
+ "tokio",
  "typetag",
 ]
 
@@ -5364,6 +5360,7 @@ dependencies = [
  "http",
  "hyper",
  "interceptor",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-async",
@@ -5378,12 +5375,12 @@ dependencies = [
  "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
  "lgn-online",
  "lgn-tasks",
+ "lgn-time",
  "lgn-tracing",
  "lgn-utils",
  "lgn-window",
@@ -5411,6 +5408,22 @@ dependencies = [
  "once_cell",
  "slab",
  "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "lgn-telemetry"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "chrono",
+ "http",
+ "hyper",
+ "lgn-api-codegen",
+ "lgn-online",
+ "lgn-tracing",
+ "serde",
+ "serde_qs",
 ]
 
 [[package]]
@@ -5460,6 +5473,16 @@ dependencies = [
  "lgn-tracing",
  "parking_lot 0.12.0",
  "tempfile",
+]
+
+[[package]]
+name = "lgn-time"
+version = "0.1.0"
+dependencies = [
+ "instant",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-utils",
 ]
 
 [[package]]
@@ -5558,6 +5581,7 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-ecs",
+ "lgn-input",
  "lgn-math",
  "lgn-tracing",
  "lgn-utils",
@@ -5571,6 +5595,7 @@ name = "lgn-winit"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "crossbeam-channel",
  "instant",
  "lgn-app",
  "lgn-ecs",
@@ -5892,16 +5917,6 @@ dependencies = [
  "safemem",
  "tempfile",
  "twoway",
-]
-
-[[package]]
-name = "multitext-resource"
-version = "0.1.0"
-dependencies = [
- "lgn-data-model",
- "lgn-data-runtime",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -6606,6 +6621,15 @@ checksum = "eebde548fbbf1ea81a99b128872779c437752fb99f217c45245e1a61dcd9edcd"
 dependencies = [
  "libc",
  "winapi",
+]
+
+[[package]]
+name = "papergrid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "608b6444acf7f5ea39e8bd06dd6037e34a4b5ddfb29ae840edad49ea798e9e79"
+dependencies = [
+ "unicode-width",
 ]
 
 [[package]]
@@ -7316,25 +7340,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "refs-asset"
-version = "0.1.0"
-dependencies = [
- "byteorder",
- "lgn-data-model",
- "lgn-data-runtime",
-]
-
-[[package]]
-name = "refs-resource"
-version = "0.1.0"
-dependencies = [
- "lgn-data-model",
- "lgn-data-runtime",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "regex"
 version = "1.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7623,6 +7628,7 @@ dependencies = [
  "hyper",
  "instant",
  "lgn-animation",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
@@ -7636,7 +7642,6 @@ dependencies = [
  "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
  "lgn-log",
@@ -7648,6 +7653,7 @@ dependencies = [
  "lgn-scripting-data",
  "lgn-streamer",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-utils",
@@ -7818,6 +7824,7 @@ dependencies = [
 name = "sample-data"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "erased-serde",
  "inventory",
@@ -7833,6 +7840,7 @@ dependencies = [
  "memoffset",
  "serde",
  "serde_json",
+ "tokio",
  "typetag",
 ]
 
@@ -8240,6 +8248,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb703cfe953bccee95685111adeedb76fabe4e97549a58d16f03ea7b9367bb32"
 
 [[package]]
+name = "slotmap"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1e08e261d0e8f5c43123b7adf3e4ca1690d655377ac93a03b2c9d3e98de1342"
+dependencies = [
+ "version_check",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8579,6 +8596,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "tabled"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2407502760ccfd538f2fb1f843dd87b6daf1a17848d57bc5a25617e408ef4c7a"
+dependencies = [
+ "papergrid",
+ "tabled_derive",
+]
+
+[[package]]
+name = "tabled_derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "278ea3921cee8c5a69e0542998a089f7a14fa43c9c4e4f9951295da89bd0c943"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8708,16 +8746,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.9.9",
-]
-
-[[package]]
-name = "text-resource"
-version = "0.1.0"
-dependencies = [
- "lgn-data-model",
- "lgn-data-runtime",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -8876,6 +8904,16 @@ dependencies = [
  "tokio-macros",
  "tracing",
  "winapi",
+]
+
+[[package]]
+name = "tokio-byteorder"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cf347e8ae1d1ffd16c8aed569172a71bd81098a001d0f4964d476c0097aba4a"
+dependencies = [
+ "byteorder",
+ "tokio",
 ]
 
 [[package]]

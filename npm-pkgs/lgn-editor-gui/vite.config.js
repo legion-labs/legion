@@ -6,7 +6,6 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 import { loadAll } from "@lgn/config";
 import viteApiCodegen from "@lgn/vite-plugin-api-codegen";
-import viteTsProto from "@lgn/vite-plugin-ts-proto";
 
 // import viteWasmPack from "@lgn/vite-plugin-wasm";
 
@@ -18,38 +17,38 @@ const plugins = [
   tsconfigPaths({
     extensions: [".ts", ".svelte"],
   }),
-  viteTsProto({
-    modules: [{ name: "@lgn/proto-editor", glob: "*.proto" }],
-  }),
   viteApiCodegen({
-    path: "../../crates/lgn-streamer/apis",
-    apiNames: ["streaming"],
-    withPackageJson: true,
     aliasMappings: {
       "../../crates/lgn-governance/apis/space.yaml": "Space",
       "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
     },
-    filename: "streaming",
-  }),
-  viteApiCodegen({
-    path: "../../crates/lgn-log/apis",
-    apiNames: ["log"],
-    withPackageJson: true,
-    aliasMappings: {
-      "../../crates/lgn-governance/apis/space.yaml": "Space",
-      "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
-    },
-    filename: "log",
-  }),
-  viteApiCodegen({
-    path: "../../crates/lgn-runtime-srv/apis",
-    apiNames: ["runtime"],
-    withPackageJson: true,
-    aliasMappings: {
-      "../../crates/lgn-governance/apis/space.yaml": "Space",
-      "../../crates/lgn-governance/apis/workspace.yaml": "Workspace",
-    },
-    filename: "runtime",
+    apiOptions: [
+      {
+        path: "../../crates/lgn-streamer/apis",
+        names: ["streaming"],
+        filename: "streaming",
+      },
+      {
+        path: "../../crates/lgn-log/apis",
+        names: ["log"],
+        filename: "log",
+      },
+      {
+        path: "../../crates/lgn-runtime-srv/apis",
+        names: ["runtime"],
+        filename: "runtime",
+      },
+      {
+        path: "../../crates/lgn-editor-srv/apis",
+        names: [
+          "editor",
+          "property_inspector",
+          "resource_browser",
+          "source_control",
+        ],
+        filename: "editor",
+      },
+    ],
   }),
   // viteWasmPack({
   //   crates: [

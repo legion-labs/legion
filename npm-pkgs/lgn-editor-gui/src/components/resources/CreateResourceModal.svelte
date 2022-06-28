@@ -2,10 +2,7 @@
   import { form as createForm, field } from "svelte-forms";
   import { required } from "svelte-forms/validators";
 
-  import type {
-    GetResourceTypeNamesResponse,
-    ResourceDescription,
-  } from "@lgn/proto-editor/dist/resource_browser";
+  import type { Common, ResourceBrowser } from "@lgn/api/editor";
   import Button from "@lgn/web-client/src/components/Button.svelte";
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
   import log from "@lgn/web-client/src/lib/log";
@@ -23,7 +20,9 @@
   const { loading } = createResourceStore;
 
   const resourceTypesStore =
-    createAsyncStoreOrchestrator<GetResourceTypeNamesResponse>();
+    createAsyncStoreOrchestrator<
+      ResourceBrowser.GetResourceTypeNamesResponse["value"]
+    >();
 
   const name = field("name", "", [required()]);
 
@@ -37,7 +36,7 @@
 
   // We don't get any resource description when the user tries to create
   // a resource at the top level
-  export let resourceDescription: ResourceDescription | null;
+  export let resourceDescription: Common.ResourceDescription | null;
 
   async function createResource(event: Event /* SubmitEvent */) {
     event.preventDefault();
@@ -106,7 +105,7 @@
         <Field field={type}>
           <div slot="label">Resource Type</div>
           <div slot="input">
-            {#await resourceTypesStore.run(getResourceTypes) then { resourceTypes }}
+            {#await resourceTypesStore.run(getResourceTypes) then { resource_types: resourceTypes }}
               <Select
                 bind:value={$type.value}
                 options={resourceTypes.map((resourceType) => ({

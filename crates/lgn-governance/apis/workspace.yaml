@@ -4,12 +4,12 @@ info:
   description: "The OpenAPI specification for Legion Labs workspaces."
   version: 1.0.0
 paths:
-  /v1/current-user/spaces/{space-id}/workspaces/:
+  /v1/spaces/{space-id}/workspaces/:
     parameters:
       - $ref: "space.yaml#/components/parameters/space_id"
     get:
-      description: List all the workspaces for the current user in the specified space.
-      operationId: listCurrentUserWorkspaces
+      description: List all the workspaces visible to the user in the specified space.
+      operationId: listWorkspaces
       responses:
         "200":
           description: The list of workspaces.
@@ -17,13 +17,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/WorkspaceList"
-  /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}/:
+    post:
+      description: Create a new workspace in the specified space.
+      operationId: createWorkspace
+      responses:
+        "200":
+          description: The newly created workspace.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workspace"
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/:
     parameters:
       - $ref: "space.yaml#/components/parameters/space_id"
       - $ref: "#/components/parameters/workspace_id"
     get:
-      description: Get the workspace for the current user in the specified space, with the specified workspace ID.
-      operationId: getCurrentUserWorkspace
+      description: Get the specified workspace in the specified space.
+      operationId: getWorkspace
       responses:
         "200":
           description: The workspace was found.
@@ -33,13 +43,13 @@ paths:
                 $ref: "#/components/schemas/Workspace"
         "404":
           description: The workspace was not found.
-  /v1/current-user/spaces/{space-id}/workspaces/{workspace-id}/session/:
+  /v1/spaces/{space-id}/workspaces/{workspace-id}/session/:
     parameters:
       - $ref: "space.yaml#/components/parameters/space_id"
       - $ref: "#/components/parameters/workspace_id"
     get:
       description: Get the session in the specified workspace for the current user.
-      operationId: getCurrentUserWorkspaceSession
+      operationId: getWorkspaceSession
       responses:
         "200":
           description: The session was retrieved.
@@ -51,7 +61,7 @@ paths:
           description: The session does not exist.
     put:
       description: Create a new session in the specified workspace for the current user. If the session already exists, it is returned.
-      operationId: createCurrentUserWorkspaceSession
+      operationId: createWorkspaceSession
       responses:
         "201":
           description: The session was created.
@@ -67,7 +77,7 @@ paths:
                 $ref: "session.yaml#/components/schemas/Session"
     delete:
       description: Delete the session in the specified workspace for the current user.
-      operationId: deleteCurrentUserWorkspaceSession
+      operationId: deleteWorkspaceSession
       responses:
         "200":
           description: The session was deleted.
@@ -96,6 +106,10 @@ components:
       properties:
         id:
           $ref: "#/components/schemas/WorkspaceId"
+        name:
+          type: string
+        description:
+          type: string
         created_at:
           type: string
           format: date-time
@@ -104,6 +118,8 @@ components:
           format: date-time
       required:
         - id
+        - name
+        - description
         - created_at
         - last_updated_at
     WorkspaceList:

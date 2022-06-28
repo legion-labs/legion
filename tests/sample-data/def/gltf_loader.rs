@@ -9,6 +9,6 @@ struct GltfLoader {
     #[legion(resource_type = lgn_graphics_data::runtime::Material)]
     pub materials: Vec<ResourcePathId>,
 
-    #[legion(resource_type = lgn_graphics_data::runtime_texture::Texture)]
+    #[legion(resource_type = lgn_graphics_data::runtime::BinTexture)]
     pub textures: Vec<ResourcePathId>,
 }

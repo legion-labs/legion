@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use std::env;
+use lgn_graphics_data::gltf_utils::GltfFile;
+use std::{env, str::FromStr};
 
 use lgn_data_compiler::{
     compiler_api::{
@@ -8,8 +9,7 @@ use lgn_data_compiler::{
     },
     compiler_utils::hash_code_and_data,
 };
-use lgn_data_runtime::{AssetRegistryOptions, ResourceDescriptor, ResourceProcessor, Transform};
-use lgn_graphics_data::offline::ModelProcessor;
+use lgn_data_runtime::prelude::*;
 
 pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     name: env!("CARGO_CRATE_NAME"),
@@ -17,7 +17,7 @@ pub static COMPILER_INFO: CompilerDescriptor = CompilerDescriptor {
     code_version: "1",
     data_version: "1",
     transform: &Transform::new(
-        lgn_graphics_data::offline_gltf::GltfFile::TYPE,
+        lgn_graphics_data::offline::Gltf::TYPE,
         lgn_graphics_data::offline::Model::TYPE,
     ),
     compiler_creator: || Box::new(Gltf2ModelCompiler {}),
@@ -27,8 +27,9 @@ struct Gltf2ModelCompiler();
 
 #[async_trait]
 impl Compiler for Gltf2ModelCompiler {
-    async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-        registry.add_loader::<lgn_graphics_data::offline_gltf::GltfFile>()
+    async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+        lgn_graphics_data::register_types(&mut registry);
+        registry
     }
 
     async fn hash(
@@ -46,40 +47,33 @@ impl Compiler for Gltf2ModelCompiler {
     ) -> Result<CompilationOutput, CompilerError> {
         let resources = context.registry();
 
-        let resource = resources
-            .load_async::<lgn_graphics_data::offline_gltf::GltfFile>(context.source.resource_id())
-            .await;
-        let resource = resource
-            .get(&resources)
-            .ok_or_else(|| {
-                CompilerError::CompilationError(format!(
-                    "Failed to retrieve resource '{}'",
-                    context.source.resource_id()
-                ))
-            })?
-            .clone();
+        let gltf_resource = resources
+            .load_async::<lgn_graphics_data::offline::Gltf>(context.source.resource_id())
+            .await?;
+
+        let content_id = {
+            let gltf = gltf_resource.get().unwrap();
+            gltf.content_id.clone()
+        };
+        let identifier = lgn_content_store::Identifier::from_str(&content_id)
+            .map_err(|err| CompilerError::CompilationError(err.to_string()))?;
+
+        // TODO: aganea - should we read from a Device directly?
+        let bytes = context.persistent_provider.read(&identifier).await?;
 
         let (outputs, resource_references) = {
             let source = context.source.clone();
             let target_unnamed = context.target_unnamed.clone();
 
             CompilerContext::execute_workload(move || {
+                let gltf = GltfFile::from_bytes(&bytes)?;
                 let mut compiled_resources = vec![];
                 let mut resource_references = Vec::new();
-                let model_proc = ModelProcessor {};
 
-                let models = resource.gather_models(source.resource_id());
+                let models = gltf.gather_models(source.resource_id());
                 for (model, name) in models {
                     let mut compiled_asset = vec![];
-                    model_proc
-                        .write_resource(&model, &mut compiled_asset)
-                        .map_err(|err| {
-                            CompilerError::CompilationError(format!(
-                                "Writing to file '{}' failed: {}",
-                                source.resource_id(),
-                                err
-                            ))
-                        })?;
+                    lgn_data_offline::to_json_writer(&model, &mut compiled_asset)?;
                     let model_rpid = target_unnamed.new_named(&name);
                     compiled_resources.push((model_rpid.clone(), compiled_asset));
                     for mesh in model.meshes {
@@ -95,7 +89,7 @@ impl Compiler for Gltf2ModelCompiler {
 
         let mut compiled_resources = vec![];
         for (id, content) in outputs {
-            compiled_resources.push(context.store(&content, id).await?);
+            compiled_resources.push(context.store_volatile(&content, id).await?);
         }
 
         Ok(CompilationOutput {

@@ -31,21 +31,18 @@ macro_rules! create_base_descriptor {
             size: std::mem::size_of::<$type_id>(),
             dynamic_serialize:
                 |property: *const (), serializer: &mut dyn::erased_serde::Serializer| unsafe {
-                    ::erased_serde::serialize(&(*property.cast::<$type_id>()), serializer)
-                        .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
+                    ::erased_serde::serialize(&(*property.cast::<$type_id>()), serializer)?;
                     Ok(())
                 },
             dynamic_deserialize:
                 |property: *mut (), deserializer: &mut dyn::erased_serde::Deserializer<'_>| unsafe {
-                    *(property.cast::<$type_id>()) = ::erased_serde::deserialize(deserializer)
-                        .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
+                    *(property.cast::<$type_id>()) = ::erased_serde::deserialize(deserializer)?;
                     Ok(())
                 },
 
                 serialize_new_instance : | serializer : &mut dyn::erased_serde::Serializer|  {
                 let element : $type_id  = ($default_expr)?;
-                ::erased_serde::serialize(&element, serializer)
-                .map_err(|err| $crate::ReflectionError::ErrorErasedSerde(err))?;
+                ::erased_serde::serialize(&element, serializer)?;
                 Ok(())
             },
         }

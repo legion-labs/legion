@@ -1,75 +1,87 @@
-use lgn_graphics_api::{DeviceContext, SamplerDef};
+use std::sync::Arc;
+
+use lgn_graphics_api::{DeviceContext, Sampler, SamplerDef};
 use parking_lot::RwLock;
 
-use super::PersistentDescriptorSetManager;
+use super::{PersistentDescriptorSetManager, SamplerSlot};
 
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub struct SamplerId(u32);
+pub struct RenderSampler {
+    sampler: Sampler,
+    bindless_slot: SamplerSlot,
+}
 
-impl SamplerId {
-    pub fn as_index(self) -> u32 {
-        self.0
+impl RenderSampler {
+    #[allow(dead_code)]
+    pub fn sampler(&self) -> &Sampler {
+        &self.sampler
+    }
+
+    #[allow(dead_code)]
+    pub fn bindless_slot(&self) -> SamplerSlot {
+        self.bindless_slot
     }
 }
 
-const DEFAULT_SAMPLER_ID: SamplerId = SamplerId(0);
-
-pub struct SamplerManager {
+struct Inner {
     device_context: DeviceContext,
+    persistent_descriptor_set_manager: PersistentDescriptorSetManager,
+    samplers: RwLock<Vec<(u64, RenderSampler)>>,
+}
 
-    samplers: RwLock<Vec<(u64, lgn_graphics_api::Sampler)>>,
-    uploaded: usize,
+#[derive(Clone)]
+pub struct SamplerManager {
+    inner: Arc<Inner>,
 }
 
 impl SamplerManager {
     pub fn new(
         device_context: &DeviceContext,
-        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
+        persistent_descriptor_set_manager: &PersistentDescriptorSetManager,
     ) -> Self {
-        let mut sampler_manager = Self {
-            device_context: device_context.clone(),
-            samplers: RwLock::new(Vec::new()),
-            uploaded: 0,
-        };
-        let idx = sampler_manager.get_index(&SamplerDef::default());
-        assert_eq!(idx, DEFAULT_SAMPLER_ID);
-        sampler_manager.upload(persistent_descriptor_set_manager);
-        sampler_manager
+        Self {
+            inner: Arc::new(Inner {
+                device_context: device_context.clone(),
+                persistent_descriptor_set_manager: persistent_descriptor_set_manager.clone(),
+                samplers: RwLock::new(Vec::new()),
+            }),
+        }
     }
 
-    pub fn get_index(&self, sampler_definition: &SamplerDef) -> SamplerId {
-        let samplers = self.samplers.read();
+    pub fn get_slot(&self, sampler_definition: &SamplerDef) -> SamplerSlot {
+        let samplers = self.inner.samplers.read();
         if let Some(idx) = samplers
             .iter()
             .position(|s| s.0 == sampler_definition.get_hash())
             .map(|idx| idx as u32)
         {
-            assert_eq!(sampler_definition, samplers[idx as usize].1.definition());
-            return SamplerId(idx);
+            assert_eq!(
+                sampler_definition,
+                samplers[idx as usize].1.sampler.definition()
+            );
+            return samplers[idx as usize].1.bindless_slot;
         }
         drop(samplers);
 
-        let mut samplers = self.samplers.write();
-        let sampler_id = SamplerId(samplers.len() as u32);
+        let mut samplers = self.inner.samplers.write();
+
+        let sampler = self
+            .inner
+            .device_context
+            .create_sampler(*sampler_definition);
+
+        let bindless_slot = self
+            .inner
+            .persistent_descriptor_set_manager
+            .allocate_sampler_slot(&sampler);
+
         samplers.push((
             sampler_definition.get_hash(),
-            self.device_context.create_sampler(*sampler_definition),
+            RenderSampler {
+                sampler,
+                bindless_slot,
+            },
         ));
-        sampler_id
-    }
 
-    pub fn upload(
-        &mut self,
-        persistent_descriptor_set_manager: &mut PersistentDescriptorSetManager,
-    ) {
-        let samplers = self.samplers.read();
-        for idx in self.uploaded..samplers.len() {
-            persistent_descriptor_set_manager.set_sampler(idx as u32, &samplers[idx].1);
-        }
-        self.uploaded = samplers.len();
-    }
-
-    pub fn get_default_sampler_index() -> SamplerId {
-        DEFAULT_SAMPLER_ID
+        bindless_slot
     }
 }

@@ -40,8 +40,9 @@ pub(crate) fn generate(
 
         #[async_trait]
         impl Compiler for #compiler_name {
-            async fn init(&self, registry: AssetRegistryOptions) -> AssetRegistryOptions {
-                registry.add_loader::<OfflineType>()
+            async fn init(&self, mut registry: AssetRegistryOptions) -> AssetRegistryOptions {
+                #crate_name::register_types(&mut registry);
+                registry
             }
 
             async fn hash(&self, code: &'static str, data: &'static str, env: &CompilationEnv) -> CompilerHash {
@@ -53,14 +54,10 @@ pub(crate) fn generate(
                 let resources = context.registry();
 
                 let (compiled_asset, resource_references) = {
-                    let offline_resource = resources.load_async::<OfflineType>(context.source.resource_id()).await;
-                    if let Some(err) = resources.retrieve_err(offline_resource.id()) {
-                        return Err(CompilerError::CompilationError(err.to_string()));
-                    }
-                    let offline_resource = offline_resource
-                        .get(&resources)
-                        .ok_or_else(|| CompilerError::CompilationError(format!("Failed to retrieve resource '{}'", context.source.resource_id())))?;
-
+                    let handle = resources.load_async::<OfflineType>(context.source.resource_id()).await?;
+                    let offline_resource = handle.get().ok_or_else(||
+                        lgn_data_runtime::AssetRegistryError::ResourceNotFound(context.source.resource_id())
+                    )?;
                     let offline_resource : &OfflineType = &offline_resource;
                     let mut runtime_resource = RuntimeType::default();
                     reflection_compile(offline_resource, &mut runtime_resource)?
@@ -72,7 +69,7 @@ pub(crate) fn generate(
                     .map(|res| (context.target_unnamed.clone(), res))
                     .collect();
 
-                let asset = context.store(&compiled_asset, context.target_unnamed.clone()).await?;
+                let asset = context.store_volatile(&compiled_asset, context.target_unnamed.clone()).await?;
                 Ok(CompilationOutput {
                     compiled_resources: vec![asset],
                     resource_references,
