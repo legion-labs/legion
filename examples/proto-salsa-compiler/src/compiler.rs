@@ -6,7 +6,6 @@ use crate::{
     atlas::compile_atlas,
     collision::{compile_aabb, query_collisions, AABBCollision},
     expression::{execute_expression, run},
-    material::compile_material,
     meta::meta_get_resource_path,
     navmesh::{compile_navmesh, Navmesh},
     package::{package, package_sea_ps5, package_see_ps5},
@@ -50,8 +49,6 @@ impl std::fmt::Debug for dyn AnyEq + '_ {
 pub trait Compiler<'a> {
     #[salsa::input]
     fn read(&self, name: String) -> String;
-
-    fn compile_material(&self) -> String;
 
     fn compile_atlas(&self, textures_in_atlas: String, build_params: Arc<BuildParams>) -> String;
 

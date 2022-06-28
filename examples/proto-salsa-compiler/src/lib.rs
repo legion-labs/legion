@@ -7,7 +7,6 @@ mod collision;
 pub mod compiler;
 mod database;
 mod expression;
-mod material;
 mod meta;
 mod navmesh;
 mod package;
@@ -73,9 +72,7 @@ pub enum CompilerError {
 
 #[cfg(test)]
 pub mod tests {
-    use std::sync::Arc;
-
-    use crate::{compiler::Compiler, database::DatabaseImpl, BuildParams};
+    use crate::{compiler::Compiler, database::DatabaseImpl};
 
     pub fn setup() -> DatabaseImpl {
         let mut db = DatabaseImpl::default();
