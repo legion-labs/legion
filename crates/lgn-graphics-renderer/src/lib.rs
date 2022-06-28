@@ -289,6 +289,11 @@ impl Plugin for RendererPlugin {
                 let transient_commandbuffer_manager =
                     render_resources.get::<TransientCommandBufferManager>();
                 transient_commandbuffer_manager.end_frame(frame_index);
+            })
+            .add_begin_frame(|render_resources, frame_index| {
+                let mut persistent_descriptor_set_manager =
+                    render_resources.get_mut::<PersistentDescriptorSetManager>();
+                persistent_descriptor_set_manager.frame_update(frame_index);
             });
 
         let render_objects = RenderObjectsBuilder::default()
@@ -725,7 +730,6 @@ fn render_update(
             //
 
             herd.reset();
-            descriptor_heap_manager.begin_frame();
 
             {
                 let mut render_scope = render_resources.get_mut::<RenderScope>();
@@ -738,10 +742,6 @@ fn render_update(
                 let transient_commandbuffer_manager =
                     render_resources.get::<TransientCommandBufferManager>();
 
-                let mut persistent_descriptor_set_manager =
-                    render_resources.get_mut::<PersistentDescriptorSetManager>();
-
-                persistent_descriptor_set_manager.frame_update();
                 pipeline_manager.frame_update(&device_context);
 
                 render_resources.get::<RenderObjects>().begin_frame();
@@ -753,7 +753,6 @@ fn render_update(
                     .get_mut::<RenderCommandManager>()
                     .apply(&render_resources);
 
-                persistent_descriptor_set_manager.frame_update();
                 pipeline_manager.frame_update(&device_context);
 
                 let mut transient_commandbuffer_allocator =
@@ -777,6 +776,8 @@ fn render_update(
                 renderdoc_manager.start_frame_capture();
 
                 {
+                    let mut persistent_descriptor_set_manager =
+                        render_resources.get_mut::<PersistentDescriptorSetManager>();
                     let descriptor_heap_manager =
                         render_resources.get_mut::<DescriptorHeapManager>();
                     let static_buffer = render_resources.get::<UnifiedStaticBuffer>();

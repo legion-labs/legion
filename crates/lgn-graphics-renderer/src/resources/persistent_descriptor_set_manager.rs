@@ -71,8 +71,8 @@ impl BindlessAllocator {
         removed_indices.push(slot);
     }
 
-    fn frame_update(&mut self) {
-        self.render_frame = (self.render_frame + 1) % self.num_render_frames;
+    fn frame_update(&mut self, frame_index: usize) {
+        self.render_frame = (frame_index as u64 + 1) % self.num_render_frames;
         self.removed_slots[self.render_frame as usize]
             .iter()
             .for_each(|slot| self.index_allocator.free(*slot));
@@ -196,14 +196,14 @@ impl PersistentDescriptorSetManager {
         &self.inner.descriptor_set
     }
 
-    pub fn frame_update(&mut self) {
+    pub fn frame_update(&mut self, frame_index: usize) {
         {
             let mut allocator = self.inner.texture_allocator.write();
-            allocator.frame_update();
+            allocator.frame_update(frame_index);
         }
         {
             let mut allocator = self.inner.sampler_allocator.write();
-            allocator.frame_update();
+            allocator.frame_update(frame_index);
         }
     }
 }
