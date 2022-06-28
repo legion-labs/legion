@@ -1,7 +1,6 @@
 use crate::animation_pose::Pose;
 use crate::animation_skeleton::Skeleton;
 use crate::runtime::{AnimationTrack, AnimationTransformBundleVec};
-
 use lgn_ecs::component::Component;
 use lgn_transform::{
     components::{GlobalTransform, Transform},
@@ -9,15 +8,16 @@ use lgn_transform::{
 };
 
 #[derive(Component, Clone)]
-pub struct RuntimeAnimationClip {
-    pub(crate) current_key_frame_index: u32,
+pub struct AnimationClip {
+    pub(crate) name: String,
+    pub(crate) current_key_frame_index: usize,
     pub(crate) duration_key_frames: Vec<f32>,
     pub(crate) time_since_last_tick: f32,
     pub(crate) looping: bool,
     pub(crate) poses: Vec<Pose>,
 }
 
-impl RuntimeAnimationClip {
+impl AnimationClip {
     #[must_use]
     pub fn new(raw_animation_track: &AnimationTrack) -> Self {
         let mut bone_ids: Vec<Option<usize>> = Vec::new();
@@ -53,6 +53,7 @@ impl RuntimeAnimationClip {
         update_children_transforms(&mut converted_poses);
 
         Self {
+            name: raw_animation_track.name.clone(),
             current_key_frame_index: raw_animation_track.current_key_frame_index,
             duration_key_frames: raw_animation_track.duration_key_frames.clone(),
             time_since_last_tick: raw_animation_track.time_since_last_tick,
