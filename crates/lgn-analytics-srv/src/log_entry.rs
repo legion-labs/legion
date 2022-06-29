@@ -6,7 +6,7 @@ pub(crate) trait Searchable<Needle> {
 
 impl Searchable<Level> for LogEntry {
     fn matches(&self, level: Level) -> bool {
-        self.level() <= level
+        self.level <= level as i32
     }
 }
 

@@ -1,12 +1,16 @@
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, prost::Message)]
 pub struct MetricBlockData {
+    #[prost(message, repeated, tag = "1")]
     pub points: Vec<MetricDataPoint>,
+    #[prost(uint32, tag = "2")]
     pub lod: u32,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, prost::Message)]
 pub struct MetricDataPoint {
+    #[prost(double, tag = "1")]
     pub time_ms: f64,
+    #[prost(double, tag = "2")]
     pub value: f64,
 }
 

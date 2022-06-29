@@ -4,6 +4,7 @@
 #![allow(clippy::missing_errors_doc)]
 
 pub mod api;
+pub mod server;
 pub mod time;
 pub mod types;
 

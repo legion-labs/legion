@@ -15,6 +15,15 @@ pub enum Level {
     Trace = 4,
 }
 
+#[derive(Clone, PartialEq)]
+pub struct ProcessLogReply {
+    pub entries: Vec<LogEntry>,
+    /// included
+    pub begin: u64,
+    /// excluded
+    pub end: u64,
+}
+
 impl From<LogEntry> for crate::api::components::LogEntry {
     fn from(log_entry: LogEntry) -> Self {
         Self {

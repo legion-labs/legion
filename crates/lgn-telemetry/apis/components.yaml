@@ -32,6 +32,38 @@ components:
         - begin_ticks
         - end_ticks
         - nb_objects
+    BlockMetadata:
+      description: The block metadata.
+      type: object
+      properties:
+        block_id:
+          type: string
+        stream_id:
+          type: string
+        begin_time:
+          type: string
+        end_time:
+          type: string
+        begin_ticks:
+          type: integer
+          format: int64
+        end_ticks:
+          type: integer
+          format: int64
+        nb_objects:
+          type: integer
+        payload_size:
+          type: integer
+          format: int64
+      required:
+        - block_id
+        - stream_id
+        - begin_time
+        - end_time
+        - begin_ticks
+        - end_ticks
+        - nb_objects
+        - payload_size
     Process:
       description: The process.
       type: object

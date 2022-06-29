@@ -85,6 +85,36 @@ pub struct BlockMetadata {
     pub payload_size: i64,
 }
 
+impl From<BlockMetadata> for crate::api::components::BlockMetadata {
+    fn from(block: BlockMetadata) -> Self {
+        Self {
+            block_id: block.block_id,
+            stream_id: block.stream_id,
+            begin_time: block.begin_time,
+            end_time: block.end_time,
+            begin_ticks: block.begin_ticks,
+            end_ticks: block.end_ticks,
+            nb_objects: block.nb_objects,
+            payload_size: block.payload_size,
+        }
+    }
+}
+
+impl From<crate::api::components::BlockMetadata> for BlockMetadata {
+    fn from(block: crate::api::components::BlockMetadata) -> Self {
+        Self {
+            block_id: block.block_id,
+            stream_id: block.stream_id,
+            begin_time: block.begin_time,
+            end_time: block.end_time,
+            begin_ticks: block.begin_ticks,
+            end_ticks: block.end_ticks,
+            nb_objects: block.nb_objects,
+            payload_size: block.payload_size,
+        }
+    }
+}
+
 /// Encode a block information and its payload into a buffer.
 ///
 /// # Errors

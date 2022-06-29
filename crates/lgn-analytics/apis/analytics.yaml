@@ -3,6 +3,110 @@ info:
   title: "Analytics API"
   description: "The analytics API"
   version: 1.0.0
-paths: {}
+paths:
+  /v1/analytics/processes/search:
+    parameters:
+      - $ref: "#/components/parameters/query"
+    get:
+      description: Search processes.
+      operationId: search_processes
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "components.yaml#/components/schemas/ProcessInstance"
+  /v1/analytics/processes/recent:
+    parameters:
+      - $ref: "#/components/parameters/parent_process_id"
+    get:
+      description: List recent processes.
+      operationId: list_recent_processes
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "components.yaml#/components/schemas/ProcessInstance"
+  /v1/analytics/processes/{process-id}:
+    parameters:
+      - $ref: "#/components/parameters/process_id"
+    get:
+      description: Fetch a process.
+      operationId: get_process
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                $ref: "../../lgn-telemetry/apis/components.yaml#/components/schemas/Process"
+        "404":
+          description: Process not found.
+  /v1/analytics/processes/{process-id}/streams:
+    parameters:
+      - $ref: "#/components/parameters/process_id"
+    get:
+      description: List a process streams.
+      operationId: list_process_streams
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "../../lgn-telemetry/apis/components.yaml#/components/schemas/Stream"
+        "404":
+          description: Process not found.
+  /v1/analytics/streams/{stream-id}/blocks:
+    parameters:
+      - $ref: "#/components/parameters/stream_id"
+    get:
+      description: List a stream blocks.
+      operationId: list_stream_blocks
+      responses:
+        "200":
+          description: Ok.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "../../lgn-telemetry/apis/components.yaml#/components/schemas/BlockMetadata"
+        "404":
+          description: Process not found.
 components:
+  parameters:
+    process_id:
+      name: process-id
+      in: path
+      required: true
+      schema:
+        type: string
+    stream_id:
+      name: stream-id
+      in: path
+      required: true
+      schema:
+        type: string
+    parent_process_id:
+      name: parent-process-id
+      in: query
+      required: true
+      schema:
+        type: string
+    query:
+      name: query
+      in: query
+      required: true
+      schema:
+        type: string
   schemas: {}
