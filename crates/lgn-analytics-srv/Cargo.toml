@@ -54,7 +54,7 @@ serde_json = "1.0"
 
 [build-dependencies]
 tonic-build = "0.6"
-
+lgn-api-codegen = { path = "../lgn-api-codegen", version = "0.1.0" }
 
 [[package.metadata.monorepo.publish]]
 name = "analytics-srv"

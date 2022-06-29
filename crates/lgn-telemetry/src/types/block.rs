@@ -9,8 +9,8 @@ use prost::Message;
 pub struct Block {
     pub block_id: String,
     pub stream_id: String,
-    pub begin_time: chrono::DateTime<chrono::Utc>,
-    pub end_time: chrono::DateTime<chrono::Utc>,
+    pub begin_time: String, // RFC3339
+    pub end_time: String,   // RFC3339
     /// We send both RFC3339 times and ticks to be able to calibrate the tick frequency
     pub begin_ticks: i64,
     pub end_ticks: i64,
@@ -22,12 +22,8 @@ impl From<Block> for crate::api::components::Block {
         Self {
             block_id: block.block_id,
             stream_id: block.stream_id,
-            begin_time: block
-                .begin_time
-                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
-            end_time: block
-                .end_time
-                .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
+            begin_time: block.begin_time,
+            end_time: block.end_time,
             begin_ticks: block.begin_ticks.to_string(),
             end_ticks: block.end_ticks.to_string(),
             nb_objects: block.nb_objects.to_string(),
@@ -42,10 +38,8 @@ impl TryFrom<crate::api::components::Block> for Block {
         Ok(Self {
             block_id: block.block_id,
             stream_id: block.stream_id,
-            begin_time: chrono::DateTime::parse_from_rfc3339(&block.begin_time)?
-                .with_timezone(&chrono::Utc),
-            end_time: chrono::DateTime::parse_from_rfc3339(&block.end_time)?
-                .with_timezone(&chrono::Utc),
+            begin_time: block.begin_time,
+            end_time: block.end_time,
             begin_ticks: block.begin_ticks.parse()?,
             end_ticks: block.end_ticks.parse()?,
             nb_objects: block.nb_objects.parse()?,
@@ -83,8 +77,8 @@ impl BlockPayload {
 pub struct BlockMetadata {
     pub block_id: String,
     pub stream_id: String,
-    pub begin_time: chrono::DateTime<chrono::Utc>,
-    pub end_time: chrono::DateTime<chrono::Utc>,
+    pub begin_time: String,
+    pub end_time: String,
     pub begin_ticks: i64,
     pub end_ticks: i64,
     pub nb_objects: i32,
@@ -145,12 +139,8 @@ mod tests {
         let block = Block {
             block_id: "123".to_string(),
             stream_id: "456".to_string(),
-            begin_time: chrono::DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
-                .unwrap()
-                .with_timezone(&chrono::Utc),
-            end_time: chrono::DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
-                .unwrap()
-                .with_timezone(&chrono::Utc),
+            begin_time: "2020-01-01T00:00:00Z".to_string(),
+            end_time: "2020-01-01T00:00:00Z".to_string(),
             begin_ticks: 1,
             end_ticks: 2,
             nb_objects: 3,

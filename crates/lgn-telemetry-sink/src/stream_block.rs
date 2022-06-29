@@ -29,9 +29,14 @@ impl StreamBlock for LogBlock {
             Block {
                 stream_id: self.stream_id.clone(),
                 block_id,
-                begin_time: self.begin.time,
+                begin_time: self
+                    .begin
+                    .time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
                 begin_ticks: self.begin.ticks,
-                end_time: end.time,
+                end_time: end
+                    .time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
                 end_ticks: end.ticks,
                 nb_objects: self.nb_objects() as i32,
             },
@@ -55,9 +60,14 @@ impl StreamBlock for MetricsBlock {
             Block {
                 stream_id: self.stream_id.clone(),
                 block_id,
-                begin_time: self.begin.time,
+                begin_time: self
+                    .begin
+                    .time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
                 begin_ticks: self.begin.ticks,
-                end_time: end.time,
+                end_time: end
+                    .time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
                 end_ticks: end.ticks,
                 nb_objects: self.nb_objects() as i32,
             },
@@ -81,9 +91,14 @@ impl StreamBlock for ThreadBlock {
             Block {
                 stream_id: self.stream_id.clone(),
                 block_id,
-                begin_time: self.begin.time,
+                begin_time: self
+                    .begin
+                    .time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
                 begin_ticks: self.begin.ticks,
-                end_time: end.time,
+                end_time: end
+                    .time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Nanos, false),
                 end_ticks: end.ticks,
                 nb_objects: self.nb_objects() as i32,
             },

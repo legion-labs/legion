@@ -3,7 +3,9 @@
 // crate-specific lint exceptions:
 #![allow(clippy::missing_errors_doc)]
 
+pub mod api;
 pub mod time;
+pub mod types;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -14,11 +16,11 @@ use lgn_telemetry::decompress;
 use lgn_telemetry::types::{
     BlockMetadata, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
-use lgn_telemetry_proto::analytics::LogEntry;
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
 use sqlx::any::AnyRow;
 use sqlx::Row;
+use types::{LogEntry, ProcessInstance};
 
 use crate::time::get_tsc_frequency_inverse_ms;
 
@@ -110,7 +112,7 @@ pub async fn find_block_process(
 pub async fn list_recent_processes(
     connection: &mut sqlx::AnyConnection,
     parent_process_id: Option<&str>,
-) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
+) -> Result<Vec<ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id,
@@ -159,7 +161,7 @@ pub async fn list_recent_processes(
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
         let child_count: i32 = r.get("child_count");
-        let instance = lgn_telemetry_proto::analytics::ProcessInstance {
+        let instance = ProcessInstance {
             process_info: Some(process_from_row(&r)),
             nb_cpu_blocks: nb_cpu_blocks as u32,
             nb_log_blocks: nb_log_blocks as u32,
@@ -175,7 +177,7 @@ pub async fn list_recent_processes(
 pub async fn search_processes(
     connection: &mut sqlx::AnyConnection,
     keyword: &str,
-) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
+) -> Result<Vec<ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
         "SELECT process_id,
@@ -225,7 +227,7 @@ pub async fn search_processes(
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
         let child_count: i32 = r.get("child_count");
-        let instance = lgn_telemetry_proto::analytics::ProcessInstance {
+        let instance = ProcessInstance {
             process_info: Some(process_from_row(&r)),
             nb_cpu_blocks: nb_cpu_blocks as u32,
             nb_log_blocks: nb_log_blocks as u32,

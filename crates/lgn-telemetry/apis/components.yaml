@@ -54,7 +54,6 @@ components:
           type: string
         start_time:
           type: string
-          format: date-time
         start_ticks:
           type: string
         parent_process_id:

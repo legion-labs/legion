@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Process {
     pub process_id: String,
     pub exe: String,
@@ -10,7 +10,7 @@ pub struct Process {
     pub distro: String,
     pub cpu_brand: String,
     pub tsc_frequency: u64,
-    pub start_time: chrono::DateTime<chrono::Utc>,
+    pub start_time: String, // RFC3339
     pub start_ticks: i64,
     pub parent_process_id: String,
 }

@@ -51,7 +51,7 @@ fn test_log_encode_static() {
     let (block, payload) = block.encode().unwrap();
     assert_eq!(block.nb_objects, 1);
     let stream_info = get_stream_info(&stream);
-    parse_block(&stream_info.into(), &payload.into(), |val| {
+    parse_block(&stream_info, &payload, |val| {
         if let Value::Object(obj) = val {
             assert_eq!(obj.type_name.as_str(), "LogStaticStrInteropEvent");
             assert_eq!(obj.get::<i64>("time").unwrap(), 1);
@@ -82,7 +82,7 @@ fn test_log_encode_dynamic() {
     let (block, payload) = block.encode().unwrap();
     assert_eq!(block.nb_objects, 1);
     let stream_info = get_stream_info(&stream);
-    parse_block(&stream_info.into(), &payload.into(), |val| {
+    parse_block(&stream_info, &payload, |val| {
         if let Value::Object(obj) = val {
             assert_eq!(obj.type_name.as_str(), "LogStringInteropEventV2");
             assert_eq!(obj.get::<i64>("time").unwrap(), 1);
@@ -121,7 +121,7 @@ fn test_parse_log_interops() {
     let stream_info = get_stream_info(&stream);
     let mut nb_log_entries = 0;
     let process = ProcessInfo::default();
-    parse_block(&stream_info.into(), &payload.into(), |val| {
+    parse_block(&stream_info, &payload, |val| {
         if log_entry_from_value(&process, &val).unwrap().is_some() {
             nb_log_entries += 1;
         }
