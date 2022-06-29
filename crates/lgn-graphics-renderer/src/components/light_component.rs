@@ -165,7 +165,7 @@ pub(crate) fn tmp_debug_display_lights(
 
     debug_display.create_display_list(|builder| {
         for (light, transform) in lights.iter() {
-            builder.add_default_mesh(
+            builder.add_draw_call(
                 &GlobalTransform::identity()
                     .with_translation(transform.translation)
                     .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
@@ -176,7 +176,7 @@ pub(crate) fn tmp_debug_display_lights(
             );
             match light.light_type {
                 LightType::Directional => {
-                    builder.add_default_mesh(
+                    builder.add_draw_call(
                         &GlobalTransform::identity()
                             .with_translation(
                                 transform.translation
@@ -190,7 +190,7 @@ pub(crate) fn tmp_debug_display_lights(
                 }
                 LightType::Spot => {
                     let factor = 4.0 * (light.cone_angle / 2.0).tan(); // assumes that default cone mesh has 1 to 4 ratio between radius and height
-                    builder.add_default_mesh(
+                    builder.add_draw_call(
                         &GlobalTransform::identity()
                             .with_translation(
                                 transform.translation - transform.rotation.mul_vec3(Vec3::Z), // assumes cone height to be 1.0

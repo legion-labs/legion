@@ -58,7 +58,7 @@ pub struct DisplayListBuilder<'system> {
 }
 
 impl<'system> DisplayListBuilder<'system> {
-    pub fn add_default_mesh(
+    pub fn add_draw_call(
         &mut self,
         transform: &GlobalTransform,
         primitive_type: DebugPrimitiveType,

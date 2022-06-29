@@ -524,16 +524,23 @@ impl PrimaryTable {
     pub fn get<R: RenderObject>(&self, id: RenderObjectId) -> &R {
         let index = id.index as usize;
         let generation = id.generation;
+
+        // To avoid having to duplicate the asserts.
+        #[cfg(debug_assertions)]
+        let type_name = self.key.type_name;
+        #[cfg(not(debug_assertions))]
+        let type_name = "unknown";
+
         assert!(
             self.set.borrow().allocated.contains(index),
             "RenderObject of type {} index {} not allocated.",
-            self.key.type_name,
+            type_name,
             index
         );
         assert!(
             self.set.borrow().generations[index] == generation,
             "RenderObject of type {} index {} generation mismatch (expected {} got {})",
-            self.key.type_name,
+            type_name,
             index,
             self.set.borrow().generations[index],
             generation

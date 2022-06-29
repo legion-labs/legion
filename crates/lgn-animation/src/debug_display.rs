@@ -43,7 +43,7 @@ pub(crate) fn display_animation(
                 .try_into()
                 .unwrap();
                 let debug_color = Color::new(bone_depth * color_interval, 255, 52, 255);
-                builder.add_default_mesh(
+                builder.add_draw_call(
                     &clip.poses[clip.current_key_frame_index].transforms[n_bone].global,
                     DebugPrimitiveType::default_mesh(DefaultMeshType::Sphere),
                     debug_color,

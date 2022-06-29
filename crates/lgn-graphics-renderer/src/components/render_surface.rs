@@ -689,7 +689,7 @@ pub fn build_display_lists(
         for viewport in render_surface.viewports() {
             if viewport.options().ground_plane_enabled {
                 debug_display.create_display_list(|builder| {
-                    builder.add_default_mesh(
+                    builder.add_draw_call(
                         &GlobalTransform::identity(),
                         DebugPrimitiveType::default_mesh(DefaultMeshType::GroundPlane),
                         Color::BLACK,
@@ -727,13 +727,13 @@ pub fn build_display_lists(
                             .with_scale(delta);
 
                         debug_display.create_display_list(|builder| {
-                            builder.add_default_mesh(
+                            builder.add_draw_call(
                                 &aabb_transform,
                                 DebugPrimitiveType::default_mesh(DefaultMeshType::WireframeCube),
                                 Color::WHITE,
                                 DebugPrimitiveMaterial::WireDepth,
                             );
-                            builder.add_default_mesh(
+                            builder.add_draw_call(
                                 transform,
                                 DebugPrimitiveType::mesh(mesh_id),
                                 Color::new(0, 127, 127, 127),
@@ -796,7 +796,7 @@ pub fn build_display_lists(
                         color.a = if manipulator.transparent { 225 } else { 255 };
 
                         debug_display.create_display_list(|builder| {
-                            builder.add_default_mesh(
+                            builder.add_draw_call(
                                 &scaled_xform,
                                 DebugPrimitiveType::default_mesh(manipulator.default_mesh_type),
                                 color,
