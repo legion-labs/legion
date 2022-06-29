@@ -42,7 +42,13 @@ pub enum Type {
     Duration(Duration),
     Dynamic(Arc<Box<dyn AnyEq>>),
     Vector(Vec<Type>),
-    From,
+    From(Box<Type>),
+}
+
+impl Default for Type {
+    fn default() -> Self {
+        Type::Signal
+    }
 }
 
 impl TryFrom<Type> for String {

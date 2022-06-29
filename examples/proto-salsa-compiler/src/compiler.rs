@@ -50,7 +50,7 @@ pub trait Compiler<'a> {
     #[salsa::input]
     fn read(&self, name: String) -> String;
 
-    fn compile_atlas(&self, textures_in_atlas: String, build_params: Arc<BuildParams>) -> String;
+    fn compile_atlas(&self, atlas_expressions: String, build_params: Arc<BuildParams>) -> String;
 
     fn compile_aabb(
         &self,

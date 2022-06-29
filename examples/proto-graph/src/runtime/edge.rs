@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::{input::Input, output::Output};
+use super::{input::Input, output::Output};
 
 pub struct Edge {
     pub from: Arc<Output>,
