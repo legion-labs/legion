@@ -13,6 +13,7 @@ pub struct RenderElement {
     index_offset: u32,
 }
 
+#[allow(dead_code)]
 impl RenderElement {
     pub fn new(gpu_instance_id: GpuInstanceId, material_id: MaterialId, mesh: &RenderMesh) -> Self {
         assert_eq!(mesh.topology, MeshTopology::TriangleList);

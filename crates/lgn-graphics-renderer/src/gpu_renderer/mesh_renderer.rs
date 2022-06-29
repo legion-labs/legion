@@ -87,7 +87,7 @@ impl MeshRenderer {
 
     fn initialize_psos(
         pipeline_manager: &PipelineManager,
-        render_layer_batches: &mut Vec<RenderLayerBatches>,
+        render_layer_batches: &mut [RenderLayerBatches],
     ) -> (Vec<u32>, Vec<PipelineHandle>) {
         let mut tmp_batch_ids = Vec::new();
         let mut tmp_pipeline_handles = Vec::new();

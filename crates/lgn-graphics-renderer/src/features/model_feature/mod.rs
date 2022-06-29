@@ -1,5 +1,4 @@
 use lgn_data_runtime::Handle;
-use lgn_graphics_api::DeviceContext;
 use lgn_graphics_data::Color;
 use lgn_math::Vec4;
 use lgn_transform::prelude::GlobalTransform;
@@ -8,10 +7,10 @@ use crate::{
     cgen,
     components::VisualComponent,
     core::{
-        BinaryWriter, GpuUploadManager, RenderFeature, RenderLayerId, RenderLayers,
-        RenderListCallable, RenderListSlice, RenderListSliceRequirement, RenderListSliceTyped,
-        RenderObjectId, RenderObjectsBuilder, RenderResources, SecondaryTableHandler,
-        TmpDrawContext, UploadGPUBuffer, UploadGPUResource, VisibleView,
+        BinaryWriter, GpuUploadManager, RenderFeature, RenderLayerId, RenderListCallable,
+        RenderListSlice, RenderListSliceRequirement, RenderListSliceTyped, RenderObjectId,
+        RenderObjectsBuilder, RenderResources, SecondaryTableHandler, TmpDrawContext,
+        UploadGPUBuffer, UploadGPUResource, VisibleView,
     },
     gpu_renderer::{MeshRenderer, RenderElement},
     resources::{MeshManager, RenderModel, UnifiedStaticBuffer},
@@ -19,7 +18,6 @@ use crate::{
 
 mod mesh_instance_manager;
 pub(crate) use mesh_instance_manager::*;
-
 pub struct RenderVisual {
     transform: GlobalTransform,
     color: Color,
@@ -28,6 +26,7 @@ pub struct RenderVisual {
     picking_id: u32,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<(&GlobalTransform, &VisualComponent)> for RenderVisual {
     fn from((xform, visual): (&GlobalTransform, &VisualComponent)) -> Self {
         RenderVisual {
@@ -141,10 +140,7 @@ impl SecondaryTableHandler<RenderVisual, RenderVisualRendererData>
 
             mesh_instance_manager
                 .va_table_adresses
-                .sync_set_va_table_address_for_gpu_instance(
-                    &gpu_upload_manager,
-                    gpu_data_allocation,
-                );
+                .set_va_table_address_for_gpu_instance(&gpu_upload_manager, gpu_data_allocation);
 
             let mut gpu_instance_va_table = cgen::cgen_type::GpuInstanceVATable::default();
             gpu_instance_va_table.set_mesh_description_va(instance_vas.submesh_va.into());
@@ -198,17 +194,9 @@ impl SecondaryTableHandler<RenderVisual, RenderVisualRendererData>
         render_resources: &RenderResources,
         render_object_id: RenderObjectId,
         render_visual: &RenderVisual,
-        render_visual_private_data: &mut RenderVisualRendererData,
+        _render_visual_private_data: &mut RenderVisualRendererData,
     ) {
-        let mesh_manager = render_resources.get::<MeshManager>();
-        let gpu_heap = render_resources.get::<UnifiedStaticBuffer>();
-        let gpu_upload_manager = render_resources.get::<GpuUploadManager>();
-        let mut mesh_instance_manager = render_resources.get_mut::<MeshInstanceManager>();
-        let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
-
-        let render_model_handle = &render_visual.render_model;
-        let render_model_guard = render_model_handle.get().unwrap();
-        let render_model = &*render_model_guard;
+        let mesh_instance_manager = render_resources.get_mut::<MeshInstanceManager>();
 
         //
         // TODO(vdbdd): RenderModel (or one of its dependencies has changed)
@@ -243,9 +231,6 @@ impl SecondaryTableHandler<RenderVisual, RenderVisualRendererData>
         _render_visual: &RenderVisual,
         render_visual_private_data: &mut RenderVisualRendererData,
     ) {
-        let mesh_manager = render_resources.get::<MeshManager>();
-        let gpu_heap = render_resources.get::<UnifiedStaticBuffer>();
-        let gpu_upload_manager = render_resources.get::<GpuUploadManager>();
         let mut mesh_instance_manager = render_resources.get_mut::<MeshInstanceManager>();
         let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
 
@@ -311,33 +296,14 @@ pub struct ModelFeature {
 }
 
 impl ModelFeature {
-    pub fn new(
-        device_context: &DeviceContext,
-        render_objects: &mut RenderObjectsBuilder,
-        gpu_heap: &UnifiedStaticBuffer,
-        gpu_upload_manager: &GpuUploadManager,
-        mesh_manager: &MeshManager,
-        render_layers: &RenderLayers,
-    ) -> Self {
-        // let mesh_instance_manager = MeshInstanceManager::new(gpu_heap, gpu_upload_manager);
-        // let mesh_renderer = MeshRenderer::new(device_context, &gpu_heap, &render_layers);
-
+    pub fn new(render_objects: &mut RenderObjectsBuilder) -> Self {
         render_objects
             .add_primary_table::<RenderVisual>()
             .add_secondary_table_with_handler::<RenderVisual, RenderVisualRendererData>(Box::new(
-                RenderVisualRendererDataHandler::new(
-                    // mesh_manager,
-                    // mesh_renderer,
-                    // gpu_upload_manager,
-                    // gpu_heap,
-                    // &mesh_instance_manager,
-                ),
+                RenderVisualRendererDataHandler::new(),
             ));
 
-        Self {
-            // mesh_instance_manager,
-            // mesh_renderer,
-        }
+        Self {}
     }
 }
 

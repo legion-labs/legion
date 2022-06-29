@@ -24,7 +24,7 @@ use crate::core::{
     RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
 use crate::features::{MeshInstanceManager, ModelFeature, RenderVisual};
-use crate::lighting::{RenderLight, RenderLightTestData};
+use crate::lighting::RenderLight;
 use crate::surface_renderer::SurfaceRenderer;
 
 use std::sync::Arc;
@@ -301,7 +301,6 @@ impl Plugin for RendererPlugin {
         render_objects_builder
             // Lights
             .add_primary_table::<RenderLight>()
-            .add_secondary_table::<RenderLight, RenderLightTestData>()
             // Viewports
             .add_primary_table::<RenderViewport>()
             .add_secondary_table_with_handler::<RenderViewport, RenderViewportRendererData>(
@@ -407,14 +406,7 @@ impl Plugin for RendererPlugin {
 
         let render_features_builder = RenderFeaturesBuilder::new();
         let render_features = render_features_builder
-            .insert(ModelFeature::new(
-                device_context,
-                &mut render_objects_builder,
-                &gpu_heap,
-                &gpu_upload_manager,
-                &mesh_manager,
-                &render_layers,
-            ))
+            .insert(ModelFeature::new(&mut render_objects_builder))
             .finalize();
 
         let render_graph_persistent_state = RenderGraphPersistentState::new();

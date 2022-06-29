@@ -367,6 +367,7 @@ impl RenderObjectsBuilder {
         self
     }
 
+    #[allow(dead_code)]
     #[allow(unsafe_code)]
     pub fn add_secondary_table<P, S>(&mut self) -> &mut Self
     where

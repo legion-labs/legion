@@ -2,13 +2,10 @@ use lgn_graphics_api::{BufferView, BufferViewDef, ResourceUsage, VertexBufferBin
 
 use crate::{
     cgen,
-    core::{
-        BinaryWriter, GpuUploadManager, RenderCommandBuilder, RenderObjectId, UploadGPUBuffer,
-        UploadGPUResource,
-    },
+    core::{BinaryWriter, GpuUploadManager, RenderObjectId, UploadGPUBuffer, UploadGPUResource},
     resources::{
         GpuDataAllocation, GpuDataManager, StaticBufferAllocation, StaticBufferView,
-        UnifiedStaticBuffer, UpdateUnifiedStaticBufferCommand,
+        UnifiedStaticBuffer,
     },
 };
 
@@ -69,25 +66,6 @@ impl GpuVaTableForGpuInstance {
 
     pub(crate) fn set_va_table_address_for_gpu_instance(
         &self,
-        render_commands: &mut RenderCommandBuilder,
-        gpu_data_allocation: GpuDataAllocation,
-    ) {
-        let offset_for_gpu_instance =
-            self.static_allocation.byte_offset() + u64::from(gpu_data_allocation.index()) * 4;
-
-        let va = u32::try_from(gpu_data_allocation.gpuheap_addr()).unwrap();
-
-        let mut binary_writer = BinaryWriter::new();
-        binary_writer.write(&va);
-
-        render_commands.push(UpdateUnifiedStaticBufferCommand {
-            src_buffer: binary_writer.take(),
-            dst_offset: offset_for_gpu_instance,
-        });
-    }
-
-    pub(crate) fn sync_set_va_table_address_for_gpu_instance(
-        &self,
         gpu_upload: &GpuUploadManager,
         gpu_data_allocation: GpuDataAllocation,
     ) {
@@ -126,14 +104,11 @@ pub(crate) struct MeshInstanceManager {
 impl MeshInstanceManager {
     pub fn new(gpu_heap: &UnifiedStaticBuffer, gpu_upload_manager: &GpuUploadManager) -> Self {
         Self {
-            // TODO(vdbdd): as soon as we have a stable ID, we can move the transforms in their own manager.
             transform_manager: GpuEntityTransformManager::new(gpu_heap, 1024, gpu_upload_manager),
             color_manager: GpuEntityColorManager::new(gpu_heap, 256, gpu_upload_manager),
             picking_data_manager: GpuPickingDataManager::new(gpu_heap, 1024, gpu_upload_manager),
             va_table_manager: GpuVaTableManager::new(gpu_heap, 4096, gpu_upload_manager),
             va_table_adresses: GpuVaTableForGpuInstance::new(gpu_heap),
-            // added_render_elements: Vec::new(),
-            // removed_gpu_instance_ids: Vec::new(),
         }
     }
 
