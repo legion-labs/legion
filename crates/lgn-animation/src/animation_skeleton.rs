@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct Skeleton {
-    pub bone_ids: Vec<Option<usize>>,
-    pub parent_indices: Vec<Option<usize>>,
+    pub(crate) bone_ids: Vec<Option<usize>>,
+    pub(crate) parent_indices: Vec<Option<usize>>,
 }
 
 impl Skeleton {

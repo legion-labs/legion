@@ -1,5 +1,6 @@
 import { writable } from "svelte/store";
 
-import type { StagedResource } from "@lgn/proto-editor/dist/source_control";
+import type { SourceControl } from "@lgn/api/editor";
 
-export const selectedLocalChange = writable<StagedResource | null>(null);
+export const selectedLocalChange =
+  writable<SourceControl.StagedResource | null>(null);

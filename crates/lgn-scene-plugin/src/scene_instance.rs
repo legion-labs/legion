@@ -1,11 +1,9 @@
-use std::collections::HashMap;
-
+use crate::ResourceMetaInfo;
 use lgn_data_runtime::{AssetRegistry, Handle, ResourceDescriptor, ResourceTypeAndId};
 use lgn_ecs::prelude::Commands;
 use lgn_hierarchy::prelude::{BuildChildren, Parent};
 use lgn_tracing::warn;
-
-use crate::ResourceMetaInfo;
+use std::collections::HashMap;
 
 pub struct SceneInstance {
     root_resource: ResourceTypeAndId,
@@ -230,8 +228,13 @@ impl SceneInstance {
                 } else if let Some(animation_data) =
                     component.downcast_ref::<lgn_animation::runtime::AnimationTrack>()
                 {
-                    let runtime_animation_data = RuntimeAnimationClip::new(animation_data);
+                    let runtime_animation_data = AnimationClip::new(animation_data);
                     entity.insert(runtime_animation_data);
+                } else if let Some(anim_graph) =
+                    component.downcast_ref::<lgn_animation::runtime::EditorGraphDefinition>()
+                {
+                    let runtime_anim_graph: GraphDefinition = GraphDefinition::new(anim_graph);
+                    entity.insert(runtime_anim_graph);
                 } else {
                     error!(
                         "Unhandle component type {} in entity {}",

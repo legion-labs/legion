@@ -1,3 +1,5 @@
+use std::iter::FusedIterator;
+
 use crate::{
     bundle::{Bundle, BundleSpawner},
     entity::Entity,
@@ -83,4 +85,11 @@ where
     fn len(&self) -> usize {
         self.inner.len()
     }
+}
+
+impl<I, T> FusedIterator for SpawnBatchIter<'_, I>
+where
+    I: FusedIterator<Item = T>,
+    T: Bundle,
+{
 }

@@ -1216,17 +1216,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-manifest"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af6d65c7592744998c67947ec771c62687c76f00179a83ffd563c0482046bb98"
-dependencies = [
- "serde",
- "serde_derive",
- "toml",
-]
-
-[[package]]
 name = "cargo-platform"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2428,12 +2417,18 @@ name = "editor-srv"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "axum",
  "bytes",
  "clap 3.1.18",
  "crossbeam-channel",
  "erased-serde",
  "generic-data",
+ "http",
+ "hyper",
  "inventory",
+ "lgn-api",
+ "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
  "lgn-async",
@@ -2449,10 +2444,9 @@ dependencies = [
  "lgn-data-runtime",
  "lgn-data-transaction",
  "lgn-ecs",
- "lgn-editor-proto",
+ "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
  "lgn-log",
@@ -2467,12 +2461,14 @@ dependencies = [
  "lgn-streamer",
  "lgn-tasks",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-window",
  "sample-data",
  "serde",
  "serde_json",
+ "serde_qs",
  "tempfile",
  "thiserror",
  "tokio",
@@ -3896,12 +3892,27 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-math",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "memoffset",
  "serde",
  "thiserror",
  "typetag",
+]
+
+[[package]]
+name = "lgn-api"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "futures-lite",
+ "lgn-app",
+ "lgn-async",
+ "lgn-ecs",
+ "lgn-online",
+ "lgn-tracing",
 ]
 
 [[package]]
@@ -4439,7 +4450,6 @@ version = "0.1.0"
 dependencies = [
  "bumpalo",
  "bytemuck",
- "instant",
  "lgn-app",
  "lgn-derive",
  "lgn-ecs",
@@ -4700,12 +4710,13 @@ dependencies = [
  "fixedbitset",
  "fxhash",
  "lgn-ecs-macros",
+ "lgn-ptr",
  "lgn-tasks",
  "lgn-tracing",
  "lgn-utils",
  "rand 0.8.5",
  "serde",
- "thiserror",
+ "thread_local",
 ]
 
 [[package]]
@@ -4716,17 +4727,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "lgn-editor-proto"
-version = "0.1.0"
-dependencies = [
- "base64 0.13.0",
- "prost",
- "tokio",
- "tonic",
- "tonic-build",
 ]
 
 [[package]]
@@ -4789,6 +4789,7 @@ dependencies = [
  "http",
  "http-serde",
  "hyper",
+ "itertools",
  "lazy_static",
  "lgn-api-codegen",
  "lgn-auth",
@@ -4803,7 +4804,9 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_qs",
+ "serde_yaml",
  "sqlx",
+ "tabled",
  "thiserror",
  "tokio",
 ]
@@ -4916,6 +4919,7 @@ dependencies = [
  "lgn-math",
  "lgn-pso-compiler",
  "lgn-tasks",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-utils",
@@ -4957,6 +4961,7 @@ dependencies = [
  "lgn-presenter-window",
  "lgn-scene-plugin",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-window",
@@ -4964,21 +4969,6 @@ dependencies = [
  "png 0.17.5",
  "sample-data",
  "tbc",
-]
-
-[[package]]
-name = "lgn-grpc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "futures-lite",
- "lgn-app",
- "lgn-async",
- "lgn-ecs",
- "lgn-online",
- "lgn-tracing",
- "tonic",
 ]
 
 [[package]]
@@ -5012,12 +5002,12 @@ dependencies = [
  "axum",
  "http",
  "hyper",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-async",
  "lgn-ecs",
  "lgn-governance",
- "lgn-grpc",
  "lgn-online",
  "lgn-tracing",
  "serde",
@@ -5030,9 +5020,9 @@ dependencies = [
 name = "lgn-macro-utils"
 version = "0.1.0"
 dependencies = [
- "cargo-manifest",
  "quote",
  "syn",
+ "toml",
 ]
 
 [[package]]
@@ -5120,6 +5110,7 @@ dependencies = [
  "lgn-graphics-data",
  "lgn-graphics-renderer",
  "lgn-math",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "memoffset",
@@ -5177,6 +5168,10 @@ dependencies = [
  "spirv-reflect",
  "spirv-tools",
 ]
+
+[[package]]
+name = "lgn-ptr"
+version = "0.1.0"
 
 [[package]]
 name = "lgn-resource-registry"
@@ -5365,6 +5360,7 @@ dependencies = [
  "http",
  "hyper",
  "interceptor",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-async",
@@ -5379,12 +5375,12 @@ dependencies = [
  "lgn-graphics-cgen",
  "lgn-graphics-cgen-runtime",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-input",
  "lgn-math",
  "lgn-mp4",
  "lgn-online",
  "lgn-tasks",
+ "lgn-time",
  "lgn-tracing",
  "lgn-utils",
  "lgn-window",
@@ -5412,6 +5408,22 @@ dependencies = [
  "once_cell",
  "slab",
  "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "lgn-telemetry"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "axum",
+ "chrono",
+ "http",
+ "hyper",
+ "lgn-api-codegen",
+ "lgn-online",
+ "lgn-tracing",
+ "serde",
+ "serde_qs",
 ]
 
 [[package]]
@@ -5461,6 +5473,16 @@ dependencies = [
  "lgn-tracing",
  "parking_lot 0.12.0",
  "tempfile",
+]
+
+[[package]]
+name = "lgn-time"
+version = "0.1.0"
+dependencies = [
+ "instant",
+ "lgn-app",
+ "lgn-ecs",
+ "lgn-utils",
 ]
 
 [[package]]
@@ -5559,6 +5581,7 @@ version = "0.1.0"
 dependencies = [
  "lgn-app",
  "lgn-ecs",
+ "lgn-input",
  "lgn-math",
  "lgn-tracing",
  "lgn-utils",
@@ -5572,6 +5595,7 @@ name = "lgn-winit"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "crossbeam-channel",
  "instant",
  "lgn-app",
  "lgn-ecs",
@@ -6600,6 +6624,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "papergrid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "608b6444acf7f5ea39e8bd06dd6037e34a4b5ddfb29ae840edad49ea798e9e79"
+dependencies = [
+ "unicode-width",
+]
+
+[[package]]
 name = "parking"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7595,6 +7628,7 @@ dependencies = [
  "hyper",
  "instant",
  "lgn-animation",
+ "lgn-api",
  "lgn-api-codegen",
  "lgn-app",
  "lgn-asset-registry",
@@ -7608,7 +7642,6 @@ dependencies = [
  "lgn-governance",
  "lgn-graphics-data",
  "lgn-graphics-renderer",
- "lgn-grpc",
  "lgn-hierarchy",
  "lgn-input",
  "lgn-log",
@@ -7620,6 +7653,7 @@ dependencies = [
  "lgn-scripting-data",
  "lgn-streamer",
  "lgn-telemetry-sink",
+ "lgn-time",
  "lgn-tracing",
  "lgn-transform",
  "lgn-utils",
@@ -8559,6 +8593,27 @@ dependencies = [
  "quote",
  "syn",
  "unicode-xid",
+]
+
+[[package]]
+name = "tabled"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2407502760ccfd538f2fb1f843dd87b6daf1a17848d57bc5a25617e408ef4c7a"
+dependencies = [
+ "papergrid",
+ "tabled_derive",
+]
+
+[[package]]
+name = "tabled_derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "278ea3921cee8c5a69e0542998a089f7a14fa43c9c4e4f9951295da89bd0c943"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

@@ -35,7 +35,6 @@ on:
 env:
   MONOREPO_DOCKER_REGISTRY: 616787818023.dkr.ecr.ca-central-1.amazonaws.com/legion-labs/legion
   CARGO_TERM_COLOR: always
-  LGN_TELEMETRY_URL: https://api.live.playground.legionlabs.com
 
 jobs:
   lint:

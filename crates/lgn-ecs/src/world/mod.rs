@@ -1,31 +1,34 @@
 mod entity_ref;
+mod identifier;
 mod spawn_batch;
 mod world_cell;
 
 use std::{
     any::TypeId,
     fmt,
-    mem::ManuallyDrop,
     sync::atomic::{AtomicU32, Ordering},
 };
 
-pub use entity_ref::*;
-pub use spawn_batch::*;
-pub use world_cell::*;
+use lgn_ptr::{OwningPtr, Ptr, UnsafeCellDeref};
+use lgn_tracing::debug;
 
-pub use crate::change_detection::Mut;
 use crate::{
     archetype::{ArchetypeComponentId, ArchetypeComponentInfo, ArchetypeId, Archetypes},
     bundle::{Bundle, BundleInserter, BundleSpawner, Bundles},
-    change_detection::Ticks,
-    component::{Component, ComponentId, ComponentTicks, Components, StorageType},
+    change_detection::{MutUntyped, Ticks},
+    component::{
+        Component, ComponentDescriptor, ComponentId, ComponentTicks, Components, StorageType,
+    },
     entity::{AllocAtWithoutReplacement, Entities, Entity},
-    query::{FilterFetch, QueryState, WorldQuery},
+    query::{QueryState, WorldQuery},
     storage::{Column, SparseSet, Storages},
     system::Resource,
 };
 
-mod identifier;
+pub use crate::change_detection::Mut;
+pub use entity_ref::*;
+pub use spawn_batch::*;
+pub use world_cell::*;
 
 pub use identifier::WorldId;
 /// Stores and exposes operations on [entities](Entity),
@@ -182,10 +185,17 @@ impl World {
         self.components.init_component::<T>(&mut self.storages)
     }
 
-    /// Retrieves an [`EntityRef`] that exposes read-only operations for the
-    /// given `entity`. This will panic if the `entity` does not exist. Use
-    /// [`World::get_entity`] if you want to check for entity existence
-    /// instead of implicitly panic-ing.
+    pub fn init_component_with_descriptor(
+        &mut self,
+        descriptor: ComponentDescriptor,
+    ) -> ComponentId {
+        self.components
+            .init_component_with_descriptor(&mut self.storages, descriptor)
+    }
+
+    /// Retrieves an [`EntityRef`] that exposes read-only operations for the given `entity`.
+    /// This will panic if the `entity` does not exist. Use [`World::get_entity`] if you want
+    /// to check for entity existence instead of implicitly panic-ing.
     ///
     /// ```
     /// use lgn_ecs::{component::Component, world::World};
@@ -454,7 +464,7 @@ impl World {
     #[inline]
     pub fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<Mut<'_, T>> {
         // SAFE: lifetimes enforce correct usage of returned borrow
-        unsafe { self.get_entity_mut(entity)?.get_unchecked_mut::<T>() }
+        unsafe { get_mut(self, entity, self.get_entity(entity)?.location()) }
     }
 
     /// Despawns the given `entity`, if it exists. This will also remove all of
@@ -479,6 +489,7 @@ impl World {
     /// ```
     #[inline]
     pub fn despawn(&mut self, entity: Entity) -> bool {
+        debug!("Despawning entity {:?}", entity);
         self.get_entity_mut(entity).map_or(false, |e| {
             e.despawn();
             true
@@ -560,7 +571,7 @@ impl World {
     /// ```
     #[inline]
     pub fn query<Q: WorldQuery>(&mut self) -> QueryState<Q, ()> {
-        QueryState::new(self)
+        self.query_filtered::<Q, ()>()
     }
 
     /// Returns [`QueryState`] for the given filtered [`WorldQuery`], which is
@@ -586,10 +597,7 @@ impl World {
     /// assert_eq!(matching_entities, vec![e2]);
     /// ```
     #[inline]
-    pub fn query_filtered<Q: WorldQuery, F: WorldQuery>(&mut self) -> QueryState<Q, F>
-    where
-        F::Fetch: FilterFetch,
-    {
+    pub fn query_filtered<Q: WorldQuery, F: WorldQuery>(&mut self) -> QueryState<Q, F> {
         QueryState::new(self)
     }
 
@@ -700,7 +708,7 @@ impl World {
         // ownership of the ptr value / drop is called when R is dropped
         let (ptr, _) = unsafe { column.swap_remove_and_forget_unchecked(0) };
         // SAFE: column is of type R
-        Some(unsafe { ptr.cast::<R>().read() })
+        Some(unsafe { ptr.read::<R>() })
     }
 
     /// Returns `true` if a resource of type `R` exists. Otherwise returns
@@ -729,7 +737,7 @@ impl World {
             return false;
         };
         // SAFE: resources table always have row 0
-        let ticks = unsafe { column.get_ticks_unchecked(0) };
+        let ticks = unsafe { column.get_ticks_unchecked(0).deref() };
         ticks.is_added(self.last_change_tick(), self.read_change_tick())
     }
 
@@ -746,7 +754,7 @@ impl World {
             return false;
         };
         // SAFE: resources table always have row 0
-        let ticks = unsafe { column.get_ticks_unchecked(0) };
+        let ticks = unsafe { column.get_ticks_unchecked(0).deref() };
         ticks.is_changed(self.last_change_tick(), self.read_change_tick())
     }
 
@@ -1065,8 +1073,11 @@ impl World {
     /// ```
     pub fn resource_scope<R: Resource, U>(
         &mut self,
-        f: impl FnOnce(&mut Self, Mut<'_, R>) -> U,
+        f: impl FnOnce(&mut World, Mut<'_, R>) -> U,
     ) -> U {
+        let last_change_tick = self.last_change_tick();
+        let change_tick = self.change_tick();
+
         let component_id = self
             .components
             .get_resource_id(TypeId::of::<R>())
@@ -1086,31 +1097,32 @@ impl World {
             // ownership of the ptr value / drop is called when R is dropped
             unsafe { column.swap_remove_and_forget_unchecked(0) }
         };
-        // SAFE: pointer is of type T and valid to move out of
+        // SAFE: pointer is of type R
         // Read the value onto the stack to avoid potential mut aliasing.
-        let mut value = unsafe { std::ptr::read(ptr.cast::<R>()) };
+        let mut value = unsafe { ptr.read::<R>() };
         let value_mut = Mut {
             value: &mut value,
             ticks: Ticks {
                 component_ticks: &mut ticks,
-                last_change_tick: self.last_change_tick(),
-                change_tick: self.change_tick(),
+                last_change_tick,
+                change_tick,
             },
         };
         let result = f(self, value_mut);
         assert!(!self.contains_resource::<R>());
+
         let resource_archetype = self.archetypes.resource_mut();
         let unique_components = resource_archetype.unique_components_mut();
         let column = unique_components
             .get_mut(component_id)
             .unwrap_or_else(|| panic!("resource does not exist: {}", std::any::type_name::<R>()));
 
-        // Wrap the value in MaybeUninit to prepare for passing the value back into the ECS
-        let mut nodrop_wrapped_value = std::mem::MaybeUninit::new(value);
-        unsafe {
-            // SAFE: pointer is of type T, and valid to move out of
-            column.push(nodrop_wrapped_value.as_mut_ptr().cast(), ticks);
-        }
+        OwningPtr::make(value, |ptr| {
+            unsafe {
+                // SAFE: pointer is of type R
+                column.push(ptr, ticks);
+            }
+        });
         result
     }
 
@@ -1122,7 +1134,7 @@ impl World {
         component_id: ComponentId,
     ) -> Option<&R> {
         let column = self.get_populated_resource_column(component_id)?;
-        Some(&*column.get_data_ptr().as_ptr().cast::<R>())
+        Some(column.get_data_ptr().deref::<R>())
     }
 
     /// # Safety
@@ -1135,9 +1147,9 @@ impl World {
     ) -> Option<Mut<'_, R>> {
         let column = self.get_populated_resource_column(component_id)?;
         Some(Mut {
-            value: &mut *column.get_data_ptr().cast::<R>().as_ptr(),
+            value: column.get_data_ptr().assert_unique().deref_mut(),
             ticks: Ticks {
-                component_ticks: &mut *column.get_ticks_mut_ptr_unchecked(0),
+                component_ticks: column.get_ticks_unchecked(0).deref_mut(),
                 last_change_tick: self.last_change_tick(),
                 change_tick: self.read_change_tick(),
             },
@@ -1174,19 +1186,54 @@ impl World {
         let change_tick = self.change_tick();
         let column = self.initialize_resource_internal(component_id);
         if column.is_empty() {
-            let mut value = ManuallyDrop::new(value);
             // SAFE: column is of type R and has been allocated above
-            let data = std::ptr::addr_of_mut!(*value).cast::<u8>();
-            column.push(data, ComponentTicks::new(change_tick));
+            OwningPtr::make(value, |ptr| {
+                column.push(ptr, ComponentTicks::new(change_tick));
+            });
         } else {
             // SAFE: column is of type R and has already been allocated
-            *column.get_data_unchecked(0).cast::<R>() = value;
+            *column.get_data_unchecked_mut(0).deref_mut::<R>() = value;
+            column.get_ticks_unchecked_mut(0).set_changed(change_tick);
+        }
+    }
+
+    /// Inserts a new resource with the given `value`. Will replace the value if it already existed.
+    ///
+    /// **You should prefer to use the typed API [`World::insert_resource`] where possible and only
+    /// use this in cases where the actual types are not known at compile time.**
+    ///
+    /// # Safety
+    /// The value referenced by `value` must be valid for the given [`ComponentId`] of this world
+    pub unsafe fn insert_resource_by_id(
+        &mut self,
+        component_id: ComponentId,
+        value: OwningPtr<'_>,
+    ) {
+        let change_tick = self.change_tick();
+
+        self.components().get_info(component_id).unwrap_or_else(|| {
+            panic!(
+                "insert_resource_by_id called with component id which doesn't exist in this world"
+            )
+        });
+        // SAFE: component_id is valid, checked by the lines above
+        let column = self.initialize_resource_internal(component_id);
+        if column.is_empty() {
+            // SAFE: column is of type R and has been allocated above
+            column.push(value, ComponentTicks::new(change_tick));
+        } else {
+            let ptr = column.get_data_unchecked_mut(0);
+            std::ptr::copy_nonoverlapping::<u8>(
+                value.as_ptr(),
+                ptr.as_ptr(),
+                column.item_layout().size(),
+            );
             column.get_ticks_unchecked_mut(0).set_changed(change_tick);
         }
     }
 
     /// # Safety
-    /// `component_id` must be valid and correspond to a resource component of type `R`
+    /// `component_id` must be valid for this world
     #[inline]
     unsafe fn initialize_resource_internal(&mut self, component_id: ComponentId) -> &mut Column {
         // SAFE: resource archetype always exists
@@ -1249,7 +1296,15 @@ impl World {
         assert!(
             self.main_thread_validator.is_main_thread(),
             "attempted to access NonSend resource {} off of the main thread",
-            std::any::type_name::<T>()
+            std::any::type_name::<T>(),
+        );
+    }
+
+    pub(crate) fn validate_non_send_access_untyped(&self, name: &str) {
+        assert!(
+            self.main_thread_validator.is_main_thread(),
+            "attempted to access NonSend resource {} off of the main thread",
+            name
         );
     }
 
@@ -1310,6 +1365,120 @@ impl World {
     }
 }
 
+impl World {
+    /// Gets a resource to the resource with the id [`ComponentId`] if it exists.
+    /// The returned pointer must not be used to modify the resource, and must not be
+    /// dereferenced after the immutable borrow of the [`World`] ends.
+    ///
+    /// **You should prefer to use the typed API [`World::get_resource`] where possible and only
+    /// use this in cases where the actual types are not known at compile time.**
+    #[inline]
+    pub fn get_resource_by_id(&self, component_id: ComponentId) -> Option<Ptr<'_>> {
+        let info = self.components.get_info(component_id)?;
+        if !info.is_send_and_sync() {
+            self.validate_non_send_access_untyped(info.name());
+        }
+
+        let column = self.get_populated_resource_column(component_id)?;
+        Some(column.get_data_ptr())
+    }
+
+    /// Gets a resource to the resource with the id [`ComponentId`] if it exists.
+    /// The returned pointer may be used to modify the resource, as long as the mutable borrow
+    /// of the [`World`] is still valid.
+    ///
+    /// **You should prefer to use the typed API [`World::get_resource_mut`] where possible and only
+    /// use this in cases where the actual types are not known at compile time.**
+    #[inline]
+    pub fn get_resource_mut_by_id(&mut self, component_id: ComponentId) -> Option<MutUntyped<'_>> {
+        let info = self.components.get_info(component_id)?;
+        if !info.is_send_and_sync() {
+            self.validate_non_send_access_untyped(info.name());
+        }
+
+        let column = self.get_populated_resource_column(component_id)?;
+
+        // SAFE: get_data_ptr requires that the mutability rules are not violated, and the caller promises
+        // to only modify the resource while the mutable borrow of the world is valid
+        let ticks = Ticks {
+            // - index is in-bounds because the column is initialized and non-empty
+            // - no other reference to the ticks of the same row can exist at the same time
+            component_ticks: unsafe { &mut *column.get_ticks_unchecked(0).get() },
+            last_change_tick: self.last_change_tick(),
+            change_tick: self.read_change_tick(),
+        };
+
+        Some(MutUntyped {
+            value: unsafe { column.get_data_ptr().assert_unique() },
+            ticks,
+        })
+    }
+
+    /// Removes the resource of a given type, if it exists. Otherwise returns [None].
+    ///
+    /// **You should prefer to use the typed API [`World::remove_resource`] where possible and only
+    /// use this in cases where the actual types are not known at compile time.**
+    pub fn remove_resource_by_id(&mut self, component_id: ComponentId) -> Option<()> {
+        let info = self.components.get_info(component_id)?;
+        if !info.is_send_and_sync() {
+            self.validate_non_send_access_untyped(info.name());
+        }
+
+        let resource_archetype = self.archetypes.resource_mut();
+        let unique_components = resource_archetype.unique_components_mut();
+        let column = unique_components.get_mut(component_id)?;
+        if column.is_empty() {
+            return None;
+        }
+        // SAFE: if a resource column exists, row 0 exists as well
+        unsafe { column.swap_remove_unchecked(0) };
+
+        Some(())
+    }
+
+    /// Retrieves a mutable untyped reference to the given `entity`'s [Component] of the given [`ComponentId`].
+    /// Returns [None] if the `entity` does not have a [Component] of the given type.
+    ///
+    /// **You should prefer to use the typed API [`World::get_mut`] where possible and only
+    /// use this in cases where the actual types are not known at compile time.**
+    #[inline]
+    pub fn get_by_id(&self, entity: Entity, component_id: ComponentId) -> Option<Ptr<'_>> {
+        self.components().get_info(component_id)?;
+        // SAFE: entity_location is valid, component_id is valid as checked by the line above
+        unsafe {
+            get_component(
+                self,
+                component_id,
+                entity,
+                self.get_entity(entity)?.location(),
+            )
+        }
+    }
+
+    /// Retrieves a mutable untyped reference to the given `entity`'s [Component] of the given [`ComponentId`].
+    /// Returns [None] if the `entity` does not have a [Component] of the given type.
+    ///
+    /// **You should prefer to use the typed API [`World::get_mut`] where possible and only
+    /// use this in cases where the actual types are not known at compile time.**
+    #[inline]
+    pub fn get_mut_by_id(
+        &mut self,
+        entity: Entity,
+        component_id: ComponentId,
+    ) -> Option<MutUntyped<'_>> {
+        self.components().get_info(component_id)?;
+        // SAFE: entity_location is valid, component_id is valid as checked by the line above
+        unsafe {
+            get_mut_by_id(
+                self,
+                entity,
+                self.get_entity(entity)?.location(),
+                component_id,
+            )
+        }
+    }
+}
+
 impl fmt::Debug for World {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("World")
@@ -1366,11 +1535,16 @@ impl Default for MainThreadValidator {
 #[cfg(test)]
 mod tests {
     use super::World;
+    use crate::{
+        change_detection::DetectChanges,
+        component::{ComponentDescriptor, ComponentId, StorageType},
+        ptr::OwningPtr,
+    };
     use lgn_ecs_macros::Component;
     use std::{
         panic,
         sync::{
-            atomic::{AtomicBool, Ordering},
+            atomic::{AtomicBool, AtomicU32, Ordering},
             Arc, Mutex,
         },
     };
@@ -1451,10 +1625,7 @@ mod tests {
         }
 
         pub fn finish(self, panic_res: std::thread::Result<()>) -> Vec<DropLogItem> {
-            let drop_log = Arc::try_unwrap(self.drop_log)
-                .unwrap()
-                .into_inner()
-                .unwrap();
+            let drop_log = self.drop_log.lock().unwrap();
             let expected_panic_flag = self.expected_panic_flag.load(Ordering::SeqCst);
 
             if !expected_panic_flag {
@@ -1464,7 +1635,7 @@ mod tests {
                 }
             }
 
-            drop_log
+            drop_log.to_owned()
         }
     }
 
@@ -1490,8 +1661,100 @@ mod tests {
                 DropLogItem::Create(0),
                 DropLogItem::Create(1),
                 DropLogItem::Drop(0),
-                DropLogItem::Drop(1)
             ]
         );
+    }
+
+    #[derive(Component)]
+    struct TestResource(u32);
+
+    #[test]
+    fn get_resource_by_id() {
+        let mut world = World::new();
+        world.insert_resource(TestResource(42));
+        let component_id = world
+            .components()
+            .get_resource_id(std::any::TypeId::of::<TestResource>())
+            .unwrap();
+
+        let resource = world.get_resource_by_id(component_id).unwrap();
+        let resource = unsafe { resource.deref::<TestResource>() };
+
+        assert_eq!(resource.0, 42);
+    }
+
+    #[test]
+    fn get_resource_mut_by_id() {
+        let mut world = World::new();
+        world.insert_resource(TestResource(42));
+        let component_id = world
+            .components()
+            .get_resource_id(std::any::TypeId::of::<TestResource>())
+            .unwrap();
+
+        {
+            let mut resource = world.get_resource_mut_by_id(component_id).unwrap();
+            resource.set_changed();
+            let resource = unsafe { resource.into_inner().deref_mut::<TestResource>() };
+            resource.0 = 43;
+        }
+
+        let resource = world.get_resource_by_id(component_id).unwrap();
+        let resource = unsafe { resource.deref::<TestResource>() };
+
+        assert_eq!(resource.0, 43);
+    }
+
+    #[test]
+    fn custom_resource_with_layout() {
+        static DROP_COUNT: AtomicU32 = AtomicU32::new(0);
+
+        let mut world = World::new();
+
+        // SAFE: the drop function is valid for the layout and the data will be safe to access from any thread
+        let descriptor = unsafe {
+            ComponentDescriptor::new_with_layout(
+                "Custom Test Component".to_string(),
+                StorageType::Table,
+                std::alloc::Layout::new::<[u8; 8]>(),
+                Some(|ptr| {
+                    let data = ptr.read::<[u8; 8]>();
+                    assert_eq!(data, [0, 1, 2, 3, 4, 5, 6, 7]);
+                    DROP_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                }),
+            )
+        };
+
+        let component_id = world.init_component_with_descriptor(descriptor);
+
+        let value: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
+        OwningPtr::make(value, |ptr| unsafe {
+            // SAFE: value is valid for the component layout
+            world.insert_resource_by_id(component_id, ptr);
+        });
+
+        let data = unsafe {
+            world
+                .get_resource_by_id(component_id)
+                .unwrap()
+                .deref::<[u8; 8]>()
+        };
+        assert_eq!(*data, [0, 1, 2, 3, 4, 5, 6, 7]);
+
+        assert!(world.remove_resource_by_id(component_id).is_some());
+
+        assert_eq!(DROP_COUNT.load(std::sync::atomic::Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    #[should_panic = "insert_resource_by_id called with component id which doesn't exist in this world"]
+    fn insert_resource_by_id_invalid_component_id() {
+        let invalid_component_id = ComponentId::new(usize::MAX);
+
+        let mut world = World::new();
+        OwningPtr::make((), |ptr| unsafe {
+            // SAFE: ptr must be valid for the component_id `invalid_component_id` which is invalid, but checked by `insert_resource_by_id`
+            world.insert_resource_by_id(invalid_component_id, ptr);
+        });
     }
 }

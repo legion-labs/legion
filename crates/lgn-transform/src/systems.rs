@@ -1,8 +1,4 @@
-use lgn_ecs::{
-    entity::Entity,
-    query::{Changed, With, Without},
-    system::Query,
-};
+use lgn_ecs::prelude::{Changed, Entity, Query, With, Without};
 use lgn_hierarchy::{Children, Parent};
 
 use crate::components::{GlobalTransform, Transform};
@@ -15,36 +11,49 @@ pub fn transform_propagate_system(
         '_,
         '_,
         (
-            Option<&Children>,
+            Option<(&Children, Changed<Children>)>,
             &Transform,
             Changed<Transform>,
             &mut GlobalTransform,
+            Entity,
         ),
         Without<Parent>,
     >,
     mut transform_query: Query<
         '_,
         '_,
-        (&Transform, Changed<Transform>, &mut GlobalTransform),
-        With<Parent>,
+        (
+            &Transform,
+            Changed<Transform>,
+            &mut GlobalTransform,
+            &Parent,
+        ),
     >,
-    children_query: Query<'_, '_, Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
+    children_query: Query<
+        '_,
+        '_,
+        (&Children, Changed<Children>),
+        (With<Parent>, With<GlobalTransform>),
+    >,
 ) {
-    for (children, transform, transform_changed, mut global_transform) in root_query.iter_mut() {
-        let changed = if transform_changed {
+    for (children, transform, transform_changed, mut global_transform, entity) in
+        root_query.iter_mut()
+    {
+        let mut changed = transform_changed;
+        if transform_changed {
             *global_transform = GlobalTransform::from(*transform);
-            true
-        } else {
-            false
-        };
+        }
 
-        if let Some(children) = children {
+        if let Some((children, changed_children)) = children {
+            // If our `Children` has changed, we need to recalculate everything below us
+            changed |= changed_children;
             for child in children.iter() {
-                propagate_recursive(
+                let _ = propagate_recursive(
                     &global_transform,
                     &mut transform_query,
                     &children_query,
                     *child,
+                    entity,
                     changed,
                 );
             }
@@ -54,57 +63,73 @@ pub fn transform_propagate_system(
     drop(children_query);
 }
 
+#[allow(clippy::type_complexity)]
 fn propagate_recursive(
     parent: &GlobalTransform,
     transform_query: &mut Query<
         '_,
         '_,
-        (&Transform, Changed<Transform>, &mut GlobalTransform),
-        With<Parent>,
+        (
+            &Transform,
+            Changed<Transform>,
+            &mut GlobalTransform,
+            &Parent,
+        ),
     >,
-    children_query: &Query<'_, '_, Option<&Children>, (With<Parent>, With<GlobalTransform>)>,
+    children_query: &Query<
+        '_,
+        '_,
+        (&Children, Changed<Children>),
+        (With<Parent>, With<GlobalTransform>),
+    >,
     entity: Entity,
+    expected_parent: Entity,
     mut changed: bool,
-) {
+    // We use a result here to use the `?` operator. Ideally we'd use a try block instead
+) -> Result<(), ()> {
     let global_matrix = {
-        if let Ok((transform, transform_changed, mut global_transform)) =
-            transform_query.get_mut(entity)
-        {
-            changed |= transform_changed;
-            if changed {
-                *global_transform = parent.mul_transform(*transform);
-            }
-            *global_transform
-        } else {
-            return;
+        let (transform, transform_changed, mut global_transform, child_parent) =
+            transform_query.get_mut(entity).map_err(drop)?;
+        // Note that for parallelising, this check cannot occur here, since there is an `&mut GlobalTransform` (in global_transform)
+        assert_eq!(
+            child_parent.0, expected_parent,
+            "Malformed hierarchy. This probably means that your hierarchy has been improperly maintained, or contains a cycle"
+        );
+        changed |= transform_changed;
+        if changed {
+            *global_transform = parent.mul_transform(*transform);
         }
+        *global_transform
     };
 
-    if let Ok(Some(children)) = children_query.get(entity) {
-        for child in children.iter() {
-            propagate_recursive(
-                &global_matrix,
-                transform_query,
-                children_query,
-                *child,
-                changed,
-            );
-        }
+    let (children, changed_children) = children_query.get(entity).map_err(drop)?;
+    // If our `Children` has changed, we need to recalculate everything below us
+    changed |= changed_children;
+    for child in children.iter() {
+        let _ = propagate_recursive(
+            &global_matrix,
+            transform_query,
+            children_query,
+            *child,
+            entity,
+            changed,
+        );
     }
+    Ok(())
 }
 
 #[cfg(test)]
 mod test {
-    use lgn_ecs::{
-        schedule::{Schedule, Stage, SystemStage},
-        system::{CommandQueue, Commands},
-        world::World,
-    };
+    use lgn_app::prelude::*;
+    use lgn_ecs::prelude::*;
+    use lgn_ecs::system::CommandQueue;
     use lgn_hierarchy::{
         parent_update_system, BuildChildren, BuildWorldChildren, Children, Parent,
     };
+    use lgn_math::vec3;
 
-    use super::*;
+    use crate::components::{GlobalTransform, Transform};
+    use crate::systems::transform_propagate_system;
     use crate::TransformBundle;
 
     #[test]
@@ -113,7 +138,7 @@ mod test {
 
         let mut update_stage = SystemStage::parallel();
         update_stage.add_system(parent_update_system);
-        update_stage.add_system(transform_propagate_system);
+        update_stage.add_system(transform_propagate_system.after(parent_update_system));
 
         let mut schedule = Schedule::default();
         schedule.add_stage("update", update_stage);
@@ -158,7 +183,7 @@ mod test {
 
         let mut update_stage = SystemStage::parallel();
         update_stage.add_system(parent_update_system);
-        update_stage.add_system(transform_propagate_system);
+        update_stage.add_system(transform_propagate_system.after(parent_update_system));
 
         let mut schedule = Schedule::default();
         schedule.add_stage("update", update_stage);
@@ -201,7 +226,7 @@ mod test {
 
         let mut update_stage = SystemStage::parallel();
         update_stage.add_system(parent_update_system);
-        update_stage.add_system(transform_propagate_system);
+        update_stage.add_system(transform_propagate_system.after(parent_update_system));
 
         let mut schedule = Schedule::default();
         schedule.add_stage("update", update_stage);
@@ -279,5 +304,94 @@ mod test {
                 .collect::<Vec<_>>(),
             vec![children[1]]
         );
+    }
+
+    #[test]
+    fn correct_transforms_when_no_children() {
+        let mut app = App::default();
+
+        app.add_system(parent_update_system);
+        app.add_system(transform_propagate_system.after(parent_update_system));
+
+        let translation = vec3(1.0, 0.0, 0.0);
+
+        let parent = app
+            .world
+            .spawn()
+            .insert(Transform::from_translation(translation))
+            .insert(GlobalTransform::default())
+            .id();
+
+        let child = app
+            .world
+            .spawn()
+            .insert_bundle((
+                Transform::identity(),
+                GlobalTransform::default(),
+                Parent(parent),
+            ))
+            .id();
+
+        let grandchild = app
+            .world
+            .spawn()
+            .insert_bundle((
+                Transform::identity(),
+                GlobalTransform::default(),
+                Parent(child),
+            ))
+            .id();
+
+        app.update();
+
+        // check the `Children` structure is spawned
+        assert_eq!(&**app.world.get::<Children>(parent).unwrap(), &[child]);
+        assert_eq!(&**app.world.get::<Children>(child).unwrap(), &[grandchild]);
+        // Note that at this point, the `GlobalTransform`s will not have updated yet, due to `Commands` delay
+        app.update();
+
+        let mut state = app.world.query::<&GlobalTransform>();
+        for global in state.iter(&app.world) {
+            assert_eq!(
+                global,
+                &GlobalTransform {
+                    translation,
+                    ..Default::default()
+                },
+            );
+        }
+    }
+    #[test]
+    #[should_panic]
+    fn panic_when_hierarchy_cycle() {
+        let mut world = World::default();
+        // This test is run on a single thread in order to avoid breaking the global task pool by panicking
+        // This fixes the flaky tests reported in https://github.com/bevyengine/bevy/issues/4996
+        let mut update_stage = SystemStage::single_threaded();
+
+        update_stage.add_system(parent_update_system);
+        update_stage.add_system(transform_propagate_system.after(parent_update_system));
+
+        let child = world
+            .spawn()
+            .insert_bundle((Transform::identity(), GlobalTransform::default()))
+            .id();
+
+        let grandchild = world
+            .spawn()
+            .insert_bundle((
+                Transform::identity(),
+                GlobalTransform::default(),
+                Parent(child),
+            ))
+            .id();
+        world.spawn().insert_bundle((
+            Transform::default(),
+            GlobalTransform::default(),
+            Children::with(&[child]),
+        ));
+        world.entity_mut(child).insert(Parent(grandchild));
+
+        update_stage.run(&mut world);
     }
 }

@@ -58,12 +58,12 @@ impl<Provider: PermissionsProvider> PermissionsCache<Provider> {
     /// # Errors
     ///
     /// Returns an error if the user does not have the appropriate permissions.
-    pub async fn check_user_permissions(
+    pub async fn get_missing_user_permissions(
         &self,
         user_id: &UserId,
         space_id: Option<&SpaceId>,
         required_permissions: &[PermissionId],
-    ) -> Result<()> {
+    ) -> Result<PermissionSet> {
         let key = (user_id.clone(), space_id.cloned());
 
         let mut cache = self.cache.lock().await;
@@ -80,16 +80,61 @@ impl<Provider: PermissionsProvider> PermissionsCache<Provider> {
             }
         };
 
+        let mut missing = PermissionSet::default();
+
         for permission_id in required_permissions {
             if !user_permissions.contains(permission_id) {
-                return Err(Error::PermissionDenied(
-                    user_id.clone(),
-                    permission_id.clone(),
-                    space_id.cloned(),
-                ));
+                missing.insert(permission_id.clone());
             }
         }
 
-        Ok(())
+        Ok(missing)
+    }
+
+    /// Returns whether a given user has the appropriate permissions, for an
+    /// optionally-specified space.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the user does not have the appropriate permissions.
+    pub async fn user_has_permissions(
+        &self,
+        user_id: &UserId,
+        space_id: Option<&SpaceId>,
+        required_permissions: &[PermissionId],
+    ) -> Result<bool> {
+        let missing = self
+            .get_missing_user_permissions(user_id, space_id, required_permissions)
+            .await?;
+
+        Ok(missing.is_empty())
+    }
+
+    /// Checks that a given user has the appropriate permissions, for an
+    /// optionally-specified space.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the user does not have the appropriate permissions.
+    pub async fn check_user_permissions(
+        &self,
+        user_id: &UserId,
+        space_id: Option<&SpaceId>,
+        required_permissions: &[PermissionId],
+    ) -> Result<()> {
+        if let Some(first) = self
+            .get_missing_user_permissions(user_id, space_id, required_permissions)
+            .await?
+            .into_iter()
+            .next()
+        {
+            Err(Error::PermissionDenied(
+                user_id.clone(),
+                first,
+                space_id.cloned(),
+            ))
+        } else {
+            Ok(())
+        }
     }
 }

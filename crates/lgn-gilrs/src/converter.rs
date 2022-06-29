@@ -1,7 +1,7 @@
 use lgn_input::gamepad::{Gamepad, GamepadAxisType, GamepadButtonType};
 
 pub fn convert_gamepad_id(gamepad_id: gilrs::GamepadId) -> Gamepad {
-    Gamepad(gamepad_id.into())
+    Gamepad::new(gamepad_id.into())
 }
 
 pub fn convert_button(button: gilrs::Button) -> Option<GamepadButtonType> {

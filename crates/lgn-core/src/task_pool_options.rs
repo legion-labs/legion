@@ -1,6 +1,5 @@
 use std::ops::{Bound, RangeBounds};
 
-use lgn_ecs::world::World;
 use lgn_tasks::{ComputeTaskPool, TaskPoolBuilder};
 use lgn_tracing::info;
 
@@ -34,7 +33,7 @@ impl DefaultTaskPoolOptions {
     }
 
     /// Inserts the default thread pools into the given resource map based on the configured values
-    pub fn create_default_pools(&self, world: &mut World) {
+    pub fn create_default_pools(&self) {
         let mut total_threads = lgn_tasks::logical_core_count();
         match self.min_total_threads {
             Bound::Included(min) => {
@@ -55,15 +54,13 @@ impl DefaultTaskPoolOptions {
             Bound::Unbounded => {}
         }
 
-        if !world.contains_resource::<ComputeTaskPool>() {
-            // Use 100%  of threads for compute
-            info!("Assigning {} cores to compute task pool", total_threads);
-            world.insert_resource(ComputeTaskPool(
-                TaskPoolBuilder::default()
-                    .num_threads(total_threads)
-                    .thread_name("Compute Task Pool".to_string())
-                    .build(),
-            ));
-        }
+        // Use 100%  of threads for compute
+        info!("Assigning {} cores to compute task pool", total_threads);
+        ComputeTaskPool::init(|| {
+            TaskPoolBuilder::default()
+                .num_threads(total_threads)
+                .thread_name("Compute Task Pool".to_string())
+                .build()
+        });
     }
 }

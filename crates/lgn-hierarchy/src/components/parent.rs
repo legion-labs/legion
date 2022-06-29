@@ -24,7 +24,11 @@ impl FromWorld for Parent {
 
 impl MapEntities for Parent {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
+        // Parent of an entity in the new world can be in outside world, in which case it
+        // should not be mapped.
+        if let Ok(mapped_entity) = entity_map.get(self.0) {
+            self.0 = mapped_entity;
+        }
         Ok(())
     }
 }
@@ -49,7 +53,11 @@ pub struct PreviousParent(pub(crate) Entity);
 
 impl MapEntities for PreviousParent {
     fn map_entities(&mut self, entity_map: &EntityMap) -> Result<(), MapEntitiesError> {
-        self.0 = entity_map.get(self.0)?;
+        // PreviousParent of an entity in the new world can be in outside world, in which
+        // case it should not be mapped.
+        if let Ok(mapped_entity) = entity_map.get(self.0) {
+            self.0 = mapped_entity;
+        }
         Ok(())
     }
 }

@@ -216,7 +216,7 @@ paths:
           description: Created.
         "409":
           description: The lock already exists.
-  /v1/spaces/{space-id}/source-control/repositories/{repository-name}/locks/{lock-domain-id}/{canonical-path}:
+  /v1/spaces/{space-id}/source-control/repositories/{repository-name}/locks/{lock-domain-id}/{canonical-path}/:
     parameters:
       - $ref: "../../lgn-governance/apis/space.yaml#/components/parameters/space_id"
       - $ref: "#/components/parameters/repository_name"
@@ -242,6 +242,7 @@ paths:
           description: Ok.
         "404":
           description: The lock was not found.
+
 components:
   parameters:
     repository_name:

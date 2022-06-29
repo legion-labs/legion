@@ -51,41 +51,25 @@
   const redirectUri = `${document.location.origin}/`;
 
   export const load: Load = async ({ fetch, url }) => {
-    const restRuntimeServerUrlKey = "rest-runtime-server-url";
-    const restEditorServerUrlKey = "rest-editor-server-url";
-    const grpcEditorServerUrlKey = "grpc-editor-server-url";
-    const grpcRuntimeServerUrlKey = "grpc-runtime-server-url";
+    const runtimeServerUrlKey = "runtime-server-url";
+    const editorServerUrlKey = "editor-server-url";
 
     devSettings.update((devSettings) => ({
       ...devSettings,
-      grpcEditorServerUrl:
-        url.searchParams.get(grpcEditorServerUrlKey) ||
-        devSettings.grpcEditorServerUrl,
-      grpcRuntimeServerUrl:
-        url.searchParams.get(grpcRuntimeServerUrlKey) ||
-        devSettings.grpcRuntimeServerUrl,
-      restEditorServerUrl:
-        url.searchParams.get(restEditorServerUrlKey) ||
-        devSettings.restEditorServerUrl,
-      restRuntimeServerUrl:
-        url.searchParams.get(restRuntimeServerUrlKey) ||
-        devSettings.restRuntimeServerUrl,
+      editorServerUrl:
+        url.searchParams.get(editorServerUrlKey) || devSettings.editorServerUrl,
+      runtimeServerUrl:
+        url.searchParams.get(runtimeServerUrlKey) ||
+        devSettings.runtimeServerUrl,
     }));
 
     const accessTokenCookieName = "editor_access_token";
 
-    const {
-      grpcEditorServerUrl,
-      grpcRuntimeServerUrl,
-      restEditorServerUrl,
-      restRuntimeServerUrl,
-    } = get(devSettings);
+    const { editorServerUrl, runtimeServerUrl } = get(devSettings);
 
     initApiClient({
-      grpcEditorServerUrl,
-      grpcRuntimeServerUrl,
-      restEditorServerUrl,
-      restRuntimeServerUrl,
+      editorServerUrl,
+      runtimeServerUrl,
       accessTokenCookieName,
     });
 
@@ -112,8 +96,8 @@
             scopes,
           },
         },
-        restEditorServerUrl,
-        restRuntimeServerUrl,
+        editorServerUrl,
+        runtimeServerUrl,
         log: {
           transports: [
             new ConsoleTransport({

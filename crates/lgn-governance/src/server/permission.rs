@@ -2,7 +2,10 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use lgn_online::server::{ErrorExt, Result};
 
-use crate::api::permission::{self, server, Api};
+use crate::{
+    api::permission::{self, server, Api},
+    check_user_global_permissions,
+};
 
 use super::Server;
 
@@ -10,8 +13,15 @@ use super::Server;
 impl Api for Server {
     async fn list_permissions(
         &self,
-        _request: server::ListPermissionsRequest,
+        request: server::ListPermissionsRequest,
     ) -> Result<server::ListPermissionsResponse> {
+        let caller_user_id = Self::get_caller_user_id_from_parts(&request.parts)?;
+
+        // One might think this would require `ROOT` permission, but since
+        // `USER_ADMIN` must be able to assign roles (and thus - indirectly -
+        // permissions) to users, they need to be able to list those.
+        check_user_global_permissions!(self, caller_user_id, USER_ADMIN);
+
         let permissions = self
             .mysql_dal
             .list_permissions()

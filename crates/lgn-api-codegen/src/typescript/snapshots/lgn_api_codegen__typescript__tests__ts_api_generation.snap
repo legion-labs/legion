@@ -1,6 +1,5 @@
 ---
 source: crates/lgn-api-codegen/src/typescript/mod.rs
-assertion_line: 212
 expression: content
 ---
 // Auto-generated file

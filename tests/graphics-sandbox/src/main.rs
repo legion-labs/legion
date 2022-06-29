@@ -6,11 +6,11 @@ use std::{path::PathBuf, sync::Arc};
 
 use clap::Parser;
 
-use lgn_app::{prelude::*, AppExit, Events, ScheduleRunnerPlugin};
+use lgn_app::{prelude::*, AppExit, ScheduleRunnerPlugin};
 use lgn_asset_registry::{AssetRegistryPlugin, AssetRegistrySettings};
 use lgn_core::CorePlugin;
 use lgn_data_runtime::{AssetRegistry, ResourceTypeAndId};
-use lgn_ecs::prelude::*;
+use lgn_ecs::{event::Events, prelude::*};
 use lgn_gilrs::GilrsPlugin;
 use lgn_graphics_data::{Color, GraphicsPlugin};
 use lgn_graphics_renderer::{
@@ -34,6 +34,7 @@ use lgn_input::{
 use lgn_presenter_snapshot::{component::PresenterSnapshot, PresenterSnapshotPlugin};
 use lgn_presenter_window::component::PresenterWindow;
 use lgn_scene_plugin::ScenePlugin;
+use lgn_time::TimePlugin;
 use lgn_tracing::{flush_monitor::FlushMonitor, warn, LevelFilter};
 use lgn_transform::prelude::{Transform, TransformBundle, TransformPlugin};
 use lgn_window::{WindowCloseRequested, WindowDescriptor, WindowPlugin, Windows};
@@ -123,6 +124,7 @@ fn main() {
         .add_plugin(ScenePlugin::new(root_asset));
 
     app.add_plugin(CorePlugin::default())
+        .add_plugin(TimePlugin::default())
         .add_plugin(RendererPlugin::default())
         .insert_resource(WindowDescriptor {
             width: args.width,

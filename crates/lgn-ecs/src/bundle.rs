@@ -5,6 +5,8 @@
 use std::{any::TypeId, collections::HashMap};
 
 use lgn_ecs_macros::all_tuples;
+use lgn_ptr::OwningPtr;
+
 pub use lgn_ecs_macros::Bundle;
 
 use crate::{
@@ -89,14 +91,15 @@ pub unsafe trait Bundle: Send + Sync + 'static {
     /// # Safety
     /// Caller must return data for each component in the bundle, in the order
     /// of this bundle's [`Component`]s
-    unsafe fn from_components(func: impl FnMut() -> *mut u8) -> Self
+    unsafe fn from_components<T, F>(ctx: &mut T, func: F) -> Self
     where
+        F: FnMut(&mut T) -> OwningPtr<'_>,
         Self: Sized;
 
     /// Calls `func` on each value, in the order of this bundle's [`Component`]s. This will
     /// [`std::mem::forget`] the bundle fields, so callers are responsible for dropping the fields
     /// if that is desirable.
-    fn get_components(self, func: impl FnMut(*mut u8));
+    fn get_components(self, func: impl FnMut(OwningPtr<'_>));
 }
 
 macro_rules! tuple_impl {
@@ -109,21 +112,20 @@ macro_rules! tuple_impl {
 
             #[allow(unused_variables, unused_mut)]
             #[allow(clippy::unused_unit)]
-            unsafe fn from_components(mut func: impl FnMut() -> *mut u8) -> Self {
+            unsafe fn from_components<T, F>(ctx: &mut T, mut func: F) -> Self
+            where
+                F: FnMut(&mut T) -> OwningPtr<'_>
+            {
                 #[allow(non_snake_case)]
-                let ($(mut $name,)*) = (
-                    $(func().cast::<$name>(),)*
-                );
-                ($($name.read(),)*)
+                ($(func(ctx).read::<$name>(),)*)
             }
 
             #[allow(unused_variables, unused_mut)]
-            fn get_components(self, mut func: impl FnMut(*mut u8)) {
+            fn get_components(self, mut func: impl FnMut(OwningPtr<'_>)) {
                 #[allow(non_snake_case)]
                 let ($(mut $name,)*) = self;
                 $(
-                    func((&mut $name as *mut $name).cast::<u8>());
-                    std::mem::forget($name);
+                    OwningPtr::make($name, &mut func);
                 )*
             }
         }
@@ -132,7 +134,7 @@ macro_rules! tuple_impl {
 
 all_tuples!(tuple_impl, 0, 15, C);
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct BundleId(usize);
 
 impl BundleId {

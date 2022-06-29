@@ -1,14 +1,16 @@
-import type { ResourceDescription } from "@lgn/proto-editor/dist/resource_browser";
+import type { Common } from "@lgn/api/editor";
 import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import { createAsyncStoreListOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
 import { getAllResources } from "@/api";
 import { fetchStagedResources } from "@/stores/stagedResources";
 
-export type AllResourcesOrchestrator = AsyncOrchestrator<ResourceDescription[]>;
+export type AllResourcesOrchestrator = AsyncOrchestrator<
+  Common.ResourceDescription[]
+>;
 
 const allResourcesOrchestrator =
-  createAsyncStoreListOrchestrator<ResourceDescription[]>();
+  createAsyncStoreListOrchestrator<Common.ResourceDescription[]>();
 
 export const {
   data: allResources,
