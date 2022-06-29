@@ -4,7 +4,10 @@ use lgn_graphics_data::Color;
 use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 
-use crate::resources::DefaultMeshType;
+use crate::{
+    debug_display::{DebugPrimitiveMaterial, DebugPrimitiveType},
+    resources::DefaultMeshType,
+};
 
 use super::DebugDisplay;
 
@@ -20,10 +23,11 @@ pub fn debug_stress_test(app: &mut App) {
 pub fn add_debug_things(debug_display: Res<'_, DebugDisplay>) {
     debug_display.create_display_list(|builder| {
         for _i in 1..1000 {
-            builder.add_default_mesh(
+            builder.add_draw_call(
                 &GlobalTransform::identity(),
-                DefaultMeshType::Sphere,
+                DebugPrimitiveType::default_mesh(DefaultMeshType::Sphere),
                 Color::BLACK,
+                DebugPrimitiveMaterial::WireDepth,
             );
         }
     });

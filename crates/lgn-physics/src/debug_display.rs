@@ -1,6 +1,9 @@
 use lgn_ecs::prelude::{Query, Res};
 use lgn_graphics_data::Color;
-use lgn_graphics_renderer::{debug_display::DebugDisplay, resources::DefaultMeshType};
+use lgn_graphics_renderer::{
+    debug_display::{DebugDisplay, DebugPrimitiveMaterial, DebugPrimitiveType},
+    resources::DefaultMeshType,
+};
 use lgn_math::prelude::Vec3;
 use lgn_transform::prelude::GlobalTransform;
 use physx::prelude::PxVec3;
@@ -26,33 +29,45 @@ pub(crate) fn display_collision_geometry(
                     let half_extents: PxVec3 = box_geometry.halfExtents.into();
                     let mut scale: Vec3 = half_extents.into();
                     scale /= 0.25;
-                    builder.add_default_mesh(
+                    builder.add_draw_call(
                         &GlobalTransform::identity()
                             .with_translation(transform.translation)
                             .with_scale(scale) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
                             .with_rotation(transform.rotation),
-                        DefaultMeshType::Cube,
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::Cube),
                         debug_color,
+                        DebugPrimitiveMaterial::WireDepth,
                     );
                 }
                 CollisionGeometry::Capsule(_capsule_geometry) => {
-                    builder.add_default_mesh(transform, DefaultMeshType::Cylinder, debug_color);
+                    builder.add_draw_call(
+                        transform,
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::Cylinder),
+                        debug_color,
+                        DebugPrimitiveMaterial::WireDepth,
+                    );
                 }
                 CollisionGeometry::ConvexMesh(_convex_mesh_geometry) => {}
                 CollisionGeometry::Plane(_plane_geometry) => {
-                    builder.add_default_mesh(transform, DefaultMeshType::GroundPlane, debug_color);
+                    builder.add_draw_call(
+                        transform,
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::GroundPlane),
+                        debug_color,
+                        DebugPrimitiveMaterial::WireDepth,
+                    );
                 }
                 CollisionGeometry::Sphere(sphere_geometry) => {
                     // default sphere mesh has radius of 0.25 (diameter of 0.5)
                     let radius = sphere_geometry.radius;
                     let scale_factor = radius / 0.25;
-                    builder.add_default_mesh(
+                    builder.add_draw_call(
                         &GlobalTransform::identity()
                             .with_translation(transform.translation)
                             .with_scale(Vec3::ONE * scale_factor) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
                             .with_rotation(transform.rotation),
-                        DefaultMeshType::Sphere,
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::Sphere),
                         debug_color,
+                        DebugPrimitiveMaterial::WireDepth,
                     );
                 }
                 CollisionGeometry::TriangleMesh(_triangle_mesh_geometry) => {}

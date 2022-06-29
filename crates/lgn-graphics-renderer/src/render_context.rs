@@ -6,7 +6,7 @@ use lgn_graphics_api::{
 use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
-    components::{ManipulatorComponent, VisualComponent},
+    components::ManipulatorComponent,
     debug_display::DebugDisplay,
     egui::Egui,
     picking::PickingManager,
@@ -29,7 +29,6 @@ pub struct RenderContext<'frame> {
     pub bump: &'frame Bump,
     pub picking_manager: &'frame PickingManager,
     pub debug_display: &'frame DebugDisplay,
-    pub picked_drawables: &'frame [(&'frame VisualComponent, &'frame GlobalTransform)],
     pub manipulator_drawables: &'frame [(&'frame GlobalTransform, &'frame ManipulatorComponent)],
     pub egui: &'frame Egui,
     // tmp
@@ -52,7 +51,6 @@ impl<'frame> RenderContext<'frame> {
         bump: &'frame Bump,
         picking_manager: &'frame PickingManager,
         debug_display: &'frame DebugDisplay,
-        picked_drawables: &'frame [(&'frame VisualComponent, &'frame GlobalTransform)],
         manipulator_drawables: &'frame [(&'frame GlobalTransform, &'frame ManipulatorComponent)],
         egui: &'frame Egui,
     ) -> Self {
@@ -68,7 +66,6 @@ impl<'frame> RenderContext<'frame> {
             bump,
             picking_manager,
             debug_display,
-            picked_drawables,
             manipulator_drawables,
             egui,
             persistent_descriptor_set: None,

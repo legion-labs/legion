@@ -13,9 +13,9 @@ mod cgen {
 }
 
 use crate::components::{
-    reflect_camera_components, reflect_viewports, reflect_visual_components, tmp_create_camera,
-    tmp_debug_display_lights, CameraOptions, EcsToRenderCamera, EcsToRenderLight,
-    EcsToRenderViewport, EcsToRenderVisual,
+    build_display_lists, reflect_camera_components, reflect_viewports, reflect_visual_components,
+    tmp_create_camera, tmp_debug_display_lights, CameraOptions, EcsToRenderCamera,
+    EcsToRenderLight, EcsToRenderViewport, EcsToRenderVisual,
 };
 use crate::core::{
     GPUTimelineManager, RenderCamera, RenderCommandQueuePool, RenderFeatures,
@@ -95,8 +95,8 @@ use crate::gpu_renderer::MeshRenderer;
 use crate::renderdoc::RenderDocManager;
 use crate::{
     components::{
-        reflect_light_components, ManipulatorComponent, PickedComponent,
-        RenderSurfaceCreatedForWindow, RenderSurfaceExtents, RenderSurfaces,
+        reflect_light_components, ManipulatorComponent, RenderSurfaceCreatedForWindow,
+        RenderSurfaceExtents, RenderSurfaces,
     },
     egui::{egui_plugin::EguiPlugin, Egui},
     lighting::LightingManager,
@@ -118,7 +118,7 @@ use crate::resources::{
 };
 
 use crate::{
-    components::{apply_camera_setups, camera_control, RenderSurface, VisualComponent},
+    components::{apply_camera_setups, camera_control, RenderSurface},
     labels::RendererLabel,
 };
 
@@ -391,6 +391,7 @@ impl Plugin for RendererPlugin {
             RenderStage::Prepare,
             camera_control.exclusive_system().at_start(),
         );
+        app.add_system_to_stage(RenderStage::Prepare, build_display_lists);
 
         //
         // Stage: Render
@@ -635,10 +636,7 @@ fn render_update(
         ResMut<'_, RenderSurfaces>,
         EventReader<'_, '_, KeyboardInput>,
     ),
-    queries: (
-        Query<'_, '_, (&VisualComponent, &GlobalTransform), With<PickedComponent>>,
-        Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,
-    ),
+    queries: (Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,),
 ) {
     // resources
     let renderer = resources.0;
@@ -650,8 +648,7 @@ fn render_update(
     let mut keyboard_input_events = resources.6;
 
     // queries
-    let q_picked_drawables = queries.0;
-    let q_manipulator_drawables = queries.1;
+    let q_manipulator_drawables = queries.0;
 
     //
     // Simulation thread
@@ -669,9 +666,6 @@ fn render_update(
         }
     }
 
-    let picked_drawables = q_picked_drawables
-        .iter()
-        .collect::<Vec<(&VisualComponent, &GlobalTransform)>>();
     let manipulator_drawables = q_manipulator_drawables
         .iter()
         .collect::<Vec<(&GlobalTransform, &ManipulatorComponent)>>();
@@ -802,7 +796,6 @@ fn render_update(
                             bump,
                             &picking_manager,
                             &debug_display,
-                            picked_drawables.as_slice(),
                             manipulator_drawables.as_slice(),
                             &egui,
                         );

@@ -4,6 +4,7 @@ use lgn_graphics_api::{
     ResourceUsage, StoreOp, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView,
     TextureViewDef, ViewDimension,
 };
+
 use uuid::Uuid;
 
 use crate::core::{RenderObjectId, RenderResources, SecondaryTableHandler};
@@ -18,10 +19,28 @@ impl ViewportId {
 }
 
 #[derive(Clone)]
+pub struct ViewportOptions {
+    pub ground_plane_enabled: bool,
+    pub picked_enabled: bool,
+    pub manipulators_enabled: bool,
+}
+
+impl Default for ViewportOptions {
+    fn default() -> Self {
+        Self {
+            ground_plane_enabled: true,
+            picked_enabled: true,
+            manipulators_enabled: true,
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Viewport {
     id: ViewportId,
     offset: Offset2D,
     extents: Extents2D,
+    options: ViewportOptions,
     camera_id: Option<RenderObjectId>,
     render_object_id: Option<RenderObjectId>,
 }
@@ -32,6 +51,7 @@ impl Viewport {
             id: ViewportId::new(),
             offset,
             extents,
+            options: ViewportOptions::default(),
             camera_id: None,
             render_object_id: None,
         }
@@ -70,6 +90,10 @@ impl Viewport {
 
     pub fn set_render_object_id(&mut self, render_object_id: RenderObjectId) {
         self.render_object_id = Some(render_object_id);
+    }
+
+    pub fn options(&self) -> &ViewportOptions {
+        &self.options
     }
 }
 

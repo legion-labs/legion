@@ -5,7 +5,7 @@ use lgn_tracing::span_fn;
 use lgn_transform::components::GlobalTransform;
 use std::sync::Mutex;
 
-use crate::resources::DefaultMeshType;
+use crate::resources::{DefaultMeshType, RenderMeshId};
 
 pub struct DebugDisplay {
     display_lists: Mutex<Vec<DisplayList>>,
@@ -58,16 +58,18 @@ pub struct DisplayListBuilder<'system> {
 }
 
 impl<'system> DisplayListBuilder<'system> {
-    pub fn add_default_mesh(
+    pub fn add_draw_call(
         &mut self,
         transform: &GlobalTransform,
-        default_mesh_type: DefaultMeshType,
+        primitive_type: DebugPrimitiveType,
         color: Color,
+        material: DebugPrimitiveMaterial,
     ) {
         let primitive = DebugPrimitive {
-            primitive_type: DebugPrimitiveType::DefaultMesh { default_mesh_type },
+            primitive_type,
             transform: *transform,
             color,
+            material,
         };
         self.display_list.primitives.push(primitive);
     }
@@ -78,14 +80,31 @@ pub struct DisplayList {
 }
 
 pub enum DebugPrimitiveType {
-    // TODO(vdbdd): add those new types
-    // DisplayList
-    // Mesh
+    Mesh { mesh_id: RenderMeshId },
     DefaultMesh { default_mesh_type: DefaultMeshType },
+}
+
+impl DebugPrimitiveType {
+    pub fn mesh(mesh_id: RenderMeshId) -> Self {
+        Self::Mesh { mesh_id }
+    }
+
+    pub fn default_mesh(default_mesh_type: DefaultMeshType) -> Self {
+        Self::DefaultMesh { default_mesh_type }
+    }
+}
+
+#[allow(clippy::enum_variant_names)]
+pub enum DebugPrimitiveMaterial {
+    WireDepth,
+    SolidDepth,
+    WireNoDepth,
+    SolidNoDepth,
 }
 
 pub struct DebugPrimitive {
     pub primitive_type: DebugPrimitiveType,
     pub transform: GlobalTransform,
     pub color: Color,
+    pub material: DebugPrimitiveMaterial,
 }

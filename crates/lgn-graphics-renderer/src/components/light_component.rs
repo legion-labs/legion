@@ -10,7 +10,7 @@ use crate::{
         InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
         RemoveRenderObjectCommand, RenderObjectId, UpdateRenderObjectCommand,
     },
-    debug_display::DebugDisplay,
+    debug_display::{DebugDisplay, DebugPrimitiveMaterial, DebugPrimitiveType},
     lighting::RenderLight,
     picking::{PickingId, PickingIdContext, PickingManager},
     resources::DefaultMeshType,
@@ -169,38 +169,41 @@ pub(crate) fn tmp_debug_display_lights(
 
     debug_display.create_display_list(|builder| {
         for (light, transform) in lights.iter() {
-            builder.add_default_mesh(
+            builder.add_draw_call(
                 &GlobalTransform::identity()
                     .with_translation(transform.translation)
                     .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
                     .with_rotation(transform.rotation),
-                DefaultMeshType::Sphere,
+                DebugPrimitiveType::default_mesh(DefaultMeshType::Sphere),
                 Color::WHITE,
+                DebugPrimitiveMaterial::WireDepth,
             );
             match light.light_type {
                 LightType::Directional => {
-                    builder.add_default_mesh(
+                    builder.add_draw_call(
                         &GlobalTransform::identity()
                             .with_translation(
                                 transform.translation
                                     - transform.rotation.mul_vec3(Vec3::new(0.0, 0.0, 0.3)), // assumes arrow length to be 0.3
                             )
                             .with_rotation(transform.rotation),
-                        DefaultMeshType::Arrow,
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::Arrow),
                         Color::WHITE,
+                        DebugPrimitiveMaterial::WireDepth,
                     );
                 }
                 LightType::Spot => {
                     let factor = 4.0 * (light.cone_angle / 2.0).tan(); // assumes that default cone mesh has 1 to 4 ratio between radius and height
-                    builder.add_default_mesh(
+                    builder.add_draw_call(
                         &GlobalTransform::identity()
                             .with_translation(
                                 transform.translation - transform.rotation.mul_vec3(Vec3::Z), // assumes cone height to be 1.0
                             )
                             .with_scale(Vec3::new(factor, factor, 1.0))
                             .with_rotation(transform.rotation),
-                        DefaultMeshType::Cone,
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::Cone),
                         Color::WHITE,
+                        DebugPrimitiveMaterial::WireDepth,
                     );
                 }
                 LightType::OmniDirectional => (),
