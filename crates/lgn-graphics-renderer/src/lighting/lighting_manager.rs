@@ -45,7 +45,7 @@ impl From<(&GlobalTransform, &LightComponent)> for RenderLight {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct RenderLightTestData {
     //foo: u32,
 }

@@ -299,31 +299,32 @@ pub struct RenderViewportPrivateDataHandler {
 impl SecondaryTableHandler<RenderViewport, RenderViewportRendererData>
     for RenderViewportPrivateDataHandler
 {
-    fn insert(&self, render_viewport: &RenderViewport) -> RenderViewportRendererData {
-        RenderViewportRendererData::new(render_viewport, &self.device_context)
+    fn insert(&self, render_viewports: &[&RenderViewport]) -> Vec<RenderViewportRendererData> {
+        let mut v = Vec::with_capacity(render_viewports.len());
+        for render_viewport in render_viewports {
+            v.push(RenderViewportRendererData::new(
+                render_viewport,
+                &self.device_context,
+            ));
+        }
+        v
     }
 
-    fn update(
-        &self,
-        render_viewport: &RenderViewport,
-        render_viewport_private_data: &mut RenderViewportRendererData,
-    ) {
-        let viewport_extents = render_viewport.extents.to_3d(1);
-        if viewport_extents
-            != render_viewport_private_data
-                .view_target
-                .definition()
-                .extents
-        {
-            render_viewport_private_data.resize(&self.device_context, viewport_extents);
+    fn update(&self, render_viewports: &mut [(&RenderViewport, &mut RenderViewportRendererData)]) {
+        for (render_viewport, render_viewport_private_data) in render_viewports {
+            let viewport_extents = render_viewport.extents.to_3d(1);
+            if viewport_extents
+                != render_viewport_private_data
+                    .view_target
+                    .definition()
+                    .extents
+            {
+                render_viewport_private_data.resize(&self.device_context, viewport_extents);
+            }
         }
     }
 
-    fn remove(
-        &self,
-        _render_viewport: &RenderViewport,
-        _render_viewport_private_data: &mut RenderViewportRendererData,
-    ) {
+    fn remove(&self, _render_viewports: &mut [(&RenderViewport, &mut RenderViewportRendererData)]) {
     }
 }
 

@@ -338,6 +338,16 @@ pub struct RenderObjectsBuilder {
     secondary_tables: HashMap<RenderObjectKey, AtomicRefCell<SecondaryTable>>,
 }
 
+// TODO(jsg) Instead of allocating temp vectors as is done below (see insert_fn) we could implement
+// an iterator which iterates over the raw (*const u8, *mut u8) and returns the (&P, &mut S) so
+// we`d iterate over the objects in-place.
+// struct InsertIter<P, S> {}
+
+// impl Iterator for InsertIter {
+//     type Item = ...;
+//     fn next(&mut self) -> Option<Self::Item> {}
+// }
+
 impl RenderObjectsBuilder {
     #[must_use]
     #[allow(unsafe_code)]
@@ -369,11 +379,10 @@ impl RenderObjectsBuilder {
     }
 
     #[must_use]
-    #[allow(unsafe_code)]
     pub fn add_secondary_table<P, S>(self) -> Self
     where
         P: RenderObject,
-        S: RenderObject + Default,
+        S: RenderObject + Default + Clone, // Default + Clone only necessary if the DefaultSecondaryTableHandler is used.
     {
         self.add_secondary_table_with_handler::<P, S>(Box::new(
             DefaultSecondaryTableHandler::<P, S>::default(),
@@ -390,25 +399,70 @@ impl RenderObjectsBuilder {
         P: RenderObject,
         S: RenderObject,
     {
-        unsafe fn insert_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+        unsafe fn insert_fn<P, S>(h: FatPtr, v: &[(*const u8, *mut u8)])
+        where
+            P: RenderObject,
+            S: RenderObject,
+        {
             let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
-            let primary_ref = &*p.cast::<P>();
-            let result = handler.insert(primary_ref);
-            s.cast::<S>().write(result);
+
+            let mut primary_table_objects = Vec::with_capacity(v.len());
+            for (p, _) in v {
+                let primary_ref = &*p.cast::<P>();
+                primary_table_objects.push(primary_ref);
+            }
+
+            let mut secondary_table_objects = handler.insert(&primary_table_objects);
+            assert!(
+                secondary_table_objects.len() == v.len(),
+                "Handler should have inserted one secondary object per primary object."
+            );
+
+            //------------------------------------------------------------------------------------------------
+            let mut secondary_it = secondary_table_objects.drain(..);
+            let mut v_it = v.iter();
+
+            loop {
+                match (secondary_it.next(), v_it.next()) {
+                    (Some(secondary_object), Some((_, s))) => {
+                        (*s).cast::<S>().write(secondary_object);
+                    }
+                    (None, None) => break,
+                    _ => panic!(), // (Some,None) and (None,Some)
+                }
+            }
+            //------------------------------------------------------------------------------------------------
+            // for (i, secondary_object) in secondary_table_objects.drain(..).enumerate() {
+            //     let (_, s) = &v[i];
+            //     (*s).cast::<S>().write(secondary_object);
+            // }
+            //------------------------------------------------------------------------------------------------
         }
 
-        unsafe fn update_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+        unsafe fn update_fn<P, S>(h: FatPtr, v: &[(*const u8, *mut u8)]) {
             let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
-            let primary_ref = &*p.cast::<P>();
-            let secondary_ref = &mut *s.cast::<S>();
-            handler.update(primary_ref, secondary_ref);
+
+            let mut object_vec = Vec::with_capacity(v.len());
+            for (p, s) in v {
+                let primary_ref = &*p.cast::<P>();
+                let secondary_ref = &mut *s.cast::<S>();
+                object_vec.push((primary_ref, secondary_ref));
+            }
+
+            handler.update(&mut object_vec);
         }
 
-        unsafe fn remove_fn<P, S>(h: FatPtr, p: *const u8, s: *mut u8) {
+        unsafe fn remove_fn<P, S>(h: FatPtr, v: &[(*const u8, *mut u8)]) {
             let handler: &dyn SecondaryTableHandler<P, S> = transmute(h);
-            let primary_ref = &*p.cast::<P>();
-            let secondary_ref = &mut *s.cast::<S>();
-            handler.remove(primary_ref, secondary_ref);
+
+            let mut object_vec = Vec::with_capacity(v.len());
+            for (p, s) in v {
+                let primary_ref = &*p.cast::<P>();
+                let secondary_ref = &mut *s.cast::<S>();
+                object_vec.push((primary_ref, secondary_ref));
+            }
+
+            handler.remove(&mut object_vec);
         }
 
         unsafe fn storage_drop_func<T>(x: *mut u8) {
@@ -609,9 +663,9 @@ impl<'a, R: RenderObject> PrimaryTableWriter<'a, R> {
 }
 
 pub trait SecondaryTableHandler<P, S> {
-    fn insert(&self, render_object: &P) -> S;
-    fn update(&self, render_object: &P, render_object_private_data: &mut S);
-    fn remove(&self, render_object: &P, render_object_private_data: &mut S);
+    fn insert(&self, render_objects: &[&P]) -> Vec<S>;
+    fn update(&self, render_objects: &mut [(&P, &mut S)]);
+    fn remove(&self, render_objects: &mut [(&P, &mut S)]);
 }
 
 pub struct DefaultSecondaryTableHandler<P, S> {
@@ -629,13 +683,13 @@ impl<P, S> Default for DefaultSecondaryTableHandler<P, S> {
 impl<P, S> SecondaryTableHandler<P, S> for DefaultSecondaryTableHandler<P, S>
 where
     P: RenderObject,
-    S: RenderObject + Default,
+    S: RenderObject + Default + Clone,
 {
-    fn insert(&self, _render_object: &P) -> S {
-        S::default()
+    fn insert(&self, render_objects: &[&P]) -> Vec<S> {
+        vec![S::default(); render_objects.len()]
     }
-    fn update(&self, _render_object: &P, _render_object_private_data: &mut S) {}
-    fn remove(&self, _render_object: &P, _render_object_private_data: &mut S) {}
+    fn update(&self, _render_objects: &mut [(&P, &mut S)]) {}
+    fn remove(&self, _render_objects: &mut [(&P, &mut S)]) {}
 }
 
 //
@@ -647,9 +701,9 @@ pub struct SecondaryTable {
     primary_key: RenderObjectKey,
     storage: RenderObjectStorage,
     handler_fat_ptr: FatPtr,
-    insert_fn: unsafe fn(FatPtr, *const u8, *mut u8),
-    update_fn: unsafe fn(FatPtr, *const u8, *mut u8),
-    remove_fn: unsafe fn(FatPtr, *const u8, *mut u8),
+    insert_fn: unsafe fn(FatPtr, &[(*const u8, *mut u8)]),
+    update_fn: unsafe fn(FatPtr, &[(*const u8, *mut u8)]),
+    remove_fn: unsafe fn(FatPtr, &[(*const u8, *mut u8)]),
     drop_fn: unsafe fn(FatPtr),
 }
 
@@ -777,14 +831,21 @@ impl RenderObjects {
 
             let handler_fat_ptr = secondary_table.handler_fat_ptr;
 
+            let mut removed_ptrs = Vec::with_capacity(primary_table_set.removed.len());
+
             for removed_index in primary_table_set.removed.iter() {
+                let primary_ptr = primary_table_set.storage.get_value(removed_index);
+                let secondary_ptr = secondary_table.storage.get_value_mut(removed_index);
+                removed_ptrs.push((primary_ptr, secondary_ptr));
+            }
+
+            #[allow(unsafe_code)]
+            unsafe {
                 let remove_fn = secondary_table.remove_fn;
-                let primary_ref = primary_table_set.storage.get_value(removed_index);
-                let secondary_ref = secondary_table.storage.get_value_mut(removed_index);
-                #[allow(unsafe_code)]
-                unsafe {
-                    remove_fn(handler_fat_ptr, primary_ref, secondary_ref);
-                }
+                remove_fn(handler_fat_ptr, &removed_ptrs);
+            }
+
+            for removed_index in primary_table_set.removed.iter() {
                 secondary_table.storage.remove_value(removed_index);
             }
         }
@@ -806,23 +867,39 @@ impl RenderObjects {
 
             let handler_fat_ptr = secondary_table.handler_fat_ptr;
 
-            for inserted_index in primary_table_set.inserted.iter() {
-                let insert_fn = secondary_table.insert_fn;
-                let primary_ref = primary_table_set.storage.get_value(inserted_index);
-                let secondary_ref = secondary_table.storage.get_value_mut(inserted_index);
+            // Insertions
+            {
+                let mut inserted_ptrs = Vec::with_capacity(primary_table_set.inserted.len());
+
+                for inserted_index in primary_table_set.inserted.iter() {
+                    let primary_ptr = primary_table_set.storage.get_value(inserted_index);
+                    let secondary_ptr = secondary_table.storage.get_value_mut(inserted_index);
+
+                    inserted_ptrs.push((primary_ptr, secondary_ptr));
+                }
+
                 #[allow(unsafe_code)]
                 unsafe {
-                    insert_fn(handler_fat_ptr, primary_ref, secondary_ref);
+                    let insert_fn = secondary_table.insert_fn;
+                    insert_fn(handler_fat_ptr, &inserted_ptrs);
                 }
             }
 
-            for updated_index in primary_table_set.updated.iter() {
-                let update_fn = secondary_table.update_fn;
-                let primary_ref = primary_table_set.storage.get_value(updated_index);
-                let secondary_ref = secondary_table.storage.get_value_mut(updated_index);
+            // Updates
+            {
+                let mut updated_ptrs = Vec::with_capacity(primary_table_set.updated.len());
+
+                for updated_index in primary_table_set.updated.iter() {
+                    let primary_ptr = primary_table_set.storage.get_value(updated_index);
+                    let secondary_ptr = secondary_table.storage.get_value_mut(updated_index);
+
+                    updated_ptrs.push((primary_ptr, secondary_ptr));
+                }
+
                 #[allow(unsafe_code)]
                 unsafe {
-                    update_fn(handler_fat_ptr, primary_ref, secondary_ref);
+                    let update_fn = secondary_table.update_fn;
+                    update_fn(handler_fat_ptr, &updated_ptrs);
                 }
             }
         }
