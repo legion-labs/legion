@@ -16,9 +16,26 @@ use crate::{
 
 use super::{picking_event::PickingEvent, ManipulatorType};
 
+#[derive(Clone, Copy)]
+pub struct PickingId(u32);
+
+impl PickingId {
+    pub fn raw(self) -> u32 {
+        self.0
+    }
+
+    pub fn index_(self) -> u32 {
+        self.0 & 0x00ffffff
+    }
+
+    pub fn generation_(self) -> u32 {
+        self.0 >> 24
+    }
+}
+
 pub struct PickingIdBlock {
-    picking_ids: Vec<u32>,
-    entity_ids: Vec<u64>,
+    picking_ids: Vec<PickingId>,
+    entity_ids: Vec<Entity>,
     base_picking_id: u32,
 }
 
@@ -37,37 +54,37 @@ impl PickingIdBlock {
         let mut generation_counts = Vec::with_capacity(block_size as usize);
         generation_counts.reserve(block_size as usize);
         for i in 0..block_size {
-            generation_counts.push(base_picking_id + i as u32);
+            generation_counts.push(PickingId(base_picking_id + i as u32));
         }
 
         Self {
             picking_ids: generation_counts,
-            entity_ids: vec![0; block_size as usize],
+            entity_ids: vec![Entity::from_raw(0); block_size as usize],
             base_picking_id,
         }
     }
 
-    pub fn acquire_picking_id(&mut self, entity: Entity) -> Option<u32> {
+    pub fn acquire_picking_id(&mut self, entity: Entity) -> Option<PickingId> {
         let picking_id = self.picking_ids.pop();
         if let Some(picking_id) = picking_id {
-            let index = (picking_id & 0x00FFFFFF) - self.base_picking_id;
-            self.entity_ids[index as usize] = entity.to_bits();
+            let index = (picking_id.raw() & 0x00FFFFFF) - self.base_picking_id;
+            self.entity_ids[index as usize] = entity;
             Some(picking_id)
         } else {
             None
         }
     }
 
-    pub fn release_picking_id(&mut self, picking_id: u32) {
-        let generation = (picking_id >> 24) + 1;
-        let picking_id = picking_id & 0x00FFFFFF;
+    pub fn release_picking_id(&mut self, picking_id: PickingId) {
+        let generation = (picking_id.raw() >> 24) + 1;
+        let picking_id = picking_id.raw() & 0x00FFFFFF;
         assert!(picking_id >= self.base_picking_id);
 
         let index = picking_id - self.base_picking_id;
         assert!(index < self.entity_ids.len() as u32);
 
-        self.entity_ids[index as usize] = 0;
-        let picking_id = (generation << 24) | picking_id;
+        self.entity_ids[index as usize] = Entity::from_raw(0);
+        let picking_id = PickingId((generation << 24) | picking_id);
         self.picking_ids.push(picking_id);
     }
 
@@ -78,7 +95,7 @@ impl PickingIdBlock {
         let index = picking_id - self.base_picking_id;
         assert!(index < self.entity_ids.len() as u32);
 
-        Entity::from_bits(self.entity_ids[index as usize])
+        self.entity_ids[index as usize]
     }
 
     pub fn base_picking_id(&self) -> u32 {
@@ -187,11 +204,11 @@ impl PickingManager {
         inner.picking_blocks[block_id as usize] = Some(block);
     }
 
-    pub fn release_picking_ids(&mut self, picking_ids: &[u32]) {
+    pub fn release_picking_ids(&mut self, picking_ids: &[PickingId]) {
         let inner = &mut *self.inner.lock().unwrap();
 
         for picking_id in picking_ids {
-            let base_id = picking_id & 0x00FFFFFF;
+            let base_id = picking_id.raw() & 0x00FFFFFF;
             let block_id = base_id / inner.block_size as u32;
 
             if let Some(block) = &mut inner.picking_blocks[block_id as usize] {
@@ -438,13 +455,14 @@ impl PickingManager {
 
 pub struct PickingIdContext<'a> {
     picking_manager: &'a PickingManager,
-    picking_block: PickingIdBlock,
+    picking_block: Option<PickingIdBlock>,
 }
 
 impl<'a> Drop for PickingIdContext<'a> {
     fn drop(&mut self) {
-        self.picking_manager
-            .release_picking_id_block(std::mem::take(&mut self.picking_block));
+        if let Some(picking_block) = self.picking_block.take() {
+            self.picking_manager.release_picking_id_block(picking_block);
+        }
     }
 }
 
@@ -452,21 +470,24 @@ impl<'a> PickingIdContext<'a> {
     pub fn new(picking_manager: &'a PickingManager) -> Self {
         Self {
             picking_manager,
-            picking_block: picking_manager.acquire_picking_id_block(),
+            picking_block: None,
         }
     }
 
-    pub fn acquire_picking_id(&mut self, entity: Entity) -> u32 {
-        let mut new_picking_id = u32::MAX;
-        while new_picking_id == u32::MAX {
-            if let Some(picking_id) = self.picking_block.acquire_picking_id(entity) {
-                new_picking_id = picking_id;
-            } else {
-                self.picking_manager
-                    .release_picking_id_block(std::mem::take(&mut self.picking_block));
-                self.picking_block = self.picking_manager.acquire_picking_id_block();
+    pub fn acquire_picking_id(&mut self, entity: Entity) -> PickingId {
+        let mut picking_id = None;
+        while picking_id.is_none() {
+            picking_id = self
+                .picking_block
+                .as_mut()
+                .and_then(|x| x.acquire_picking_id(entity));
+            if picking_id.is_none() {
+                if let Some(picking_block) = self.picking_block.take() {
+                    self.picking_manager.release_picking_id_block(picking_block);
+                }
+                self.picking_block = Some(self.picking_manager.acquire_picking_id_block());
             }
         }
-        new_picking_id
+        picking_id.unwrap()
     }
 }

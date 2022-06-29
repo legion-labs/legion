@@ -231,7 +231,7 @@ impl GpuInstanceManagerOld {
         {
             self.picking_data_manager.alloc_gpu_data(&entity);
             let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
-            picking_data.set_picking_id(picking_context.acquire_picking_id(entity).into());
+            picking_data.set_picking_id(picking_context.acquire_picking_id(entity).raw().into());
             self.picking_data_manager
                 .update_gpu_data(&entity, &picking_data, render_commands);
         }

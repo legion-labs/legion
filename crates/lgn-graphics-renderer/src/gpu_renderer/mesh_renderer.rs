@@ -1,9 +1,6 @@
 use lgn_app::{App, CoreStage};
 use lgn_core::Handle;
-use lgn_ecs::{
-    prelude::{Res, ResMut},
-    schedule::{ParallelSystemDescriptorCoercion, SystemLabel},
-};
+use lgn_ecs::{prelude::Res, schedule::SystemLabel};
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, CompareOp, CullMode, DepthState, DeviceContext, Format, GraphicsPipelineDef,
@@ -19,8 +16,6 @@ use crate::{
         shader,
     },
     core::{RenderLayers, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING},
-    egui::egui_plugin::Egui,
-    labels::RenderStage,
     resources::{
         GpuBufferWithReadback, MaterialId, PipelineDef, PipelineHandle, PipelineManager,
         ReadbackBuffer, UnifiedStaticBuffer,
@@ -91,26 +86,26 @@ fn update_render_elements(renderer: Res<'_, Renderer>) {
     });
 }
 
-#[allow(clippy::needless_pass_by_value)]
-pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, renderer: ResMut<'_, Renderer>) {
-    // renderer is a ResMut just to avoid concurrent accesses
-    let mesh_renderer = renderer.render_resources().get::<MeshRenderer>();
+// #[allow(clippy::needless_pass_by_value)]
+// pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, renderer: ResMut<'_, Renderer>) {
+//     // renderer is a ResMut just to avoid concurrent accesses
+//     let mesh_renderer = renderer.render_resources().get::<MeshRenderer>();
 
-    egui.window("Culling", |ui| {
-        ui.label(format!(
-            "Total Elements'{}'",
-            u32::from(mesh_renderer.culling_stats.total_elements())
-        ));
-        ui.label(format!(
-            "Frustum Visible '{}'",
-            u32::from(mesh_renderer.culling_stats.frustum_visible())
-        ));
-        ui.label(format!(
-            "Occlusion Visible '{}'",
-            u32::from(mesh_renderer.culling_stats.occlusion_visible())
-        ));
-    });
-}
+//     egui.window("Culling", |ui| {
+//         ui.label(format!(
+//             "Total Elements'{}'",
+//             u32::from(mesh_renderer.culling_stats.total_elements())
+//         ));
+//         ui.label(format!(
+//             "Frustum Visible '{}'",
+//             u32::from(mesh_renderer.culling_stats.frustum_visible())
+//         ));
+//         ui.label(format!(
+//             "Occlusion Visible '{}'",
+//             u32::from(mesh_renderer.culling_stats.occlusion_visible())
+//         ));
+//     });
+// }
 
 // TMP -- what is public here is because they are used in the render graph
 pub(crate) struct CullingArgBuffers {

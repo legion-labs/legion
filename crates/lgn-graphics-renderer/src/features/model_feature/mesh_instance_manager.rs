@@ -3,7 +3,7 @@ use lgn_graphics_api::{BufferView, VertexBufferBinding};
 use crate::{
     cgen,
     core::{GpuUploadManager, RenderObjectId},
-    gpu_renderer::{GpuInstanceId, GpuVaTableForGpuInstance},
+    gpu_renderer::GpuVaTableForGpuInstance,
     resources::{GpuDataManager, UnifiedStaticBuffer},
 };
 

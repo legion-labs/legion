@@ -91,7 +91,7 @@ use crate::core::{
     GpuUploadManager, RenderCommandManager, RenderObjectsBuilder, RenderResourcesBuilder,
 };
 
-use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
+use crate::gpu_renderer::MeshRenderer;
 use crate::renderdoc::RenderDocManager;
 use crate::{
     components::{
@@ -340,7 +340,6 @@ impl Plugin for RendererPlugin {
         // Stage Prepare
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
-        app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
         app.add_system_to_stage(RenderStage::Prepare, tmp_debug_display_lights);
         app.add_system_to_stage(
             RenderStage::Prepare,

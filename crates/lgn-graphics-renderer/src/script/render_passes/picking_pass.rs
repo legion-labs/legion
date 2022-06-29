@@ -170,7 +170,7 @@ impl PickingPass {
 
                                         Self::render_mesh(
                                             &custom_world,
-                                            manipulator.picking_id,
+                                            manipulator.picking_id.raw(),
                                             picking_distance,
                                             mesh_reader
                                                 .get_default_mesh(manipulator.default_mesh_type),

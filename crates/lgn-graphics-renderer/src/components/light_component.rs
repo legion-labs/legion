@@ -13,6 +13,7 @@ use crate::{
     },
     debug_display::DebugDisplay,
     lighting::RenderLight,
+    picking::{PickingId, PickingIdContext, PickingManager},
     resources::DefaultMeshType,
 };
 
@@ -32,8 +33,8 @@ pub struct LightComponent {
     pub enabled: bool,
 
     // The following fields are dynamic, meaning they do not come from serialized data.
-    pub picking_id: u32,
     pub render_object_id: Option<RenderObjectId>,
+    pub picking_id: Option<PickingId>,
 }
 
 impl Default for LightComponent {
@@ -44,7 +45,7 @@ impl Default for LightComponent {
             radiance: 40.0,
             cone_angle: 0.0,
             enabled: true,
-            picking_id: 0,
+            picking_id: None,
             render_object_id: None,
         }
     }
@@ -52,7 +53,7 @@ impl Default for LightComponent {
 
 struct LightDynamicData {
     render_object_id: RenderObjectId,
-    picking_id: u32,
+    picking_id: PickingId,
 }
 
 pub(crate) struct EcsToRenderLight {
@@ -87,6 +88,7 @@ pub(crate) fn reflect_light_components(
     >,
     q_removals: RemovedComponents<'_, LightComponent>,
     mut ecs_to_render: ResMut<'_, EcsToRenderLight>,
+    picking_manager: Res<'_, PickingManager>,
 ) {
     let mut render_commands = ecs_to_render.command_builder();
 
@@ -99,6 +101,8 @@ pub(crate) fn reflect_light_components(
         }
     }
 
+    let mut picking_context = PickingIdContext::new(&picking_manager);
+
     for (e, transform, mut light) in q_changes.iter_mut() {
         if let Some(render_object_id) = light.render_object_id {
             // Update picking_id in hash map.
@@ -106,7 +110,7 @@ pub(crate) fn reflect_light_components(
                 e,
                 LightDynamicData {
                     render_object_id,
-                    picking_id: light.picking_id,
+                    picking_id: light.picking_id.unwrap(),
                 },
             );
 
@@ -122,12 +126,13 @@ pub(crate) fn reflect_light_components(
                 ecs_to_render.map.get(&e).unwrap()
             } else {
                 let render_object_id = ecs_to_render.alloc_id();
+                let picking_id = picking_context.acquire_picking_id(e);
 
                 ecs_to_render.map.insert(
                     e,
                     LightDynamicData {
                         render_object_id,
-                        picking_id: 0,
+                        picking_id,
                     },
                 );
 
@@ -135,12 +140,11 @@ pub(crate) fn reflect_light_components(
             };
 
             let render_object_id = light_dynamic_data.render_object_id;
+            let picking_id = light_dynamic_data.picking_id;
             light.render_object_id = Some(render_object_id);
+            light.picking_id = Some(picking_id);
 
             if is_already_inserted {
-                // Component was recreated; assign the old picking_id back to it.
-                light.picking_id = light_dynamic_data.picking_id;
-
                 render_commands.push(UpdateRenderObjectCommand::<RenderLight> {
                     render_object_id,
                     data: (transform, light.as_ref()).into(),

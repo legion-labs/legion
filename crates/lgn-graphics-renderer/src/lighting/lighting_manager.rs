@@ -40,7 +40,7 @@ impl From<(&GlobalTransform, &LightComponent)> for RenderLight {
             radiance: light_component.radiance,
             cone_angle: light_component.cone_angle,
             enabled: light_component.enabled,
-            picking_id: light_component.picking_id,
+            picking_id: light_component.picking_id.unwrap().raw(),
         }
     }
 }
