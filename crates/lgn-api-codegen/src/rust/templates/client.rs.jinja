@@ -6,7 +6,7 @@ use lgn_tracing::debug;
 {% for (path, routes) in api.paths %}
     {% for route in routes %}
         {% if !route.parameters.query.is_empty() -%}
-            #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+            #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
             struct {{ route.name|pascal_case }}Query {
                 {% for parameter in route.parameters.query -%}
                     #[serde(rename = "{{ parameter.name }}")]
@@ -25,7 +25,7 @@ use lgn_tracing::debug;
         // Request type.
         {% let request_type = "{}Request"|format(route.name|pascal_case) %}
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq)]
         pub struct {{ request_type }} {
             {% for parameter in route.parameters -%}
                 {%- if parameter.required -%}
@@ -46,7 +46,7 @@ use lgn_tracing::debug;
 
         // Response type.
         {% let response_type = "{}Response"|format(route.name|pascal_case) %}
-        
+
         #[derive(Debug)]
         pub enum {{ response_type }} {
             {% for (status_code, response) in route.responses -%}

@@ -10,7 +10,7 @@ pub mod cars {
 
     use lgn_online::codegen::Error;
 
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct TestAdditionalPropertiesCompositeAny200Response {
         #[serde(flatten)]
         pub __additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
@@ -24,7 +24,7 @@ pub mod cars {
         pub time: Option<u32>,
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct TestAdditionalPropertiesCompositeSchema200Response {
         #[serde(flatten)]
         pub __additional_properties: std::collections::BTreeMap<String, super::components::Pet>,
@@ -38,7 +38,7 @@ pub mod cars {
         pub time: Option<u32>,
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub enum TestOneOf200Response {
         #[serde(rename = "option1")]
         Option1(super::components::Pet),
@@ -635,7 +635,7 @@ pub mod cars {
 
         // Request type.
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq)]
         pub struct TestHeadersRequest {
             pub x_string_header: Option<String>,
             pub x_bytes_header: Option<lgn_online::codegen::Bytes>,
@@ -814,7 +814,7 @@ pub mod cars {
             }
         }
 
-        #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
         struct GetCarsQuery {
             #[serde(rename = "other_query")]
             other_query: String,
@@ -828,7 +828,7 @@ pub mod cars {
 
         // Request type.
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq)]
         pub struct GetCarsRequest {
             pub space_id: String,
             pub other_query: String,
@@ -885,7 +885,7 @@ pub mod cars {
 
         // Request type.
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq)]
         pub struct CreateCarRequest {
             pub space_id: String,
             pub span_id: Option<String>,
@@ -928,7 +928,7 @@ pub mod cars {
 
         // Request type.
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq)]
         pub struct GetCarRequest {
             pub space_id: String,
             pub car_id: i64,
@@ -993,7 +993,7 @@ pub mod cars {
 
         // Request type.
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq)]
         pub struct DeleteCarRequest {
             pub space_id: String,
             pub car_id: i64,
@@ -1045,7 +1045,7 @@ pub mod cars {
 
         // Request type.
 
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq)]
         pub struct TestBinaryRequest {
             pub space_id: String,
             pub body: lgn_online::codegen::Bytes,
@@ -2788,7 +2788,7 @@ pub mod cars {
             }
         }
 
-        #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
         struct GetCarsQuery {
             #[serde(rename = "other_query")]
             other_query: String,
@@ -3659,14 +3659,14 @@ pub mod components {
 
     use lgn_online::codegen::Error;
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct Alpha {
         #[serde(rename = "beta")]
         #[serde(skip_serializing_if = "Option::is_none")]
         pub beta: Option<Beta>,
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct Beta(pub Vec<Gamma>);
 
     impl From<Vec<Gamma>> for Beta {
@@ -3675,7 +3675,7 @@ pub mod components {
         }
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct Car {
         #[serde(rename = "code")]
         pub code: u32,
@@ -3698,7 +3698,7 @@ pub mod components {
     }
 
     /// The car color.
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub enum CarColor {
         #[serde(rename = "red")]
         Red,
@@ -3764,7 +3764,7 @@ pub mod components {
         }
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct Cars(pub Vec<Car>);
 
     impl From<Vec<Car>> for Cars {
@@ -3773,13 +3773,13 @@ pub mod components {
         }
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub enum Gamma {
         #[serde(rename = "option1")]
         Option1(Box<Alpha>),
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct Pet {
         #[serde(rename = "name")]
         #[serde(skip_serializing_if = "Option::is_none")]
