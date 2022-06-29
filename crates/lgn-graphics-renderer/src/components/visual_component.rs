@@ -7,6 +7,7 @@ use lgn_utils::HashMap;
 use crate::{
     core::{PrimaryTableView, RenderObjectId},
     features::RenderVisual,
+    picking::{PickingId, PickingIdContext, PickingManager},
     resources::RenderModel,
 };
 
@@ -16,6 +17,7 @@ pub struct VisualComponent {
     color_blend: f32,
     render_model_handle: Handle<RenderModel>,
     render_object_id: Option<RenderObjectId>,
+    picking_id: Option<PickingId>,
 }
 
 impl VisualComponent {
@@ -25,6 +27,7 @@ impl VisualComponent {
             color_blend,
             render_model_handle: render_model_handle.clone(),
             render_object_id: None,
+            picking_id: None,
         }
     }
 
@@ -36,6 +39,10 @@ impl VisualComponent {
         self.color_blend
     }
 
+    pub fn picking_id(&self) -> Option<PickingId> {
+        self.picking_id
+    }
+
     pub fn render_model_handle(&self) -> &Handle<RenderModel> {
         &self.render_model_handle
     }
@@ -43,7 +50,7 @@ impl VisualComponent {
 
 pub(crate) struct EcsToRenderVisual {
     view: PrimaryTableView<RenderVisual>,
-    map: HashMap<Entity, RenderObjectId>,
+    map: HashMap<Entity, (RenderObjectId, PickingId)>,
 }
 
 impl EcsToRenderVisual {
@@ -64,7 +71,7 @@ pub(crate) fn reflect_visual_components(
             Query<
                 '_,
                 '_,
-                (&GlobalTransform, &mut VisualComponent),
+                (Entity, &GlobalTransform, &mut VisualComponent),
                 Or<(Changed<GlobalTransform>, Changed<VisualComponent>)>,
             >,
             Query<'_, '_, (Entity, &VisualComponent), Added<VisualComponent>>,
@@ -73,6 +80,7 @@ pub(crate) fn reflect_visual_components(
 
     q_removals: RemovedComponents<'_, VisualComponent>,
     mut ecs_to_render: ResMut<'_, EcsToRenderVisual>,
+    picking_manager: Res<'_, PickingManager>,
 ) {
     // Base path. Can be simplfied more by having access to the data of removed components
     {
@@ -81,14 +89,17 @@ pub(crate) fn reflect_visual_components(
         for e in q_removals.iter() {
             let render_object_id = ecs_to_render.map.get(&e);
             if let Some(render_object_id) = render_object_id {
-                writer.remove(*render_object_id);
+                writer.remove(render_object_id.0);
             }
         }
 
-        for (transform, mut visual) in queries.p0().iter_mut() {
+        let mut picking_context = PickingIdContext::new(&picking_manager);
+
+        for (e, transform, mut visual) in queries.p0().iter_mut() {
             if let Some(render_object_id) = visual.render_object_id {
                 writer.update(render_object_id, (transform, visual.as_ref()).into());
             } else {
+                visual.picking_id = Some(picking_context.acquire_picking_id(e));
                 visual.render_object_id = Some(writer.insert((transform, visual.as_ref()).into()));
             };
         }
@@ -102,7 +113,10 @@ pub(crate) fn reflect_visual_components(
         }
 
         for (e, visual) in queries.p1().iter() {
-            map.insert(e, visual.render_object_id.unwrap());
+            map.insert(
+                e,
+                (visual.render_object_id.unwrap(), visual.picking_id.unwrap()),
+            );
         }
     }
 }

@@ -6,7 +6,7 @@ use lgn_graphics_api::{
 };
 use uuid::Uuid;
 
-use crate::core::{RenderObjectId, SecondaryTableHandler};
+use crate::core::{RenderObjectId, RenderResources, SecondaryTableHandler};
 
 #[derive(Debug, Clone, Copy, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ViewportId(Uuid);
@@ -299,12 +299,19 @@ pub struct RenderViewportPrivateDataHandler {
 impl SecondaryTableHandler<RenderViewport, RenderViewportRendererData>
     for RenderViewportPrivateDataHandler
 {
-    fn insert(&self, render_viewport: &RenderViewport) -> RenderViewportRendererData {
+    fn insert(
+        &self,
+        _render_resources: &RenderResources,
+        _render_object_id: RenderObjectId,
+        render_viewport: &RenderViewport,
+    ) -> RenderViewportRendererData {
         RenderViewportRendererData::new(render_viewport, &self.device_context)
     }
 
     fn update(
         &self,
+        _render_resources: &RenderResources,
+        _render_object_id: RenderObjectId,
         render_viewport: &RenderViewport,
         render_viewport_private_data: &mut RenderViewportRendererData,
     ) {
@@ -321,6 +328,8 @@ impl SecondaryTableHandler<RenderViewport, RenderViewportRendererData>
 
     fn remove(
         &self,
+        _render_resources: &RenderResources,
+        _render_object_id: RenderObjectId,
         _render_viewport: &RenderViewport,
         _render_viewport_private_data: &mut RenderViewportRendererData,
     ) {

@@ -23,8 +23,8 @@ use crate::core::{
     RenderObjects, RenderViewport, RenderViewportPrivateDataHandler, RenderViewportRendererData,
     RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING,
 };
-use crate::features::{ModelFeature, RenderVisual};
-use crate::lighting::{RenderLight, RenderLightTestData};
+use crate::features::{MeshInstanceManager, ModelFeature, RenderVisual};
+use crate::lighting::RenderLight;
 use crate::surface_renderer::SurfaceRenderer;
 
 use std::sync::Arc;
@@ -37,7 +37,7 @@ use cgen::*;
 
 pub mod labels;
 
-use gpu_renderer::GpuInstanceManager;
+// use gpu_renderer::GpuInstanceManager;
 
 pub use labels::*;
 
@@ -91,7 +91,7 @@ use crate::core::{
     GpuUploadManager, RenderCommandManager, RenderObjectsBuilder, RenderResourcesBuilder,
 };
 
-use crate::gpu_renderer::{ui_mesh_renderer, MeshRenderer};
+use crate::gpu_renderer::MeshRenderer;
 use crate::renderdoc::RenderDocManager;
 use crate::{
     components::{
@@ -240,8 +240,9 @@ impl Plugin for RendererPlugin {
             RENDER_LAYER_PICKING
         );
 
-        let mesh_renderer = MeshRenderer::new(device_context, &gpu_heap, &render_layers);
-        let instance_manager = GpuInstanceManager::new(&gpu_heap, &gpu_upload_manager);
+        let mesh_renderer =
+            MeshRenderer::new(device_context, &gpu_heap, &render_layers, &pipeline_manager);
+        let instance_manager = MeshInstanceManager::new(&gpu_heap, &gpu_upload_manager);
         let manipulation_manager = ManipulatorManager::new();
         let picking_manager = PickingManager::new(4096);
         let model_manager = ModelManager::new(&mesh_manager, &material_manager);
@@ -296,10 +297,10 @@ impl Plugin for RendererPlugin {
                 persistent_descriptor_set_manager.frame_update(frame_index);
             });
 
-        let render_objects = RenderObjectsBuilder::default()
+        let mut render_objects_builder = RenderObjectsBuilder::default();
+        render_objects_builder
             // Lights
             .add_primary_table::<RenderLight>()
-            .add_secondary_table::<RenderLight, RenderLightTestData>()
             // Viewports
             .add_primary_table::<RenderViewport>()
             .add_secondary_table_with_handler::<RenderViewport, RenderViewportRendererData>(
@@ -307,12 +308,8 @@ impl Plugin for RendererPlugin {
                     device_context.clone(),
                 )),
             )
-            // Visual
-            .add_primary_table::<RenderVisual>()
             // Camera
-            .add_primary_table::<RenderCamera>()
-            // Done!
-            .finalize();
+            .add_primary_table::<RenderCamera>();
 
         //
         // Add renderer stages first. It is needed for the plugins.
@@ -336,34 +333,6 @@ impl Plugin for RendererPlugin {
         app.add_startup_system(tmp_create_camera);
 
         //
-        // RenderObjects
-        //
-
-        // Lights
-        app.insert_resource(EcsToRenderLight::new(
-            render_objects.primary_table_view::<RenderLight>(),
-        ))
-        .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
-
-        // Viewports
-        app.insert_resource(EcsToRenderViewport::new(
-            render_objects.primary_table_view::<RenderViewport>(),
-        ))
-        .add_system_to_stage(RenderStage::Prepare, reflect_viewports);
-
-        // Model
-        app.insert_resource(EcsToRenderVisual::new(
-            render_objects.primary_table_view::<RenderVisual>(),
-        ))
-        .add_system_to_stage(RenderStage::Prepare, reflect_visual_components);
-
-        // Camera
-        app.insert_resource(EcsToRenderCamera::new(
-            render_objects.primary_table_view::<RenderCamera>(),
-        ))
-        .add_system_to_stage(RenderStage::Prepare, reflect_camera_components);
-
-        //
         // Resources
         //
 
@@ -377,9 +346,6 @@ impl Plugin for RendererPlugin {
             .insert_resource(picking_manager.clone());
 
         // Init ecs
-        MeshRenderer::init_ecs(app);
-        GpuInstanceManager::init_ecs(app);
-
         app.add_startup_system(register_installers);
 
         app.add_startup_system_to_stage(
@@ -420,7 +386,6 @@ impl Plugin for RendererPlugin {
         // Stage Prepare
         //
         app.add_system_to_stage(RenderStage::Prepare, ui_renderer_options);
-        app.add_system_to_stage(RenderStage::Prepare, ui_mesh_renderer);
         app.add_system_to_stage(RenderStage::Prepare, tmp_debug_display_lights);
         app.add_system_to_stage(
             RenderStage::Prepare,
@@ -441,13 +406,13 @@ impl Plugin for RendererPlugin {
 
         let render_features_builder = RenderFeaturesBuilder::new();
         let render_features = render_features_builder
-            .insert(ModelFeature::new())
+            .insert(ModelFeature::new(&mut render_objects_builder))
             .finalize();
 
         let render_graph_persistent_state = RenderGraphPersistentState::new();
 
         let render_scope = render_scope_builder.build(NUM_RENDER_FRAMES, device_context);
-
+        let render_objects = render_objects_builder.finalize();
         let render_resources_builder = RenderResourcesBuilder::new();
         let render_resources = render_resources_builder
             .insert(render_scope)
@@ -485,13 +450,44 @@ impl Plugin for RendererPlugin {
         let renderer = Renderer::new(
             NUM_RENDER_FRAMES,
             render_command_queue_pool,
-            render_resources,
+            render_resources.clone(),
             graphics_queue,
             gfx_api,
         );
 
         // This resource needs to be shutdown after all other resources
         app.insert_resource(renderer);
+
+        //
+        // ECS <-> RenderObjects
+        //
+        {
+            let render_objects = render_resources.get::<RenderObjects>();
+
+            // Lights
+            app.insert_resource(EcsToRenderLight::new(
+                render_objects.primary_table_view::<RenderLight>(),
+            ))
+            .add_system_to_stage(RenderStage::Prepare, reflect_light_components);
+
+            // Viewports
+            app.insert_resource(EcsToRenderViewport::new(
+                render_objects.primary_table_view::<RenderViewport>(),
+            ))
+            .add_system_to_stage(RenderStage::Prepare, reflect_viewports);
+
+            // Model
+            app.insert_resource(EcsToRenderVisual::new(
+                render_objects.primary_table_view::<RenderVisual>(),
+            ))
+            .add_system_to_stage(RenderStage::Prepare, reflect_visual_components);
+
+            // Camera
+            app.insert_resource(EcsToRenderCamera::new(
+                render_objects.primary_table_view::<RenderCamera>(),
+            ))
+            .add_system_to_stage(RenderStage::Prepare, reflect_camera_components);
+        }
     }
 }
 
@@ -615,7 +611,7 @@ fn on_app_exit(mut app_exit: EventReader<'_, '_, AppExit>, renderer: Res<'_, Ren
 
         let mut render_objects = renderer.render_resources().get_mut::<RenderObjects>();
         render_objects.sync_update();
-        render_objects.begin_frame();
+        render_objects.begin_frame(renderer.render_resources());
 
         renderer
             .render_resources()
@@ -744,7 +740,9 @@ fn render_update(
 
                 pipeline_manager.frame_update(&device_context);
 
-                render_resources.get::<RenderObjects>().begin_frame();
+                render_resources
+                    .get::<RenderObjects>()
+                    .begin_frame(&render_resources);
 
                 //
                 // Update

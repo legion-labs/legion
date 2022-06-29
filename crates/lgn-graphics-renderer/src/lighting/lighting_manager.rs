@@ -30,6 +30,7 @@ pub struct RenderLight {
     pub picking_id: u32,
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<(&GlobalTransform, &LightComponent)> for RenderLight {
     fn from(components: (&GlobalTransform, &LightComponent)) -> Self {
         let (xform_component, light_component) = components;
@@ -40,14 +41,9 @@ impl From<(&GlobalTransform, &LightComponent)> for RenderLight {
             radiance: light_component.radiance,
             cone_angle: light_component.cone_angle,
             enabled: light_component.enabled,
-            picking_id: light_component.picking_id,
+            picking_id: light_component.picking_id.unwrap().raw(),
         }
     }
-}
-
-#[derive(Default)]
-pub struct RenderLightTestData {
-    //foo: u32,
 }
 
 pub struct LightingManager {

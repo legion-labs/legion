@@ -1,8 +1,8 @@
 use lgn_graphics_api::{Buffer, CommandBuffer};
 
-use crate::{resources::PipelineHandle, RenderContext};
+use crate::{features::GpuInstanceId, resources::PipelineHandle, RenderContext};
 
-use super::{GpuInstanceId, RenderElement};
+use super::RenderElement;
 
 #[derive(Clone)]
 pub struct RenderStateSet {

@@ -10,17 +10,13 @@ use lgn_tracing::span_fn;
 use lgn_transform::{components::GlobalTransform, prelude::Transform};
 use lgn_window::WindowResized;
 
-use super::{picking_event::PickingEvent, ManipulatorManager, PickingIdContext, PickingManager};
+use super::{picking_event::PickingEvent, ManipulatorManager, PickingManager};
 use crate::{
-    components::{
-        CameraComponent, LightComponent, ManipulatorComponent, PickedComponent, RenderSurfaces,
-    },
+    components::{CameraComponent, ManipulatorComponent, PickedComponent, RenderSurfaces},
     RenderStage, RendererLabel,
 };
 
-pub struct PickingPlugin {}
-
-impl PickingPlugin {}
+pub struct PickingPlugin;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SystemLabel)]
 pub enum PickingSystemLabel {
@@ -35,8 +31,6 @@ impl Plugin for PickingPlugin {
 
         app.add_system_to_stage(CoreStage::PostUpdate, gather_input);
         app.add_system_to_stage(CoreStage::PostUpdate, gather_window_resize);
-
-        app.add_system_to_stage(CoreStage::PostUpdate, lights_added);
 
         app.add_system_to_stage(
             RenderStage::Render,
@@ -94,19 +88,6 @@ fn gather_window_resize(
             window_resized_event.width,
             window_resized_event.height,
         ));
-    }
-}
-
-#[allow(clippy::type_complexity)]
-#[allow(clippy::needless_pass_by_value)]
-fn lights_added(
-    picking_manager: Res<'_, PickingManager>,
-    mut query: Query<'_, '_, (Entity, &mut LightComponent), Added<LightComponent>>,
-) {
-    let mut picking_context = PickingIdContext::new(&picking_manager);
-
-    for (entity, mut light) in query.iter_mut() {
-        light.picking_id = picking_context.acquire_picking_id(entity);
     }
 }
 

@@ -1,11 +1,12 @@
 use lgn_graphics_api::{Buffer, CommandBuffer, ResourceUsage};
 
 use crate::{
+    features::GpuInstanceId,
     resources::{StaticBufferAllocation, UnifiedStaticBuffer},
     RenderContext,
 };
 
-use super::{GpuInstanceId, RenderBatch, RenderElement, RenderStateSet};
+use super::{RenderBatch, RenderElement, RenderStateSet};
 
 pub struct RenderLayerBatches {
     pub(crate) state_page: StaticBufferAllocation,

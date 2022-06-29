@@ -11,7 +11,8 @@ use crate::{
         RenderGraphBuilder, RenderGraphLoadState, RenderGraphResourceId, RenderGraphViewId,
         RenderObjectQuery, RenderObjects, RENDER_LAYER_PICKING,
     },
-    gpu_renderer::{GpuInstanceManager, MeshRenderer},
+    features::MeshInstanceManager,
+    gpu_renderer::MeshRenderer,
     lighting::RenderLight,
     picking::{ManipulatorManager, PickingState},
     resources::{DefaultMeshType, MeshManager, RenderMesh},
@@ -94,7 +95,7 @@ impl PickingPass {
                                 let mesh_renderer =
                                     execute_context.render_resources.get::<MeshRenderer>();
                                 let instance_manager =
-                                    execute_context.render_resources.get::<GpuInstanceManager>();
+                                    execute_context.render_resources.get::<MeshInstanceManager>();
                                 let mesh_manager =
                                     execute_context.render_resources.get::<MeshManager>();
 
@@ -173,7 +174,7 @@ impl PickingPass {
 
                                         Self::render_mesh(
                                             &custom_world,
-                                            manipulator.picking_id,
+                                            manipulator.picking_id.raw(),
                                             picking_distance,
                                             mesh_reader
                                                 .get_default_mesh(manipulator.default_mesh_type),

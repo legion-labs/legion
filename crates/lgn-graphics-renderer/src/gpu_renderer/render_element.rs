@@ -1,8 +1,9 @@
 use lgn_graphics_api::CommandBuffer;
 
-use crate::resources::{MaterialId, MeshTopology, RenderMesh};
-
-use super::GpuInstanceId;
+use crate::{
+    features::GpuInstanceId,
+    resources::{MaterialId, MeshTopology, RenderMesh},
+};
 
 #[derive(Clone, Copy)]
 pub struct RenderElement {
@@ -12,6 +13,7 @@ pub struct RenderElement {
     index_offset: u32,
 }
 
+#[allow(dead_code)]
 impl RenderElement {
     pub fn new(gpu_instance_id: GpuInstanceId, material_id: MaterialId, mesh: &RenderMesh) -> Self {
         assert_eq!(mesh.topology, MeshTopology::TriangleList);
