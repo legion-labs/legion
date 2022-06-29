@@ -9,6 +9,7 @@ use lgn_data_runtime::{
     ResourceTypeAndId,
 };
 
+use lgn_math::Vec3;
 use strum::{EnumCount, IntoEnumIterator};
 
 use uuid::uuid;
@@ -130,6 +131,7 @@ pub struct MeshInstance {
     pub mesh_id: RenderMeshId,
     pub material_id: MaterialId,
     pub material_va: u64,
+    pub local_aabb: (Vec3, Vec3),
 }
 
 pub struct ModelInstaller {
@@ -200,6 +202,7 @@ impl ModelManager {
                         mesh_id: mesh_manager.get_default_mesh_id(default_mesh_type),
                         material_id: default_material.material_id(),
                         material_va: default_material.gpuheap_addr(),
+                        local_aabb: (Vec3::new(-1.0, -1.0, -1.0), Vec3::new(1.0, 1.0, 1.0)),
                     }],
                 }),
             });
@@ -248,6 +251,15 @@ impl ModelManager {
                 .material
                 .as_ref()
                 .map_or(DEFAULT_MATERIAL_RESOURCE_ID, |x| x.id());
+
+            let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
+            let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
+
+            for position in &mesh_data.positions {
+                min_bound = min_bound.min(*position);
+                max_bound = max_bound.max(*position);
+            }
+
             let mesh = mesh_data.into();
             let mesh_id = self.inner.mesh_manager.install_mesh(mesh).await?;
             let render_material_handle = asset_registry
@@ -259,6 +271,7 @@ impl ModelManager {
                 mesh_id,
                 material_id: render_material.material_id(),
                 material_va: render_material.gpuheap_addr(),
+                local_aabb: (min_bound, max_bound),
             });
         }
 
