@@ -163,17 +163,6 @@ pub fn join_types(
     }
 }
 
-#[allow(clippy::unnecessary_wraps)]
-pub fn fmt_struct_derive(type_: &Option<Box<Type>>) -> ::askama::Result<String> {
-    Ok(match type_ {
-        Some(type_) if matches!(**type_, Type::Any) => {
-            "#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]"
-        }
-        _ => "#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]",
-    }
-    .to_string())
-}
-
 fn is_keyword(name: &str) -> bool {
     KEYWORDS.contains(&name)
 }

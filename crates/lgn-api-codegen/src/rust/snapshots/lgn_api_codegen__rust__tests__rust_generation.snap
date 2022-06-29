@@ -10,7 +10,7 @@ pub mod cars {
 
     use lgn_online::codegen::Error;
 
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct TestAdditionalPropertiesCompositeAny200Response {
         #[serde(flatten)]
         pub __additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
