@@ -4,20 +4,14 @@ use lgn_graphics_api::{
 };
 use lgn_graphics_cgen_runtime::CGenShaderKey;
 use lgn_graphics_data::Color;
-use lgn_math::{Vec3, Vec4};
+use lgn_math::Vec4;
 use lgn_transform::prelude::GlobalTransform;
 
 use crate::{
     cgen::{self, cgen_type::TransformData},
-    components::{ManipulatorComponent, VisualComponent},
-    core::{
-        RenderCamera, RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId, RenderViewport,
-    },
-    debug_display::{DebugDisplay, DebugPrimitiveType},
-    picking::ManipulatorManager,
-    resources::{
-        DefaultMeshType, MeshManager, PipelineDef, PipelineHandle, PipelineManager, RenderMesh,
-    },
+    core::{RenderGraphBuilder, RenderGraphLoadState, RenderGraphViewId},
+    debug_display::{DebugDisplay, DebugPrimitiveMaterial, DebugPrimitiveType},
+    resources::{MeshManager, PipelineDef, PipelineHandle, PipelineManager, RenderMesh},
     RenderContext,
 };
 
@@ -35,7 +29,7 @@ impl DebugPass {
             solid_pso_depth_handle,
             wire_pso_depth_handle,
             solid_pso_no_depth_handle,
-            _wire_pso_no_depth_handle,
+            wire_pso_no_depth_handle,
         ) = Self::build_pso_handles(builder.pipeline_manager);
 
         builder.add_graphics_pass("Debug", |graphics_pass_builder| {
@@ -50,37 +44,14 @@ impl DebugPass {
                     cmd_buffer
                         .cmd_bind_index_buffer(render_context.static_buffer.index_buffer_binding());
 
-                    Self::render_ground_plane(
-                        render_context,
-                        cmd_buffer,
-                        &mesh_manager,
-                        wire_pso_depth_handle,
-                    );
-
-                    Self::render_picked(
-                        render_context,
-                        cmd_buffer,
-                        render_context.picked_drawables,
-                        &mesh_manager,
-                        wire_pso_depth_handle,
-                        solid_pso_depth_handle,
-                    );
-
                     Self::render_debug_display(
                         render_context,
                         cmd_buffer,
                         render_context.debug_display,
                         &mesh_manager,
                         wire_pso_depth_handle,
-                    );
-
-                    Self::render_manipulators(
-                        render_context,
-                        cmd_buffer,
-                        render_context.manipulator_drawables,
-                        &mesh_manager,
-                        execute_context.debug_stuff.render_viewport,
-                        execute_context.debug_stuff.render_camera,
+                        solid_pso_depth_handle,
+                        wire_pso_no_depth_handle,
                         solid_pso_no_depth_handle,
                     );
                 })
@@ -211,84 +182,6 @@ impl DebugPass {
         )
     }
 
-    pub fn render_ground_plane(
-        render_context: &RenderContext<'_>,
-        cmd_buffer: &mut CommandBuffer,
-        mesh_manager: &MeshManager,
-        wire_pso_depth_handle: PipelineHandle,
-    ) {
-        cmd_buffer.with_label("Ground Plane", |cmd_buffer| {
-            if let Some(wire_pso_depth_pipeline) = render_context
-                .pipeline_manager
-                .get_pipeline(wire_pso_depth_handle)
-            {
-                cmd_buffer.cmd_bind_pipeline(wire_pso_depth_pipeline);
-
-                render_context.bind_default_descriptor_sets(cmd_buffer);
-
-                let mesh_reader = mesh_manager.read();
-
-                render_mesh(
-                    mesh_reader.get_default_mesh(DefaultMeshType::GroundPlane),
-                    &GlobalTransform::identity(),
-                    Color::BLACK,
-                    0.0,
-                    cmd_buffer,
-                );
-            }
-        });
-    }
-
-    pub fn render_picked(
-        render_context: &RenderContext<'_>,
-        cmd_buffer: &mut CommandBuffer,
-        picked_visuals: &[(&VisualComponent, &GlobalTransform)],
-        mesh_manager: &MeshManager,
-        wire_pso_depth_handle: PipelineHandle,
-        solid_pso_depth_handle: PipelineHandle,
-    ) {
-        cmd_buffer.with_label("Picked", |cmd_buffer| {
-            if let Some(wire_pso_depth_pipeline) = render_context
-                .pipeline_manager
-                .get_pipeline(wire_pso_depth_handle)
-            {
-                if let Some(solid_pso_depth_pipeline) = render_context
-                    .pipeline_manager
-                    .get_pipeline(solid_pso_depth_handle)
-                {
-                    render_context.bind_default_descriptor_sets(cmd_buffer);
-
-                    let mesh_reader = mesh_manager.read();
-                    let wireframe_cube =
-                        mesh_reader.get_default_mesh(DefaultMeshType::WireframeCube);
-                    // TODO(vdbdd): Fix that asap with the real model
-
-                    for (visual_component, transform) in picked_visuals.iter() {
-                        let render_model = visual_component.render_model_handle();
-                        let render_model = render_model.get().unwrap();
-
-                        for mesh in render_model.mesh_instances() {
-                            cmd_buffer.cmd_bind_pipeline(wire_pso_depth_pipeline);
-
-                            let mesh = mesh_reader.get_render_mesh(mesh.mesh_id);
-                            render_aabb_for_mesh(wireframe_cube, mesh, transform, cmd_buffer);
-
-                            cmd_buffer.cmd_bind_pipeline(solid_pso_depth_pipeline);
-
-                            render_mesh(
-                                mesh,
-                                transform,
-                                Color::new(0, 127, 127, 127),
-                                1.0,
-                                cmd_buffer,
-                            );
-                        }
-                    }
-                }
-            }
-        });
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub fn render_debug_display(
         render_context: &RenderContext<'_>,
@@ -296,20 +189,28 @@ impl DebugPass {
         debug_display: &DebugDisplay,
         mesh_manager: &MeshManager,
         wire_pso_depth_handle: PipelineHandle,
+        solid_pso_depth_handle: PipelineHandle,
+        wire_pso_no_depth_handle: PipelineHandle,
+        solid_pso_no_depth_handle: PipelineHandle,
     ) {
         cmd_buffer.with_label("Debug_Display", |cmd_buffer| {
-            if let Some(pipeline) = render_context
-                .pipeline_manager
-                .get_pipeline(wire_pso_depth_handle)
-            {
-                cmd_buffer.cmd_bind_pipeline(pipeline);
+            // TODO(jsg) sort by material
+            debug_display.render_primitives(|primitive| {
+                let pso_handle = match primitive.material {
+                    DebugPrimitiveMaterial::WireDepth => wire_pso_depth_handle,
+                    DebugPrimitiveMaterial::SolidDepth => solid_pso_depth_handle,
+                    DebugPrimitiveMaterial::WireNoDepth => wire_pso_no_depth_handle,
+                    DebugPrimitiveMaterial::SolidNoDepth => solid_pso_no_depth_handle,
+                };
 
-                render_context.bind_default_descriptor_sets(cmd_buffer);
+                if let Some(pipeline) = render_context.pipeline_manager.get_pipeline(pso_handle) {
+                    cmd_buffer.cmd_bind_pipeline(pipeline);
+                    render_context.bind_default_descriptor_sets(cmd_buffer);
 
-                debug_display.render_primitives(|primitive| {
+                    let mesh_reader = mesh_manager.read();
+
                     match primitive.primitive_type {
                         DebugPrimitiveType::DefaultMesh { default_mesh_type } => {
-                            let mesh_reader = mesh_manager.read();
                             render_mesh(
                                 mesh_reader.get_default_mesh(default_mesh_type),
                                 &primitive.transform,
@@ -318,98 +219,20 @@ impl DebugPass {
                                 cmd_buffer,
                             );
                         }
+                        DebugPrimitiveType::Mesh { mesh_id } => {
+                            render_mesh(
+                                mesh_reader.get_render_mesh(mesh_id),
+                                &primitive.transform,
+                                primitive.color,
+                                1.0,
+                                cmd_buffer,
+                            );
+                        }
                     };
-                });
-            }
+                }
+            });
         });
     }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn render_manipulators(
-        render_context: &RenderContext<'_>,
-        cmd_buffer: &mut CommandBuffer,
-        manipulator_meshes: &[(&GlobalTransform, &ManipulatorComponent)],
-        mesh_manager: &MeshManager,
-        render_viewport: &RenderViewport,
-        render_camera: &RenderCamera,
-        solid_pso_no_depth_handle: PipelineHandle,
-    ) {
-        for (transform, manipulator) in manipulator_meshes.iter() {
-            if manipulator.active {
-                cmd_buffer.with_label("Manipulator", |cmd_buffer| {
-                    let view_transform = render_camera.view_transform();
-                    let projection = render_camera.build_projection(
-                        render_viewport.extents().width as f32,
-                        render_viewport.extents().height as f32,
-                    );
-                    let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
-                        transform,
-                        &manipulator.local_transform,
-                        projection,
-                        &view_transform,
-                    );
-
-                    let mut color = if manipulator.selected {
-                        Color::YELLOW
-                    } else {
-                        manipulator.color
-                    };
-                    color.a = if manipulator.transparent { 225 } else { 255 };
-
-                    if let Some(pipeline) = render_context
-                        .pipeline_manager
-                        .get_pipeline(solid_pso_no_depth_handle)
-                    {
-                        cmd_buffer.cmd_bind_pipeline(pipeline);
-
-                        render_context.bind_default_descriptor_sets(cmd_buffer);
-                        let mesh_reader = mesh_manager.read();
-                        render_mesh(
-                            mesh_reader.get_default_mesh(manipulator.default_mesh_type),
-                            &scaled_xform,
-                            color,
-                            1.0,
-                            cmd_buffer,
-                        );
-                    }
-                });
-            }
-        }
-    }
-}
-
-fn render_aabb_for_mesh(
-    wire_frame_cube: &RenderMesh,
-    mesh: &RenderMesh,
-    transform: &GlobalTransform,
-    cmd_buffer: &mut CommandBuffer,
-) {
-    cmd_buffer.with_label("AABB", |cmd_buffer| {
-        let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
-        let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
-
-        for position in &mesh.positions {
-            let world_pos = transform.mul_vec3(*position);
-
-            min_bound = min_bound.min(world_pos);
-            max_bound = max_bound.max(world_pos);
-        }
-
-        let delta = max_bound - min_bound;
-        let mid_point = min_bound + delta * 0.5;
-
-        let aabb_transform = GlobalTransform::identity()
-            .with_translation(mid_point)
-            .with_scale(delta);
-
-        render_mesh(
-            wire_frame_cube,
-            &aabb_transform,
-            Color::WHITE,
-            1.0,
-            cmd_buffer,
-        );
-    });
 }
 
 fn render_mesh(

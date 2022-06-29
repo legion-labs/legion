@@ -526,12 +526,14 @@ impl PrimaryTable {
         let generation = id.generation;
         assert!(
             self.set.borrow().allocated.contains(index),
-            "RenderObject index {} not allocated.",
+            "RenderObject of type {} index {} not allocated.",
+            self.key.type_name,
             index
         );
         assert!(
             self.set.borrow().generations[index] == generation,
-            "RenderObject index {} generation mismatch (expected {} got {})",
+            "RenderObject of type {} index {} generation mismatch (expected {} got {})",
+            self.key.type_name,
             index,
             self.set.borrow().generations[index],
             generation

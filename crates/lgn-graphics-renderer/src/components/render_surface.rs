@@ -2,12 +2,16 @@ use std::collections::hash_map::{Values, ValuesMut};
 use std::hash::Hash;
 use std::{cmp::max, sync::Arc};
 
-use lgn_ecs::prelude::{Query, ResMut};
+use lgn_ecs::prelude::{Query, ResMut, With};
+use lgn_ecs::system::Res;
 use lgn_graphics_api::{
     CmdCopyTextureParams, CommandBuffer, DeviceContext, Extents2D, Extents3D, Format, MemoryUsage,
     Offset2D, Offset3D, PlaneSlice, ResourceFlags, ResourceState, ResourceUsage, Semaphore,
     SemaphoreDef, Texture, TextureBarrier, TextureDef, TextureTiling, TextureView, TextureViewDef,
 };
+use lgn_graphics_data::Color;
+use lgn_math::Vec3;
+use lgn_transform::prelude::GlobalTransform;
 use lgn_window::WindowId;
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -15,13 +19,16 @@ use uuid::Uuid;
 
 use crate::core::{
     as_render_object, InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
-    RemoveRenderObjectCommand, RenderObjectId, RenderViewport, RenderViewportRendererData,
-    UpdateRenderObjectCommand, Viewport, ViewportId,
+    RemoveRenderObjectCommand, RenderCamera, RenderObjectId, RenderObjects, RenderViewport,
+    RenderViewportRendererData, UpdateRenderObjectCommand, Viewport, ViewportId,
 };
+use crate::debug_display::{DebugDisplay, DebugPrimitiveMaterial, DebugPrimitiveType};
+use crate::picking::ManipulatorManager;
 use crate::render_pass::PickingRenderPass;
+use crate::resources::{DefaultMeshType, MeshManager};
 use crate::{RenderContext, Renderer};
 
-use super::CameraComponent;
+use super::{CameraComponent, ManipulatorComponent, PickedComponent, VisualComponent};
 
 pub trait Presenter: Send + Sync {
     fn resize(&mut self, device_context: &DeviceContext, extents: RenderSurfaceExtents);
@@ -666,6 +673,139 @@ pub(crate) fn reflect_viewports(
             }
         } else {
             panic!();
+        }
+    }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn build_display_lists(
+    renderer: Res<'_, Renderer>,
+    render_surfaces: ResMut<'_, RenderSurfaces>,
+    debug_display: ResMut<'_, DebugDisplay>,
+    picked_drawables: Query<'_, '_, (&VisualComponent, &GlobalTransform), With<PickedComponent>>,
+    manipulator_drawables: Query<'_, '_, (&GlobalTransform, &ManipulatorComponent)>,
+) {
+    for render_surface in render_surfaces.iter() {
+        for viewport in render_surface.viewports() {
+            if viewport.options().ground_plane_enabled {
+                debug_display.create_display_list(|builder| {
+                    builder.add_default_mesh(
+                        &GlobalTransform::identity(),
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::GroundPlane),
+                        Color::BLACK,
+                        DebugPrimitiveMaterial::WireDepth,
+                    );
+                });
+            }
+
+            if viewport.options().picked_enabled {
+                let mesh_manager = renderer.render_resources().get::<MeshManager>();
+                let mesh_reader = mesh_manager.read();
+                for (visual_component, transform) in &picked_drawables {
+                    let render_model = visual_component.render_model_handle();
+                    let render_model = render_model.get().unwrap();
+
+                    for mesh in render_model.mesh_instances() {
+                        let mesh_id = mesh.mesh_id;
+                        let mesh = mesh_reader.get_render_mesh(mesh_id);
+
+                        let mut min_bound = Vec3::new(f32::MAX, f32::MAX, f32::MAX);
+                        let mut max_bound = Vec3::new(f32::MIN, f32::MIN, f32::MIN);
+
+                        for position in &mesh.positions {
+                            let world_pos = transform.mul_vec3(*position);
+
+                            min_bound = min_bound.min(world_pos);
+                            max_bound = max_bound.max(world_pos);
+                        }
+
+                        let delta = max_bound - min_bound;
+                        let mid_point = min_bound + delta * 0.5;
+
+                        let aabb_transform = GlobalTransform::identity()
+                            .with_translation(mid_point)
+                            .with_scale(delta);
+
+                        debug_display.create_display_list(|builder| {
+                            builder.add_default_mesh(
+                                &aabb_transform,
+                                DebugPrimitiveType::default_mesh(DefaultMeshType::WireframeCube),
+                                Color::WHITE,
+                                DebugPrimitiveMaterial::WireDepth,
+                            );
+                            builder.add_default_mesh(
+                                transform,
+                                DebugPrimitiveType::mesh(mesh_id),
+                                Color::new(0, 127, 127, 127),
+                                DebugPrimitiveMaterial::SolidDepth,
+                            );
+                        });
+                    }
+                }
+            }
+
+            if viewport.options().manipulators_enabled {
+                let render_objects = renderer.render_resources().get::<RenderObjects>();
+                let viewport_primary_table = render_objects.primary_table::<RenderViewport>();
+                let camera_primary_table = render_objects.primary_table::<RenderCamera>();
+
+                // TODO(jsg) we need to make a display list specific to one viewport. Otherwise we will see the
+                // manipulators for all viewports in every viewport.
+                let render_viewport_id = viewport.render_object_id();
+                if render_viewport_id.is_none() {
+                    continue;
+                }
+                let render_viewport_id = render_viewport_id.unwrap();
+                let render_viewport =
+                    viewport_primary_table.try_get::<RenderViewport>(render_viewport_id);
+                if render_viewport.is_none() {
+                    continue;
+                }
+                let render_viewport = render_viewport.unwrap();
+
+                let render_camera_id = render_viewport.camera_id();
+                if render_camera_id.is_none() {
+                    continue;
+                }
+                let render_camera_id = render_camera_id.unwrap();
+                let render_camera = camera_primary_table.try_get::<RenderCamera>(render_camera_id);
+                if render_camera.is_none() {
+                    continue;
+                }
+                let render_camera = render_camera.unwrap();
+
+                for (transform, manipulator) in &manipulator_drawables {
+                    if manipulator.active {
+                        let view_transform = render_camera.view_transform();
+                        let projection = render_camera.build_projection(
+                            render_viewport.extents().width as f32,
+                            render_viewport.extents().height as f32,
+                        );
+                        let scaled_xform = ManipulatorManager::scale_manipulator_for_viewport(
+                            transform,
+                            &manipulator.local_transform,
+                            projection,
+                            &view_transform,
+                        );
+
+                        let mut color = if manipulator.selected {
+                            Color::YELLOW
+                        } else {
+                            manipulator.color
+                        };
+                        color.a = if manipulator.transparent { 225 } else { 255 };
+
+                        debug_display.create_display_list(|builder| {
+                            builder.add_default_mesh(
+                                &scaled_xform,
+                                DebugPrimitiveType::default_mesh(manipulator.default_mesh_type),
+                                color,
+                                DebugPrimitiveMaterial::SolidNoDepth,
+                            );
+                        });
+                    }
+                }
+            }
         }
     }
 }

@@ -72,21 +72,23 @@ impl SurfaceRenderer {
             let viewports = render_surface.viewports();
 
             let render_objects = render_resources.get::<RenderObjects>();
-            let primary_table = render_objects.primary_table::<RenderViewport>();
-            let mut secondary_table =
+            let viewport_primary_table = render_objects.primary_table::<RenderViewport>();
+            let mut viewport_secondary_table =
                 render_objects.secondary_table_mut::<RenderViewportRendererData>();
             let camera_primary_table = render_objects.primary_table::<RenderCamera>();
 
             for viewport in viewports {
-                let render_object_id = viewport.render_object_id();
-                if render_object_id.is_none() {
+                let render_viewport_id = viewport.render_object_id();
+                if render_viewport_id.is_none() {
                     continue;
                 }
-                let render_object_id = render_object_id.unwrap();
+                let render_viewport_id = render_viewport_id.unwrap();
 
-                let render_viewport = primary_table.get::<RenderViewport>(render_object_id);
-                let render_viewport_private_data =
-                    secondary_table.get_mut::<RenderViewportRendererData>(render_object_id);
+                let render_viewport =
+                    viewport_primary_table.get::<RenderViewport>(render_viewport_id);
+                let render_viewport_renderer_data =
+                    viewport_secondary_table
+                        .get_mut::<RenderViewportRendererData>(render_viewport_id);
 
                 //
                 // Visibility
@@ -178,7 +180,7 @@ impl SurfaceRenderer {
 
                 cmd_buffer.begin();
 
-                render_viewport_private_data.clear_hzb_if_needed(cmd_buffer);
+                render_viewport_renderer_data.clear_hzb_if_needed(cmd_buffer);
 
                 cmd_buffer.end();
 
@@ -192,7 +194,7 @@ impl SurfaceRenderer {
                     .release(cmd_buffer_handle);
 
                 let view = RenderView {
-                    target: render_viewport_private_data.view_target(),
+                    target: render_viewport_renderer_data.view_target(),
                 };
 
                 let gpu_culling_pass = GpuCullingPass;
@@ -218,8 +220,8 @@ impl SurfaceRenderer {
                     ui_pass,
                     egui_pass,
                     hzb: [
-                        render_viewport_private_data.hzb()[0],
-                        render_viewport_private_data.hzb()[1],
+                        render_viewport_renderer_data.hzb()[0],
+                        render_viewport_renderer_data.hzb()[1],
                     ],
                 };
 
@@ -272,9 +274,11 @@ impl SurfaceRenderer {
 
             for viewport in viewports {
                 if let Some(render_object_id) = viewport.render_object_id() {
-                    let render_viewport = primary_table.get::<RenderViewport>(render_object_id);
+                    let render_viewport =
+                        viewport_primary_table.get::<RenderViewport>(render_object_id);
                     let render_viewport_private_data =
-                        secondary_table.get::<RenderViewportRendererData>(render_object_id);
+                        viewport_secondary_table
+                            .get::<RenderViewportRendererData>(render_object_id);
 
                     render_viewports.push(render_viewport);
                     render_viewports_private_data.push(render_viewport_private_data);

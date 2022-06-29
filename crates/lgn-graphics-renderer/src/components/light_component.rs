@@ -10,7 +10,7 @@ use crate::{
         InsertRenderObjectCommand, PrimaryTableCommandBuilder, PrimaryTableView,
         RemoveRenderObjectCommand, RenderObjectId, UpdateRenderObjectCommand,
     },
-    debug_display::DebugDisplay,
+    debug_display::{DebugDisplay, DebugPrimitiveMaterial, DebugPrimitiveType},
     lighting::RenderLight,
     resources::DefaultMeshType,
 };
@@ -170,8 +170,9 @@ pub(crate) fn tmp_debug_display_lights(
                     .with_translation(transform.translation)
                     .with_scale(Vec3::new(0.2, 0.2, 0.2)) // assumes the size of sphere 1.0. Needs to be scaled in order to match picking silhouette
                     .with_rotation(transform.rotation),
-                DefaultMeshType::Sphere,
+                DebugPrimitiveType::default_mesh(DefaultMeshType::Sphere),
                 Color::WHITE,
+                DebugPrimitiveMaterial::WireDepth,
             );
             match light.light_type {
                 LightType::Directional => {
@@ -182,8 +183,9 @@ pub(crate) fn tmp_debug_display_lights(
                                     - transform.rotation.mul_vec3(Vec3::new(0.0, 0.0, 0.3)), // assumes arrow length to be 0.3
                             )
                             .with_rotation(transform.rotation),
-                        DefaultMeshType::Arrow,
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::Arrow),
                         Color::WHITE,
+                        DebugPrimitiveMaterial::WireDepth,
                     );
                 }
                 LightType::Spot => {
@@ -195,8 +197,9 @@ pub(crate) fn tmp_debug_display_lights(
                             )
                             .with_scale(Vec3::new(factor, factor, 1.0))
                             .with_rotation(transform.rotation),
-                        DefaultMeshType::Cone,
+                        DebugPrimitiveType::default_mesh(DefaultMeshType::Cone),
                         Color::WHITE,
+                        DebugPrimitiveMaterial::WireDepth,
                     );
                 }
                 LightType::OmniDirectional => (),

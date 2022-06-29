@@ -4,7 +4,10 @@ use crate::{
 };
 use lgn_ecs::prelude::{Query, Res};
 use lgn_graphics_data::Color;
-use lgn_graphics_renderer::{debug_display::DebugDisplay, resources::DefaultMeshType};
+use lgn_graphics_renderer::{
+    debug_display::{DebugDisplay, DebugPrimitiveMaterial, DebugPrimitiveType},
+    resources::DefaultMeshType,
+};
 
 pub(crate) fn display_animation(
     debug_display: Res<'_, DebugDisplay>,
@@ -42,8 +45,9 @@ pub(crate) fn display_animation(
                 let debug_color = Color::new(bone_depth * color_interval, 255, 52, 255);
                 builder.add_default_mesh(
                     &clip.poses[clip.current_key_frame_index].transforms[n_bone].global,
-                    DefaultMeshType::Sphere,
+                    DebugPrimitiveType::default_mesh(DefaultMeshType::Sphere),
                     debug_color,
+                    DebugPrimitiveMaterial::WireDepth,
                 );
             }
         }
