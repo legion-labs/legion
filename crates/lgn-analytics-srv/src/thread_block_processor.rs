@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use lgn_analytics::{fetch_block_payload, parse_block};
 use lgn_blob_storage::BlobStorage;
+use lgn_telemetry::types::BlockPayload;
 use lgn_tracing::prelude::*;
 use lgn_tracing::warn;
 use lgn_tracing_transit::{Object, Value};

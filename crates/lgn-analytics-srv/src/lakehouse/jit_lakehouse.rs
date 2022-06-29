@@ -2,7 +2,7 @@ use super::span_table::TabularSpanTree;
 use crate::scope::ScopeHashMap;
 use anyhow::Result;
 use async_trait::async_trait;
-use lgn_telemetry_proto::analytics::BlockSpansReply;
+use lgn_analytics::types::BlockSpansReply;
 type ProcessInfo = lgn_telemetry::types::Process;
 type StreamInfo = lgn_telemetry::types::Stream;
 

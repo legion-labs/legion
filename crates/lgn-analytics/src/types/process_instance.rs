@@ -37,33 +37,3 @@ impl TryFrom<crate::api::components::ProcessInstance> for ProcessInstance {
         })
     }
 }
-
-#[derive(Clone, PartialEq)]
-pub struct LogEntry {
-    pub level: i32,
-    pub time_ms: f64,
-    pub target: String,
-    pub msg: String,
-}
-
-impl From<LogEntry> for crate::api::components::LogEntry {
-    fn from(log_entry: LogEntry) -> Self {
-        Self {
-            level: log_entry.level,
-            time_ms: log_entry.time_ms,
-            target: log_entry.target,
-            msg: log_entry.msg,
-        }
-    }
-}
-
-impl From<crate::api::components::LogEntry> for LogEntry {
-    fn from(log_entry: crate::api::components::LogEntry) -> Self {
-        Self {
-            level: log_entry.level,
-            time_ms: log_entry.time_ms,
-            target: log_entry.target,
-            msg: log_entry.msg,
-        }
-    }
-}

@@ -184,7 +184,7 @@ dependencies = [
  "lgn-analytics",
  "lgn-api-codegen",
  "lgn-blob-storage",
- "lgn-telemetry-proto",
+ "lgn-telemetry",
  "lgn-telemetry-sink",
  "lgn-tracing",
  "lgn-tracing-transit",

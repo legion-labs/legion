@@ -1,39 +1,19 @@
 use anyhow::Context;
 use anyhow::Result;
 use lgn_analytics::prelude::*;
-use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::performance_analytics_server::PerformanceAnalytics;
-use lgn_telemetry_proto::analytics::BlockSpansReply;
-use lgn_telemetry_proto::analytics::BuildTimelineTablesReply;
-use lgn_telemetry_proto::analytics::BuildTimelineTablesRequest;
-use lgn_telemetry_proto::analytics::CumulativeCallGraphComputedBlock;
-use lgn_telemetry_proto::analytics::FindProcessReply;
-use lgn_telemetry_proto::analytics::FindProcessRequest;
-use lgn_telemetry_proto::analytics::Level;
-use lgn_telemetry_proto::analytics::ListProcessChildrenRequest;
-use lgn_telemetry_proto::analytics::ListProcessStreamsRequest;
-use lgn_telemetry_proto::analytics::ListStreamBlocksReply;
-use lgn_telemetry_proto::analytics::ListStreamBlocksRequest;
-use lgn_telemetry_proto::analytics::ListStreamsReply;
-use lgn_telemetry_proto::analytics::MetricBlockData;
-use lgn_telemetry_proto::analytics::MetricBlockManifest;
-use lgn_telemetry_proto::analytics::MetricBlockManifestRequest;
-use lgn_telemetry_proto::analytics::MetricBlockRequest;
-use lgn_telemetry_proto::analytics::ProcessChildrenReply;
-use lgn_telemetry_proto::analytics::ProcessListReply;
-use lgn_telemetry_proto::analytics::ProcessLogReply;
-use lgn_telemetry_proto::analytics::ProcessLogRequest;
-use lgn_telemetry_proto::analytics::ProcessNbLogEntriesReply;
-use lgn_telemetry_proto::analytics::ProcessNbLogEntriesRequest;
-use lgn_telemetry_proto::analytics::RecentProcessesRequest;
-use lgn_telemetry_proto::analytics::SearchProcessRequest;
-use lgn_telemetry_proto::analytics::{
-    BlockSpansRequest, ListProcessBlocksRequest, ProcessBlocksReply,
-};
-use lgn_telemetry_proto::analytics::{
+use lgn_analytics::types::BlockSpansReply;
+use lgn_analytics::types::CumulativeCallGraphComputedBlock;
+use lgn_analytics::types::Level;
+use lgn_analytics::types::MetricBlockData;
+use lgn_analytics::types::MetricBlockManifest;
+use lgn_analytics::types::MetricBlockManifestRequest;
+use lgn_analytics::types::MetricBlockRequest;
+use lgn_analytics::types::ProcessInstance;
+use lgn_analytics::types::{
     CumulativeCallGraphBlockRequest, CumulativeCallGraphManifest,
     CumulativeCallGraphManifestRequest,
 };
+use lgn_blob_storage::BlobStorage;
 use lgn_tracing::dispatch::init_thread_stream;
 use lgn_tracing::flush_monitor::FlushMonitor;
 use lgn_tracing::prelude::*;
@@ -120,16 +100,13 @@ impl AnalyticsService {
     async fn list_recent_processes_impl(
         &self,
         parent_process_id: &str,
-    ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
+    ) -> Result<Vec<ProcessInstance>> {
         let mut connection = self.pool.acquire().await?;
         list_recent_processes(&mut connection, Some(parent_process_id)).await
     }
 
     #[span_fn]
-    async fn search_processes_impl(
-        &self,
-        search: &str,
-    ) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
+    async fn search_processes_impl(&self, search: &str) -> Result<Vec<ProcessInstance>> {
         let mut connection = self.pool.acquire().await?;
         search_processes(&mut connection, search).await
     }

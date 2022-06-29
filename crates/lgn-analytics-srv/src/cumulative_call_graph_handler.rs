@@ -3,12 +3,10 @@ use chrono::{DateTime, FixedOffset};
 use std::sync::Arc;
 
 use lgn_analytics::prelude::*;
-use lgn_telemetry_proto::{
-    analytics::{
-        CumulativeCallGraphBlockDesc, CumulativeCallGraphComputedBlock, CumulativeCallGraphManifest,
-    },
-    telemetry::Process,
+use lgn_analytics::types::{
+    CumulativeCallGraphBlockDesc, CumulativeCallGraphComputedBlock, CumulativeCallGraphManifest,
 };
+use lgn_telemetry::types::Process;
 use lgn_tracing::span_fn;
 
 use crate::{

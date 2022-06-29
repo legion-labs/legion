@@ -1,4 +1,4 @@
-use lgn_telemetry_proto::analytics::ScopeDesc;
+use lgn_analytics::types::ScopeDesc;
 use xxhash_rust::const_xxh32::xxh32 as const_xxh32;
 pub(crate) type ScopeHashMap = std::collections::HashMap<u32, ScopeDesc>;
 

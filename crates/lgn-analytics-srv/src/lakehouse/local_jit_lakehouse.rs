@@ -14,8 +14,8 @@ use crate::{call_tree::process_thread_block, lakehouse::jit_lakehouse::JitLakeho
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::time::ConvertTicks;
+use lgn_analytics::types::{BlockSpansReply, ScopeDesc, SpanBlockLod};
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::{BlockSpansReply, ScopeDesc, SpanBlockLod};
 use lgn_tracing::prelude::*;
 use parquet::file::reader::FileReader;
 use parquet::file::serialized_reader::SerializedFileReader;

@@ -1,4 +1,4 @@
-use lgn_telemetry_proto::analytics::{Level, LogEntry};
+use lgn_analytics::types::{Level, LogEntry};
 
 pub(crate) trait Searchable<Needle> {
     fn matches(&self, needle: Needle) -> bool;
