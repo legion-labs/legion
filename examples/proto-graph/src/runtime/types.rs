@@ -42,7 +42,6 @@ pub enum Type {
     Duration(Duration),
     Dynamic(Arc<Box<dyn AnyEq>>),
     Vector(Vec<Type>),
-    From(Box<Type>),
 }
 
 impl Default for Type {

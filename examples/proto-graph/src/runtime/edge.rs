@@ -1,10 +1,12 @@
-use std::sync::Arc;
-
-use super::{input::Input, output::Output};
+use uuid::Uuid;
 
 pub struct Edge {
-    pub from: Arc<Output>,
-    pub to: Arc<Input>,
+    pub from: Uuid,
+    pub to: Uuid,
 }
 
-impl Edge {}
+impl Edge {
+    pub fn new(from: Uuid, to: Uuid) -> Self {
+        Self { from, to }
+    }
+}
