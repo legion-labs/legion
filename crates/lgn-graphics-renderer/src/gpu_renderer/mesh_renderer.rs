@@ -1,6 +1,4 @@
-use lgn_app::{App, CoreStage};
 use lgn_core::Handle;
-use lgn_ecs::{prelude::Res, schedule::SystemLabel};
 use lgn_embedded_fs::embedded_watched_file;
 use lgn_graphics_api::{
     BlendState, CompareOp, CullMode, DepthState, DeviceContext, Format, GraphicsPipelineDef,
@@ -16,17 +14,14 @@ use crate::{
         shader,
     },
     core::{RenderLayers, RENDER_LAYER_DEPTH, RENDER_LAYER_OPAQUE, RENDER_LAYER_PICKING},
+    features::GpuInstanceId,
     resources::{
         GpuBufferWithReadback, MaterialId, PipelineDef, PipelineHandle, PipelineManager,
         ReadbackBuffer, UnifiedStaticBuffer,
     },
-    Renderer,
 };
 
-use super::{
-    GpuInstanceId, GpuInstanceManagerLabel, GpuInstanceManagerOld, RenderElement,
-    RenderLayerBatches, RenderStateSet,
-};
+use super::{RenderElement, RenderLayerBatches, RenderStateSet};
 
 embedded_watched_file!(INCLUDE_BRDF, "gpu/include/brdf.hsh");
 embedded_watched_file!(INCLUDE_COMMON, "gpu/include/common.hsh");
@@ -37,75 +32,6 @@ embedded_watched_file!(
 embedded_watched_file!(INCLUDE_MESH, "gpu/include/mesh.hsh");
 embedded_watched_file!(INCLUDE_TRANSFORM, "gpu/include/transform.hsh");
 embedded_watched_file!(SHADER_SHADER, "gpu/shaders/shader.hlsl");
-
-#[derive(Debug, SystemLabel, PartialEq, Eq, Clone, Copy, Hash)]
-enum MeshRendererLabel {
-    UpdateDone,
-}
-
-impl MeshRenderer {
-    pub fn init_ecs(app: &mut App) {
-        //
-        // Stage PreUpdate
-        //
-        // TODO(vdbdd): remove asap
-        app.add_system_to_stage(CoreStage::PreUpdate, initialize_psos);
-
-        //
-        // Stage Prepare
-        //
-
-        // TODO(vdbdd): merge those systems
-
-        // app.add_system_to_stage(
-        //     RenderStage::Prepare,
-        //     update_render_elements
-        //         .after(GpuInstanceManagerLabel::UpdateDone)
-        //         .label(MeshRendererLabel::UpdateDone),
-        // );
-    }
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn initialize_psos(pipeline_manager: Res<'_, PipelineManager>, renderer: Res<'_, Renderer>) {
-    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
-    mesh_renderer.initialize_psos(&pipeline_manager);
-}
-
-#[allow(clippy::needless_pass_by_value)]
-fn update_render_elements(renderer: Res<'_, Renderer>) {
-    let mut mesh_renderer = renderer.render_resources().get_mut::<MeshRenderer>();
-    let instance_manager = renderer.render_resources().get::<GpuInstanceManagerOld>();
-    instance_manager.for_each_removed_gpu_instance_id(|gpu_instance_id| {
-        mesh_renderer.unregister_element(*gpu_instance_id);
-    });
-
-    instance_manager.for_each_render_element_added(|render_element| {
-        mesh_renderer.register_material(render_element.material_id());
-        mesh_renderer.register_element(render_element);
-    });
-}
-
-// #[allow(clippy::needless_pass_by_value)]
-// pub(crate) fn ui_mesh_renderer(egui: Res<'_, Egui>, renderer: ResMut<'_, Renderer>) {
-//     // renderer is a ResMut just to avoid concurrent accesses
-//     let mesh_renderer = renderer.render_resources().get::<MeshRenderer>();
-
-//     egui.window("Culling", |ui| {
-//         ui.label(format!(
-//             "Total Elements'{}'",
-//             u32::from(mesh_renderer.culling_stats.total_elements())
-//         ));
-//         ui.label(format!(
-//             "Frustum Visible '{}'",
-//             u32::from(mesh_renderer.culling_stats.frustum_visible())
-//         ));
-//         ui.label(format!(
-//             "Occlusion Visible '{}'",
-//             u32::from(mesh_renderer.culling_stats.occlusion_visible())
-//         ));
-//     });
-// }
 
 // TMP -- what is public here is because they are used in the render graph
 pub(crate) struct CullingArgBuffers {
@@ -132,11 +58,15 @@ impl MeshRenderer {
         device_context: &DeviceContext,
         gpu_heap: &UnifiedStaticBuffer,
         render_layers: &RenderLayers,
+        pipeline_manager: &PipelineManager,
     ) -> Self {
-        let render_layer_batches = render_layers
+        let mut render_layer_batches = render_layers
             .iter()
             .map(|_| RenderLayerBatches::new(gpu_heap, false))
             .collect::<Vec<RenderLayerBatches>>();
+
+        let (tmp_batch_ids, tmp_pipeline_handles) =
+            Self::initialize_psos(pipeline_manager, &mut render_layer_batches);
 
         Self {
             render_layer_batches,
@@ -150,36 +80,42 @@ impl MeshRenderer {
             culling_stats: CullingEfficiencyStats::default(),
             instance_data_indices: vec![],
             gpu_instance_data: vec![],
-            tmp_batch_ids: vec![],
-            tmp_pipeline_handles: vec![],
+            tmp_batch_ids,
+            tmp_pipeline_handles,
         }
     }
 
-    pub fn initialize_psos(&mut self, pipeline_manager: &PipelineManager) {
-        if self.tmp_pipeline_handles.is_empty() {
-            let pipeline_handle = build_depth_pso(pipeline_manager);
-            self.tmp_batch_ids.push(
-                self.render_layer_batches[RENDER_LAYER_DEPTH.index()]
-                    .register_state_set(&RenderStateSet { pipeline_handle }),
-            );
-            self.tmp_pipeline_handles.push(pipeline_handle);
+    fn initialize_psos(
+        pipeline_manager: &PipelineManager,
+        render_layer_batches: &mut Vec<RenderLayerBatches>,
+    ) -> (Vec<u32>, Vec<PipelineHandle>) {
+        let mut tmp_batch_ids = Vec::new();
+        let mut tmp_pipeline_handles = Vec::new();
 
-            let need_depth_write =
-                !self.render_layer_batches[RENDER_LAYER_OPAQUE.index()].gpu_culling_enabled();
-            let pipeline_handle = build_temp_pso(pipeline_manager, need_depth_write);
-            self.tmp_batch_ids.push(
-                self.render_layer_batches[RENDER_LAYER_OPAQUE.index()]
-                    .register_state_set(&RenderStateSet { pipeline_handle }),
-            );
-            self.tmp_pipeline_handles.push(pipeline_handle);
+        let pipeline_handle = build_depth_pso(pipeline_manager);
+        tmp_batch_ids.push(
+            render_layer_batches[RENDER_LAYER_DEPTH.index()]
+                .register_state_set(&RenderStateSet { pipeline_handle }),
+        );
+        tmp_pipeline_handles.push(pipeline_handle);
 
-            let pipeline_handle = build_picking_pso(pipeline_manager);
-            self.tmp_batch_ids.push(
-                self.render_layer_batches[RENDER_LAYER_PICKING.index()]
-                    .register_state_set(&RenderStateSet { pipeline_handle }),
-            );
-            self.tmp_pipeline_handles.push(pipeline_handle);
-        }
+        let need_depth_write =
+            !render_layer_batches[RENDER_LAYER_OPAQUE.index()].gpu_culling_enabled();
+        let pipeline_handle = build_temp_pso(pipeline_manager, need_depth_write);
+        tmp_batch_ids.push(
+            render_layer_batches[RENDER_LAYER_OPAQUE.index()]
+                .register_state_set(&RenderStateSet { pipeline_handle }),
+        );
+        tmp_pipeline_handles.push(pipeline_handle);
+
+        let pipeline_handle = build_picking_pso(pipeline_manager);
+        tmp_batch_ids.push(
+            render_layer_batches[RENDER_LAYER_PICKING.index()]
+                .register_state_set(&RenderStateSet { pipeline_handle }),
+        );
+        tmp_pipeline_handles.push(pipeline_handle);
+
+        (tmp_batch_ids, tmp_pipeline_handles)
     }
 
     pub(crate) fn get_tmp_pso_handle(&self, layer_id: usize) -> PipelineHandle {
@@ -215,7 +151,7 @@ impl MeshRenderer {
         self.invariant();
     }
 
-    fn unregister_element(&mut self, gpu_instance_id: GpuInstanceId) {
+    pub(crate) fn unregister_element(&mut self, gpu_instance_id: GpuInstanceId) {
         let gpu_instance_index = gpu_instance_id.index();
         let removed_index = self.instance_data_indices[gpu_instance_index as usize] as usize;
         assert!(removed_index as u32 != u32::MAX);

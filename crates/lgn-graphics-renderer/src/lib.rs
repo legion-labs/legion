@@ -239,8 +239,8 @@ impl Plugin for RendererPlugin {
             RENDER_LAYER_PICKING
         );
 
-        let mesh_renderer = MeshRenderer::new(device_context, &gpu_heap, &render_layers);
-        // let instance_manager = GpuInstanceManager::new(&gpu_heap, &gpu_upload_manager);
+        let mesh_renderer =
+            MeshRenderer::new(device_context, &gpu_heap, &render_layers, &pipeline_manager);
         let instance_manager = MeshInstanceManager::new(&gpu_heap, &gpu_upload_manager);
         let manipulation_manager = ManipulatorManager::new();
         let picking_manager = PickingManager::new(4096);
@@ -297,9 +297,6 @@ impl Plugin for RendererPlugin {
             .insert_resource(picking_manager.clone());
 
         // Init ecs
-        MeshRenderer::init_ecs(app);
-        // GpuInstanceManager::init_ecs(app);
-
         app.add_startup_system(register_installers);
 
         app.add_startup_system_to_stage(

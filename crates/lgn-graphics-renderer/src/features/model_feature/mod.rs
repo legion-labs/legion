@@ -13,7 +13,7 @@ use crate::{
         RenderObjectId, RenderObjectsBuilder, RenderResources, SecondaryTableHandler,
         TmpDrawContext, UploadGPUBuffer, UploadGPUResource, VisibleView,
     },
-    gpu_renderer::{GpuInstanceId, GpuInstanceVas, MeshRenderer, RenderElement},
+    gpu_renderer::{MeshRenderer, RenderElement},
     resources::{MeshManager, RenderModel, UnifiedStaticBuffer},
 };
 
@@ -136,7 +136,7 @@ impl SecondaryTableHandler<RenderVisual, RenderVisualRendererData>
                 .va_table_manager
                 .alloc_gpu_data(&gpu_instance_key);
 
-            let gpu_instance_id = gpu_data_allocation.index().into();
+            let gpu_instance_id = GpuInstanceId(gpu_data_allocation.index());
             gpu_instance_ids.push(gpu_instance_id);
 
             mesh_instance_manager
@@ -181,7 +181,6 @@ impl SecondaryTableHandler<RenderVisual, RenderVisualRendererData>
         world.set_translation(render_visual.transform.translation.into());
         world.set_rotation(Vec4::from(render_visual.transform.rotation).into());
         world.set_scale(render_visual.transform.scale.into());
-
         mesh_instance_manager
             .transform_manager
             .sync_update_gpu_data(&render_object_id, &world);
@@ -207,110 +206,17 @@ impl SecondaryTableHandler<RenderVisual, RenderVisualRendererData>
         let mut mesh_instance_manager = render_resources.get_mut::<MeshInstanceManager>();
         let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
 
-        // Transform are updated in their own system
-        {
-            mesh_instance_manager
-                .transform_manager
-                .alloc_gpu_data(&render_object_id);
-        }
-        // Color are updated in the update function
-        {
-            mesh_instance_manager
-                .color_manager
-                .alloc_gpu_data(&render_object_id);
-        }
-        // Picking is allocated and updated at creation time
-        {
-            mesh_instance_manager
-                .picking_data_manager
-                .alloc_gpu_data(&render_object_id);
-            let mut picking_data = cgen::cgen_type::GpuInstancePickingData::default();
-            picking_data.set_picking_id(render_visual.picking_id.into());
-            mesh_instance_manager
-                .picking_data_manager
-                .sync_update_gpu_data(&render_object_id, &picking_data);
-        }
-
         let render_model_handle = &render_visual.render_model;
         let render_model_guard = render_model_handle.get().unwrap();
         let render_model = &*render_model_guard;
 
         //
-        // Gpu instances
+        // TODO(vdbdd): RenderModel (or one of its dependencies has changed)
         //
 
-        let mut gpu_instance_ids = Vec::new();
-        let mut gpu_instance_keys = Vec::new();
-        let mesh_reader = mesh_manager.read();
-        for (mesh_index, mesh) in render_model.mesh_instances().iter().enumerate() {
-            //
-            // Mesh
-            //
-            let render_mesh = mesh_reader.get_render_mesh(mesh.mesh_id);
-
-            //
-            // Gpu instance
-            //
-
-            let instance_vas = GpuInstanceVas {
-                submesh_va: render_mesh.mesh_description_offset,
-                material_va: mesh.material_va as u32,
-                color_va: mesh_instance_manager
-                    .color_manager
-                    .gpuheap_addr_for_key(&render_object_id) as u32,
-                transform_va: mesh_instance_manager
-                    .transform_manager
-                    .gpuheap_addr_for_key(&render_object_id) as u32,
-                picking_data_va: mesh_instance_manager
-                    .picking_data_manager
-                    .gpuheap_addr_for_key(&render_object_id)
-                    as u32,
-            };
-
-            let gpu_instance_key = MeshInstanceKey {
-                render_object_id,
-                mesh_index,
-            };
-            gpu_instance_keys.push(gpu_instance_key);
-
-            let gpu_data_allocation = mesh_instance_manager
-                .va_table_manager
-                .alloc_gpu_data(&gpu_instance_key);
-
-            let gpu_instance_id = gpu_data_allocation.index().into();
-            gpu_instance_ids.push(gpu_instance_id);
-
-            mesh_instance_manager
-                .va_table_adresses
-                .sync_set_va_table_address_for_gpu_instance(
-                    &gpu_upload_manager,
-                    gpu_data_allocation,
-                );
-
-            let mut gpu_instance_va_table = cgen::cgen_type::GpuInstanceVATable::default();
-            gpu_instance_va_table.set_mesh_description_va(instance_vas.submesh_va.into());
-            gpu_instance_va_table.set_world_transform_va(instance_vas.transform_va.into());
-            gpu_instance_va_table.set_material_data_va(instance_vas.material_va.into());
-            gpu_instance_va_table.set_instance_color_va(instance_vas.color_va.into());
-            gpu_instance_va_table.set_picking_data_va(instance_vas.picking_data_va.into());
-
-            let mut binary_writer = BinaryWriter::new();
-            binary_writer.write(&gpu_instance_va_table);
-
-            gpu_upload_manager.push(UploadGPUResource::Buffer(UploadGPUBuffer {
-                src_data: binary_writer.take(),
-                dst_buffer: gpu_heap.buffer().clone(),
-                dst_offset: gpu_data_allocation.gpuheap_addr(),
-            }));
-
-            mesh_renderer.register_material(mesh.material_id);
-            mesh_renderer.register_element(&RenderElement::new(
-                gpu_instance_id,
-                mesh.material_id,
-                render_mesh,
-            ));
-        }
-
+        //
+        // update instance color
+        //
         let mut instance_color = cgen::cgen_type::GpuInstanceColor::default();
         instance_color.set_color((u32::from(render_visual.color)).into());
         instance_color.set_color_blend(render_visual.color_blend.into());
@@ -318,11 +224,13 @@ impl SecondaryTableHandler<RenderVisual, RenderVisualRendererData>
             .color_manager
             .sync_update_gpu_data(&render_object_id, &instance_color);
 
+        //
+        // update transform
+        //
         let mut world = cgen::cgen_type::TransformData::default();
         world.set_translation(render_visual.transform.translation.into());
         world.set_rotation(Vec4::from(render_visual.transform.rotation).into());
         world.set_scale(render_visual.transform.scale.into());
-
         mesh_instance_manager
             .transform_manager
             .sync_update_gpu_data(&render_object_id, &world);
@@ -330,12 +238,44 @@ impl SecondaryTableHandler<RenderVisual, RenderVisualRendererData>
 
     fn remove(
         &self,
-        _render_resources: &RenderResources,
+        render_resources: &RenderResources,
         render_object_id: RenderObjectId,
-        render_visual: &RenderVisual,
+        _render_visual: &RenderVisual,
         render_visual_private_data: &mut RenderVisualRendererData,
     ) {
-        todo!();
+        let mesh_manager = render_resources.get::<MeshManager>();
+        let gpu_heap = render_resources.get::<UnifiedStaticBuffer>();
+        let gpu_upload_manager = render_resources.get::<GpuUploadManager>();
+        let mut mesh_instance_manager = render_resources.get_mut::<MeshInstanceManager>();
+        let mut mesh_renderer = render_resources.get_mut::<MeshRenderer>();
+
+        for gpu_instance_id in render_visual_private_data
+            .gpu_instance_block
+            .gpu_instance_ids
+            .drain(..)
+        {
+            mesh_renderer.unregister_element(gpu_instance_id);
+        }
+
+        for gpu_instance_key in render_visual_private_data
+            .gpu_instance_block
+            .gpu_instance_keys
+            .drain(..)
+        {
+            mesh_instance_manager
+                .va_table_manager
+                .remove_gpu_data(&gpu_instance_key);
+        }
+
+        mesh_instance_manager
+            .transform_manager
+            .remove_gpu_data(&render_object_id);
+        mesh_instance_manager
+            .color_manager
+            .remove_gpu_data(&render_object_id);
+        mesh_instance_manager
+            .picking_data_manager
+            .remove_gpu_data(&render_object_id);
     }
 }
 
