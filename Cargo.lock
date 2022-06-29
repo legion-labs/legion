@@ -7206,6 +7206,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "proto-graph"
+version = "0.1.0"
+dependencies = [
+ "downcast-rs",
+ "lgn-math",
+ "uuid 1.1.0",
+]
+
+[[package]]
 name = "proto-salsa-compiler"
 version = "0.1.0"
 dependencies = [

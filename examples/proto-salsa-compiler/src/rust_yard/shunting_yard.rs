@@ -114,6 +114,7 @@ impl<'a> ShuntingYard<'a> {
         }
     }
 
+    #[allow(dead_code)]
     /// `to_string_ast` returns the string representation of the
     /// Lexer tokens.
     pub fn to_string_ast(&self) -> String {
