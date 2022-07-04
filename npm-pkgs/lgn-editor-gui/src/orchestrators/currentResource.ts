@@ -45,12 +45,12 @@ export async function fetchCurrentResourceDescription(
       payload: {
         type: "raw",
         title: "Resources",
-        message: "An error occured while loading the resource",
+        message: "An error occurred while loading the resource",
       },
     });
 
     log.error(
-      log.json`An error occured while loading the resource ${id}: ${error}`
+      log.json`An error occurred while loading the resource ${id}: ${error}`
     );
   }
 }

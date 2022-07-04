@@ -138,7 +138,7 @@
     <PropertyGridHeader resources={[$currentResource]} {search} />
   {/if}
   {#if $currentResourceError}
-    <div class="italic">An error occured</div>
+    <div class="italic">An error occurred</div>
   {:else if !$currentResource}
     <div class="italic">No resource selected</div>
   {:else if !$currentResource.properties.length}

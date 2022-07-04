@@ -18,7 +18,7 @@ describe("PropertyGrid", () => {
   });
 
   test("renders properly with an error", () => {
-    currentResource.error.set("Ooops, an error occured");
+    currentResource.error.set("Ooops, an error occurred");
 
     const { container } = render(PropertyGrid);
 

@@ -1,4 +1,6 @@
 import type { Common } from "@lgn/api/editor";
+import { displayError } from "@lgn/web-client/src/lib/errors";
+import log from "@lgn/web-client/src/lib/log";
 import type { AsyncOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 import { createAsyncStoreListOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
@@ -23,7 +25,11 @@ export async function fetchAllResources(name?: string) {
     getAllResources(name)
   );
 
-  await fetchStagedResources();
+  try {
+    await fetchStagedResources();
+  } catch (error) {
+    log.error("staged-resources", displayError(error));
+  }
 
   return allResources;
 }

@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
 
   import type { InitAuthStatus } from "@lgn/web-client/src/lib/auth";
+  import log from "@lgn/web-client/src/lib/log";
 
   import Home from "@/pages/Home.svelte";
 
@@ -14,7 +15,11 @@
     if (initAuthStatus) {
       switch (initAuthStatus.type) {
         case "error": {
-          window.location.href = initAuthStatus.authorizationUrl;
+          if (initAuthStatus.authorizationUrl !== null) {
+            window.location.href = initAuthStatus.authorizationUrl;
+          } else {
+            log.warn("auth", "User is not authed");
+          }
         }
       }
     }

@@ -14,6 +14,8 @@
   import Layout from "@lgn/web-client/src/components/layout/Layout.svelte";
   import type { MenuItemDescription } from "@lgn/web-client/src/components/menu/lib/MenuItemDescription";
   import { EmptyPanel, Panel } from "@lgn/web-client/src/components/panel";
+  import { displayError } from "@lgn/web-client/src/lib/errors";
+  import log from "@lgn/web-client/src/lib/log";
 
   import { closeScene } from "@/api";
   import DynamicPanel from "@/components/DynamicPanel.svelte";
@@ -49,14 +51,14 @@
   });
 
   $: if ($allResourcesError) {
-    refetchResources().catch(() => {
-      // TODO: Handle errors
+    refetchResources().catch((error) => {
+      log.error("resources", displayError(error));
     });
   }
 
   onMount(async () => {
-    refetchResources().catch(() => {
-      // TODO: Handle errors
+    refetchResources().catch((error) => {
+      log.error("resources", displayError(error));
     });
 
     await fetchAllActiveScenes();

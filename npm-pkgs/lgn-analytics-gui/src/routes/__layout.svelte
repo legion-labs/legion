@@ -179,7 +179,11 @@
   // TODO: Here we can control the UI and display a modal or change the page content
   onMount(() => {
     if (initAuthStatus?.type === "error") {
-      window.location.href = initAuthStatus.authorizationUrl;
+      if (initAuthStatus.authorizationUrl) {
+        window.location.href = initAuthStatus.authorizationUrl;
+      } else {
+        log.warn("auth", "User is not authed");
+      }
     }
 
     const unsubscribe = theme.subscribe(({ name }) => {
@@ -194,16 +198,16 @@
   });
 </script>
 
-{#if initAuthStatus?.type !== "error"}
-  <Notifications store={notifications} />
+<!-- {#if initAuthStatus?.type !== "error"} -->
+<Notifications store={notifications} />
 
-  <LoadingBar />
+<LoadingBar />
 
-  <div class="layout">
-    <slot />
-  </div>
-{/if}
+<div class="layout">
+  <slot />
+</div>
 
+<!-- {/if} -->
 <style lang="postcss">
   .layout {
     @apply antialiased w-full flex flex-col;

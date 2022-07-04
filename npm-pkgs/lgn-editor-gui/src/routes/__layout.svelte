@@ -203,7 +203,11 @@
 
   onMount(async () => {
     if ($authStatus?.type === "error") {
-      window.location.href = $authStatus.authorizationUrl;
+      if ($authStatus.authorizationUrl) {
+        window.location.href = $authStatus.authorizationUrl;
+      } else {
+        log.warn("auth", "User is not authed");
+      }
     }
 
     const initLogStreamSubscriptions = initLogStreams();
@@ -271,12 +275,12 @@
   });
 </script>
 
-{#if $authStatus?.type !== "error"}
-  <ModalContainer store={modal} />
+<!-- {#if $authStatus?.type !== "error"} -->
+<ModalContainer store={modal} />
 
-  <ContextMenu store={contextMenu} />
+<ContextMenu store={contextMenu} />
 
-  <Notifications store={notifications} />
+<Notifications store={notifications} />
 
-  <slot />
-{/if}
+<slot />
+<!-- {/if} -->
