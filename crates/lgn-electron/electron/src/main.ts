@@ -51,7 +51,7 @@ function createWindow() {
     mainWindow.loadURL(configuration.source.value).catch((error) => {
       console.error(
         "electron::start",
-        `An error occured while loading the ${configuration.source.value} url: `,
+        `An error occurred while loading the ${configuration.source.value} url: `,
         error
       );
     });
@@ -59,7 +59,7 @@ function createWindow() {
     loadUrl(mainWindow).catch((error) => {
       console.error(
         "electron::start",
-        `An error occured while loading the index.html file located under ${configuration.source.value}: `,
+        `An error occurred while loading the index.html file located under ${configuration.source.value}: `,
         error
       );
     });

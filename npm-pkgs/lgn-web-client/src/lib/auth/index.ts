@@ -429,20 +429,24 @@ export class LegionClient extends Client<UserInfo> {
   async getAuthorizationUrl() {
     const { challenge, verifier } = await PkceChallenge.newRandomSha256();
 
-    const authorizeUrl = authClient.authorizeUrl({
-      responseType: "code",
-      scopes: this.loginConfig.scopes,
-      extraParams: this.loginConfig.extraParams,
-      pkceChallenge: challenge,
-    });
+    try {
+      const authorizeUrl = authClient.authorizeUrl({
+        responseType: "code",
+        scopes: this.loginConfig.scopes,
+        extraParams: this.loginConfig.extraParams,
+        pkceChallenge: challenge,
+      });
 
-    localStorage.setItem(this.#authorizeVerifierStorageKey, verifier);
+      localStorage.setItem(this.#authorizeVerifierStorageKey, verifier);
 
-    if (location.origin === authClient.redirectUri?.origin) {
-      localStorage.setItem(this.#targetUrlStorageKey, location.href);
+      if (location.origin === authClient.redirectUri?.origin) {
+        localStorage.setItem(this.#targetUrlStorageKey, location.href);
+      }
+
+      return authorizeUrl;
+    } catch {
+      return null;
     }
-
-    return authorizeUrl;
   }
 
   getTargetUrl(): URL | null {
@@ -525,7 +529,7 @@ export type InitAuthStatus =
   // User is authed or could be authed
   | { type: "success" }
   // User is
-  | { type: "error"; authorizationUrl: string };
+  | { type: "error"; authorizationUrl: string | null };
 
 export let authClient: LegionClient;
 
@@ -646,7 +650,7 @@ export async function initAuth({
     }
   } catch (error) {
     log.warn(
-      `An error occured while trying to get the client token set ${displayError(
+      `An error occurred while trying to get the client token set ${displayError(
         error
       )}`
     );
@@ -672,7 +676,7 @@ export async function initAuth({
       authClient.storeClientTokenSet(await authClient.refreshClientTokenSet());
     } catch (error) {
       log.warn(
-        log.json`An error occured while trying to refresh the client token set ${error}`
+        log.json`An error occurred while trying to refresh the client token set ${error}`
       );
 
       return {
@@ -688,7 +692,7 @@ export async function initAuth({
     await userInfo.run(() => authClient.userInfo());
   } catch (error) {
     log.warn(
-      log.json`An error occured while trying to get the user info ${error}`
+      log.json`An error occurred while trying to get the user info ${error}`
     );
 
     return {

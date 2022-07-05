@@ -5,6 +5,7 @@
   import type { Common, ResourceBrowser } from "@lgn/api/editor";
   import Button from "@lgn/web-client/src/components/Button.svelte";
   import Modal from "@lgn/web-client/src/components/modal/Modal.svelte";
+  import { displayError } from "@lgn/web-client/src/lib/errors";
   import log from "@lgn/web-client/src/lib/log";
   import { createAsyncStoreOrchestrator } from "@lgn/web-client/src/orchestrators/async";
 
@@ -73,7 +74,11 @@
 
       close();
 
-      await fetchAllResources();
+      try {
+        await fetchAllResources();
+      } catch (error) {
+        log.error("resources", displayError(error));
+      }
     });
   }
 </script>

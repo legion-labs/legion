@@ -10,7 +10,7 @@ exports[`PropertyGrid > renders properly with an error 1`] = `
       <div
         class="italic"
       >
-        An error occured
+        An error occurred
       </div>
     </div>
   </div>

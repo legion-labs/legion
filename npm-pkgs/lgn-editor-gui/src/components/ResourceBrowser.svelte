@@ -120,12 +120,12 @@
         payload: {
           type: "raw",
           title: "Resources",
-          message: "An error occured while renaming the resource",
+          message: "An error occurred while renaming the resource",
         },
       });
 
       log.error(
-        log.json`An error occured while renaming the resource ${entry.item}: ${error}`
+        log.json`An error occurred while renaming the resource ${entry.item}: ${error}`
       );
     }
   }
@@ -218,7 +218,11 @@
       );
 
       if (newResource) {
-        await fetchAllResources();
+        try {
+          await fetchAllResources();
+        } catch (error) {
+          log.error("resources", displayError(error));
+        }
 
         if (newResource.new_id) {
           const entry = $resourceEntries.find(
@@ -341,7 +345,11 @@
           sourceId: $currentResourceDescriptionEntry.item.id,
         });
 
-        await fetchAllResources();
+        try {
+          await fetchAllResources();
+        } catch (error) {
+          log.error("resources", displayError(error));
+        }
 
         if (newResource) {
           const entry = $resourceEntries.find(
@@ -396,7 +404,11 @@
           ids: [$currentResourceDescriptionEntry.item.id],
         });
 
-        await fetchAllResources();
+        try {
+          await fetchAllResources();
+        } catch (error) {
+          log.error("resources", displayError(error));
+        }
 
         break;
       }
@@ -497,7 +509,11 @@
       newPath,
     });
 
-    await fetchAllResources();
+    try {
+      await fetchAllResources();
+    } catch (error) {
+      log.error("resources", displayError(error));
+    }
   }
 
   function openRemoveResourcePrompt(symbolKey: string) {
@@ -544,12 +560,12 @@
         payload: {
           type: "raw",
           title: "Resources",
-          message: "An error occured while removing the resource",
+          message: "An error occurred while removing the resource",
         },
       });
 
       log.error(
-        log.json`An error occured while removing the resource ${$currentResourceDescriptionEntry.item}: ${error}`
+        log.json`An error occurred while removing the resource ${$currentResourceDescriptionEntry.item}: ${error}`
       );
     }
   }

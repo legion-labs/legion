@@ -9,7 +9,7 @@
  */
 export function displayError(
   error: unknown,
-  defaultMessage = "An unknown error occured"
+  defaultMessage = "An unknown error occurred"
 ) {
   return error instanceof Error
     ? error.message

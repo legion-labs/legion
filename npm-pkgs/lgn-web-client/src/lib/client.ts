@@ -72,7 +72,11 @@ export function enhanceGrpcClient<Client extends object>(
 
             state.clientIsRefreshingToken = false;
 
-            window.location.href = await authClient.getAuthorizationUrl();
+            const authorizationUrl = await authClient.getAuthorizationUrl();
+
+            if (authorizationUrl !== null) {
+              window.location.href = authorizationUrl;
+            }
 
             return;
           }
@@ -101,67 +105,73 @@ export function enhanceGrpcClient<Client extends object>(
  */
 export function addAuthToClient<Client extends ApiClient>(
   client: Client,
-  accessTokenCookieName: string,
-  { minLatency = 5 }: { minLatency?: number } = {}
+  _accessTokenCookieName: string,
+  _: { minLatency?: number } = {}
 ): Client {
-  const state = {
-    clientIsRefreshingToken: false,
-  };
-
-  client.addRequestStartInterceptor(async (input, init) => {
-    if (state.clientIsRefreshingToken) {
-      await new Promise<void>((resolve) => {
-        const id = setInterval(() => {
-          if (!state.clientIsRefreshingToken) {
-            clearInterval(id);
-            resolve();
-          }
-        }, minLatency);
-      });
-    }
-
-    let accessToken = getCookie(accessTokenCookieName);
-
-    if (accessToken === null) {
-      state.clientIsRefreshingToken = true;
-
-      log.debug(
-        "http-client",
-        "Access token not found, trying to refresh the client token set"
-      );
-
-      try {
-        const clientTokenSet = await authClient.refreshClientTokenSet();
-
-        authClient.storeClientTokenSet(clientTokenSet);
-
-        accessToken = clientTokenSet.access_token;
-
-        state.clientIsRefreshingToken = false;
-      } catch {
-        log.debug(
-          "http-client",
-          "Couldn't refresh the client token set, redirecting to the idp"
-        );
-
-        state.clientIsRefreshingToken = false;
-
-        window.location.href = await authClient.getAuthorizationUrl();
-
-        return [input, init] as [RequestInfo | URL, RequestInit | undefined];
-      }
-    }
-
-    if (input instanceof Request) {
-      input.headers.set("Authorization", `Bearer ${accessToken}`);
-    }
-
-    if (init?.headers instanceof Headers) {
-      init.headers.set("Authorization", `Bearer ${accessToken}`);
-    }
-
-    return [input, init] as [RequestInfo | URL, RequestInit | undefined];
-  });
-
   return client;
+  // const state = {
+  //   clientIsRefreshingToken: false,
+  // };
+
+  // client.addRequestStartInterceptor(async (input, init) => {
+  //   if (state.clientIsRefreshingToken) {
+  //     await new Promise<void>((resolve) => {
+  //       const id = setInterval(() => {
+  //         if (!state.clientIsRefreshingToken) {
+  //           clearInterval(id);
+  //           resolve();
+  //         }
+  //       }, minLatency);
+  //     });
+  //   }
+
+  //   let accessToken = getCookie(accessTokenCookieName);
+
+  //   if (accessToken === null) {
+  //     state.clientIsRefreshingToken = true;
+
+  //     log.debug(
+  //       "http-client",
+  //       "Access token not found, trying to refresh the client token set"
+  //     );
+
+  //     try {
+  //       const clientTokenSet = await authClient.refreshClientTokenSet();
+
+  //       authClient.storeClientTokenSet(clientTokenSet);
+
+  //       accessToken = clientTokenSet.access_token;
+
+  //       state.clientIsRefreshingToken = false;
+  //     } catch {
+  //       log.debug(
+  //         "http-client",
+  //         "Couldn't refresh the client token set, redirecting to the idp"
+  //       );
+
+  //       state.clientIsRefreshingToken = false;
+
+  //       const authorizationUrl = await authClient.getAuthorizationUrl();
+
+  //       if (authorizationUrl !== null) {
+
+  //         window.location.href = authorizationUrl;
+  //       }
+
+  //       return [input, init] as [RequestInfo | URL, RequestInit | undefined];
+  //     }
+  //   }
+
+  //   if (input instanceof Request) {
+  //     input.headers.set("Authorization", `Bearer ${accessToken}`);
+  //   }
+
+  //   if (init?.headers instanceof Headers) {
+  //     init.headers.set("Authorization", `Bearer ${accessToken}`);
+  //   }
+
+  //   return [input, init] as [RequestInfo | URL, RequestInit | undefined];
+  // });
+
+  // return client;
 }

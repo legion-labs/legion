@@ -96,7 +96,7 @@ export const { error: allActiveScenesError } = allActiveSceneIdsOrchestrator;
 
 export async function fetchAllActiveScenes() {
   try {
-    return allActiveSceneIdsOrchestrator.run(getActiveSceneIds);
+    return await allActiveSceneIdsOrchestrator.run(getActiveSceneIds);
   } catch (error) {
     allActiveScenesOrchestrator.error.set(error);
   }

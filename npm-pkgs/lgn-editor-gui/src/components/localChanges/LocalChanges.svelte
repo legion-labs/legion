@@ -1,5 +1,7 @@
 <script lang="ts">
   import { PanelHeader } from "@lgn/web-client/src/components/panel";
+  import { displayError } from "@lgn/web-client/src/lib/errors";
+  import log from "@lgn/web-client/src/lib/log";
   import { filterContextMenuEvents } from "@lgn/web-client/src/types/contextMenu";
   import type { ContextMenuEvent } from "@lgn/web-client/src/types/contextMenu";
 
@@ -29,7 +31,13 @@
           await revertResources({
             ids: [$selectedLocalChange.info.id],
           });
-          await fetchAllResources();
+
+          try {
+            await fetchAllResources();
+          } catch (error) {
+            log.error("resources", displayError(error));
+          }
+
           break;
         }
       }

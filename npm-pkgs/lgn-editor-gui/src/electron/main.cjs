@@ -42,7 +42,7 @@ const createWindow = () => {
     mainWindow.loadURL(devUrl).catch((error) => {
       console.error(
         "electron::start",
-        `An error occured while loading the ${devUrl} url: `,
+        `An error occurred while loading the ${devUrl} url: `,
         error
       );
     });
@@ -50,7 +50,7 @@ const createWindow = () => {
     loadUrl(mainWindow).catch((error) => {
       console.error(
         "electron::start",
-        `An error occured while loading the index.html file located under ${indexHtmlDirPath}: `,
+        `An error occurred while loading the index.html file located under ${indexHtmlDirPath}: `,
         error
       );
     });

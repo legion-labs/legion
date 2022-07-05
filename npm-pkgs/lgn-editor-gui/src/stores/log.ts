@@ -58,7 +58,7 @@ export function initLogStreams() {
         processLogStreamResponse(traceEventsResponse.value, "editor");
       })
       .catch((error) => {
-        log.error("log::editor", `an error occured: ${displayError(error)}`);
+        log.error("log::editor", `an error ocurred: ${displayError(error)}`);
       });
   }, 2_000);
 
@@ -68,7 +68,7 @@ export function initLogStreams() {
         processLogStreamResponse(traceEventsResponse.value, "runtime");
       })
       .catch((error) => {
-        log.error("log::runtime", `an error occured: ${displayError(error)}`);
+        log.error("log::runtime", `an error ocurred: ${displayError(error)}`);
       });
   }, 2_000);
 

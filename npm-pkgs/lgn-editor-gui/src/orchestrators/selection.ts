@@ -20,12 +20,12 @@ import {
 export function initMessageStream() {
   async function rec(): Promise<void> {
     const message = await getLastMessage().catch((error) => {
-      log.error("messages", `An error occured: ${displayError(error)}`);
+      log.error("messages", `An error occurred: ${displayError(error)}`);
     });
 
     if (!message) {
       return rec().catch((error) => {
-        log.error("messages", `An error occured: ${displayError(error)}`);
+        log.error("messages", `An error occurred: ${displayError(error)}`);
       });
     }
 
@@ -76,12 +76,12 @@ export function initMessageStream() {
     }
 
     await rec().catch((error) => {
-      log.error("messages", `An error occured: ${displayError(error)}`);
+      log.error("messages", `An error occurred: ${displayError(error)}`);
     });
   }
 
   rec().catch((error) =>
-    log.error("messages", `An error occured: ${displayError(error)}`)
+    log.error("messages", `An error occurred: ${displayError(error)}`)
   );
 
   return () => {
