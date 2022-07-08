@@ -14,8 +14,8 @@ use crate::{call_tree::process_thread_block, lakehouse::jit_lakehouse::JitLakeho
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use lgn_analytics::time::ConvertTicks;
+use lgn_analytics::types::{BlockSpansReply, ScopeDesc, SpanBlockLod};
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::{BlockSpansReply, ScopeDesc, SpanBlockLod};
 use lgn_tracing::prelude::*;
 use parquet::file::reader::FileReader;
 use parquet::file::serialized_reader::SerializedFileReader;
@@ -23,6 +23,9 @@ use parquet::record::RowAccessor;
 use tokio::io::AsyncReadExt;
 
 use super::scope_table::write_scopes_parquet;
+
+type ProcessInfo = lgn_telemetry::types::Process;
+type StreamInfo = lgn_telemetry::types::Stream;
 
 pub struct LocalJitLakehouse {
     pool: sqlx::any::AnyPool,
@@ -45,8 +48,8 @@ impl LocalJitLakehouse {
 
     async fn write_call_tree(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
         spans_file_path: PathBuf,
         scopes_file_path: PathBuf,
@@ -171,11 +174,7 @@ impl LocalJitLakehouse {
         Ok((scopes, tree))
     }
 
-    fn get_table_files(
-        &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        block_id: &str,
-    ) -> (PathBuf, PathBuf) {
+    fn get_table_files(&self, process: &ProcessInfo, block_id: &str) -> (PathBuf, PathBuf) {
         let spans_file_path = self
             .tables_path
             .join("spans")
@@ -222,8 +221,8 @@ impl JitLakehouse for LocalJitLakehouse {
 
     async fn get_thread_block(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply> {
         let (spans_file_path, scopes_file_path) = self.get_table_files(process, block_id);
@@ -260,8 +259,8 @@ impl JitLakehouse for LocalJitLakehouse {
 
     async fn get_call_tree(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
     ) -> Result<(ScopeHashMap, TabularSpanTree)> {
         let (spans_file_path, scopes_file_path) = self.get_table_files(process, block_id);

@@ -1,11 +1,10 @@
-use crate::data_lake_connection::DataLakeConnection;
 use anyhow::Context;
 use anyhow::Result;
-use lgn_telemetry_proto::telemetry::{BlockPayload, ContainerMetadata, UdtMember, UserDefinedType};
+use lgn_telemetry::types::{BlockPayload, ContainerMetadata, UdtMember, UserDefinedType};
+use lgn_telemetry_ingestion::server::DataLakeConnection;
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::parse_string::parse_string;
 use lgn_tracing_transit::read_any;
-use prost::Message;
 
 fn parse_json_udt_member(json_udt_member: &serde_json::value::Value) -> Result<UdtMember> {
     let name = json_udt_member["name"]
@@ -145,7 +144,7 @@ impl WebIngestionService {
             dependencies,
             objects,
         };
-        let encoded_payload = payload.encode_to_vec();
+        let encoded_payload = payload.encode();
         let payload_size = encoded_payload.len();
         if payload_size >= 128 * 1024 {
             self.lake
@@ -193,13 +192,13 @@ impl WebIngestionService {
                 .as_array()
                 .with_context(|| "reading dependencies_metadata")?,
         )?
-        .encode_to_vec();
+        .encode();
         let objects_metadata = parse_json_container_metadata(
             body["objects_metadata"]
                 .as_array()
                 .with_context(|| "reading objects_metadata")?,
         )?
-        .encode_to_vec();
+        .encode();
         info!("new stream [{}] {}", tags, stream_id);
         sqlx::query("INSERT INTO streams VALUES(?,?,?,?,?,?);")
             .bind(stream_id)

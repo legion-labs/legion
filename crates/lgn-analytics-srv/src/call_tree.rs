@@ -3,14 +3,16 @@ use std::sync::Arc;
 use anyhow::Result;
 use lgn_analytics::prelude::*;
 use lgn_analytics::time::ConvertTicks;
+use lgn_analytics::types::AsyncSpanEvent;
+use lgn_analytics::types::CallTreeNode;
+use lgn_analytics::types::ScopeDesc;
+use lgn_analytics::types::SpanBlockLod;
+use lgn_analytics::types::SpanEventType;
+use lgn_analytics::types::SpanTrack;
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::AsyncSpanEvent;
-use lgn_telemetry_proto::analytics::CallTreeNode;
-use lgn_telemetry_proto::analytics::ScopeDesc;
-use lgn_telemetry_proto::analytics::SpanBlockLod;
-use lgn_telemetry_proto::analytics::SpanEventType;
-use lgn_telemetry_proto::analytics::SpanTrack;
 use lgn_tracing::prelude::*;
+
+type StreamInfo = lgn_telemetry::types::Stream;
 
 #[derive(Debug)]
 pub struct ProcessedThreadBlock {
@@ -186,7 +188,7 @@ pub(crate) async fn process_thread_block(
     pool: sqlx::any::AnyPool,
     blob_storage: Arc<dyn BlobStorage>,
     convert_ticks: ConvertTicks,
-    stream: &lgn_telemetry_sink::StreamInfo,
+    stream: &StreamInfo,
     block_id: &str,
 ) -> Result<ProcessedThreadBlock> {
     let block = {

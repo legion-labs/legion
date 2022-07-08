@@ -1,6 +1,6 @@
 use lgn_analytics::log_entry_from_value;
 use lgn_analytics::parse_block;
-use lgn_telemetry_proto::telemetry::Process as ProcessInfo;
+use lgn_telemetry::types::Process as ProcessInfo;
 use lgn_telemetry_sink::stream_block::StreamBlock;
 use lgn_telemetry_sink::stream_info::get_stream_info;
 use lgn_telemetry_sink::TelemetryGuard;
@@ -48,10 +48,10 @@ fn test_log_encode_static() {
     });
     let mut block = stream.replace_block(Arc::new(LogBlock::new(1024, stream_id)));
     Arc::get_mut(&mut block).unwrap().close();
-    let encoded = block.encode().unwrap();
-    assert_eq!(encoded.nb_objects, 1);
+    let (block, payload) = block.encode().unwrap();
+    assert_eq!(block.nb_objects, 1);
     let stream_info = get_stream_info(&stream);
-    parse_block(&stream_info, &encoded.payload.unwrap(), |val| {
+    parse_block(&stream_info, &payload, |val| {
         if let Value::Object(obj) = val {
             assert_eq!(obj.type_name.as_str(), "LogStaticStrInteropEvent");
             assert_eq!(obj.get::<i64>("time").unwrap(), 1);
@@ -79,10 +79,10 @@ fn test_log_encode_dynamic() {
     });
     let mut block = stream.replace_block(Arc::new(LogBlock::new(1024, stream_id)));
     Arc::get_mut(&mut block).unwrap().close();
-    let encoded = block.encode().unwrap();
-    assert_eq!(encoded.nb_objects, 1);
+    let (block, payload) = block.encode().unwrap();
+    assert_eq!(block.nb_objects, 1);
     let stream_info = get_stream_info(&stream);
-    parse_block(&stream_info, &encoded.payload.unwrap(), |val| {
+    parse_block(&stream_info, &payload, |val| {
         if let Value::Object(obj) = val {
             assert_eq!(obj.type_name.as_str(), "LogStringInteropEventV2");
             assert_eq!(obj.get::<i64>("time").unwrap(), 1);
@@ -116,12 +116,12 @@ fn test_parse_log_interops() {
     });
     let mut block = stream.replace_block(Arc::new(LogBlock::new(1024, stream_id)));
     Arc::get_mut(&mut block).unwrap().close();
-    let encoded = block.encode().unwrap();
-    assert_eq!(encoded.nb_objects, 2);
+    let (block, payload) = block.encode().unwrap();
+    assert_eq!(block.nb_objects, 2);
     let stream_info = get_stream_info(&stream);
     let mut nb_log_entries = 0;
     let process = ProcessInfo::default();
-    parse_block(&stream_info, &encoded.payload.unwrap(), |val| {
+    parse_block(&stream_info, &payload, |val| {
         if log_entry_from_value(&process, &val).unwrap().is_some() {
             nb_log_entries += 1;
         }

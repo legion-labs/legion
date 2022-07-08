@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use lgn_analytics::time::ConvertTicks;
-use lgn_telemetry_proto::telemetry::BlockMetadata;
-use lgn_telemetry_proto::telemetry::Stream;
+use lgn_telemetry::types::BlockMetadata;
+use lgn_telemetry::types::Stream;
 use lgn_tracing::prelude::*;
 use std::collections::HashMap;
 use std::path::Path;
@@ -13,7 +13,7 @@ use crate::thread_block_processor::parse_thread_block_payload;
 #[allow(clippy::cast_possible_wrap)]
 #[span_fn]
 pub async fn write_local_partition(
-    payload: &lgn_telemetry_proto::telemetry::BlockPayload,
+    payload: &lgn_telemetry::types::BlockPayload,
     stream: &Stream,
     block: &BlockMetadata,
     convert_ticks: ConvertTicks,

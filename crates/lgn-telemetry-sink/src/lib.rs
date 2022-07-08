@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex, Weak};
 use std::{collections::HashMap, str::FromStr};
 
 mod composite_event_sink;
-mod grpc_event_sink;
+mod http_event_sink;
 mod local_event_sink;
 pub mod stream_block;
 pub mod stream_info;
@@ -23,13 +23,8 @@ use lgn_tracing::{
     LevelFilter,
 };
 
-pub type ProcessInfo = lgn_telemetry_proto::telemetry::Process;
-pub type StreamInfo = lgn_telemetry_proto::telemetry::Stream;
-pub type EncodedBlock = lgn_telemetry_proto::telemetry::Block;
-pub use lgn_telemetry_proto::telemetry::ContainerMetadata;
-
 use composite_event_sink::CompositeSink;
-use grpc_event_sink::GRPCEventSink;
+use http_event_sink::HttpEventSink;
 use local_event_sink::LocalEventSink;
 
 pub struct TelemetryGuardBuilder {
@@ -166,7 +161,7 @@ impl TelemetryGuardBuilder {
                 if let Ok(url) = std::env::var("LGN_TELEMETRY_URL") {
                     sinks.push((
                         self.grpc_sink_max_level,
-                        Box::new(GRPCEventSink::new(&url, self.max_queue_size)),
+                        Box::new(HttpEventSink::new(&url, self.max_queue_size)),
                     ));
                 }
                 if self.local_sink_enabled {

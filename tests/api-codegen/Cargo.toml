@@ -8,7 +8,6 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 lgn-tracing = { path = "../../crates/lgn-tracing", version = "0.1.0" }
-lgn-telemetry-sink = { path = "../../crates/lgn-telemetry-sink", version = "0.1.0" }
 lgn-online = { path = "../../crates/lgn-online", version = "0.1.0" }
 async-trait = "0.1"
 tokio = { version = "1", features = ["full"] }

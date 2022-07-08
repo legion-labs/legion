@@ -3,23 +3,25 @@
 // crate-specific lint exceptions:
 #![allow(clippy::missing_errors_doc)]
 
+pub mod api;
+pub mod server;
 pub mod time;
+pub mod types;
 
 use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use lgn_blob_storage::BlobStorage;
-use lgn_telemetry_proto::analytics::LogEntry;
-use lgn_telemetry_proto::decompress;
-use lgn_telemetry_proto::telemetry::{
+use lgn_telemetry::decompress;
+use lgn_telemetry::types::{
     BlockMetadata, ContainerMetadata, Process as ProcessInfo, Stream as StreamInfo,
 };
 use lgn_tracing::prelude::*;
 use lgn_tracing_transit::{parse_object_buffer, read_dependencies, Member, UserDefinedType, Value};
-use prost::Message;
 use sqlx::any::AnyRow;
 use sqlx::Row;
+use types::{LogEntry, ProcessInstance};
 
 use crate::time::get_tsc_frequency_inverse_ms;
 
@@ -111,19 +113,19 @@ pub async fn find_block_process(
 pub async fn list_recent_processes(
     connection: &mut sqlx::AnyConnection,
     parent_process_id: Option<&str>,
-) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
+) -> Result<Vec<ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
-        "SELECT process_id, 
-                exe, 
-                username, 
-                realname, 
-                computer, 
-                distro, 
-                cpu_brand, 
-                tsc_frequency, 
-                start_time, 
-                start_ticks, 
+        "SELECT process_id,
+                exe,
+                username,
+                realname,
+                computer,
+                distro,
+                cpu_brand,
+                tsc_frequency,
+                start_time,
+                start_ticks,
                 parent_process_id,
                 (SELECT count(*) FROM processes as p WHERE p.parent_process_id = processes.process_id) as child_count,
                 (
@@ -160,7 +162,7 @@ pub async fn list_recent_processes(
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
         let child_count: i32 = r.get("child_count");
-        let instance = lgn_telemetry_proto::analytics::ProcessInstance {
+        let instance = ProcessInstance {
             process_info: Some(process_from_row(&r)),
             nb_cpu_blocks: nb_cpu_blocks as u32,
             nb_log_blocks: nb_log_blocks as u32,
@@ -176,19 +178,19 @@ pub async fn list_recent_processes(
 pub async fn search_processes(
     connection: &mut sqlx::AnyConnection,
     keyword: &str,
-) -> Result<Vec<lgn_telemetry_proto::analytics::ProcessInstance>> {
+) -> Result<Vec<ProcessInstance>> {
     let mut processes = Vec::new();
     let rows = sqlx::query(
-        "SELECT process_id, 
-                exe, 
-                username, 
-                realname, 
-                computer, 
-                distro, 
-                cpu_brand, 
-                tsc_frequency, 
-                start_time, 
-                start_ticks, 
+        "SELECT process_id,
+                exe,
+                username,
+                realname,
+                computer,
+                distro,
+                cpu_brand,
+                tsc_frequency,
+                start_time,
+                start_ticks,
                 parent_process_id,
                 (SELECT count(*) FROM processes as p WHERE p.parent_process_id = processes.process_id) as child_count,
                 (
@@ -226,7 +228,7 @@ pub async fn search_processes(
         let nb_log_blocks: i32 = r.get("nb_log_blocks");
         let nb_metric_blocks: i32 = r.get("nb_metric_blocks");
         let child_count: i32 = r.get("child_count");
-        let instance = lgn_telemetry_proto::analytics::ProcessInstance {
+        let instance = ProcessInstance {
             process_info: Some(process_from_row(&r)),
             nb_cpu_blocks: nb_cpu_blocks as u32,
             nb_log_blocks: nb_log_blocks as u32,
@@ -294,13 +296,12 @@ pub async fn find_process_streams_tagged(
     for r in rows {
         let stream_id: String = r.get("stream_id");
         let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
-        let dependencies_metadata = lgn_telemetry_proto::telemetry::ContainerMetadata::decode(
-            &*dependencies_metadata_buffer,
-        )
-        .with_context(|| "decoding dependencies metadata")?;
+        let dependencies_metadata =
+            lgn_telemetry::types::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+                .with_context(|| "decoding dependencies metadata")?;
         let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
         let objects_metadata =
-            lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+            lgn_telemetry::types::ContainerMetadata::decode(&*objects_metadata_buffer)
                 .with_context(|| "decoding objects metadata")?;
         let tags_str: String = r.get("tags");
         let properties_str: String = r.get("properties");
@@ -337,13 +338,12 @@ pub async fn find_process_streams(
     for r in rows {
         let stream_id: String = r.get("stream_id");
         let dependencies_metadata_buffer: Vec<u8> = r.get("dependencies_metadata");
-        let dependencies_metadata = lgn_telemetry_proto::telemetry::ContainerMetadata::decode(
-            &*dependencies_metadata_buffer,
-        )
-        .with_context(|| "decoding dependencies metadata")?;
+        let dependencies_metadata =
+            lgn_telemetry::types::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+                .with_context(|| "decoding dependencies metadata")?;
         let objects_metadata_buffer: Vec<u8> = r.get("objects_metadata");
         let objects_metadata =
-            lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+            lgn_telemetry::types::ContainerMetadata::decode(&*objects_metadata_buffer)
                 .with_context(|| "decoding objects metadata")?;
         let tags_str: String = r.get("tags");
         let properties_str: String = r.get("properties");
@@ -372,7 +372,7 @@ pub async fn find_process_blocks(
         FROM streams S
         LEFT JOIN blocks B
         ON S.stream_id = B.stream_id
-        WHERE S.process_id = ?  
+        WHERE S.process_id = ?
         AND S.tags like ?
         AND B.block_id IS NOT NULL",
     )
@@ -429,11 +429,11 @@ pub async fn find_stream(
     .with_context(|| "find_stream")?;
     let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
     let dependencies_metadata =
-        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+        lgn_telemetry::types::ContainerMetadata::decode(&*dependencies_metadata_buffer)
             .with_context(|| "decoding dependencies metadata")?;
     let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
     let objects_metadata =
-        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+        lgn_telemetry::types::ContainerMetadata::decode(&*objects_metadata_buffer)
             .with_context(|| "decoding objects metadata")?;
     let tags_str: String = row.get("tags");
     let properties_str: String = row.get("properties");
@@ -467,11 +467,11 @@ pub async fn find_block_stream(
     .with_context(|| "find_block_stream")?;
     let dependencies_metadata_buffer: Vec<u8> = row.get("dependencies_metadata");
     let dependencies_metadata =
-        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*dependencies_metadata_buffer)
+        lgn_telemetry::types::ContainerMetadata::decode(&*dependencies_metadata_buffer)
             .with_context(|| "decoding dependencies metadata")?;
     let objects_metadata_buffer: Vec<u8> = row.get("objects_metadata");
     let objects_metadata =
-        lgn_telemetry_proto::telemetry::ContainerMetadata::decode(&*objects_metadata_buffer)
+        lgn_telemetry::types::ContainerMetadata::decode(&*objects_metadata_buffer)
             .with_context(|| "decoding objects metadata")?;
     let tags_str: String = row.get("tags");
     let properties_str: String = row.get("properties");
@@ -575,7 +575,7 @@ pub async fn fetch_block_payload(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
     block_id: String,
-) -> Result<lgn_telemetry_proto::telemetry::BlockPayload> {
+) -> Result<lgn_telemetry::types::BlockPayload> {
     let opt_row = sqlx::query("SELECT payload FROM payloads where block_id = ?;")
         .bind(&block_id)
         .fetch_optional(connection)
@@ -593,7 +593,7 @@ pub async fn fetch_block_payload(
 
     {
         span_scope!("decode");
-        let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
+        let payload = lgn_telemetry::types::BlockPayload::decode(&*buffer)
             .with_context(|| format!("reading payload {}", &block_id))?;
         Ok(payload)
     }
@@ -630,7 +630,7 @@ fn container_metadata_as_transit_udt_vec(
 #[span_fn]
 pub fn parse_block<F>(
     stream: &StreamInfo,
-    payload: &lgn_telemetry_proto::telemetry::BlockPayload,
+    payload: &lgn_telemetry::types::BlockPayload,
     fun: F,
 ) -> Result<()>
 where

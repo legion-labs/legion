@@ -5,6 +5,8 @@ use lgn_analytics::prelude::*;
 use lgn_blob_storage::BlobStorage;
 use lgn_tracing_transit::prelude::*;
 
+type ProcessInfo = lgn_telemetry::types::Process;
+
 pub async fn print_process_thread_events(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
@@ -39,7 +41,7 @@ pub async fn print_process_thread_events(
 async fn extract_process_thread_events(
     connection: &mut sqlx::AnyConnection,
     blob_storage: Arc<dyn BlobStorage>,
-    process_info: &lgn_telemetry_sink::ProcessInfo,
+    process_info: &ProcessInfo,
     ts_offset: i64,
     inv_tsc_frequency: f64,
 ) -> Result<json::Array> {

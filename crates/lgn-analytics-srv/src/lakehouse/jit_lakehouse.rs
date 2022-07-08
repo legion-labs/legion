@@ -2,7 +2,9 @@ use super::span_table::TabularSpanTree;
 use crate::scope::ScopeHashMap;
 use anyhow::Result;
 use async_trait::async_trait;
-use lgn_telemetry_proto::analytics::BlockSpansReply;
+use lgn_analytics::types::BlockSpansReply;
+type ProcessInfo = lgn_telemetry::types::Process;
+type StreamInfo = lgn_telemetry::types::Stream;
 
 #[async_trait]
 pub trait JitLakehouse: Send + Sync {
@@ -12,15 +14,15 @@ pub trait JitLakehouse: Send + Sync {
 
     async fn get_thread_block(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
     ) -> Result<BlockSpansReply>;
 
     async fn get_call_tree(
         &self,
-        process: &lgn_telemetry_sink::ProcessInfo,
-        stream: &lgn_telemetry_sink::StreamInfo,
+        process: &ProcessInfo,
+        stream: &StreamInfo,
         block_id: &str,
     ) -> Result<(ScopeHashMap, TabularSpanTree)>;
 }

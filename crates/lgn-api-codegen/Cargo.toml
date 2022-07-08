@@ -8,15 +8,9 @@ license = "MIT OR Apache-2.0"
 name = "lgn_api_codegen"
 path = "src/lib.rs"
 
-[[bin]]
-name = "lgn-api-codegen"
-path = "src/bin/cli.rs"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 openapiv3 = "1"
 thiserror = "1"
 serde = "1"
@@ -27,7 +21,6 @@ anyhow = "1"
 indexmap = "1"
 http = "0.2"
 convert_case = "0.5"
-clap = { version = "3.0", features = ["derive", "env"] }
 rust-format = "0.3"
 regex = "1"
 lazy_static = "1"

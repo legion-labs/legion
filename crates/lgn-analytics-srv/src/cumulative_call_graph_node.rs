@@ -3,7 +3,7 @@ use crate::{
     lakehouse::span_table::{SpanRow, TabularSpanTree},
 };
 use anyhow::Result;
-use lgn_telemetry_proto::analytics::{CumulativeComputedCallGraphNode, CumulativeStats};
+use lgn_analytics::types::{CumulativeComputedCallGraphNode, CumulativeStats};
 use lgn_tracing::span_fn;
 
 pub type CallNodeHashMap = std::collections::HashMap<u32, CallGraphNode>;

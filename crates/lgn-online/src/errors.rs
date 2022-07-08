@@ -6,6 +6,8 @@ pub type StdError = Box<dyn std::error::Error + Send + Sync>;
 pub enum Error {
     #[error("authentication error: {0}")]
     Authentication(#[from] lgn_auth::Error),
+    #[error("api key authentication error: {0}")]
+    ApiKeyAuthentication(#[from] lgn_auth::api_key::Error),
     #[error("configuration error: {0}")]
     Config(#[from] lgn_config::Error),
     #[error("reqwest error: {0}")]

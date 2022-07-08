@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: "Analytics API components"
+  description: "The common analytics API components"
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    ProcessInstance:
+      description: The process instance.
+      type: object
+      properties:
+        process_info:
+          $ref: "../../lgn-telemetry/apis/components.yaml#/components/schemas/Process"
+        child_count:
+          type: integer
+          format: int32
+          minimum: 0
+        nb_cpu_blocks:
+          type: integer
+          format: int32
+          minimum: 0
+        nb_log_blocks:
+          type: integer
+          format: int32
+          minimum: 0
+        nb_metric_blocks:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+        - child_count
+        - nb_cpu_blocks
+        - nb_log_blocks
+        - nb_metric_blocks
+    LogEntry:
+      description: The log entry.
+      type: object
+      properties:
+        level:
+          type: integer
+        time_ms:
+          type: number
+        target:
+          type: string
+        msg:
+          type: string
+      required:
+        - level
+        - time_ms
+        - target
+        - msg

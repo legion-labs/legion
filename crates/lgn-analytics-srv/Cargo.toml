@@ -12,7 +12,7 @@ deltalake-proto = ["dep:deltalake"]
 lgn-analytics = { path = "../lgn-analytics", version = "0.1.0" }
 lgn-blob-storage = { path = "../lgn-blob-storage", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
-lgn-telemetry-proto = { path = "../lgn-telemetry-proto", version = "0.1.0" }
+lgn-telemetry = { path = "../lgn-telemetry", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
 lgn-tracing-transit = { path = "../lgn-tracing-transit", version = "0.1.0" }
 anyhow = "1.0"
@@ -54,7 +54,7 @@ serde_json = "1.0"
 
 [build-dependencies]
 tonic-build = "0.6"
-
+lgn-api-codegen = { path = "../lgn-api-codegen", version = "0.1.0" }
 
 [[package.metadata.monorepo.publish]]
 name = "analytics-srv"

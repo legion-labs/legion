@@ -19,8 +19,12 @@ tokio = { version = "1.13", features = [
 lgn-blob-storage = { path = "../lgn-blob-storage", version = "0.1.0" }
 lgn-tracing = { path = "../lgn-tracing", version = "0.1.0" }
 lgn-tracing-transit = { path = "../lgn-tracing-transit", version = "0.1.0" }
+lgn-telemetry = { path = "../lgn-telemetry", version = "0.1.0" }
+lgn-telemetry-ingestion = { path = "../lgn-telemetry-ingestion", version = "0.1.0" }
 lgn-telemetry-proto = { path = "../lgn-telemetry-proto", version = "0.1.0" }
 lgn-telemetry-sink = { path = "../lgn-telemetry-sink", version = "0.1.0" }
+lgn-online = { path = "../lgn-online", version = "0.1.0" }
+lgn-cli-utils = { path = "../lgn-cli-utils", version = "0.1.0" }
 lgn-auth = { path = "../lgn-auth", version = "0.1.0" }
 whoami = "1.2"
 anyhow = "1.0"
@@ -36,6 +40,12 @@ serde_json = "1.0"
 warp = "0.3"
 tower = { version = "0.4" }
 tower-http = { version = "0.3" }
+axum = "0.5"
+async-trait = "0.1"
+thiserror = "1"
+
+[build-dependencies]
+lgn-api-codegen = { path = "../lgn-api-codegen", version = "0.1.0" }
 
 [[bin]]
 name = "telemetry-ingestion-srv"

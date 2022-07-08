@@ -118,7 +118,7 @@ async fn read_block_payload(
     block_id: &str,
     buffer_from_db: Option<Vec<u8>>,
     blob_storage: Arc<dyn BlobStorage>,
-) -> Result<lgn_telemetry_proto::telemetry::BlockPayload> {
+) -> Result<lgn_telemetry::types::BlockPayload> {
     let buffer: Vec<u8> = if let Some(buffer) = buffer_from_db {
         buffer
     } else {
@@ -130,7 +130,7 @@ async fn read_block_payload(
 
     {
         span_scope!("decode");
-        let payload = lgn_telemetry_proto::telemetry::BlockPayload::decode(&*buffer)
+        let payload = lgn_telemetry::types::BlockPayload::decode(&*buffer)
             .with_context(|| format!("reading payload {}", &block_id))?;
         Ok(payload)
     }

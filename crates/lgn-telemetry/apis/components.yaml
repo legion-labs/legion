@@ -16,20 +16,14 @@ components:
           type: string
         begin_time:
           type: string
-          format: date-time
         end_time:
           type: string
-          format: date-time
         begin_ticks:
-          type: integer
-          format: int64
+          type: string
         end_ticks:
-          type: integer
-          format: int64
+          type: string
         nb_objects:
-          type: integer
-        payload:
-          $ref: "#/components/schemas/BlockPayload"
+          type: string
       required:
         - block_id
         - stream_id
@@ -38,19 +32,6 @@ components:
         - begin_ticks
         - end_ticks
         - nb_objects
-    BlockPayload:
-      description: The block payload.
-      type: object
-      properties:
-        dependencies:
-          type: string
-          format: byte
-        objects:
-          type: string
-          format: byte
-      required:
-        - dependencies
-        - objects
     BlockMetadata:
       description: The block metadata.
       type: object
@@ -61,10 +42,8 @@ components:
           type: string
         begin_time:
           type: string
-          format: date-time
         end_time:
           type: string
-          format: date-time
         begin_ticks:
           type: integer
           format: int64
@@ -104,15 +83,11 @@ components:
         cpu_brand:
           type: string
         tsc_frequency:
-          type: integer
-          format: int64
-          minimum: 0
+          type: string
         start_time:
           type: string
-          format: date-time
         start_ticks:
-          type: integer
-          format: int64
+          type: string
         parent_process_id:
           type: string
       required:
@@ -136,9 +111,13 @@ components:
         process_id:
           type: string
         dependencies_metadata:
-          $ref: "#/components/schemas/ContainerMetadata"
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDefinedType"
         objects_metadata:
-          $ref: "#/components/schemas/ContainerMetadata"
+          type: array
+          items:
+            $ref: "#/components/schemas/UserDefinedType"
         tags:
           type: array
           items:
@@ -150,16 +129,6 @@ components:
         - process_id
         - tags
         - properties
-    ContainerMetadata:
-      description: The container metadata.
-      type: object
-      properties:
-        types:
-          type: array
-          items:
-            $ref: "#/components/schemas/UserDefinedType"
-      required:
-        - types
     UserDefinedType:
       description: The user defined type.
       type: object
@@ -167,8 +136,7 @@ components:
         name:
           type: string
         size:
-          type: integer
-          minimum: 0
+          type: string
         members:
           type: array
           items:
@@ -189,11 +157,9 @@ components:
         type_name:
           type: string
         offset:
-          type: integer
-          minimum: 0
+          type: string
         size:
-          type: integer
-          minimum: 0
+          type: string
         is_reference:
           type: boolean
       required:
