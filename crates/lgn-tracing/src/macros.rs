@@ -1,3 +1,35 @@
+/// Creates a span.
+///
+/// # Examples
+///
+/// ```
+/// use lgn_tracing::span;
+///
+/// # fn main() {
+/// span!("scope", _MY_SPAN_NAME);
+/// # }
+/// ```
+///
+/// A static variable `_MY_SPAN_NAME` has been created
+#[macro_export]
+macro_rules! span {
+    ($scope_name:ident, $name:expr) => {
+        static $scope_name: $crate::spans::SpanMetadata = $crate::spans::SpanMetadata {
+            name: $name,
+            location: $crate::spans::SpanLocation {
+                lod: $crate::Verbosity::Max,
+                target: module_path!(),
+                module_path: module_path!(),
+                file: file!(),
+                line: line!(),
+            },
+        };
+    };
+    ($name:expr) => {
+        $crate::span_scope!(_METADATA_NAMED, $name);
+    };
+}
+
 /// Records a integer metric.
 ///
 /// # Examples
